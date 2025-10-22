@@ -1,21 +1,21 @@
 # API Documentation
 
-Shogun Faircamp can be used programmatically in your JavaScript/TypeScript projects.
+Tunecamp can be used programmatically in your JavaScript/TypeScript projects.
 
 ## Installation
 
 ```bash
-npm install shogun-faircamp
+npm install tunecamp
 # or
-yarn add shogun-faircamp
+yarn add tunecamp
 ```
 
 ## Basic Usage
 
 ```typescript
-import { ShogunFaircamp } from "shogun-faircamp";
+import { Tunecamp } from "tunecamp";
 
-const generator = new ShogunFaircamp({
+const generator = new Tunecamp({
   inputDir: "./my-catalog",
   outputDir: "./public",
   theme: "default",
@@ -27,7 +27,7 @@ await generator.build();
 
 ## API Reference
 
-### ShogunFaircamp Class
+### Tunecamp Class
 
 Main class for generating sites.
 

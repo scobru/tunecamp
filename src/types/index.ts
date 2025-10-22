@@ -17,14 +17,23 @@ export interface ArtistConfig {
   bio?: string;
   photo?: string;
   links?: ArtistLink[];
+  donationLinks?: DonationLink[];
   metadata?: Record<string, any>;
+}
+
+export interface DonationLink {
+  platform: string;
+  url: string;
+  description?: string;
 }
 
 export interface ArtistLink {
   [platform: string]: string;
 }
 
-export type DownloadMode = 'free' | 'paycurtain' | 'codes' | 'none';
+export type DownloadMode = 'free' | 'paycurtain' | 'none';
+
+export type LicenseType = 'copyright' | 'cc-by' | 'cc-by-sa' | 'cc-by-nc' | 'cc-by-nc-sa' | 'cc-by-nc-nd' | 'cc-by-nd' | 'public-domain';
 
 export interface ReleaseConfig {
   title: string;
@@ -33,6 +42,9 @@ export interface ReleaseConfig {
   cover?: string;
   download?: DownloadMode;
   price?: number;
+  paypalLink?: string;
+  stripeLink?: string;
+  license?: LicenseType;
   genres?: string[];
   credits?: Credit[];
   metadata?: Record<string, any>;

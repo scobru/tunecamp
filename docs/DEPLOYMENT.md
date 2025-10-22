@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide explains how to deploy your Shogun Faircamp site to various hosting platforms and configure the correct base paths.
+This guide explains how to deploy your Tunecamp site to various hosting platforms and configure the correct base paths.
 
 ## Table of Contents
 

@@ -1,0 +1,17 @@
+name: "Example Artist"
+bio: "An independent musician creating electronic music with a focus on ambient soundscapes."
+photo: "image.png"
+links:
+  - bandcamp: "https://exampleartist.bandcamp.com"
+  - spotify: "https://open.spotify.com/artist/123456"
+  - instagram: "https://instagram.com/exampleartist"
+donationLinks:
+  - platform: "PayPal"
+    url: "https://paypal.me/exampleartist"
+    description: "Support the artist"
+  - platform: "Ko-fi"
+    url: "https://ko-fi.com/exampleartist"
+    description: "Buy me a coffee"
+  - platform: "Patreon"
+    url: "https://patreon.com/exampleartist"
+    description: "Monthly support"

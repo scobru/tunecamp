@@ -6,6 +6,8 @@ package-lock.json
 dist/
 *.tsbuildinfo
 
+test-output/
+
 # Logs
 *.log
 npm-debug.log*

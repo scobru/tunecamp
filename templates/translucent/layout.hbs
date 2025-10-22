@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="{{catalog.language}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{#if pageTitle}}{{pageTitle}} - {{/if}}{{catalog.title}}</title>
+  {{#if catalog.description}}
+  <meta name="description" content="{{catalog.description}}">
+  {{/if}}
+  <link rel="stylesheet" href="{{assetPath "assets/style.css"}}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">
+        <a href="{{path "index.html"}}">{{catalog.title}}</a>
+      </h1>
+      {{#if catalog.description}}
+      <p class="site-description">{{catalog.description}}</p>
+      {{/if}}
+    </div>
+  </header>
+
+  <main class="site-main">
+    {{{content}}}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>
+        {{#if artist}}
+        &copy; {{artist.name}} - 
+        {{/if}}
+        Powered by <a href="https://github.com/scobru/tunecamp" target="_blank">Tunecamp</a>
+      </p>
+      {{#if artist.links}}
+      <div class="social-links">
+        {{#each artist.links}}
+          {{#each this}}
+            <a href="{{this}}" target="_blank" rel="noopener" class="social-link">
+              <i class="fab fa-{{@key}}"></i>
+            </a>
+          {{/each}}
+        {{/each}}
+      </div>
+      {{/if}}
+    </div>
+  </footer>
+
+  <script src="{{assetPath "assets/player.js"}}"></script>
+    <footer class="tunecamp-footer">
+      <div class="footer-content">
+        <span>Built with</span>
+        <a href="https://github.com/scobru/tunecamp" target="_blank" class="tunecamp-link">
+          <img src="{{#if backUrl}}{{path '../../logo.svg'}}{{else}}{{path 'logo.svg'}}{{/if}}" alt="Tunecamp" class="footer-logo">
+          <span>Tunecamp</span>
+        </a>
+      </div>
+    </footer>
+  </body>
+</html>
+

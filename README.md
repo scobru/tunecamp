@@ -1,4 +1,4 @@
-# ⛺ Tunecamp
+# <img src="./logo.svg" alt="Tunecamp" width="100" height="100" style="display: block; margin-bottom: 20px; margin-top: 20px;"> Tunecamp
 
 A modern static site generator for musicians and music labels, written in JavaScript/TypeScript.
 
@@ -59,6 +59,13 @@ bio: "Artist biography goes here"
 links:
   - bandcamp: "https://artistname.bandcamp.com"
   - spotify: "https://open.spotify.com/artist/..."
+donationLinks:
+  - platform: "PayPal"
+    url: "https://paypal.me/artistname"
+    description: "Support the artist"
+  - platform: "Ko-fi"
+    url: "https://ko-fi.com/artistname"
+    description: "Buy me a coffee"
 ```
 
 ```yaml
@@ -66,8 +73,11 @@ links:
 title: "My First Album"
 date: "2024-01-15"
 description: "An amazing debut album"
-download: free # Options: free, paycurtain, codes
+download: free # Options: free, paycurtain, none
 price: 10.00
+paypalLink: "https://paypal.me/artistname/10"
+stripeLink: "https://buy.stripe.com/..."
+license: "cc-by" # Options: copyright, cc-by, cc-by-sa, cc-by-nc, cc-by-nc-sa, cc-by-nc-nd, cc-by-nd, public-domain
 ```
 
 3. **Generate your site:**
@@ -167,8 +177,11 @@ title: "Album Title"
 date: "2024-01-15"
 description: "Album description"
 cover: "cover.jpg" # Optional, auto-detected
-download: "free" # free, paycurtain, codes, none
+download: "free" # free, paycurtain, none
 price: 10.00 # For paycurtain mode
+paypalLink: "https://paypal.me/artistname/10" # Optional PayPal link
+stripeLink: "https://buy.stripe.com/..." # Optional Stripe link
+license: "cc-by" # License type
 genres:
   - "Electronic"
   - "Ambient"
@@ -217,22 +230,16 @@ download: free
 
 All tracks available for immediate download.
 
-### Soft Paycurtain
+### Soft Paycurtain (Honor System)
 
 ```yaml
 download: paycurtain
 price: 10.00
+paypalLink: "https://paypal.me/artistname/10"
+stripeLink: "https://buy.stripe.com/..."
 ```
 
-Pay-what-you-want with suggested price.
-
-### Download Codes
-
-```yaml
-download: codes
-```
-
-Requires download codes for access.
+Pay-what-you-want with suggested price. Users can download for free, but are encouraged to support the artist. This is an honor system - all files are technically downloadable.
 
 ## Supported Audio Formats
 
@@ -253,6 +260,7 @@ tunecamp includes 4 ready-to-use themes:
 2. **minimal** - Clean light theme with lots of white space
 3. **dark** - Aggressive dark theme with red accents (perfect for rock/metal)
 4. **retro** - 80s-inspired theme with neon colors (perfect for synthwave/vaporwave)
+5. **translucent** - Glassmorphism theme with blur effects and transparency (perfect for ambient/electronic)
 
 ### Using a Theme
 
@@ -261,13 +269,13 @@ Specify the theme in your `catalog.yaml`:
 ```yaml
 catalog:
   title: "My Music"
-  theme: "retro"  # Change to: default, minimal, dark, or retro
+  theme: "translucent"  # Change to: default, minimal, dark, retro, or translucent
 ```
 
 Or use the `--theme` option when building:
 
 ```bash
-tunecamp build ./my-music --output ./public --theme dark
+tunecamp build ./my-music --output ./public --theme translucent
 ```
 
 ### Creating Custom Themes
@@ -299,9 +307,9 @@ Check the `/examples` directory for complete catalog examples:
 You can also use tunecamp programmatically:
 
 ```javascript
-import { tunecamp } from "tunecamp";
+import { Tunecamp } from "tunecamp";
 
-const generator = new tunecamp({
+const generator = new Tunecamp({
   inputDir: "./my-music",
   outputDir: "./public",
   theme: "default",

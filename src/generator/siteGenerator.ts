@@ -146,6 +146,25 @@ export class SiteGenerator {
   }
 
   private async copyMediaFiles(): Promise<void> {
+    // Copy logo.svg from project root if exists
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const projectRoot = path.join(__dirname, "../../");
+    const logoPath = path.join(projectRoot, "logo.svg");
+    if (await fs.pathExists(logoPath)) {
+      const logoDest = path.join(this.options.outputDir, "logo.svg");
+      await copyFile(logoPath, logoDest);
+      console.log(`  🎨 Copied logo.svg`);
+    }
+
+    // Copy artist photo if exists
+    if (this.catalog.artist?.photo) {
+      const artistPhotoSrc = path.join(this.options.inputDir, this.catalog.artist.photo);
+      const artistPhotoDest = path.join(this.options.outputDir, path.basename(this.catalog.artist.photo));
+      await copyFile(artistPhotoSrc, artistPhotoDest);
+      console.log(`  📸 Copied artist photo: ${this.catalog.artist.photo}`);
+    }
+
     for (const release of this.catalog.releases) {
       const releaseOutputDir = path.join(
         this.options.outputDir,

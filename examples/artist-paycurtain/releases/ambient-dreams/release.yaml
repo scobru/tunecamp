@@ -1,0 +1,26 @@
+title: "Ambient Dreams"
+date: "2024-01-15"
+description: "A collection of dreamy ambient tracks perfect for relaxation and meditation."
+cover: "image.jpg"
+download: "paycurtain"
+price: 5.00
+paypalLink: "https://paypal.me/exampleartist/5"
+stripeLink: "https://buy.stripe.com/example"
+license: "cc-by-nc"
+genres:
+  - "Ambient"
+  - "Electronic"
+  - "Chillout"
+credits:
+  - role: "Producer"
+    name: "Example Artist"
+  - role: "Mastering"
+    name: "Master Studio"
+
+tracks:
+  - file: "test.mp3"
+    title: "Custom Title"
+    description: "Track notes"
+  - file: "test2.mp3"
+    title: "Custom Title 2"
+    description: "Track notes 2"

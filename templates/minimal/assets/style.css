@@ -545,6 +545,183 @@ body {
   border-color: var(--text-color);
 }
 
+/* Paycurtain Styles */
+.paycurtain {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 1rem 0;
+  color: white;
+  text-align: center;
+}
+
+.support-message {
+  margin-bottom: 1.5rem;
+}
+
+.support-message p {
+  margin: 0.5rem 0;
+}
+
+.honor-system {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+.payment-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.payment-info {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-top: 1rem;
+}
+
+/* License Styles */
+.release-license {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+}
+
+.release-license h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.license-info {
+  margin: 0;
+  color: #666;
+}
+
+.license-info a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.license-info a:hover {
+  text-decoration: underline;
+}
+
+/* Donation Section */
+.donation-section {
+  margin: 3rem 0;
+  padding: 2rem;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+}
+
+.donation-section h2 {
+  margin: 0 0 1rem 0;
+  color: white;
+}
+
+.donation-section p {
+  margin: 0 0 1.5rem 0;
+  opacity: 0.9;
+}
+
+.donation-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.donation-link {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.donation-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.donation-link i {
+  font-size: 1.5rem;
+}
+
+.donation-link span {
+  font-weight: 600;
+}
+
+.donation-link small {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Tunecamp Footer */
+.tunecamp-footer {
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  padding: 0.75rem 0;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.tunecamp-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: #007bff;
+}
+
+
+.footer-logo {
+  width: 20px;
+  height: 20px;
+}
+
+
 /* Responsive */
 @media (max-width: 768px) {
   .release-header {
@@ -558,6 +735,30 @@ body {
   
   .releases-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .payment-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .donation-links {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .donation-link {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .footer-content {
+    font-size: 0.8rem;
+  }
+  
+  .footer-logo {
+    width: 18px;
+    height: 18px;
   }
 }
 

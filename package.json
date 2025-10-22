@@ -1,11 +1,11 @@
 {
-  "name": "selfcamp",
+  "name": "tunecamp",
   "version": "0.1.0",
-  "description": "A static site generator for musicians and labels - JavaScript implementation inspired by Faircamp",
+  "description": "A modern static site generator for musicians and music labels, inspired by Faircamp",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "selfcamp": "./dist/cli.js"
+    "tunecamp": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",

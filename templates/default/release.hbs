@@ -43,6 +43,31 @@
         </div>
         {{/if}}
         
+        {{#if release.config.license}}
+        <div class="release-license">
+          <h3>License</h3>
+          <p class="license-info">
+            {{#if (eq release.config.license "copyright")}}
+            <i class="fas fa-copyright"></i> All rights reserved. This work is protected by copyright.
+            {{else if (eq release.config.license "cc-by")}}
+            <i class="fab fa-creative-commons"></i> Licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a> - Attribution
+            {{else if (eq release.config.license "cc-by-sa")}}
+            <i class="fab fa-creative-commons"></i> Licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a> - Attribution-ShareAlike
+            {{else if (eq release.config.license "cc-by-nc")}}
+            <i class="fab fa-creative-commons"></i> Licensed under <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a> - Attribution-NonCommercial
+            {{else if (eq release.config.license "cc-by-nc-sa")}}
+            <i class="fab fa-creative-commons"></i> Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> - Attribution-NonCommercial-ShareAlike
+            {{else if (eq release.config.license "cc-by-nc-nd")}}
+            <i class="fab fa-creative-commons"></i> Licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">CC BY-NC-ND 4.0</a> - Attribution-NonCommercial-NoDerivatives
+            {{else if (eq release.config.license "cc-by-nd")}}
+            <i class="fab fa-creative-commons"></i> Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank">CC BY-ND 4.0</a> - Attribution-NoDerivatives
+            {{else if (eq release.config.license "public-domain")}}
+            <i class="fas fa-globe"></i> Public Domain - This work is in the public domain.
+            {{/if}}
+          </p>
+        </div>
+        {{/if}}
+        
         {{#if release.config.download}}
         <div class="release-download-actions">
           {{#if (eq release.config.download "free")}}
@@ -51,17 +76,31 @@
           </button>
           {{else if (eq release.config.download "paycurtain")}}
           <div class="paycurtain">
-            <p>Suggested price: ${{release.config.price}}</p>
-            <button class="btn btn-primary">
-              <i class="fas fa-dollar-sign"></i> Pay What You Want
-            </button>
-          </div>
-          {{else if (eq release.config.download "codes")}}
-          <div class="download-codes">
-            <input type="text" placeholder="Enter download code" class="code-input">
-            <button class="btn btn-primary">
-              <i class="fas fa-unlock"></i> Unlock
-            </button>
+            <div class="support-message">
+              <p><strong>Support the artist!</strong></p>
+              <p>Suggested donation: ${{release.config.price}}</p>
+              <p class="honor-system">This is an honor system - you can download for free, but your support helps the artist continue creating music.</p>
+            </div>
+            <div class="payment-buttons">
+              {{#if release.config.paypalLink}}
+              <a href="{{release.config.paypalLink}}" target="_blank" class="btn btn-primary">
+                <i class="fab fa-paypal"></i> Support via PayPal
+              </a>
+              {{/if}}
+              {{#if release.config.stripeLink}}
+              <a href="{{release.config.stripeLink}}" target="_blank" class="btn btn-secondary">
+                <i class="fab fa-stripe"></i> Support via Stripe
+              </a>
+              {{/if}}
+              <button class="btn btn-outline" onclick="downloadAll()">
+                <i class="fas fa-download"></i> Download Free
+              </button>
+              {{#unless release.config.paypalLink}}
+              {{#unless release.config.stripeLink}}
+              <p class="payment-info">No payment links configured - download is free</p>
+              {{/unless}}
+              {{/unless}}
+            </div>
           </div>
           {{/if}}
         </div>
@@ -136,6 +175,24 @@
         {{/each}}
       </ol>
     </section>
+    
+    {{#if artist.donationLinks}}
+    <section class="donation-section">
+      <h2>Support the Artist</h2>
+      <p>If you enjoyed this music, consider supporting the artist:</p>
+      <div class="donation-links">
+        {{#each artist.donationLinks}}
+        <a href="{{url}}" target="_blank" class="donation-link">
+          <i class="fas fa-heart"></i>
+          <span>{{platform}}</span>
+          {{#if description}}
+          <small>{{description}}</small>
+          {{/if}}
+        </a>
+        {{/each}}
+      </div>
+    </section>
+    {{/if}}
   </article>
 </div>
 

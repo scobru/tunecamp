@@ -673,3 +673,36 @@ body {
   }
 }
 
+/* Tunecamp Footer */
+.tunecamp-footer {
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  padding: 0.75rem 0;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.tunecamp-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: #dc2626;
+}
+
+
+.footer-logo {
+  width: 20px;
+  height: 20px;
+}
+
+

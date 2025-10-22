@@ -1,0 +1,31 @@
+
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="circleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Cerchio esterno con gradiente -->
+  <circle cx="100" cy="100" r="95" fill="url(#circleGrad)" stroke="#4f46e5" stroke-width="3"/>
+  
+  <!-- Tenda minimalista più grande -->
+  <path d="M 100 45 L 145 110 L 145 140 L 55 140 L 55 110 Z" 
+        fill="#ffffff" opacity="0.95" stroke="#f0f0f0" stroke-width="2.5" stroke-linejoin="round"/>
+  
+  <!-- Palo centrale -->
+  <line x1="100" y1="45" x2="100" y2="140" stroke="#a78bfa" stroke-width="2"/>
+  
+  <!-- Onde sonore semplici - sinistra -->
+  <path d="M 40 95 Q 32 110 40 125" 
+        fill="none" stroke="#22d3ee" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 25 85 Q 15 110 25 135" 
+        fill="none" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  
+  <!-- Onde sonore semplici - destra -->
+  <path d="M 160 95 Q 168 110 160 125" 
+        fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  <path d="M 175 85 Q 185 110 175 135" 
+        fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+</svg>

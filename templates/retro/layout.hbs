@@ -49,6 +49,15 @@
   </footer>
 
   <script src="{{assetPath "assets/player.js"}}"></script>
-</body>
+    <footer class="tunecamp-footer">
+      <div class="footer-content">
+        <span>Built with</span>
+        <a href="https://github.com/scobru/tunecamp" target="_blank" class="tunecamp-link">
+          <img src="{{#if backUrl}}{{path '../../logo.svg'}}{{else}}{{path 'logo.svg'}}{{/if}}" alt="Tunecamp" class="footer-logo">
+          <span>Tunecamp</span>
+        </a>
+      </div>
+    </footer>
+  </body>
 </html>
 
