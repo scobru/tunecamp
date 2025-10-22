@@ -1,4 +1,6 @@
-# <img src="./logo.svg" alt="Tunecamp" width="100" height="100" style="display: block; margin-bottom: 20px; margin-top: 20px;"> Tunecamp
+<img src="./logo.svg" alt="Tunecamp" width="100" height="100" style="display: block; margin-bottom: 20px; margin-top: 20px;"> 
+
+# Tunecamp
 
 A modern static site generator for musicians and music labels, written in JavaScript/TypeScript.
 
