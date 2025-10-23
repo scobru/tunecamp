@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunecamp</title>
+    <meta name="description" content="A static site generator for audio producers. Point Tunecamp to a folder hierarchy containing your audio files. Within minutes, Tunecamp builds a complete website presenting your work.">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="logo.svg" alt="Tunecamp" class="logo">
+            <h1>Tunecamp</h1>
+            <p class="tagline">A static site generator for audio producers.</p>
+            <p class="tagline">Point Tunecamp to a folder hierarchy containing your audio files.<br>Within minutes, Tunecamp builds a complete website presenting your work.<br>The resulting site requires no database, no programming, no maintenance, and is compatible with virtually every webhost on this planet.</p>
+        </header>
+
+        <div class="download-section">
+            <h2>Download</h2>
+            <p>Install on Windows, macOS and Linux</p>
+            <div class="download-buttons">
+                <a href="https://github.com/scobru/tunecamp/releases/latest" class="btn">Download</a>
+               
+            </div>
+            <p><strong>Latest release: 1.0</strong> | Available for Windows, macOS, Linux</p>
+        </div>
+
+        <div class="features">
+            <div class="feature-section">
+                <h2>Streaming</h2>
+                <p>Your audio files are automatically transcoded for streaming on various channels.</p>
+                <ul class="feature-list">
+                    <li><strong>Web Player</strong> Visitors can listen directly on your tunecamp site</li>
+                    <li><strong>Podcast RSS</strong> Let your audience subscribe through their podcasting app</li>
+                    <li><strong>M3U Playlists</strong> Allow fans to stream to various media players and devices</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>Downloads</h2>
+                <p>Automatically generated downloads in your chosen formats, as single tracks or full release archives.</p>
+                <ul class="feature-list">
+                    <li><strong>Unlock Codes</strong> Provide exclusive access to downloads</li>
+                    <li><strong>Soft Paycurtain</strong> Ask financial support on third-party platforms</li>
+                    <li><strong>External Downloads</strong> Link to third-party platforms for download/purchase</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>All Audio Producers</h2>
+                <p>Tunecamp allows different kinds of usage, catering to the needs of audio producers in the widest sense.</p>
+                <ul class="feature-list">
+                    <li><strong>Musicians</strong> Represent your solo project, band, choir, noise collective, ...</li>
+                    <li><strong>Journalists, Radio Producers</strong> Publish podcasts with episodic and narrative content</li>
+                    <li><strong>Sound Designers, Game Artists</strong> Internally share your work with your clients or team</li>
+                    <li><strong>Multiple Projects, Labels</strong> Enable label mode to host any number of projects on one site</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>All Audiences</h2>
+                <p>Tunecamp is built with great dedication to leave no one in your audience behind.</p>
+                <ul class="feature-list">
+                    <li><strong>Responsive</strong> Fully functional down to the smallest screens</li>
+                    <li><strong>Accessible</strong> Usable with keyboard and screenreader</li>
+                    <li><strong>JavaScript is optional</strong> Also usable with JavaScript disabled</li>
+                    <li><strong>Optimized</strong> Fast on all connections and devices</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>Themeable</h2>
+                <p>Intuitive theming based on modern CSS, offering beautiful and customizable designs.</p>
+                <ul class="feature-list">
+                    <li><strong>Dark/Light</strong> Choose a base theme for different aesthetics</li>
+                    <li><strong>Custom Colors</strong> Choose base and accent colors to your liking</li>
+                    <li><strong>Background Images</strong> Use images to further customize your design</li>
+                    <li><strong>Site-wide or per release</strong> You can use different designs on different subpages</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>And more</h2>
+                <ul class="feature-list">
+                    <li><strong>Browse/Search</strong> Lets your visitors quickly find their favorites</li>
+                    <li><strong>Embeds</strong> Allow your work to be featured in articles and posts</li>
+                    <li><strong>RSS & Atom feeds</strong> Allows visitors to subscribe to your updates</li>
+                    <li><strong>Procedural covers</strong> Automatically generated fallback visuals</li>
+                    <li><strong>Unlisted releases</strong> Share previews with peers by flagging a release as unlisted</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- <div class="example-sites">
+            <h3>Sites Using Tunecamp</h3>
+            <p>These are some example sites - but many more are out there!</p>
+            <div class="site-links">
+                <a href="#" class="site-link">example1.com</a>
+                <a href="#" class="site-link">example2.com</a>
+                <a href="#" class="site-link">example3.com</a>
+                <a href="#" class="site-link">example4.com</a>
+                <a href="#" class="site-link">example5.com</a>
+                <a href="#" class="site-link">example6.com</a>
+            </div>
+        </div> -->
+
+        <div class="principles">
+            <h3>Tunecamp adheres to these principles:</h3>
+            <ul class="principles-list">
+                <li>Personal</li>
+                <li>Plain</li>
+                <li>Small</li>
+                <li>Simple</li>
+                <li>Light</li>
+                <li>Fast</li>
+                <li>Reduced</li>
+                <li>Elegant</li>
+                <li>Stable</li>
+                <li>Low/No-Maintenance</li>
+                <li>Free</li>
+                <li>Independent</li>
+                <li>Privacy-Respecting</li>
+                <li>Standards-Conforming</li>
+            </ul>
+        </div>
+
+        <div class="code-block">
+            <h3>Quick Start</h3>
+            <pre><code><span class="comment"># Install Tunecamp</span>
+npm install -g tunecamp
+
+<span class="comment"># Create your music catalog</span>
+mkdir my-music
+cd my-music
+
+<span class="comment"># Add your audio files</span>
+mkdir releases/my-album
+cp *.mp3 releases/my-album/
+
+<span class="comment"># Generate your website</span>
+tunecamp build . --output ./public
+
+<span class="comment"># Deploy to any static host</span>
+<span class="string"># Upload the public folder to Netlify, Vercel, GitHub Pages, etc.</span></code></pre>
+        </div>
+
+        <footer>
+            <div class="footer-links">
+                <a href="https://github.com/tunecamp/tunecamp">Download</a>
+            </div>
+            <div class="footer-note">
+                This site uses no cookies and no scripts. All content is licensed under CC-0.
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

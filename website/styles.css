@@ -1,0 +1,396 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 22px;
+}
+
+body {
+    font-family: 'JetBrains Mono', monospace;
+    background: #fff;
+    color: #000;
+    line-height: 2;
+    padding: 80px 30px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 3.5rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+}
+
+.subtitle {
+    font-size: 1.5rem;
+    color: #666;
+    margin-bottom: 60px;
+}
+
+section {
+    margin-bottom: 90px;
+}
+
+h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 40px;
+    color: #999;
+}
+
+h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: #333;
+}
+
+.project {
+    margin-bottom: 44px;
+    padding-bottom: 44px;
+    border-bottom: 2px solid #eee;
+}
+
+.project:last-child {
+    border-bottom: none;
+}
+
+.project-title {
+    font-size: 1.6rem;
+    font-weight: bold;
+    margin-bottom: 13px;
+}
+
+.project-desc {
+    font-size: 1.2rem;
+    color: #444;
+    margin-bottom: 20px;
+}
+
+.project-tech {
+    font-size: 1.1rem;
+    color: #888;
+}
+
+.project-image {
+    width: 250px;
+    height: 250px;
+    display: block;
+    margin-bottom: 20px;
+    margin-top: 20px;
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.1));
+    padding: 10px;
+}
+
+a {
+    color: #000;
+    text-decoration: none;
+    border-bottom: 2px solid #000;
+    transition: opacity 0.2s;
+    font-size: 1.1rem;
+}
+
+a:hover {
+    opacity: 0.7;
+}
+
+.links {
+    display: flex;
+    gap: 40px;
+}
+
+.links a {
+    border-bottom: none;
+    font-size: 1.25rem;
+    padding: 6px 12px;
+}
+
+/* Tunecamp specific styles */
+.logo {
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 30px;
+    display: block;
+}
+
+.tagline {
+    font-size: 1.1rem;
+    margin-bottom: 40px;
+    color: #666;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.download-section {
+    background: #f8f9fa;
+    padding: 40px;
+    border-radius: 8px;
+    margin: 40px 0;
+    text-align: center;
+}
+
+.download-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.download-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    border-bottom: none;
+}
+
+.btn:hover {
+    background: #0056b3;
+    opacity: 1;
+}
+
+.btn-secondary {
+    background: #6c757d;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.features {
+    margin: 60px 0;
+}
+
+.feature-section {
+    margin: 40px 0;
+}
+
+.feature-section h2 {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.feature-section p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.feature-list {
+    list-style: none;
+    padding: 0;
+}
+
+.feature-list li {
+    padding: 8px 0;
+    color: #666;
+}
+
+.feature-list li:before {
+    content: "•";
+    color: #007bff;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.example-sites {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    margin: 40px 0;
+}
+
+.example-sites h3 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.site-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.site-link {
+    display: block;
+    padding: 10px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #007bff;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    border-bottom: none;
+}
+
+.site-link:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+    opacity: 1;
+}
+
+.principles {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    margin: 40px 0;
+}
+
+.principles h3 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.principles-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    list-style: none;
+}
+
+.principles-list li {
+    padding: 8px 12px;
+    background: white;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #666;
+    text-align: center;
+}
+
+.code-block {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+    overflow-x: auto;
+}
+
+.code-block pre {
+    margin: 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.code-block code {
+    color: #e83e8c;
+}
+
+.code-block .string {
+    color: #28a745;
+}
+
+.code-block .comment {
+    color: #6c757d;
+}
+
+footer {
+    margin-top: 100px;
+    padding-top: 25px;
+    border-top: 2px solid #eee;
+    font-size: 1.15rem;
+    color: #999;
+    text-align: right;
+}
+
+.footer-links {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.footer-links a {
+    color: #007bff;
+    text-decoration: none;
+    border-bottom: none;
+}
+
+.footer-links a:hover {
+    text-decoration: underline;
+    opacity: 1;
+}
+
+.footer-note {
+    font-size: 0.9rem;
+    color: #999;
+}
+
+@media (max-width: 1000px) {
+    html {
+        font-size: 19px;
+    }
+    .container {
+        max-width: 97vw;
+    }
+    h1 {
+        font-size: 2.8rem;
+    }
+    h2 {
+        font-size: 1.15rem;
+    }
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+    body {
+        padding: 25px 8px;
+    }
+    h1 {
+        font-size: 2rem;
+    }
+    .subtitle {
+        font-size: 1rem;
+    }
+    .links {
+        gap: 20px;
+    }
+    .project-title {
+        font-size: 1.15rem;
+    }
+    
+    .download-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .site-links {
+        grid-template-columns: 1fr;
+    }
+    
+    .principles-list {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+    
+    .footer-links {
+        flex-direction: column;
+        gap: 15px;
+    }
+}

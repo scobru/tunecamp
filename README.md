@@ -1,4 +1,4 @@
-<img src="./logo.svg" alt="Tunecamp" width="100" height="100" style="display: block; margin-bottom: 20px; margin-top: 20px;"> 
+<img src="./logo.svg" alt="Tunecamp" width="200" height="200" style="display: block; margin-bottom: 20px; margin-top: 20px; align-items: center; justify-content: center; margin-left: auto; margin-right: auto;"> 
 
 # Tunecamp
 
