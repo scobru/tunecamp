@@ -26,7 +26,7 @@ program
   .description('Build a static site from catalog')
   .argument('<input>', 'Input directory containing catalog')
   .option('-o, --output <dir>', 'Output directory', './public')
-  .option('-t, --theme <name>', 'Theme name', 'default')
+  .option('-t, --theme <name>', 'Theme name (overrides catalog.yaml)')
   .option('-b, --basePath <path>', 'Base path for deployment (overrides catalog.yaml)')
   .option('-v, --verbose', 'Verbose output', false)
   .action(async (input: string, options: any) => {

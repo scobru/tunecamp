@@ -1,6 +1,6 @@
 title: "Indie Music Collection"
 description: "Independent electronic music releases"
 url: "https://example.com"
-theme: "default"
+theme: "retro"
 language: "en"
-basePath: "/shogun-faircamp"
+basePath: "/"
