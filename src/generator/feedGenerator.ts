@@ -156,7 +156,7 @@ ${coverEnclosure}
   <link href="${feedUrl}" rel="self" type="application/atom+xml"/>
   <id>${link}</id>
   <updated>${now}</updated>
-  <generator uri="https://github.com/scobru/tunecamp" version="0.1.0">Tunecamp</generator>
+  <generator uri="https://github.com/scobru/tunecamp" version="1.0.0">Tunecamp</generator>
   <author>
     <name>${this.escapeXml(artistName)}</name>
   </author>
