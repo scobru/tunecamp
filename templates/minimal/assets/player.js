@@ -195,6 +195,16 @@ function playTrack(index) {
 
 // Download all function
 function downloadAll() {
+  // Call tracking hook if registered (for download stats)
+  if (typeof window.onDownloadAll === 'function') {
+    try {
+      window.onDownloadAll();
+    } catch (e) {
+      console.warn('Download tracking error:', e);
+    }
+  }
+  
+  // Perform the actual downloads
   if (window.tracks) {
     window.tracks.forEach(track => {
       const a = document.createElement('a');

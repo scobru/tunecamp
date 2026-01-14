@@ -524,29 +524,14 @@
     }
   }
 
-  // Override downloadAll to track downloads
-  const originalDownloadAll = window.downloadAll;
-  window.downloadAll = async function() {
-    // Track the download
+  // Register hook for downloadAll tracking
+  window.onDownloadAll = async function() {
     if (downloadStats) {
       try {
         await downloadStats.incrementDownloadCount(releaseSlug);
       } catch (e) {
         console.warn('Could not track download:', e);
       }
-    }
-    // Call original function
-    if (originalDownloadAll) {
-      originalDownloadAll();
-    } else if (window.tracks) {
-      window.tracks.forEach(track => {
-        const a = document.createElement('a');
-        a.href = track.url;
-        a.download = track.title;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      });
     }
   };
 
