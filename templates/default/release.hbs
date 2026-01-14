@@ -65,6 +65,10 @@
         {{/if}}
 
         <p class="release-date">Released {{formatDate release.config.date}}</p>
+        
+        <p class="release-downloads" id="releaseDownloads" style="display: none;">
+          <i class="fas fa-download"></i> <span id="downloadCount">0</span> downloads
+        </p>
 
         {{#if release.config.genres}}
         <div class="release-genres">
@@ -480,4 +484,85 @@
     }{{#unless @last}},{{/unless}}
     {{/each}}
   ];
+</script>
+
+<!-- Download Stats (GunDB) -->
+<script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+<script src="{{assetPath 'assets/download-stats.js'}}"></script>
+<script>
+(function() {
+  const releaseSlug = '{{release.slug}}';
+  let downloadStats;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize download stats
+    downloadStats = new TunecampDownloadStats();
+    window.downloadStats = downloadStats;
+
+    // Load and display current download count
+    loadDownloadCount();
+
+    // Subscribe to real-time updates
+    downloadStats.subscribeToDownloadCount(releaseSlug, updateDownloadDisplay);
+  });
+
+  async function loadDownloadCount() {
+    try {
+      const count = await downloadStats.getDownloadCount(releaseSlug);
+      updateDownloadDisplay(count);
+    } catch (e) {
+      console.warn('Could not load download count:', e);
+    }
+  }
+
+  function updateDownloadDisplay(count) {
+    const el = document.getElementById('releaseDownloads');
+    const countEl = document.getElementById('downloadCount');
+    if (el && countEl) {
+      countEl.textContent = downloadStats.formatCount(count);
+      el.style.display = 'block';
+    }
+  }
+
+  // Override downloadAll to track downloads
+  const originalDownloadAll = window.downloadAll;
+  window.downloadAll = async function() {
+    // Track the download
+    if (downloadStats) {
+      try {
+        await downloadStats.incrementDownloadCount(releaseSlug);
+      } catch (e) {
+        console.warn('Could not track download:', e);
+      }
+    }
+    // Call original function
+    if (originalDownloadAll) {
+      originalDownloadAll();
+    } else if (window.tracks) {
+      window.tracks.forEach(track => {
+        const a = document.createElement('a');
+        a.href = track.url;
+        a.download = track.title;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
+  };
+
+  // Track individual track downloads
+  document.querySelectorAll('.track-download-btn').forEach((btn, index) => {
+    btn.addEventListener('click', async function(e) {
+      if (downloadStats && window.tracks && window.tracks[index]) {
+        try {
+          const trackId = window.tracks[index].title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+          await downloadStats.incrementTrackDownloadCount(releaseSlug, trackId);
+          await downloadStats.incrementDownloadCount(releaseSlug);
+        } catch (e) {
+          console.warn('Could not track track download:', e);
+        }
+      }
+    });
+  });
+})();
 </script>

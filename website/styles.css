@@ -9,7 +9,7 @@ html {
 }
 
 body {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     background: #fff;
     color: #000;
     line-height: 2;

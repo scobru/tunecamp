@@ -48,3 +48,4 @@ temp/
 gundb-keypair.json
 *-keypair.json
 *.keypair.json
+.vercel

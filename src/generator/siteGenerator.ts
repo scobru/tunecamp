@@ -582,7 +582,7 @@ export class SiteGenerator {
     </a>
     ${firstTrackUrl ? `<audio controls preload="none"><source src="${firstTrackUrl}" type="audio/mpeg">Your browser does not support audio.</audio>` : ''}
     <div class="footer">
-      Powered by <a href="https://github.com/scobru/tunecamp" target="_blank">Tunecamp</a>
+      Powered by <a href="https://github.com/scobru/shogun-message-bridge/tree/main/tunecamp" target="_blank">Tunecamp</a>
     </div>
   </div>
 </body>

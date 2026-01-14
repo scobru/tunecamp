@@ -31,6 +31,7 @@
     "gun": "^0.2020.1241",
     "handlebars": "^4.7.8",
     "music-metadata": "^8.1.4",
+    "vercel": "^50.3.2",
     "yaml": "^2.3.4"
   },
   "devDependencies": {

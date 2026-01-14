@@ -303,7 +303,20 @@ body {
 .release-date {
   color: var(--text-muted);
   font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.release-downloads {
+  color: var(--text-muted);
+  font-size: 0.85rem;
   margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.release-downloads i {
+  color: var(--primary-color);
 }
 
 .release-genres {

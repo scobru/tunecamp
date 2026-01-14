@@ -59,7 +59,7 @@ export class EmbedGenerator {
   </a>
   ${firstTrackUrl ? `<audio controls style="width:100%;height:40px;" preload="none"><source src="${firstTrackUrl}" type="audio/mpeg">Your browser does not support audio.</audio>` : ''}
   <div style="padding:0.5rem 1rem;background:#0f172a;font-size:0.7rem;color:#64748b;text-align:right;">
-    Powered by <a href="https://github.com/scobru/tunecamp" target="_blank" style="color:#6366f1;text-decoration:none;">Tunecamp</a>
+    Powered by <a href="https://github.com/scobru/shogun-message-bridge/tree/main/tunecamp" target="_blank" style="color:#6366f1;text-decoration:none;">Tunecamp</a>
   </div>
 </div>
 <!-- End Tunecamp Embed -->`;

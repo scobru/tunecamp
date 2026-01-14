@@ -269,7 +269,9 @@ paypalLink: "https://paypal.me/artistname/10"
 stripeLink: "https://buy.stripe.com/..."
 ```
 
-Pay-what-you-want with suggested price. Users can download for free, but are encouraged to support the artist. This is an honor system - all files are technically downloadable.
+Pay-what-you-want with suggested price. Users can download for free, but are encouraged to support the artist.
+
+**⚠️ Important**: This is an **honor system** - all files remain technically downloadable. PayPal and Stripe links are simply displayed as buttons; there is no payment verification or gating. If you need real download protection, use the `codes` mode instead.
 
 ### Unlock Codes (Decentralized Protection)
 
@@ -282,10 +284,29 @@ unlockCodes:
 
 Protect downloads with unlock codes validated via GunDB (decentralized, no backend required). See [Unlock Codes Guide](./docs/unlock-codes-guida.md) for details.
 
+**⚠️ Important - Self-Hosting Required**: The code generation tool (`generate-codes.ts`) must be run locally on your machine where you have access to the Tunecamp source code. If you deploy only the static HTML output (e.g., to Vercel, Netlify, GitHub Pages), you won't be able to generate new codes from the deployed site - it's just static HTML.
+
+**Workflow:**
+1. Run `tunecamp build` locally
+2. Generate codes locally: `npx ts-node src/tools/generate-codes.ts <release-slug> --count 20`
+3. Deploy the static `public/` folder to your hosting
+4. Distribute the generated codes to your customers
+
 Generate codes using:
 ```bash
 npx ts-node src/tools/generate-codes.ts <release-slug> --count 20
 ```
+
+### Download Statistics (Public GunDB)
+
+Tunecamp automatically tracks and displays download counts for your releases using a public GunDB space. This works out of the box with no configuration required:
+
+- **Real-time counter**: Download counts update in real-time across all visitors
+- **Decentralized**: No server required - data is stored on public GunDB peers
+- **Anonymous**: No user tracking, just simple counters
+- **Visible to all**: Download counts are shown on each release page
+
+The download counter increments when users click "Download All" or individual track download buttons.
 
 ## Supported Audio Formats
 

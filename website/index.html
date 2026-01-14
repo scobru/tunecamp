@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tunecamp</title>
-    <meta name="description" content="A static site generator for audio producers. Point Tunecamp to a folder hierarchy containing your audio files. Within minutes, Tunecamp builds a complete website presenting your work.">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+    <meta name="description" content="A modern static site generator for musicians and music labels, inspired by Faircamp. Point Tunecamp at a folder hierarchy containing your audio files and generate a complete, database-free website.">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,18 +12,19 @@
         <header>
             <img src="tunecamp.svg" alt="Tunecamp" class="logo">
             <h1>Tunecamp</h1>
-            <p class="tagline">A static site generator for audio producers.</p>
-            <p class="tagline">Point Tunecamp to a folder hierarchy containing your audio files.<br>Within minutes, Tunecamp builds a complete website presenting your work.<br>The resulting site requires no database, no programming, no maintenance, and is compatible with virtually every webhost on this planet.</p>
+            <p class="tagline">A modern static site generator for musicians and music labels.</p>
+            <p class="tagline">Point Tunecamp at a folder hierarchy containing your audio files.<br>Within minutes, Tunecamp builds a complete website presenting your work.<br>The resulting site requires no database, no programming, and minimal maintenance.</p>
         </header>
 
         <div class="download-section">
-            <h2>Download</h2>
-            <p>Install on Windows, macOS and Linux</p>
+            <h2>Install</h2>
+            <p>Install via npm on Windows, macOS, and Linux</p>
             <div class="download-buttons">
-                <a href="https://github.com/scobru/tunecamp/releases/latest" class="btn">Download</a>
-               
+                <a href="https://www.npmjs.com/package/tunecamp" class="btn">NPM</a>
+                <a href="https://github.com/scobru/shogun-message-bridge/tree/main/tunecamp" class="btn btn-secondary">GitHub</a>
+                <a href="https://github.com/scobru/shogun-message-bridge/blob/main/tunecamp/README.md#quick-start" class="btn btn-secondary">Docs</a>
             </div>
-            <p><strong>Latest release: 1.0</strong> | Available for Windows, macOS, Linux</p>
+            <p><strong>Current version: 0.1.0</strong> | MIT licensed</p>
         </div>
 
         <div class="features">
@@ -41,12 +41,12 @@
 
             <div class="feature-section">
                 <h2>Download Models</h2>
-                <p>Flexible download options to match your business model.</p>
+                <p>Flexible download options to match your distribution style.</p>
                 <ul class="feature-list">
                     <li><strong>Free Downloads</strong> Make all tracks immediately available</li>
-                    <li><strong>Soft Paycurtain</strong> Honor system with suggested pricing</li>
-                    <li><strong>PayPal Integration</strong> Direct payment links</li>
-                    <li><strong>Stripe Support</strong> Professional payment processing</li>
+                    <li><strong>Soft Paycurtain (Honor System)</strong> Show PayPal/Stripe links with a suggested price, but downloads remain always available - it's up to the listener to support you</li>
+                    <li><strong>Unlock Codes</strong> Protect downloads with codes validated via GunDB (requires self-hosting to generate codes)</li>
+                    <li><strong>Download Stats</strong> Track download counts via decentralized GunDB</li>
                 </ul>
             </div>
 
@@ -92,6 +92,19 @@
                     <li><strong>Artist Profiles</strong> Bio, links, and social media</li>
                     <li><strong>Release Metadata</strong> Dates, descriptions, and credits</li>
                     <li><strong>Custom Themes</strong> Create your own theme templates</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>Advanced Features</h2>
+                <p>Everything you need for modern distribution and sharing.</p>
+                <ul class="feature-list">
+                    <li><strong>RSS & Atom</strong> Automatic feed generation for releases</li>
+                    <li><strong>Podcast RSS</strong> Generate podcast feeds from your catalog</li>
+                    <li><strong>Embed Widgets</strong> Share releases with embeddable players</li>
+                    <li><strong>M3U Playlists</strong> Playlists per release and for the whole catalog</li>
+                    <li><strong>Procedural Covers</strong> Auto-generate cover art when missing</li>
+                    <li><strong>Unlock Codes</strong> Download protection via GunDB (requires self-hosting for code generation)</li>
                 </ul>
             </div>
         </div>
@@ -142,8 +155,8 @@ cd my-music
 tunecamp init .
 
 <span class="comment"># Add your audio files</span>
-mkdir releases/my-first-album
-cp *.mp3 releases/my-first-album/
+cp *.mp3 releases/example-album/tracks/
+<span class="string"># (optional) rename example-album to your release slug</span>
 
 <span class="comment"># Configure your catalog</span>
 <span class="string"># Edit catalog.yaml, artist.yaml, and release.yaml files</span>
@@ -157,10 +170,11 @@ tunecamp build . --output ./public
 
         <footer>
             <div class="footer-links">
-                <a href="https://github.com/tunecamp/tunecamp">Download</a>
+                <a href="https://github.com/scobru/shogun-message-bridge/tree/main/tunecamp">GitHub</a>
+                <a href="https://www.npmjs.com/package/tunecamp">NPM</a>
             </div>
             <div class="footer-note">
-                This site uses no cookies and no scripts. All content is licensed under CC-0.
+                This page uses no cookies and no client-side scripts.
             </div>
         </footer>
     </div>
