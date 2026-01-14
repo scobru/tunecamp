@@ -18,10 +18,10 @@
     // Default theme settings
     getDefaults() {
       return {
-        primaryColor: '#6366f1',
+        primaryColor: '#4d4747',
         secondaryColor: '#8b5cf6',
-        bgColor: '#0f172a',
-        surfaceColor: '#1e293b',
+        bgColor: '#000000',
+        surfaceColor: '#000000',
         textColor: '#f1f5f9',
         borderColor: '#334155',
         mode: 'dark'

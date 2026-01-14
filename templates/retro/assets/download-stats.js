@@ -11,8 +11,10 @@
 
   // Default public GunDB peers
   const DEFAULT_PEERS = [
+    'https://gun.defucc.me/gun',
+    'https://gun.o8.is/gun',
     'https://shogun-relay.scobrudot.dev/gun',
-
+    'https://relay.peer.ooo/gun',
   ];
 
   /**
