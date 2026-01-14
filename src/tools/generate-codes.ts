@@ -303,8 +303,11 @@ Examples:
         console.log(`    enabled: true`);
         console.log(`    namespace: ${namespace}`);
         if (keypair) {
+            console.log(`    publicKey: "${keypair.pub}"  # <-- REQUIRED!`);
             console.log(`\n🔒 Codes stored in your private GunDB space`);
             console.log(`   Only you can access and manage these codes`);
+            console.log(`\n⚠️  IMPORTANT: You MUST add the publicKey to release.yaml!`);
+            console.log(`   Without it, the frontend won't find your codes.`);
         } else {
             console.log(`\n⚠️  Codes stored in public space`);
             console.log(`   Consider using --keypair for private storage`);

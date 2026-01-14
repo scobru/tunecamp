@@ -282,7 +282,7 @@ unlockCodes:
   namespace: tunecamp  # Optional, default: tunecamp
 ```
 
-Protect downloads with unlock codes validated via GunDB (decentralized, no backend required). See [Unlock Codes Guide](./docs/unlock-codes-guida.md) for details.
+Protect downloads with unlock codes validated via GunDB (decentralized, no backend required). See [Unlock Codes Guide](./docs/UNLOCK_CODES.md) for details.
 
 **⚠️ Important - Self-Hosting Required**: The code generation tool (`generate-codes.ts`) must be run locally on your machine where you have access to the Tunecamp source code. If you deploy only the static HTML output (e.g., to Vercel, Netlify, GitHub Pages), you won't be able to generate new codes from the deployed site - it's just static HTML.
 
@@ -377,7 +377,7 @@ templates/my-theme/
     └── player.js
 ```
 
-For detailed information about themes, see [Theme Documentation](./docs/THEMES.md).
+For detailed information about themes, see [Theme Showcase](./docs/THEME_SHOWCASE.md).
 
 ## Generated Files
 
@@ -549,6 +549,6 @@ body {
   - [Deployment Guide](./docs/DEPLOYMENT.md)
   - [API Documentation](./docs/API.md)
   - [Theme Showcase](./docs/THEME_SHOWCASE.md)
-  - [Unlock Codes Guide](./docs/unlock-codes-guida.md)
+  - [Unlock Codes Guide](./docs/UNLOCK_CODES.md)
 - [Examples](./examples)
 - [Changelog](./CHANGELOG.md)

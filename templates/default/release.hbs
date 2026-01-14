@@ -208,6 +208,7 @@
             (function () {
               const releaseSlug = '{{release.slug}}';
               const namespace = '{{#if release.config.unlockCodes.namespace}}{{release.config.unlockCodes.namespace}}{{else}}tunecamp{{/if}}';
+              const publicKey = '{{#if release.config.unlockCodes.publicKey}}{{release.config.unlockCodes.publicKey}}{{/if}}';
 
               // Initialize unlock codes
               let unlockCodes;
@@ -221,7 +222,13 @@
                 }
 
                 // Initialize GunDB unlock codes
-                unlockCodes = new TunecampUnlockCodes({ namespace });
+                // If publicKey is set, codes are read from artist's private space
+                const options = { namespace };
+                if (publicKey) {
+                  options.publicKey = publicKey;
+                  console.log('🔐 Using artist private space for unlock codes');
+                }
+                unlockCodes = new TunecampUnlockCodes(options);
 
                 // Bind form events
                 const input = document.getElementById('unlockCodeInput');
