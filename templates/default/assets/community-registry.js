@@ -93,21 +93,23 @@
       if (lastRegistration) {
         const lastTime = parseInt(lastRegistration, 10);
         if (now - lastTime < 24 * 60 * 60 * 1000) {
-          // Already registered recently, just update lastSeen
-          this.gun
+          // Already registered recently, just update lastSeen and currentPage
+          const siteRef = this.gun
             .get(REGISTRY_ROOT)
             .get(REGISTRY_NAMESPACE)
             .get('sites')
-            .get(siteId)
-            .get('lastSeen')
-            .put(now);
+            .get(siteId);
+          
+          siteRef.get('lastSeen').put(now);
+          // Always update currentPage (even if null, to clear it when on homepage)
+          siteRef.get('currentPage').put(siteInfo.currentPage || null);
           return true;
         }
       }
 
       const siteRecord = {
         id: siteId,
-        url: siteInfo.url,
+        url: siteInfo.url, // Always the homepage/base URL
         title: siteInfo.title || 'Untitled',
         description: siteInfo.description || '',
         artistName: siteInfo.artistName || '',
@@ -115,6 +117,8 @@
         registeredAt: now,
         lastSeen: now,
         version: REGISTRY_VERSION,
+        // Optional: current page for "now playing" feature
+        currentPage: siteInfo.currentPage || null,
       };
 
       return new Promise((resolve) => {
@@ -169,6 +173,7 @@
               coverImage: data.coverImage || '',
               registeredAt: data.registeredAt,
               lastSeen: data.lastSeen,
+              currentPage: data.currentPage || null, // For "now playing" feature
             });
           }
         });
@@ -206,6 +211,7 @@
               coverImage: data.coverImage || '',
               registeredAt: data.registeredAt,
               lastSeen: data.lastSeen,
+              currentPage: data.currentPage || null, // For "now playing" feature
             });
           }
         });
@@ -275,12 +281,21 @@
       const initialized = await registry.init();
       
       if (initialized) {
+        // Always use the homepage/base URL for the site registration
+        const baseUrl = window.location.origin;
+        
+        // Get current page path for "now playing" feature (optional)
+        const currentPage = window.location.pathname !== '/' && window.location.pathname !== '/index.html' 
+          ? window.location.pathname 
+          : null;
+        
         await registry.registerSite({
-          url: window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/'),
+          url: baseUrl, // Always homepage
           title: siteTitle,
           description: siteDescription,
           artistName: artistName,
           coverImage: coverImage,
+          currentPage: currentPage, // Current page for "now playing"
         });
       }
       

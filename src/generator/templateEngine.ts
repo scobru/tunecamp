@@ -87,7 +87,26 @@ export class TemplateEngine {
         // Convert absolute path to relative
         return "." + url;
       }
-      return url;
+      // Ensure relative paths start with ./ for same-directory files
+      // URL encode the path to handle spaces and special characters
+      if (!url.startsWith("./") && !url.startsWith("../") && !url.startsWith("http://") && !url.startsWith("https://")) {
+        const parts = url.split('/');
+        const encodedParts = parts.map(part => {
+          // Encode each part separately to preserve slashes
+          return encodeURIComponent(part);
+        });
+        return "./" + encodedParts.join('/');
+      }
+      // If already has ./ or ../, encode the filename parts
+      if (url.includes('/')) {
+        const parts = url.split('/');
+        const lastPart = parts[parts.length - 1];
+        const encodedLast = encodeURIComponent(lastPart);
+        parts[parts.length - 1] = encodedLast;
+        return parts.join('/');
+      }
+      // Single filename - encode it
+      return encodeURIComponent(url);
     });
 
     // Asset path helper - for CSS, JS, and other assets

@@ -10,6 +10,8 @@ export interface CatalogConfig {
   theme?: string;
   language?: string;
   headerImage?: string; // Header image path (replaces title text, like Bandcamp)
+  backgroundImage?: string; // Background image path for entire page (local file or URL)
+  backgroundImageUrl?: string; // Background image URL (alternative to backgroundImage, for consistency)
   customFont?: string; // Custom font URL (e.g., Google Fonts) or local file path
   customCSS?: string; // Custom CSS file path (relative to input directory) or URL
   labelMode?: boolean; // Enable multi-artist label mode

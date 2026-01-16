@@ -146,6 +146,14 @@ export class SiteGenerator {
         headerImageUrl: this.catalog.config.headerImage
           ? path.basename(this.catalog.config.headerImage)
           : null,
+        backgroundImageUrl: (() => {
+            const bgImage = this.catalog.config.backgroundImage || this.catalog.config.backgroundImageUrl;
+            if (!bgImage) return null;
+            if (bgImage.startsWith('http://') || bgImage.startsWith('https://')) {
+              return bgImage;
+            }
+            return path.basename(bgImage);
+          })(),
         customFontUrl,
         customFontFamily,
         customCSSUrl,
@@ -221,6 +229,14 @@ export class SiteGenerator {
         headerImageUrl: this.catalog.config.headerImage
           ? `../../${path.basename(this.catalog.config.headerImage)}`
           : null,
+        backgroundImageUrl: (() => {
+            const bgImage = this.catalog.config.backgroundImage || this.catalog.config.backgroundImageUrl;
+            if (!bgImage) return null;
+            if (bgImage.startsWith('http://') || bgImage.startsWith('https://')) {
+              return bgImage;
+            }
+            return `../../${path.basename(bgImage)}`;
+          })(),
         customFontUrl,
         customFontFamily,
         customCSSUrl,
@@ -279,6 +295,20 @@ export class SiteGenerator {
       // Debug: check if headerImage is in config but not being read
       if ((this.catalog.config as any).headerImage) {
         console.warn(`  ⚠️  Header image found in config but not processed: ${(this.catalog.config as any).headerImage}`);
+      }
+    }
+
+    // Copy background image if exists (only if it's a local file, not a URL)
+    // Support both backgroundImage and backgroundImageUrl for consistency
+    const backgroundImage = this.catalog.config.backgroundImage || this.catalog.config.backgroundImageUrl;
+    if (backgroundImage && !backgroundImage.startsWith('http://') && !backgroundImage.startsWith('https://')) {
+      const backgroundImageSrc = path.join(this.options.inputDir, backgroundImage);
+      if (await fs.pathExists(backgroundImageSrc)) {
+        const backgroundImageDest = path.join(this.options.outputDir, path.basename(backgroundImage));
+        await copyFile(backgroundImageSrc, backgroundImageDest);
+        console.log(`  🖼️  Copied background image: ${backgroundImage}`);
+      } else {
+        console.warn(`  ⚠️  Background image not found: ${backgroundImageSrc}`);
       }
     }
 

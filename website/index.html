@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tunecamp</title>
     <meta name="description" content="A modern static site generator for musicians and music labels, inspired by Faircamp. Point Tunecamp at a folder hierarchy containing your audio files and generate a complete, database-free website.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,13 +20,15 @@
         </header>
 
         <div class="download-section">
-            <h2>Install</h2>
-            <p>Install via npm on Windows, macOS, and Linux</p>
+            <h2>Get Started</h2>
+            <p>Install via npm or use the interactive wizard online</p>
             <div class="download-buttons">
-                <a href="https://www.npmjs.com/package/tunecamp" class="btn">NPM</a>
-                <a href="https://github.com/scobru/tunecamp" class="btn btn-secondary">GitHub</a>
-                <a href="https://github.com/scobru/tunecamp#quick-start" class="btn btn-secondary">Docs</a>
+                <a href="https://www.npmjs.com/package/tunecamp" class="btn">📦 NPM</a>
+                <a href="https://github.com/scobru/tunecamp" class="btn btn-secondary">📂 GitHub</a>
+                <a href="../wizard/index.html" class="btn btn-secondary">🧙 Web Wizard</a>
+                <a href="https://github.com/scobru/tunecamp#quick-start" class="btn btn-secondary">📖 Docs</a>
             </div>
+            <p style="margin-top: 20px;"><strong>Quick Start:</strong> Run <code>tunecamp wizard</code> in terminal or use the <a href="../wizard/index.html" style="color: #8b5cf6; border-bottom: 1px solid #8b5cf6; font-weight: 500;">Web Wizard</a> in your browser</p>
             <p><strong>Current version: 1.0.1</strong> | MIT licensed</p>
         </div>
 
@@ -32,9 +37,10 @@
                 <h2>Audio-First</h2>
                 <p>Built specifically for musicians and music labels with automatic metadata extraction.</p>
                 <ul class="feature-list">
-                    <li><strong>Multi-format Support</strong> MP3, FLAC, OGG, WAV, M4A, and more</li>
+                    <li><strong>Multi-format Support</strong> MP3, FLAC, OGG, WAV, M4A, OPUS and more</li>
                     <li><strong>Automatic Metadata</strong> Reads tags from your audio files</li>
-                    <li><strong>Built-in Player</strong> Modern HTML5 audio player</li>
+                    <li><strong>Built-in Player</strong> Modern HTML5 audio player with streaming support</li>
+                    <li><strong>Remote Audio Files</strong> Use external URLs for audio (CDN, storage services)</li>
                     <li><strong>Zero Database</strong> Pure static HTML generation</li>
                 </ul>
             </div>
@@ -46,6 +52,7 @@
                     <li><strong>Free Downloads</strong> Make all tracks immediately available</li>
                     <li><strong>Soft Paycurtain (Honor System)</strong> Show PayPal/Stripe links with a suggested price, but downloads remain always available - it's up to the listener to support you</li>
                     <li><strong>Unlock Codes</strong> Protect downloads with codes validated via GunDB (requires self-hosting to generate codes)</li>
+                    <li><strong>Streaming Only</strong> No downloads, audio streaming only (perfect for distribution platforms)</li>
                     <li><strong>Download Stats</strong> Track download counts via decentralized GunDB</li>
                 </ul>
             </div>
@@ -68,30 +75,46 @@
                     <li><strong>Responsive Design</strong> Works on all devices</li>
                     <li><strong>Fast Loading</strong> Static sites that load instantly</li>
                     <li><strong>Mobile Friendly</strong> Optimized for mobile devices</li>
-                    <li><strong>SEO Ready</strong> Search engine optimized</li>
+                    <li><strong>SEO Ready</strong> Search engine optimized with proper meta tags</li>
+                    <li><strong>Faircamp-Inspired</strong> Clean, elegant layout with integrated navigation</li>
                 </ul>
             </div>
 
             <div class="feature-section">
-                <h2>Beautiful Themes</h2>
-                <p>Five ready-to-use themes with customizable options.</p>
+                <h2>🧙 Interactive Wizard</h2>
+                <p>Create your music website without editing YAML files manually.</p>
                 <ul class="feature-list">
-                    <li><strong>Default</strong> Modern dark theme with purple/blue gradients</li>
-                    <li><strong>Minimal</strong> Clean light theme with lots of white space</li>
-                    <li><strong>Dark</strong> Aggressive dark theme with red accents</li>
-                    <li><strong>Retro</strong> 80s-inspired theme with neon colors</li>
-                    <li><strong>Translucent</strong> Glassmorphism with blur effects</li>
+                    <li><strong>CLI Wizard</strong> Guided step-by-step setup in terminal</li>
+                    <li><strong>Web Wizard</strong> Visual interface with drag-and-drop file uploads</li>
+                    <li><strong>Complete Site Generation</strong> Generate deployable ZIP directly from wizard</li>
+                    <li><strong>Load & Modify</strong> Load existing sites and add new releases</li>
+                    <li><strong>Multilingual</strong> English and Italian support</li>
+                    <li><strong>Live Preview</strong> See your site before generating</li>
+                </ul>
+            </div>
+
+            <div class="feature-section">
+                <h2>🎨 Customizable Design</h2>
+                <p>Highly customizable default theme with extensive customization options.</p>
+                <ul class="feature-list">
+                    <li><strong>Default Theme</strong> Modern Faircamp-inspired design with dark/light support</li>
+                    <li><strong>Custom Backgrounds</strong> Header and page background images</li>
+                    <li><strong>Custom Fonts</strong> Use Google Fonts or local fonts</li>
+                    <li><strong>Custom CSS</strong> Override styles or add your own</li>
+                    <li><strong>CSS Variables</strong> Easy color and style customization</li>
                 </ul>
             </div>
 
             <div class="feature-section">
                 <h2>Easy Configuration</h2>
-                <p>Simple YAML-based configuration for maximum flexibility.</p>
+                <p>Simple YAML-based configuration or use the wizard - your choice.</p>
                 <ul class="feature-list">
-                    <li><strong>YAML Configuration</strong> Easy-to-edit config files</li>
+                    <li><strong>Wizard Interface</strong> No YAML editing required - visual setup in browser or terminal</li>
+                    <li><strong>YAML Configuration</strong> Easy-to-edit config files for advanced users</li>
+                    <li><strong>Load & Modify</strong> Load existing sites from ZIP and add new releases</li>
                     <li><strong>Artist Profiles</strong> Bio, links, and social media</li>
-                    <li><strong>Release Metadata</strong> Dates, descriptions, and credits</li>
-                    <li><strong>Custom Themes</strong> Create your own theme templates</li>
+                    <li><strong>Release Metadata</strong> Dates, descriptions, genres, and credits</li>
+                    <li><strong>Custom Styling</strong> Background images, fonts, and CSS customization</li>
                 </ul>
             </div>
 
@@ -99,11 +122,13 @@
                 <h2>Advanced Features</h2>
                 <p>Everything you need for modern distribution and sharing.</p>
                 <ul class="feature-list">
-                    <li><strong>RSS & Atom</strong> Automatic feed generation for releases</li>
+                    <li><strong>RSS & Atom</strong> Automatic feed generation for releases with frontend download links</li>
                     <li><strong>Podcast RSS</strong> Generate podcast feeds from your catalog</li>
                     <li><strong>Embed Widgets</strong> Share releases with embeddable players</li>
-                    <li><strong>M3U Playlists</strong> Playlists per release and for the whole catalog</li>
+                    <li><strong>M3U Playlists</strong> Playlists per release and for the whole catalog with download links</li>
                     <li><strong>Procedural Covers</strong> Auto-generate cover art when missing</li>
+                    <li><strong>Background Images</strong> Custom header and page background images</li>
+                    <li><strong>Unlisted Releases</strong> Hide releases from index but keep accessible via direct link</li>
                     <li><strong>Unlock Codes</strong> Download protection via GunDB (requires self-hosting for code generation)</li>
                 </ul>
             </div>

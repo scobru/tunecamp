@@ -17,6 +17,9 @@
         <a href="{{assetPath 'atom.xml'}}" class="share-btn" title="Atom Feed" target="_blank">
           <i class="fas fa-rss-square"></i> Atom Feed
         </a>
+        <a href="playlist.m3u" class="share-btn" title="Download Playlist" download>
+          <i class="fas fa-music"></i> Playlist M3U
+        </a>
         <button class="share-btn" onclick="copyShareLink()" title="Copy Share Link">
           <i class="fas fa-link"></i> Copy Link
         </button>
@@ -130,6 +133,7 @@
         {{/if}}
 
         {{#if release.config.download}}
+        {{#unless (eq release.config.download "none")}}
         <div class="release-download-actions">
           {{#if (eq release.config.download "free")}}
           <button class="btn btn-primary" onclick="downloadAll()">
@@ -314,6 +318,7 @@
           </script>
           {{/if}}
         </div>
+        {{/unless}}
         {{/if}}
       </div>
     </header>

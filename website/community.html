@@ -342,7 +342,8 @@
             // Subscribe to all sites
             gun.get(REGISTRY_ROOT).get(REGISTRY_NAMESPACE).get('sites').map().on((data, key) => {
                 if (data && data.url) {
-                    allSites.set(key, {
+                    // Subscribe to currentPage changes in real-time
+                    const siteData = {
                         id: key,
                         url: data.url,
                         title: data.title || 'Untitled',
@@ -351,7 +352,22 @@
                         coverImage: data.coverImage || '',
                         registeredAt: data.registeredAt,
                         lastSeen: data.lastSeen,
-                    });
+                        currentPage: data.currentPage || null, // For "now playing" feature
+                    };
+                    
+                    // Subscribe to currentPage updates in real-time
+                    gun.get(REGISTRY_ROOT)
+                        .get(REGISTRY_NAMESPACE)
+                        .get('sites')
+                        .get(key)
+                        .get('currentPage')
+                        .on((currentPage) => {
+                            siteData.currentPage = currentPage || null;
+                            allSites.set(key, siteData);
+                            renderSites();
+                        });
+                    
+                    allSites.set(key, siteData);
                     renderSites();
                 }
             });
@@ -377,6 +393,16 @@
             
             // Convert to array
             let sitesArray = Array.from(allSites.values());
+            
+            // Filter out localhost sites
+            sitesArray = sitesArray.filter(site => {
+                const url = (site.url || '').toLowerCase();
+                return !url.startsWith('http://localhost') && 
+                       !url.startsWith('https://localhost') &&
+                       !url.startsWith('localhost://') &&
+                       !url.startsWith('localhost/') &&
+                       !url.startsWith('localhost:');
+            });
             
             // Deduplicate by title+artist (keep the most recently seen)
             const dedupMap = new Map();
@@ -428,6 +454,17 @@
             
             const displayUrl = site.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
             const lastSeenDate = site.lastSeen ? formatDate(site.lastSeen) : 'Unknown';
+            
+            // Show "now playing" if currentPage is available
+            let nowPlaying = '';
+            if (site.currentPage) {
+              // Format the path nicely (remove leading/trailing slashes, show release name)
+              const pagePath = site.currentPage.replace(/^\//, '').replace(/\/$/, '').replace(/\/index\.html$/, '');
+              const pageName = pagePath.split('/').pop() || pagePath;
+              // Make it more readable
+              const displayPage = pageName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              nowPlaying = `<div class="site-meta" style="color: #8b5cf6; font-weight: 500; margin-top: 5px;">🎵 Now playing: ${escapeHtml(displayPage)}</div>`;
+            }
 
             return `
                 <a href="${escapeHtml(site.url)}" target="_blank" rel="noopener" class="site-card">
@@ -437,6 +474,7 @@
                         ${site.artistName ? `<div class="site-artist">by ${escapeHtml(site.artistName)}</div>` : ''}
                         <div class="site-url">${escapeHtml(displayUrl)}</div>
                         <div class="site-meta">Last seen: ${lastSeenDate}</div>
+                        ${nowPlaying}
                     </div>
                 </a>
             `;
@@ -447,9 +485,19 @@
         }
 
         function updateCount() {
-            // Count unique sites (deduplicated by title+artist)
+            // Count unique sites (deduplicated by title+artist, excluding localhost)
             const dedupMap = new Map();
             allSites.forEach(site => {
+                // Skip localhost sites
+                const url = (site.url || '').toLowerCase();
+                if (url.startsWith('http://localhost') || 
+                    url.startsWith('https://localhost') ||
+                    url.startsWith('localhost://') ||
+                    url.startsWith('localhost/') ||
+                    url.startsWith('localhost:')) {
+                    return;
+                }
+                
                 const key = `${(site.title || '').toLowerCase().trim()}::${(site.artistName || '').toLowerCase().trim()}`;
                 if (!dedupMap.has(key)) {
                     dedupMap.set(key, true);

@@ -19,10 +19,13 @@ Inspired by [Faircamp](https://simonrepp.com/faircamp/), this tool helps you cre
 - 📡 **RSS/Atom feeds**: Automatic feed generation for releases
 - 🎙️ **Podcast support**: Generate podcast RSS feeds
 - 📦 **Embed widgets**: Embeddable HTML widgets for releases
-- 🎶 **M3U playlists**: Automatic playlist generation
+- 🎶 **M3U playlists**: Automatic playlist generation with frontend download links
 - 🎨 **Procedural covers**: Auto-generate cover art if missing
 - 🔐 **Unlock codes**: Decentralized download protection via GunDB
 - 🏢 **Label mode**: Multi-artist catalog support
+- 🧙 **Interactive Wizard**: CLI and Web-based wizard for easy catalog creation
+- 🖼️ **Custom backgrounds**: Header and page background image support
+- 🔗 **Remote audio files**: Use external URLs for audio files instead of local files
 
 ## Quick Start
 
@@ -33,6 +36,31 @@ npm install -g tunecamp
 # or
 yarn global add tunecamp
 ```
+
+### Using the Wizard (Easiest Way)
+
+Tunecamp includes an interactive wizard to help you create your catalog without manually editing YAML files.
+
+**CLI Wizard:**
+```bash
+tunecamp wizard
+```
+
+**Web Wizard:**
+Open `wizard/index.html` in your browser for a visual, step-by-step interface that:
+
+**Online Wizard:**
+The wizard can also be deployed online (Netlify, Vercel, GitHub Pages, etc.) so users can generate sites directly from the web without downloading files. See `wizard/README.md` for deployment instructions.
+- Guides you through all configuration steps
+- Allows file uploads (cover images and audio files)
+- Provides live previews
+- Generates a complete deployable site as a ZIP file
+- Supports multiple languages (English/Italian)
+
+The web wizard generates everything you need - just download the ZIP and deploy it!
+
+**Deploy the Wizard Online:**
+The wizard is 100% client-side and can be deployed to any static hosting service. Users can then access it online to generate their sites without downloading anything locally. See `wizard/README.md` for deployment details.
 
 ### Basic Usage
 
@@ -240,15 +268,60 @@ tunecamp build <input-dir> --output <output-dir>
 # Build with custom base path (overrides catalog.yaml)
 tunecamp build <input-dir> --output <output-dir> --basePath /my-music
 
-# Build with custom theme (overrides catalog.yaml)
-tunecamp build <input-dir> --output <output-dir> --theme dark
-
 # Serve locally
 tunecamp serve <output-dir> --port 3000
 
 # Initialize a new catalog
 tunecamp init <directory>
+
+# Interactive wizard (CLI)
+tunecamp wizard
+
+# Interactive wizard (Web - open wizard/index.html in browser)
+# The web wizard generates a complete site including uploaded files as a ZIP download
 ```
+
+## Wizard
+
+Tunecamp includes an interactive wizard to help you create your catalog without manually editing YAML files.
+
+### CLI Wizard
+
+Run the wizard from the command line:
+
+```bash
+tunecamp wizard
+```
+
+The CLI wizard guides you through:
+1. Language selection (English/Italian)
+2. Catalog configuration (title, description, URL)
+3. Artist information (name, bio, social links)
+4. First release setup (title, date, description, genres)
+5. Download mode selection (free, paycurtain, codes, none)
+
+The wizard generates all necessary YAML files and creates the catalog structure automatically.
+
+### Web Wizard
+
+For a visual, user-friendly interface, use the web wizard:
+
+1. Open `wizard/index.html` in your browser
+2. Follow the step-by-step guide
+3. Upload cover images and audio files directly
+4. Get live previews of your site
+5. Download a complete, deployable ZIP file
+
+**Web Wizard Features:**
+- Drag-and-drop file uploads
+- Live preview of generated site
+- Support for both local file uploads and external URLs for audio files
+- Complete site generation in the browser
+- ZIP download with all files included
+- Multilingual support (English/Italian)
+- Background and header image customization
+
+The web wizard is especially useful for users who prefer a GUI over the command line.
 
 ## Development Modes
 
@@ -337,31 +410,32 @@ You can disable auto-registration by removing the `community-registry.js` script
 
 ## Themes
 
-tunecamp includes 5 ready-to-use themes:
+Tunecamp includes a single, highly customizable theme:
 
-### Available Themes
+### Default Theme
 
-1. **default** - Modern dark theme with purple/blue gradients
-2. **minimal** - Clean light theme with lots of white space
-3. **dark** - Aggressive dark theme with red accents (perfect for rock/metal)
-4. **retro** - 80s-inspired theme with neon colors (perfect for synthwave/vaporwave)
-5. **translucent** - Glassmorphism theme with blur effects and transparency (perfect for ambient/electronic)
+The **default** theme is a modern, Faircamp-inspired design with:
+- Dark/light mode toggle
+- Responsive two-column layout
+- Integrated header with background image support
+- Modern navigation bar
+- Customizable colors via CSS variables
 
-### Using a Theme
+### Customization
 
-Specify the theme in your `catalog.yaml`:
+You can customize the default theme using:
 
-```yaml
-catalog:
-  title: "My Music"
-  theme: "translucent"  # Change to: default, minimal, dark, retro, or translucent
-```
+- **Background images**: Set `backgroundImage` in `catalog.yaml` for a custom page background
+- **Header images**: Set `headerImage` in `catalog.yaml` for a custom header image
+- **Custom CSS**: Add `customCSS` to override styles or change colors
+- **Custom fonts**: Add `customFont` for typography customization
 
-Or use the `--theme` option when building:
-
-```bash
-tunecamp build ./my-music --output ./public --theme translucent
-```
+The theme uses CSS variables for easy customization:
+- `--bg-color`: Main background color
+- `--text-color`: Primary text color
+- `--accent`: Accent color (buttons, links)
+- `--accent-hover`: Hover state for accent
+- And more (see `templates/default/assets/style.css`)
 
 ### Creating Custom Themes
 
@@ -497,10 +571,21 @@ Replace the text title in the header with a custom image, similar to Bandcamp:
 
 ```yaml
 # catalog.yaml
-headerImage: "header.png"  # Path relative to catalog directory
+headerImage: "header.png"  # Path relative to catalog directory or URL
 ```
 
-The header image will be displayed prominently at the top of all pages. If `headerImage` is set, the text title and description are hidden to avoid redundancy.
+The header image will be displayed prominently at the top of all pages in the header section. This image appears in the header area with the navigation bar.
+
+### Page Background Image
+
+Set a custom background image for the entire page:
+
+```yaml
+# catalog.yaml
+backgroundImage: "background.png"  # Path relative to catalog directory or URL
+```
+
+The background image will cover the entire page with a semi-transparent overlay to maintain text readability. This is separate from the header image - the header image appears in the header section, while the background image covers the entire page body.
 
 ### Custom Font
 

@@ -1,102 +1,126 @@
-<div class="container">
-  {{#if artist}}
-  <section class="artist-section">
-    <div class="artist-header">
-      {{#if artist.photo}}
-      <img src="{{path artist.photo}}" alt="{{artist.name}}" class="artist-photo">
-      {{/if}}
-      <div class="artist-info">
-        <h2>{{artist.name}}</h2>
+<!-- Main Content - Two Column Layout (Faircamp style) -->
+<div class="main-content">
+  <div class="content-wrapper">
+    <!-- Releases Grid (Left Column) -->
+    <section class="releases-section">
+      {{#if artist}}
+      <div class="catalog-header">
+        <h2 class="catalog-title">{{artist.name}}</h2>
         {{#if artist.bio}}
-        <p class="artist-bio">{{artist.bio}}</p>
+        <p class="catalog-bio">{{artist.bio}}</p>
         {{/if}}
       </div>
-    </div>
-  </section>
-  {{/if}}
+      {{/if}}
 
-  <section class="releases-section">
-    <h2>Releases</h2>
-    
-    <!-- Search and Filter Controls -->
-    <div class="releases-controls">
-      <div class="search-box">
-        <i class="fas fa-search"></i>
-        <input type="text" id="searchInput" placeholder="Search releases..." autocomplete="off">
+      <h3 class="section-title">Releases</h3>
+      
+      <!-- Search and Filter Controls -->
+      <div class="releases-controls">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" placeholder="Search releases..." autocomplete="off">
+        </div>
+        
+        <div class="filter-controls">
+          <select id="genreFilter" class="filter-select">
+            <option value="">All Genres</option>
+          </select>
+          
+          <select id="sortBy" class="filter-select">
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="title-asc">Title A-Z</option>
+            <option value="title-desc">Title Z-A</option>
+          </select>
+        </div>
       </div>
       
-      <div class="filter-controls">
-        <select id="genreFilter" class="filter-select">
-          <option value="">All Genres</option>
-        </select>
-        
-        <select id="sortBy" class="filter-select">
-          <option value="date-desc">Newest First</option>
-          <option value="date-asc">Oldest First</option>
-          <option value="title-asc">Title A-Z</option>
-          <option value="title-desc">Title Z-A</option>
-        </select>
-      </div>
-    </div>
-    
-    {{#if releases}}
-    <div class="releases-grid" id="releasesGrid">
-      {{#each releases}}
-      <article class="release-card" 
-               data-title="{{config.title}}" 
-               data-date="{{config.date}}"
-               data-genres="{{#if config.genres}}{{join config.genres ","}}{{/if}}"
-               data-description="{{config.description}}">
-        <a href="{{path url}}" class="release-link">
-          {{#if coverUrl}}
-          <div class="release-cover">
-            <img src="{{path coverUrl}}" alt="{{config.title}}" loading="lazy">
-          </div>
-          {{else}}
-          <div class="release-cover release-cover-placeholder">
-            <i class="fas fa-music"></i>
-          </div>
-          {{/if}}
-          
-          <div class="release-info">
-            <h3 class="release-title">{{config.title}}</h3>
-            <p class="release-date">{{formatDate config.date}}</p>
-            
-            {{#if config.genres}}
-            <div class="release-genres">
-              {{#each config.genres}}
-              <span class="genre-tag">{{this}}</span>
-              {{/each}}
+      {{#if releases}}
+      <div class="releases-grid" id="releasesGrid">
+        {{#each releases}}
+        <article class="release-card" 
+                 data-title="{{config.title}}" 
+                 data-date="{{config.date}}"
+                 data-genres="{{#if config.genres}}{{join config.genres ","}}{{/if}}"
+                 data-description="{{config.description}}">
+          <a href="{{path url}}" class="release-link">
+            {{#if coverUrl}}
+            <div class="release-cover">
+              <img src="{{path coverUrl}}" alt="{{config.title}}" loading="lazy">
+            </div>
+            {{else}}
+            <div class="release-cover release-cover-placeholder">
+              <i class="fas fa-music"></i>
             </div>
             {{/if}}
             
-            <p class="release-tracks-count">
-              {{tracks.length}} track{{#unless (eq tracks.length 1)}}s{{/unless}}
-            </p>
-            
-            {{#if config.download}}
-            <div class="release-download-badge">
-              {{#if (eq config.download "free")}}
-              <i class="fas fa-download"></i> Free Download
-              {{else if (eq config.download "paycurtain")}}
-              <i class="fas fa-dollar-sign"></i> Pay What You Want
-              {{else if (eq config.download "codes")}}
-              <i class="fas fa-key"></i> Download Codes
+            <div class="release-meta">
+              <h3 class="release-title">{{config.title}}</h3>
+              {{#if ../artist}}
+              <p class="release-artist">{{../artist.name}}</p>
               {{/if}}
             </div>
-            {{/if}}
-          </div>
-        </a>
-      </article>
-      {{/each}}
-    </div>
-    
-    <p class="no-results" id="noResults" style="display: none;">No releases match your search.</p>
-    {{else}}
-    <p class="no-releases">No releases yet. Check back soon!</p>
-    {{/if}}
-  </section>
+          </a>
+        </article>
+        {{/each}}
+      </div>
+      
+      <p class="no-results" id="noResults" style="display: none;">No releases match your search.</p>
+      {{else}}
+      <p class="no-releases">No releases yet. Check back soon!</p>
+      {{/if}}
+    </section>
+
+    <!-- Sidebar (Right Column) -->
+    <aside class="sidebar">
+      {{#if artist}}
+      <div class="sidebar-section artist-card">
+        <h2 class="sidebar-title">{{artist.name}}</h2>
+        {{#if artist.bio}}
+        <p class="sidebar-bio">{{artist.bio}}</p>
+        {{/if}}
+        
+        <!-- Action Links -->
+        <div class="sidebar-actions">
+          <span class="action-link">··· More</span>
+          <button class="action-link" onclick="copyPageLink()"><i class="fas fa-link"></i> Copy link</button>
+          <a href="{{assetPath 'feed.xml'}}" class="action-link"><i class="fas fa-rss"></i> RSS Feed</a>
+          <a href="{{assetPath 'atom.xml'}}" class="action-link"><i class="fas fa-rss-square"></i> Atom Feed</a>
+          <a href="{{assetPath 'catalog.m3u'}}" class="action-link" download><i class="fas fa-music"></i> Playlist M3U</a>
+        </div>
+        
+        {{#if artist.links}}
+        <div class="sidebar-links">
+          {{#each artist.links}}
+          {{#each this}}
+          <a href="{{this}}" target="_blank" rel="noopener" class="sidebar-link">
+            <i class="fab fa-{{@key}}"></i>
+            <span>{{@key}}</span>
+          </a>
+          {{/each}}
+          {{/each}}
+        </div>
+        {{/if}}
+      </div>
+      {{/if}}
+      
+      <!-- Genre Tags Cloud -->
+      <div class="sidebar-section" id="genreTagsSection">
+        <div class="genre-tags" id="genreTagsCloud">
+          <!-- Will be populated by JS -->
+        </div>
+      </div>
+    </aside>
+  </div>
 </div>
+
+<script>
+function copyPageLink() {
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    alert('Link copied!');
+  });
+}
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -105,12 +129,14 @@ document.addEventListener('DOMContentLoaded', function() {
   const sortBy = document.getElementById('sortBy');
   const releasesGrid = document.getElementById('releasesGrid');
   const noResults = document.getElementById('noResults');
+  const genreTagsCloud = document.getElementById('genreTagsCloud');
+  const genreTagsSection = document.getElementById('genreTagsSection');
   
   if (!releasesGrid) return;
   
   const releaseCards = Array.from(releasesGrid.querySelectorAll('.release-card'));
   
-  // Populate genre filter
+  // Collect all genres
   const allGenres = new Set();
   releaseCards.forEach(card => {
     const genres = card.dataset.genres;
@@ -119,17 +145,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  Array.from(allGenres).sort().forEach(genre => {
+  const sortedGenres = Array.from(allGenres).sort();
+  
+  // Populate genre filter dropdown
+  sortedGenres.forEach(genre => {
     const option = document.createElement('option');
     option.value = genre;
     option.textContent = genre;
     genreFilter.appendChild(option);
   });
   
+  // Populate genre tags cloud in sidebar
+  if (genreTagsCloud && sortedGenres.length > 0) {
+    sortedGenres.forEach(genre => {
+      const tag = document.createElement('span');
+      tag.className = 'genre-tag';
+      tag.textContent = genre;
+      tag.onclick = () => {
+        genreFilter.value = genre;
+        filterAndSort();
+      };
+      genreTagsCloud.appendChild(tag);
+    });
+  } else if (genreTagsSection) {
+    genreTagsSection.style.display = 'none';
+  }
+  
   function filterAndSort() {
     const searchTerm = searchInput.value.toLowerCase();
     const selectedGenre = genreFilter.value;
     const sortValue = sortBy.value;
+    
+    // Update genre tag highlighting
+    if (genreTagsCloud) {
+      genreTagsCloud.querySelectorAll('.genre-tag').forEach(tag => {
+        tag.classList.toggle('active', tag.textContent === selectedGenre);
+      });
+    }
     
     // Filter
     let visibleCards = releaseCards.filter(card => {

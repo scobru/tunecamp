@@ -24,14 +24,17 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@inquirer/prompts": "^8.2.0",
+    "@types/inquirer": "^9.0.9",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "fs-extra": "^11.2.0",
     "glob": "^10.3.10",
     "gun": "^0.2020.1241",
     "handlebars": "^4.7.8",
+    "inquirer": "^13.2.0",
     "music-metadata": "^8.1.4",
-    "vercel": "^50.3.2",
+    "vercel": "^50.4.4",
     "yaml": "^2.3.4"
   },
   "devDependencies": {

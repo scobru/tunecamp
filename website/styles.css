@@ -5,27 +5,34 @@
 }
 
 html {
-    font-size: 22px;
+    font-size: 16px;
+    scroll-behavior: smooth;
 }
 
 body {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    background: #fff;
-    color: #000;
-    line-height: 2;
-    padding: 80px 30px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #f8fafc;
+    color: #0f172a;
+    line-height: 1.6;
+    padding: 40px 20px;
+    min-height: 100vh;
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 900px;
     margin: 0 auto;
+    background: #ffffff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 h1 {
-    font-size: 3.5rem;
-    font-weight: 600;
-    margin-bottom: 20px;
-    letter-spacing: 2px;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    letter-spacing: -0.5px;
+    color: #0f172a;
 }
 
 .subtitle {
@@ -35,23 +42,22 @@ h1 {
 }
 
 section {
-    margin-bottom: 90px;
+    margin-bottom: 3rem;
 }
 
 h2 {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 40px;
-    color: #999;
+    margin-bottom: 1rem;
+    color: #0f172a;
+    letter-spacing: -0.3px;
 }
 
 h3 {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 600;
-    margin-bottom: 30px;
-    color: #333;
+    margin-bottom: 1rem;
+    color: #0f172a;
 }
 
 .project {
@@ -92,15 +98,17 @@ h3 {
 }
 
 a {
-    color: #000;
+    color: #8b5cf6;
     text-decoration: none;
-    border-bottom: 2px solid #000;
-    transition: opacity 0.2s;
+    border-bottom: 1px solid #8b5cf6;
+    transition: all 0.2s ease;
     font-size: 1.1rem;
+    font-weight: 500;
 }
 
 a:hover {
-    opacity: 0.7;
+    color: #7c3aed;
+    border-bottom-color: #7c3aed;
 }
 
 .links {
@@ -116,33 +124,32 @@ a:hover {
 
 /* Tunecamp specific styles */
 .logo {
-    width: 300px;
-    height: 300px;
-    margin: 0 auto 30px;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 1.5rem;
     display: block;
 }
 
-.tagline {
-    font-size: 1.1rem;
-    margin-bottom: 40px;
-    color: #666;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .download-section {
-    background: #f8f9fa;
-    padding: 40px;
-    border-radius: 8px;
-    margin: 40px 0;
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 12px;
+    margin: 2rem 0;
     text-align: center;
+    border: 1px solid #e2e8f0;
 }
 
 .download-section h2 {
     font-size: 1.5rem;
-    margin-bottom: 20px;
-    color: #333;
+    margin-bottom: 1rem;
+    color: #0f172a;
 }
 
 .download-buttons {
@@ -156,45 +163,57 @@ a:hover {
 .btn {
     display: inline-block;
     padding: 12px 24px;
-    background: #007bff;
+    background: #8b5cf6;
     color: white;
     text-decoration: none;
-    border-radius: 4px;
-    font-weight: 500;
-    transition: background-color 0.2s;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
     border-bottom: none;
+    box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
 }
 
 .btn:hover {
-    background: #0056b3;
+    background: #7c3aed;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
     opacity: 1;
 }
 
 .btn-secondary {
-    background: #6c757d;
+    background: #475569;
+    box-shadow: 0 2px 4px rgba(71, 85, 105, 0.2);
 }
 
 .btn-secondary:hover {
-    background: #545b62;
+    background: #334155;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(71, 85, 105, 0.3);
 }
 
 .features {
-    margin: 60px 0;
+    margin: 3rem 0;
 }
 
 .feature-section {
-    margin: 40px 0;
+    margin: 2.5rem 0;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
 }
 
 .feature-section h2 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-    color: #333;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #0f172a;
+    font-weight: 700;
 }
 
 .feature-section p {
-    color: #666;
-    margin-bottom: 20px;
+    color: #475569;
+    margin-bottom: 1rem;
+    line-height: 1.7;
 }
 
 .feature-list {
@@ -203,8 +222,9 @@ a:hover {
 }
 
 .feature-list li {
-    padding: 8px 0;
-    color: #666;
+    padding: 0.5rem 0;
+    color: #475569;
+    line-height: 1.7;
 }
 
 .feature-list li:before {
@@ -252,15 +272,16 @@ a:hover {
 }
 
 .principles {
-    background: #f8f9fa;
-    padding: 30px;
-    border-radius: 8px;
-    margin: 40px 0;
+    background: #f8fafc;
+    padding: 2rem;
+    border-radius: 12px;
+    margin: 2rem 0;
+    border: 1px solid #e2e8f0;
 }
 
 .principles h3 {
-    margin-bottom: 20px;
-    color: #333;
+    margin-bottom: 1rem;
+    color: #0f172a;
 }
 
 .principles-list {
@@ -271,28 +292,37 @@ a:hover {
 }
 
 .principles-list li {
-    padding: 8px 12px;
+    padding: 0.5rem 1rem;
     background: white;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.9rem;
-    color: #666;
+    color: #475569;
     text-align: center;
+    border: 1px solid #e2e8f0;
 }
 
 .code-block {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 20px;
-    margin: 20px 0;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
     overflow-x: auto;
+}
+
+.code-block h4 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    color: #475569;
+    font-weight: 600;
 }
 
 .code-block pre {
     margin: 0;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 0.9rem;
-    color: #333;
+    font-size: 0.875rem;
+    color: #0f172a;
+    line-height: 1.6;
 }
 
 .code-block code {
@@ -300,20 +330,24 @@ a:hover {
 }
 
 .code-block .string {
-    color: #28a745;
+    color: #10b981;
 }
 
 .code-block .comment {
-    color: #6c757d;
+    color: #94a3b8;
+}
+
+.code-block code {
+    color: #8b5cf6;
 }
 
 footer {
-    margin-top: 100px;
-    padding-top: 25px;
-    border-top: 2px solid #eee;
-    font-size: 1.15rem;
-    color: #999;
-    text-align: right;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.9rem;
+    color: #64748b;
+    text-align: center;
 }
 
 .footer-links {
@@ -326,9 +360,10 @@ footer {
 }
 
 .footer-links a {
-    color: #007bff;
+    color: #8b5cf6;
     text-decoration: none;
     border-bottom: none;
+    font-weight: 500;
 }
 
 .footer-links a:hover {
@@ -343,34 +378,41 @@ footer {
 
 @media (max-width: 1000px) {
     html {
-        font-size: 19px;
+        font-size: 15px;
     }
     .container {
-        max-width: 97vw;
+        max-width: 95vw;
+        padding: 1.5rem;
     }
     h1 {
-        font-size: 2.8rem;
+        font-size: 2rem;
     }
     h2 {
-        font-size: 1.15rem;
+        font-size: 1.25rem;
     }
 }
 
 @media (max-width: 768px) {
     html {
-        font-size: 16px;
+        font-size: 14px;
     }
     body {
-        padding: 25px 8px;
+        padding: 1rem 0.5rem;
+    }
+    .container {
+        padding: 1rem;
     }
     h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
-    .subtitle {
-        font-size: 1rem;
+    h2 {
+        font-size: 1.25rem;
+    }
+    .tagline {
+        font-size: 0.9rem;
     }
     .links {
-        gap: 20px;
+        gap: 1rem;
     }
     .project-title {
         font-size: 1.15rem;
@@ -386,11 +428,15 @@ footer {
     }
     
     .principles-list {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     }
     
     .footer-links {
         flex-direction: column;
-        gap: 15px;
+        gap: 1rem;
+    }
+    
+    .feature-section {
+        padding: 1rem;
     }
 }

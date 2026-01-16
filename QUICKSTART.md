@@ -28,6 +28,20 @@ Then open http://localhost:3000 in your browser!
 
 ### 1. Initialize a new catalog
 
+You have two options:
+
+**Option A: Use the Interactive Wizard (Recommended)**
+
+```bash
+# CLI Wizard - guided step-by-step setup
+node dist/cli.js wizard
+
+# Or use the Web Wizard - open wizard/index.html in your browser
+# The web wizard lets you upload files and generates a complete ZIP
+```
+
+**Option B: Manual Setup**
+
 ```bash
 node dist/cli.js init ./my-music
 cd my-music
@@ -61,7 +75,9 @@ Edit `catalog.yaml`:
 title: "My Music"
 description: "My awesome music collection"
 url: "https://mymusic.com"
-theme: "default"  # Options: default, minimal, dark, retro, translucent
+theme: "default"  # Currently only default theme is available
+headerImage: "image.png"  # Optional: Header image
+backgroundImage: "background.png"  # Optional: Page background image
 ```
 
 Edit `artist.yaml`:
@@ -174,27 +190,16 @@ download: "none"
 4. **Genres**: Add multiple genres as a YAML array
 5. **Credits**: Add credits to your releases for collaborators
 
-## Changing Themes
+## Customization
 
-Tunecamp comes with 5 built-in themes:
+Tunecamp's default theme is highly customizable:
 
-- **default** - Modern dark theme with purple/blue gradients
-- **minimal** - Clean light theme
-- **dark** - Aggressive dark theme with red accents (great for rock/metal)
-- **retro** - 80s-inspired with neon colors (perfect for synthwave)
-- **translucent** - Glassmorphism theme with blur effects and transparency (perfect for ambient/electronic)
+- **Background images**: Add `backgroundImage` to `catalog.yaml` for a custom page background
+- **Header images**: Add `headerImage` to `catalog.yaml` for a custom header image
+- **Custom CSS**: Add `customCSS` to override styles or change colors
+- **Custom fonts**: Add `customFont` for typography customization
 
-Change the theme in `catalog.yaml`:
-```yaml
-theme: "retro"
-```
-
-Or specify it when building:
-```bash
-node dist/cli.js build ./my-music -o ./public --theme retro
-```
-
-See [Theme Documentation](docs/THEMES.md) for details on creating custom themes.
+The theme uses CSS variables that you can override in your custom CSS. See the README for details on customization options.
 
 ## Next Steps
 

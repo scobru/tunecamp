@@ -39,6 +39,28 @@
   {{/if}}
   {{/if}}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  {{#if catalog.backgroundImageUrl}}
+  <style>
+    body {
+      background-image: url('{{path catalog.backgroundImageUrl}}');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-color);
+      opacity: 0.85;
+      z-index: -1;
+    }
+  </style>
+  {{/if}}
   <script>
     // Initialize theme from localStorage or system preference
     (function () {
@@ -53,27 +75,35 @@
 </head>
 
 <body>
+  <!-- Top Navigation Bar - Faircamp style -->
+  <nav class="top-nav">
+    <a href="{{#if backUrl}}{{path backUrl}}{{else}}{{path "index.html"}}{{/if}}" class="nav-logo">
+      <svg class="logo-icon" viewBox="0 0 100 100" fill="none">
+        <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="4"/>
+        <circle cx="50" cy="50" r="20" fill="currentColor"/>
+        <circle cx="50" cy="50" r="8" fill="var(--bg-color)"/>
+      </svg>
+      <span>{{#if artist}}{{artist.name}}{{else}}{{catalog.title}}{{/if}}</span>
+    </a>
+    <div class="nav-links">
+      <a href="{{path "index.html"}}" class="nav-link">Browse</a>
+    </div>
+  </nav>
+
+  <!-- Header with Background Image -->
   <header class="site-header">
-    <div class="container">
+    {{#if catalog.headerImageUrl}}
+    <div class="header-background" style="background-image: url('{{path catalog.headerImageUrl}}');"></div>
+    {{else}}
+    <div class="header-background"></div>
+    {{/if}}
+    <div class="header-content">
       {{#if catalog.headerImageUrl}}
-      <div class="header-image-wrapper">
-        <div class="site-header-image">
-          <a href="{{#if backUrl}}{{path backUrl}}{{else}}{{path "index.html"}}{{/if}}">
-            <img src="{{path catalog.headerImageUrl}}" alt="{{catalog.title}}" class="header-image">
-          </a>
-        </div>
+      <div class="header-image-display">
+        <a href="{{path "index.html"}}">
+          <img src="{{path catalog.headerImageUrl}}" alt="{{catalog.title}}" class="header-image">
+        </a>
       </div>
-      {{else}}
-      <div class="header-row">
-        <h1 class="site-title">
-          <a href="{{#if backUrl}}{{path backUrl}}{{else}}{{path "index.html"}}{{/if}}">{{catalog.title}}</a>
-        </h1>
-      </div>
-      {{/if}}
-      {{#if catalog.description}}
-      {{#unless catalog.headerImageUrl}}
-      <p class="site-description">{{catalog.description}}</p>
-      {{/unless}}
       {{/if}}
     </div>
   </header>
@@ -83,7 +113,7 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container">
+    <div class="footer-content">
       <p>
         {{#if artist}}
         &copy; {{artist.name}} -

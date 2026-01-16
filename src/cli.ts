@@ -126,6 +126,33 @@ program
     });
   });
 
+program
+  .command('wizard')
+  .description('Interactive wizard to create a new catalog (guided setup)')
+  .argument('[directory]', 'Output directory for the catalog')
+  .option('--web', 'Open web-based wizard in browser')
+  .action(async (directory: string | undefined, options: any) => {
+    try {
+      if (options.web) {
+        // Open web wizard
+        const wizardPath = path.join(__dirname, '..', 'wizard', 'index.html');
+        const { exec } = await import('child_process');
+        const openCommand = process.platform === 'win32' ? 'start' : 
+                           process.platform === 'darwin' ? 'open' : 'xdg-open';
+        exec(`${openCommand} "${wizardPath}"`);
+        console.log(chalk.green('🎵 Opening web wizard in your browser...'));
+        console.log(chalk.blue(`File: ${wizardPath}`));
+      } else {
+        // Run CLI wizard
+        const { runWizard } = await import('./wizard/cli-wizard.js');
+        await runWizard(directory);
+      }
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
 async function initializeCatalog(targetDir: string): Promise<void> {
   await fs.ensureDir(targetDir);
   
