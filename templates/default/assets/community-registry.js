@@ -450,8 +450,19 @@
         // Always use the homepage/base URL for the site registration
         const baseUrl = window.location.origin;
 
+        // Only register sites served over HTTPS (production sites)
+        // Skip local file:// and http:// URLs to avoid polluting the registry with dev/local sites
+        if (!baseUrl.startsWith('https://')) {
+          console.log('📍 Skipping community registration (not HTTPS - local/dev mode)');
+          return;
+        }
+
+        // Check if this is an unlisted release (should not appear in registry)
+        const isUnlisted = document.querySelector('meta[name="tunecamp-release-unlisted"]')?.content === 'true';
+
         // Get current page path for "now playing" feature (optional)
-        const currentPage = window.location.pathname !== '/' && window.location.pathname !== '/index.html'
+        // But skip if this is an unlisted release
+        const currentPage = !isUnlisted && window.location.pathname !== '/' && window.location.pathname !== '/index.html'
           ? window.location.pathname
           : null;
 
@@ -461,13 +472,16 @@
           description: siteDescription,
           artistName: artistName,
           coverImage: coverImage,
-          currentPage: currentPage, // Current page for "now playing"
+          currentPage: currentPage, // Current page for "now playing" (null if unlisted)
         };
 
         await registry.registerSite(siteInfo);
 
         // If this is a release page with tracks, also register tracks for the community player
-        if (window.tracks && Array.isArray(window.tracks) && window.tracks.length > 0) {
+        // BUT: Skip if this release is unlisted (should not appear in community registry)
+        const isUnlisted = document.querySelector('meta[name="tunecamp-release-unlisted"]')?.content === 'true';
+        
+        if (!isUnlisted && window.tracks && Array.isArray(window.tracks) && window.tracks.length > 0) {
           // Get release title from the page
           const releaseTitle = document.querySelector('.release-metadata h1')?.textContent ||
             document.querySelector('h1')?.textContent ||
@@ -478,6 +492,8 @@
 
           // Register tracks for the centralized player
           await registry.registerTracks(siteInfo, window.tracks, releaseTitle, releaseCover);
+        } else if (isUnlisted) {
+          console.log('📍 Skipping track registration - release is unlisted');
         }
       }
 

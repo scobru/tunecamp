@@ -23,7 +23,6 @@ Inspired by [Faircamp](https://simonrepp.com/faircamp/), this tool helps you cre
 - 🎨 **Procedural covers**: Auto-generate cover art if missing
 - 🔐 **Unlock codes**: Decentralized download protection via GunDB
 - 🏢 **Label mode**: Multi-artist catalog support
-- 🧙 **Interactive Wizard**: CLI and Web-based wizard for easy catalog creation
 - 🖼️ **Custom backgrounds**: Header and page background image support
 - 🔗 **Remote audio files**: Use external URLs for audio files instead of local files
 - 🌐 **Community Directory**: Auto-register your site to a public directory of Tunecamp sites
@@ -38,31 +37,6 @@ npm install -g tunecamp
 # or
 yarn global add tunecamp
 ```
-
-### Using the Wizard (Easiest Way)
-
-Tunecamp includes an interactive wizard to help you create your catalog without manually editing YAML files.
-
-**CLI Wizard:**
-```bash
-tunecamp wizard
-```
-
-**Web Wizard:**
-Open `wizard/index.html` in your browser for a visual, step-by-step interface that:
-
-**Online Wizard:**
-The wizard can also be deployed online (Netlify, Vercel, GitHub Pages, etc.) so users can generate sites directly from the web without downloading files. See `wizard/README.md` for deployment instructions.
-- Guides you through all configuration steps
-- Allows file uploads (cover images and audio files)
-- Provides live previews
-- Generates a complete deployable site as a ZIP file
-- Supports multiple languages (English/Italian)
-
-The web wizard generates everything you need - just download the ZIP and deploy it!
-
-**Deploy the Wizard Online:**
-The wizard is 100% client-side and can be deployed to any static hosting service. Users can then access it online to generate their sites without downloading anything locally. See `wizard/README.md` for deployment details.
 
 ### Basic Usage
 
@@ -116,6 +90,12 @@ download: free # Options: free, paycurtain, codes, none
 price: 10.00
 paypalLink: "https://paypal.me/artistname/10"
 stripeLink: "https://buy.stripe.com/..."
+bandcampLink: "https://artistname.bandcamp.com/album/..."
+streamingLinks: # Optional links to listen on streaming platforms
+  - platform: "Spotify"
+    url: "https://open.spotify.com/track/..."
+  - platform: "Apple Music"
+    url: "https://music.apple.com/album/..."
 license: "cc-by" # Options: copyright, cc-by, cc-by-sa, cc-by-nc, cc-by-nc-sa, cc-by-nc-nd, cc-by-nd, public-domain
 unlisted: false # Set to true to hide from index but keep accessible via direct link
 ```
@@ -234,6 +214,14 @@ download: "free" # free, paycurtain, codes, none
 price: 10.00 # For paycurtain mode
 paypalLink: "https://paypal.me/artistname/10" # Optional PayPal link
 stripeLink: "https://buy.stripe.com/..." # Optional Stripe link
+bandcampLink: "https://artistname.bandcamp.com/album/..." # Optional Bandcamp link
+streamingLinks: # Optional links to listen on streaming platforms
+  - platform: "Spotify"
+    url: "https://open.spotify.com/track/..."
+  - platform: "Apple Music"
+    url: "https://music.apple.com/album/..."
+  - platform: "YouTube Music"
+    url: "https://music.youtube.com/watch?v=..."
 license: "cc-by" # License type
 genres:
   - "Electronic"
@@ -275,55 +263,7 @@ tunecamp serve <output-dir> --port 3000
 
 # Initialize a new catalog
 tunecamp init <directory>
-
-# Interactive wizard (CLI)
-tunecamp wizard
-
-# Interactive wizard (Web - open wizard/index.html in browser)
-# The web wizard generates a complete site including uploaded files as a ZIP download
 ```
-
-## Wizard
-
-Tunecamp includes an interactive wizard to help you create your catalog without manually editing YAML files.
-
-### CLI Wizard
-
-Run the wizard from the command line:
-
-```bash
-tunecamp wizard
-```
-
-The CLI wizard guides you through:
-1. Language selection (English/Italian)
-2. Catalog configuration (title, description, URL)
-3. Artist information (name, bio, social links)
-4. First release setup (title, date, description, genres)
-5. Download mode selection (free, paycurtain, codes, none)
-
-The wizard generates all necessary YAML files and creates the catalog structure automatically.
-
-### Web Wizard
-
-For a visual, user-friendly interface, use the web wizard:
-
-1. Open `wizard/index.html` in your browser
-2. Follow the step-by-step guide
-3. Upload cover images and audio files directly
-4. Get live previews of your site
-5. Download a complete, deployable ZIP file
-
-**Web Wizard Features:**
-- Drag-and-drop file uploads
-- Live preview of generated site
-- Support for both local file uploads and external URLs for audio files
-- Complete site generation in the browser
-- ZIP download with all files included
-- Multilingual support (English/Italian)
-- Background and header image customization
-
-The web wizard is especially useful for users who prefer a GUI over the command line.
 
 ## Development Modes
 
@@ -421,6 +361,7 @@ The **default** theme is a modern, Faircamp-inspired design with:
 - Responsive two-column layout
 - Integrated header with background image support
 - Modern navigation bar
+- Prominently positioned audio player (after release metadata, before track list)
 - Customizable colors via CSS variables
 
 ### Customization

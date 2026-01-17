@@ -5,6 +5,42 @@ All notable changes to Tunecamp will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-01-17
+
+### Fixed
+
+- **Community Registry Unlisted Releases**: Releases with `unlisted: true` are now excluded from the community registry
+  - Unlisted release tracks are not registered in the community player
+  - Unlisted releases do not appear in the "now playing" feature (`currentPage` is not updated)
+  - Site homepage registration still works normally - only unlisted releases are excluded
+
+## [1.1.2] - 2026-01-17
+
+### Added
+
+- **Streaming Links Support**: Added `streamingLinks` field to `release.yaml` for custom links to listen on platforms (Spotify, Apple Music, YouTube Music, etc.)
+  - Links are displayed prominently after genres, before the audio player
+  - Supports unlimited custom platforms with `platform` and `url` fields
+  - Styled as clickable buttons with hover effects
+
+## [1.1.1] - 2026-01-17
+
+### Changed
+
+- **Improved Audio Player Layout**: Audio player is now positioned prominently immediately after basic release metadata (title, artist, date, genres), before description, credits, and support sections
+  - Better visibility and accessibility - player appears right after core information, no need to scroll through lyrics/credits
+  - Player is now separated from the header section for better visual hierarchy
+  - Enhanced styling with improved margins and subtle box-shadow
+  - More intuitive user experience - player is the first interactive element users see after release details
+
+### Removed
+
+- **Wizard (CLI and Web)**: Removed both CLI and web-based wizard interfaces
+  - Users should use `tunecamp init <directory>` to initialize a new catalog with template files
+  - Manual YAML file creation is straightforward and provides more flexibility
+  - All wizard files removed from `src/wizard/` and `website/wizard/` directories
+  - References to wizard removed from documentation, website, and CLI commands
+
 ## [1.1.0] - 2026-01-17
 
 ### Added
@@ -19,11 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-registration of sites via GunDB
   - Real-time updates with live indicator
   - Deduplication of duplicate entries
-- **Interactive Wizard**: New CLI and Web-based wizard for easy catalog creation
-  - CLI wizard: `tunecamp wizard` - guided step-by-step setup in terminal
-  - Web wizard: Standalone HTML interface with file uploads and live previews
-  - Supports multiple languages (English/Italian)
-  - Web wizard generates complete deployable site as ZIP
 - **Background Image Support**: New `backgroundImage` option in `catalog.yaml` for custom page backgrounds
   - Supports local files and external URLs
   - Separate from header image - covers entire page body
@@ -31,12 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **M3U Playlist Links**: Download links to playlists now available in frontend
   - Homepage sidebar: Link to `catalog.m3u`
   - Release pages: Link to `playlist.m3u` in Share & Embed section
-- **Web Wizard Features**:
-  - File upload support for cover images and audio files
-  - Option to use external URLs for audio files instead of uploads
-  - Live preview of generated site
-  - Complete site generation in browser (no build step needed)
-  - ZIP download with all files included
 
 ### Changed
 
@@ -44,7 +69,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clean, minimal design with dark mode support
   - Feature cards and improved typography
   - Support button linking to Buy Me a Coffee
-- **Web Wizard Moved**: Web wizard is now part of the website at `/wizard/`
 - **Theme System Simplified**: Removed multiple theme variants (minimal, dark, retro, translucent)
   - Now using single `default` theme with Faircamp-inspired layout
   - Theme is highly customizable via CSS variables and custom CSS

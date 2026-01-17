@@ -70,12 +70,19 @@ export interface ReleaseConfig {
   price?: number;
   paypalLink?: string;
   stripeLink?: string;
+  bandcampLink?: string;
+  streamingLinks?: StreamingLink[]; // Links to listen on platforms (Spotify, Apple Music, etc.)
   license?: LicenseType;
   genres?: string[];
   credits?: Credit[];
   unlisted?: boolean; // If true, release is hidden from index but accessible via direct link
   artistSlug?: string; // For label mode: associate release with an artist
   metadata?: Record<string, any>;
+}
+
+export interface StreamingLink {
+  platform: string; // e.g., "Spotify", "Apple Music", "YouTube Music", etc.
+  url: string;
 }
 
 export interface Credit {

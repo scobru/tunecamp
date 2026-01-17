@@ -455,6 +455,46 @@ a:hover {
   margin: 0.5rem 0;
 }
 
+.release-streaming-links {
+  margin: 1rem 0;
+}
+
+.streaming-links-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.streaming-links-grid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.streaming-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.streaming-link:hover {
+  background: var(--border-color);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.streaming-platform {
+  font-weight: 500;
+}
+
 .release-info {
   padding: 1rem;
 }
@@ -584,6 +624,7 @@ a:hover {
   line-height: 1.8;
   margin: 1.5rem 0;
   color: var(--text-muted);
+  white-space: pre-wrap;
 }
 
 .release-credits {
@@ -647,8 +688,14 @@ a:hover {
   background: var(--surface-color);
   border-radius: 8px;
   padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
   border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.release-additional-info {
+  margin-top: 2rem;
 }
 
 .player-track-info {

@@ -28,19 +28,7 @@ Then open http://localhost:3000 in your browser!
 
 ### 1. Initialize a new catalog
 
-You have two options:
-
-**Option A: Use the Interactive Wizard (Recommended)**
-
-```bash
-# CLI Wizard - guided step-by-step setup
-node dist/cli.js wizard
-
-# Or use the Web Wizard - open wizard/index.html in your browser
-# The web wizard lets you upload files and generates a complete ZIP
-```
-
-**Option B: Manual Setup**
+**Manual Setup**
 
 ```bash
 node dist/cli.js init ./my-music
@@ -97,6 +85,11 @@ description: "Description of your album"
 download: "free"  # Options: free, paycurtain, codes, none
 genres:
   - "Your Genre"
+streamingLinks: # Optional links to listen on streaming platforms
+  - platform: "Spotify"
+    url: "https://open.spotify.com/track/..."
+  - platform: "Apple Music"
+    url: "https://music.apple.com/album/..."
 ```
 
 ### 4. Build Your Site
