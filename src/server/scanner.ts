@@ -43,9 +43,17 @@ export function createScanner(database: DatabaseService): ScannerService {
                 const content = await fs.readFile(artistPath, "utf-8");
                 const config = parse(content) as ArtistConfig;
                 if (config.name) {
-                    const artistId = database.createArtist(config.name, config.bio, config.image ? path.resolve(rootDir, config.image) : undefined);
+                    const existingArtist = database.getArtistByName(config.name);
+                    let artistId: number;
+
+                    if (existingArtist) {
+                        artistId = existingArtist.id;
+                        console.log(`  Found existing artist: ${config.name}`);
+                    } else {
+                        artistId = database.createArtist(config.name, config.bio, config.image ? path.resolve(rootDir, config.image) : undefined);
+                        console.log(`  Created artist from config: ${config.name}`);
+                    }
                     folderToArtistMap.set(rootDir, artistId);
-                    console.log(`  Found artist config: ${config.name}`);
                 }
             } catch (e) {
                 console.error("Error parsing artist.yaml:", e);
@@ -103,16 +111,26 @@ export function createScanner(database: DatabaseService): ScannerService {
                 }
             }
 
-            const albumId = database.createAlbum({
-                title: config.title,
-                artist_id: artistId,
-                date: config.date || null,
-                cover_path: coverPath,
-                genre: config.genres?.join(", ") || null,
-                description: config.description || null,
-                is_public: false, // Default to private
-                published_at: null,
-            });
+            // Check for existing album to avoid duplicates
+            const existingAlbum = database.getAlbumByTitle(config.title, artistId || undefined);
+            let albumId: number;
+
+            if (existingAlbum) {
+                albumId = existingAlbum.id;
+                console.log(`  Found existing album: ${config.title}`);
+            } else {
+                albumId = database.createAlbum({
+                    title: config.title,
+                    artist_id: artistId,
+                    date: config.date || null,
+                    cover_path: coverPath,
+                    genre: config.genres?.join(", ") || null,
+                    description: config.description || null,
+                    is_public: false, // Default to private
+                    published_at: null,
+                });
+                console.log(`  Created album from config: ${config.title}`);
+            }
 
             // Map this folder and its subfolders (like 'tracks', 'audio') to this album
             folderToAlbumMap.set(dir, albumId);
