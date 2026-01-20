@@ -16,11 +16,22 @@ export function createCatalogRoutes(database: DatabaseService) {
                 .getAlbums(req.isAdmin !== true)
                 .slice(0, 10);
 
-            res.json({
-                stats: req.isAdmin ? stats : {
+            // For non-admin, calculate public tracks count
+            let publicStats = stats;
+            if (!req.isAdmin) {
+                const publicAlbumIds = new Set(database.getAlbums(true).map(a => a.id));
+                const allTracks = database.getTracks();
+                const publicTracksCount = allTracks.filter(t => t.album_id !== null && publicAlbumIds.has(t.album_id)).length;
+                publicStats = {
                     albums: stats.publicAlbums,
-                    tracks: stats.tracks
-                },
+                    tracks: publicTracksCount,
+                    artists: stats.artists,
+                    publicAlbums: stats.publicAlbums
+                };
+            }
+
+            res.json({
+                stats: publicStats,
                 recentAlbums,
             });
         } catch (error) {
