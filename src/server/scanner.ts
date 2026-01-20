@@ -127,9 +127,18 @@ export function createScanner(database: DatabaseService): ScannerService {
         const ext = path.extname(filePath).toLowerCase();
         if (!AUDIO_EXTENSIONS.includes(ext)) return;
 
-        // Skip if already in database
+        // Skip if already in database, but verify album linking
         const existing = database.getTrackByPath(filePath);
-        if (existing) return;
+        if (existing) {
+            const dir = path.dirname(filePath);
+            const albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)); // Check parent too (e.g. tracks/)
+
+            if (albumId && !existing.album_id) {
+                console.log(`  Updating track album link: ${path.basename(filePath)}`);
+                database.updateTrackAlbum(existing.id, albumId);
+            }
+            return;
+        }
 
         try {
             console.log("  Processing track: " + path.basename(filePath));
@@ -139,7 +148,7 @@ export function createScanner(database: DatabaseService): ScannerService {
             const dir = path.dirname(filePath);
 
             // 1. Try to get Album ID from folder map (from release.yaml)
-            let albumId = folderToAlbumMap.get(dir) || null;
+            let albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
             let artistId = folderToArtistMap.get(dir) || null;
 
             // 2. Fallback to metadata if no release.yaml found

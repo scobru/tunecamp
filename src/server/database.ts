@@ -65,6 +65,7 @@ export interface DatabaseService {
     getTrack(id: number): Track | undefined;
     getTrackByPath(filePath: string): Track | undefined;
     createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number;
+    updateTrackAlbum(id: number, albumId: number | null): void;
     deleteTrack(id: number): void;
     // Playlists
     getPlaylists(): Playlist[];
@@ -298,6 +299,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                     track.sample_rate
                 );
             return result.lastInsertRowid as number;
+        },
+
+        updateTrackAlbum(id: number, albumId: number | null): void {
+            db.prepare("UPDATE tracks SET album_id = ? WHERE id = ?").run(albumId, id);
         },
 
         deleteTrack(id: number): void {
