@@ -66,6 +66,7 @@ export interface DatabaseService {
     getTrackByPath(filePath: string): Track | undefined;
     createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number;
     updateTrackAlbum(id: number, albumId: number | null): void;
+    updateTrackArtist(id: number, artistId: number | null): void;
     deleteTrack(id: number): void;
     // Playlists
     getPlaylists(): Playlist[];
@@ -303,6 +304,10 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         updateTrackAlbum(id: number, albumId: number | null): void {
             db.prepare("UPDATE tracks SET album_id = ? WHERE id = ?").run(albumId, id);
+        },
+
+        updateTrackArtist(id: number, artistId: number | null): void {
+            db.prepare("UPDATE tracks SET artist_id = ? WHERE id = ?").run(artistId, id);
         },
 
         deleteTrack(id: number): void {

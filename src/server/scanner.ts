@@ -145,15 +145,34 @@ export function createScanner(database: DatabaseService): ScannerService {
         const ext = path.extname(filePath).toLowerCase();
         if (!AUDIO_EXTENSIONS.includes(ext)) return;
 
-        // Skip if already in database, but verify album linking
+        // Skip if already in database, but verify album/artist linking
         const existing = database.getTrackByPath(filePath);
         if (existing) {
             const dir = path.dirname(filePath);
             const albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)); // Check parent too (e.g. tracks/)
 
+            let needsUpdate = false;
+
             if (albumId && !existing.album_id) {
                 console.log(`  Updating track album link: ${path.basename(filePath)}`);
                 database.updateTrackAlbum(existing.id, albumId);
+                needsUpdate = true;
+            }
+
+            // If track has no artist, try to get from metadata
+            if (!existing.artist_id) {
+                try {
+                    const metadata = await parseFile(filePath);
+                    const common = metadata.common;
+                    if (common.artist) {
+                        const existingArtist = database.getArtistByName(common.artist);
+                        const artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
+                        database.updateTrackArtist(existing.id, artistId);
+                        console.log(`  Updating track artist link: ${path.basename(filePath)} -> ${common.artist}`);
+                    }
+                } catch (e) {
+                    // Ignore metadata errors for existing tracks
+                }
             }
             return;
         }

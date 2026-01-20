@@ -25,8 +25,6 @@ Thumbs.db
 *.swo
 *~
 
-examples/homologo
-
 # Testing
 coverage/
 .nyc_output/
