@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg height="400px" width="400px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 400 400" xml:space="preserve">
+<circle style="fill:#2C3E50;" cx="200" cy="200" r="200"/>
+<circle style="fill:#34495E;" cx="200" cy="200" r="180"/>
+
+<!-- Simple tent shape -->
+<path style="fill:#E67E22;" d="M200,80L120,200L280,200L200,80z"/>
+<path style="fill:#D35400;" d="M200,80L120,200L200,200L200,80z"/>
+
+<!-- Simple equalizer bars -->
+<rect x="60" y="200" width="12" height="30" fill="#27AE60"/>
+<rect x="80" y="190" width="12" height="40" fill="#27AE60"/>
+<rect x="100" y="180" width="12" height="50" fill="#27AE60"/>
+<rect x="120" y="170" width="12" height="60" fill="#27AE60"/>
+<rect x="140" y="160" width="12" height="70" fill="#27AE60"/>
+<rect x="160" y="150" width="12" height="80" fill="#27AE60"/>
+<rect x="180" y="140" width="12" height="90" fill="#27AE60"/>
+<rect x="200" y="130" width="12" height="100" fill="#27AE60"/>
+<rect x="220" y="140" width="12" height="90" fill="#27AE60"/>
+<rect x="240" y="150" width="12" height="80" fill="#27AE60"/>
+<rect x="260" y="160" width="12" height="70" fill="#27AE60"/>
+<rect x="280" y="170" width="12" height="60" fill="#27AE60"/>
+<rect x="300" y="180" width="12" height="50" fill="#27AE60"/>
+<rect x="320" y="190" width="12" height="40" fill="#27AE60"/>
+<rect x="340" y="200" width="12" height="30" fill="#27AE60"/>
+
+<!-- Simple treble clef -->
+<path d="M80,120c0,0,8,15,8,30c0,15-8,30-8,30s8-15,8-30C88,135,80,120,80,120z" fill="#ECF0F1"/>
+</svg>
