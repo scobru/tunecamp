@@ -186,7 +186,19 @@ export function createScanner(database: DatabaseService): ScannerService {
 
             // 1. Try to get Album ID from folder map (from release.yaml)
             let albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
-            let artistId = folderToArtistMap.get(dir) || null;
+
+            // Look up parent folders for artist config (similar to how release config does it)
+            let artistId: number | null = null;
+            let current = dir;
+            while (current.length >= path.dirname(current).length) {
+                if (folderToArtistMap.has(current)) {
+                    artistId = folderToArtistMap.get(current)!;
+                    break;
+                }
+                const parent = path.dirname(current);
+                if (parent === current) break;
+                current = parent;
+            }
 
             // 2. Fallback to metadata if no release.yaml found
             if (!albumId && common.album) {

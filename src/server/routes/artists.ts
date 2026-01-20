@@ -34,9 +34,14 @@ export function createArtistsRoutes(database: DatabaseService) {
 
             const albums = database.getAlbumsByArtist(id, req.isAdmin !== true);
 
+            // Get tracks by this artist that have no album (loose tracks)
+            const allTracks = database.getTracks();
+            const looseTracks = allTracks.filter(t => t.artist_id === id && !t.album_id);
+
             res.json({
                 ...artist,
                 albums,
+                tracks: looseTracks,
             });
         } catch (error) {
             console.error("Error getting artist:", error);

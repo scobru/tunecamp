@@ -233,16 +233,29 @@ const App = {
   async renderArtist(container, id) {
     const artist = await API.getArtist(id);
 
+    const hasAlbums = artist.albums && artist.albums.length > 0;
+    const hasTracks = artist.tracks && artist.tracks.length > 0;
+
     container.innerHTML = `
       <section class="section">
         <h1 class="section-title">${artist.name}</h1>
         ${artist.bio ? '<p style="color: var(--text-secondary); margin-bottom: 2rem;">' + artist.bio + '</p>' : ''}
-        <h2 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">Albums</h2>
+        ${hasAlbums ? '<h2 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">Albums</h2>' : ''}
         <div class="grid" id="artist-albums"></div>
+        ${hasTracks ? '<h2 class="section-title" style="font-size: 1.25rem; margin: 2rem 0 1rem;">Tracks</h2>' : ''}
+        <div class="track-list" id="artist-tracks"></div>
       </section>
     `;
 
-    this.renderAlbumGrid(document.getElementById('artist-albums'), artist.albums);
+    if (hasAlbums) {
+      this.renderAlbumGrid(document.getElementById('artist-albums'), artist.albums);
+    } else {
+      document.getElementById('artist-albums').innerHTML = '<p style="color: var(--text-secondary);">No albums found</p>';
+    }
+
+    if (hasTracks) {
+      this.renderTrackList(document.getElementById('artist-tracks'), artist.tracks);
+    }
   },
 
   async renderSearch(container) {
