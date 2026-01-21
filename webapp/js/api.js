@@ -194,6 +194,10 @@ const API = {
         return this.delete('/tracks/' + id + (deleteFile ? '?deleteFile=true' : ''));
     },
 
+    async deleteArtist(id) {
+        return this.delete('/artists/' + id);
+    },
+
     async getReleaseFolder(id) {
         return this.get('/admin/releases/' + id + '/folder');
     },

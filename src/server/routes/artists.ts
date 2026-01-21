@@ -114,6 +114,31 @@ export function createArtistsRoutes(database: DatabaseService) {
     });
 
     /**
+     * DELETE /api/artists/:id
+     * Delete an artist (admin only)
+     */
+    router.delete("/:id", (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const artist = database.getArtist(id);
+            if (!artist) {
+                return res.status(404).json({ error: "Artist not found" });
+            }
+
+            database.deleteArtist(id);
+            console.log(`🗑️  Deleted artist: ${artist.name}`);
+            res.json({ message: "Artist deleted" });
+        } catch (error) {
+            console.error("Error deleting artist:", error);
+            res.status(500).json({ error: "Failed to delete artist" });
+        }
+    });
+
+    /**
      * GET /api/artists/:idOrSlug
      * Get artist details with albums (supports numeric ID or slug)
      */

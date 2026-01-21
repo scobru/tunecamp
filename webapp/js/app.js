@@ -179,16 +179,16 @@ const App = {
             ${album.download === 'free' ? '<a href="/api/albums/' + (album.slug || album.id) + '/download" class="btn btn-primary" style="margin-top: 1rem;">⬇️ Free Download</a>' : ''}
             
             ${(() => {
-                if (album.external_links) {
-                    try {
-                         const links = JSON.parse(album.external_links);
-                         return links.map(link => 
-                             `<a href="${link.url}" target="_blank" class="btn btn-outline" style="margin-top: 1rem; margin-right: 0.5rem;">🔗 ${link.label}</a>`
-                         ).join('');
-                    } catch (e) { return ''; }
-                }
-                return '';
-            })()}
+        if (album.external_links) {
+          try {
+            const links = JSON.parse(album.external_links);
+            return links.map(link =>
+              `<a href="${link.url}" target="_blank" class="btn btn-outline" style="margin-top: 1rem; margin-right: 0.5rem;">🔗 ${link.label}</a>`
+            ).join('');
+          } catch (e) { return ''; }
+        }
+        return '';
+      })()}
 
             ${this.isAdmin && !album.is_release ? '<button class="btn btn-primary" id="promote-btn" style="margin-top: 1rem;">Promote to Release</button>' : ''}
           </div>
@@ -982,18 +982,18 @@ const App = {
     // External Links Logic
     const linksContainer = document.getElementById('external-links-container');
     const existingLinks = release.external_links ? JSON.parse(release.external_links) : [];
-    
+
     function addLinkInput(label = '', url = '') {
-        const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.gap = '0.5rem';
-        div.innerHTML = `
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.gap = '0.5rem';
+      div.innerHTML = `
             <input type="text" placeholder="Label (e.g. Bandcamp)" class="link-label" value="${label}" style="flex: 1;">
             <input type="text" placeholder="URL (https://...)" class="link-url" value="${url}" style="flex: 2;">
             <button type="button" class="btn btn-outline btn-sm remove-link" style="color: var(--color-danger); border-color: var(--color-danger);">✕</button>
         `;
-        div.querySelector('.remove-link').onclick = () => div.remove();
-        linksContainer.appendChild(div);
+      div.querySelector('.remove-link').onclick = () => div.remove();
+      linksContainer.appendChild(div);
     }
 
     // Populate existing
@@ -1137,6 +1137,7 @@ const App = {
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Save Changes</button>
               <button type="button" class="btn btn-outline" id="cancel-edit-artist">Cancel</button>
+              <button type="button" class="btn btn-danger btn-outline" id="delete-artist-btn" style="color: var(--color-danger); border-color: var(--color-danger); margin-left: auto;">Delete Artist</button>
             </div>
           </form>
         </div>
@@ -1164,6 +1165,19 @@ const App = {
 
     document.getElementById('cancel-edit-artist').addEventListener('click', () => {
       document.getElementById('edit-artist-modal').remove();
+    });
+
+    document.getElementById('delete-artist-btn').addEventListener('click', async () => {
+      if (confirm('Are you sure you want to delete this artist? This will also unlink all their albums and tracks.')) {
+        try {
+          await API.deleteArtist(artistId);
+          document.getElementById('edit-artist-modal').remove();
+          alert('Artist deleted');
+          window.location.reload();
+        } catch (err) {
+          alert('Failed to delete artist: ' + err.message);
+        }
+      }
     });
 
     document.getElementById('edit-artist-form').addEventListener('submit', async (e) => {

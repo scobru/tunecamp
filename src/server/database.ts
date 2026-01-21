@@ -62,6 +62,7 @@ export interface DatabaseService {
     getArtistBySlug(slug: string): Artist | undefined;
     createArtist(name: string, bio?: string, photoPath?: string, links?: any): number;
     updateArtist(id: number, bio?: string, photoPath?: string, links?: any): void;
+    deleteArtist(id: number): void;
     // Albums
     getAlbums(publicOnly?: boolean): Album[];
     getReleases(publicOnly?: boolean): Album[]; // is_release=1
@@ -253,6 +254,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             const linksJson = links ? JSON.stringify(links) : null;
             db.prepare("UPDATE artists SET bio = ?, photo_path = ?, links = ? WHERE id = ?")
                 .run(bio || null, photoPath || null, linksJson, id);
+        },
+
+        deleteArtist(id: number): void {
+            // Unlink from albums
+            db.prepare("UPDATE albums SET artist_id = NULL WHERE artist_id = ?").run(id);
+            // Unlink from tracks
+            db.prepare("UPDATE tracks SET artist_id = NULL WHERE artist_id = ?").run(id);
+            // Delete artist
+            db.prepare("DELETE FROM artists WHERE id = ?").run(id);
         },
 
         // Albums
