@@ -22,6 +22,13 @@ interface ReleaseConfig {
     cover?: string;
     genres?: string[];
     artist?: string; // Override artist
+    download?: string; // 'free' | 'paid'
+    links?: { label: string; url: string }[] | { [key: string]: string }; // Array or Object
+}
+
+interface ExternalLink {
+    label: string;
+    url: string;
 }
 
 export interface ScannerService {
@@ -130,6 +137,21 @@ export function createScanner(database: DatabaseService): ScannerService {
             const existingAlbum = database.getAlbumBySlug(slug);
             let albumId: number;
 
+            // Prepare external links
+            let linksJson: string | null = null;
+            if (config.links) {
+                const links: ExternalLink[] = [];
+                if (Array.isArray(config.links)) {
+                    links.push(...config.links);
+                } else {
+                    // Handle object format { 'Bandcamp': 'url' }
+                    for (const [label, url] of Object.entries(config.links)) {
+                        links.push({ label, url });
+                    }
+                }
+                linksJson = JSON.stringify(links);
+            }
+
             if (existingAlbum) {
                 albumId = existingAlbum.id;
 
@@ -138,6 +160,12 @@ export function createScanner(database: DatabaseService): ScannerService {
                     database.updateAlbumArtist(albumId, artistId);
                     console.log(`  Updated album artist: ${config.title} -> ID ${artistId}`);
                 }
+
+                // Update download setting
+                database.updateAlbumDownload(albumId, config.download || null);
+
+                // Update external links
+                database.updateAlbumLinks(albumId, linksJson);
 
                 // Mark existing album as a release if it wasn't already
                 if (!existingAlbum.is_release) {
@@ -153,6 +181,8 @@ export function createScanner(database: DatabaseService): ScannerService {
                     cover_path: coverPath,
                     genre: config.genres?.join(", ") || null,
                     description: config.description || null,
+                    download: config.download || null,
+                    external_links: linksJson,
                     is_public: false, // Default to private
                     is_release: true, // Albums from release.yaml are releases
                     published_at: null,
@@ -283,6 +313,8 @@ export function createScanner(database: DatabaseService): ScannerService {
                         cover_path: null, // Basic fallback
                         genre: common.genre?.join(", ") || null,
                         description: null,
+                        download: null,
+                        external_links: null,
                         is_public: false,
                         is_release: false, // Albums from metadata are library albums
                         published_at: null,

@@ -148,8 +148,16 @@ const API = {
         return this.get('/tracks');
     },
 
+    async getTrack(id) {
+        return this.get('/tracks/' + id);
+    },
+
     getStreamUrl(id) {
         return '/api/tracks/' + id + '/stream';
+    },
+
+    async updateTrack(id, data) {
+        return this.put('/tracks/' + id, data);
     },
 
     // Admin
@@ -178,8 +186,12 @@ const API = {
         return this.put('/admin/releases/' + id, data);
     },
 
-    async deleteRelease(id) {
-        return this.delete('/admin/releases/' + id);
+    async deleteRelease(id, keepFiles = false) {
+        return this.delete('/admin/releases/' + id + (keepFiles ? '?keepFiles=true' : ''));
+    },
+
+    async deleteTrack(id, deleteFile = false) {
+        return this.delete('/tracks/' + id + (deleteFile ? '?deleteFile=true' : ''));
     },
 
     async getReleaseFolder(id) {
@@ -193,12 +205,12 @@ const API = {
     // Upload
     async uploadTracks(files, options = {}) {
         const formData = new FormData();
-        for (const file of files) {
-            formData.append('files', file);
-        }
         if (options.releaseSlug) {
             formData.append('releaseSlug', options.releaseSlug);
             formData.append('type', 'release');
+        }
+        for (const file of files) {
+            formData.append('files', file);
         }
 
         const res = await fetch('/api/admin/upload/tracks', {
@@ -214,11 +226,11 @@ const API = {
 
     async uploadCover(file, releaseSlug) {
         const formData = new FormData();
-        formData.append('file', file);
         if (releaseSlug) {
             formData.append('releaseSlug', releaseSlug);
             formData.append('type', 'release');
         }
+        formData.append('file', file);
 
         const res = await fetch('/api/admin/upload/cover', {
             method: 'POST',

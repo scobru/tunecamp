@@ -13,6 +13,7 @@ interface CreateReleaseBody {
     download?: "free" | "paycurtain" | "codes" | "none";
     price?: number;
     artistName?: string;
+    externalLinks?: { label: string; url: string }[] | { [key: string]: string };
 }
 
 interface UpdateReleaseBody extends Partial<CreateReleaseBody> {
@@ -151,9 +152,10 @@ export function createReleaseRoutes(
                     if (body.date) config.date = body.date;
                     if (body.description !== undefined) config.description = body.description;
                     if (body.genres) config.genres = body.genres;
-                    if (body.download) config.download = body.download;
+                    if (body.download !== undefined) config.download = body.download;
                     if (body.price !== undefined) config.price = body.price;
                     if (body.artistName) config.artist = body.artistName;
+                    if (body.externalLinks) config.links = body.externalLinks;
 
                     await fs.writeFile(releaseYamlPath, stringify(config));
                 }
@@ -194,6 +196,7 @@ export function createReleaseRoutes(
     router.delete("/:id", async (req, res) => {
         try {
             const id = parseInt(req.params.id, 10);
+            const keepFiles = req.query.keepFiles === "true";
 
             const album = database.getAlbum(id);
             if (!album) {
@@ -228,20 +231,32 @@ export function createReleaseRoutes(
                 }
             }
 
-            // Delete the release folder if found
-            if (releaseDir && await fs.pathExists(releaseDir)) {
-                await fs.remove(releaseDir);
-                console.log(`🗑️ Deleted release folder: ${releaseDir}`);
+            // If keepFiles is true, we ONLY delete release.yaml to demote it
+            if (keepFiles) {
+                if (releaseDir) {
+                    const yamlPath = path.join(releaseDir, "release.yaml");
+                    if (await fs.pathExists(yamlPath)) {
+                        await fs.remove(yamlPath);
+                        console.log(`🗑️ Deleted release.yaml for: ${album.title}`);
+                    }
+                }
+                database.deleteAlbum(id, true);
+                res.json({ message: "Release deleted (files kept)" });
             } else {
-                console.log(`⚠️ Could not find release folder for album: ${album.title} (slug: ${album.slug})`);
-                // Still delete from database even if folder not found
-                database.deleteAlbum(id);
+                // Delete the release folder if found
+                if (releaseDir && await fs.pathExists(releaseDir)) {
+                    await fs.remove(releaseDir);
+                    console.log(`🗑️ Deleted release folder: ${releaseDir}`);
+                } else {
+                    console.log(`⚠️ Could not find release folder for album: ${album.title} (slug: ${album.slug})`);
+                }
+                // Always delete from database
+                database.deleteAlbum(id, false);
+                res.json({ message: "Release deleted" });
             }
 
             // Rescan to update database
             await scanner.scanDirectory(musicDir);
-
-            res.json({ message: "Release deleted" });
         } catch (error) {
             console.error("Error deleting release:", error);
             res.status(500).json({ error: "Failed to delete release" });
@@ -351,11 +366,18 @@ export function createReleaseRoutes(
 
             // Move file
             if (track.file_path !== newPath) {
-                await fs.move(track.file_path, newPath, { overwrite: true });
-                console.log(`📦 Moved track: ${track.title} -> ${newPath}`);
-
-                // Update database
+                // Update database FIRST to prevent watcher from deleting the track on unlink
                 database.updateTrackPath(trackId, newPath, releaseId);
+
+                try {
+                    await fs.move(track.file_path, newPath, { overwrite: true });
+                    console.log(`📦 Moved track: ${track.title} -> ${newPath}`);
+                } catch (moveError) {
+                    // Revert database change if move fails
+                    console.error("Move failed, reverting DB:", moveError);
+                    database.updateTrackPath(trackId, track.file_path, track.album_id || 0); // Revert to old path/album
+                    throw moveError;
+                }
             } else {
                 // Even if path is same, ensure album link is correct
                 database.updateTrackAlbum(trackId, releaseId);

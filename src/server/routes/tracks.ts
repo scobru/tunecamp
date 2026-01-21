@@ -124,5 +124,126 @@ export function createTracksRoutes(database: DatabaseService) {
         }
     });
 
+    /**
+     * PUT /api/tracks/:id
+     * Update track metadata and ID3 tags (admin only)
+     */
+    router.put("/:id", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const track = database.getTrack(id);
+
+            if (!track) {
+                return res.status(404).json({ error: "Track not found" });
+            }
+
+            const { title, artist, album, trackNumber, genre } = req.body;
+
+            // Update ID3 tags for MP3 files
+            const ext = path.extname(track.file_path).toLowerCase();
+            if (ext === ".mp3") {
+                try {
+                    const NodeID3 = await import("node-id3");
+
+                    // Read existing tags
+                    const existingTags = NodeID3.read(track.file_path) || {};
+
+                    // Update tags
+                    const newTags: any = { ...existingTags };
+                    if (title !== undefined) newTags.title = title;
+                    if (artist !== undefined) newTags.artist = artist;
+                    if (album !== undefined) newTags.album = album;
+                    if (trackNumber !== undefined) newTags.trackNumber = String(trackNumber);
+                    if (genre !== undefined) newTags.genre = genre;
+
+                    // Write tags to file
+                    const success = NodeID3.write(newTags, track.file_path);
+                    if (!success) {
+                        console.warn(`⚠️  Could not write ID3 tags to ${track.file_path}`);
+                    } else {
+                        console.log(`🏷️  Updated ID3 tags for: ${track.file_path}`);
+                    }
+                } catch (tagError) {
+                    console.error("Error updating ID3 tags:", tagError);
+                    // Continue anyway - we can still update the database
+                }
+            } else {
+                console.log(`ℹ️  Skipping ID3 update for non-MP3 file: ${ext}`);
+            }
+
+            // Update database
+            if (title !== undefined) {
+                database.updateTrackTitle(id, title);
+            }
+
+            // Update artist in database if provided
+            if (artist !== undefined) {
+                let artistRecord = database.getArtistByName(artist);
+                if (!artistRecord && artist) {
+                    const artistId = database.createArtist(artist);
+                    artistRecord = database.getArtist(artistId);
+                }
+                if (artistRecord) {
+                    database.updateTrackArtist(id, artistRecord.id);
+                }
+            }
+
+            // Get updated track
+            const updatedTrack = database.getTrack(id);
+            res.json({ message: "Track updated", track: updatedTrack });
+        } catch (error) {
+            console.error("Error updating track:", error);
+            res.status(500).json({ error: "Failed to update track" });
+        }
+    });
+
+
+
+    /**
+     * DELETE /api/tracks/:id
+     * Delete a track, optionally deleting the file
+     */
+    router.delete("/:id", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const deleteFile = req.query.deleteFile === "true";
+
+            const track = database.getTrack(id);
+            if (!track) {
+                return res.status(404).json({ error: "Track not found" });
+            }
+
+            if (deleteFile) {
+                if (fs.existsSync(track.file_path)) {
+                    try {
+                        fs.unlinkSync(track.file_path);
+                        console.log(`🗑️  Deleted file: ${track.file_path}`);
+                    } catch (err) {
+                        console.error("Error deleting file:", err);
+                        return res.status(500).json({ error: "Failed to delete file" });
+                    }
+                }
+            }
+
+            // Delete from database
+            // Note: If file was deleted, watcher might have already triggered this, 
+            // but it's safe to run again (idempotent if using specific ID delete)
+            database.deleteTrack(id);
+
+            res.json({ message: "Track deleted" });
+        } catch (error) {
+            console.error("Error deleting track:", error);
+            res.status(500).json({ error: "Failed to delete track" });
+        }
+    });
+
     return router;
 }

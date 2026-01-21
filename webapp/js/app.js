@@ -175,7 +175,21 @@ const App = {
             <p style="margin-bottom: 1rem;">${artistLink}</p>
             ${album.date ? '<p style="color: var(--text-muted);">' + album.date + '</p>' : ''}
             ${album.genre ? '<p style="color: var(--text-muted);">' + album.genre + '</p>' : ''}
-            ${album.description ? '<p style="color: var(--text-secondary); margin-top: 1rem; max-width: 500px;">' + album.description + '</p>' : ''}
+            ${album.description ? '<p style="color: var(--text-secondary); margin-top: 1rem; max-width: 500px; white-space: pre-wrap;">' + album.description + '</p>' : ''}
+            ${album.download === 'free' ? '<a href="/api/albums/' + (album.slug || album.id) + '/download" class="btn btn-primary" style="margin-top: 1rem;">⬇️ Free Download</a>' : ''}
+            
+            ${(() => {
+                if (album.external_links) {
+                    try {
+                         const links = JSON.parse(album.external_links);
+                         return links.map(link => 
+                             `<a href="${link.url}" target="_blank" class="btn btn-outline" style="margin-top: 1rem; margin-right: 0.5rem;">🔗 ${link.label}</a>`
+                         ).join('');
+                    } catch (e) { return ''; }
+                }
+                return '';
+            })()}
+
             ${this.isAdmin && !album.is_release ? '<button class="btn btn-primary" id="promote-btn" style="margin-top: 1rem;">Promote to Release</button>' : ''}
           </div>
         </div>
@@ -262,6 +276,12 @@ const App = {
             style="margin-left: 1rem; padding: 2px 8px; font-size: 0.8rem;" 
             onclick="event.stopPropagation(); App.showAddToReleaseModal(${track.id}, '${track.title.replace(/'/g, "\\'")}')">
             + Release
+           </button>` : ''}
+        ${this.isAdmin ?
+        `<button class="btn btn-sm btn-outline edit-track-btn" title="Edit Track" 
+            style="margin-left: 0.5rem; padding: 2px 8px; font-size: 0.8rem;" 
+            onclick="event.stopPropagation(); App.showEditTrackModal(${track.id})">
+            ✏️
            </button>` : ''}
       </div>
     `).join('');
@@ -878,6 +898,15 @@ const App = {
           <h2 class="section-title">Edit Release: ${release.title}</h2>
           <form id="edit-release-form">
             <div class="form-group">
+              <label>Cover Image</label>
+              <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="cover-preview" style="width: 100px; height: 100px; border-radius: 8px; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem; background-size: cover; background-position: center;" id="cover-preview">
+                  ${release.cover_path ? '' : '🎵'}
+                </div>
+                <input type="file" id="edit-release-cover" accept="image/*" style="flex: 1;">
+              </div>
+            </div>
+            <div class="form-group">
               <label>Title</label>
               <input type="text" id="edit-release-title" value="${release.title}" required>
             </div>
@@ -900,9 +929,27 @@ const App = {
               <label>Genres (comma separated)</label>
               <input type="text" id="edit-release-genres" value="${release.genre || ''}">
             </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-              <button type="button" class="btn btn-outline" id="cancel-edit-release">Cancel</button>
+            <div class="form-group">
+              <label>Download Type</label>
+              <select id="edit-release-download">
+                <option value="" ${!release.download ? 'selected' : ''}>Streaming Only</option>
+                <option value="free" ${release.download === 'free' ? 'selected' : ''}>Free Download</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+                <label>External Links (e.g. Bandcamp, Donation)</label>
+                <div id="external-links-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <!-- Links injected here -->
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="add-external-link">＋ Add Link</button>
+            </div>
+            <div class="form-actions" style="justify-content: space-between;">
+              <div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-outline" id="cancel-edit-release">Cancel</button>
+              </div>
+              <button type="button" class="btn btn-outline" id="delete-release-btn" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Release</button>
             </div>
           </form>
         </div>
@@ -910,9 +957,49 @@ const App = {
 
     document.body.appendChild(modal);
 
+    // Set cover preview if exists
+    if (release.cover_path) {
+      document.getElementById('cover-preview').style.backgroundImage = `url(${API.getAlbumCoverUrl(release.slug || release.id)})`;
+    }
+
+    // Cover file preview
+    document.getElementById('edit-release-cover').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          document.getElementById('cover-preview').style.backgroundImage = `url(${ev.target.result})`;
+          document.getElementById('cover-preview').innerHTML = '';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
     document.getElementById('cancel-edit-release').addEventListener('click', () => {
       document.getElementById('edit-release-modal').remove();
     });
+
+    // External Links Logic
+    const linksContainer = document.getElementById('external-links-container');
+    const existingLinks = release.external_links ? JSON.parse(release.external_links) : [];
+    
+    function addLinkInput(label = '', url = '') {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.gap = '0.5rem';
+        div.innerHTML = `
+            <input type="text" placeholder="Label (e.g. Bandcamp)" class="link-label" value="${label}" style="flex: 1;">
+            <input type="text" placeholder="URL (https://...)" class="link-url" value="${url}" style="flex: 2;">
+            <button type="button" class="btn btn-outline btn-sm remove-link" style="color: var(--color-danger); border-color: var(--color-danger);">✕</button>
+        `;
+        div.querySelector('.remove-link').onclick = () => div.remove();
+        linksContainer.appendChild(div);
+    }
+
+    // Populate existing
+    existingLinks.forEach(link => addLinkInput(link.label, link.url));
+
+    document.getElementById('add-external-link').onclick = () => addLinkInput();
 
     document.getElementById('edit-release-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -922,21 +1009,89 @@ const App = {
       const description = document.getElementById('edit-release-description').value;
       const genresRaw = document.getElementById('edit-release-genres').value;
       const genres = genresRaw ? genresRaw.split(',').map(g => g.trim()).filter(g => g) : [];
+      const coverFile = document.getElementById('edit-release-cover').files[0];
+      const download = document.getElementById('edit-release-download').value;
 
       try {
+        // Update release info
         await API.updateRelease(releaseId, {
           title,
           artistName: artistName || undefined,
           date: date || undefined,
           description: description || undefined,
-          genres: genres.length > 0 ? genres : undefined
+          genres: genres.length > 0 ? genres : undefined,
+          genres: genres.length > 0 ? genres : undefined,
+          download: download || undefined,
+          externalLinks: Array.from(document.querySelectorAll('#external-links-container > div')).map(div => ({
+            label: div.querySelector('.link-label').value.trim(),
+            url: div.querySelector('.link-url').value.trim()
+          })).filter(l => l.label && l.url)
         });
+
+        // Upload cover if provided
+        if (coverFile) {
+          await API.uploadCover(coverFile, release.slug);
+        }
+
         document.getElementById('edit-release-modal').remove();
         alert('Release updated!');
         window.location.reload();
       } catch (err) {
         alert('Failed to update release: ' + err.message);
       }
+    });
+
+    document.getElementById('delete-release-btn').addEventListener('click', () => {
+      const choiceModal = document.createElement('div');
+      choiceModal.className = 'modal';
+      choiceModal.style.display = 'flex';
+      choiceModal.style.zIndex = '10001';
+      choiceModal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <h3>Delete Release</h3>
+                <p>How do you want to delete this release?</p>
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+                    <button class="btn btn-primary" id="del-release-keep">Delete & Keep Files</button>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Removes release metadata but keeps audio files in library.</p>
+                    
+                    <button class="btn btn-outline" id="del-release-all" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Everything</button>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes release and all files from disk.</p>
+                    
+                    <button class="btn btn-outline" id="del-release-cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+      document.body.appendChild(choiceModal);
+
+      document.getElementById('del-release-cancel').onclick = () => choiceModal.remove();
+
+      document.getElementById('del-release-keep').onclick = async () => {
+        if (confirm("Are you sure you want to delete the release record but keep files?")) {
+          try {
+            await API.deleteRelease(releaseId, true);
+            alert("Release deleted (Files kept in library)");
+            window.location.hash = '#albums';
+            window.location.reload();
+          } catch (e) {
+            alert("Error: " + e.message);
+          }
+        }
+        choiceModal.remove();
+      };
+
+      document.getElementById('del-release-all').onclick = async () => {
+        if (confirm("WARNING: This will PERMANENTLY DELETE all files. Are you sure?")) {
+          try {
+            await API.deleteRelease(releaseId, false);
+            alert("Release and files deleted permanently.");
+            window.location.hash = '#albums';
+            window.location.reload();
+          } catch (e) {
+            alert("Error: " + e.message);
+          }
+        }
+        choiceModal.remove();
+      };
     });
   },
 
@@ -1047,6 +1202,129 @@ const App = {
       } catch (err) {
         alert('Failed to update artist: ' + err.message);
       }
+    });
+  },
+
+  async showEditTrackModal(trackId) {
+    const track = await API.getTrack(trackId);
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.id = 'edit-track-modal';
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+          <h2 class="section-title">Edit Track</h2>
+          <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">File: ${track.file_path.split('\\').pop() || track.file_path.split('/').pop()}</p>
+          <form id="edit-track-form">
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" id="edit-track-title" value="${track.title || ''}" required>
+            </div>
+            <div class="form-group">
+              <label>Artist</label>
+              <input type="text" id="edit-track-artist" value="${track.artist_name || ''}">
+            </div>
+            <div class="form-group">
+              <label>Genre</label>
+              <input type="text" id="edit-track-genre" value="">
+            </div>
+            <div class="form-group">
+              <label>Track Number</label>
+              <input type="number" id="edit-track-number" value="${track.track_num || ''}" min="1">
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem;">
+              ℹ️ ID3 tags will be updated for MP3 files. Other formats update database only.
+            </p>
+            <div class="form-actions" style="justify-content: space-between;">
+              <div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn btn-outline" id="cancel-edit-track">Cancel</button>
+              </div>
+              <button type="button" class="btn btn-outline" id="delete-track-btn" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Track</button>
+            </div>
+          </form>
+        </div>
+      `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('cancel-edit-track').addEventListener('click', () => {
+      document.getElementById('edit-track-modal').remove();
+    });
+
+    document.getElementById('edit-track-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('edit-track-title').value;
+      const artist = document.getElementById('edit-track-artist').value;
+      const genre = document.getElementById('edit-track-genre').value;
+      const trackNumber = document.getElementById('edit-track-number').value;
+
+      try {
+        await API.updateTrack(trackId, {
+          title: title || undefined,
+          artist: artist || undefined,
+          genre: genre || undefined,
+          trackNumber: trackNumber ? parseInt(trackNumber) : undefined
+        });
+        document.getElementById('edit-track-modal').remove();
+        alert('Track updated!');
+        window.location.reload();
+      } catch (err) {
+        alert('Failed to update track: ' + err.message);
+      }
+    });
+
+    document.getElementById('delete-track-btn').addEventListener('click', () => {
+      const choiceModal = document.createElement('div');
+      choiceModal.className = 'modal';
+      choiceModal.style.display = 'flex';
+      choiceModal.style.zIndex = '10001';
+      choiceModal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <h3>Delete Track</h3>
+                <p>How do you want to delete this track?</p>
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+                    <button class="btn btn-primary" id="del-track-db">Remove from Library</button>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Removes metadata from database only. File remains on disk.</p>
+                    
+                    <button class="btn btn-outline" id="del-track-file" style="border-color: var(--color-danger); color: var(--color-danger);">Delete File</button>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes file from disk.</p>
+                    
+                    <button class="btn btn-outline" id="del-track-cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+      document.body.appendChild(choiceModal);
+
+      document.getElementById('del-track-cancel').onclick = () => choiceModal.remove();
+
+      document.getElementById('del-track-db').onclick = async () => {
+        if (confirm("Remove track from library? (File will stay)")) {
+          try {
+            await API.deleteTrack(trackId, false);
+            alert("Track removed from library");
+            window.location.reload();
+          } catch (e) {
+            alert("Error: " + e.message);
+          }
+        }
+        choiceModal.remove();
+      };
+
+      document.getElementById('del-track-file').onclick = async () => {
+        if (confirm("WARNING: This will PERMANENTLY DELETE the file. Are you sure?")) {
+          try {
+            await API.deleteTrack(trackId, true);
+            alert("Track and file deleted permanently.");
+            window.location.reload();
+          } catch (e) {
+            alert("Error: " + e.message);
+          }
+        }
+        choiceModal.remove();
+      };
     });
   },
 

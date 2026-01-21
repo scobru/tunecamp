@@ -1,5 +1,5 @@
-title: "Catarifrangente"
-date: "2026-01-17"
+title: Catarifrangente
+date: 2026-01-17
 description: |
   Se non avessi niente...
   Qua..
@@ -24,12 +24,13 @@ description: |
   Qua..
   Catarifrangente..
 genres:
-  - "Electronic"
-  - "Pop"
-download: "free"
-cover: "artwork/cover.png"
+  - Electronic
+  - Pop
+download: paid
+cover: artwork/cover.png
 credits:
-  - role: "Produced by"
-    name: "Francesco Bruno"
-name: "Francesco Bruno"
+  - role: Produced by
+    name: Francesco Bruno
+name: Francesco Bruno
 unlisted: true
+artist: Homologo

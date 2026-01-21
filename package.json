@@ -26,8 +26,10 @@
   "license": "MIT",
   "dependencies": {
     "@inquirer/prompts": "^8.2.0",
+    "@types/archiver": "^7.0.0",
     "@types/inquirer": "^9.0.9",
     "@types/multer": "^2.0.0",
+    "archiver": "^7.0.1",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.6.2",
     "chalk": "^5.3.0",
@@ -43,6 +45,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "music-metadata": "^8.1.4",
+    "node-id3": "^0.2.9",
     "vercel": "^50.4.4",
     "yaml": "^2.3.4"
   },

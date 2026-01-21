@@ -141,5 +141,70 @@ export function createAlbumsRoutes(database: DatabaseService) {
         }
     });
 
+    /**
+     * GET /api/albums/:idOrSlug/download
+     * Download all tracks as individual files or ZIP (only if download enabled)
+     */
+    router.get("/:idOrSlug/download", async (req: AuthenticatedRequest, res) => {
+        try {
+            const param = req.params.idOrSlug as string;
+            let album;
+
+            if (/^\d+$/.test(param)) {
+                album = database.getAlbum(parseInt(param, 10));
+            } else {
+                album = database.getAlbumBySlug(param);
+            }
+
+            if (!album) {
+                return res.status(404).json({ error: "Album not found" });
+            }
+
+            // Check if download is enabled
+            if (!album.download || (album.download !== 'free' && album.download !== 'paid')) {
+                return res.status(403).json({ error: "Downloads not enabled for this release" });
+            }
+
+            // Get tracks for this album
+            const tracks = database.getTracks(album.id);
+            if (!tracks || tracks.length === 0) {
+                return res.status(404).json({ error: "No tracks found" });
+            }
+
+            // For single track, just send the file
+            if (tracks.length === 1) {
+                const track = tracks[0];
+                if (!fs.existsSync(track.file_path)) {
+                    return res.status(404).json({ error: "Track file not found" });
+                }
+                const filename = path.basename(track.file_path);
+                res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+                res.setHeader("Content-Type", "application/octet-stream");
+                return fs.createReadStream(track.file_path).pipe(res);
+            }
+
+            // For multiple tracks, create a simple sequential download
+            // Send first track with info about others
+            const archiver = await import("archiver");
+            const archive = archiver.default("zip", { zlib: { level: 5 } });
+
+            res.setHeader("Content-Type", "application/zip");
+            res.setHeader("Content-Disposition", `attachment; filename="${album.slug || album.title}.zip"`);
+
+            archive.pipe(res);
+
+            for (const track of tracks) {
+                if (fs.existsSync(track.file_path)) {
+                    archive.file(track.file_path, { name: path.basename(track.file_path) });
+                }
+            }
+
+            await archive.finalize();
+        } catch (error) {
+            console.error("Error downloading album:", error);
+            res.status(500).json({ error: "Failed to download album" });
+        }
+    });
+
     return router;
 }

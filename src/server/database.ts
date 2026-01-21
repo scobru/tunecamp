@@ -22,6 +22,8 @@ export interface Album {
     cover_path: string | null;
     genre: string | null;
     description: string | null;
+    download: string | null; // 'free' | 'paid' | null
+    external_links: string | null; // JSON string of ExternalLink[]
     is_public: boolean;
     is_release: boolean; // true = published release, false = library album
     published_at: string | null;
@@ -71,8 +73,11 @@ export interface DatabaseService {
     createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateAlbumVisibility(id: number, isPublic: boolean): void;
     updateAlbumArtist(id: number, artistId: number): void;
+    updateAlbumCover(id: number, coverPath: string): void;
+    updateAlbumDownload(id: number, download: string | null): void;
+    updateAlbumLinks(id: number, links: string | null): void;
     promoteToRelease(id: number): void; // Mark library album as release
-    deleteAlbum(id: number): void;
+    deleteAlbum(id: number, keepTracks?: boolean): void;
     // Tracks
     getTracks(albumId?: number): Track[];
     getTrack(id: number): Track | undefined;
@@ -80,6 +85,7 @@ export interface DatabaseService {
     createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number;
     updateTrackAlbum(id: number, albumId: number | null): void;
     updateTrackArtist(id: number, artistId: number | null): void;
+    updateTrackTitle(id: number, title: string): void;
     updateTrackPath(id: number, filePath: string, albumId: number): void;
     deleteTrack(id: number): void;
     // Playlists
@@ -123,6 +129,10 @@ export function createDatabase(dbPath: string): DatabaseService {
       cover_path TEXT,
       genre TEXT,
       description TEXT,
+      genre TEXT,
+      description TEXT,
+      download TEXT,
+      external_links TEXT,
       is_public INTEGER DEFAULT 0,
       is_release INTEGER DEFAULT 0,
       published_at TEXT,
@@ -174,6 +184,22 @@ export function createDatabase(dbPath: string): DatabaseService {
     try {
         db.exec(`ALTER TABLE albums ADD COLUMN is_release INTEGER DEFAULT 0`);
         console.log("📦 Migrated database: added is_release column");
+    } catch (e) {
+        // Column already exists, ignore
+    }
+
+    // Migration: Add download column if it doesn't exist
+    try {
+        db.exec(`ALTER TABLE albums ADD COLUMN download TEXT`);
+        console.log("📦 Migrated database: added download column");
+    } catch (e) {
+        // Column already exists, ignore
+    }
+
+    // Migration: Add external_links column if it doesn't exist
+    try {
+        db.exec(`ALTER TABLE albums ADD COLUMN external_links TEXT`);
+        console.log("📦 Migrated database: added external_links column");
     } catch (e) {
         // Column already exists, ignore
     }
@@ -309,8 +335,8 @@ export function createDatabase(dbPath: string): DatabaseService {
                 try {
                     const result = db
                         .prepare(
-                            `INSERT INTO albums (title, slug, artist_id, date, cover_path, genre, description, is_public, is_release, published_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                            `INSERT INTO albums (title, slug, artist_id, date, cover_path, genre, description, download, external_links, is_public, is_release, published_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                         )
                         .run(
                             album.title,
@@ -320,6 +346,8 @@ export function createDatabase(dbPath: string): DatabaseService {
                             album.cover_path,
                             album.genre,
                             album.description,
+                            album.download,
+                            album.external_links,
                             album.is_public ? 1 : 0,
                             album.is_release ? 1 : 0,
                             album.published_at
@@ -348,13 +376,31 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.prepare("UPDATE albums SET artist_id = ? WHERE id = ?").run(artistId, id);
         },
 
+        updateAlbumCover(id: number, coverPath: string): void {
+            db.prepare("UPDATE albums SET cover_path = ? WHERE id = ?").run(coverPath, id);
+        },
+
+        updateAlbumDownload(id: number, download: string | null): void {
+            db.prepare("UPDATE albums SET download = ? WHERE id = ?").run(download, id);
+        },
+
+        updateAlbumLinks(id: number, links: string | null): void {
+            db.prepare("UPDATE albums SET external_links = ? WHERE id = ?").run(links, id);
+        },
+
         promoteToRelease(id: number): void {
             db.prepare("UPDATE albums SET is_release = 1 WHERE id = ?").run(id);
         },
 
-        deleteAlbum(id: number): void {
-            // First delete associated tracks
-            db.prepare("DELETE FROM tracks WHERE album_id = ?").run(id);
+        deleteAlbum(id: number, keepTracks = false): void {
+            if (keepTracks) {
+                // Determine if we should unlink tracks or just nullify album_id
+                // For now, nullify album_id (move to loose tracks)
+                db.prepare("UPDATE tracks SET album_id = NULL WHERE album_id = ?").run(id);
+            } else {
+                // First delete associated tracks
+                db.prepare("DELETE FROM tracks WHERE album_id = ?").run(id);
+            }
             // Then delete the album
             db.prepare("DELETE FROM albums WHERE id = ?").run(id);
         },
@@ -427,6 +473,10 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         updateTrackArtist(id: number, artistId: number | null): void {
             db.prepare("UPDATE tracks SET artist_id = ? WHERE id = ?").run(artistId, id);
+        },
+
+        updateTrackTitle(id: number, title: string): void {
+            db.prepare("UPDATE tracks SET title = ? WHERE id = ?").run(title, id);
         },
 
         updateTrackPath(id: number, filePath: string, albumId: number): void {

@@ -20,7 +20,7 @@ function createStorage(musicDir: string) {
 
             let destDir: string;
 
-            if (uploadType === "release" && releaseSlug) {
+            if (releaseSlug) {
                 // Upload to release folder
                 const isAudio = AUDIO_EXTENSIONS.includes(
                     path.extname(file.originalname).toLowerCase()
@@ -28,6 +28,9 @@ function createStorage(musicDir: string) {
                 destDir = isAudio
                     ? path.join(musicDir, "releases", releaseSlug, "tracks")
                     : path.join(musicDir, "releases", releaseSlug, "artwork");
+            } else if (uploadType === "release") {
+                // No slug but type is release - use library as fallback
+                destDir = path.join(musicDir, "library");
             } else {
                 // Upload to library
                 destDir = path.join(musicDir, "library");
@@ -124,7 +127,7 @@ export function createUploadRoutes(
 
             console.log(`🎨 Uploaded cover: ${file.originalname}`);
 
-            // If release slug provided, update release.yaml
+            // If release slug provided, update release.yaml and database
             if (releaseSlug) {
                 const releaseDir = path.join(musicDir, "releases", releaseSlug);
                 const releaseYamlPath = path.join(releaseDir, "release.yaml");
@@ -136,6 +139,13 @@ export function createUploadRoutes(
                     const config = yaml.parse(content);
                     config.cover = `artwork/${file.filename}`;
                     await fs.writeFile(releaseYamlPath, yaml.stringify(config));
+                }
+
+                // Update database directly
+                const album = database.getAlbumBySlug(releaseSlug);
+                if (album) {
+                    database.updateAlbumCover(album.id, file.path);
+                    console.log(`📀 Updated cover for album: ${album.title}`);
                 }
 
                 // Trigger rescan
