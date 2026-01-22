@@ -197,8 +197,9 @@ The theme uses CSS variables that you can override in your custom CSS. See the R
 ## Next Steps
 
 - [Read the full documentation](README.md)
-- [Learn about theming](docs/THEMES.md)
-- [Check the API docs](docs/API.md)
+- [Deployment guide](docs/DEPLOYMENT.md)
+- [Server mode](docs/SERVER.md)
+- [REST API](docs/API.md)
 - [Browse examples](examples/)
 
 ## Troubleshooting

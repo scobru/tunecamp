@@ -569,7 +569,9 @@ body {
 
 - [Documentation](./docs)
   - [Deployment Guide](./docs/DEPLOYMENT.md)
-  - [Theme Showcase](./docs/THEME_SHOWCASE.md)
-  - [Unlock Codes Guide](./docs/UNLOCK_CODES.md)
+  - [Server Mode](./docs/SERVER.md)
+  - [REST API](./docs/API.md)
+  - [Features Overview](./docs/FEATURES.md)
+- [Unlock Codes Guide](./docs/UNLOCK_CODES.md)
 - [Examples](./examples)
 - [Changelog](./CHANGELOG.md)

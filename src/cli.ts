@@ -19,7 +19,7 @@ const program = new Command();
 program
   .name('tunecamp')
   .description('Static site generator for musicians and labels')
-  .version('0.1.0');
+  .version('1.1.3');
 
 program
   .command('build')
