@@ -9,7 +9,7 @@ export function createPlaylistsRoutes(database: DatabaseService) {
      * GET /api/playlists
      * List all playlists
      */
-    router.get("/", (req, res) => {
+    router.get("/", (req: AuthenticatedRequest, res) => {
         try {
             const isPublicOnly = !req.isAdmin;
             const playlists = database.getPlaylists(isPublicOnly);
@@ -48,7 +48,7 @@ export function createPlaylistsRoutes(database: DatabaseService) {
     router.put("/:id", (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const id = parseInt(req.params.id, 10);
+            const id = parseInt(req.params.id as string, 10);
             const { isPublic } = req.body;
 
             // For now only supports toggling visibility
@@ -67,9 +67,9 @@ export function createPlaylistsRoutes(database: DatabaseService) {
      * GET /api/playlists/:id
      * Get playlist with tracks
      */
-    router.get("/:id", (req, res) => {
+    router.get("/:id", (req: AuthenticatedRequest, res) => {
         try {
-            const id = parseInt(req.params.id, 10);
+            const id = parseInt(req.params.id as string, 10);
             const playlist = database.getPlaylist(id);
 
             if (!playlist) {
@@ -99,7 +99,7 @@ export function createPlaylistsRoutes(database: DatabaseService) {
     router.delete("/:id", (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const id = parseInt(req.params.id, 10);
+            const id = parseInt(req.params.id as string, 10);
             const playlist = database.getPlaylist(id);
 
             if (!playlist) {
@@ -121,7 +121,7 @@ export function createPlaylistsRoutes(database: DatabaseService) {
     router.post("/:id/tracks", (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const playlistId = parseInt(req.params.id, 10);
+            const playlistId = parseInt(req.params.id as string, 10);
             const { trackId } = req.body;
 
             if (!trackId || typeof trackId !== "number") {
@@ -153,8 +153,8 @@ export function createPlaylistsRoutes(database: DatabaseService) {
     router.delete("/:id/tracks/:trackId", (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const playlistId = parseInt(req.params.id, 10);
-            const trackId = parseInt(req.params.trackId, 10);
+            const playlistId = parseInt(req.params.id as string, 10);
+            const trackId = parseInt(req.params.trackId as string, 10);
 
             database.removeTrackFromPlaylist(playlistId, trackId);
             res.json({ message: "Track removed from playlist" });

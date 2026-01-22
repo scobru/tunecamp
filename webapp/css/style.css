@@ -1112,3 +1112,55 @@ body {
   text-decoration: underline;
 }
 
+/* Playlist Modal */
+.modal-sm {
+  max-width: 500px;
+}
+
+.playlist-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.playlist-item {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playlist-item:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+
+.playlist-item:active {
+  transform: translateX(2px);
+}
+
+/* Add to Playlist Button */
+.add-to-playlist-btn {
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.add-to-playlist-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Ghost button variant */
+.btn-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  color: var(--accent);
+  background: rgba(208, 188, 255, 0.1);
+}

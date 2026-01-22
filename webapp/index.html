@@ -155,6 +155,24 @@
     </div>
   </div>
 
+  <!-- Add to Playlist Modal -->
+  <div class="modal" id="add-to-playlist-modal">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2>Add to Playlist</h2>
+        <button class="modal-close" id="playlist-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="playlist-selection" class="playlist-list">
+          <!-- Populated dynamically -->
+        </div>
+        <button class="btn btn-outline btn-block" id="create-new-playlist-btn" style="margin-top: 1rem;">
+          + Create New Playlist
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/api.js"></script>
   <script src="js/user-auth.js"></script>
   <script src="js/player.js"></script>

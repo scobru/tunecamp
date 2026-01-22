@@ -308,6 +308,22 @@ const API = {
         return this.put('/playlists/' + id, data);
     },
 
+    async getPlaylists() {
+        return this.get('/playlists');
+    },
+
+    async createPlaylist(name, description) {
+        return this.post('/playlists', { name, description });
+    },
+
+    async getPlaylist(id) {
+        return this.get('/playlists/' + id);
+    },
+
+    async deletePlaylist(id) {
+        return this.delete('/playlists/' + id);
+    },
+
     async addTrackToPlaylist(playlistId, trackId) {
         return this.post(`/playlists/${playlistId}/tracks`, { trackId });
     },

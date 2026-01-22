@@ -83,6 +83,35 @@ const App = {
 
     // === User Auth Event Handlers ===
     this.setupUserAuthHandlers();
+
+    // === Playlist Modal Event Handlers ===
+    this.setupPlaylistModalHandlers();
+  },
+
+  setupPlaylistModalHandlers() {
+    const playlistModal = document.getElementById('add-to-playlist-modal');
+    const playlistModalClose = document.getElementById('playlist-modal-close');
+    const createNewPlaylistBtn = document.getElementById('create-new-playlist-btn');
+
+    if (!playlistModal) return;
+
+    // Close modal
+    playlistModalClose.addEventListener('click', () => {
+      playlistModal.classList.remove('active');
+    });
+
+    // Click outside to close
+    playlistModal.addEventListener('click', (e) => {
+      if (e.target === playlistModal) {
+        playlistModal.classList.remove('active');
+      }
+    });
+
+    // Create new playlist button
+    createNewPlaylistBtn.addEventListener('click', () => {
+      playlistModal.classList.remove('active');
+      window.location.hash = '#/playlists';
+    });
   },
 
   setupUserAuthHandlers() {
@@ -559,6 +588,12 @@ const App = {
             style="margin-left: 0.5rem; padding: 2px 8px; font-size: 0.8rem;" 
             onclick="event.stopPropagation(); App.showEditTrackModal(${track.id})">
             ✏️
+           </button>` : ''}
+        ${this.isAdmin ?
+        `<button class="btn btn-sm btn-ghost add-to-playlist-btn" title="Add to Playlist" 
+            style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;" 
+            onclick="event.stopPropagation(); App.showAddToPlaylistModal(${track.id})">
+            📋
            </button>` : ''}
       </div>
     `).join('');
@@ -1088,7 +1123,7 @@ const App = {
               <div class="track-number">${i + 1}</div>
               <div class="track-title">${App.escapeHtml(t.title)}</div>
               <div class="track-artist">${App.escapeHtml(t.artist_name || 'Unknown')}</div>
-              <div class="track-duration">${App.formatDuration(t.duration)}</div>
+              <div class="track-duration">${Player.formatTime(t.duration)}</div>
               ${this.isAdmin ? `<div class="track-actions"><button class="btn-icon" onclick="event.stopPropagation(); App.removeFromPlaylist(${id}, ${t.id})">❌</button></div>` : ''}
             </div>
           `).join('') : '<p>No tracks in this playlist.</p>'}
@@ -2186,6 +2221,13 @@ bandcamp: https://artist.bandcamp.com"></textarea>
           <div class="track-title">${track.title}</div>
         </div>
         <div class="track-duration">${Player.formatTime(track.duration)}</div>
+        ${this.isAdmin ? `
+        <button class="btn btn-sm btn-ghost add-to-playlist-btn" 
+                title="Add to Playlist" 
+                style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;"
+                onclick="event.stopPropagation(); App.showAddToPlaylistModal(${track.id})">
+          📋
+        </button>` : ''}
       </div>
     `).join('');
 
@@ -2304,8 +2346,75 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     } catch (e) {
       error.textContent = 'Setup failed';
     }
+  },
+
+  // Playlist Management
+  currentTrackToAdd: null,
+
+  async showAddToPlaylistModal(trackId) {
+    if (!this.isAdmin) {
+      alert('Please login as admin to manage playlists');
+      return;
+    }
+
+    this.currentTrackToAdd = trackId;
+    const modal = document.getElementById('add-to-playlist-modal');
+    const playlistSelection = document.getElementById('playlist-selection');
+
+    // Load playlists
+    try {
+      const playlists = await API.getPlaylists();
+
+      if (playlists.length === 0) {
+        playlistSelection.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">No playlists yet. Create one!</p>';
+      } else {
+        playlistSelection.innerHTML = playlists.map(p => `
+          <div class="playlist-item" data-playlist-id="${p.id}" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
+            <div style="font-weight: 500;">${this.escapeHtml(p.name)}</div>
+            <div style="font-size: 0.875rem; color: var(--text-secondary);">${this.escapeHtml(p.description || '')}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              ${p.is_public ? '🌐 Public' : '🔒 Private'}
+            </div>
+          </div>
+        `).join('');
+
+        // Add click listeners
+        playlistSelection.querySelectorAll('.playlist-item').forEach(item => {
+          item.addEventListener('click', async () => {
+            const playlistId = parseInt(item.dataset.playlistId);
+            await this.addTrackToPlaylist(playlistId, this.currentTrackToAdd);
+          });
+
+          // Hover effects
+          item.addEventListener('mouseenter', (e) => {
+            e.target.style.backgroundColor = 'var(--bg-secondary)';
+            e.target.style.borderColor = 'var(--accent)';
+          });
+          item.addEventListener('mouseleave', (e) => {
+            e.target.style.backgroundColor = '';
+            e.target.style.borderColor = 'var(--border-color)';
+          });
+        });
+      }
+
+      modal.classList.add('active');
+    } catch (error) {
+      console.error('Error loading playlists:', error);
+      alert('Failed to load playlists');
+    }
+  },
+
+  async addTrackToPlaylist(playlistId, trackId) {
+    try {
+      await API.addTrackToPlaylist(playlistId, trackId);
+      alert('Track added to playlist!');
+      document.getElementById('add-to-playlist-modal').classList.remove('active');
+    } catch (error) {
+      console.error('Error adding track:', error);
+      alert('Failed to add track to playlist');
+    }
   }
-};
+}
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => App.init());
