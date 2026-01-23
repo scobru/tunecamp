@@ -182,11 +182,12 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         for (const track of tracks) {
             const trackSlug = generateTrackSlug(album.title, track.title);
 
-            // Build streaming URL
-            const audioUrl = `${baseUrl}/api/tracks/${track.id}/stream`;
+            // Build streaming URL - ensure no double slashes
+            const cleanBaseUrl = baseUrl.replace(/\/$/, "");
+            const audioUrl = `${cleanBaseUrl}/api/tracks/${track.id}/stream`;
 
             // Build cover URL
-            const coverUrl = album.id ? `${baseUrl}/api/albums/${album.id}/cover` : "";
+            const coverUrl = album.id ? `${cleanBaseUrl}/api/albums/${album.id}/cover` : "";
 
             const trackData = {
                 title: track.title || "Untitled",
@@ -195,7 +196,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
                 releaseTitle: album.title || "Unknown Release",
                 artistName: artistName,
                 coverUrl: coverUrl,
-                siteUrl: baseUrl,
+                siteUrl: cleanBaseUrl,
                 addedAt: now,
             };
 

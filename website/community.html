@@ -244,15 +244,21 @@
                 .map()
                 .on((data, key) => {
                     if (data && data.url) {
-                        // Skip localhost sites
-                        if (data.url.includes('localhost')) return;
+                        // Skip incomplete, untitled, or localhost sites
+                        if (
+                            data.url.includes('localhost') ||
+                            !data.coverImage ||
+                            !data.title ||
+                            data.title === 'Untitled' ||
+                            data.title === 'TuneCamp Server' // Default name, often unconfigured
+                        ) return;
 
                         sitesMap.set(key, {
                             id: key,
                             url: data.url,
-                            title: data.title || 'Untitled',
+                            title: data.title,
                             artistName: data.artistName || '',
-                            coverImage: data.coverImage || '',
+                            coverImage: data.coverImage,
                             registeredAt: data.registeredAt,
                             lastSeen: data.lastSeen,
                         });

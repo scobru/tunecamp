@@ -988,14 +988,36 @@ const App = {
     `;
 
     try {
-      const [tracks, sites] = await Promise.all([
+      const [tracksRaw, sitesRaw] = await Promise.all([
         API.getNetworkTracks(),
         API.getNetworkSites()
       ]);
 
-      document.getElementById('network-loading').style.display = 'none';
+      // Filter valid sites
+      const sites = sitesRaw.filter(s =>
+        s.url &&
+        !s.url.includes('localhost') &&
+        s.title &&
+        s.title !== 'Untitled' &&
+        s.title !== 'TuneCamp Server' &&
+        s.coverImage
+      );
+
+      // Filter valid tracks
+      const tracks = tracksRaw.filter(t =>
+        t.audioUrl &&
+        t.title &&
+        t.siteUrl &&
+        !t.siteUrl.includes('localhost')
+      );
+
+      const loadingEl = document.getElementById('network-loading');
+      if (loadingEl) loadingEl.style.display = 'none';
+
       const tracksContainer = document.getElementById('network-tracks');
       const sitesContainer = document.getElementById('network-sites');
+
+      if (!tracksContainer || !sitesContainer) return; // User navigated away
 
       if (tracks && tracks.length > 0) {
         tracksContainer.style.display = 'block';
@@ -1083,9 +1105,12 @@ const App = {
       }
     } catch (e) {
       console.error('Failed to load network data:', e);
-      document.getElementById('network-loading').innerHTML = `
+      const loadingEl = document.getElementById('network-loading');
+      if (loadingEl) {
+        loadingEl.innerHTML = `
         <div class="error-message">Failed to load network data. Try again later.</div>
       `;
+      }
     }
   },
 
@@ -1441,8 +1466,9 @@ const App = {
             <div class="stat-label">Public</div>
           </div>
         </div>
+
         
-        <!-- Network Settings Panel (hidden by default) -->
+        <!--Network Settings Panel(hidden by default) -- >
         <div id="network-settings-panel" class="admin-panel" style="display: none;">
           <h3>Network Settings</h3>
           <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Configure how your server appears on the TuneCamp network.</p>
@@ -1474,7 +1500,7 @@ const App = {
           </form>
         </div>
 
-        <!-- Upload Panel (hidden by default) -->
+        <!--Upload Panel(hidden by default )-- >
         <div id="upload-panel" class="admin-panel" style="display: none;">
           <h3>Upload Tracks to Library</h3>
           <div class="upload-zone" id="upload-zone">
@@ -1488,7 +1514,7 @@ const App = {
           </div>
         </div>
 
-        <!-- New Release Panel (hidden by default) -->
+        <!--New Release Panel(hidden by default )-- >
         <div id="release-panel" class="admin-panel" style="display: none;">
           <h3>Create New Release</h3>
           <form id="release-form">
@@ -1550,12 +1576,12 @@ const App = {
             <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
           </div>
         </div>
-      </section>
-    `;
+      </section >
+  `;
 
     const list = document.getElementById('releases-list');
     list.innerHTML = releases.map(r => `
-      <div class="release-row" data-release-id="${r.id}">
+  < div class="release-row" data - release - id="${r.id}" >
         <div class="release-cover-small album-cover-placeholder" data-src="${API.getAlbumCoverUrl(r.id)}">
           <div class="placeholder-icon" style="font-size: 1.5rem;">🎵</div>
         </div>
@@ -1577,8 +1603,8 @@ const App = {
             <span class="toggle-slider"></span>
           </label>
         </div>
-      </div>
-    `).join('');
+      </div >
+  `).join('');
 
     // Load release covers with fallback
     list.querySelectorAll('.album-cover-placeholder').forEach(el => {
@@ -1592,7 +1618,7 @@ const App = {
     const artistsList = document.getElementById('artists-list');
     const allArtists = await API.getArtists();
     artistsList.innerHTML = allArtists.map(a => `
-      <div class="release-row" data-artist-id="${a.id}">
+  < div class="release-row" data - artist - id="${a.id}" >
         <div class="release-cover-small artist-cover-placeholder" data-src="${API.getArtistCoverUrl(a.id)}">
           <div class="placeholder-icon" style="font-size: 1.5rem;">👤</div>
         </div>
@@ -1603,8 +1629,8 @@ const App = {
         <div class="release-actions">
           <button class="btn btn-sm btn-outline edit-artist" data-id="${a.id}">✏️ Edit</button>
         </div>
-      </div>
-    `).join('');
+      </div >
+  `).join('');
 
     // Load artist images
     artistsList.querySelectorAll('.artist-cover-placeholder').forEach(el => {
@@ -1646,7 +1672,7 @@ const App = {
         const id = row.dataset.releaseId;
         const title = row.querySelector('.release-title').textContent;
 
-        if (confirm(`Delete "${title}"? This will remove all files!`)) {
+        if (confirm(`Delete "${title}" ? This will remove all files!`)) {
           try {
             await API.deleteRelease(id);
             row.remove();
@@ -1869,10 +1895,10 @@ const App = {
     modal.style.display = 'flex';
     modal.id = 'add-track-modal';
 
-    const options = releases.map(r => `<option value="${r.id}">${r.title}</option>`).join('');
+    const options = releases.map(r => `< option value = "${r.id}" > ${r.title}</option > `).join('');
 
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 400px;">
+  < div class="modal-content" style = "max-width: 400px;" >
           <h2 class="section-title">Add Track to Release</h2>
           <p>Track: <strong>${trackTitle}</strong></p>
           <div class="form-group">
@@ -1885,8 +1911,8 @@ const App = {
             <button class="btn btn-primary" id="confirm-add-track">Add to Release</button>
             <button class="btn btn-outline" onclick="document.getElementById('add-track-modal').remove()">Cancel</button>
           </div>
-        </div>
-      `;
+        </div >
+  `;
 
     document.body.appendChild(modal);
 
@@ -1912,7 +1938,7 @@ const App = {
     ]);
 
     const artistOptions = artists.map(a =>
-      `<option value="${a.name}" ${a.name === release.artist_name ? 'selected' : ''}>${a.name}</option>`
+      `< option value = "${a.name}" ${a.name === release.artist_name ? 'selected' : ''}> ${a.name}</option > `
     ).join('');
 
     const modal = document.createElement('div');
@@ -1921,7 +1947,7 @@ const App = {
     modal.id = 'edit-release-modal';
 
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 500px;">
+  < div class="modal-content" style = "max-width: 500px;" >
           <h2 class="section-title">Edit Release: ${release.title}</h2>
           <form id="edit-release-form">
             <div class="form-group">
@@ -1979,8 +2005,8 @@ const App = {
               <button type="button" class="btn btn-outline" id="delete-release-btn" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Release</button>
             </div>
           </form>
-        </div>
-      `;
+        </div >
+  `;
 
     document.body.appendChild(modal);
 
@@ -2015,10 +2041,10 @@ const App = {
       div.style.display = 'flex';
       div.style.gap = '0.5rem';
       div.innerHTML = `
-            <input type="text" placeholder="Label (e.g. Bandcamp)" class="link-label" value="${label}" style="flex: 1;">
-            <input type="text" placeholder="URL (https://...)" class="link-url" value="${url}" style="flex: 2;">
-            <button type="button" class="btn btn-outline btn-sm remove-link" style="color: var(--color-danger); border-color: var(--color-danger);">✕</button>
-        `;
+  < input type = "text" placeholder = "Label (e.g. Bandcamp)" class="link-label" value = "${label}" style = "flex: 1;" >
+    <input type="text" placeholder="URL (https://...)" class="link-url" value="${url}" style="flex: 2;">
+      <button type="button" class="btn btn-outline btn-sm remove-link" style="color: var(--color-danger); border-color: var(--color-danger);">✕</button>
+      `;
       div.querySelector('.remove-link').onclick = () => div.remove();
       linksContainer.appendChild(div);
     }
@@ -2073,20 +2099,20 @@ const App = {
       choiceModal.style.display = 'flex';
       choiceModal.style.zIndex = '10001';
       choiceModal.innerHTML = `
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <h3>Delete Release</h3>
-                <p>How do you want to delete this release?</p>
-                <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
-                    <button class="btn btn-primary" id="del-release-keep">Delete & Keep Files</button>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Removes release metadata but keeps audio files in library.</p>
-                    
-                    <button class="btn btn-outline" id="del-release-all" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Everything</button>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes release and all files from disk.</p>
-                    
-                    <button class="btn btn-outline" id="del-release-cancel">Cancel</button>
-                </div>
-            </div>
-        `;
+      <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <h3>Delete Release</h3>
+        <p>How do you want to delete this release?</p>
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+          <button class="btn btn-primary" id="del-release-keep">Delete & Keep Files</button>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Removes release metadata but keeps audio files in library.</p>
+
+          <button class="btn btn-outline" id="del-release-all" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Everything</button>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes release and all files from disk.</p>
+
+          <button class="btn btn-outline" id="del-release-cancel">Cancel</button>
+        </div>
+      </div>
+      `;
       document.body.appendChild(choiceModal);
 
       document.getElementById('del-release-cancel').onclick = () => choiceModal.remove();
@@ -2140,33 +2166,33 @@ const App = {
     modal.id = 'edit-artist-modal';
 
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 500px;">
-          <h2 class="section-title">Edit Artist: ${artist.name}</h2>
-          <form id="edit-artist-form">
-            <div class="form-group">
-              <label>Avatar</label>
-              <div style="display: flex; align-items: center; gap: 1rem;">
-                <div class="artist-avatar-preview" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem; background-size: cover; background-position: center;" id="avatar-preview">
-                  ${artist.photo_path ? '' : '👤'}
-                </div>
-                <input type="file" id="edit-artist-avatar" accept="image/*" style="flex: 1;">
+      <div class="modal-content" style="max-width: 500px;">
+        <h2 class="section-title">Edit Artist: ${artist.name}</h2>
+        <form id="edit-artist-form">
+          <div class="form-group">
+            <label>Avatar</label>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div class="artist-avatar-preview" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem; background-size: cover; background-position: center;" id="avatar-preview">
+                ${artist.photo_path ? '' : '👤'}
               </div>
+              <input type="file" id="edit-artist-avatar" accept="image/*" style="flex: 1;">
             </div>
-            <div class="form-group">
-              <label>Bio</label>
-              <textarea id="edit-artist-bio" rows="3">${artist.bio || ''}</textarea>
-            </div>
-            <div class="form-group">
-              <label>Links (one per line, format: platform: url)</label>
-              <textarea id="edit-artist-links" rows="4">${linksText.trim()}</textarea>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-              <button type="button" class="btn btn-outline" id="cancel-edit-artist">Cancel</button>
-              <button type="button" class="btn btn-danger btn-outline" id="delete-artist-btn" style="color: var(--color-danger); border-color: var(--color-danger); margin-left: auto;">Delete Artist</button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div class="form-group">
+            <label>Bio</label>
+            <textarea id="edit-artist-bio" rows="3">${artist.bio || ''}</textarea>
+          </div>
+          <div class="form-group">
+            <label>Links (one per line, format: platform: url)</label>
+            <textarea id="edit-artist-links" rows="4">${linksText.trim()}</textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-outline" id="cancel-edit-artist">Cancel</button>
+            <button type="button" class="btn btn-danger btn-outline" id="delete-artist-btn" style="color: var(--color-danger); border-color: var(--color-danger); margin-left: auto;">Delete Artist</button>
+          </div>
+        </form>
+      </div>
       `;
 
     document.body.appendChild(modal);
@@ -2254,38 +2280,38 @@ const App = {
     modal.id = 'edit-track-modal';
 
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 500px;">
-          <h2 class="section-title">Edit Track</h2>
-          <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">File: ${track.file_path.split('\\').pop() || track.file_path.split('/').pop()}</p>
-          <form id="edit-track-form">
-            <div class="form-group">
-              <label>Title</label>
-              <input type="text" id="edit-track-title" value="${track.title || ''}" required>
+      <div class="modal-content" style="max-width: 500px;">
+        <h2 class="section-title">Edit Track</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">File: ${track.file_path.split('\\').pop() || track.file_path.split('/').pop()}</p>
+        <form id="edit-track-form">
+          <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="edit-track-title" value="${track.title || ''}" required>
+          </div>
+          <div class="form-group">
+            <label>Artist</label>
+            <input type="text" id="edit-track-artist" value="${track.artist_name || ''}">
+          </div>
+          <div class="form-group">
+            <label>Genre</label>
+            <input type="text" id="edit-track-genre" value="">
+          </div>
+          <div class="form-group">
+            <label>Track Number</label>
+            <input type="number" id="edit-track-number" value="${track.track_num || ''}" min="1">
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem;">
+            ℹ️ ID3 tags will be updated for MP3 files. Other formats update database only.
+          </p>
+          <div class="form-actions" style="justify-content: space-between;">
+            <div>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="button" class="btn btn-outline" id="cancel-edit-track">Cancel</button>
             </div>
-            <div class="form-group">
-              <label>Artist</label>
-              <input type="text" id="edit-track-artist" value="${track.artist_name || ''}">
-            </div>
-            <div class="form-group">
-              <label>Genre</label>
-              <input type="text" id="edit-track-genre" value="">
-            </div>
-            <div class="form-group">
-              <label>Track Number</label>
-              <input type="number" id="edit-track-number" value="${track.track_num || ''}" min="1">
-            </div>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem;">
-              ℹ️ ID3 tags will be updated for MP3 files. Other formats update database only.
-            </p>
-            <div class="form-actions" style="justify-content: space-between;">
-              <div>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-                <button type="button" class="btn btn-outline" id="cancel-edit-track">Cancel</button>
-              </div>
-              <button type="button" class="btn btn-outline" id="delete-track-btn" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Track</button>
-            </div>
-          </form>
-        </div>
+            <button type="button" class="btn btn-outline" id="delete-track-btn" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Track</button>
+          </div>
+        </form>
+      </div>
       `;
 
     document.body.appendChild(modal);
@@ -2322,20 +2348,20 @@ const App = {
       choiceModal.style.display = 'flex';
       choiceModal.style.zIndex = '10001';
       choiceModal.innerHTML = `
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
-                <h3>Delete Track</h3>
-                <p>How do you want to delete this track?</p>
-                <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
-                    <button class="btn btn-primary" id="del-track-db">Remove from Library</button>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Removes metadata from database only. File remains on disk.</p>
-                    
-                    <button class="btn btn-outline" id="del-track-file" style="border-color: var(--color-danger); color: var(--color-danger);">Delete File</button>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes file from disk.</p>
-                    
-                    <button class="btn btn-outline" id="del-track-cancel">Cancel</button>
-                </div>
-            </div>
-        `;
+      <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <h3>Delete Track</h3>
+        <p>How do you want to delete this track?</p>
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+          <button class="btn btn-primary" id="del-track-db">Remove from Library</button>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Removes metadata from database only. File remains on disk.</p>
+
+          <button class="btn btn-outline" id="del-track-file" style="border-color: var(--color-danger); color: var(--color-danger);">Delete File</button>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes file from disk.</p>
+
+          <button class="btn btn-outline" id="del-track-cancel">Cancel</button>
+        </div>
+      </div>
+      `;
       document.body.appendChild(choiceModal);
 
       document.getElementById('del-track-cancel').onclick = () => choiceModal.remove();
@@ -2375,29 +2401,29 @@ const App = {
     modal.id = 'create-artist-modal';
 
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 500px;">
-          <h2 class="section-title">Create New Artist</h2>
-          <form id="create-artist-form">
-            <div class="form-group">
-              <label>Name *</label>
-              <input type="text" id="new-artist-name" required placeholder="Artist name">
-            </div>
-            <div class="form-group">
-              <label>Bio</label>
-              <textarea id="new-artist-bio" rows="3" placeholder="Short biography..."></textarea>
-            </div>
-            <div class="form-group">
-              <label>Links (one per line, format: platform: url)</label>
-              <textarea id="new-artist-links" rows="4" placeholder="website: https://example.com
+      <div class="modal-content" style="max-width: 500px;">
+        <h2 class="section-title">Create New Artist</h2>
+        <form id="create-artist-form">
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="new-artist-name" required placeholder="Artist name">
+          </div>
+          <div class="form-group">
+            <label>Bio</label>
+            <textarea id="new-artist-bio" rows="3" placeholder="Short biography..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Links (one per line, format: platform: url)</label>
+            <textarea id="new-artist-links" rows="4" placeholder="website: https://example.com
 instagram: https://instagram.com/artist
 bandcamp: https://artist.bandcamp.com"></textarea>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Create Artist</button>
-              <button type="button" class="btn btn-outline" id="cancel-create-artist">Cancel</button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Artist</button>
+            <button type="button" class="btn btn-outline" id="cancel-create-artist">Cancel</button>
+          </div>
+        </form>
+      </div>
       `;
 
     document.body.appendChild(modal);
@@ -2455,7 +2481,7 @@ bandcamp: https://artist.bandcamp.com"></textarea>
           <div class="card-subtitle">${album.artist_name || ''}</div>
         </div>
       </a>
-    `).join('');
+      `).join('');
 
     // Load album covers with fallback
     container.querySelectorAll('.album-cover-placeholder').forEach(el => {
@@ -2473,29 +2499,29 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     }
 
     container.innerHTML = tracks.map((track, index) => `
-      <div class="track-item" data-track='${JSON.stringify(track).replace(/'/g, "&apos;")}' data-index="${index}">
-        <div class="track-num">${track.track_num || index + 1}</div>
-        <div class="track-info">
-          <div class="track-title">${track.title}</div>
-        </div>
-        <div class="track-waveform">
-            <canvas width="100" height="30" data-waveform="${track.waveform || ''}"></canvas>
-        </div>
-        <div class="track-duration">${Player.formatTime(track.duration)}</div>
-        ${this.isAdmin ? `
+      <div class="track-item" data-track='${JSON.stringify(track).replace(/' /g, "&apos;")}' data-index="${index}">
+      <div class="track-num">${track.track_num || index + 1}</div>
+      <div class="track-info">
+        <div class="track-title">${track.title}</div>
+      </div>
+      <div class="track-waveform">
+        <canvas width="100" height="30" data-waveform="${track.waveform || ''}"></canvas>
+      </div>
+      <div class="track-duration">${Player.formatTime(track.duration)}</div>
+      ${this.isAdmin ? `
         <button class="btn btn-sm btn-ghost add-to-playlist-btn" 
                 title="Add to Playlist" 
                 style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;"
                 onclick="event.stopPropagation(); App.showAddToPlaylistModal(${track.id})">
           📋
         </button>` : ''}
-        <button class="btn btn-sm btn-ghost add-to-queue-btn" title="Add to Queue" 
-                style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;"
-                onclick="event.stopPropagation(); Player.addToQueue(${JSON.stringify(track).replace(/"/g, '&quot;')})">
-          ➕
-        </button>
-      </div>
-    `).join('');
+      <button class="btn btn-sm btn-ghost add-to-queue-btn" title="Add to Queue"
+        style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;"
+        onclick="event.stopPropagation(); Player.addToQueue(${JSON.stringify(track).replace(/" /g, '&quot;')})">
+      ➕
+    </button>
+      </div >
+  `).join('');
 
     this.attachTrackListeners(tracks);
     this.drawWaveforms(container);
@@ -2530,7 +2556,7 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     if (status.firstRun) {
       title.textContent = 'Setup Admin Password';
       body.innerHTML = `
-        <form id="login-form">
+  < form id = "login-form" >
           <div class="form-group">
             <label for="password">Create Admin Password</label>
             <input type="password" id="password" placeholder="Enter password (min 6 chars)" required minlength="6" autocomplete="new-password">
@@ -2540,9 +2566,9 @@ bandcamp: https://artist.bandcamp.com"></textarea>
             <input type="password" id="password-confirm" placeholder="Confirm password" required autocomplete="new-password">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Create Admin Account</button>
-        </form>
-        <div id="login-error" class="error-message"></div>
-      `;
+        </form >
+  <div id="login-error" class="error-message"></div>
+`;
 
       document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -2551,15 +2577,15 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     } else {
       title.textContent = 'Admin Login';
       body.innerHTML = `
-        <form id="login-form">
+  < form id = "login-form" >
           <div class="form-group">
             <label for="password">Password</label>
             <input type="password" id="password" placeholder="Enter admin password" required autocomplete="current-password">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Login</button>
-        </form>
-        <div id="login-error" class="error-message"></div>
-      `;
+        </form >
+  <div id="login-error" class="error-message"></div>
+`;
 
       document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -2636,14 +2662,14 @@ bandcamp: https://artist.bandcamp.com"></textarea>
         playlistSelection.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">No playlists yet. Create one!</p>';
       } else {
         playlistSelection.innerHTML = playlists.map(p => `
-          <div class="playlist-item" data-playlist-id="${p.id}" style="padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;">
+  < div class="playlist-item" data - playlist - id="${p.id}" style = "padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s;" >
             <div style="font-weight: 500;">${this.escapeHtml(p.name)}</div>
             <div style="font-size: 0.875rem; color: var(--text-secondary);">${this.escapeHtml(p.description || '')}</div>
             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
               ${p.is_public ? '🌐 Public' : '🔒 Private'}
             </div>
-          </div>
-        `).join('');
+          </div >
+  `).join('');
 
         // Add click listeners
         playlistSelection.querySelectorAll('.playlist-item').forEach(item => {
