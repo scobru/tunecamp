@@ -3,6 +3,9 @@
 # Multi-stage build for production deployment
 # ===================================================
 
+ARG TUNECAMP_PUBLIC_URL
+
+
 # Build stage
 FROM node:20-alpine AS builder
 
