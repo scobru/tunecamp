@@ -2556,7 +2556,7 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     if (status.firstRun) {
       title.textContent = 'Setup Admin Password';
       body.innerHTML = `
-  < form id = "login-form" >
+        <form id="login-form">
           <div class="form-group">
             <label for="password">Create Admin Password</label>
             <input type="password" id="password" placeholder="Enter password (min 6 chars)" required minlength="6" autocomplete="new-password">
@@ -2566,9 +2566,9 @@ bandcamp: https://artist.bandcamp.com"></textarea>
             <input type="password" id="password-confirm" placeholder="Confirm password" required autocomplete="new-password">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Create Admin Account</button>
-        </form >
-  <div id="login-error" class="error-message"></div>
-`;
+        </form>
+        <div id="login-error" class="error-message"></div>
+      `;
 
       document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -2577,15 +2577,15 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     } else {
       title.textContent = 'Admin Login';
       body.innerHTML = `
-  < form id = "login-form" >
+        <form id="login-form">
           <div class="form-group">
             <label for="password">Password</label>
             <input type="password" id="password" placeholder="Enter admin password" required autocomplete="current-password">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Login</button>
-        </form >
-  <div id="login-error" class="error-message"></div>
-`;
+        </form>
+        <div id="login-error" class="error-message"></div>
+      `;
 
       document.getElementById('login-form').addEventListener('submit', async (e) => {
         e.preventDefault();
