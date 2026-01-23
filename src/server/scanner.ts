@@ -79,7 +79,29 @@ export function createScanner(database: DatabaseService): ScannerService {
         // Check for catalog.yaml (could contain artist info in some versions)
         const catalogPath = path.join(rootDir, "catalog.yaml");
         if (await fs.pathExists(catalogPath)) {
-            // Logic for catalog.yaml if needed
+            try {
+                const content = await fs.readFile(catalogPath, "utf-8");
+                const config = parse(content);
+
+                // Save site settings
+                if (config.title) database.setSetting("siteName", config.title);
+                if (config.description) database.setSetting("siteDescription", config.description);
+                if (config.url) database.setSetting("siteUrl", config.url);
+
+                // Save donation links
+                if (config.donationLinks) {
+                    database.setSetting("donationLinks", JSON.stringify(config.donationLinks));
+                    console.log(`  Loaded donation links from catalog.yaml`);
+                }
+
+                // If catalog has artist info (legacy or single artist mode)
+                if (config.artist || (config.name && !config.title)) { // Some older configs might mix fields
+                    // ... generic artist logic if needed, but artist.yaml is preferred
+                }
+
+            } catch (e) {
+                console.error("Error parsing catalog.yaml:", e);
+            }
         }
     }
 

@@ -49,27 +49,33 @@ const Player = {
         this.audio.addEventListener('pause', () => this.updatePlayButton(false));
 
         document.getElementById('lyrics-btn').addEventListener('click', () => this.toggleLyrics());
+        document.getElementById('queue-btn').addEventListener('click', () => this.toggleQueue());
     },
 
-    async toggleLyrics() {
+    toggleLyrics() {
         const panel = document.getElementById('lyrics-panel');
         const content = document.getElementById('lyrics-content');
+
+        // Close queue if open
+        document.getElementById('queue-panel').style.display = 'none';
 
         if (panel.style.display === 'none') {
             panel.style.display = 'block';
             if (this.queue[this.currentIndex]) {
                 content.innerHTML = 'Loading...';
                 try {
-                    const data = await API.getLyrics(this.queue[this.currentIndex].id);
-                    if (data.lyrics && (Array.isArray(data.lyrics) ? data.lyrics.length > 0 : data.lyrics)) {
-                        // Handle sync lyrics array or string
-                        const text = Array.isArray(data.lyrics)
-                            ? data.lyrics.map(l => l.text).join('\n')
-                            : data.lyrics;
-                        content.innerHTML = `<pre>${App.escapeHtml(text)}</pre>`;
-                    } else {
-                        content.innerHTML = '<p>No lyrics found for this track.</p>';
-                    }
+                    API.getLyrics(this.queue[this.currentIndex].id).then(data => {
+                        if (data.lyrics && (Array.isArray(data.lyrics) ? data.lyrics.length > 0 : data.lyrics)) {
+                            const text = Array.isArray(data.lyrics)
+                                ? data.lyrics.map(l => l.text).join('\n')
+                                : data.lyrics;
+                            content.innerHTML = `<pre>${App.escapeHtml(text)}</pre>`;
+                        } else {
+                            content.innerHTML = '<p>No lyrics found for this track.</p>';
+                        }
+                    }).catch(() => {
+                        content.innerHTML = '<p>Failed to load lyrics.</p>';
+                    });
                 } catch (e) {
                     content.innerHTML = '<p>Failed to load lyrics.</p>';
                 }
@@ -78,6 +84,72 @@ const Player = {
             }
         } else {
             panel.style.display = 'none';
+        }
+    },
+
+    toggleQueue() {
+        const panel = document.getElementById('queue-panel');
+        const content = document.getElementById('queue-content');
+
+        // Close lyrics if open
+        document.getElementById('lyrics-panel').style.display = 'none';
+
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            this.renderQueue();
+        } else {
+            panel.style.display = 'none';
+        }
+    },
+
+    renderQueue() {
+        const content = document.getElementById('queue-content');
+        if (!this.queue || this.queue.length === 0) {
+            content.innerHTML = '<p>Queue is empty</p>';
+            return;
+        }
+
+        content.innerHTML = this.queue.map((track, i) => `
+            <div class="queue-item ${i === this.currentIndex ? 'active' : ''}" style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border-color);">
+                <div style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer;" onclick="Player.playIndex(${i})">
+                    <span style="font-weight: bold; margin-right: 5px;">${i + 1}.</span>
+                    ${App.escapeHtml(track.title)} - ${App.escapeHtml(track.artist_name || '')}
+                </div>
+                <div style="display: flex; gap: 5px;">
+                   ${i !== this.currentIndex ? `<button class="btn btn-xs btn-ghost" onclick="Player.removeFromQueue(${i})">❌</button>` : ''}
+                </div>
+            </div>
+        `).join('');
+    },
+
+    addToQueue(track) {
+        this.queue.push(track);
+        // If nothing is playing, start playing
+        if (this.queue.length === 1 && !this.isPlaying && this.currentIndex === -1) {
+            this.play(track, this.queue, 0);
+        } else {
+            // Update queue view if open
+            if (document.getElementById('queue-panel').style.display !== 'none') {
+                this.renderQueue();
+            }
+        }
+    },
+
+    removeFromQueue(index) {
+        if (index === this.currentIndex) return; // Can't remove current track easily without stop logic
+        this.queue.splice(index, 1);
+        if (index < this.currentIndex) {
+            this.currentIndex--;
+        }
+        this.renderQueue();
+    },
+
+    playIndex(index) {
+        if (index >= 0 && index < this.queue.length) {
+            this.currentIndex = index;
+            this.loadTrack(this.queue[this.currentIndex]);
+            this.audio.play();
+            this.renderQueue();
         }
     },
 
@@ -98,7 +170,14 @@ const Player = {
 
     loadTrack(track) {
         this.playRecorded = false;
-        this.audio.src = API.getStreamUrl(track.id);
+
+        let format = null;
+        // Auto-transcode lossless/heavy formats to MP3 for streaming
+        if (track.format && ['wav', 'flac'].includes(track.format.toLowerCase())) {
+            format = 'mp3';
+        }
+
+        this.audio.src = API.getStreamUrl(track.id, format);
 
         document.getElementById('player-title').textContent = track.title;
         document.getElementById('player-artist').textContent = track.artist_name || '';

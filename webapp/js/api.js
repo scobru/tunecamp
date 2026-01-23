@@ -164,8 +164,10 @@ const API = {
         return this.get('/tracks/' + id);
     },
 
-    getStreamUrl(id) {
-        return '/api/tracks/' + id + '/stream';
+    getStreamUrl(id, format) {
+        let url = '/api/tracks/' + id + '/stream';
+        if (format) url += '?format=' + format;
+        return url;
     },
 
     async updateTrack(id, data) {
@@ -330,5 +332,22 @@ const API = {
 
     async removeTrackFromPlaylist(playlistId, trackId) {
         return this.delete(`/playlists/${playlistId}/tracks/${trackId}`);
+    },
+
+    // Unlock Codes
+    async validateUnlockCode(code) {
+        return this.post('/unlock/validate', { code });
+    },
+
+    async redeemUnlockCode(code) {
+        return this.post('/unlock/redeem', { code });
+    },
+
+    async createUnlockCodes(releaseId, count) {
+        return this.post('/unlock/admin/create', { releaseId, count });
+    },
+
+    async getUnlockCodes(releaseId) {
+        return this.get('/unlock/admin/list' + (releaseId ? '?releaseId=' + releaseId : ''));
     }
 };

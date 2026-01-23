@@ -152,6 +152,80 @@ program
       console.error(chalk.red('Error starting server:'), error);
       process.exit(1);
     }
+
+  });
+
+program
+  .command('backup')
+  .description('Backup the database')
+  .argument('[target-dir]', 'Directory to store backup', './backups')
+  .option('-d, --db <path>', 'Database file path', './tunecamp.db')
+  .action(async (targetDir: string, options: any) => {
+    try {
+      const dbPath = path.resolve(options.db);
+      const backupDir = path.resolve(targetDir);
+
+      if (!await fs.pathExists(dbPath)) {
+        console.error(chalk.red(`Error: Database file not found at ${dbPath}`));
+        process.exit(1);
+      }
+
+      await fs.ensureDir(backupDir);
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupName = `tunecamp-${timestamp}.db`;
+      const backupPath = path.join(backupDir, backupName);
+
+      await fs.copy(dbPath, backupPath);
+
+      console.log(chalk.green(`✅ Database backed up manually to:`));
+      console.log(chalk.blue(backupPath));
+    } catch (error) {
+      console.error(chalk.red('Error creating backup:'), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('restore')
+  .description('Restore the database from a backup')
+  .argument('<backup-file>', 'Backup file to restore from')
+  .option('-d, --db <path>', 'Database file path', './tunecamp.db')
+  .option('-f, --force', 'Force overwrite existing database', false)
+  .action(async (backupFile: string, options: any) => {
+    try {
+      const sourcePath = path.resolve(backupFile);
+      const dbPath = path.resolve(options.db);
+
+      if (!await fs.pathExists(sourcePath)) {
+        console.error(chalk.red(`Error: Backup file not found at ${sourcePath}`));
+        process.exit(1);
+      }
+
+      if (await fs.pathExists(dbPath) && !options.force) {
+        // In a real CLI interactions are hard, so we just warn and require force flag
+        // or we could use 'inquirer' if available, but let's stick to force flag for safety
+        console.error(chalk.yellow(`Warning: Database already exists at ${dbPath}`));
+        console.error(chalk.yellow(`Use -f or --force to overwrite.`));
+        process.exit(1);
+      }
+
+      // Create a safety backup of the current db before overwriting?
+      if (await fs.pathExists(dbPath)) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const safetyPath = `${dbPath}.pre-restore-${timestamp}.bak`;
+        await fs.copy(dbPath, safetyPath);
+        console.log(chalk.gray(`Created safety backup at ${safetyPath}`));
+      }
+
+      await fs.copy(sourcePath, dbPath);
+      console.log(chalk.green(`✅ Database restored successfully to:`));
+      console.log(chalk.blue(dbPath));
+
+    } catch (error) {
+      console.error(chalk.red('Error restoring backup:'), error);
+      process.exit(1);
+    }
   });
 
 async function initializeCatalog(targetDir: string): Promise<void> {

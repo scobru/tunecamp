@@ -161,8 +161,26 @@ export function createAlbumsRoutes(database: DatabaseService) {
             }
 
             // Check if download is enabled
-            if (!album.download || (album.download !== 'free' && album.download !== 'paid')) {
+            if (!album.download || (album.download !== 'free' && album.download !== 'paid' && album.download !== 'codes')) {
                 return res.status(403).json({ error: "Downloads not enabled for this release" });
+            }
+
+            // Verify unlock code if required
+            if (album.download === 'codes') {
+                const code = req.query.code as string;
+                if (!code) {
+                    return res.status(402).json({ error: "Unlock code required" });
+                }
+                const validation = database.validateUnlockCode(code);
+                if (!validation.valid) {
+                    return res.status(403).json({ error: "Invalid unlock code" });
+                }
+                if (validation.releaseId && validation.releaseId !== album.id) {
+                    return res.status(403).json({ error: "Code is for a different release" });
+                }
+                // Optional: Check if already used? For now, we allow re-download or multi-use.
+                // Log redemption
+                database.redeemUnlockCode(code);
             }
 
             // Get tracks for this album

@@ -1641,8 +1641,8 @@ body {
 /* ==================== */
 
 .track-waveform {
-  height: 30px;
-  width: 100px;
+  height: 50px;
+  width: 300px;
   margin: 0 1rem;
   display: flex;
   align-items: center;

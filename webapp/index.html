@@ -29,6 +29,7 @@
         <a href="#/network" class="nav-link" data-route="network">Network</a>
         <a href="#/playlists" class="nav-link" data-route="playlists">Playlists</a>
         <a href="#/search" class="nav-link" data-route="search">Search</a>
+        <a href="#/support" class="nav-link" data-route="support">Support</a>
       </div>
       <div class="nav-auth" id="nav-auth">
         <div class="user-menu" id="user-menu" style="display: none;">
@@ -61,6 +62,7 @@
         <button class="player-btn play-btn" id="play-btn">▶</button>
         <button class="player-btn" id="next-btn">⏭</button>
         <button class="player-btn btn-xs" id="lyrics-btn" title="Lyrics" style="margin-left: 10px;">🎤</button>
+        <button class="player-btn btn-xs" id="queue-btn" title="Queue" style="margin-left: 10px;">☰</button>
       </div>
       <div class="player-progress">
         <span class="time" id="current-time">0:00</span>
@@ -83,6 +85,17 @@
       </div>
       <div class="lyrics-content" id="lyrics-content">
         Loading...
+      </div>
+    </div>
+
+    <!-- Queue Panel -->
+    <div class="lyrics-panel queue-panel" id="queue-panel" style="display: none; right: 350px;">
+      <div class="lyrics-header">
+        <h3>Queue</h3>
+        <button class="close-btn" onclick="document.getElementById('queue-panel').style.display='none'">&times;</button>
+      </div>
+      <div class="lyrics-content" id="queue-content">
+        <!-- populated by js -->
       </div>
     </div>
   </div>
@@ -158,7 +171,6 @@
     </div>
   </div>
 
-  <!-- Add to Playlist Modal -->
   <div class="modal" id="add-to-playlist-modal">
     <div class="modal-content modal-sm">
       <div class="modal-header">
@@ -172,6 +184,29 @@
         <button class="btn btn-outline btn-block" id="create-new-playlist-btn" style="margin-top: 1rem;">
           + Create New Playlist
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unlock Code Modal -->
+  <div class="modal" id="unlock-modal">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2>Unlock Download</h2>
+        <button class="modal-close" id="unlock-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">Enter your unlock code to download this release.
+        </p>
+        <form id="unlock-form">
+          <div class="form-group">
+            <label for="unlock-code-input">Unlock Code</label>
+            <input type="text" id="unlock-code-input" placeholder="XXXX-XXXX" required
+              style="font-family: monospace; text-transform: uppercase;">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Unlock & Download</button>
+        </form>
+        <div id="unlock-error" class="error-message"></div>
       </div>
     </div>
   </div>

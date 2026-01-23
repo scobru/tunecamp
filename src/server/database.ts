@@ -141,6 +141,12 @@ export interface DatabaseService {
     getSetting(key: string): string | undefined;
     setSetting(key: string, value: string): void;
     getAllSettings(): { [key: string]: string };
+
+    // Unlock Codes
+    createUnlockCode(code: string, releaseId?: number): void;
+    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; isUsed: boolean };
+    redeemUnlockCode(code: string): void;
+    listUnlockCodes(releaseId?: number): any[];
 }
 
 export function createDatabase(dbPath: string): DatabaseService {
@@ -249,6 +255,15 @@ export function createDatabase(dbPath: string): DatabaseService {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS unlock_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      release_id INTEGER REFERENCES albums(id),
+      is_used INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      redeemed_at TEXT
     );
   `);
 
@@ -798,6 +813,28 @@ export function createDatabase(dbPath: string): DatabaseService {
                 playsThisWeek,
                 playsThisMonth,
             };
+        },
+
+        // Unlock Codes
+        createUnlockCode(code: string, releaseId?: number): void {
+            db.prepare("INSERT INTO unlock_codes (code, release_id) VALUES (?, ?)").run(code, releaseId || null);
+        },
+
+        validateUnlockCode(code: string): { valid: boolean; releaseId?: number; isUsed: boolean } {
+            const row = db.prepare("SELECT * FROM unlock_codes WHERE code = ?").get(code) as any;
+            if (!row) return { valid: false, isUsed: false };
+            return { valid: true, releaseId: row.release_id, isUsed: !!row.is_used };
+        },
+
+        redeemUnlockCode(code: string): void {
+            db.prepare("UPDATE unlock_codes SET is_used = 1, redeemed_at = CURRENT_TIMESTAMP WHERE code = ?").run(code);
+        },
+
+        listUnlockCodes(releaseId?: number): any[] {
+            if (releaseId) {
+                return db.prepare("SELECT * FROM unlock_codes WHERE release_id = ? ORDER BY created_at DESC").all(releaseId);
+            }
+            return db.prepare("SELECT * FROM unlock_codes ORDER BY created_at DESC").all();
         },
     };
 }

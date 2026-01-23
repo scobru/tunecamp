@@ -2,8 +2,15 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import { parseFile } from "music-metadata";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegPath from "ffmpeg-static";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+
+// Set ffmpeg path
+if (ffmpegPath) {
+    ffmpeg.setFfmpegPath(ffmpegPath);
+}
 
 export function createTracksRoutes(database: DatabaseService) {
     const router = Router();
@@ -122,6 +129,39 @@ export function createTracksRoutes(database: DatabaseService) {
                 ".opus": "audio/opus",
             };
             const contentType = contentTypes[ext] || "audio/mpeg";
+
+            // Transcoding support
+            const targetFormat = req.query.format as string; // e.g. 'mp3', 'aac'
+            const shouldTranscode = !!targetFormat;
+
+            if (shouldTranscode) {
+                const format = targetFormat || 'mp3';
+                const bitrate = (req.query.bitrate as string) || '128k';
+
+                const contentTypeMap: Record<string, string> = {
+                    'mp3': 'audio/mpeg',
+                    'aac': 'audio/aac',
+                    'ogg': 'audio/ogg',
+                    'opus': 'audio/opus'
+                };
+
+                res.setHeader("Content-Type", contentTypeMap[format] || 'audio/mpeg');
+
+                // Create ffmpeg command
+                const command = ffmpeg(track.file_path)
+                    .format(format)
+                    .audioBitrate(bitrate)
+                    .on('error', (err) => {
+                        // Only log error if it's not a client disconnect (broken pipe)
+                        if (!err.message.includes("Output stream closed")) {
+                            console.error('Transcoding error:', err.message);
+                        }
+                    });
+
+                // Pipe to response
+                command.pipe(res, { end: true });
+                return;
+            }
 
             if (range) {
                 // Handle range request for seeking

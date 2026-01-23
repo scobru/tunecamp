@@ -23,6 +23,7 @@ import { createGunDBService } from "./gundb.js";
 import { createLibraryStatsRoutes } from "./routes/library-stats.js";
 import { createBrowserRoutes } from "./routes/browser.js";
 import { createMetadataRoutes } from "./routes/metadata.js";
+import { createUnlockRoutes } from "./routes/unlock.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,6 +71,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/metadata", authMiddleware.requireAdmin, createMetadataRoutes(database, config.musicDir));
     app.use("/api/users", createUsersRoutes(gundbService));
     app.use("/api/comments", createCommentsRoutes(gundbService));
+    app.use("/api/unlock", createUnlockRoutes(database));
 
     // Serve static webapp
     const webappPath = path.join(__dirname, "..", "..", "webapp");

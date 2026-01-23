@@ -101,6 +101,10 @@ const App = {
 
     // === Playlist Modal Event Handlers ===
     this.setupPlaylistModalHandlers();
+
+
+    // === Unlock Modal Event Handlers ===
+    this.setupUnlockModalHandlers();
   },
 
   setupPlaylistModalHandlers() {
@@ -127,6 +131,71 @@ const App = {
       playlistModal.classList.remove('active');
       window.location.hash = '#/playlists';
     });
+
+  },
+
+  setupUnlockModalHandlers() {
+    const modal = document.getElementById('unlock-modal');
+    const closeBtn = document.getElementById('unlock-modal-close');
+    const form = document.getElementById('unlock-form');
+    const errorDiv = document.getElementById('unlock-error');
+
+    if (!modal) return;
+
+    const closeModal = () => {
+      modal.classList.remove('active');
+      errorDiv.textContent = '';
+      document.getElementById('unlock-code-input').value = '';
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const code = document.getElementById('unlock-code-input').value.trim();
+      if (!code) return;
+
+      // We use the ID stored in the dataset
+      const albumId = modal.dataset.albumId;
+
+      try {
+        // 1. Validate code via API
+        const validation = await API.validateUnlockCode(code);
+        if (!validation.valid) {
+          errorDiv.textContent = 'Invalid or expired code.';
+          return;
+        }
+
+        // 2. Determine if code matches this album (if code is bound to release)
+        if (validation.release && validation.release.id != albumId) {
+          errorDiv.textContent = 'This code is for a different release: ' + validation.release.title;
+          return;
+        }
+
+        // 3. Trigger download properly
+        // We can use the download endpoint now since valid code will pass server check
+        const url = `/api/albums/${albumId}/download?code=${encodeURIComponent(code)}`;
+        window.location.href = url;
+
+        closeModal();
+
+      } catch (err) {
+        console.error('Unlock error:', err);
+        errorDiv.textContent = 'Error validating code. Please try again.';
+      }
+    });
+  },
+
+  showUnlockModal(albumId) {
+    const modal = document.getElementById('unlock-modal');
+    if (modal) {
+      modal.dataset.albumId = albumId;
+      modal.classList.add('active');
+    }
   },
 
   setupUserAuthHandlers() {
@@ -292,12 +361,96 @@ const App = {
         } else {
           window.location.hash = '#/';
         }
+      } else if (path === '/support') {
+        await this.renderSupport(main);
       } else {
         main.innerHTML = '<h1>Not Found</h1>';
       }
     } catch (e) {
       console.error('Route error:', e);
       main.innerHTML = '<div class="error-message">Error loading page</div>';
+    }
+  },
+
+  async renderSupport(container) {
+    container.innerHTML = `
+      <section class="section">
+        <h1 class="section-title">Support</h1>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Support the artists and the platform.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+          <!-- Artist Support -->
+          <div class="card">
+             <div class="card-body" style="padding: 2rem;">
+               <h2 style="margin-bottom: 1rem; color: var(--accent);">Support the Artist</h2>
+               <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                 Directly support the artists on this server. Your contribution helps them create more music.
+               </p>
+               <div id="artist-support-links">
+                 <div style="padding: 1rem; text-align: center; color: var(--text-muted);">Loading links...</div>
+               </div>
+             </div>
+          </div>
+
+          <!-- TuneCamp Support -->
+          <div class="card">
+             <div class="card-body" style="padding: 2rem;">
+               <h2 style="margin-bottom: 1rem; color: var(--success);">Support TuneCamp</h2>
+               <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                 TuneCamp is an open-source project empowering independent musicians. 
+                 Support the development of this platform.
+               </p>
+               <div style="display: flex; flex-direction: column; gap: 1rem;">
+                  <a href="https://ko-fi.com/tunecamp" target="_blank" class="btn btn-outline" style="justify-content: center;">
+                    ☕ Buy us a coffee
+                  </a>
+                  <a href="https://github.com/sponsors/tunecamp" target="_blank" class="btn btn-outline" style="justify-content: center;">
+                    ❤️ GitHub Sponsors
+                  </a>
+               </div>
+             </div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    // Load artist support links (e.g. from site settings or first artist)
+    try {
+      const settings = await API.getSiteSettings();
+      const linksContainer = document.getElementById('artist-support-links');
+
+      // In single artist mode, use that artist. In label mode, maybe list all or generic?
+      // For now let's try to get the "main" artist or site owner links if available
+      // Or simply iterate over all artists if there are few? 
+      // Let's assume we want to show links from the catalog.yaml if defined, or from the first artist.
+
+      let links = [];
+
+      // Check if catalog has donation links (we might need to add this to API)
+      if (settings.donationLinks) {
+        links = settings.donationLinks;
+      } else {
+        // Fallback to first artist
+        const artists = await API.getArtists();
+        if (artists.length > 0 && artists[0].donationLinks) {
+          links = artists[0].donationLinks;
+        }
+      }
+
+      if (links && links.length > 0) {
+        linksContainer.innerHTML = links.map(link => `
+                <a href="${link.url}" target="_blank" class="btn btn-primary btn-block" style="margin-bottom: 1rem; justify-content: center;">
+                  ${link.platform === 'PayPal' ? '💳' : link.platform === 'Ko-fi' ? '☕' : '❤️'} 
+                  ${link.description || 'Support via ' + link.platform}
+                </a>
+            `).join('');
+      } else {
+        linksContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No donation links configured.</p>';
+      }
+
+    } catch (e) {
+      console.error('Error loading support links', e);
+      document.getElementById('artist-support-links').innerHTML = '<p style="color: var(--danger);">Failed to load info</p>';
     }
   },
 
@@ -367,7 +520,9 @@ const App = {
             ${album.date ? '<p style="color: var(--text-muted);">' + album.date + '</p>' : ''}
             ${album.genre ? '<p style="color: var(--text-muted);">' + album.genre + '</p>' : ''}
             ${album.description ? '<p style="color: var(--text-secondary); margin-top: 1rem; max-width: 500px; white-space: pre-wrap;">' + album.description + '</p>' : ''}
-            ${album.download === 'free' ? '<a href="/api/albums/' + (album.slug || album.id) + '/download" class="btn btn-primary" style="margin-top: 1rem;">⬇️ Free Download</a>' : ''}
+            ${album.download === 'free' ? '<a href="/api/albums/' + (album.slug || album.id) + '/download" class="btn btn-primary" style="margin-top: 1rem;">⬇️ Free Download</a>'
+        : album.download === 'codes' ? '<button class="btn btn-primary" onclick="App.showUnlockModal(' + album.id + ')" style="margin-top: 1rem;">🔐 Unlock Download</button>'
+          : ''}
             
             ${(() => {
         if (album.external_links) {
@@ -593,7 +748,7 @@ const App = {
         </div>
         <div class="track-duration">${Player.formatTime(track.duration)}</div>
         <div class="track-waveform">
-            <canvas width="100" height="30" data-waveform="${track.waveform || ''}"></canvas>
+            <canvas width="300" height="50" data-waveform="${track.waveform || ''}"></canvas>
         </div>
         ${this.isAdmin && !track.album_id && track.file_path.includes('library') ?
         `<button class="btn btn-sm btn-outline add-to-release-btn" title="Add to Release" 
@@ -613,6 +768,11 @@ const App = {
             onclick="event.stopPropagation(); App.showAddToPlaylistModal(${track.id})">
             📋
            </button>` : ''}
+        <button class="btn btn-sm btn-ghost add-to-queue-btn" title="Add to Queue" 
+            style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;" 
+            onclick="event.stopPropagation(); Player.addToQueue(${JSON.stringify(track).replace(/"/g, '&quot;')})">
+            ➕
+        </button>
       </div>
     `).join('');
 
@@ -2281,6 +2441,11 @@ bandcamp: https://artist.bandcamp.com"></textarea>
                 onclick="event.stopPropagation(); App.showAddToPlaylistModal(${track.id})">
           📋
         </button>` : ''}
+        <button class="btn btn-sm btn-ghost add-to-queue-btn" title="Add to Queue" 
+                style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.9rem;"
+                onclick="event.stopPropagation(); Player.addToQueue(${JSON.stringify(track).replace(/"/g, '&quot;')})">
+          ➕
+        </button>
       </div>
     `).join('');
 

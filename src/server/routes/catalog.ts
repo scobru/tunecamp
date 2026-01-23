@@ -67,7 +67,10 @@ export function createCatalogRoutes(database: DatabaseService) {
         try {
             const siteName = database.getSetting("siteName") || "TuneCamp";
             const siteDescription = database.getSetting("siteDescription") || "";
-            res.json({ siteName, siteDescription });
+            const donationLinksJson = database.getSetting("donationLinks");
+            const donationLinks = donationLinksJson ? JSON.parse(donationLinksJson) : null;
+
+            res.json({ siteName, siteDescription, donationLinks });
         } catch (error) {
             console.error("Error getting settings:", error);
             res.status(500).json({ error: "Failed to get settings" });
