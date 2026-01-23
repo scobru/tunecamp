@@ -64,17 +64,8 @@ export interface GunDBService {
 /**
  * Generate a unique site ID from title + artist (content-based)
  */
-function generateSiteId(siteInfo: SiteInfo): string {
-    const identifier = `${(siteInfo.title || "untitled").toLowerCase().trim()}::${(siteInfo.artistName || "unknown").toLowerCase().trim()}`;
+// Replaced by persistent ID logic in createGunDBService
 
-    let hash = 0;
-    for (let i = 0; i < identifier.length; i++) {
-        const char = identifier.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(36);
-}
 
 /**
  * Generate a slug for track identification
@@ -99,6 +90,10 @@ export function createGunDBService(database: DatabaseService): GunDBService {
 
             initialized = true;
             console.log("🌐 GunDB Community Registry initialized");
+
+            // Start background cleanup task (every 12 hours)
+            setInterval(cleanupNetwork, 12 * 60 * 60 * 1000);
+
             return true;
         } catch (error) {
             console.error("Failed to initialize GunDB:", error);
@@ -118,7 +113,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
             return false;
         }
 
-        const siteId = generateSiteId(siteInfo);
+        const siteId = await getPersistentSiteId(siteInfo);
         const now = Date.now();
 
         const siteRecord = {
@@ -164,7 +159,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
             return false;
         }
 
-        const siteId = generateSiteId(siteInfo);
+        const siteId = await getPersistentSiteId(siteInfo);
         const baseUrl = siteInfo.url;
         const now = Date.now();
 
@@ -215,7 +210,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
             return false;
         }
 
-        const siteId = generateSiteId(siteInfo);
+        const siteId = await getPersistentSiteId(siteInfo);
         const tracks = database.getTracks(album.id);
 
         const tracksRef = gun
@@ -618,4 +613,85 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         getComments,
         deleteComment,
     };
+
+    /**
+     * Get or create a persistent Site ID
+     */
+    async function getPersistentSiteId(siteInfo: SiteInfo): Promise<string> {
+        // Try to get from settings
+        const storedId = database.getSetting("siteId");
+        if (storedId) return storedId;
+
+        // Generate new one (compatible with old logic if possible, or just random)
+        // usage of old logic for migration if title/artist match? 
+        // Better to just generate a robust one now.
+        const identifier = `${(siteInfo.title || "untitled").toLowerCase().trim()}::${(siteInfo.artistName || "unknown").toLowerCase().trim()}::${Date.now()}`;
+        let hash = 0;
+        for (let i = 0; i < identifier.length; i++) {
+            const char = identifier.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        const newId = Math.abs(hash).toString(36) + Math.random().toString(36).substr(2, 5);
+
+        // Save it
+        database.setSetting("siteId", newId);
+        console.log(`🆔 Generated new persistent Site ID: ${newId}`);
+        return newId;
+    }
+
+    /**
+     * Background task to clean up invalid tracks from the network
+     * This compares what we are advertising on GunDB with what is actually in our database (public)
+     */
+    async function cleanupNetwork() {
+        if (!initialized || !gun) return;
+
+        try {
+            // we need site id, but we might not have siteInfo handy here. 
+            // We can reconstruct minimal siteInfo from settings
+            const publicUrl = database.getSetting("publicUrl");
+            if (!publicUrl) return; // Not public, nothing to clean (or should we clean everything?)
+
+            const siteName = database.getSetting("siteName") || "TuneCamp Server";
+            const artistName = database.getSetting("artistName") || "";
+
+            const siteInfo = { url: publicUrl, title: siteName, artistName };
+            const siteId = await getPersistentSiteId(siteInfo);
+
+            console.log("🧹 Starting network cleanup check...");
+
+            // Get all public tracks from our DB
+            const publicAlbums = database.getAlbums(true);
+            const validTrackSlugs = new Set<string>();
+
+            for (const album of publicAlbums) {
+                const tracks = database.getTracks(album.id);
+                for (const track of tracks) {
+                    validTrackSlugs.add(generateTrackSlug(album.title, track.title));
+                }
+            }
+
+            // Check GunDB
+            const tracksRef = gun
+                .get(REGISTRY_ROOT)
+                .get(REGISTRY_NAMESPACE)
+                .get("sites")
+                .get(siteId)
+                .get("tracks");
+
+            tracksRef.map().once((data: any, key: string) => {
+                if (key === '_' || !data) return;
+
+                // If this track key is NOT in our valid list, remove it
+                if (!validTrackSlugs.has(key)) {
+                    console.log(`🧹 Removing orphaned track from network: ${key}`);
+                    tracksRef.get(key).put(null);
+                }
+            });
+
+        } catch (error) {
+            console.error("Error in network cleanup:", error);
+        }
+    }
 }

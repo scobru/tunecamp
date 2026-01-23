@@ -1048,7 +1048,6 @@ const App = {
                 </div>
                 <div class="track-actions" style="display:flex; gap:10px; align-items:center;">
                     <div class="track-duration">${Player.formatTime(t.duration)}</div>
-                    <button class="btn btn-xs btn-ghost remove-track-btn" onclick="event.stopPropagation(); App.removeNetworkTrack('${t.audioUrl.replace(/'/g, "\\'")}')" title="Remove Track">❌</button>
                 </div>
               </div>
             `).join('')}
@@ -1501,6 +1500,11 @@ const App = {
               <input type="url" id="setting-cover-image" placeholder="https://...">
               <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">URL to square image for network listing.</small>
             </div>
+            <div class="form-group">
+                <label>Troubleshooting</label>
+                <button type="button" class="btn btn-outline btn-sm" id="reset-hidden-tracks">👁️ Reset Hidden Tracks</button>
+                <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">If you accidentally removed a network track, this will restore it.</small>
+            </div>
             <button type="submit" class="btn btn-primary">Save Network Settings</button>
           </form>
         </div>
@@ -1757,6 +1761,15 @@ const App = {
       } finally {
         btn.textContent = originalText;
         btn.disabled = false;
+      }
+    });
+
+    // Reset Hidden Tracks
+    document.getElementById('reset-hidden-tracks').addEventListener('click', () => {
+      if (confirm('Unhide all network tracks you have removed?')) {
+        localStorage.removeItem('tunecamp_blocked_tracks');
+        alert('Hidden tracks list cleared. Refreshing...');
+        window.location.reload();
       }
     });
     // Release form
