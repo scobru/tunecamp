@@ -9,6 +9,7 @@ const App = {
     await this.checkAuth();
     this.setupRouter();
     this.setupEventListeners();
+    this.setupPlaybackErrorHandler();
     this.route();
   },
 
@@ -1004,11 +1005,13 @@ const App = {
       );
 
       // Filter valid tracks
+      const blocked = JSON.parse(localStorage.getItem('tunecamp_blocked_tracks') || '[]');
       const tracks = tracksRaw.filter(t =>
         t.audioUrl &&
         t.title &&
         t.siteUrl &&
-        !t.siteUrl.includes('localhost')
+        !t.siteUrl.includes('localhost') &&
+        !blocked.includes(t.audioUrl)
       );
 
       const loadingEl = document.getElementById('network-loading');
@@ -1043,7 +1046,10 @@ const App = {
                     ${t.artistName || 'Unknown Artist'} · <a href="${t.siteUrl}" target="_blank" style="color: var(--accent);">${new URL(t.siteUrl || 'https://unknown').hostname}</a>
                   </div>
                 </div>
-                <div class="track-duration">${Player.formatTime(t.duration)}</div>
+                <div class="track-actions" style="display:flex; gap:10px; align-items:center;">
+                    <div class="track-duration">${Player.formatTime(t.duration)}</div>
+                    <button class="btn btn-xs btn-ghost remove-track-btn" onclick="event.stopPropagation(); App.removeNetworkTrack('${t.audioUrl.replace(/'/g, "\\'")}')" title="Remove Track">❌</button>
+                </div>
               </div>
             `).join('')}
           </div>
@@ -1397,35 +1403,34 @@ const App = {
   },
 
   playExternalTrack(track, queue, index) {
-    // For external tracks, we use the direct audioUrl
-    const audio = document.getElementById('audio-element');
-    audio.src = track.audioUrl;
+    Player.play(track, queue, index);
+  },
 
-    document.getElementById('player-title').textContent = track.title;
-    document.getElementById('player-artist').textContent = track.artist_name || '';
+  removeNetworkTrack(url) {
+    if (!confirm('Remove this track from the list?')) return;
+    const blocked = JSON.parse(localStorage.getItem('tunecamp_blocked_tracks') || '[]');
+    blocked.push(url);
+    localStorage.setItem('tunecamp_blocked_tracks', JSON.stringify(blocked));
+    this.route();
+  },
 
-    const cover = document.getElementById('player-cover');
-    const icon = cover.querySelector('.player-cover-icon');
-
-    if (track.coverUrl) {
-      const img = new Image();
-      img.onload = () => {
-        cover.style.backgroundImage = `url(${track.coverUrl})`;
-        cover.style.backgroundSize = 'cover';
-        cover.style.backgroundPosition = 'center';
-        if (icon) icon.style.display = 'none';
-      };
-      img.onerror = () => {
-        cover.style.backgroundImage = '';
-        if (icon) icon.style.display = 'block';
-      };
-      img.src = track.coverUrl;
-    } else {
-      cover.style.backgroundImage = '';
-      if (icon) icon.style.display = 'block';
-    }
-
-    audio.play();
+  setupPlaybackErrorHandler() {
+    document.addEventListener('tunecamp:playback-error', (e) => {
+      const { track, error } = e.detail;
+      if (track && (track.isExternal || track.audioUrl)) {
+        const trackElements = document.querySelectorAll('.network-track');
+        trackElements.forEach(el => {
+          if (el.dataset.audioUrl === track.audioUrl) {
+            el.style.opacity = '0.5';
+            const titleEl = el.querySelector('.track-title');
+            if (titleEl && !titleEl.innerText.includes('Failed')) {
+              titleEl.innerText += ' (Playback Failed)';
+              titleEl.style.color = 'var(--error)';
+            }
+          }
+        });
+      }
+    });
   },
 
   async renderAdmin(container) {
@@ -1468,7 +1473,7 @@ const App = {
         </div>
 
         
-        <!--Network Settings Panel(hidden by default) -- >
+        <!-- Network Settings Panel (hidden by default) -->
         <div id="network-settings-panel" class="admin-panel" style="display: none;">
           <h3>Network Settings</h3>
           <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Configure how your server appears on the TuneCamp network.</p>
@@ -1500,7 +1505,7 @@ const App = {
           </form>
         </div>
 
-        <!--Upload Panel(hidden by default )-- >
+        <!-- Upload Panel (hidden by default) -->
         <div id="upload-panel" class="admin-panel" style="display: none;">
           <h3>Upload Tracks to Library</h3>
           <div class="upload-zone" id="upload-zone">
@@ -1514,7 +1519,7 @@ const App = {
           </div>
         </div>
 
-        <!--New Release Panel(hidden by default )-- >
+        <!-- New Release Panel (hidden by default) -->
         <div id="release-panel" class="admin-panel" style="display: none;">
           <h3>Create New Release</h3>
           <form id="release-form">
@@ -1603,7 +1608,7 @@ const App = {
             <span class="toggle-slider"></span>
           </label>
         </div>
-      </div >
+      </div>
   `).join('');
 
     // Load release covers with fallback
@@ -1618,7 +1623,7 @@ const App = {
     const artistsList = document.getElementById('artists-list');
     const allArtists = await API.getArtists();
     artistsList.innerHTML = allArtists.map(a => `
-  < div class="release-row" data - artist - id="${a.id}" >
+      <div class="release-row" data-artist-id="${a.id}">
         <div class="release-cover-small artist-cover-placeholder" data-src="${API.getArtistCoverUrl(a.id)}">
           <div class="placeholder-icon" style="font-size: 1.5rem;">👤</div>
         </div>
@@ -1629,7 +1634,7 @@ const App = {
         <div class="release-actions">
           <button class="btn btn-sm btn-outline edit-artist" data-id="${a.id}">✏️ Edit</button>
         </div>
-      </div >
+      </div>
   `).join('');
 
     // Load artist images

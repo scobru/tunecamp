@@ -43,16 +43,33 @@ const Player = {
         this.audio.addEventListener('play', () => {
             this.updatePlayButton(true);
             // Record play if not yet recorded for this track load
-            if (!this.playRecorded && this.queue[this.currentIndex]) {
+            if (!this.playRecorded && this.queue[this.currentIndex] && !this.queue[this.currentIndex].isExternal) {
                 const track = this.queue[this.currentIndex];
                 API.recordPlay(track.id).catch(err => console.error('Failed to record play:', err));
                 this.playRecorded = true;
             }
         });
         this.audio.addEventListener('pause', () => this.updatePlayButton(false));
+        this.audio.addEventListener('error', (e) => this.handleError(e));
 
         document.getElementById('lyrics-btn').addEventListener('click', () => this.toggleLyrics());
         document.getElementById('queue-btn').addEventListener('click', () => this.toggleQueue());
+    },
+
+    handleError(e) {
+        console.error('Playback error:', this.audio.error);
+        const track = this.queue[this.currentIndex];
+
+        // Dispatch global event
+        const event = new CustomEvent('tunecamp:playback-error', {
+            detail: {
+                track: track,
+                error: this.audio.error
+            }
+        });
+        document.dispatchEvent(event);
+
+        this.updatePlayButton(false);
     },
 
     toggleLyrics() {
@@ -65,9 +82,15 @@ const Player = {
         if (panel.style.display === 'none') {
             panel.style.display = 'block';
             if (this.queue[this.currentIndex]) {
+                const track = this.queue[this.currentIndex];
+                if (track.isExternal) {
+                    content.innerHTML = '<p>Lyrics not available for network tracks.</p>';
+                    return;
+                }
+
                 content.innerHTML = 'Loading...';
                 try {
-                    API.getLyrics(this.queue[this.currentIndex].id).then(data => {
+                    API.getLyrics(track.id).then(data => {
                         if (data.lyrics && (Array.isArray(data.lyrics) ? data.lyrics.length > 0 : data.lyrics)) {
                             const text = Array.isArray(data.lyrics)
                                 ? data.lyrics.map(l => l.text).join('\n')
@@ -174,21 +197,26 @@ const Player = {
     loadTrack(track) {
         this.playRecorded = false;
 
-        let format = null;
-        // Auto-transcode lossless/heavy formats to MP3 for streaming
-        if (track.format && ['wav', 'flac'].includes(track.format.toLowerCase())) {
-            format = 'mp3';
+        if (track.isExternal || track.audioUrl) {
+            this.audio.src = track.audioUrl;
+        } else {
+            let format = null;
+            // Auto-transcode lossless/heavy formats to MP3 for streaming
+            if (track.format && ['wav', 'flac'].includes(track.format.toLowerCase())) {
+                format = 'mp3';
+            }
+            this.audio.src = API.getStreamUrl(track.id, format);
         }
-
-        this.audio.src = API.getStreamUrl(track.id, format);
 
         document.getElementById('player-title').textContent = track.title;
         document.getElementById('player-artist').textContent = track.artist_name || '';
 
         const cover = document.getElementById('player-cover');
         const icon = cover.querySelector('.player-cover-icon');
-        if (track.album_id) {
-            const coverUrl = API.getAlbumCoverUrl(track.album_id);
+
+        const coverUrl = track.isExternal ? track.coverUrl : (track.album_id ? API.getAlbumCoverUrl(track.album_id) : null);
+
+        if (coverUrl) {
             const img = new Image();
             img.onload = () => {
                 cover.style.backgroundImage = `url(${coverUrl})`;
