@@ -95,24 +95,34 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
         console.log(`📊 Stats: ${database.getStats().tracks} tracks in library`);
 
-        // Register server on GunDB community if publicUrl is set
-        if (config.publicUrl) {
+        // Register server on GunDB community if publicUrl is set (either in config or db)
+        const dbPublicUrl = database.getSetting("publicUrl");
+        const publicUrl = dbPublicUrl || config.publicUrl;
+
+        if (publicUrl) {
             const artists = database.getArtists();
-            const artistName = artists.length > 0 ? artists[0].name : "";
+            const dbArtistName = database.getSetting("artistName");
+            // Use DB setting, or first artist, or empty
+            const artistName = dbArtistName || (artists.length > 0 ? artists[0].name : "");
+
+            const dbSiteName = database.getSetting("siteName");
+            const dbSiteDescription = database.getSetting("siteDescription");
+            const dbCoverImage = database.getSetting("coverImage");
 
             const siteInfo = {
-                url: config.publicUrl,
-                title: config.siteName || "TuneCamp Server",
-                description: `Music server with ${database.getStats().tracks} tracks`,
+                url: publicUrl,
+                title: dbSiteName || config.siteName || "TuneCamp Server",
+                description: dbSiteDescription || `Music server with ${database.getStats().tracks} tracks`,
                 artistName,
+                coverImage: dbCoverImage || ""
             };
 
             const registered = await gundbService.registerSite(siteInfo);
             if (registered) {
-                console.log(`🌐 Registered on GunDB community: ${config.publicUrl}`);
+                console.log(`🌐 Registered on GunDB community: ${publicUrl}`);
             }
         } else {
-            console.log("💡 Set TUNECAMP_PUBLIC_URL to register on community");
+            console.log("💡 Set TUNECAMP_PUBLIC_URL or configure Network Settings in Admin Panel to register on community");
         }
 
         console.log("");

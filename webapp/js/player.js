@@ -25,8 +25,11 @@ const Player = {
         nextBtn.addEventListener('click', () => this.next());
 
         progressBar.addEventListener('input', (e) => {
-            if (this.audio.duration) {
-                this.audio.currentTime = (e.target.value / 100) * this.audio.duration;
+            if (this.audio.duration && Number.isFinite(this.audio.duration)) {
+                const newTime = (e.target.value / 100) * this.audio.duration;
+                if (Number.isFinite(newTime)) {
+                    this.audio.currentTime = newTime;
+                }
             }
         });
 

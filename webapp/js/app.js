@@ -401,10 +401,10 @@ const App = {
                  Support the development of this platform.
                </p>
                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                  <a href="https://ko-fi.com/tunecamp" target="_blank" class="btn btn-outline" style="justify-content: center;">
+                  <a href="https://buymeacoffee.com/scobru" target="_blank" class="btn btn-outline" style="justify-content: center;">
                     ☕ Buy us a coffee
                   </a>
-                  <a href="https://github.com/sponsors/tunecamp" target="_blank" class="btn btn-outline" style="justify-content: center;">
+                  <a href="https://github.com/scobru/tunecamp" target="_blank" class="btn btn-outline" style="justify-content: center;">
                     ❤️ GitHub Sponsors
                   </a>
                </div>
@@ -1418,6 +1418,7 @@ const App = {
             <button class="btn btn-outline" id="new-artist-btn">+ New Artist</button>
             <button class="btn btn-outline" id="upload-btn">📤 Upload Tracks</button>
             <button class="btn btn-outline" id="rescan-btn">🔄 Rescan</button>
+            <button class="btn btn-outline" id="network-settings-btn">🌐 Network</button>
             <button class="btn btn-outline" id="logout-btn">Logout</button>
           </div>
         </div>
@@ -1441,6 +1442,38 @@ const App = {
           </div>
         </div>
         
+        <!-- Network Settings Panel (hidden by default) -->
+        <div id="network-settings-panel" class="admin-panel" style="display: none;">
+          <h3>Network Settings</h3>
+          <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Configure how your server appears on the TuneCamp network.</p>
+          <form id="network-settings-form">
+            <div class="form-group">
+              <label>Public URL</label>
+              <input type="url" id="setting-public-url" placeholder="https://your-tunecamp.com">
+              <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">The public URL where this server is accessible. Required for network registration.</small>
+            </div>
+            <div class="form-group">
+              <label>Site Name</label>
+              <input type="text" id="setting-site-name" placeholder="My TuneCamp Server">
+            </div>
+            <div class="form-group">
+              <label>Site Description</label>
+              <textarea id="setting-site-description" rows="2" placeholder="Short description of your server..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Artist Name (for Network)</label>
+              <input type="text" id="setting-artist-name" placeholder="Artist Name">
+              <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">The primary artist name to show in the network registry.</small>
+            </div>
+            <div class="form-group">
+              <label>Cover Image URL</label>
+              <input type="url" id="setting-cover-image" placeholder="https://...">
+              <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">URL to square image for network listing.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Network Settings</button>
+          </form>
+        </div>
+
         <!-- Upload Panel (hidden by default) -->
         <div id="upload-panel" class="admin-panel" style="display: none;">
           <h3>Upload Tracks to Library</h3>
@@ -1643,29 +1676,48 @@ const App = {
     // Upload panel toggle
     document.getElementById('upload-btn').addEventListener('click', () => {
       const panel = document.getElementById('upload-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      document.getElementById('release-panel').style.display = 'none';
+      this.toggleAdminPanel('upload-panel');
     });
 
-    // New release panel toggle
-    document.getElementById('new-release-btn').addEventListener('click', async () => {
-      const panel = document.getElementById('release-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-      document.getElementById('upload-panel').style.display = 'none';
-
-      // Populate artists
+    document.getElementById('network-settings-btn').addEventListener('click', async () => {
+      this.toggleAdminPanel('network-settings-panel');
+      // Load current settings
       try {
-        const artists = await API.getArtists();
-        const select = document.getElementById('release-artist');
-        select.innerHTML = '<option value="">Select Artist...</option>' +
-          artists.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
-      } catch (e) { console.error("Failed to load artists", e); }
+        const settings = await API.getAdminSettings();
+        document.getElementById('setting-public-url').value = settings.publicUrl || '';
+        document.getElementById('setting-site-name').value = settings.siteName || '';
+        document.getElementById('setting-site-description').value = settings.siteDescription || '';
+        document.getElementById('setting-artist-name').value = settings.artistName || '';
+        document.getElementById('setting-cover-image').value = settings.coverImage || '';
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
     });
 
-    document.getElementById('cancel-release').addEventListener('click', () => {
-      document.getElementById('release-panel').style.display = 'none';
-    });
+    document.getElementById('network-settings-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button');
+      const originalText = btn.textContent;
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
 
+      try {
+        await API.updateSettings({
+          publicUrl: document.getElementById('setting-public-url').value,
+          siteName: document.getElementById('setting-site-name').value,
+          siteDescription: document.getElementById('setting-site-description').value,
+          artistName: document.getElementById('setting-artist-name').value,
+          coverImage: document.getElementById('setting-cover-image').value
+        });
+        alert('Network settings saved! Server registered on community.');
+        this.toggleAdminPanel(null); // Close panel
+      } catch (err) {
+        alert('Failed to save settings: ' + err.message);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    });
     // Release form
     document.getElementById('release-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -1701,20 +1753,6 @@ const App = {
     // New Artist button
     document.getElementById('new-artist-btn').addEventListener('click', () => {
       this.showCreateArtistModal();
-    });
-
-    // Save Settings button
-    document.getElementById('save-settings-btn').addEventListener('click', async () => {
-      const siteName = document.getElementById('setting-site-name').value.trim();
-      try {
-        await API.updateSettings({ siteName });
-        this.siteName = siteName;
-        document.querySelector('.brand-name').textContent = siteName;
-        document.title = siteName;
-        alert('Settings saved!');
-      } catch (e) {
-        alert('Failed to save settings: ' + e.message);
-      }
     });
   },
 
@@ -2485,11 +2523,11 @@ bandcamp: https://artist.bandcamp.com"></textarea>
         <form id="login-form">
           <div class="form-group">
             <label for="password">Create Admin Password</label>
-            <input type="password" id="password" placeholder="Enter password (min 6 chars)" required minlength="6">
+            <input type="password" id="password" placeholder="Enter password (min 6 chars)" required minlength="6" autocomplete="new-password">
           </div>
           <div class="form-group">
             <label for="password-confirm">Confirm Password</label>
-            <input type="password" id="password-confirm" placeholder="Confirm password" required>
+            <input type="password" id="password-confirm" placeholder="Confirm password" required autocomplete="new-password">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Create Admin Account</button>
         </form>
@@ -2506,7 +2544,7 @@ bandcamp: https://artist.bandcamp.com"></textarea>
         <form id="login-form">
           <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Enter admin password" required>
+            <input type="password" id="password" placeholder="Enter admin password" required autocomplete="current-password">
           </div>
           <button type="submit" class="btn btn-primary btn-block">Login</button>
         </form>
