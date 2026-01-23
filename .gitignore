@@ -8,6 +8,8 @@ dist/
 
 test-output/
 
+examples/homologo/*
+
 # Logs
 *.log
 npm-debug.log*
@@ -50,3 +52,6 @@ gundb-keypair.json
 *.keypair.json
 .vercel
 .env*.local
+
+*.db
+
