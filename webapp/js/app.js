@@ -1673,14 +1673,24 @@ const App = {
       });
     });
 
+    // Helper to toggle panels
+    const togglePanel = (targetId) => {
+      document.querySelectorAll('.admin-panel').forEach(p => {
+        if (p.id === targetId) {
+          p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        } else {
+          p.style.display = 'none';
+        }
+      });
+    };
+
     // Upload panel toggle
     document.getElementById('upload-btn').addEventListener('click', () => {
-      const panel = document.getElementById('upload-panel');
-      this.toggleAdminPanel('upload-panel');
+      togglePanel('upload-panel');
     });
 
     document.getElementById('network-settings-btn').addEventListener('click', async () => {
-      this.toggleAdminPanel('network-settings-panel');
+      togglePanel('network-settings-panel');
       // Load current settings
       try {
         const settings = await API.getAdminSettings();
@@ -1710,7 +1720,7 @@ const App = {
           coverImage: document.getElementById('setting-cover-image').value
         });
         alert('Network settings saved! Server registered on community.');
-        this.toggleAdminPanel(null); // Close panel
+        togglePanel(null); // Close panel
       } catch (err) {
         alert('Failed to save settings: ' + err.message);
       } finally {
