@@ -1,5 +1,5 @@
 import Gun from "gun";
-import "gun/sea";
+import "gun/sea.js";
 import type { DatabaseService, Album, Track } from "./database.js";
 
 // Public GunDB peers for the community registry
