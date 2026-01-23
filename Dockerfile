@@ -43,7 +43,7 @@ RUN npm ci --omit=dev && \
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/webapp ./webapp
 COPY --from=builder /app/templates ./templates
-COPY --from=builder /app/public ./public
+
 
 # Create directories for data persistence
 RUN mkdir -p /music /data
