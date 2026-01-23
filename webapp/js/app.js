@@ -10,7 +10,22 @@ const App = {
     this.setupRouter();
     this.setupEventListeners();
     this.setupPlaybackErrorHandler();
+    this.registerServiceWorker();
     this.route();
+  },
+
+  registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+      });
+    }
   },
 
   async loadSiteSettings() {
@@ -446,20 +461,53 @@ const App = {
       } else {
         // Fallback to first artist
         const artists = await API.getArtists();
-        if (artists.length > 0 && artists[0].donationLinks) {
-          links = artists[0].donationLinks;
+        if (artists.length > 0) {
+          const artist = artists[0];
+          if (artist.links) {
+            // Parse links if string (API returns object usually but verify)
+            // Wait, API.getArtists already returns parsed object via the router?
+            // Checking router: router.get("/") simply res.json(allArtists). 
+            // db.getArtists() returns rows with 'links' as TEXT.
+            // So artist.links is a STRING here.
+            // I need to parse it.
+            try {
+              const rawLinks = typeof artist.links === 'string' ? JSON.parse(artist.links) : artist.links;
+              if (Array.isArray(rawLinks)) {
+                links = rawLinks.map(l => {
+                  if (l.label && l.url) return { platform: l.label, url: l.url }; // New format
+                  const key = Object.keys(l)[0];
+                  return { platform: key.charAt(0).toUpperCase() + key.slice(1), url: l[key] };
+                });
+              }
+            } catch (e) {
+              console.error('Failed to parse artist links', e);
+            }
+          } else if (artist.donationLinks) {
+            links = artist.donationLinks;
+          }
         }
       }
 
       if (links && links.length > 0) {
         linksContainer.innerHTML = links.map(link => `
                 <a href="${link.url}" target="_blank" class="btn btn-primary btn-block" style="margin-bottom: 1rem; justify-content: center;">
-                  ${link.platform === 'PayPal' ? '💳' : link.platform === 'Ko-fi' ? '☕' : '❤️'} 
+                  ${getIconForPlatform(link.platform)} 
                   ${link.description || 'Support via ' + link.platform}
                 </a>
             `).join('');
       } else {
         linksContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No donation links configured.</p>';
+      }
+
+      function getIconForPlatform(platform) {
+        const p = platform.toLowerCase();
+        if (p.includes('paypal')) return '💳';
+        if (p.includes('ko-fi') || p.includes('coffee')) return '☕';
+        if (p.includes('patreon')) return '🧡';
+        if (p.includes('bandcamp')) return '🎵';
+        if (p.includes('instagram')) return '📸';
+        if (p.includes('twitter') || p.includes('x')) return '🐦';
+        return '❤️';
       }
 
     } catch (e) {
@@ -1069,6 +1117,9 @@ const App = {
           coverUrl: t.coverUrl,
           isExternal: true
         }).replace(/'/g, "&apos;")}'>
+                <div class="track-cover-small" style="width: 40px; height: 40px; border-radius: 4px; background: var(--bg-tertiary); margin-right: 1rem; flex-shrink: 0; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                  ${t.coverUrl ? `<div style="width:100%; height:100%; background-image: url('${t.coverUrl}'); background-size: cover; background-position: center;"></div>` : '<span style="font-size: 1.2rem; opacity: 0.5;">🎵</span>'}
+                </div>
                 <div class="track-info">
                   <div class="track-title">${t.title || 'Untitled'}</div>
                   <div style="color: var(--text-secondary); font-size: 0.875rem;">
@@ -1283,6 +1334,14 @@ const App = {
                   <div class="browser-item folder-item" onclick="window.location.hash='#/browser/${entry.path}'">
                     <div class="browser-icon">📁</div>
                     <div class="browser-name">${App.escapeHtml(entry.name)}</div>
+                  </div>
+                `;
+        } else if (entry.type === 'image') {
+          return `
+                  <div class="browser-item file-item">
+                    <div class="browser-icon">🖼️</div>
+                    <div class="browser-name">${App.escapeHtml(entry.name)}</div>
+                    <div class="browser-meta">${entry.ext}</div>
                   </div>
                 `;
         } else {
@@ -2220,16 +2279,6 @@ const App = {
   async showEditArtistModal(artistId) {
     const artist = await API.getArtist(artistId);
 
-    // Parse links to display format
-    let linksText = '';
-    if (artist.links && Array.isArray(artist.links)) {
-      for (const linkObj of artist.links) {
-        for (const [key, url] of Object.entries(linkObj)) {
-          linksText += `${key}: ${url}\n`;
-        }
-      }
-    }
-
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.style.display = 'flex';
@@ -2253,8 +2302,11 @@ const App = {
             <textarea id="edit-artist-bio" rows="3">${artist.bio || ''}</textarea>
           </div>
           <div class="form-group">
-            <label>Links (one per line, format: platform: url)</label>
-            <textarea id="edit-artist-links" rows="4">${linksText.trim()}</textarea>
+            <label>Support / Social Links</label>
+            <div id="artist-links-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <!-- Links injected here -->
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="add-artist-link">＋ Add Link</button>
           </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -2302,23 +2354,47 @@ const App = {
       }
     });
 
+    // Links Logic
+    const linksContainer = document.getElementById('artist-links-container');
+    let existingLinks = [];
+
+    // Parse existing links (handle old {key:val} and new {label,url} format)
+    if (artist.links && Array.isArray(artist.links)) {
+      existingLinks = artist.links.map(l => {
+        if (l.label && l.url) return l; // New format
+        // Old format { platform: url }
+        const key = Object.keys(l)[0];
+        return { label: key.charAt(0).toUpperCase() + key.slice(1), url: l[key] };
+      });
+    }
+
+    function addLinkInput(label = '', url = '') {
+      const div = document.createElement('div');
+      div.style.display = 'flex';
+      div.style.gap = '0.5rem';
+      div.innerHTML = `
+      <input type="text" placeholder="Label (e.g. Bandcamp)" class="link-label" value="${label}" style="flex: 1;">
+      <input type="text" placeholder="URL (https://...)" class="link-url" value="${url}" style="flex: 2;">
+      <button type="button" class="btn btn-outline btn-sm remove-link" style="color: var(--color-danger); border-color: var(--color-danger);">✕</button>
+      `;
+      div.querySelector('.remove-link').onclick = () => div.remove();
+      linksContainer.appendChild(div);
+    }
+
+    existingLinks.forEach(link => addLinkInput(link.label, link.url));
+
+    document.getElementById('add-artist-link').onclick = () => addLinkInput();
+
     document.getElementById('edit-artist-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const bio = document.getElementById('edit-artist-bio').value;
-      const linksRaw = document.getElementById('edit-artist-links').value;
       const avatarFile = document.getElementById('edit-artist-avatar').files[0];
 
-      // Parse links
-      let links = [];
-      if (linksRaw.trim()) {
-        const lines = linksRaw.split('\n').filter(l => l.trim());
-        for (const line of lines) {
-          const match = line.match(/^([\w]+):\s*(.+)$/);
-          if (match) {
-            links.push({ [match[1].toLowerCase()]: match[2].trim() });
-          }
-        }
-      }
+      // Gather links
+      const links = Array.from(document.querySelectorAll('#artist-links-container > div')).map(div => ({
+        label: div.querySelector('.link-label').value.trim(),
+        url: div.querySelector('.link-url').value.trim()
+      })).filter(l => l.label && l.url);
 
       try {
         // Update artist info

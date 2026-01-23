@@ -1,4 +1,5 @@
 import Gun from "gun";
+import "gun/sea";
 import type { DatabaseService, Album, Track } from "./database.js";
 
 // Public GunDB peers for the community registry
@@ -11,7 +12,7 @@ const REGISTRY_PEERS = [
 
 const REGISTRY_ROOT = "shogun";
 const REGISTRY_NAMESPACE = "tunecamp-community";
-const REGISTRY_VERSION = "1.0";
+const REGISTRY_VERSION = "1.1"; // Bumped version for secure nodes
 
 export interface SiteInfo {
     url: string;
@@ -62,12 +63,6 @@ export interface GunDBService {
 }
 
 /**
- * Generate a unique site ID from title + artist (content-based)
- */
-// Replaced by persistent ID logic in createGunDBService
-
-
-/**
  * Generate a slug for track identification
  */
 function generateTrackSlug(albumTitle: string, trackTitle: string): string {
@@ -80,12 +75,41 @@ function generateTrackSlug(albumTitle: string, trackTitle: string): string {
 export function createGunDBService(database: DatabaseService): GunDBService {
     let gun: any = null;
     let initialized = false;
+    let serverPair: any = null;
 
     async function init(): Promise<boolean> {
         try {
             gun = Gun({
                 peers: REGISTRY_PEERS,
                 radisk: false, // Disable radisk for server
+            });
+
+            // Initialize User Auth (SEA)
+            // Check if we have a stored pair
+            const storedPairStr = database.getSetting("gunPair");
+            if (storedPairStr) {
+                try {
+                    serverPair = JSON.parse(storedPairStr);
+                } catch (e) {
+                    console.error("Invalid stored GunDB pair, generating new one");
+                }
+            }
+
+            if (!serverPair) {
+                // Generate new pair
+                console.log("🔐 Generating new GunDB Identity for this server...");
+                serverPair = await Gun.SEA.pair();
+                database.setSetting("gunPair", JSON.stringify(serverPair));
+            }
+
+            // Authenticate
+            const user = gun.user();
+            user.auth(serverPair, (ack: any) => {
+                if (ack.err) {
+                    console.error("❌ Failed to authenticate GunDB user:", ack.err);
+                } else {
+                    console.log(`🔐 GunDB Authenticated as pubKey: ${serverPair.pub.slice(0, 8)}...`);
+                }
             });
 
             initialized = true;
@@ -102,8 +126,8 @@ export function createGunDBService(database: DatabaseService): GunDBService {
     }
 
     async function registerSite(siteInfo: SiteInfo): Promise<boolean> {
-        if (!initialized || !gun) {
-            console.warn("GunDB not initialized");
+        if (!initialized || !gun || !serverPair) {
+            console.warn("GunDB not initialized or no keys");
             return false;
         }
 
@@ -126,27 +150,49 @@ export function createGunDBService(database: DatabaseService): GunDBService {
             registeredAt: now,
             lastSeen: now,
             version: REGISTRY_VERSION,
-            type: "server", // Indicate this is a server instance
+            type: "server",
+            pub: serverPair.pub // Public Key of the server
         };
 
         return new Promise((resolve) => {
-            gun
-                .get(REGISTRY_ROOT)
-                .get(REGISTRY_NAMESPACE)
-                .get("sites")
-                .get(siteId)
-                .put(siteRecord, (ack: any) => {
-                    if (ack.err) {
-                        console.warn("Failed to register site:", ack.err);
-                        resolve(false);
-                    } else {
-                        console.log("✅ Server registered in Tunecamp Community");
-                        resolve(true);
-                    }
-                });
+            const user = gun.user();
+
+            // 1. Write to Private Node (User Graph) --> Signed by us
+            user.get('tunecamp').get('profile').put(siteRecord, async (ack: any) => {
+                if (ack.err) {
+                    console.warn("Failed to write to user graph:", ack.err);
+                    resolve(false);
+                    return;
+                }
+
+                // 2. Write Reference to Public Directory
+                // We write a pointer to the public list so people can find us.
+                // IMPORTANT: We include our pub key so they can verify/load the private data.
+                gun
+                    .get(REGISTRY_ROOT)
+                    .get(REGISTRY_NAMESPACE)
+                    .get("sites")
+                    .get(siteId)
+                    .put({
+                        id: siteId,
+                        pub: serverPair.pub,
+                        lastSeen: now,
+                        url: siteInfo.url, // Keep basic info for fast listing
+                        title: siteInfo.title,
+                        artistName: siteInfo.artistName
+                    }, (pubAck: any) => {
+                        if (pubAck.err) {
+                            console.warn("Failed to register site in directory:", pubAck.err);
+                            resolve(false);
+                        } else {
+                            console.log("✅ Server registered in Tunecamp Community (Secure Mode)");
+                            resolve(true);
+                        }
+                    });
+            });
 
             // Timeout fallback
-            setTimeout(() => resolve(true), 3000);
+            setTimeout(() => resolve(true), 5000);
         });
     }
 
@@ -155,7 +201,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         album: Album,
         tracks: Track[]
     ): Promise<boolean> {
-        if (!initialized || !gun || !tracks || tracks.length === 0) {
+        if (!initialized || !gun || !tracks || tracks.length === 0 || !serverPair) {
             return false;
         }
 
@@ -163,12 +209,8 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         const baseUrl = siteInfo.url;
         const now = Date.now();
 
-        const tracksRef = gun
-            .get(REGISTRY_ROOT)
-            .get(REGISTRY_NAMESPACE)
-            .get("sites")
-            .get(siteId)
-            .get("tracks");
+        // Write to User Graph -> tunecamp -> tracks
+        const tracksRef = gun.user().get('tunecamp').get('tracks');
 
         // Get artist name
         const artistName = album.artist_name || siteInfo.artistName || "";
@@ -176,15 +218,12 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         // Register each track
         for (const track of tracks) {
             const trackSlug = generateTrackSlug(album.title, track.title);
-
-            // Build streaming URL - ensure no double slashes
             const cleanBaseUrl = baseUrl.replace(/\/$/, "");
             const audioUrl = `${cleanBaseUrl}/api/tracks/${track.id}/stream`;
-
-            // Build cover URL
             const coverUrl = album.id ? `${cleanBaseUrl}/api/albums/${album.id}/cover` : "";
 
             const trackData = {
+                slug: trackSlug,
                 title: track.title || "Untitled",
                 audioUrl: audioUrl,
                 duration: track.duration || 0,
@@ -193,12 +232,13 @@ export function createGunDBService(database: DatabaseService): GunDBService {
                 coverUrl: coverUrl,
                 siteUrl: cleanBaseUrl,
                 addedAt: now,
+                pub: serverPair.pub
             };
 
             tracksRef.get(trackSlug).put(trackData);
         }
 
-        console.log(`🎵 Registered ${tracks.length} tracks from "${album.title}" to community`);
+        console.log(`🎵 Registered ${tracks.length} tracks from "${album.title}" to secure graph`);
         return true;
     }
 
@@ -206,19 +246,12 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         siteInfo: SiteInfo,
         album: Album
     ): Promise<boolean> {
-        if (!initialized || !gun) {
+        if (!initialized || !gun || !serverPair) {
             return false;
         }
 
-        const siteId = await getPersistentSiteId(siteInfo);
         const tracks = database.getTracks(album.id);
-
-        const tracksRef = gun
-            .get(REGISTRY_ROOT)
-            .get(REGISTRY_NAMESPACE)
-            .get("sites")
-            .get(siteId)
-            .get("tracks");
+        const tracksRef = gun.user().get('tunecamp').get('tracks');
 
         // Remove each track
         for (const track of tracks) {
@@ -226,7 +259,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
             tracksRef.get(trackSlug).put(null);
         }
 
-        console.log(`🗑️ Unregistered tracks from "${album.title}" from community`);
+        console.log(`🗑️ Unregistered tracks from "${album.title}" from secure graph`);
         return true;
     }
 
@@ -334,23 +367,52 @@ export function createGunDBService(database: DatabaseService): GunDBService {
 
         return new Promise((resolve) => {
             const sites: any[] = [];
+            const processedIds = new Set();
 
+            // Read from Public Directory
             gun
                 .get(REGISTRY_ROOT)
                 .get(REGISTRY_NAMESPACE)
                 .get("sites")
                 .map()
-                .once((siteData: any, siteId: string) => {
-                    if (siteData && siteData.url && siteId !== "_") {
+                .once((directoryData: any, siteId: string) => {
+                    if (!directoryData || siteId === "_") return;
+                    if (processedIds.has(siteId)) return;
+                    processedIds.add(siteId);
+
+                    // Check if secure mode (has pub key)
+                    if (directoryData.pub) {
+                        // Read authoritative data from User Graph
+                        gun.user(directoryData.pub)
+                            .get('tunecamp')
+                            .get('profile')
+                            .once((profileData: any) => {
+                                if (profileData) {
+                                    sites.push({
+                                        ...profileData,
+                                        id: siteId,
+                                        _secure: true // Flag to UI
+                                    });
+                                } else {
+                                    // Fallback to directory data if user graph not reachable
+                                    sites.push({
+                                        id: siteId,
+                                        ...directoryData,
+                                        _secure: false
+                                    });
+                                }
+                            });
+                    } else {
+                        // Legacy mode
                         sites.push({
                             id: siteId,
-                            ...siteData
+                            ...directoryData
                         });
                     }
                 });
 
             // Wait for data to collect
-            setTimeout(() => resolve(sites), 3000);
+            setTimeout(() => resolve(sites), 4000);
         });
     }
 
@@ -360,25 +422,32 @@ export function createGunDBService(database: DatabaseService): GunDBService {
         return new Promise((resolve) => {
             const tracks: any[] = [];
 
-            // Iterate through all sites and their tracks
-            gun
-                .get(REGISTRY_ROOT)
+            // 1. Get sites
+            gun.get(REGISTRY_ROOT)
                 .get(REGISTRY_NAMESPACE)
                 .get("sites")
                 .map()
-                .get("tracks")
-                .map()
-                .once((trackData: any, trackSlug: string) => {
-                    if (trackData && trackData.audioUrl && trackSlug !== "_") {
-                        tracks.push({
-                            slug: trackSlug,
-                            ...trackData
+                .once((siteData: any) => {
+                    if (!siteData || !siteData.pub) return;
+
+                    // 2. Read tracks from each user's secure graph
+                    gun.user(siteData.pub)
+                        .get('tunecamp')
+                        .get('tracks')
+                        .map()
+                        .once((trackData: any, slug: string) => {
+                            if (trackData && trackData.audioUrl && slug !== "_") {
+                                tracks.push({
+                                    ...trackData,
+                                    slug: slug,
+                                    _secure: true
+                                });
+                            }
                         });
-                    }
                 });
 
             // Wait for data to collect
-            setTimeout(() => resolve(tracks), 4000);
+            setTimeout(() => resolve(tracks), 5000);
         });
     }
 
@@ -645,13 +714,13 @@ export function createGunDBService(database: DatabaseService): GunDBService {
      * This compares what we are advertising on GunDB with what is actually in our database (public)
      */
     async function cleanupNetwork() {
-        if (!initialized || !gun) return;
+        if (!initialized || !gun || !serverPair) return;
 
         try {
             // we need site id, but we might not have siteInfo handy here. 
             // We can reconstruct minimal siteInfo from settings
             const publicUrl = database.getSetting("publicUrl");
-            if (!publicUrl) return; // Not public, nothing to clean (or should we clean everything?)
+            if (!publicUrl) return; // Not public
 
             const siteName = database.getSetting("siteName") || "TuneCamp Server";
             const artistName = database.getSetting("artistName") || "";
@@ -659,7 +728,7 @@ export function createGunDBService(database: DatabaseService): GunDBService {
             const siteInfo = { url: publicUrl, title: siteName, artistName };
             const siteId = await getPersistentSiteId(siteInfo);
 
-            console.log("🧹 Starting network cleanup check...");
+            console.log("🧹 Starting secure network cleanup check...");
 
             // Get all public tracks from our DB
             const publicAlbums = database.getAlbums(true);
@@ -672,20 +741,15 @@ export function createGunDBService(database: DatabaseService): GunDBService {
                 }
             }
 
-            // Check GunDB
-            const tracksRef = gun
-                .get(REGISTRY_ROOT)
-                .get(REGISTRY_NAMESPACE)
-                .get("sites")
-                .get(siteId)
-                .get("tracks");
+            // Check GunDB Secure Graph
+            const tracksRef = gun.user().get('tunecamp').get('tracks');
 
             tracksRef.map().once((data: any, key: string) => {
                 if (key === '_' || !data) return;
 
                 // If this track key is NOT in our valid list, remove it
                 if (!validTrackSlugs.has(key)) {
-                    console.log(`🧹 Removing orphaned track from network: ${key}`);
+                    console.log(`🧹 Removing orphaned track from secure graph: ${key}`);
                     tracksRef.get(key).put(null);
                 }
             });

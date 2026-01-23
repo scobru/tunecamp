@@ -702,6 +702,11 @@ body {
   .player-track { width: 100%; }
   .player-progress { width: 100%; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .album-header {
+    flex-direction: column !important;
+    align-items: center;
+    text-align: center;
+  }
 }
 
 * {

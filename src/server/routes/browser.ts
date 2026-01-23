@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import path from "path";
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
 export function createBrowserRoutes(musicDir: string) {
     const router = Router();
@@ -51,6 +52,13 @@ export function createBrowserRoutes(musicDir: string) {
                             name: entry.name,
                             path: path.join(relPath, entry.name).replace(/\\/g, "/"),
                             type: "file",
+                            ext: ext
+                        });
+                    } else if (IMAGE_EXTENSIONS.includes(ext)) {
+                        files.push({
+                            name: entry.name,
+                            path: path.join(relPath, entry.name).replace(/\\/g, "/"),
+                            type: "image",
                             ext: ext
                         });
                     }
