@@ -4,9 +4,9 @@ import type { DatabaseService, Album, Track } from "./database.js";
 
 // Public GunDB peers for the community registry
 const REGISTRY_PEERS = [
+    "https://shogun-relay.scobrudot.dev/gun",
     "https://gun.defucc.me/gun",
     "https://gun.o8.is/gun",
-    "https://shogun-relay.scobrudot.dev/gun",
     "https://relay.peer.ooo/gun",
 ];
 
@@ -88,6 +88,7 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                 web: server,
                 axe: true,
                 wire: true,
+                multicast: false,
             });
 
             // Initialize User Auth (SEA)
