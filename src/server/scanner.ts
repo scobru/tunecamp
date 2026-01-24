@@ -7,10 +7,14 @@ import type { DatabaseService } from "./database.js";
 import { WaveformService } from "./waveform.js";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
+import ffprobePath from "ffprobe-static";
 
 // Set ffmpeg path
 if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
+}
+if (ffprobePath && ffprobePath.path) {
+    ffmpeg.setFfprobePath(ffprobePath.path);
 }
 
 function getDurationFromFfmpeg(filePath: string): Promise<number | null> {
