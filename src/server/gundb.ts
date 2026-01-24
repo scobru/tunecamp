@@ -84,7 +84,8 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
         try {
             gun = Gun({
                 peers: REGISTRY_PEERS,
-                radisk: true,
+                localStorage: false,
+                radisk: false,
                 web: server,
                 axe: true,
                 wire: true,
