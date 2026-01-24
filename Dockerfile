@@ -12,16 +12,24 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies for native modules (better-sqlite3)
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ curl
+
+# Install Gleam
+ENV GLEAM_VERSION=v1.6.3
+RUN curl -fsSL https://github.com/gleam-lang/gleam/releases/download/${GLEAM_VERSION}/gleam-${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
 
 # Copy package files
 COPY package*.json ./
+COPY gleam.toml ./
 
 # Install all dependencies (including dev)
 RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Build Gleam
+RUN npm run gleam:build
 
 # Build TypeScript
 RUN npm run build

@@ -12,7 +12,8 @@
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tunecamp": "node dist/cli.js"
+    "tunecamp": "node dist/cli.js",
+    "gleam:build": "gleam build --target javascript && npx esbuild \"build/dev/javascript/tunecamp_gleam/gleam/audio_utils.mjs\" --bundle --outfile=\"src/gleam_generated/audio_utils.js\" --format=esm"
   },
   "keywords": [
     "music",

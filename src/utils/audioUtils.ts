@@ -10,7 +10,7 @@ export async function readAudioMetadata(filePath: string): Promise<TrackMetadata
   try {
     const metadata = await parseFile(filePath);
     const filename = path.basename(filePath);
-    
+
     return {
       file: filePath,
       filename,
@@ -36,27 +36,26 @@ export async function readAudioMetadata(filePath: string): Promise<TrackMetadata
   }
 }
 
+import {
+  format_duration as formatDurationGleam,
+  format_file_size as formatFileSizeGleam
+} from '../gleam_generated/audio_utils.js';
+
 export function formatDuration(seconds?: number): string {
   if (!seconds) return '0:00';
-  
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return formatDurationGleam(seconds);
 }
 
 export function formatFileSize(bytes?: number): string {
   if (!bytes) return '0 B';
-  
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let size = bytes;
-  let unitIndex = 0;
-  
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-  
-  return `${size.toFixed(1)} ${units[unitIndex]}`;
+  // Gleam handles int/float, we pass number (which is float in JS/Gleam usually, 
+  // but Gleam int is distinct. Our Gleam code accepted Int for file size.
+  // We need to ensure we pass an integer if Gleam expects Int.
+  // JS number is float. Gleam JS backend treats JS numbers as floats but logic might check.
+  // The Gleam code: `pub fn format_file_size(bytes: Int)`.
+  // Wrapper for generated JS usually expects safe integer.
+
+  return formatFileSizeGleam(Math.floor(bytes));
 }
 
 export function getAudioFormat(filename: string): string {
@@ -70,7 +69,7 @@ export function getAudioFormat(filename: string): string {
     'aac': 'AAC',
     'opus': 'OPUS',
   };
-  
+
   return formats[ext] || ext.toUpperCase();
 }
 

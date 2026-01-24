@@ -1,0 +1,7 @@
+name = "tunecamp_gleam"
+version = "1.0.0"
+target = "javascript"
+
+[dependencies]
+gleam_stdlib = ">= 0.34.0"
+gleam_javascript = ">= 0.10.0"

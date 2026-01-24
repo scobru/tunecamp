@@ -31,12 +31,27 @@ Inspired by [Faircamp](https://simonrepp.com/faircamp/), this tool helps you cre
 
 ## Quick Start
 
+### Prerequisites
+- Node.js 18+
+- [Gleam](https://gleam.run/getting-started/installing) (for development/building from source)
+
 ### Installation
 
 ```bash
 npm install -g tunecamp
 # or
 yarn global add tunecamp
+```
+
+For development or building from source:
+
+```bash
+# Install dependencies
+npm install
+
+# Build the project (includes Gleam compilation)
+npm run gleam:build
+npm run build
 ```
 
 ### Basic Usage
