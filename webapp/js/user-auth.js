@@ -13,6 +13,7 @@ const UserAuth = {
         'https://shogun-relay.scobrudot.dev/gun',
         'https://gun.defucc.me/gun',
         'https://gun.o8.is/gun',
+        'https://tunecamp.scobrudot.dev/gun'
     ],
 
     /**
