@@ -15,7 +15,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++ curl
 
 # Install Gleam
-ENV GLEAM_VERSION=v1.6.3
+ENV GLEAM_VERSION=v1.14.0
 RUN curl -fsSL https://github.com/gleam-lang/gleam/releases/download/${GLEAM_VERSION}/gleam-${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
 
 # Copy package files
