@@ -41,6 +41,14 @@ const Player = {
             this.isDragging = false;
         });
 
+        // Assicurati che isDragging venga resettato se il mouse esce dalla progress bar
+        progressBar.addEventListener('mouseleave', () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.hasDragged = false;
+            }
+        });
+
         // Permetti lo scrub anche cliccando direttamente sulla progress bar (solo se non c'è stato drag)
         progressBar.addEventListener('click', (e) => {
             // Se c'è stato un drag, ignora il click (il change handler si occuperà di tutto)
@@ -114,9 +122,19 @@ const Player = {
         });
 
         this.audio.addEventListener('timeupdate', () => {
+            // Fallback: se isDragging è true da troppo tempo, resettalo
+            // (potrebbe essere rimasto bloccato per qualche motivo)
+            if (this.isDragging) {
+                // Se l'audio sta riproducendo e non c'è input attivo sulla progress bar,
+                // probabilmente isDragging è rimasto bloccato
+                const progressBar = document.getElementById('progress-bar');
+                if (progressBar && document.activeElement !== progressBar) {
+                    this.isDragging = false;
+                }
+            }
             // Aggiorna solo se l'utente non sta trascinando la progress bar
             if (!this.isDragging) {
-                requestAnimationFrame(() => this.updateProgress());
+                this.updateProgress();
             }
         });
         this.audio.addEventListener('loadedmetadata', () => {
@@ -130,6 +148,16 @@ const Player = {
         this.audio.addEventListener('canplay', () => {
             // Aggiorna quando l'audio può iniziare a riprodursi
             this.updateProgress();
+        });
+        this.audio.addEventListener('loadeddata', () => {
+            // Aggiorna quando i dati sono caricati
+            this.updateProgress();
+        });
+        this.audio.addEventListener('progress', () => {
+            // Aggiorna periodicamente durante il caricamento
+            if (!this.isDragging && this.audio.duration && Number.isFinite(this.audio.duration) && this.audio.duration > 0) {
+                this.updateProgress();
+            }
         });
         this.audio.addEventListener('ended', () => this.next());
         this.audio.addEventListener('play', () => {
@@ -374,18 +402,26 @@ const Player = {
 
     updateProgress() {
         const current = this.audio.currentTime || 0;
-        const duration = this.audio.duration || 0;
+        let duration = this.audio.duration || 0;
 
         const progressBar = document.getElementById('progress-bar');
         const currentTimeEl = document.getElementById('current-time');
         const totalTimeEl = document.getElementById('total-time');
 
+        // Se la durata non è ancora disponibile, prova a forzare il caricamento
+        if ((!duration || !Number.isFinite(duration) || duration <= 0) && this.audio.readyState >= 1) {
+            // Se l'audio ha caricato almeno i metadati, la durata dovrebbe essere disponibile
+            duration = this.audio.duration || 0;
+        }
+
         // Durante il trascinamento, non aggiornare il valore della progress bar
         // (viene già aggiornato dall'utente), ma aggiorna solo i tempi se necessario
         if (this.isDragging) {
             // Aggiorna solo il tempo totale se non è ancora stato impostato
-            if (totalTimeEl && (!totalTimeEl.textContent || totalTimeEl.textContent === '0:00')) {
-                totalTimeEl.textContent = this.formatTime(duration);
+            if (totalTimeEl && duration && Number.isFinite(duration) && duration > 0) {
+                if (!totalTimeEl.textContent || totalTimeEl.textContent === '0:00') {
+                    totalTimeEl.textContent = this.formatTime(duration);
+                }
             }
             return;
         }
@@ -395,15 +431,19 @@ const Player = {
             const percent = Math.max(0, Math.min(100, (current / duration) * 100));
             progressBar.value = percent;
         } else {
+            // Se la durata non è ancora disponibile, mostra almeno il tempo corrente
             progressBar.value = 0;
         }
 
-        // Aggiorna i tempi
+        // Aggiorna sempre i tempi (anche se la durata non è disponibile)
         if (currentTimeEl) {
             currentTimeEl.textContent = this.formatTime(current);
         }
         if (totalTimeEl) {
-            totalTimeEl.textContent = this.formatTime(duration);
+            // Aggiorna il tempo totale solo se la durata è valida
+            if (duration && Number.isFinite(duration) && duration > 0) {
+                totalTimeEl.textContent = this.formatTime(duration);
+            }
         }
 
         // Forza un reflow per assicurarsi che il browser aggiorni la visualizzazione
