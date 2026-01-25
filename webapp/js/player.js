@@ -67,21 +67,21 @@ const Player = {
             }
         });
 
-        // Supporto per dispositivi touch
+        // Supporto per dispositivi touch (passive per migliorare le performance)
         progressBar.addEventListener('touchstart', () => {
             this.isDragging = true;
             this.hasDragged = false;
-        });
+        }, { passive: true });
 
         progressBar.addEventListener('touchmove', () => {
             if (this.isDragging) {
                 this.hasDragged = true;
             }
-        });
+        }, { passive: true });
 
         progressBar.addEventListener('touchend', () => {
             this.isDragging = false;
-        });
+        }, { passive: true });
 
         progressBar.addEventListener('input', (e) => {
             this.isDragging = true;
