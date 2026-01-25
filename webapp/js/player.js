@@ -7,6 +7,7 @@ const Player = {
     isPlaying: false,
     playRecorded: false,
     isDragging: false, // Flag per tracciare se l'utente sta trascinando la progress bar
+    hasDragged: false, // Flag per distinguere tra click e drag
 
     init() {
         this.audio = document.getElementById('audio-element');
@@ -27,14 +28,26 @@ const Player = {
 
         progressBar.addEventListener('mousedown', () => {
             this.isDragging = true;
+            this.hasDragged = false;
+        });
+
+        progressBar.addEventListener('mousemove', (e) => {
+            if (this.isDragging) {
+                this.hasDragged = true;
+            }
         });
 
         progressBar.addEventListener('mouseup', () => {
             this.isDragging = false;
         });
 
-        // Permetti lo scrub anche cliccando direttamente sulla progress bar
+        // Permetti lo scrub anche cliccando direttamente sulla progress bar (solo se non c'è stato drag)
         progressBar.addEventListener('click', (e) => {
+            // Se c'è stato un drag, ignora il click (il change handler si occuperà di tutto)
+            if (this.hasDragged) {
+                this.hasDragged = false;
+                return;
+            }
             if (this.audio.duration && Number.isFinite(this.audio.duration) && this.audio.duration > 0) {
                 const rect = progressBar.getBoundingClientRect();
                 const percent = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
@@ -49,6 +62,13 @@ const Player = {
         // Supporto per dispositivi touch
         progressBar.addEventListener('touchstart', () => {
             this.isDragging = true;
+            this.hasDragged = false;
+        });
+
+        progressBar.addEventListener('touchmove', () => {
+            if (this.isDragging) {
+                this.hasDragged = true;
+            }
         });
 
         progressBar.addEventListener('touchend', () => {
@@ -62,8 +82,11 @@ const Player = {
                 const newTime = (e.target.value / 100) * this.audio.duration;
                 if (Number.isFinite(newTime) && newTime >= 0) {
                     this.audio.currentTime = newTime;
-                    // Aggiorna immediatamente il display durante il trascinamento
-                    requestAnimationFrame(() => this.updateProgress());
+                    // Aggiorna solo il display del tempo durante il trascinamento, non la progress bar
+                    const currentTimeEl = document.getElementById('current-time');
+                    if (currentTimeEl) {
+                        currentTimeEl.textContent = this.formatTime(newTime);
+                    }
                 }
             } else {
                 // Se la durata non è ancora disponibile, forza il caricamento dei metadati
@@ -72,15 +95,17 @@ const Player = {
         });
 
         progressBar.addEventListener('change', (e) => {
-            // Fallback per quando l'utente rilascia il mouse
+            // Quando l'utente rilascia il mouse
             this.isDragging = false;
             if (this.audio.duration && Number.isFinite(this.audio.duration) && this.audio.duration > 0) {
                 const newTime = (e.target.value / 100) * this.audio.duration;
                 if (Number.isFinite(newTime) && newTime >= 0) {
                     this.audio.currentTime = newTime;
+                    // Aggiorna tutto dopo il rilascio
                     this.updateProgress();
                 }
             }
+            this.hasDragged = false;
         });
 
         volumeBar.addEventListener('input', (e) => {
@@ -354,6 +379,16 @@ const Player = {
         const progressBar = document.getElementById('progress-bar');
         const currentTimeEl = document.getElementById('current-time');
         const totalTimeEl = document.getElementById('total-time');
+
+        // Durante il trascinamento, non aggiornare il valore della progress bar
+        // (viene già aggiornato dall'utente), ma aggiorna solo i tempi se necessario
+        if (this.isDragging) {
+            // Aggiorna solo il tempo totale se non è ancora stato impostato
+            if (totalTimeEl && (!totalTimeEl.textContent || totalTimeEl.textContent === '0:00')) {
+                totalTimeEl.textContent = this.formatTime(duration);
+            }
+            return;
+        }
 
         // Calcola la percentuale solo se la durata è valida
         if (duration && Number.isFinite(duration) && duration > 0) {
