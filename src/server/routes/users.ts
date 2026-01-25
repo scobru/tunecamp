@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { validateUsername } from "../../utils/audioUtils.js";
 import type { GunDBService } from "../gundb.js";
 
 export function createUsersRoutes(gundbService: GunDBService) {
