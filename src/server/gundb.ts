@@ -433,6 +433,8 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                                     sites.push({
                                         ...profileData,
                                         id: siteId,
+                                        // Ensure lastSeen is always present (use directoryData as fallback)
+                                        lastSeen: profileData.lastSeen || directoryData.lastSeen || Date.now(),
                                         _secure: true // Flag to UI
                                     });
                                 } else {
@@ -440,6 +442,7 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                                     sites.push({
                                         id: siteId,
                                         ...directoryData,
+                                        lastSeen: directoryData.lastSeen || Date.now(),
                                         _secure: false
                                     });
                                 }
@@ -448,7 +451,8 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                         // Legacy mode
                         sites.push({
                             id: siteId,
-                            ...directoryData
+                            ...directoryData,
+                            lastSeen: directoryData.lastSeen || Date.now()
                         });
                     }
                 });

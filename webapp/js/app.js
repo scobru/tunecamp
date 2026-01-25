@@ -1099,36 +1099,84 @@ const App = {
       // Deduplicate sites by URL, keeping the most recent
       const uniqueSites = new Map();
       sitesRaw.forEach(s => {
+        // Validate site data - align with server structure
         if (!s.url ||
           s.url.includes('localhost') ||
-          !s.title ||
-          s.title === 'Untitled' ||
-          s.title === 'TuneCamp Server') return;
+          s.url.includes('127.0.0.1') ||
+          s.url.startsWith('file://') ||
+          !s.url.startsWith('http')) return;
 
-        if (!uniqueSites.has(s.url)) {
-          uniqueSites.set(s.url, s);
+        // Filter out default/placeholder titles (align with server defaults)
+        const title = s.title || '';
+        if (!title || 
+            title === 'Untitled' || 
+            title === 'TuneCamp Server' ||
+            title.trim() === '') return;
+
+        // Normalize URL (remove trailing slash)
+        const normalizedUrl = s.url.replace(/\/$/, '');
+
+        if (!uniqueSites.has(normalizedUrl)) {
+          uniqueSites.set(normalizedUrl, {
+            ...s,
+            url: normalizedUrl,
+            title: title,
+            artistName: s.artistName || '',
+            coverImage: s.coverImage || null,
+            lastSeen: s.lastSeen || Date.now()
+          });
         } else {
           // If duplicate, keep the one seen most recently
-          const existing = uniqueSites.get(s.url);
-          if ((s.lastSeen || 0) > (existing.lastSeen || 0)) {
-            uniqueSites.set(s.url, s);
+          const existing = uniqueSites.get(normalizedUrl);
+          const existingLastSeen = existing.lastSeen || 0;
+          const newLastSeen = s.lastSeen || 0;
+          if (newLastSeen > existingLastSeen) {
+            uniqueSites.set(normalizedUrl, {
+              ...s,
+              url: normalizedUrl,
+              title: title,
+              artistName: s.artistName || '',
+              coverImage: s.coverImage || null,
+              lastSeen: newLastSeen
+            });
           }
         }
       });
       const sites = Array.from(uniqueSites.values());
 
       // Filter valid tracks and deduplicate by audioUrl
+      // Align with server track structure: slug, title, audioUrl, duration, artistName, coverUrl, siteUrl, etc.
       const blocked = JSON.parse(localStorage.getItem('tunecamp_blocked_tracks') || '[]');
       const seenTrackUrls = new Set();
       const tracks = tracksRaw.filter(t => {
+        // Validate required fields (align with server structure)
         if (!t.audioUrl ||
           !t.title ||
-          !t.siteUrl ||
-          t.siteUrl.includes('localhost') ||
           blocked.includes(t.audioUrl)) return false;
 
+        // Validate siteUrl - derive from siteId if not present, or skip if invalid
+        let siteUrl = t.siteUrl;
+        if (!siteUrl && t.siteId && t.siteId !== 'local') {
+          // Try to find site URL from sites list
+          const site = sites.find(s => s.id === t.siteId);
+          if (site) {
+            siteUrl = site.url;
+          }
+        }
+        
+        // Skip if still no valid siteUrl or if localhost
+        if (!siteUrl || 
+            siteUrl.includes('localhost') ||
+            siteUrl.includes('127.0.0.1') ||
+            siteUrl.startsWith('file://') ||
+            !siteUrl.startsWith('http')) return false;
+
+        // Deduplicate by audioUrl
         if (seenTrackUrls.has(t.audioUrl)) return false;
         seenTrackUrls.add(t.audioUrl);
+
+        // Add normalized siteUrl to track
+        t.siteUrl = siteUrl;
         return true;
       });
 
@@ -1162,9 +1210,15 @@ const App = {
                   ${t.coverUrl ? `<div style="width:100%; height:100%; background-image: url('${t.coverUrl}'); background-size: cover; background-position: center;"></div>` : '<span style="font-size: 1.2rem; opacity: 0.5;">🎵</span>'}
                 </div>
                 <div class="track-info">
-                  <div class="track-title">${t.title || 'Untitled'}</div>
+                  <div class="track-title">${App.escapeHtml(t.title || 'Untitled')}</div>
                   <div style="color: var(--text-secondary); font-size: 0.875rem;">
-                    ${t.artistName || 'Unknown Artist'} · <a href="${t.siteUrl}" target="_blank" style="color: var(--accent);">${new URL(t.siteUrl || 'https://unknown').hostname}</a>
+                    ${App.escapeHtml(t.artistName || 'Unknown Artist')} · <a href="${t.siteUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">${(() => {
+                      try {
+                        return new URL(t.siteUrl).hostname;
+                      } catch (e) {
+                        return 'Unknown';
+                      }
+                    })()}</a>
                   </div>
                 </div>
                 <div class="track-actions" style="display:flex; gap:10px; align-items:center;">
@@ -1224,11 +1278,17 @@ const App = {
             : `<div class="card-cover" style="display: flex; align-items: center; justify-content: center; font-size: 3rem; background: var(--bg-secondary);">🏠</div>`;
 
           return `
-              <a href="${s.url}" target="_blank" class="card" style="text-decoration: none;">
+              <a href="${s.url}" target="_blank" rel="noopener noreferrer" class="card" style="text-decoration: none;">
                 ${coverHtml}
                 <div class="card-body">
-                  <div class="card-title">${s.title || 'Untitled'}</div>
-                  <div class="card-subtitle">${s.artistName || new URL(s.url || 'https://unknown').hostname}</div>
+                  <div class="card-title">${App.escapeHtml(s.title || 'Untitled')}</div>
+                  <div class="card-subtitle">${App.escapeHtml(s.artistName || (() => {
+                    try {
+                      return new URL(s.url).hostname;
+                    } catch (e) {
+                      return 'Unknown';
+                    }
+                  })())}</div>
                 </div>
               </a>
             `}).join('')}
