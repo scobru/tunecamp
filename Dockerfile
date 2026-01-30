@@ -51,8 +51,13 @@ RUN npm run build
 # ===================================================
 FROM node:20-alpine
 
+# Re-declare ARG so production stage gets fresh value; busts cache so new code is always copied
+ARG CAPROVER_GIT_COMMIT_SHA
+
 WORKDIR /app
 
+# Cache buster: forces this stage to rebuild every deploy (no "Using cache" on COPY --from=builder)
+RUN echo "Production deploy commit: ${CAPROVER_GIT_COMMIT_SHA:-none}"
 
 # Install runtime dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
