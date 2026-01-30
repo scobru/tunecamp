@@ -5,16 +5,23 @@
 
 ARG TUNECAMP_PUBLIC_URL
 ARG RELAY_CACHE_BUST
-
-
-
+# CapRover passes this on deploy; using it invalidates cache per commit
+ARG CAPROVER_GIT_COMMIT_SHA
 
 # Build stage
 FROM node:20-alpine AS builder
 
+# Re-declare ARGs needed in this stage (multi-stage build)
+ARG CAPROVER_GIT_COMMIT_SHA
+ARG RELAY_CACHE_BUST
+ARG TUNECAMP_PUBLIC_URL
+
 WORKDIR /app
 
-
+# Consume build-args (avoids unconsumed build-arg warnings; SHA also busts cache per deploy)
+RUN echo "CapRover commit: ${CAPROVER_GIT_COMMIT_SHA:-none}" && \
+    echo "Tunecamp URL: ${TUNECAMP_PUBLIC_URL:-unset}" && \
+    echo "Relay cache bust: ${RELAY_CACHE_BUST:-unset}"
 
 # Install build dependencies for native modules (better-sqlite3)
 RUN apk add --no-cache python3 make g++ curl
@@ -22,9 +29,6 @@ RUN apk add --no-cache python3 make g++ curl
 # Install Gleam
 ENV GLEAM_VERSION=v1.14.0
 RUN curl -fsSL https://github.com/gleam-lang/gleam/releases/download/${GLEAM_VERSION}/gleam-${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
-
-RUN echo "Relay cache bust: $RELAY_CACHE_BUST"
-
 
 # Copy package files
 COPY package*.json ./
