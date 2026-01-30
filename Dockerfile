@@ -4,6 +4,7 @@
 # ===================================================
 
 ARG TUNECAMP_PUBLIC_URL
+ARG RELAY_CACHE_BUST
 
 
 
@@ -21,6 +22,9 @@ RUN apk add --no-cache python3 make g++ curl
 # Install Gleam
 ENV GLEAM_VERSION=v1.14.0
 RUN curl -fsSL https://github.com/gleam-lang/gleam/releases/download/${GLEAM_VERSION}/gleam-${GLEAM_VERSION}-x86_64-unknown-linux-musl.tar.gz | tar xz -C /usr/local/bin
+
+RUN echo "Relay cache bust: $RELAY_CACHE_BUST"
+
 
 # Copy package files
 COPY package*.json ./
@@ -45,8 +49,6 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ARG RELAY_CACHE_BUST=v2
-RUN echo "Relay cache bust: $RELAY_CACHE_BUST"
 
 # Install runtime dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
