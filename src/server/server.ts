@@ -95,7 +95,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         const { slug } = req.params;
         const artist = database.getArtistBySlug(slug);
         if (artist) {
-            res.redirect(`/#/artists/${artist.id}`);
+            res.redirect(`/#/artist/${artist.slug}`);
         } else {
             res.redirect("/");
         }

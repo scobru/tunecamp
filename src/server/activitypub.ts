@@ -110,11 +110,11 @@ export class ActivityPubService {
             name: artist.name,
             summary: artist.bio || `Artist on ${this.getDomain()}`,
             url: `${baseUrl}/@${artist.slug}`,
-            icon: artist.photo_path ? {
+            icon: {
                 type: "Image",
-                mediaType: "image/jpeg", // Assuming jpeg for now, should detect
-                url: `${baseUrl}${artist.photo_path}`
-            } : undefined,
+                mediaType: "image/jpeg",
+                url: `${baseUrl}/api/artists/${artist.slug}/cover`
+            },
             inbox: `${userUrl}/inbox`,
             outbox: `${userUrl}/outbox`,
             followers: `${userUrl}/followers`,

@@ -84,9 +84,12 @@ ENV TUNECAMP_DB_PATH=/data/tunecamp.db
 # Expose default port
 EXPOSE 1970
 
+# Install runtime dependencies
+RUN apk add --no-cache curl
+
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:1970/api/catalog || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:1970/api/catalog || exit 1
 
 # Default command: start server with /music as library
 CMD ["node", "dist/cli.js", "server", "/music", "--port", "1970", "--db", "/data/tunecamp.db"]
