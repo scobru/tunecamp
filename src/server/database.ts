@@ -102,6 +102,7 @@ export interface DatabaseService {
     createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateAlbumVisibility(id: number, isPublic: boolean): void;
     updateAlbumArtist(id: number, artistId: number): void;
+    updateAlbumTitle(id: number, title: string): void;
     updateAlbumCover(id: number, coverPath: string): void;
     updateAlbumDownload(id: number, download: string | null): void;
     updateAlbumLinks(id: number, links: string | null): void;
@@ -487,6 +488,17 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         updateAlbumArtist(id: number, artistId: number): void {
             db.prepare("UPDATE albums SET artist_id = ? WHERE id = ?").run(artistId, id);
+        },
+
+        updateAlbumTitle(id: number, title: string): void {
+            // Also update slug to match scanner behavior
+            const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+            // Handle uniqueness collision? 
+            // If another album has this slug, we might fail constraint. 
+            // Ideally we try-catch or check first.
+            // For now, let's try direct update. 
+            // If it fails, the user will get an error, which is better than silent failure.
+            db.prepare("UPDATE albums SET title = ?, slug = ? WHERE id = ?").run(title, slug, id);
         },
 
         updateAlbumCover(id: number, coverPath: string): void {

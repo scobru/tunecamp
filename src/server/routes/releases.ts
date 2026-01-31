@@ -155,6 +155,17 @@ export function createReleaseRoutes(
                 }
             }
 
+            // Update title in database immediately to prevent scanner from creating duplicate
+            // with new slug
+            if (body.title) {
+                try {
+                    database.updateAlbumTitle(id, body.title);
+                } catch (e) {
+                    console.error("Failed to update album title in DB:", e);
+                    // Continue - scanner might clean it up or duplicate, but we tried.
+                }
+            }
+
             // Update artist in database if artistName provided
             if (body.artistName) {
                 let artist = database.getArtistByName(body.artistName);

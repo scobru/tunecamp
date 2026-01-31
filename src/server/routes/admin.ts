@@ -50,9 +50,11 @@ export function createAdminRoutes(
             database.updateAlbumVisibility(id, isPublic);
 
             // Register/unregister tracks on GunDB based on visibility
-            if (config.publicUrl) {
+            const publicUrl = database.getSetting("publicUrl") || config.publicUrl;
+
+            if (publicUrl) {
                 const siteInfo = {
-                    url: config.publicUrl,
+                    url: publicUrl,
                     title: config.siteName || "TuneCamp Server",
                     artistName: album.artist_name || "",
                 };
