@@ -67,6 +67,21 @@ function fileFilter(
     }
 }
 
+/** Multer for background image: save to musicDir/assets/ as background.<ext> */
+function createBackgroundStorage(musicDir: string) {
+    return multer.diskStorage({
+        destination: async (_req, _file, cb) => {
+            const destDir = path.join(musicDir, "assets");
+            await fs.ensureDir(destDir);
+            cb(null, destDir);
+        },
+        filename: (_req, file, cb) => {
+            const ext = path.extname(file.originalname).toLowerCase() || ".png";
+            cb(null, "background" + (IMAGE_EXTENSIONS.includes(ext) ? ext : ".png"));
+        },
+    });
+}
+
 export function createUploadRoutes(
     database: DatabaseService,
     scanner: ScannerService,
@@ -80,6 +95,19 @@ export function createUploadRoutes(
         limits: {
             fileSize: 100 * 1024 * 1024, // 100MB
         },
+    });
+
+    const uploadBackground = multer({
+        storage: createBackgroundStorage(musicDir),
+        fileFilter: (_req, file, cb) => {
+            const ext = path.extname(file.originalname).toLowerCase();
+            if (IMAGE_EXTENSIONS.includes(ext)) {
+                cb(null, true);
+            } else {
+                cb(new Error(`Unsupported image type: ${ext}`));
+            }
+        },
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     });
 
     /**
@@ -222,6 +250,30 @@ export function createUploadRoutes(
         } catch (error) {
             console.error("Avatar upload error:", error);
             res.status(500).json({ error: "Avatar upload failed" });
+        }
+    });
+
+    /**
+     * POST /api/admin/upload/background
+     * Upload site background image (saved to server, URL stored in settings)
+     */
+    router.post("/background", uploadBackground.single("file"), async (req, res) => {
+        try {
+            const file = req.file;
+            if (!file) {
+                return res.status(400).json({ error: "No file uploaded" });
+            }
+            console.log(`🖼️ Uploaded background image: ${file.filename}`);
+            const url = "/api/settings/background";
+            database.setSetting("backgroundImage", url);
+            res.json({
+                message: "Background image uploaded",
+                url,
+                file: { name: file.filename, size: file.size },
+            });
+        } catch (error) {
+            console.error("Background upload error:", error);
+            res.status(500).json({ error: "Background upload failed" });
         }
     });
 

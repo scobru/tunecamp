@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import http from "http";
+import fs from "fs-extra";
 import { fileURLToPath } from "url";
 import type { ServerConfig } from "./config.js";
 import { createDatabase } from "./database.js";
@@ -74,6 +75,25 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/users", createUsersRoutes(gundbService));
     app.use("/api/comments", createCommentsRoutes(gundbService));
     app.use("/api/unlock", createUnlockRoutes(database));
+
+    // Serve uploaded site background image (public)
+    app.get("/api/settings/background", async (_req, res) => {
+        try {
+            const assetsDir = path.join(config.musicDir, "assets");
+            if (!(await fs.pathExists(assetsDir))) {
+                return res.status(404).json({ error: "No background image" });
+            }
+            const files = await fs.readdir(assetsDir);
+            const bgFile = files.find((f) => f.startsWith("background."));
+            if (!bgFile) {
+                return res.status(404).json({ error: "No background image" });
+            }
+            const filePath = path.join(assetsDir, bgFile);
+            res.sendFile(path.resolve(filePath));
+        } catch {
+            res.status(404).json({ error: "Not found" });
+        }
+    });
 
     // Serve static webapp
     const webappPath = path.join(__dirname, "..", "..", "webapp");

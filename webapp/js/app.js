@@ -1871,9 +1871,16 @@ const App = {
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">This name appears in the header and browser tab.</p>
           </div>
           <div class="form-group">
-            <label>Background Image URL</label>
-            <input type="text" id="setting-background-image" placeholder="https://..." value="">
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">URL for the main background (transparent overlay will be applied).</p>
+            <label>Background Image</label>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+              <input type="text" id="setting-background-image" placeholder="URL or upload file below" value="" style="flex: 1; min-width: 200px;">
+              <span style="color: var(--text-muted); font-size: 0.875rem;">oppure</span>
+              <label class="btn btn-outline" style="margin: 0; cursor: pointer;">
+                Carica file
+                <input type="file" id="setting-background-file" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+              </label>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">URL esterna oppure carica un'immagine (JPG, PNG, GIF, WebP). Sfondo con overlay trasparente.</p>
           </div>
           <div class="form-actions">
             <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
@@ -2054,6 +2061,22 @@ const App = {
       } finally {
         btn.textContent = 'Save Settings';
         btn.disabled = false;
+      }
+    });
+
+    // Background image upload (saves on server, sets URL automatically)
+    document.getElementById('setting-background-file')?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const result = await API.uploadBackgroundImage(file);
+        const bgInput = document.getElementById('setting-background-image');
+        if (bgInput) bgInput.value = result.url || '/api/settings/background';
+        e.target.value = '';
+        alert('Immagine caricata e salvata sul server.');
+        window.location.reload();
+      } catch (err) {
+        alert('Errore upload: ' + err.message);
       }
     });
 

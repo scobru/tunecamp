@@ -266,6 +266,18 @@ const API = {
         return res.json();
     },
 
+    async uploadBackgroundImage(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch('/api/admin/upload/background', {
+            method: 'POST',
+            headers: this.token ? { 'Authorization': 'Bearer ' + this.token } : {},
+            body: formData
+        });
+        if (!res.ok) throw new Error(await res.text());
+        return res.json();
+    },
+
     // Network / Community
     async getNetworkSites() {
         return this.get('/stats/network/sites');

@@ -70,7 +70,8 @@ export function createCatalogRoutes(database: DatabaseService) {
             const donationLinksJson = database.getSetting("donationLinks");
             const donationLinks = donationLinksJson ? JSON.parse(donationLinksJson) : null;
 
-            res.json({ siteName, siteDescription, donationLinks });
+            const backgroundImage = database.getSetting("backgroundImage") || undefined;
+            res.json({ siteName, siteDescription, donationLinks, backgroundImage });
         } catch (error) {
             console.error("Error getting settings:", error);
             res.status(500).json({ error: "Failed to get settings" });
