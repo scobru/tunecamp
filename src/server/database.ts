@@ -8,6 +8,17 @@ export interface Artist {
     bio: string | null;
     photo_path: string | null;
     links: string | null;  // JSON string of links
+    public_key: string | null;
+    private_key: string | null;
+    created_at: string;
+}
+
+export interface Follower {
+    id: number;
+    artist_id: number;
+    actor_uri: string;
+    inbox_uri: string;
+    shared_inbox_uri: string | null;
     created_at: string;
 }
 
@@ -90,7 +101,13 @@ export interface DatabaseService {
     getArtistBySlug(slug: string): Artist | undefined;
     createArtist(name: string, bio?: string, photoPath?: string, links?: any): number;
     updateArtist(id: number, bio?: string, photoPath?: string, links?: any): void;
+    updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     deleteArtist(id: number): void;
+    // Followers
+    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void;
+    removeFollower(artistId: number, actorUri: string): void;
+    getFollowers(artistId: number): Follower[];
+    getFollower(artistId: number, actorUri: string): Follower | undefined;
     // Albums
     getAlbums(publicOnly?: boolean): Album[];
     getReleases(publicOnly?: boolean): Album[]; // is_release=1
@@ -192,7 +209,21 @@ export function createDatabase(dbPath: string): DatabaseService {
       bio TEXT,
       photo_path TEXT,
       links TEXT,
+      photo_path TEXT,
+      links TEXT,
+      public_key TEXT,
+      private_key TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS followers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+      actor_uri TEXT NOT NULL,
+      inbox_uri TEXT NOT NULL,
+      shared_inbox_uri TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(artist_id, actor_uri)
     );
 
     CREATE TABLE IF NOT EXISTS albums (
@@ -309,6 +340,15 @@ export function createDatabase(dbPath: string): DatabaseService {
         // Column already exists, ignore
     }
 
+    // Migration: Add keys to artists
+    try {
+        db.exec(`ALTER TABLE artists ADD COLUMN public_key TEXT`);
+        db.exec(`ALTER TABLE artists ADD COLUMN private_key TEXT`);
+        console.log("📦 Migrated database: added keys to artists");
+    } catch (e) {
+        // Column already exists
+    }
+
     return {
         db,
 
@@ -360,13 +400,39 @@ export function createDatabase(dbPath: string): DatabaseService {
                 .run(bio || null, photoPath || null, linksJson, id);
         },
 
+        updateArtistKeys(id: number, publicKey: string, privateKey: string): void {
+            db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?")
+                .run(publicKey, privateKey, id);
+        },
+
         deleteArtist(id: number): void {
             // Unlink from albums
             db.prepare("UPDATE albums SET artist_id = NULL WHERE artist_id = ?").run(id);
             // Unlink from tracks
             db.prepare("UPDATE tracks SET artist_id = NULL WHERE artist_id = ?").run(id);
+            // Delete followers
+            db.prepare("DELETE FROM followers WHERE artist_id = ?").run(id);
             // Delete artist
             db.prepare("DELETE FROM artists WHERE id = ?").run(id);
+        },
+
+        // Followers
+        addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void {
+            db.prepare(
+                "INSERT OR IGNORE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri) VALUES (?, ?, ?, ?)"
+            ).run(artistId, actorUri, inboxUri, sharedInboxUri || null);
+        },
+
+        removeFollower(artistId: number, actorUri: string): void {
+            db.prepare("DELETE FROM followers WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
+        },
+
+        getFollowers(artistId: number): Follower[] {
+            return db.prepare("SELECT * FROM followers WHERE artist_id = ?").all(artistId) as Follower[];
+        },
+
+        getFollower(artistId: number, actorUri: string): Follower | undefined {
+            return db.prepare("SELECT * FROM followers WHERE artist_id = ? AND actor_uri = ?").get(artistId, actorUri) as Follower | undefined;
         },
 
         // Albums

@@ -26,6 +26,8 @@ import { createLibraryStatsRoutes } from "./routes/library-stats.js";
 import { createBrowserRoutes } from "./routes/browser.js";
 import { createMetadataRoutes } from "./routes/metadata.js";
 import { createUnlockRoutes } from "./routes/unlock.js";
+import { createActivityPubService } from "./activitypub.js";
+import { createActivityPubRoutes, createWebFingerRoute } from "./routes/activitypub.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +38,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     // Middleware
     app.use(cors({ origin: config.corsOrigins }));
-    app.use(express.json());
+    app.use(cors({ origin: config.corsOrigins }));
+    app.use(express.json({ type: ['application/json', 'application/activity+json', 'application/ld+json'] }));
 
     // Initialize database
     console.log(`📦 Initializing database: ${config.dbPath}`);
@@ -58,9 +61,13 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const gundbService = createGunDBService(database, server);
     await gundbService.init();
 
+    // Initialize ActivityPub
+    const apService = createActivityPubService(database, config);
+    await apService.generateKeysForAllArtists();
+
     // API Routes
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService));
-    app.use("/api/admin", authMiddleware.requireAdmin, createAdminRoutes(database, scanner, config.musicDir, gundbService, config, authService));
+    app.use("/api/admin", authMiddleware.requireAdmin, createAdminRoutes(database, scanner, config.musicDir, gundbService, config, authService, apService));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(database));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database));
@@ -75,6 +82,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/users", createUsersRoutes(gundbService));
     app.use("/api/comments", createCommentsRoutes(gundbService));
     app.use("/api/unlock", createUnlockRoutes(database));
+    app.use("/api/ap", createActivityPubRoutes(apService, database));
+    app.use("/.well-known", createWebFingerRoute(apService));
 
     // Serve uploaded site background image (public)
     app.get("/api/settings/background", async (_req, res) => {

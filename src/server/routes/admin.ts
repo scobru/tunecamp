@@ -4,6 +4,7 @@ import type { ScannerService } from "../scanner.js";
 import type { GunDBService } from "../gundb.js";
 import type { ServerConfig } from "../config.js";
 import type { AuthService } from "../auth.js";
+import type { ActivityPubService } from "../activitypub.js";
 
 export function createAdminRoutes(
     database: DatabaseService,
@@ -11,7 +12,8 @@ export function createAdminRoutes(
     musicDir: string,
     gundbService: GunDBService,
     config: ServerConfig,
-    authService: AuthService
+    authService: AuthService,
+    apService: ActivityPubService
 ) {
     const router = Router();
 
@@ -66,6 +68,23 @@ export function createAdminRoutes(
                     // Register tracks to community
                     const tracks = database.getTracks(id);
                     await gundbService.registerTracks(siteInfo, album, tracks);
+
+                    // ActivityPub Broadcast
+                    // We fetch album again to ensure we have latest data if needed, 
+                    // but 'album' var has old state? No, getAlbum(id) returns current state *before* update?
+                    // The 'album' variable was fetched at line 45, BEFORE updateAlbumVisibility (line 50).
+                    // So if album.is_public was false, and now isPublic is true, we invoke broadcast.
+                    if (!album.is_public) {
+                        // It was private, now public. Broadcast!
+                        // We should pass the updated album object ideally, or at least one with is_public=1
+                        const updatedAlbum = { ...album, is_public: true };
+                        // We technically need to be sure broadcastRelease uses the ID to fetch fresh or uses the object.
+                        // broadcastRelease uses object.artist_id and object.title/slug.
+                        // So passing 'album' or 'updatedAlbum' works for those fields.
+                        // Let's pass 'updatedAlbum' to be safe logically.
+                        apService.broadcastRelease(updatedAlbum as any);
+                    }
+
                 } else {
                     // Unregister tracks from community
                     await gundbService.unregisterTracks(siteInfo, album);
