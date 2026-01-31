@@ -1733,25 +1733,25 @@ const App = {
           <form id="network-settings-form">
             <div class="form-group">
               <label>Public URL</label>
-              <input type="url" id="setting-public-url" placeholder="https://your-tunecamp.com">
+              <input type="url" id="network-setting-public-url" placeholder="https://your-tunecamp.com">
               <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">The public URL where this server is accessible. Required for network registration.</small>
             </div>
             <div class="form-group">
               <label>Site Name</label>
-              <input type="text" id="setting-site-name" placeholder="My TuneCamp Server">
+              <input type="text" id="network-setting-site-name" placeholder="My TuneCamp Server">
             </div>
             <div class="form-group">
               <label>Site Description</label>
-              <textarea id="setting-site-description" rows="2" placeholder="Short description of your server..."></textarea>
+              <textarea id="network-setting-site-description" rows="2" placeholder="Short description of your server..."></textarea>
             </div>
             <div class="form-group">
               <label>Artist Name (for Network)</label>
-              <input type="text" id="setting-artist-name" placeholder="Artist Name">
+              <input type="text" id="network-setting-artist-name" placeholder="Artist Name">
               <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">The primary artist name to show in the network registry.</small>
             </div>
             <div class="form-group">
               <label>Cover Image URL</label>
-              <input type="url" id="setting-cover-image" placeholder="https://...">
+              <input type="url" id="network-setting-cover-image" placeholder="https://...">
               <small style="display: block; color: var(--text-muted); margin-top: 0.5rem;">URL to square image for network listing.</small>
             </div>
             <div class="form-group">
@@ -2085,12 +2085,11 @@ const App = {
       // Load current settings
       try {
         const settings = await API.getAdminSettings();
-        document.getElementById('setting-public-url').value = settings.publicUrl || '';
-        document.getElementById('setting-site-name').value = settings.siteName || '';
-        document.getElementById('setting-site-description').value = settings.siteDescription || '';
-        document.getElementById('setting-artist-name').value = settings.artistName || '';
-        document.getElementById('setting-artist-name').value = settings.artistName || '';
-        document.getElementById('setting-cover-image').value = settings.coverImage || '';
+        document.getElementById('network-setting-public-url').value = settings.publicUrl || '';
+        document.getElementById('network-setting-site-name').value = settings.siteName || '';
+        document.getElementById('network-setting-site-description').value = settings.siteDescription || '';
+        document.getElementById('network-setting-artist-name').value = settings.artistName || '';
+        document.getElementById('network-setting-cover-image').value = settings.coverImage || '';
 
         // Also load site settings for the main settings panel if we are opening it via network settings or just generally ensuring they are loaded.
         // Actually, let's load them when the main settings panel saves.
@@ -2112,11 +2111,11 @@ const App = {
 
       try {
         await API.updateSettings({
-          publicUrl: document.getElementById('setting-public-url').value,
-          siteName: document.getElementById('setting-site-name').value,
-          siteDescription: document.getElementById('setting-site-description').value,
-          artistName: document.getElementById('setting-artist-name').value,
-          coverImage: document.getElementById('setting-cover-image').value
+          publicUrl: document.getElementById('network-setting-public-url').value,
+          siteName: document.getElementById('network-setting-site-name').value,
+          siteDescription: document.getElementById('network-setting-site-description').value,
+          artistName: document.getElementById('network-setting-artist-name').value,
+          coverImage: document.getElementById('network-setting-cover-image').value
         });
         alert('Network settings saved! Server registered on community.');
         togglePanel(null); // Close panel
