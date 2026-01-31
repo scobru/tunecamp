@@ -51,10 +51,24 @@ export class ActivityPubService {
 
     // JSON-LD Generators
     public generateWebFinger(resource: string): any {
-        const [_, username] = resource.replace("acct:", "").split("@");
+        console.log(`🔍 WebFinger request for: ${resource}`);
+
+        let username;
+        if (resource.startsWith("acct:")) {
+            const parts = resource.replace("acct:", "").split("@");
+            username = parts[0];
+        } else {
+            // Fallback/Edge case
+            username = resource;
+        }
+
+        console.log(`👤 Extracted username: ${username}`);
         const artist = this.db.getArtistBySlug(username);
 
-        if (!artist) return null;
+        if (!artist) {
+            console.log(`❌ Artist not found for slug: ${username}`);
+            return null;
+        }
 
         const baseUrl = this.getBaseUrl();
         const profileUrl = `${baseUrl}/@${artist.slug}`; // Local profile
