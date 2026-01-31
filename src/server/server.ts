@@ -90,6 +90,17 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/ap", createActivityPubRoutes(apService, database));
     app.use("/.well-known", createWebFingerRoute(apService));
 
+    // Human-readable profile redirect (for ActivityPub/WebFinger links)
+    app.get("/@:slug", (req, res) => {
+        const { slug } = req.params;
+        const artist = database.getArtistBySlug(slug);
+        if (artist) {
+            res.redirect(`/#/artists/${artist.id}`);
+        } else {
+            res.redirect("/");
+        }
+    });
+
     // Serve uploaded site background image (public)
     app.get("/api/settings/background", async (_req, res) => {
         try {

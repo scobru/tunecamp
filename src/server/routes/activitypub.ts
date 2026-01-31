@@ -8,9 +8,11 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
     // Actor Endpoint
     router.get("/users/:slug", async (req, res) => {
         const { slug } = req.params;
+        console.log(`👤 Actor request for: ${slug}`);
         const artist = db.getArtistBySlug(slug);
 
         if (!artist) {
+            console.log(`❌ Actor not found: ${slug}`);
             return res.status(404).send("Not found");
         }
 
