@@ -608,9 +608,9 @@ const App = {
     const albums = await API.getAlbums();
 
     container.innerHTML = `
-      <section class="section">
-        <h1 class="section-title">Albums</h1>
-        <div class="grid" id="albums-grid"></div>
+      <section class="p-4 lg:p-8">
+        <h1 class="text-3xl font-bold mb-8">Albums</h1>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="albums-grid"></div>
       </section>
     `;
 
@@ -626,46 +626,58 @@ const App = {
       : `<span style="color: var(--text-secondary);">${album.artist_name || 'Unknown Artist'}</span>`;
 
     container.innerHTML = `
-      <div class="album-detail">
-        <div class="album-header" style="display: flex; gap: 2rem; margin-bottom: 2rem;">
-          <img src="${API.getAlbumCoverUrl(album.slug || album.id)}" alt="${album.title}" 
-               style="width: 250px; height: 250px; border-radius: 12px; object-fit: cover;">
-          <div>
-            <h1>${album.title}</h1>
-            <p style="margin-bottom: 1rem;">${artistLink}</p>
-            ${album.date ? '<p style="color: var(--text-muted);">' + album.date + '</p>' : ''}
-            ${album.genre ? '<p style="color: var(--text-muted);">' + album.genre + '</p>' : ''}
-            ${album.description ? '<p style="color: var(--text-secondary); margin-top: 1rem; max-width: 500px; white-space: pre-wrap;">' + album.description + '</p>' : ''}
-            ${album.download === 'free' ? '<a href="/api/albums/' + (album.slug || album.id) + '/download" class="btn btn-primary" style="margin-top: 1rem;">Free Download</a>'
-        : album.download === 'codes' ? '<button class="btn btn-primary" onclick="App.showUnlockModal(' + album.id + ')" style="margin-top: 1rem;">Unlock Download</button>'
+      <div class="album-detail p-4 lg:p-8">
+        <div class="flex flex-col lg:flex-row gap-8 mb-12">
+          <figure class="w-full lg:w-[300px] aspect-square rounded-2xl overflow-hidden shadow-2xl bg-base-300 shrink-0">
+            <img src="${API.getAlbumCoverUrl(album.slug || album.id)}" alt="${album.title}" class="w-full h-full object-cover">
+          </figure>
+          <div class="flex-1 flex flex-col justify-end">
+            <h1 class="text-4xl lg:text-6xl font-black mb-4 tracking-tighter">${album.title}</h1>
+            <div class="flex items-center gap-3 text-lg mb-6 opacity-80">
+              ${artistLink}
+              ${album.date ? `<span>•</span> <span>${album.date}</span>` : ''}
+              ${album.genre ? `<span>•</span> <span class="badge badge-outline">${album.genre}</span>` : ''}
+            </div>
+            ${album.description ? `<p class="max-w-2xl text-base-content/70 leading-relaxed mb-8 whitespace-pre-wrap">${album.description}</p>` : ''}
+            <div class="flex flex-wrap gap-3">
+              ${album.download === 'free' ? `<a href="/api/albums/${album.slug || album.id}/download" class="btn btn-primary shadow-lg">Free Download</a>`
+        : album.download === 'codes' ? `<button class="btn btn-primary shadow-lg" onclick="App.showUnlockModal(${album.id})">Unlock Download</button>`
           : ''}
-            
-            ${(() => {
+              
+              ${(() => {
         if (album.external_links) {
           try {
             const links = JSON.parse(album.external_links);
             return links.map(link =>
-              `<a href="${link.url}" target="_blank" class="btn btn-outline" style="margin-top: 1rem; margin-right: 0.5rem;">${link.label}</a>`
+              `<a href="${link.url}" target="_blank" class="btn btn-outline border-white/10 hover:bg-white/5">${link.label}</a>`
             ).join('');
           } catch (e) { return ''; }
         }
         return '';
       })()}
 
-            ${this.isAdmin && !album.is_release ? '<button class="btn btn-primary" id="promote-btn" style="margin-top: 1rem;">Promote to Release</button>' : ''}
+              ${this.isAdmin && !album.is_release ? '<button class="btn btn-warning" id="promote-btn">Promote to Release</button>' : ''}
+            </div>
           </div>
         </div>
-        <div class="track-list" id="track-list"></div>
+        
+        <div class="mb-16">
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+            <span>Tracks</span>
+            <span class="badge badge-sm badge-ghost opacity-50">${album.tracks ? album.tracks.length : 0}</span>
+          </h3>
+          <div class="bg-base-200/50 rounded-2xl border border-white/5 overflow-hidden" id="track-list"></div>
+        </div>
         
         <!-- Comments Section -->
-        <div class="comments-section" id="comments-section">
-          <div class="comments-header">
-            <h3 class="comments-title">Comments</h3>
-            <span class="comments-count" id="comments-count"></span>
+        <div class="comments-section max-w-3xl" id="comments-section">
+          <div class="flex items-center justify-between mb-8">
+            <h3 class="text-2xl font-bold">Comments</h3>
+            <span class="badge badge-primary" id="comments-count"></span>
           </div>
-          <div id="comment-form-container"></div>
-          <div class="comments-list" id="comments-list">
-            <div class="comments-empty">Loading comments...</div>
+          <div id="comment-form-container" class="mb-8"></div>
+          <div class="space-y-4" id="comments-list">
+            <div class="text-center p-8 opacity-50">Loading comments...</div>
           </div>
         </div>
       </div>
@@ -831,9 +843,9 @@ const App = {
     const artists = await API.getArtists();
 
     container.innerHTML = `
-      <section class="section">
-        <h1 class="section-title">Artists</h1>
-        <div class="grid" id="artists-grid"></div>
+      <section class="p-4 lg:p-8">
+        <h1 class="text-3xl font-bold mb-8">Artists</h1>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="artists-grid"></div>
       </section>
     `;
 
@@ -1003,37 +1015,48 @@ const App = {
     const hasPosts = posts && posts.length > 0;
 
     container.innerHTML = `
-      <section class="section">
-        <div class="artist-header" style="display: flex; gap: 2rem; margin-bottom: 2rem; align-items: flex-start;">
-          <div class="artist-cover-placeholder artist-header-cover" data-src="${API.getArtistCoverUrl(artist.slug || artist.id)}">
-            <div class="placeholder-icon">👤</div>
+      <section class="p-4 lg:p-8">
+        <div class="flex flex-col lg:flex-row gap-8 mb-12 items-start">
+          <div class="artist-cover-placeholder w-64 h-64 rounded-full overflow-hidden shadow-2xl bg-base-300 shrinks-0 artist-header-cover" data-src="${API.getArtistCoverUrl(artist.slug || artist.id)}">
+            <div class="flex items-center justify-center w-full h-full text-6xl opacity-20">👤</div>
           </div>
-          <div style="flex: 1;">
-            <h1 class="section-title" style="margin-bottom: 0.5rem;">${artist.name}</h1>
-            ${artist.bio ? '<p style="color: var(--text-secondary); margin-bottom: 1rem; max-width: 600px;">' + artist.bio + '</p>' : ''}
+          <div class="flex-1 pt-4">
+            <h1 class="text-5xl font-black mb-4 tracking-tighter">${artist.name}</h1>
+            ${artist.bio ? `<p class="max-w-2xl text-base-content/70 leading-relaxed mb-8 bg-base-200/30 p-4 rounded-xl border border-white/5">${artist.bio}</p>` : ''}
             ${linksHtml}
           </div>
         </div>
 
         ${hasPosts ? `
-        <h2 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">Recent Activity</h2>
-        <div class="posts-list mb-4" id="artist-posts" style="margin-bottom: 3rem;">
-            ${posts.map(p => `
-                <div class="card" style="padding: 1.5rem; margin-bottom: 1rem;">
-                    <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-                        <span>${new Date(p.created_at).toLocaleDateString()} ${new Date(p.created_at).toLocaleTimeString()}</span>
-                        <!-- <a href="${'/api/ap/note/post/' + p.slug}" target="_blank" title="View ActivityPub Object" style="color: inherit; text-decoration: none;">🔗</a> -->
-                    </div>
-                    <div style="white-space: pre-wrap; font-size: 1.05rem; line-height: 1.6;">${App.escapeHtml(p.content)}</div>
-                </div>
-            `).join('')}
+        <div class="mb-12">
+          <h2 class="text-2xl font-bold mb-6">Recent Activity</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="artist-posts">
+              ${posts.map(p => `
+                  <div class="card bg-base-200 border border-white/5 p-6 hover:bg-base-300 transition-colors">
+                      <div class="flex justify-between items-center mb-4 text-xs font-mono opacity-50 uppercase tracking-widest">
+                          <span>${new Date(p.created_at).toLocaleDateString()}</span>
+                          <span>${new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div class="text-lg leading-relaxed whitespace-pre-wrap">${App.escapeHtml(p.content).substring(0, 300)}${p.content.length > 300 ? '...' : ''}</div>
+                  </div>
+              `).join('')}
+          </div>
         </div>
         ` : ''}
 
-        ${hasAlbums ? '<h2 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">Albums</h2>' : ''}
-        <div class="grid" id="artist-albums"></div>
-        ${hasTracks ? '<h2 class="section-title" style="font-size: 1.25rem; margin: 2rem 0 1rem;">Tracks</h2>' : ''}
-        <div class="track-list" id="artist-tracks"></div>
+        ${hasAlbums ? `
+        <div class="mb-12">
+          <h2 class="text-2xl font-bold mb-6">Albums</h2>
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" id="artist-albums"></div>
+        </div>
+        ` : ''}
+
+        ${hasTracks ? `
+        <div>
+          <h2 class="text-2xl font-bold mb-6">Tracks</h2>
+          <div class="bg-base-200 rounded-2xl border border-white/5 overflow-hidden" id="artist-tracks"></div>
+        </div>
+        ` : ''}
       </section>
     `;
 
@@ -1197,11 +1220,11 @@ const App = {
 
       if (data.artists.length > 0) {
         html += '<h3 style="margin: 1rem 0;">Artists</h3>';
-        html += '<div class="grid">';
+        html += '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">';
         html += data.artists.map(a => `
-          <a href="#/artist/${a.id}" class="card">
-            <div class="card-cover" style="display: flex; align-items: center; justify-content: center; font-size: 3rem;">👤</div>
-            <div class="card-body"><div class="card-title">${a.name}</div></div>
+          <a href="#/artist/${a.id}" class="card bg-base-200 border border-white/5 hover:bg-base-300 transition-colors">
+            <figure class="aspect-square bg-base-300 flex items-center justify-center text-4xl opacity-20">👤</figure>
+            <div class="card-body p-4"><div class="card-title text-sm justify-center">${a.name}</div></div>
           </a>
         `).join('');
         html += '</div>';
@@ -1209,13 +1232,15 @@ const App = {
 
       if (data.albums.length > 0) {
         html += '<h3 style="margin: 1rem 0;">Albums</h3>';
-        html += '<div class="grid">';
+        html += '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">';
         html += data.albums.map(a => `
-          <a href="#/album/${a.id}" class="card">
-            <img src="${API.getAlbumCoverUrl(a.id)}" class="card-cover" alt="${a.title}">
-            <div class="card-body">
-              <div class="card-title">${a.title}</div>
-              <div class="card-subtitle">${a.artist_name || ''}</div>
+          <a href="#/album/${a.id}" class="card bg-base-200 border border-white/5 hover:bg-base-300 transition-colors">
+            <figure class="aspect-square bg-base-300 overflow-hidden">
+               <img src="${API.getAlbumCoverUrl(a.id)}" class="w-full h-full object-cover" alt="${a.title}">
+            </figure>
+            <div class="card-body p-4">
+              <div class="card-title text-sm truncate block">${a.title}</div>
+              <div class="text-xs opacity-60 truncate">${a.artist_name || ''}</div>
             </div>
           </a>
         `).join('');
@@ -1650,13 +1675,15 @@ const App = {
       }).join('') : '<div class="empty-state">Folder is empty</div>';
 
       container.innerHTML = `
-        <div class="browser-container">
-          <div class="page-header" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-            <h2>File Browser</h2>
-            <div class="browser-path" style="font-family: monospace; color: var(--text-muted);">/${data.path}</div>
+        <div class="p-4 lg:p-8">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h2 class="text-3xl font-bold">File Browser</h2>
+              <div class="text-sm font-mono opacity-50 mt-1">/${data.path || ''}</div>
+            </div>
           </div>
 
-          <div class="browser-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="bg-base-200 rounded-2xl border border-white/5 overflow-hidden">
             ${parentPath}
             ${content}
           </div>
@@ -1689,20 +1716,25 @@ const App = {
       }
 
       container.innerHTML = `
-        <div class="page-header">
-          <h2>Playlists</h2>
-        </div>
-        ${createForm}
-        <div class="grid">
-          ${playlists.length ? playlists.map(p => `
-            <div class="card card-hover" onclick="window.location.hash='#/playlist/${p.id}'" style="cursor: pointer;">
-              <h3>${App.escapeHtml(p.name)}</h3>
-              <p class="text-secondary">${App.escapeHtml(p.description || '')}</p>
-              <div style="font-size: 0.8em; color: #888;">
-                ${p.is_public ? '🌐 Public' : '🔒 Private'} • ${new Date(p.created_at).toLocaleDateString()}
+        <div class="p-4 lg:p-8">
+          <div class="flex items-center justify-between mb-8">
+            <h2 class="text-3xl font-bold">Playlists</h2>
+          </div>
+          ${createForm}
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${playlists.length ? playlists.map(p => `
+              <div class="card bg-base-200 border border-white/5 hover:bg-base-300 transition-all cursor-pointer group" onclick="window.location.hash='#/playlist/${p.id}'">
+                <div class="card-body">
+                  <h3 class="card-title text-xl group-hover:text-primary transition-colors">${App.escapeHtml(p.name)}</h3>
+                  <p class="text-sm opacity-60 line-clamp-2">${App.escapeHtml(p.description || 'No description')}</p>
+                  <div class="card-actions justify-end mt-4 items-center gap-4">
+                    <span class="text-xs font-mono opacity-50">${p.is_public ? '🌐 Public' : '🔒 Private'}</span>
+                    <span class="text-xs opacity-50">${new Date(p.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          `).join('') : '<p>No playlists found.</p>'}
+            `).join('') : '<p class="col-span-full text-center p-12 opacity-50">No playlists found.</p>'}
+          </div>
         </div>
       `;
 
@@ -1876,55 +1908,95 @@ const App = {
 
         
         <!-- Network Settings Panel (hidden by default) -->
+        <div id="network-settings-panel" class="admin-panel" style="display: none;">
+          <h3>Network & Social Settings</h3>
+          <form id="network-settings-form">
+            <div class="form-group">
+              <label>Public Server URL</label>
+              <input type="url" id="network-setting-public-url" placeholder="https://tunecamp.example.com">
+              <p class="text-xs opacity-50">Used for federation and links.</p>
+            </div>
+            <div class="form-group">
+              <label>Site Name</label>
+              <input type="text" id="network-setting-site-name">
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea id="network-setting-site-description"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Primary Artist Name</label>
+              <input type="text" id="network-setting-artist-name">
+            </div>
+            <div class="form-group">
+                <label>Server Cover/Avatar URL</label>
+                <input type="text" id="network-setting-cover-image">
+            </div>
+            <div class="divider"></div>
+            <div class="form-group">
+              <label>Federation Controls</label>
+              <button type="button" class="btn btn-outline btn-sm btn-error" id="reset-hidden-tracks">Reinposta Tracce Nascoste</button>
+              <p class="text-xs opacity-50 mt-1">Cancella la lista delle tracce rimosse manualmente dal Feed Network.</p>
+            </div>
+            <button type="submit" class="btn btn-primary mt-4">Save Network Settings</button>
+          </form>
         </div>
 
         <!-- Backup Panel (hidden by default) -->
-        </div>
-
-        <!-- Upload Panel (hidden by default) -->
-        <div id="upload-panel" class="admin-panel" style="display: none;">
-          <h3>Upload Tracks to Library</h3>
-          <div class="upload-zone" id="upload-zone">
-            <input type="file" id="file-input" multiple accept="audio/*" style="display: none;">
-            <p>📁 Drag & drop audio files here or <button class="btn btn-outline btn-sm" id="browse-btn">Browse</button></p>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">Supports: MP3, FLAC, OGG, WAV, M4A, AAC, OPUS</p>
-          </div>
-          <div id="upload-progress" style="display: none;">
-            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-            <p id="upload-status"></p>
-          </div>
-        </div>
-
-        <!-- Posts Panel (hidden by default) -->
-        <div id="posts-panel" class="admin-panel" style="display: none;">
-            <h3>Manage Posts</h3>
-            <div class="row" style="display: flex; gap: 2rem; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 300px;">
-                    <h4>Create New Post</h4>
-                    <form id="create-post-form">
-                        <div class="form-group">
-                            <label>Artist</label>
-                            <select id="post-artist" required>
-                                <option value="">Select Artist...</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Content</label>
-                            <textarea id="post-content" rows="4" required placeholder="Write something..."></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Publish Post</button>
-                    </form>
-                </div>
-                <div style="flex: 1; min-width: 300px;">
-                    <h4>Recent Posts (by selected artist)</h4>
-                    <div id="posts-list" class="list-group">
-                        <p class="text-secondary">Select an artist to view their posts.</p>
-                    </div>
-                </div>
+        <div id="backup-panel" class="admin-panel" style="display: none;">
+          <h3>Data Backup & Restore</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="p-4 bg-base-300 rounded-lg">
+              <h4>Export Backup</h4>
+              <p class="text-sm opacity-70 mb-4">Scarica un archivio ZIP contenente il database e tutta la libreria audio.</p>
+              <a href="/api/admin/backup/export" class="btn btn-outline btn-block" target="_blank">Download Full Backup</a>
+              
+              <div class="divider"></div>
+              <h4>Identity Management</h4>
+              <p class="text-sm opacity-70 mb-4">Esporta o importa le chiavi d'identità del server.</p>
+              <div class="flex gap-2">
+                <button class="btn btn-sm btn-outline flex-1" id="export-identity-btn">Esporta Chiavi</button>
+                <button class="btn btn-sm btn-outline flex-1" id="import-identity-btn">Importa Chiavi</button>
+              </div>
             </div>
+            <div class="p-4 bg-base-300 rounded-lg">
+              <h4>Restore Backup</h4>
+              <p class="text-sm opacity-70 mb-4">Carica un backup precedente per ripristinare il server. <strong>Attenzione: sovrascrive i dati attuali!</strong></p>
+              <form id="restore-form">
+                <input type="file" id="restore-file-input" accept=".zip" class="file-input file-input-bordered w-full mb-4" required>
+                <button type="submit" class="btn btn-error btn-block" id="restore-btn">Esegui Ripristino</button>
+              </form>
+              <div id="restore-status" class="mt-2 text-sm"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Users Panel (hidden by default) -->
+        <div id="users-panel" class="admin-panel" style="display: none;">
+          <div class="flex justify-between items-center mb-6">
+            <h3>Manage Administrators</h3>
+            <div id="create-admin-form-container" style="display: none;">
+               <h4 class="mb-2">Create New Admin</h4>
+               <form id="create-user-form" class="flex gap-2 items-end flex-wrap">
+                  <div class="form-group mb-0">
+                    <label class="label p-0"><span class="label-text text-xs">Username</span></label>
+                    <input type="text" id="new-user-name" class="input input-sm input-bordered" required>
+                  </div>
+                  <div class="form-group mb-0">
+                    <label class="label p-0"><span class="label-text text-xs">Password</span></label>
+                    <input type="password" id="new-user-pass" class="input input-sm input-bordered" required>
+                  </div>
+                  <div class="form-group mb-0">
+                    <label class="label p-0"><span class="label-text text-xs">Artist Link</span></label>
+                    <select id="new-user-artist" class="select select-sm select-bordered">
+                        <option value="">None</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-sm btn-primary">Create</button>
+               </form>
+            </div>
+          </div>
+          <div id="users-list-container" class="space-y-2"></div>
         </div>
 
         <!-- Unified Release Editor Panel (hidden by default) -->
