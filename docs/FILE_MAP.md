@@ -18,6 +18,8 @@
     -   `activitypub.ts`: Federation logic.
     -   `database.ts`: Database connection/logic.
     -   `routes/`: API and page routes.
+        -   `posts.ts`: Custom posts API.
+        -   `backup.ts`: Backup system logic.
 -   `studio/`: Admin interface logic.
 -   `gleam/`: Gleam source code.
 -   `gleam_generated/`: Compiled Gleam JS interface.

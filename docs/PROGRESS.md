@@ -11,6 +11,6 @@
 -   **Web Interface**: Improved Reactivity and UI in `webapp/`.
 
 ## Active Areas
--   **ActivityPub**: Finalizing federation features (Inbox/Outbox, Follows).
--   **Studio**: Enhancing the admin dashboard (`src/studio`).
+-   **ActivityPub**: Federation features (Inbox/Outbox, Follows, Posts) are largely implemented and functional.
+-   **Custom Posts**: Added backend and frontend support for artist microblogging.
 -   **Documentation**: Improving context for AI and developers (`docs/`).

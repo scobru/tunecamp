@@ -22,9 +22,11 @@
 ## Decentralized / Community
 -   **GunDB Integration**: Used for comments, unlock codes, and peer discovery.
 -   **Community Directory**: Automatic registration to a public directory of TuneCamp sites.
--   **ActivityPub**: Federation support (in progress/beta) for following artists via Mastodon/Fediverse.
+-   **ActivityPub**: Federation support for following artists, viewing releases, and reading posts via Mastodon/Fediverse.
 
 ## Server Mode
 -   **Streaming Server**: Personal streaming server for your library.
 -   **Web Interface**: Dynamic UI for browsing and playing music.
--   **Admin Studio**: Web-based file browser and management tools.
+-   **Admin Studio**: Web-based file browser, track uploads, and management tools.
+-   **Custom Posts**: Microblogging feature for artists to publish news and updates directly to the Fediverse.
+-   **Identity & Backup**: Full portability of server identity and keys for easy migration.
