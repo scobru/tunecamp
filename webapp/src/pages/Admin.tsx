@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
-import { BarChart2, Settings, Database, RefreshCw } from 'lucide-react';
-// import { GleamUtils } from '../utils/gleam';
+import { BarChart2, Settings, Database, RefreshCw, Save } from 'lucide-react';
+import { AdminUserModal } from '../components/modals/AdminUserModal';
+import { AdminReleaseModal } from '../components/modals/AdminReleaseModal';
+import type { SiteSettings } from '../types';
 
 export const Admin = () => {
     const { user, isAuthenticated } = useAuthStore();
@@ -121,7 +123,7 @@ export const Admin = () => {
                      <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg">User Management</h3>
-                            <button className="btn btn-sm btn-primary">Add User</button>
+                            <button className="btn btn-sm btn-primary" onClick={() => document.dispatchEvent(new CustomEvent('open-admin-user-modal'))}>Add User</button>
                         </div>
                         <AdminUsersList />
                      </div>
@@ -131,20 +133,111 @@ export const Admin = () => {
                      <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg">Releases</h3>
-                            <button className="btn btn-sm btn-primary">Create Release</button>
+                            <button className="btn btn-sm btn-primary" onClick={() => document.dispatchEvent(new CustomEvent('open-admin-release-modal'))}>Create Release</button>
                         </div>
                         <AdminReleasesList />
                      </div>
                 )}
                 
-                {activeTab === 'settings' && (
-                     <div className="text-center opacity-50 py-12">
-                        <Settings size={48} className="mx-auto mb-4"/>
-                        <p>Site settings (Name, Description, Public Access) coming soon.</p>
-                    </div>
-                )}
+                {activeTab === 'settings' && <AdminSettingsPanel />}
             </div>
+            
+            <AdminUserModal onUserUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-users'))} />
+            <AdminReleaseModal onReleaseUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
         </div>
+    );
+};
+
+const AdminSettingsPanel = () => {
+    const [settings, setSettings] = useState<SiteSettings | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        API.getSiteSettings().then(setSettings).catch(console.error);
+    }, []);
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!settings) return;
+        setLoading(true);
+        setMessage('');
+        try {
+            await API.updateSettings(settings);
+            setMessage('Settings saved successfully.');
+        } catch (e) {
+            console.error(e);
+            setMessage('Failed to save settings.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!settings) return <div className="p-8 text-center opacity-50">Loading settings...</div>;
+
+    return (
+        <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
+            <h3 className="font-bold text-lg">Site Settings</h3>
+            
+            <div className="form-control">
+                <label className="label">
+                    <span className="label-text">Site Name</span>
+                </label>
+                <input 
+                    type="text" 
+                    className="input input-bordered" 
+                    value={settings.siteName}
+                    onChange={e => setSettings({...settings, siteName: e.target.value})}
+                />
+            </div>
+
+            <div className="form-control">
+                <label className="label">
+                    <span className="label-text">Description</span>
+                </label>
+                <textarea 
+                    className="textarea textarea-bordered h-24" 
+                    value={settings.siteDescription || ''}
+                    onChange={e => setSettings({...settings, siteDescription: e.target.value})}
+                />
+            </div>
+            
+             <div className="form-control">
+                <label className="label">
+                    <span className="label-text">Background Image URL</span>
+                </label>
+                <input 
+                    type="text" 
+                    className="input input-bordered" 
+                    value={settings.backgroundImage || ''}
+                    onChange={e => setSettings({...settings, backgroundImage: e.target.value})}
+                    placeholder="/images/bg.jpg"
+                />
+                <label className="label">
+                    <span className="label-text-alt opacity-50">Upload not yet implemented via UI, use URL manually for now.</span>
+                </label>
+            </div>
+
+            <div className="form-control">
+                <label className="label cursor-pointer justify-start gap-4">
+                    <span className="label-text">Allow Public Registration</span>
+                    <input 
+                        type="checkbox" 
+                        className="toggle toggle-primary"
+                        checked={settings.allowPublicRegistration || false}
+                        onChange={e => setSettings({...settings, allowPublicRegistration: e.target.checked})}
+                    />
+                </label>
+            </div>
+
+            <div className="pt-4">
+                {message && <div className={`mb-4 text-sm ${message.includes('Failed') ? 'text-error' : 'text-success'}`}>{message}</div>}
+                
+                <button type="submit" className="btn btn-primary gap-2" disabled={loading}>
+                    <Save size={16} /> Save Changes
+                </button>
+            </div>
+        </form>
     );
 };
 
@@ -152,7 +245,10 @@ export const Admin = () => {
 const AdminUsersList = () => {
     const [users, setUsers] = useState<any[]>([]);
     useEffect(() => {
-        API.getUsers().then(setUsers).catch(console.error);
+        const loadUsers = () => API.getUsers().then(setUsers).catch(console.error);
+        loadUsers();
+        window.addEventListener('refresh-admin-users', loadUsers);
+        return () => window.removeEventListener('refresh-admin-users', loadUsers);
     }, []);
 
     if (users.length === 0) return <div className="opacity-50 text-center py-4">No users found.</div>;
@@ -179,7 +275,10 @@ const AdminUsersList = () => {
 const AdminReleasesList = () => {
     const [releases, setReleases] = useState<any[]>([]);
     useEffect(() => {
-        API.getAdminReleases().then(setReleases).catch(console.error);
+        const loadReleases = () => API.getAdminReleases().then(setReleases).catch(console.error);
+        loadReleases();
+        window.addEventListener('refresh-admin-releases', loadReleases);
+        return () => window.removeEventListener('refresh-admin-releases', loadReleases);
     }, []);
 
     if (releases.length === 0) return <div className="opacity-50 text-center py-4">No releases found.</div>;

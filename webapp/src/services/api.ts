@@ -116,6 +116,11 @@ export const API = {
     addTrackToRelease: (releaseId: string, trackId: string) =>
         handleResponse(api.post(`/admin/releases/${releaseId}/tracks/add`, { trackId })),
 
+    // --- Comments ---
+    getComments: (trackId: string) => handleResponse(api.get<any[]>(`/comments/track/${trackId}`)),
+    postComment: (trackId: string, text: string) => handleResponse(api.post('/comments/track/' + trackId, { text })),
+    deleteComment: (commentId: string) => handleResponse(api.delete(`/comments/${commentId}`)),
+
     // --- Admin: Artists ---
     createArtist: (data: Partial<Artist>) => handleResponse(api.post<Artist>('/artists', data)),
     updateArtist: (id: string, data: Partial<Artist>) => handleResponse(api.put<Artist>(`/artists/${id}`, data)),

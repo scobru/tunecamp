@@ -1,27 +1,38 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { LogIn, UserPlus } from 'lucide-react';
 
 export const AuthModal = () => {
     const dialogRef = useRef<HTMLDialogElement>(null);
-    const [isRegister, setIsRegister] = useState(false);
+    const [mode, setMode] = useState<'admin' | 'user' | 'register'>('admin');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
     const { login, register, error } = useAuthStore();
     const [localError, setLocalError] = useState('');
 
+    useEffect(() => {
+        const handleOpen = () => {
+            dialogRef.current?.showModal();
+            setMode('admin'); // Default to admin or user preference? Admin is common for owner.
+        };
+        document.addEventListener('open-auth-modal', handleOpen);
+        return () => document.removeEventListener('open-auth-modal', handleOpen);
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLocalError('');
         
         try {
-            if (isRegister) {
+            if (mode === 'register') {
                 if (password !== confirmPass) {
                     setLocalError('Passwords do not match');
                     return;
                 }
                 await register(username, password);
+            } else if (mode === 'admin') {
+                await login('admin', password);
             } else {
                 await login(username, password);
             }
@@ -30,7 +41,7 @@ export const AuthModal = () => {
             setUsername('');
             setPassword('');
             setConfirmPass('');
-        } catch (err) {
+        } catch (err: any) {
             // Error managed by store usually, but set local if needed
         }
     };
@@ -43,51 +54,59 @@ export const AuthModal = () => {
                 </form>
                 
                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-                    {isRegister ? <><UserPlus size={20}/> Create Account</> : <><LogIn size={20}/> Login</>}
+                    {mode === 'register' ? <UserPlus size={20}/> : <LogIn size={20}/>} 
+                    {mode === 'register' ? 'Create Account' : (mode === 'admin' ? 'Admin Login' : 'User Login')}
                 </h3>
 
                 <div className="tabs tabs-boxed bg-base-200 p-1 mb-6">
                     <button 
-                        className={`tab flex-1 ${!isRegister ? 'tab-active' : ''}`}
-                        onClick={() => setIsRegister(false)}
-                    >Login</button>
+                        className={`tab flex-1 ${mode === 'admin' ? 'tab-active' : ''}`}
+                        onClick={() => setMode('admin')}
+                    >Admin</button>
                     <button 
-                        className={`tab flex-1 ${isRegister ? 'tab-active' : ''}`}
-                        onClick={() => setIsRegister(true)}
+                        className={`tab flex-1 ${mode === 'user' ? 'tab-active' : ''}`}
+                        onClick={() => setMode('user')}
+                    >User</button>
+                    <button 
+                        className={`tab flex-1 ${mode === 'register' ? 'tab-active' : ''}`}
+                        onClick={() => setMode('register')}
                     >Register</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Username</span>
-                        </label>
-                        <input 
-                            type="text" 
-                            placeholder="username" 
-                            className="input input-bordered w-full" 
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            required
-                            autoComplete="username"
-                        />
-                    </div>
+                    {mode !== 'admin' && (
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Username</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                placeholder="username" 
+                                className="input input-bordered w-full" 
+                                value={username}
+                                onChange={e => setUsername(e.target.value)}
+                                required={mode !== 'admin'}
+                                autoComplete="username"
+                            />
+                        </div>
+                    )}
+
                     <div className="form-control">
                         <label className="label">
                             <span className="label-text">Password</span>
                         </label>
                         <input 
                             type="password" 
-                            placeholder="••••••" 
+                            placeholder={mode === 'admin' ? "Admin Password" : "••••••"} 
                             className="input input-bordered w-full" 
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             required
-                            autoComplete={isRegister ? "new-password" : "current-password"}
+                            autoComplete={mode === 'register' ? "new-password" : "current-password"}
                         />
                     </div>
                     
-                    {isRegister && (
+                    {mode === 'register' && (
                         <div className="form-control">
                             <label className="label">
                                 <span className="label-text">Confirm Password</span>
@@ -109,7 +128,7 @@ export const AuthModal = () => {
                     )}
 
                     <button type="submit" className="btn btn-primary w-full mt-2">
-                        {isRegister ? 'Sign Up' : 'Sign In'}
+                        {mode === 'register' ? 'Sign Up' : 'Sign In'}
                     </button>
                 </form>
             </div>

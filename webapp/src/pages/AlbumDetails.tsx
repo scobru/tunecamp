@@ -5,6 +5,7 @@ import { Play, Clock, Heart, MoreHorizontal, Disc, Share2, Plus } from 'lucide-r
 import { usePlayerStore } from '../stores/usePlayerStore';
 // import { GleamUtils } from '../utils/gleam';
 import type { Album } from '../types';
+import { Comments } from '../components/Comments';
 
 export const AlbumDetails = () => {
     const { id } = useParams();
@@ -134,6 +135,10 @@ export const AlbumDetails = () => {
                     </tbody>
                 </table>
             </div>
+
+
+            {/* Comments */}
+            <Comments trackId={album.tracks && album.tracks.length > 0 ? album.tracks[0].id : undefined} albumId={album.id} />
         </div>
     );
 };

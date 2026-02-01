@@ -71,7 +71,7 @@ export const Sidebar = () => {
                 </Link>
             </div>
         ) : (
-            <button className="btn btn-outline btn-sm w-full gap-2" onClick={() => (document.getElementById('auth-modal') as HTMLDialogElement)?.showModal()}>
+            <button className="btn btn-outline btn-sm w-full gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}>
                 <LogIn size={16} /> Login
             </button>
         )}
