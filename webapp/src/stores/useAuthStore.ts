@@ -10,6 +10,7 @@ interface AuthState {
 
     checkAuth: () => Promise<void>;
     login: (username: string, password?: string) => Promise<void>;
+    register: (username: string, password: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -42,6 +43,22 @@ export const useAuthStore = create<AuthState>((set) => ({
             set({
                 isAuthenticated: true,
                 user: result.user || { username, isAdmin: true, id: '0' } as User,
+                isLoading: false
+            });
+        } catch (e: any) {
+            set({ error: e.message, isLoading: false });
+            throw e;
+        }
+    },
+
+    register: async (username, password) => {
+        set({ isLoading: true, error: null });
+        try {
+            const result = await API.register(username, password);
+            API.setToken(result.token);
+            set({
+                isAuthenticated: true,
+                user: result.user || { username, isAdmin: false, id: '0' } as User,
                 isLoading: false
             });
         } catch (e: any) {

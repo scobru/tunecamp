@@ -1,6 +1,9 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { PlayerBar } from '../player/PlayerBar';
+import { AuthModal } from '../modals/AuthModal';
+import { PlaylistModal } from '../modals/PlaylistModal';
+import { UnlockModal } from '../modals/UnlockModal';
 
 export const MainLayout = () => {
     return (
@@ -14,6 +17,11 @@ export const MainLayout = () => {
             </main>
 
             <PlayerBar />
+            
+            {/* Global Modals */}
+            <AuthModal />
+            <PlaylistModal />
+            <UnlockModal />
         </div>
     );
 };

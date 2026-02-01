@@ -87,3 +87,53 @@ export interface SiteSettings {
     backgroundImage?: string;
     donationLinks?: ArtistLink[];
 }
+
+export interface Release extends Album {
+    downloadCount: number;
+    unlockCodeCount: number;
+    visibility: 'public' | 'private' | 'unlisted';
+}
+
+export interface Post {
+    id: string;
+    slug: string;
+    content: string; // HTML/Markdown
+    artistId: string;
+    artistName?: string;
+    artistAvatar?: string;
+    createdAt: string;
+    publishedAt?: string;
+    updatedAt: string;
+    isPublic: boolean;
+}
+
+export interface UnlockCode {
+    code: string;
+    releaseId: string;
+    isRedeemed: boolean;
+    redeemedAt?: string;
+    createdAt: string;
+}
+
+export interface NetworkSite {
+    url: string;
+    name: string;
+    description: string;
+    version: string;
+    lastSeen: string;
+}
+
+export interface NetworkTrack {
+    track: Track;
+    siteName: string;
+    siteUrl: string;
+}
+
+export interface AdminStats {
+    totalUsers: number;
+    totalArtists: number;
+    totalAlbums: number;
+    totalTracks: number;
+    storageUsed: number;
+    networkSites: number;
+}

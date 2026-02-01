@@ -1,13 +1,19 @@
 import { useRef, useEffect } from 'react';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import API from '../../services/api';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, ListMusic, Shuffle, Repeat } from 'lucide-react';
+import { Waveform } from './Waveform';
+import { LyricsPanel } from './LyricsPanel';
+import { QueuePanel } from './QueuePanel';
+import { GleamUtils } from '../../utils/gleam';
 
 export const PlayerBar = () => {
     const { 
         currentTrack, isPlaying, volume, 
         togglePlay, next, prev, 
-        setIsPlaying, setProgress, setVolume 
+        setIsPlaying, setProgress, setVolume,
+        isShuffled, repeatMode, toggleShuffle, toggleRepeat,
+        toggleLyrics, toggleQueue, progress, currentTime, duration
     } = usePlayerStore();
     
     const audioRef = useRef<HTMLAudioElement>(null);
@@ -16,11 +22,19 @@ export const PlayerBar = () => {
         if (!currentTrack || !audioRef.current) return;
         
         const audio = audioRef.current;
-        audio.src = API.getStreamUrl(currentTrack.id);
-        if (isPlaying) audio.play();
+        const newSrc = API.getStreamUrl(currentTrack.id);
+        
+        // Only update source if it changed to avoid reloading same track
+        if (audio.src !== newSrc && !audio.src.endsWith(newSrc)) {
+            audio.src = newSrc;
+            if (isPlaying) audio.play().catch(console.error);
+        }
 
         const updateTime = () => setProgress(audio.currentTime, audio.duration);
-        const handleEnded = () => next();
+        const handleEnded = () => {
+             // Let store handle logic based on repeat mode
+             next();
+        };
 
         audio.addEventListener('timeupdate', updateTime);
         audio.addEventListener('ended', handleEnded);
@@ -29,72 +43,127 @@ export const PlayerBar = () => {
             audio.removeEventListener('timeupdate', updateTime);
             audio.removeEventListener('ended', handleEnded);
         };
-    }, [currentTrack]); // Only re-run if track changes. Playing state handled separately.
+    }, [currentTrack]); 
 
+    // Sync play/pause state
     useEffect(() => {
         if (!audioRef.current) return;
-        if (isPlaying) audioRef.current.play().catch(() => setIsPlaying(false));
-        else audioRef.current.pause();
+        if (isPlaying && audioRef.current.paused) {
+             audioRef.current.play().catch(() => setIsPlaying(false));
+        } else if (!isPlaying && !audioRef.current.paused) {
+            audioRef.current.pause();
+        }
     }, [isPlaying]);
 
+    // Sync volume
     useEffect(() => {
         if (audioRef.current) audioRef.current.volume = volume;
     }, [volume]);
 
-    if (!currentTrack) return <div className="fixed bottom-0 w-full h-24 bg-base-200 border-t border-white/5 flex items-center justify-center text-sm opacity-50">Select a track to play</div>;
+    // Handle manual seek from waveform/progress bar
+    const handleSeek = (percent: number) => {
+        if (audioRef.current && Number.isFinite(duration) && duration > 0) {
+            audioRef.current.currentTime = percent * duration;
+        }
+    };
+
+    if (!currentTrack) return <div className="fixed bottom-0 w-full h-24 bg-base-200 border-t border-white/5 flex items-center justify-center text-sm opacity-50 z-50">Select a track to play</div>;
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-24 bg-base-200/90 backdrop-blur-xl border-t border-white/5 px-6 flex items-center gap-4 z-50">
-            <audio ref={audioRef} />
+        <>
+            <div className="fixed bottom-0 left-0 right-0 lg:h-24 bg-base-200/90 backdrop-blur-xl border-t border-white/5 lg:px-6 flex flex-col lg:flex-row items-center gap-4 z-50 shadow-2xl pb-safe lg:pb-0">
+                <audio ref={audioRef} />
+                
+                <div className="flex items-center gap-3 lg:gap-4 w-full lg:w-64 shrink-0 px-4 lg:px-0 pt-2 lg:pt-0">
+                    <img 
+                        src={currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId) : undefined} 
+                        alt="Cover" 
+                        className="w-12 h-12 lg:w-14 lg:h-14 rounded-lg bg-base-300 shadow-lg object-cover"
+                    />
+                    <div className="min-w-0">
+                        <div className="font-bold truncate text-sm lg:text-base">{currentTrack.title}</div>
+                        <div className="text-xs lg:text-sm opacity-60 truncate">{currentTrack.artistName}</div>
+                    </div>
+                </div>
+
+                {/* Controls & Waveform */}
+                <div className="flex flex-col items-center flex-1 max-w-2xl mx-auto gap-1 lg:gap-2 w-full px-2 lg:px-0">
+                    {/* Buttons */}
+                    <div className="flex items-center gap-4 lg:gap-6">
+                        <button 
+                            className={`btn btn-ghost btn-circle btn-xs ${isShuffled ? 'text-primary' : 'opacity-50'}`} 
+                            onClick={toggleShuffle}
+                        >
+                            <Shuffle size={16} />
+                        </button>
+
+                        <button className="btn btn-ghost btn-circle btn-sm" onClick={prev}><SkipBack size={20} /></button>
+                        
+                        <button 
+                            className="btn btn-circle btn-primary text-white shadow-lg lg:scale-110 hover:scale-110 transition-transform" 
+                            onClick={togglePlay}
+                        >
+                            {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
+                        </button>
+                        
+                        <button className="btn btn-ghost btn-circle btn-sm" onClick={next}><SkipForward size={20} /></button>
+                        
+                        <button 
+                            className={`btn btn-ghost btn-circle btn-xs ${repeatMode !== 'none' ? 'text-primary' : 'opacity-50'}`} 
+                            onClick={toggleRepeat}
+                        >
+                            <Repeat size={16} />
+                            {repeatMode === 'one' && <span className="absolute text-[8px] font-bold bottom-1 right-1">1</span>}
+                        </button>
+                    </div>
+
+                    {/* Progress / Waveform */}
+                    <div className="w-full flex items-center gap-3 text-xs font-mono opacity-100 h-10 lg:h-12 relative group">
+                         {currentTrack.waveform ? (
+                             <Waveform 
+                                data={currentTrack.waveform} 
+                                progress={progress / 100} 
+                                onSeek={handleSeek}
+                                height={40}
+                                colorPlayed="oklch(var(--color-primary))" 
+                             />
+                         ) : (
+                            // Fallback simple progress bar
+                            <div className="flex items-center w-full gap-2">
+                                <span className="min-w-[40px] text-right opacity-50">{GleamUtils.formatTimeAgo(0, currentTime * 1000).replace(' ago', '') === 'just now' ? '0:00' : new Date(currentTime * 1000).toISOString().substr(14, 5)}</span>
+                                <input 
+                                    type="range" 
+                                    className="range range-xs range-primary flex-1" 
+                                    min="0" max="100" 
+                                    value={progress || 0}
+                                    onChange={(e) => handleSeek(parseFloat(e.target.value) / 100)}
+                                />
+                                <span className="min-w-[40px] opacity-50">{new Date(duration * 1000).toISOString().substr(14, 5)}</span>
+                            </div>
+                         )}
+                    </div>
+                </div>
+
+                {/* Volume & Extras */}
+                <div className="hidden lg:flex items-center gap-4 w-64 justify-end">
+                    <div className="flex items-center gap-2 group">
+                       <Volume2 size={18} className="opacity-70 group-hover:text-primary transition-colors" />
+                       <input 
+                            type="range" className="range range-xs w-24" 
+                            min="0" max="1" step="0.05"
+                            value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} 
+                       />
+                    </div>
+                    <div className="border-l border-white/10 pl-4 flex gap-2">
+                        <button className="btn btn-ghost btn-circle btn-sm" onClick={toggleLyrics}><Mic2 size={18} /></button>
+                        <button className="btn btn-ghost btn-circle btn-sm" onClick={toggleQueue}><ListMusic size={18} /></button>
+                    </div>
+                </div>
+            </div>
             
-            {/* Track Info */}
-            <div className="flex items-center gap-4 w-64 shrink-0">
-                <img 
-                    src={currentTrack.albumId ? API.getCoverUrl(currentTrack.albumId) : undefined} 
-                    alt="Cover" 
-                    className="w-14 h-14 rounded-lg bg-base-300 shadow-lg object-cover"
-                />
-                <div className="min-w-0">
-                    <div className="font-bold truncate">{currentTrack.title}</div>
-                    <div className="text-sm opacity-60 truncate">{currentTrack.artistName}</div>
-                </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex flex-col items-center flex-1 max-w-2xl mx-auto gap-2">
-                <div className="flex items-center gap-6">
-                    <button className="btn btn-ghost btn-circle btn-sm" onClick={prev}><SkipBack size={20} /></button>
-                    <button 
-                        className="btn btn-circle btn-primary text-white shadow-lg hover:scale-105" 
-                        onClick={togglePlay}
-                    >
-                        {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-                    </button>
-                    <button className="btn btn-ghost btn-circle btn-sm" onClick={next}><SkipForward size={20} /></button>
-                </div>
-                {/* Progress Bar (Simple for now, restore Canvas later) */}
-                <div className="w-full flex items-center gap-3 text-xs font-mono opacity-70">
-                    <span>--:--</span>
-                    <input type="range" className="range range-xs range-primary flex-1" />
-                    <span>--:--</span>
-                </div>
-            </div>
-
-            {/* Volume & Extras */}
-            <div className="flex items-center gap-4 w-64 justify-end">
-                <div className="flex items-center gap-2">
-                   <Volume2 size={18} className="opacity-70" />
-                   <input 
-                        type="range" className="range range-xs w-24" 
-                        min="0" max="1" step="0.05"
-                        value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} 
-                   />
-                </div>
-                <div className="border-l border-white/10 pl-4 flex gap-2">
-                    <button className="btn btn-ghost btn-circle btn-xs"><Mic2 size={16} /></button>
-                    <button className="btn btn-ghost btn-circle btn-xs"><ListMusic size={16} /></button>
-                </div>
-            </div>
-        </div>
+            {/* Panels */}
+            <LyricsPanel />
+            <QueuePanel />
+        </>
     );
 };
