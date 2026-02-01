@@ -27,35 +27,38 @@ export const Albums = () => {
              </div>
 
              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {albums.map(album => (
-                    <Link to={`/albums/${album.id}`} key={album.id} className="group card bg-base-200 hover:bg-base-300 transition-all hover:-translate-y-1 duration-300 shadow-xl border border-white/5">
-                        <figure className="aspect-square relative overflow-hidden">
-                            {album.coverImage ? (
-                                <img 
-                                    src={API.getAlbumCoverUrl(album.id)} 
-                                    alt={album.title} 
-                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
-                                    loading="lazy"
-                                />
-                            ) : (
-                                <div className="w-full h-full bg-neutral flex items-center justify-center opacity-30"><Disc size={48}/></div>
-                            )}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="btn btn-circle btn-primary btn-sm scale-0 group-hover:scale-100 transition-transform delay-75">
-                                    <Disc size={16}/>
-                                </span>
+                {albums.map(album => {
+                    if (!album) return null;
+                    return (
+                        <Link to={`/albums/${album.id}`} key={album.id} className="group card bg-base-200 hover:bg-base-300 transition-all hover:-translate-y-1 duration-300 shadow-xl border border-white/5">
+                            <figure className="aspect-square relative overflow-hidden">
+                                {album.coverImage ? (
+                                    <img 
+                                        src={API.getAlbumCoverUrl(album.id)} 
+                                        alt={album.title} 
+                                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" 
+                                        loading="lazy"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full bg-neutral flex items-center justify-center opacity-30"><Disc size={48}/></div>
+                                )}
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <span className="btn btn-circle btn-primary btn-sm scale-0 group-hover:scale-100 transition-transform delay-75">
+                                        <Disc size={16}/>
+                                    </span>
+                                </div>
+                            </figure>
+                            <div className="card-body p-4">
+                                <h3 className="font-bold truncate text-lg" title={album.title}>{album.title}</h3>
+                                <p className="text-sm opacity-60 truncate">{album.artistName}</p>
+                                <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
+                                    <span>{album.year}</span>
+                                    <span className="uppercase border border-white/20 px-1 rounded text-[10px]">{album.type}</span>
+                                </div>
                             </div>
-                        </figure>
-                        <div className="card-body p-4">
-                            <h3 className="font-bold truncate text-lg" title={album.title}>{album.title}</h3>
-                            <p className="text-sm opacity-60 truncate">{album.artistName}</p>
-                            <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
-                                <span>{album.year}</span>
-                                <span className="uppercase border border-white/20 px-1 rounded text-[10px]">{album.type}</span>
-                            </div>
-                        </div>
-                    </Link>
-                ))}
+                        </Link>
+                    );
+                })}
              </div>
              
              {albums.length === 0 && (

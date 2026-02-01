@@ -69,6 +69,7 @@ export const AuthModal = () => {
                             value={username}
                             onChange={e => setUsername(e.target.value)}
                             required
+                            autoComplete="username"
                         />
                     </div>
                     <div className="form-control">
@@ -82,6 +83,7 @@ export const AuthModal = () => {
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             required
+                            autoComplete={isRegister ? "new-password" : "current-password"}
                         />
                     </div>
                     
@@ -97,6 +99,7 @@ export const AuthModal = () => {
                                 value={confirmPass}
                                 onChange={e => setConfirmPass(e.target.value)}
                                 required
+                                autoComplete="new-password"
                             />
                         </div>
                     )}

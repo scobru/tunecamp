@@ -228,3 +228,39 @@ JWT-based authentication. Protected endpoints require `Authorization: Bearer <to
   "expiresIn": "7d"
 }
 ```
+
+---
+
+## Subsonic API Compatibility
+
+TuneCamp implements a subset of the [Subsonic API](http://www.subsonic.org/pages/api.jsp) (v1.16.1) at `/rest`. This allows connection from third-party clients like DSub, Symfonium, audinaut, etc.
+
+**Base URL**: `http://localhost:1970/rest`
+
+### Authentication
+
+Two methods are supported:
+
+1.  **Legacy Auth (Recommended for compatibility)**:
+    -   Pass `u=<username>` and `p=enc:<hex-encoded-password>`.
+    -   Password must be hex-encoded (e.g. `password` -> `70617373776f7264`).
+    -   Most clients handle this automatically when "Legacy Auth" is enabled.
+
+2.  **Token Auth**:
+    -   Pass `u=<username>`, `t=<token>`, `s=<salt>`.
+    -   *Note*: TuneCamp currently enforces Legacy Auth verification due to bcrypt hashing. Token auth requests may fail if the client doesn't fallback to sending the password.
+
+### Supported Methods
+
+| Method | Description | Notes |
+|--------|-------------|-------|
+| `ping` | Test connection | Returns 200 OK |
+| `getLicense` | Get server license | Returns valid license |
+| `getMusicFolders` | List configured music folders | Returns root folder |
+| `getIndexes` | Artist index (A-Z) | Grouped by first letter |
+| `getMusicDirectory` | Browse Artist/Album | Returns children of node |
+| `getArtist` | Artist details | Includes albums |
+| `getAlbum` | Album details | Includes tracks |
+| `stream` | Stream audio | Direct file streaming |
+| `getCoverArt` | Get image | Artist or Album cover |
+| `scrobble` | Record play | Updates play count |

@@ -109,6 +109,15 @@ The server watches for file changes using `chokidar`:
 
 Full REST API available at `/api/*`. See [API.md](./API.md) for documentation.
 
+### Subsonic API
+
+TuneCamp supports the Subsonic API at `/rest`. Connect your favorite player (DSub, Symfonium, etc.):
+
+-   **Server**: `http://your-server-ip:1970`
+-   **Username**: `admin`
+-   **Password**: Your admin password
+-   **Legacy Auth**: Enabled (required for most clients)
+
 ### Key API Endpoints
 
 - **Tracks**: `/api/tracks` - List, stream, update tracks

@@ -61,37 +61,40 @@ export const Home = () => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {recentAlbums.map(album => (
-                    <div key={album.id} className="group relative bg-base-200 rounded-xl overflow-hidden hover:bg-base-300 transition-colors shadow-lg">
-                        <div className="aspect-square w-full relative">
-                            <img 
-                                src={API.getAlbumCoverUrl(album.slug || album.id)} 
-                                alt={album.title} 
-                                className="w-full h-full object-cover"
-                            />
-                            {/* Play overlay */}
-                            <button 
-                                className="absolute right-2 bottom-2 btn btn-circle btn-primary opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all shadow-xl"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    // Need to fetch full album to play it? Or just play first track if available?
-                                    // For now just log
-                                    console.log('Play album', album.id);
-                                }}
-                            >
-                                <Play fill="currentColor" size={20} />
-                            </button>
-                        </div>
-                        <div className="p-4">
-                            <h3 className="font-bold truncate">{album.title}</h3>
-                            <p className="text-sm opacity-60 truncate">{album.artistName}</p>
-                            <div className="flex gap-2 mt-2">
-                                <span className="badge badge-xs badge-outline opacity-50">{album.year}</span>
-                                <span className="badge badge-xs badge-secondary badge-outline">{album.type}</span>
+                {recentAlbums.map(album => {
+                    if (!album) return null;
+                    return (
+                        <div key={album.id} className="group relative bg-base-200 rounded-xl overflow-hidden hover:bg-base-300 transition-colors shadow-lg">
+                            <div className="aspect-square w-full relative">
+                                <img 
+                                    src={API.getAlbumCoverUrl(album.slug || album.id)} 
+                                    alt={album.title} 
+                                    className="w-full h-full object-cover"
+                                />
+                                {/* Play overlay */}
+                                <button 
+                                    className="absolute right-2 bottom-2 btn btn-circle btn-primary opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all shadow-xl"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        // Need to fetch full album to play it? Or just play first track if available?
+                                        // For now just log
+                                        console.log('Play album', album.id);
+                                    }}
+                                >
+                                    <Play fill="currentColor" size={20} />
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                <h3 className="font-bold truncate">{album.title}</h3>
+                                <p className="text-sm opacity-60 truncate">{album.artistName}</p>
+                                <div className="flex gap-2 mt-2">
+                                    <span className="badge badge-xs badge-outline opacity-50">{album.year}</span>
+                                    <span className="badge badge-xs badge-secondary badge-outline">{album.type}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </section>
     );

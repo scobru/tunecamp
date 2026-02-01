@@ -31,4 +31,5 @@
 -   **Multi-User Admin**: Create multiple admin accounts with distinct credentials.
 -   **Artist-Restricted Access**: specific admins to artists to restrict their access to only their own content.
 -   **Custom Posts**: Microblogging feature for artists to publish news and updates directly to the Fediverse.
+-   **Subsonic API**: Full compatibility with Subsonic apps (DSub, Symfonium, etc.) for streaming on the go.
 -   **Identity & Backup**: Full portability of server identity and keys for easy migration.
