@@ -29,6 +29,46 @@ const App = {
     }
   },
 
+  showToast(message, type = 'info') {
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.className = 'toast toast-end toast-bottom z-[9999]';
+      document.body.appendChild(toastContainer);
+    }
+
+    const alert = document.createElement('div');
+    const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : type === 'warning' ? 'alert-warning' : 'alert-info';
+    alert.className = `alert ${alertClass} shadow-lg mb-2 transform transition-all duration-300 translate-y-10 opacity-0`;
+
+    // Add icon based on type
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    if (type === 'error') icon = '❌';
+    if (type === 'warning') icon = '⚠️';
+
+    alert.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span>${icon}</span>
+        <span>${message}</span>
+      </div>
+    `;
+
+    toastContainer.appendChild(alert);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      alert.classList.remove('translate-y-10', 'opacity-0');
+    });
+
+    // Remove after 3s
+    setTimeout(() => {
+      alert.classList.add('opacity-0', 'translate-y-2');
+      setTimeout(() => alert.remove(), 300);
+    }, 3000);
+  },
+
   async loadSiteSettings() {
     try {
       const settings = await API.getSiteSettings();
@@ -65,6 +105,24 @@ const App = {
     } catch (e) {
       console.error('Auth check failed:', e);
     }
+  },
+
+  showLoader(container) {
+    container.innerHTML = `
+      <div class="w-full p-8 space-y-4 animate-pulse">
+        <div class="h-8 bg-base-300 rounded w-1/3 mb-6"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="h-32 bg-base-300 rounded"></div>
+          <div class="h-32 bg-base-300 rounded"></div>
+          <div class="h-32 bg-base-300 rounded"></div>
+        </div>
+        <div class="space-y-2 pt-4">
+          <div class="h-4 bg-base-300 rounded w-full"></div>
+          <div class="h-4 bg-base-300 rounded w-5/6"></div>
+          <div class="h-4 bg-base-300 rounded w-4/6"></div>
+        </div>
+      </div>
+    `;
   },
 
   updateAuthUI(status) {
@@ -285,12 +343,25 @@ const App = {
     // Update UI based on current auth state
     const updateAuthUI = () => {
       if (typeof UserAuth !== 'undefined' && UserAuth.isLoggedIn()) {
-        userLoginBtn.style.display = 'none';
-        userMenu.style.display = 'flex';
-        userName.textContent = UserAuth.getUsername();
+        if (userLoginBtn) {
+          userLoginBtn.innerHTML = `👤 <span id="user-name-display">${UserAuth.getUsername()}</span>`;
+          userLoginBtn.onclick = () => { UserAuth.logout(); updateAuthUI(); };
+        }
+        if (userMenu) {
+          userLoginBtn.style.display = 'none';
+          userMenu.style.display = 'flex';
+          if (userName) userName.textContent = UserAuth.getUsername();
+        }
       } else {
-        userLoginBtn.style.display = 'block';
-        userMenu.style.display = 'none';
+        if (userLoginBtn) {
+          userLoginBtn.style.display = 'flex';
+          userLoginBtn.innerHTML = `👤 <span id="user-name-display">Login</span>`;
+          userLoginBtn.onclick = () => {
+            const modal = document.getElementById('user-auth-modal');
+            if (modal) modal.classList.add('active');
+          };
+        }
+        if (userMenu) userMenu.style.display = 'none';
       }
     };
 
@@ -374,7 +445,7 @@ const App = {
         await UserAuth.register(username, password);
         userAuthModal.classList.remove('active');
         updateAuthUI();
-        alert('Account created successfully! You are now logged in.');
+        App.showToast('Account created successfully! You are now logged in.');
       } catch (err) {
         userAuthError.textContent = err.message;
       }
@@ -741,10 +812,10 @@ const App = {
         if (confirm('Promote this album to a public release?')) {
           try {
             await API.promoteToRelease(album.id);
-            alert('Album promoted!');
+            App.showToast('Album promoted!');
             window.location.reload();
           } catch (e) {
-            alert('Failed to promote: ' + e.message);
+            App.showToast('Failed to promote: ' + e.message);
           }
         }
       });
@@ -777,7 +848,7 @@ const App = {
           document.getElementById('comment-text').value = '';
           this.renderComments(trackId); // Refresh
         } catch (err) {
-          alert('Failed to post comment: ' + err.message);
+          App.showToast('Failed to post comment: ' + err.message);
         }
       });
     } else {
@@ -841,7 +912,7 @@ const App = {
               await UserAuth.deleteComment(btn.dataset.id);
               this.renderComments(trackId);
             } catch (err) {
-              alert('Failed to delete: ' + err.message);
+              App.showToast('Failed to delete: ' + err.message);
             }
           }
         });
@@ -1387,7 +1458,7 @@ const App = {
   },
 
   async renderStats(container) {
-    container.innerHTML = '<div class="loading">Loading stats...</div>';
+    this.showLoader(container);
 
     try {
       const [overview, recent, topTracks, topArtists] = await Promise.all([
@@ -1529,7 +1600,7 @@ const App = {
       return;
     }
 
-    container.innerHTML = '<div class="loading">Loading browser...</div>';
+    this.showLoader(container);
 
     try {
       const data = await API.getBrowser(currentPath);
@@ -1663,7 +1734,7 @@ const App = {
           const name = document.getElementById('playlist-name').value;
           const desc = document.getElementById('playlist-desc').value;
           const isPublic = document.getElementById('playlist-public').checked;
-          if (!name) return alert('Name required');
+          if (!name) return App.showToast('Name required');
           try {
             await API.createPlaylist(name, desc);
             // createPlaylist API might not accept isPublic yet? 
@@ -1675,7 +1746,7 @@ const App = {
             await this.renderPlaylists(container);
           } catch (err) {
             console.error(err);
-            alert('Failed to create playlist');
+            App.showToast('Failed to create playlist');
           }
         });
       }
@@ -2281,7 +2352,7 @@ const App = {
             await API.deleteRelease(id);
             window.location.reload();
           } catch (err) {
-            alert('Delete failed');
+            App.showToast('Delete failed');
           }
         }
       }
@@ -2301,7 +2372,7 @@ const App = {
           }
         } catch (err) {
           e.target.checked = !isPublic;
-          alert('Failed to update visibility');
+          App.showToast('Failed to update visibility');
         }
       });
     });
@@ -2371,7 +2442,7 @@ const App = {
                     await API.deletePost(btn.dataset.id);
                     artistSelect.dispatchEvent(new Event('change'));
                   } catch (err) {
-                    alert('Delete failed');
+                    App.showToast('Delete failed');
                   }
                 }
               });
@@ -2396,7 +2467,7 @@ const App = {
         container.querySelector('#post-content').value = '';
         artistSelect.dispatchEvent(new Event('change'));
       } catch (err) {
-        alert('Post failed: ' + err.message);
+        App.showToast('Post failed: ' + err.message);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Publish Post';
@@ -2428,9 +2499,9 @@ const App = {
             artistName: networkForm.querySelector('#network-setting-artist-name').value,
             coverImage: networkForm.querySelector('#network-setting-cover-image').value
           });
-          alert('Settings saved!');
+          App.showToast('Settings saved!');
         } catch (err) {
-          alert('Save failed: ' + err.message);
+          App.showToast('Save failed: ' + err.message);
         } finally {
           btn.disabled = false;
         }
@@ -2445,10 +2516,10 @@ const App = {
         await API.updateSettings({
           backgroundImage: container.querySelector('#setting-background-image').value
         });
-        alert('Site settings saved!');
+        App.showToast('Site settings saved!');
         window.location.reload();
       } catch (err) {
-        alert('Save failed: ' + err.message);
+        App.showToast('Save failed: ' + err.message);
       } finally {
         btn.disabled = false;
       }
@@ -2460,9 +2531,9 @@ const App = {
       try {
         const result = await API.uploadBackgroundImage(file);
         container.querySelector('#setting-background-image').value = result.url || '/api/settings/background';
-        alert('File uploaded. Click Save to apply.');
+        App.showToast('File uploaded. Click Save to apply.');
       } catch (err) {
-        alert('Upload failed: ' + err.message);
+        App.showToast('Upload failed: ' + err.message);
       }
     });
 
@@ -2485,9 +2556,9 @@ const App = {
         container.querySelector('#new-user-name').value = '';
         container.querySelector('#new-user-pass').value = '';
         this.renderUsersList();
-        alert('Admin created');
+        App.showToast('Admin created');
       } catch (err) {
-        alert('Failed: ' + err.message);
+        App.showToast('Failed: ' + err.message);
       }
     });
 
@@ -2500,7 +2571,7 @@ const App = {
         await API.rescan();
         window.location.reload();
       } catch (err) {
-        alert('Rescan failed');
+        App.showToast('Rescan failed');
         btn.disabled = false;
         btn.textContent = '🔄 Start Rescan';
       }
@@ -2513,9 +2584,9 @@ const App = {
       btn.textContent = 'Consolidating...';
       try {
         const res = await API.consolidate();
-        alert(res.message || 'Started');
+        App.showToast(res.message || 'Started');
       } catch (err) {
-        alert('Failed');
+        App.showToast('Failed');
         btn.disabled = false;
         btn.textContent = '🚀 Consolidate';
       }
@@ -2540,7 +2611,7 @@ const App = {
       try {
         const keys = await API.getIdentity();
         prompt('Copy your server keys (Keep them secret!):', JSON.stringify(keys));
-      } catch (e) { alert('Failed'); }
+      } catch (e) { App.showToast('Failed'); }
     });
 
     container.querySelector('#import-identity-btn')?.addEventListener('click', async () => {
@@ -2549,7 +2620,7 @@ const App = {
         try {
           await API.importIdentity(JSON.parse(keys));
           window.location.reload();
-        } catch (e) { alert('Failed'); }
+        } catch (e) { App.showToast('Failed'); }
       }
     });
 
@@ -2568,7 +2639,7 @@ const App = {
           headers: { 'Authorization': 'Bearer ' + API.token },
           body: formData
         });
-        alert('Restore complete. Restarting.');
+        App.showToast('Restore complete. Restarting.');
         window.location.reload();
       } catch (err) {
         status.textContent = 'Failed: ' + err.message;
@@ -2629,10 +2700,10 @@ const App = {
             await API.uploadCover(coverFile, result.slug || result.id);
           }
 
-          alert('Release saved successfully!');
+          App.showToast('Release saved successfully!');
           window.location.reload();
         } catch (err) {
-          alert('Failed to save release: ' + err.message);
+          App.showToast('Failed to save release: ' + err.message);
           btn.disabled = false;
           btn.textContent = originalText;
         }
@@ -2661,7 +2732,7 @@ const App = {
             await API.deleteRelease(this.currentEditingReleaseId);
             window.location.reload();
           } catch (err) {
-            alert('Delete failed: ' + err.message);
+            App.showToast('Delete failed: ' + err.message);
           }
         }
       });
@@ -2743,7 +2814,7 @@ const App = {
               await API.deleteAdmin(e.target.dataset.id);
               this.renderUsersList();
             } catch (err) {
-              alert('Error: ' + err.message);
+              App.showToast('Error: ' + err.message);
             }
           }
         });
@@ -2803,10 +2874,10 @@ const App = {
       try {
         await API.updateAdmin(userId, { artistId: newArtistId });
         modal.remove();
-        alert('User updated!');
+        App.showToast('User updated!');
         this.renderUsersList();
       } catch (err) {
-        alert('Error: ' + err.message);
+        App.showToast('Error: ' + err.message);
       }
     };
   },
@@ -3013,7 +3084,7 @@ const App = {
             await API.deleteTrack(tid);
             this.openReleaseEditor(this.currentEditingReleaseId);
           } catch (err) {
-            alert('Failed to delete track');
+            App.showToast('Failed to delete track');
           }
         }
       };
@@ -3143,7 +3214,7 @@ const App = {
               await API.deleteArtist(artist.id);
               modal.remove();
               window.location.reload();
-            } catch (err) { alert('Delete failed'); }
+            } catch (err) { App.showToast('Delete failed'); }
           }
         };
       }
@@ -3180,7 +3251,7 @@ const App = {
         modal.remove();
         window.location.reload();
       } catch (err) {
-        alert('Save failed: ' + err.message);
+        App.showToast('Save failed: ' + err.message);
         btn.disabled = false;
         btn.textContent = 'Save Artist';
       }
@@ -3223,11 +3294,11 @@ const App = {
 
       document.getElementById('copy-keys-btn').onclick = () => {
         navigator.clipboard.writeText(keys.privateKey || '');
-        alert('Copied Private Key to clipboard!');
+        App.showToast('Copied Private Key to clipboard!');
       };
 
     } catch (err) {
-      alert('Failed to fetch keys: ' + err.message);
+      App.showToast('Failed to fetch keys: ' + err.message);
     }
   },
 
@@ -3295,10 +3366,10 @@ const App = {
           trackNumber: trackNumber ? parseInt(trackNumber) : undefined
         });
         document.getElementById('edit-track-modal').remove();
-        alert('Track updated!');
+        App.showToast('Track updated!');
         window.location.reload();
       } catch (err) {
-        alert('Failed to update track: ' + err.message);
+        App.showToast('Failed to update track: ' + err.message);
       }
     });
 
@@ -3330,10 +3401,10 @@ const App = {
         if (confirm("Remove track from library? (File will stay)")) {
           try {
             await API.deleteTrack(trackId, false);
-            alert("Track removed from library");
+            App.showToast("Track removed from library");
             window.location.reload();
           } catch (e) {
-            alert("Error: " + e.message);
+            App.showToast("Error: " + e.message);
           }
         }
         choiceModal.remove();
@@ -3343,10 +3414,10 @@ const App = {
         if (confirm("WARNING: This will PERMANENTLY DELETE the file. Are you sure?")) {
           try {
             await API.deleteTrack(trackId, true);
-            alert("Track and file deleted permanently.");
+            App.showToast("Track and file deleted permanently.");
             window.location.reload();
           } catch (e) {
-            alert("Error: " + e.message);
+            App.showToast("Error: " + e.message);
           }
         }
         choiceModal.remove();
@@ -3362,7 +3433,7 @@ const App = {
       if (album.tracks && album.tracks.length > 0) {
         Player.playQueue(album.tracks, 0);
       } else {
-        alert('No tracks in this album');
+        App.showToast('No tracks in this album');
       }
     } catch (e) {
       console.error('Failed to play album:', e);
@@ -3660,7 +3731,7 @@ const App = {
 
   async showAddToPlaylistModal(trackId) {
     if (!this.isAdmin) {
-      alert('Please login as admin to manage playlists');
+      App.showToast('Please login as admin to manage playlists');
       return;
     }
 
@@ -3711,14 +3782,14 @@ const App = {
       }
     } catch (error) {
       console.error('Error loading playlists:', error);
-      alert('Failed to load playlists');
+      App.showToast('Failed to load playlists');
     }
   },
 
   async addTrackToPlaylist(playlistId, trackId) {
     try {
       await API.addTrackToPlaylist(playlistId, trackId);
-      alert('Track added to playlist!');
+      App.showToast('Track added to playlist!');
       if (typeof modal.close === 'function') {
         modal.close();
       } else {
@@ -3726,13 +3797,13 @@ const App = {
       }
     } catch (error) {
       console.error('Error adding track:', error);
-      alert('Failed to add track to playlist');
+      App.showToast('Failed to add track to playlist');
     }
   },
 
   async showAddToReleaseModal(trackId, trackTitle) {
     if (!this.isAdmin) {
-      alert('Admin access required');
+      App.showToast('Admin access required');
       return;
     }
 

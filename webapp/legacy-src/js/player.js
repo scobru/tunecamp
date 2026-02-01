@@ -9,9 +9,19 @@ const Player = {
     isDragging: false, // Flag per tracciare se l'utente sta trascinando la progress bar
     hasDragged: false, // Flag per distinguere tra click e drag
 
+    currentWaveform: null,
+    waveformCanvas: null,
+    waveformCtx: null,
+    waveformHoverTime: null,
+
     init() {
-        console.log('TuneCamp Player v1.1 loaded - Debugging Timing');
+        console.log('TuneCamp Player v1.2 loaded - Waveform Edition');
         this.audio = document.getElementById('audio-element');
+        this.waveformCanvas = document.getElementById('waveform-canvas');
+        if (this.waveformCanvas) {
+            this.waveformCtx = this.waveformCanvas.getContext('2d');
+            this.setupWaveformEvents();
+        }
         this.setupEvents();
         this.loadVolume();
     },
@@ -202,6 +212,50 @@ const Player = {
         document.getElementById('queue-btn').addEventListener('click', () => this.toggleQueue());
     },
 
+    setupWaveformEvents() {
+        const canvas = this.waveformCanvas;
+        const hoverTimeEl = document.getElementById('hover-time');
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percent = x / rect.width;
+            const duration = this.getDuration();
+            if (duration > 0) {
+                this.audio.currentTime = percent * duration;
+                this.updateProgress();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const width = rect.width;
+            const duration = this.getDuration();
+
+            if (duration > 0) {
+                const percent = Math.max(0, Math.min(1, x / width));
+                this.waveformHoverTime = percent * duration;
+
+                // Update tooltip
+                if (hoverTimeEl) {
+                    hoverTimeEl.style.opacity = '1';
+                    hoverTimeEl.style.left = `${x}px`;
+                    hoverTimeEl.textContent = this.formatTime(this.waveformHoverTime);
+                }
+
+                // Trigger redraw to show hover line
+                if (!this.isPlaying) this.renderWaveform();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            this.waveformHoverTime = null;
+            if (hoverTimeEl) hoverTimeEl.style.opacity = '0';
+            if (!this.isPlaying) this.renderWaveform();
+        });
+    },
+
     handleError(e) {
         console.error('Playback error:', this.audio.error);
         const track = this.queue[this.currentIndex];
@@ -364,6 +418,9 @@ const Player = {
         this.audio.pause();
         this.audio.currentTime = 0;
 
+        // Waveform Logic
+        this.handleWaveformLoad(track);
+
         if (track.isExternal || track.audioUrl) {
             this.audio.src = track.audioUrl;
         } else {
@@ -407,6 +464,47 @@ const Player = {
         } else {
             cover.style.backgroundImage = '';
             if (icon) icon.style.display = 'block';
+        }
+    },
+
+    async handleWaveformLoad(track) {
+        this.currentWaveform = null;
+        if (!this.waveformCanvas) return;
+
+        let waveformData = track.waveform;
+
+        // If waveform is missing and it's a local track with an ID, fetch it
+        if (!waveformData && !track.isExternal && track.id) {
+            try {
+                // Determine if we need to fetch. 
+                // Optimization: Maybe we could store this in a cache to avoid re-fetching the same track repeatedly if user clicks around.
+                // But for now, simple fetch.
+                const fullTrack = await API.getTrack(track.id);
+                if (fullTrack && fullTrack.waveform) {
+                    waveformData = fullTrack.waveform;
+                    // Cache it back to the queue object so we don't fetch again for this instance
+                    track.waveform = waveformData;
+                }
+            } catch (e) {
+                console.warn('Could not fetch track details for waveform', e);
+            }
+        }
+
+        const simpleProgress = document.getElementById('simple-progress-container');
+
+        if (waveformData) {
+            try {
+                // Check if it's already an array or needs parsing
+                this.currentWaveform = typeof waveformData === 'string' ? JSON.parse(waveformData) : waveformData;
+                this.waveformCanvas.style.display = 'block';
+                if (simpleProgress) simpleProgress.style.display = 'none';
+                this.renderWaveform();
+            } catch (e) {
+                console.error('Failed to parse waveform', e);
+                this.useSimpleProgress();
+            }
+        } else {
+            this.useSimpleProgress();
         }
     },
 
@@ -475,6 +573,96 @@ const Player = {
                 totalTimeEl.textContent = this.formatTime(duration);
             }
         }
+
+        // Render Waveform
+        if (this.currentWaveform) {
+            this.renderWaveform();
+        }
+    },
+
+    useSimpleProgress() {
+        if (this.waveformCanvas) this.waveformCanvas.style.display = 'none';
+        const simpleProgress = document.getElementById('simple-progress-container');
+        if (simpleProgress) simpleProgress.style.display = 'flex';
+    },
+
+    renderWaveform() {
+        if (!this.waveformCtx || !this.currentWaveform) return;
+
+        const ctx = this.waveformCtx;
+        const canvas = this.waveformCanvas;
+        const width = canvas.width;
+        const height = canvas.height;
+        const data = this.currentWaveform;
+
+        // High-DPI support logic could go here, but keeping it simple for now
+        // Assuming canvas width/height are set via CSS, we might need to update internal resolution
+        if (canvas.clientWidth !== canvas.width || canvas.clientHeight !== canvas.height) {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+
+        const duration = this.getDuration();
+        const current = this.audio.currentTime;
+        const progress = duration > 0 ? current / duration : 0;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Style Config
+        const barWidth = 3;
+        const gap = 1;
+        const totalBars = Math.floor(width / (barWidth + gap));
+
+        // Resample data to fit totalBars
+        const sampledData = [];
+        const step = Math.floor(data.length / totalBars);
+
+        for (let i = 0; i < totalBars; i++) {
+            let max = 0;
+            const dataIndex = Math.floor(i * (data.length / totalBars));
+            // Simple point sampling or max in window
+            if (data[dataIndex] !== undefined) {
+                max = data[dataIndex];
+            }
+            sampledData.push(max);
+        }
+
+        // Draw
+        const centerY = height / 2;
+
+        // Draw Bars
+        sampledData.forEach((value, i) => {
+            const x = i * (barWidth + gap);
+            // Non-linear height scaling for better visual
+            const barHeight = Math.max(2, value * height * 0.8);
+
+            const isPlayed = (i / totalBars) < progress;
+            const isHovered = this.waveformHoverTime && (i / totalBars) < (this.waveformHoverTime / duration);
+
+            ctx.fillStyle = isPlayed ? '#1db954' : 'rgba(255, 255, 255, 0.2)'; // Primary color vs Gray
+
+            // Hover effect: slightly brighter for hovered area if not played? 
+            // Or maybe draw a line. Let's stick to simple played status.
+            if (!isPlayed && isHovered) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            }
+
+            // Rounded bars
+            this.roundRect(ctx, x, centerY - barHeight / 2, barWidth, barHeight, 2);
+            ctx.fill();
+        });
+    },
+
+    roundRect(ctx, x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
     },
 
     updatePlayButton(playing) {

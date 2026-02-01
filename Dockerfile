@@ -46,6 +46,9 @@ RUN npm run gleam:build
 # Build TypeScript
 RUN npm run build
 
+# Build Frontend
+RUN cd webapp && npm install && npm run build
+
 # ===================================================
 # Production stage
 # ===================================================
@@ -70,7 +73,7 @@ RUN npm ci --omit=dev && \
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/webapp ./webapp
+COPY --from=builder /app/webapp/dist ./webapp
 COPY --from=builder /app/templates ./templates
 
 

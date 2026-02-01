@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@theme {
+  --font-sans: 'Outfit', sans-serif;
+  
+  --color-tunecamp-bg: #0a0a0a;
+  --color-tunecamp-surface: #121212;
+}
+
+/* Custom Utilities */
+@utility glass-effect {
+  @apply backdrop-blur-md bg-base-200/70 border border-white/5;
+}
