@@ -79,8 +79,7 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                 radisk: true,
                 web: server,
                 axe: true,
-                wire: true,
-                multicast: true,
+                wire: true
             });
 
             // Initialize User Auth (SEA)
