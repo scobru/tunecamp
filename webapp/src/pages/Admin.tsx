@@ -5,12 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart2, Settings, Database, RefreshCw, Save } from 'lucide-react';
 import { AdminUserModal } from '../components/modals/AdminUserModal';
 import { AdminReleaseModal } from '../components/modals/AdminReleaseModal';
+import { UploadTracksModal } from '../components/modals/UploadTracksModal';
+import { IdentityPanel } from '../components/admin/IdentityPanel';
 import type { SiteSettings } from '../types';
 
 export const Admin = () => {
     const { user, isAuthenticated } = useAuthStore();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'settings' | 'system'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'settings' | 'system' | 'identity'>('overview');
     const [stats, setStats] = useState<any>(null);
     // const [loading, setLoading] = useState(false);
 
@@ -83,6 +85,7 @@ export const Admin = () => {
                 <a role="tab" className={`tab ${activeTab === 'users' ? 'tab-active' : ''}`} onClick={() => setActiveTab('users')}>Users</a>
                 <a role="tab" className={`tab ${activeTab === 'settings' ? 'tab-active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</a>
                 <a role="tab" className={`tab ${activeTab === 'system' ? 'tab-active' : ''}`} onClick={() => setActiveTab('system')}>System</a>
+                <a role="tab" className={`tab ${activeTab === 'identity' ? 'tab-active' : ''}`} onClick={() => setActiveTab('identity')}>Identity</a>
             </div>
 
             <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px]">
@@ -140,10 +143,12 @@ export const Admin = () => {
                 )}
                 
                 {activeTab === 'settings' && <AdminSettingsPanel />}
+                {activeTab === 'identity' && <IdentityPanel />}
             </div>
             
             <AdminUserModal onUserUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-users'))} />
             <AdminReleaseModal onReleaseUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
+            <UploadTracksModal onUploadComplete={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
         </div>
     );
 };
@@ -152,6 +157,7 @@ const AdminSettingsPanel = () => {
     const [settings, setSettings] = useState<SiteSettings | null>(null);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [bgFile, setBgFile] = useState<File | null>(null);
 
     useEffect(() => {
         API.getSiteSettings().then(setSettings).catch(console.error);
@@ -164,7 +170,15 @@ const AdminSettingsPanel = () => {
         setMessage('');
         try {
             await API.updateSettings(settings);
+            
+            if (bgFile) {
+                await API.uploadBackgroundImage(bgFile);
+            }
+
             setMessage('Settings saved successfully.');
+            setBgFile(null);
+            // Refresh settings to get new bg url if needed
+            API.getSiteSettings().then(setSettings);
         } catch (e) {
             console.error(e);
             setMessage('Failed to save settings.');
@@ -213,9 +227,18 @@ const AdminSettingsPanel = () => {
                     onChange={e => setSettings({...settings, backgroundImage: e.target.value})}
                     placeholder="/images/bg.jpg"
                 />
+            </div>
+            
+            <div className="form-control">
                 <label className="label">
-                    <span className="label-text-alt opacity-50">Upload not yet implemented via UI, use URL manually for now.</span>
+                    <span className="label-text">Upload Background</span>
                 </label>
+                <input 
+                    type="file" 
+                    className="file-input file-input-bordered w-full"
+                    accept="image/*"
+                    onChange={e => setBgFile(e.target.files ? e.target.files[0] : null)}
+                />
             </div>
 
             <div className="form-control">
@@ -294,7 +317,10 @@ const AdminReleasesList = () => {
                         <td className="font-bold">{r.title}</td>
                         <td>{r.artistName}</td>
                         <td><div className="badge badge-sm">{r.type}</div></td>
-                        <td><button className="btn btn-xs btn-ghost">Edit</button></td>
+                        <td className="flex gap-2">
+                            <button className="btn btn-xs btn-ghost" onClick={() => document.dispatchEvent(new CustomEvent('open-admin-release-modal', { detail: r }))}>Edit</button>
+                            <button className="btn btn-xs btn-ghost text-secondary" onClick={() => document.dispatchEvent(new CustomEvent('open-upload-tracks-modal', { detail: { slug: r.slug || r.id, title: r.title }}))}>Upload Tracks</button>
+                        </td>
                     </tr>
                 ))}
             </tbody>

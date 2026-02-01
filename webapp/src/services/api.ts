@@ -176,6 +176,10 @@ export const API = {
     getAdminStats: () => handleResponse(api.get<AdminStats>('/admin/stats')),
     getBrowser: (path = '') => handleResponse(api.get<any>(`/browser?path=${encodeURIComponent(path)}`)),
 
+    // --- Identity ---
+    getIdentity: () => handleResponse(api.get<{ pub: string, epub: string, alias: string }>('/admin/system/identity')),
+    importIdentity: (pair: any) => handleResponse(api.post('/admin/system/identity', pair)),
+
     // --- Admin: Users ---
     getUsers: () => handleResponse(api.get<User[]>('/admin/system/users')),
     getCurrentUser: () => handleResponse(api.get<User>('/admin/system/me')),

@@ -18,19 +18,37 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [artists, setArtists] = useState<any[]>([]);
+    const [coverFile, setCoverFile] = useState<File | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editId, setEditId] = useState<string | null>(null);
 
     useEffect(() => {
-        const handleOpen = () => {
-            setTitle('');
-            setArtistId(''); // Reset or keep prev?
-            setType('album');
+        const handleOpen = (e: CustomEvent) => {
+            // Check if editing (passed via detail)
+            if (e.detail && e.detail.id) {
+                setIsEditing(true);
+                setEditId(e.detail.id);
+                setTitle(e.detail.title || '');
+                setArtistId(e.detail.artistId || '');
+                setType(e.detail.type || 'album');
+                setYear(e.detail.year || new Date().getFullYear());
+            } else {
+                setIsEditing(false);
+                setEditId(null);
+                setTitle('');
+                setArtistId(''); 
+                setType('album');
+                setYear(new Date().getFullYear());
+            }
+            
+            setCoverFile(null);
             setError('');
             loadArtists();
             dialogRef.current?.showModal();
         };
 
-        document.addEventListener('open-admin-release-modal', handleOpen);
-        return () => document.removeEventListener('open-admin-release-modal', handleOpen);
+        document.addEventListener('open-admin-release-modal', handleOpen as EventListener);
+        return () => document.removeEventListener('open-admin-release-modal', handleOpen as EventListener);
     }, []);
 
     const loadArtists = async () => {
@@ -46,12 +64,29 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
         setError('');
 
         try {
-            await API.createRelease({ 
-                title, 
-                artistId: artistId || undefined, 
-                type, 
-                year 
-            });
+            let release;
+            
+            if (isEditing && editId) {
+                release = await API.updateRelease(editId, {
+                    title,
+                    artistId: artistId || undefined,
+                    type,
+                    year
+                });
+            } else {
+                release = await API.createRelease({ 
+                    title, 
+                    artistId: artistId || undefined, 
+                    type, 
+                    year 
+                });
+            }
+
+            // Upload cover if selected
+            if (coverFile && release) {
+                await API.uploadCover(coverFile, release.slug);
+            }
+
             onReleaseUpdated();
             dialogRef.current?.close();
         } catch (e: any) {
@@ -69,7 +104,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 </form>
                 
                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-                    <Disc size={20}/> Create Release
+                    <Disc size={20}/> {isEditing ? 'Edit Release' : 'Create Release'}
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,13 +164,28 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                             />
                         </div>
                     </div>
+
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Cover Art</span>
+                        </label>
+                        <input 
+                            type="file" 
+                            className="file-input file-input-bordered w-full"
+                            accept="image/*"
+                            onChange={e => setCoverFile(e.target.files ? e.target.files[0] : null)}
+                        />
+                         <label className="label">
+                            <span className="label-text-alt opacity-70">JPG or PNG, max 5MB.</span>
+                        </label>
+                    </div>
                     
                     {error && <div className="text-error text-sm text-center">{error}</div>}
 
                     <div className="modal-action">
                         <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={loading}>
-                            {loading ? 'Creating...' : 'Create Release'}
+                            {loading ? 'Saving...' : (isEditing ? 'Update Release' : 'Create Release')}
                         </button>
                     </div>
                 </form>
