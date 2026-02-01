@@ -69,7 +69,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     await apService.generateKeysForAllArtists();
 
     // API Routes
-    app.use("/rest", createSubsonicRouter({ db: database.db, auth: authService }));
+    app.use("/rest", createSubsonicRouter({ db: database, auth: authService }));
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService));
     app.use("/api/admin", authMiddleware.requireAdmin, createAdminRoutes(database, scanner, config.musicDir, gundbService, config, authService, apService));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
