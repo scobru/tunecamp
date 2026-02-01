@@ -2620,6 +2620,24 @@ const App = {
       }
     });
 
+    // Consolidate button
+    document.getElementById('consolidate-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('consolidate-btn');
+      if (!confirm('This will move and rename your music files according to the universal format. Are you sure?')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Consolidating...';
+      try {
+        const result = await API.consolidate();
+        alert(result.message || 'Consolidation started in the background.');
+        btn.textContent = '🚀 Consolidating...';
+      } catch (e) {
+        alert('Consolidation failed to start: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Consolidate Library';
+      }
+    });
+
     // Logout button
     document.getElementById('logout-btn').addEventListener('click', () => {
       API.logout();
