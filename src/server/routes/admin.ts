@@ -354,5 +354,55 @@ export function createAdminRoutes(
         }
     });
 
+    /**
+     * POST /api/admin/posts
+     * Create a new post for an artist
+     */
+    router.post("/posts", async (req, res) => {
+        try {
+            const { artistId, content } = req.body;
+            if (!artistId || !content) {
+                return res.status(400).json({ error: "Missing artistId or content" });
+            }
+
+            const postId = database.createPost(artistId, content);
+            const post = database.getPost(postId);
+
+            if (post) {
+                // Broadcast to followers
+                apService.broadcastPost(post).catch(e => console.error("Failed to broadcast post:", e));
+            }
+
+            res.status(201).json(post);
+        } catch (error) {
+            console.error("Error creating post:", error);
+            res.status(500).json({ error: "Failed to create post" });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/posts/:id
+     * Delete a post
+     */
+    router.delete("/posts/:id", (req, res) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const post = database.getPost(id);
+            if (!post) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            database.deletePost(id);
+
+            // TODO: Broadcast Undo/Delete activity? 
+            // For now just local delete is fine.
+
+            res.json({ message: "Post deleted" });
+        } catch (error) {
+            console.error("Error deleting post:", error);
+            res.status(500).json({ error: "Failed to delete post" });
+        }
+    });
+
     return router;
 }

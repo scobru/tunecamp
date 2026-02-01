@@ -260,5 +260,32 @@ export function createArtistsRoutes(database: DatabaseService) {
         }
     });
 
+    /**
+     * GET /api/artists/:idOrSlug/posts
+     * Get posts for an artist
+     */
+    router.get("/:idOrSlug/posts", (req, res) => {
+        try {
+            const param = req.params.idOrSlug as string;
+            let artist;
+
+            if (/^\d+$/.test(param)) {
+                artist = database.getArtist(parseInt(param, 10));
+            } else {
+                artist = database.getArtistBySlug(param);
+            }
+
+            if (!artist) {
+                return res.status(404).json({ error: "Artist not found" });
+            }
+
+            const posts = database.getPostsByArtist(artist.id);
+            res.json(posts);
+        } catch (error) {
+            console.error("Error getting artist posts:", error);
+            res.status(500).json({ error: "Failed to get artist posts" });
+        }
+    });
+
     return router;
 }

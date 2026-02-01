@@ -396,5 +396,18 @@ const API = {
 
     async getUnlockCodes(releaseId) {
         return this.get('/unlock/admin/list' + (releaseId ? '?releaseId=' + releaseId : ''));
+    },
+
+    // Posts (ActivityPub)
+    async getArtistPosts(idOrSlug) {
+        return this.get('/artists/' + idOrSlug + '/posts');
+    },
+
+    async createPost(artistId, content) {
+        return this.post('/admin/posts', { artistId, content });
+    },
+
+    async deletePost(id) {
+        return this.delete('/admin/posts/' + id);
     }
 };

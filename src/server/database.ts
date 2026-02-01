@@ -75,6 +75,17 @@ export interface PlayHistoryEntry {
     played_at: string;
 }
 
+export interface Post {
+    id: number;
+    artist_id: number;
+    artist_name?: string;
+    artist_slug?: string;
+    artist_photo?: string;
+    content: string;
+    slug: string;
+    created_at: string;
+}
+
 export interface TrackWithPlayCount extends Track {
     play_count: number;
 }
@@ -146,6 +157,12 @@ export interface DatabaseService {
     getPlaylistTracks(playlistId: number): Track[];
     addTrackToPlaylist(playlistId: number, trackId: number): void;
     removeTrackFromPlaylist(playlistId: number, trackId: number): void;
+    // Posts
+    getPostsByArtist(artistId: number): Post[];
+    getPost(id: number): Post | undefined;
+    getPostBySlug(slug: string): Post | undefined;
+    createPost(artistId: number, content: string): number;
+    deletePost(id: number): void;
     // Stats
     getStats(): { artists: number; albums: number; tracks: number; publicAlbums: number };
     // Play History
@@ -295,6 +312,14 @@ export function createDatabase(dbPath: string): DatabaseService {
       is_used INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       redeemed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
@@ -740,6 +765,52 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.prepare(
                 "DELETE FROM playlist_tracks WHERE playlist_id = ? AND track_id = ?"
             ).run(playlistId, trackId);
+        },
+
+        // Posts
+        getPostsByArtist(artistId: number): Post[] {
+            return db.prepare(`
+                SELECT p.*, a.name as artist_name, a.slug as artist_slug, a.photo_path as artist_photo
+                FROM posts p
+                JOIN artists a ON p.artist_id = a.id
+                WHERE p.artist_id = ?
+                ORDER BY p.created_at DESC
+            `).all(artistId) as Post[];
+        },
+
+        getPost(id: number): Post | undefined {
+            return db.prepare(`
+                SELECT p.*, a.name as artist_name, a.slug as artist_slug, a.photo_path as artist_photo
+                FROM posts p
+                JOIN artists a ON p.artist_id = a.id
+                WHERE p.id = ?
+            `).get(id) as Post | undefined;
+        },
+
+        getPostBySlug(slug: string): Post | undefined {
+            return db.prepare(`
+                SELECT p.*, a.name as artist_name, a.slug as artist_slug, a.photo_path as artist_photo
+                FROM posts p
+                JOIN artists a ON p.artist_id = a.id
+                WHERE p.slug = ?
+            `).get(slug) as Post | undefined;
+        },
+
+        createPost(artistId: number, content: string): number {
+            // Generate slug from content snippet or random
+            const snippet = content.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+            const random = Math.random().toString(36).substring(2, 8);
+            const slug = snippet ? `${snippet}-${random}` : `post-${random}`;
+
+            const result = db.prepare(
+                "INSERT INTO posts (artist_id, content, slug) VALUES (?, ?, ?)"
+            ).run(artistId, content, slug);
+
+            return result.lastInsertRowid as number;
+        },
+
+        deletePost(id: number): void {
+            db.prepare("DELETE FROM posts WHERE id = ?").run(id);
         },
 
         // Stats

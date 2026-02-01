@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import fetch from "node-fetch";
-import type { DatabaseService, Artist, Album } from "./database.js";
+import type { DatabaseService, Artist, Album, Track, Post } from "./database.js";
 import type { ServerConfig } from "./config.js";
 
 export class ActivityPubService {
@@ -138,6 +138,89 @@ export class ActivityPubService {
         };
     }
 
+    public generateNote(album: Album, artist: Artist, tracks: Track[]): any {
+        const baseUrl = this.getBaseUrl();
+        const userUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const albumUrl = `${baseUrl}/#/album/${album.slug}`;
+        const published = album.published_at || album.created_at;
+
+        const attachments: any[] = [];
+
+        // 1. Cover Image
+        if (album.cover_path) {
+            const ext = album.cover_path.split('.').pop()?.toLowerCase();
+            let mediaType = "image/jpeg";
+            if (ext === 'png') mediaType = "image/png";
+            else if (ext === 'webp') mediaType = "image/webp";
+            else if (ext === 'gif') mediaType = "image/gif";
+
+            attachments.push({
+                type: "Image",
+                mediaType: mediaType,
+                url: `${baseUrl}/api/albums/${album.slug}/cover`,
+                name: "Cover Art"
+            });
+        }
+
+        // 2. Audio (First Track)
+        if (tracks.length > 0) {
+            const track = tracks[0];
+            const ext = track.file_path.split('.').pop()?.toLowerCase();
+
+            const contentTypes: Record<string, string> = {
+                "mp3": "audio/mpeg",
+                "flac": "audio/flac",
+                "ogg": "audio/ogg",
+                "wav": "audio/wav",
+                "m4a": "audio/mp4",
+                "aac": "audio/aac",
+                "opus": "audio/opus",
+            };
+            const mediaType = contentTypes[ext || ""] || "audio/mpeg";
+
+            attachments.push({
+                type: "Audio",
+                mediaType: mediaType,
+                url: `${baseUrl}/api/tracks/${track.id}/stream`,
+                name: track.title,
+                duration: track.duration ? new Date(track.duration * 1000).toISOString().substr(11, 8) : undefined // ISO duration or similar if needed, mostly handled by players via metadata
+            });
+        }
+
+        // Note: We use the canonical API URL for the ID, so it can be resolved by servers
+        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
+
+        return {
+            type: "Note",
+            id: noteId,
+            attributedTo: userUrl,
+            content: `<p>New release available: <a href="${albumUrl}">${album.title}</a></p>`,
+            url: albumUrl,
+            published: published,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            attachment: attachments,
+            tag: []
+        };
+    }
+
+    public generatePostNote(post: Post, artist: Artist): any {
+        const baseUrl = this.getBaseUrl();
+        const userUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const postUrl = `${baseUrl}/#/artist/${artist.slug}?post=${post.slug}`;
+
+        return {
+            type: "Note",
+            id: `${baseUrl}/api/ap/note/post/${post.slug}`,
+            attributedTo: userUrl,
+            content: `<p>${post.content}</p>`,
+            url: postUrl,
+            published: post.created_at,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${userUrl}/followers`],
+            tag: []
+        };
+    }
+
     public async acceptFollow(artist: Artist, activity: any): Promise<void> {
         const actorUri = activity.actor;
         const inboxUri = await this.getInboxFromActor(actorUri);
@@ -178,14 +261,7 @@ export class ActivityPubService {
         const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
         const albumUrl = `${baseUrl}/album/${album.slug}`;
 
-        const note = {
-            type: "Note",
-            attributedTo: artistActorUrl,
-            content: `<p>New release: <a href="${albumUrl}">${album.title}</a></p>`,
-            url: albumUrl,
-            published: new Date().toISOString(),
-            to: ["https://www.w3.org/ns/activitystreams#Public"]
-        };
+        const note = this.generateNote(album, artist, []); // TODO: Pass tracks here if we want attachments in broadcast
 
         const activity = {
             "@context": "https://www.w3.org/ns/activitystreams",
@@ -198,6 +274,36 @@ export class ActivityPubService {
 
         // Send to all followers
         // TODO: Optimize with sharedInbox and queue
+        for (const follower of followers) {
+            await this.sendActivity(artist, follower.inbox_uri, activity);
+        }
+    }
+
+    public async broadcastPost(post: Post): Promise<void> {
+        const artist = this.db.getArtist(post.artist_id);
+        if (!artist) return;
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length === 0) return;
+
+        console.log(`📢 Broadcasting post "${post.slug}" to ${followers.length} followers`);
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+
+        const note = this.generatePostNote(post, artist);
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Create",
+            actor: artistActorUrl,
+            object: note,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`]
+        };
+
+        // Send to all followers
         for (const follower of followers) {
             await this.sendActivity(artist, follower.inbox_uri, activity);
         }

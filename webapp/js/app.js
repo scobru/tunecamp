@@ -974,6 +974,9 @@ const App = {
       linksHtml += '</div>';
     }
 
+    const posts = await API.getArtistPosts(id).catch(() => []);
+    const hasPosts = posts && posts.length > 0;
+
     container.innerHTML = `
       <section class="section">
         <div class="artist-header" style="display: flex; gap: 2rem; margin-bottom: 2rem; align-items: flex-start;">
@@ -986,6 +989,22 @@ const App = {
             ${linksHtml}
           </div>
         </div>
+
+        ${hasPosts ? `
+        <h2 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">Recent Activity</h2>
+        <div class="posts-list mb-4" id="artist-posts" style="margin-bottom: 3rem;">
+            ${posts.map(p => `
+                <div class="card" style="padding: 1.5rem; margin-bottom: 1rem;">
+                    <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                        <span>${new Date(p.created_at).toLocaleDateString()} ${new Date(p.created_at).toLocaleTimeString()}</span>
+                        <!-- <a href="${'/api/ap/note/post/' + p.slug}" target="_blank" title="View ActivityPub Object" style="color: inherit; text-decoration: none;">🔗</a> -->
+                    </div>
+                    <div style="white-space: pre-wrap; font-size: 1.05rem; line-height: 1.6;">${App.escapeHtml(p.content)}</div>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+
         ${hasAlbums ? '<h2 class="section-title" style="font-size: 1.25rem; margin-bottom: 1rem;">Albums</h2>' : ''}
         <div class="grid" id="artist-albums"></div>
         ${hasTracks ? '<h2 class="section-title" style="font-size: 1.25rem; margin: 2rem 0 1rem;">Tracks</h2>' : ''}
@@ -1700,6 +1719,7 @@ const App = {
             <button class="btn btn-outline" id="new-artist-btn">New Artist</button>
             <button class="btn btn-outline" id="upload-btn">Upload Tracks</button>
             <button class="btn btn-outline" id="users-btn">Users</button>
+            <button class="btn btn-outline" id="posts-btn">Posts</button>
             <button class="btn btn-outline" id="rescan-btn">Rescan</button>
             <button class="btn btn-outline" id="network-settings-btn">Network</button>
             <button class="btn btn-outline" id="backup-btn">Backup</button>
@@ -1825,6 +1845,35 @@ const App = {
             <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
             <p id="upload-status"></p>
           </div>
+        </div>
+
+        <!-- Posts Panel (hidden by default) -->
+        <div id="posts-panel" class="admin-panel" style="display: none;">
+            <h3>Manage Posts</h3>
+            <div class="row" style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h4>Create New Post</h4>
+                    <form id="create-post-form">
+                        <div class="form-group">
+                            <label>Artist</label>
+                            <select id="post-artist" required>
+                                <option value="">Select Artist...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Content</label>
+                            <textarea id="post-content" rows="4" required placeholder="Write something..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Publish Post</button>
+                    </form>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h4>Recent Posts (by selected artist)</h4>
+                    <div id="posts-list" class="list-group">
+                        <p class="text-secondary">Select an artist to view their posts.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Users Panel (hidden by default) -->
@@ -2360,6 +2409,95 @@ const App = {
       this.isAdmin = false;
       this.checkAuth();
       window.location.hash = '#/';
+    });
+
+    // Posts Panel Toggle
+    document.getElementById('posts-btn').addEventListener('click', () => {
+      togglePanel('posts-panel');
+      // Populate artists dropdown
+      const select = document.getElementById('post-artist');
+      if (select.children.length <= 1) {
+        API.getArtists().then(artists => {
+          select.innerHTML = '<option value="">Select Artist...</option>' +
+            artists.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        });
+      }
+    });
+
+    // Handle Artist Selection for Posts to load their posts
+    document.getElementById('post-artist').addEventListener('change', async (e) => {
+      const artistId = e.target.value;
+      const postsList = document.getElementById('posts-list');
+      if (!artistId) {
+        postsList.innerHTML = '<p class="text-secondary">Select an artist to view their posts.</p>';
+        return;
+      }
+
+      postsList.innerHTML = '<div class="loading">Loading posts...</div>';
+      try {
+        const posts = await API.getArtistPosts(artistId);
+        if (posts.length === 0) {
+          postsList.innerHTML = '<p class="text-secondary">No posts found for this artist.</p>';
+        } else {
+          postsList.innerHTML = posts.map(p => `
+                    <div class="card mb-2" style="padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.8rem;">${new Date(p.created_at).toLocaleString()}</span>
+                            <button class="btn btn-sm btn-danger delete-post-btn" data-id="${p.id}">Delete</button>
+                        </div>
+                        <div style="white-space: pre-wrap;">${App.escapeHtml(p.content)}</div>
+                         <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                            <a href="/#/activity/post/${p.slug}" target="_blank">View Activity</a>
+                        </div>
+                    </div>
+                `).join('');
+
+          // Attach delete handlers
+          postsList.querySelectorAll('.delete-post-btn').forEach(btn => {
+            btn.addEventListener('click', async (evt) => {
+              if (confirm('Delete this post?')) {
+                try {
+                  await API.deletePost(evt.target.dataset.id);
+                  alert('Post deleted');
+                  // Refresh list
+                  document.getElementById('post-artist').dispatchEvent(new Event('change'));
+                } catch (err) {
+                  alert('Error deleting post: ' + err.message);
+                }
+              }
+            });
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        postsList.innerHTML = '<div class="error-message">Failed to load posts</div>';
+      }
+    });
+
+    // Create Post Form
+    document.getElementById('create-post-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const artistId = document.getElementById('post-artist').value;
+      const content = document.getElementById('post-content').value;
+      const btn = e.target.querySelector('button');
+
+      if (!artistId) return alert('Please select an artist');
+
+      btn.disabled = true;
+      btn.textContent = 'Publishing...';
+
+      try {
+        await API.createPost(artistId, content);
+        alert('Post published successfully!');
+        document.getElementById('post-content').value = '';
+        // Refresh list
+        document.getElementById('post-artist').dispatchEvent(new Event('change'));
+      } catch (err) {
+        alert('Error publishing post: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Publish Post';
+      }
     });
 
     // New Artist button
