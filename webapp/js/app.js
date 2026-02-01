@@ -1999,6 +1999,13 @@ const App = {
                             <label>Password</label>
                             <input type="password" id="new-user-pass" required minlength="6">
                         </div>
+                        <div class="form-group">
+                            <label>Link to Artist (Optional)</label>
+                            <select id="new-user-artist">
+                                <option value="">None (General Admin)</option>
+                            </select>
+                            <small style="color: var(--text-muted); display: block; margin-top: 5px;">Linked admins can only manage their assigned artist.</small>
+                        </div>
                         <button type="submit" class="btn btn-primary">Create User</button>
                     </form>
                 </div>
@@ -2389,6 +2396,17 @@ const App = {
       if (createFormContainer) {
         createFormContainer.style.display = this.isRootAdmin ? '' : 'none';
       }
+
+      // Populate artist dropdown
+      if (this.isRootAdmin) {
+        const artistSelect = document.getElementById('new-user-artist');
+        if (artistSelect) {
+          const artists = await API.getArtists();
+          artistSelect.innerHTML = '<option value="">None (General Admin)</option>' +
+            artists.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        }
+      }
+
       await this.renderUsersList();
     });
 
@@ -2397,8 +2415,9 @@ const App = {
       e.preventDefault();
       const username = document.getElementById('new-user-name').value;
       const password = document.getElementById('new-user-pass').value;
+      const artistId = document.getElementById('new-user-artist').value || null;
       try {
-        await API.createAdmin(username, password);
+        await API.createAdmin(username, password, artistId);
         document.getElementById('new-user-name').value = '';
         document.getElementById('new-user-pass').value = '';
         await this.renderUsersList();
@@ -2612,6 +2631,105 @@ const App = {
     document.getElementById('new-artist-btn').addEventListener('click', () => {
       this.showCreateArtistModal();
     });
+  },
+
+  async renderUsersList() {
+    const list = document.getElementById('users-list-container');
+    if (!list) return;
+
+    list.innerHTML = '<div class="loading">Loading users...</div>';
+
+    try {
+      const users = await API.getAdmins();
+
+      list.innerHTML = users.map(u => `
+        <div class="card mb-2" style="padding: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-weight: bold;">${App.escapeHtml(u.username)}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">
+                    ${u.artist_name ? '🎵 ' + App.escapeHtml(u.artist_name) : (u.isRootAdmin ? '👑 Root Admin' : '🛡️ General Admin')}
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                ${this.isRootAdmin && !u.isRootAdmin ? `
+                    <button class="btn btn-sm btn-outline edit-user-link" data-id="${u.id}" data-artist-id="${u.artist_id || ''}">Link Artist</button>
+                    <button class="btn btn-sm btn-danger delete-user" data-id="${u.id}">Delete</button>
+                ` : ''}
+            </div>
+        </div>
+      `).join('');
+
+      // Delete handlers
+      list.querySelectorAll('.delete-user').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          if (confirm('Delete this admin user?')) {
+            try {
+              await API.deleteAdmin(e.target.dataset.id);
+              this.renderUsersList();
+            } catch (err) {
+              alert('Error: ' + err.message);
+            }
+          }
+        });
+      });
+
+      // Link Artist handlers
+      list.querySelectorAll('.edit-user-link').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const userId = e.target.dataset.id;
+          const currentArtistId = e.target.dataset.artistId;
+          this.showLinkArtistModal(userId, currentArtistId);
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      list.innerHTML = '<div class="error-message">Failed to load users</div>';
+    }
+  },
+
+  async showLinkArtistModal(userId, currentArtistId) {
+    const artists = await API.getArtists();
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.id = 'link-artist-modal';
+    modal.style.zIndex = '10010';
+
+    const options = '<option value="">None (General Admin)</option>' +
+      artists.map(a => `<option value="${a.id}" ${String(a.id) === String(currentArtistId) ? 'selected' : ''}>${a.name}</option>`).join('');
+
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <h3>Link Admin to Artist</h3>
+            <p style="margin-bottom: 1rem;">Select an artist to restrict this admin's access.</p>
+            <div class="form-group">
+                <select id="link-artist-select" style="width: 100%; padding: 0.5rem; background: var(--bg-secondary); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px;">
+                    ${options}
+                </select>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" id="save-link-artist">Save</button>
+                <button class="btn btn-outline" id="cancel-link-artist">Cancel</button>
+            </div>
+        </div>
+      `;
+    document.body.appendChild(modal);
+
+    document.getElementById('cancel-link-artist').onclick = () => document.getElementById('link-artist-modal').remove();
+
+    document.getElementById('save-link-artist').onclick = async () => {
+      const newArtistId = document.getElementById('link-artist-select').value || null;
+      try {
+        await API.updateAdmin(userId, { artistId: newArtistId });
+        document.getElementById('link-artist-modal').remove();
+        alert('User updated!');
+        this.renderUsersList();
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    };
   },
 
   setupUploadHandlers() {

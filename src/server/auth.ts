@@ -8,12 +8,13 @@ const JWT_EXPIRES_IN = "7d";
 export interface AuthService {
     hashPassword(password: string): Promise<string>;
     verifyPassword(password: string, hash: string): Promise<boolean>;
-    generateToken(payload: { isAdmin: boolean; username: string }): string;
-    verifyToken(token: string): { isAdmin: boolean; username: string } | null;
+    generateToken(payload: { isAdmin: boolean; username: string; artistId: number | null }): string;
+    verifyToken(token: string): { isAdmin: boolean; username: string; artistId: number | null } | null;
     // Multi-user management
-    authenticateUser(username: string, password: string): Promise<boolean>;
-    createAdmin(username: string, password: string): Promise<void>;
-    listAdmins(): { id: number; username: string; created_at: string }[];
+    authenticateUser(username: string, password: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number } | false>;
+    createAdmin(username: string, password: string, artistId?: number | null): Promise<void>;
+    updateAdmin(id: number, artistId: number | null): void;
+    listAdmins(): { id: number; username: string; artist_id: number | null; created_at: string }[];
     deleteAdmin(id: number): void;
     changePassword(username: string, newPassword: string): Promise<void>;
     isFirstRun(): boolean;
@@ -36,6 +37,7 @@ export function createAuthService(
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
+                    artist_id INTEGER DEFAULT NULL,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
@@ -44,10 +46,11 @@ export function createAuthService(
             // Check if username column exists (migration)
             const columns = db.prepare("PRAGMA table_info(admin)").all() as any[];
             const hasUsername = columns.some(c => c.name === 'username');
+            const hasArtistId = columns.some(c => c.name === 'artist_id');
 
-            if (!hasUsername) {
-                console.log("📦 Migrating admin table to multi-user support...");
-                // We need to recreate the table to remove the CHECK constraint on ID
+            if (!hasUsername || !hasArtistId) {
+                console.log("📦 Migrating admin table to multi-user support (with artist linking)...");
+                // We need to recreate the table
                 // 1. Rename existing table
                 db.exec("ALTER TABLE admin RENAME TO admin_old");
 
@@ -57,16 +60,23 @@ export function createAuthService(
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         username TEXT NOT NULL UNIQUE,
                         password_hash TEXT NOT NULL,
+                        artist_id INTEGER DEFAULT NULL,
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                     )
                 `);
 
-                // 3. Migrate data (default to 'admin' username for existing record)
-                const oldAdmin = db.prepare("SELECT * FROM admin_old WHERE id = 1").get() as any;
-                if (oldAdmin) {
-                    db.prepare("INSERT INTO admin (username, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)")
-                        .run('admin', oldAdmin.password_hash, oldAdmin.created_at, oldAdmin.updated_at);
+                // 3. Migrate data
+                const oldAdmins = db.prepare("SELECT * FROM admin_old").all() as any[];
+                const insertStmt = db.prepare("INSERT INTO admin (id, username, password_hash, created_at, updated_at, artist_id) VALUES (?, ?, ?, ?, ?, ?)");
+
+                for (const old of oldAdmins) {
+                    // If migrating from v1 (no username), default to 'admin' for id 1
+                    let username = old.username;
+                    if (!hasUsername && old.id === 1) username = 'admin';
+
+                    // Preserve ID if possible, or let autoincrement handle it if conflicts (but usually we want to keep ID 1 as root)
+                    insertStmt.run(old.id, username, old.password_hash, old.created_at, old.updated_at, old.artist_id || null);
                 }
 
                 // 4. Drop old table
@@ -86,31 +96,43 @@ export function createAuthService(
             return bcrypt.compare(password, hash);
         },
 
-        generateToken(payload: { isAdmin: boolean; username: string }): string {
+        generateToken(payload: { isAdmin: boolean; username: string; artistId: number | null }): string {
             return jwt.sign(payload, jwtSecret, { expiresIn: JWT_EXPIRES_IN });
         },
 
-        verifyToken(token: string): { isAdmin: boolean; username: string } | null {
+        verifyToken(token: string): { isAdmin: boolean; username: string; artistId: number | null } | null {
             try {
-                return jwt.verify(token, jwtSecret) as { isAdmin: boolean; username: string };
+                return jwt.verify(token, jwtSecret) as { isAdmin: boolean; username: string; artistId: number | null };
             } catch {
                 return null;
             }
         },
 
-        async authenticateUser(username: string, password: string): Promise<boolean> {
-            const user = db.prepare("SELECT password_hash FROM admin WHERE username = ?").get(username) as { password_hash: string } | undefined;
+        async authenticateUser(username: string, password: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number } | false> {
+            const user = db.prepare("SELECT id, password_hash, artist_id FROM admin WHERE username = ?").get(username) as { id: number; password_hash: string; artist_id: number | null } | undefined;
             if (!user) return false;
-            return this.verifyPassword(password, user.password_hash);
+            const valid = await this.verifyPassword(password, user.password_hash);
+            if (!valid) return false;
+
+            return {
+                success: true,
+                id: user.id,
+                isAdmin: true,
+                artistId: user.artist_id
+            };
         },
 
-        async createAdmin(username: string, password: string): Promise<void> {
+        async createAdmin(username: string, password: string, artistId: number | null = null): Promise<void> {
             const hash = await this.hashPassword(password);
-            db.prepare("INSERT INTO admin (username, password_hash) VALUES (?, ?)").run(username, hash);
+            db.prepare("INSERT INTO admin (username, password_hash, artist_id) VALUES (?, ?, ?)").run(username, hash, artistId);
         },
 
-        listAdmins(): { id: number; username: string; created_at: string }[] {
-            return db.prepare("SELECT id, username, created_at FROM admin ORDER BY username").all() as any[];
+        updateAdmin(id: number, artistId: number | null): void {
+            db.prepare("UPDATE admin SET artist_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(artistId, id);
+        },
+
+        listAdmins(): { id: number; username: string; artist_id: number | null; created_at: string }[] {
+            return db.prepare("SELECT id, username, artist_id, created_at FROM admin ORDER BY username").all() as any[];
         },
 
         deleteAdmin(id: number): void {

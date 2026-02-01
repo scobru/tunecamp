@@ -309,6 +309,39 @@ export class ActivityPubService {
         }
     }
 
+    public async broadcastDelete(album: Album): Promise<void> {
+        if (!album.artist_id) return;
+        const artist = this.db.getArtist(album.artist_id);
+        if (!artist) return;
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length === 0) return;
+
+        console.log(`📢 Broadcasting delete for release "${album.title}" to ${followers.length} followers`);
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Delete",
+            actor: artistActorUrl,
+            object: {
+                id: noteId,
+                type: "Note",
+                atomUri: noteId
+            },
+            to: ["https://www.w3.org/ns/activitystreams#Public"]
+        };
+
+        // Send to all followers
+        for (const follower of followers) {
+            await this.sendActivity(artist, follower.inbox_uri, activity);
+        }
+    }
+
     public async sendActivity(artist: Artist, inboxUri: string, activity: any): Promise<void> {
         const body = JSON.stringify(activity);
         const url = new URL(inboxUri);

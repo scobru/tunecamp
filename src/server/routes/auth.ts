@@ -28,15 +28,24 @@ export function createAuthRoutes(authService: AuthService) {
             // Default to 'admin' if no username provided (legacy/default support)
             const userToAuth = username || 'admin';
 
-            const valid = await authService.authenticateUser(userToAuth, password);
-            if (!valid) {
-                // specific check: if username provided was 'admin' and it failed, maybe they aren't migrated?
-                // mostly safe to just say invalid credential
+            const result = await authService.authenticateUser(userToAuth, password);
+            if (!result || !result.success) {
                 return res.status(401).json({ error: "Invalid username or password" });
             }
 
-            const token = authService.generateToken({ isAdmin: true, username: userToAuth });
-            res.json({ token, expiresIn: "7d", username: userToAuth, isRootAdmin: authService.isRootAdmin(userToAuth) });
+            const token = authService.generateToken({
+                isAdmin: true,
+                username: userToAuth,
+                artistId: result.artistId
+            });
+
+            res.json({
+                token,
+                expiresIn: "7d",
+                username: userToAuth,
+                isRootAdmin: authService.isRootAdmin(userToAuth),
+                artistId: result.artistId
+            });
         } catch (error) {
             console.error("Login error:", error);
             res.status(500).json({ error: "Login failed" });
@@ -64,7 +73,12 @@ export function createAuthRoutes(authService: AuthService) {
             const userToCreate = username || 'admin';
 
             await authService.createAdmin(userToCreate, password);
-            const token = authService.generateToken({ isAdmin: true, username: userToCreate });
+            // New root admin has no artist link
+            const token = authService.generateToken({
+                isAdmin: true,
+                username: userToCreate,
+                artistId: null
+            });
 
             res.json({
                 message: "Admin account created successfully",
@@ -88,10 +102,9 @@ export function createAuthRoutes(authService: AuthService) {
             // This route should be protected by requireAdmin middleware
             const { currentPassword, newPassword } = req.body;
             // Get username from the token (injected by middleware)
-            // Note: AuthenticatedRequest needs to accept username in its type definition if strictly typed
-            // but usually it's attached to req.user or similar.
-            // Assuming req has the user info from payload
-            const username = (req as any).user?.username; // We need to ensure middleware populates this
+            const username = (req as any).username;
+            // We should also preserve the artistId in the new token
+            const artistId = (req as any).artistId || null;
 
             if (!username) {
                 return res.status(401).json({ error: "User context not found" });
@@ -115,7 +128,11 @@ export function createAuthRoutes(authService: AuthService) {
             }
 
             await authService.changePassword(username, newPassword);
-            const token = authService.generateToken({ isAdmin: true, username });
+            const token = authService.generateToken({
+                isAdmin: true,
+                username,
+                artistId
+            });
 
             res.json({
                 message: "Password changed successfully",

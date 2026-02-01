@@ -305,8 +305,12 @@ const API = {
         return this.get('/admin/system/users');
     },
 
-    async createAdmin(username, password) {
-        return this.post('/admin/system/users', { username, password });
+    async createAdmin(username, password, artistId = null) {
+        return this.post('/admin/system/users', { username, password, artistId });
+    },
+
+    async updateAdmin(id, data) {
+        return this.put('/admin/system/users/' + id, data);
     },
 
     async deleteAdmin(id) {
