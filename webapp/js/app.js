@@ -2528,19 +2528,31 @@ const App = {
     if (!list) return;
     try {
       const artists = await API.getArtists();
-      list.innerHTML = artists.map(a => `
-            <div class="flex items-center justify-between p-2 rounded-lg hover:bg-base-300 transition-colors group">
-                <div class="flex items-center gap-2">
-                    <div class="avatar">
-                        <div class="w-6 h-6 rounded-full bg-base-300">
-                            <img src="${API.getArtistCoverUrl(a.id)}" onerror="this.src='/img/album-placeholder.png'">
-                        </div>
+      if (artists.length === 0) {
+        list.innerHTML = '<p class="text-sm opacity-50 text-center py-8">No artists found. Create one!</p>';
+        return;
+      }
+
+      list.innerHTML = `
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            ${artists.map(a => `
+            <div class="card bg-base-300/50 border border-white/5 hover:bg-base-300 hover:border-primary/30 transition-all group cursor-pointer" onclick="App.showEditArtistModal('${a.id}')">
+                <figure class="aspect-square relative overflow-hidden rounded-t-xl bg-base-200">
+                    <img src="${API.getArtistCoverUrl(a.id)}" 
+                         class="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" 
+                         onerror="this.src='/img/album-placeholder.png'">
+                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <span class="btn btn-sm btn-primary btn-outline pointer-events-none">Edit Profile</span>
                     </div>
-                    <span class="text-xs font-medium">${App.escapeHtml(a.name)}</span>
+                </figure>
+                <div class="p-3 text-center">
+                    <div class="font-bold text-sm truncate" title="${App.escapeHtml(a.name)}">${App.escapeHtml(a.name)}</div>
+                    <div class="text-[10px] opacity-40 mt-1 font-mono">ID: ${a.id}</div>
                 </div>
-                <button class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity" onclick="App.showEditArtistModal('${a.id}')">Edit</button>
             </div>
-        `).join('');
+            `).join('')}
+        </div>
+      `;
     } catch (e) {
       list.innerHTML = '<p class="text-[10px] opacity-30 text-center">Failed to load artists</p>';
     }
