@@ -31,7 +31,8 @@ const UserAuth = {
         this.gun = Gun({
             peers: this.PEERS,
             localStorage: false,
-            radisk: false
+            radisk: false,
+            wire: true,
         });
 
         this.user = this.gun.user();

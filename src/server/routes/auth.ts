@@ -150,8 +150,12 @@ export function createAuthRoutes(authService: AuthService) {
      * Check authentication status
      */
     router.get("/status", (req: AuthenticatedRequest, res) => {
+        const username = req.username || "";
         res.json({
             authenticated: req.isAdmin === true,
+            username: username,
+            isRootAdmin: username ? authService.isRootAdmin(username) : false,
+            artistId: req.artistId || null,
             firstRun: authService.isFirstRun(),
         });
     });

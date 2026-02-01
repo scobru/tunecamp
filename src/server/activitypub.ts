@@ -188,7 +188,9 @@ export class ActivityPubService {
         }
 
         // Note: We use the canonical API URL for the ID, so it can be resolved by servers
-        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
+        // We append the published timestamp to ensure uniqueness when republishing (Private -> Public -> Private -> Public)
+        const sentTime = published ? new Date(published).getTime() : 0;
+        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}-${sentTime}`;
 
         return {
             type: "Note",
@@ -321,7 +323,11 @@ export class ActivityPubService {
 
         const baseUrl = this.getBaseUrl();
         const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
-        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
+
+        // Reconstruct the ID that was used for the release
+        const published = album.published_at || album.created_at;
+        const sentTime = published ? new Date(published).getTime() : 0;
+        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}-${sentTime}`;
 
         const activity = {
             "@context": "https://www.w3.org/ns/activitystreams",

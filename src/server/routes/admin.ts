@@ -75,9 +75,10 @@ export function createAdminRoutes(
                     await gundbService.registerTracks(siteInfo, album, tracks);
 
                     // ActivityPub Broadcast
-                    if (!album.is_public) {
-                        const updatedAlbum = { ...album, is_public: true };
-                        apService.broadcastRelease(updatedAlbum as any);
+                    // We must refetch the album to get the new published_at date which is used for the ID
+                    const freshAlbum = database.getAlbum(id);
+                    if (freshAlbum && freshAlbum.is_public) {
+                        apService.broadcastRelease(freshAlbum);
                     }
 
                 } else {

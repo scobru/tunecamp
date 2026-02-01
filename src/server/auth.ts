@@ -131,8 +131,18 @@ export function createAuthService(
             db.prepare("UPDATE admin SET artist_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(artistId, id);
         },
 
-        listAdmins(): { id: number; username: string; artist_id: number | null; created_at: string }[] {
-            return db.prepare("SELECT id, username, artist_id, created_at FROM admin ORDER BY username").all() as any[];
+        listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; created_at: string; is_root: boolean }[] {
+            const rows = db.prepare(`
+                SELECT a.id, a.username, a.artist_id, a.created_at, ar.name as artist_name 
+                FROM admin a
+                LEFT JOIN artists ar ON a.artist_id = ar.id
+                ORDER BY a.username
+            `).all() as any[];
+
+            return rows.map(r => ({
+                ...r,
+                is_root: r.id === 1
+            }));
         },
 
         deleteAdmin(id: number): void {

@@ -2658,7 +2658,9 @@ const App = {
             <div>
                 <div style="font-weight: bold;">${App.escapeHtml(u.username)}</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">
-                    ${u.artist_name ? '🎵 ' + App.escapeHtml(u.artist_name) : (u.isRootAdmin ? '👑 Root Admin' : '🛡️ General Admin')}
+                    ID: ${u.id} • Created: ${new Date(u.created_at).toLocaleDateString('en-GB')}
+                    ${u.is_root ? ' (Primary Admin)' : ''}
+                    ${u.artist_name ? ` • 🎵 ${App.escapeHtml(u.artist_name)}` : ''}
                 </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
