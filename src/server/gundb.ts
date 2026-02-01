@@ -77,7 +77,6 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                 peers: REGISTRY_PEERS,
                 localStorage: false,
                 radisk: true,
-                file: "./music",
                 web: server,
                 axe: true,
                 wire: true,
