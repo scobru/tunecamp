@@ -920,7 +920,7 @@ const App = {
         <div class="w-8 text-center text-sm opacity-30 font-mono group-hover:opacity-100 transition-opacity">${index + 1}</div>
         
         <!-- Cover -->
-        <div class="relative w-12 h-12 rounded-lg bg-base-300 flex-shrink-0 overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+        <div class="relative w-12 h-12 rounded-lg bg-base-300 flex-shrink-0 overflow-hidden shadow-sm group-hover:shadow-md transition-shadow" style="width: 3rem; height: 3rem; min-width: 3rem;">
            <img src="${coverUrl}" class="w-full h-full object-cover" onerror="this.src='/img/album-placeholder.png'">
            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
              <span class="text-white">▶</span>
@@ -1497,21 +1497,62 @@ const App = {
               </div>
             </div>
 
-            <div class="stats-section">
-              <h3>Top Artists (30d)</h3>
-              <div class="artist-list">
-                ${topArtists.length ? topArtists.map((artist, i) => `
-                  <div class="artist-item" onclick="window.location.hash='#/artist/${artist.id}'">
-                    <div class="artist-num">${i + 1}</div>
-                    <div class="artist-info">
-                      <div class="artist-name">${App.escapeHtml(artist.name)}</div>
+          <!-- Main Stats Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Top Artists -->
+            <div class="card bg-base-200 border border-white/5">
+                <div class="card-body">
+                    <h3 class="card-title text-lg mb-4">🏆 Top Artists (30d)</h3>
+                    <div class="space-y-3">
+                        ${topArtists.length ? topArtists.map((artist, i) => `
+                        <div class="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors" 
+                             onclick="window.location.hash='#/artist/${artist.id}'">
+                            <div class="font-bold font-mono text-xl opacity-30 w-8 text-center">${i + 1}</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-bold truncate">${App.escapeHtml(artist.name)}</div>
+                                <div class="text-xs opacity-50 text-accent">${artist.play_count} plays</div>
+                            </div>
+                        </div>
+                        `).join('') : '<p class="text-center opacity-40 py-8">No top artists yet</p>'}
                     </div>
-                    <div class="artist-meta">
-                      ${artist.play_count} plays
+                </div>
+            </div>
+
+            <!-- Recently Played -->
+            <div class="card bg-base-200 border border-white/5 col-span-1 lg:col-span-2">
+                <div class="card-body">
+                    <h3 class="card-title text-lg mb-4">🕒 Recently Played</h3>
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra w-full">
+                            <thead>
+                                <tr>
+                                    <th>Track</th>
+                                    <th>Artist</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${recentPlays.length ? recentPlays.map(play => `
+                                <tr class="hover cursor-pointer" onclick="Player.play({id: '${play.track_id}', title: '${play.title.replace(/'/g, "\\'")}', artist_name: '${play.artist_name.replace(/'/g, "\\'")}', cover: '${play.cover}'})">
+                                    <td>
+                                        <div class="flex items-center gap-3">
+                                            <div class="avatar">
+                                                <div class="mask mask-squircle w-10 h-10">
+                                                    <img src="${play.cover}" onerror="this.src='/img/album-placeholder.png'" />
+                                                </div>
+                                            </div>
+                                            <div class="font-bold truncate max-w-[150px]">${App.escapeHtml(play.title)}</div>
+                                        </div>
+                                    </td>
+                                    <td>${App.escapeHtml(play.artist_name)}</td>
+                                    <td class="text-sm opacity-60">${App.formatTimeAgo(play.played_at)}</td>
+                                </tr>
+                                `).join('') : '<tr><td colspan="3" class="text-center py-8 opacity-40">No listening history</td></tr>'}
+                            </tbody>
+                        </table>
                     </div>
-                  </div>
-                `).join('') : '<p class="empty-state">No top artists yet</p>'}
-              </div>
+                </div>
             </div>
           </div>
         </div>
@@ -2741,6 +2782,27 @@ const App = {
 
 
   // Helpers
+  toggleAdminPanel(targetId) {
+    document.querySelectorAll('.admin-panel, .admin-tab-panel').forEach(p => {
+      if (p.id === targetId) {
+        p.style.display = 'block';
+        p.classList.remove('hidden');
+      } else {
+        p.style.display = 'none';
+        p.classList.add('hidden'); // Ensure hidden class is added back
+      }
+    });
+
+    // Update tabs state if the target is a tab panel
+    if (targetId.includes('-panel')) {
+      const tabs = document.querySelectorAll('#admin-tabs .tab');
+      tabs.forEach(t => {
+        if (t.dataset.tab === targetId) t.classList.add('tab-active');
+        else t.classList.remove('tab-active');
+      });
+    }
+  },
+
   async openReleaseEditor(releaseId = null) {
     this.currentEditingReleaseId = releaseId;
     const isEdit = !!releaseId;
@@ -2760,13 +2822,7 @@ const App = {
     document.getElementById('release-cover-preview').innerHTML = '🎵';
 
     // Toggle Panel
-    if (this.toggleAdminPanel) {
-      this.toggleAdminPanel('release-panel');
-    } else {
-      document.querySelectorAll('.admin-panel, .admin-tab-panel').forEach(p => {
-        p.style.display = p.id === 'release-panel' ? 'block' : 'none';
-      });
-    }
+    this.toggleAdminPanel('release-panel');
 
     // Load Artists
     const select = document.getElementById('release-artist');
@@ -2776,7 +2832,7 @@ const App = {
       filtered = artists.filter(a => a.id === this.artistId);
     }
     select.innerHTML = (this.isRootAdmin ? '<option value="">Select Artist...</option>' : '') +
-      filtered.map(a => `< option value = "${a.name}" > ${a.name}</option > `).join('');
+      filtered.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
 
     if (isEdit) {
       const release = await API.getAlbum(releaseId);
@@ -2863,222 +2919,7 @@ const App = {
     });
   },
 
-  async showEditReleaseModal(releaseId) {
-    // Fetch release details and artists
-    const [release, artists] = await Promise.all([
-      API.getAlbum(releaseId),
-      API.getArtists()
-    ]);
 
-    const artistOptions = artists.map(a =>
-      `<option value="${a.name}" ${a.name === release.artist_name ? 'selected' : ''}>${a.name}</option>`
-    ).join('');
-
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'flex';
-    modal.id = 'edit-release-modal';
-
-    modal.innerHTML = `
-      <div class="modal-content" style="max-width: 500px;">
-        <h2 class="section-title">Edit Release: ${release.title}</h2>
-        <form id="edit-release-form">
-          <div class="form-group">
-            <label>Cover Image</label>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <div class="cover-preview" style="width: 100px; height: 100px; border-radius: 8px; background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; font-size: 2rem; background-size: cover; background-position: center;" id="cover-preview">
-                ${release.cover_path ? '' : '🎵'}
-              </div>
-              <input type="file" id="edit-release-cover" accept="image/*" style="flex: 1;">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Title</label>
-            <input type="text" id="edit-release-title" value="${release.title}" required>
-          </div>
-          <div class="form-group">
-            <label>Artist</label>
-            <select id="edit-release-artist">
-              <option value="">Select Artist...</option>
-              ${artistOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Date</label>
-            <input type="date" id="edit-release-date" value="${release.date || ''}">
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea id="edit-release-description" rows="3">${release.description || ''}</textarea>
-          </div>
-          <div class="form-group">
-            <label>Genres (comma separated)</label>
-            <input type="text" id="edit-release-genres" value="${release.genre || ''}">
-          </div>
-          <div class="form-group">
-            <label>Download Type</label>
-            <select id="edit-release-download">
-              <option value="" ${!release.download ? 'selected' : ''}>Streaming Only</option>
-              <option value="free" ${release.download === 'free' ? 'selected' : ''}>Free Download</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>External Links (e.g. Bandcamp, Donation)</label>
-            <div id="external-links-container" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
-              <!-- Links injected here -->
-            </div>
-            <button type="button" class="btn btn-outline btn-sm" id="add-external-link">＋ Add Link</button>
-          </div>
-          <div class="form-actions" style="justify-content: space-between;">
-            <div>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
-              <button type="button" class="btn btn-outline" id="cancel-edit-release">Cancel</button>
-            </div>
-            <button type="button" class="btn btn-outline" id="delete-release-btn" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Release</button>
-          </div>
-        </form>
-      </div>
-      `;
-
-    document.body.appendChild(modal);
-
-    // Set cover preview if exists
-    if (release.cover_path) {
-      document.getElementById('cover-preview').style.backgroundImage = `url(${API.getAlbumCoverUrl(release.slug || release.id)})`;
-    }
-
-    // Cover file preview
-    document.getElementById('edit-release-cover').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          document.getElementById('cover-preview').style.backgroundImage = `url(${ev.target.result})`;
-          document.getElementById('cover-preview').innerHTML = '';
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    document.getElementById('cancel-edit-release').addEventListener('click', () => {
-      document.getElementById('edit-release-modal').remove();
-    });
-
-    // External Links Logic
-    const linksContainer = document.getElementById('external-links-container');
-    const existingLinks = release.external_links ? JSON.parse(release.external_links) : [];
-
-    function addLinkInput(label = '', url = '') {
-      const div = document.createElement('div');
-      div.style.display = 'flex';
-      div.style.gap = '0.5rem';
-      div.innerHTML = `
-      <input type="text" placeholder="Label (e.g. Bandcamp)" class="link-label" value="${label}" style="flex: 1;">
-        <input type="text" placeholder="URL (https://...)" class="link-url" value="${url}" style="flex: 2;">
-          <button type="button" class="btn btn-outline btn-sm remove-link" style="color: var(--color-danger); border-color: var(--color-danger);">✕</button>
-          `;
-      div.querySelector('.remove-link').onclick = () => div.remove();
-      linksContainer.appendChild(div);
-    }
-
-    // Populate existing
-    existingLinks.forEach(link => addLinkInput(link.label, link.url));
-
-    document.getElementById('add-external-link').onclick = () => addLinkInput();
-
-    document.getElementById('edit-release-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const title = document.getElementById('edit-release-title').value;
-      const artistName = document.getElementById('edit-release-artist').value;
-      const date = document.getElementById('edit-release-date').value;
-      const description = document.getElementById('edit-release-description').value;
-      const genresRaw = document.getElementById('edit-release-genres').value;
-      const genres = genresRaw ? genresRaw.split(',').map(g => g.trim()).filter(g => g) : [];
-      const coverFile = document.getElementById('edit-release-cover').files[0];
-      const download = document.getElementById('edit-release-download').value;
-
-      try {
-        // Update release info
-        await API.updateRelease(releaseId, {
-          title,
-          artistName: artistName || undefined,
-          date: date || undefined,
-          description: description || undefined,
-          genres: genres.length > 0 ? genres : undefined,
-          download: download || undefined,
-          externalLinks: Array.from(document.querySelectorAll('#external-links-container > div')).map(div => ({
-            label: div.querySelector('.link-label').value.trim(),
-            url: div.querySelector('.link-url').value.trim()
-          })).filter(l => l.label && l.url)
-        });
-
-        // Upload cover if provided
-        if (coverFile) {
-          await API.uploadCover(coverFile, release.slug);
-        }
-
-        document.getElementById('edit-release-modal').remove();
-        alert('Release updated!');
-        window.location.reload();
-      } catch (err) {
-        alert('Failed to update release: ' + err.message);
-      }
-    });
-
-    document.getElementById('delete-release-btn').addEventListener('click', () => {
-      const choiceModal = document.createElement('div');
-      choiceModal.className = 'modal';
-      choiceModal.style.display = 'flex';
-      choiceModal.style.zIndex = '10001';
-      choiceModal.innerHTML = `
-          <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <h3>Delete Release</h3>
-            <p>How do you want to delete this release?</p>
-            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
-              <button class="btn btn-primary" id="del-release-keep">Delete & Keep Files</button>
-              <p style="font-size: 0.8rem; color: var(--text-muted);">Removes release metadata but keeps audio files in library.</p>
-
-              <button class="btn btn-outline" id="del-release-all" style="border-color: var(--color-danger); color: var(--color-danger);">Delete Everything</button>
-              <p style="font-size: 0.8rem; color: var(--text-muted);">Permanently deletes release and all files from disk.</p>
-
-              <button class="btn btn-outline" id="del-release-cancel">Cancel</button>
-            </div>
-          </div>
-          `;
-      document.body.appendChild(choiceModal);
-
-      document.getElementById('del-release-cancel').onclick = () => choiceModal.remove();
-
-      document.getElementById('del-release-keep').onclick = async () => {
-        if (confirm("Are you sure you want to delete the release record but keep files?")) {
-          try {
-            await API.deleteRelease(releaseId, true);
-            alert("Release deleted (Files kept in library)");
-            window.location.hash = '#albums';
-            window.location.reload();
-          } catch (e) {
-            alert("Error: " + e.message);
-          }
-        }
-        choiceModal.remove();
-      };
-
-      document.getElementById('del-release-all').onclick = async () => {
-        if (confirm("WARNING: This will PERMANENTLY DELETE all files. Are you sure?")) {
-          try {
-            await API.deleteRelease(releaseId, false);
-            alert("Release and files deleted permanently.");
-            window.location.hash = '#albums';
-            window.location.reload();
-          } catch (e) {
-            alert("Error: " + e.message);
-          }
-        }
-        choiceModal.remove();
-      };
-    });
-  },
 
   async showEditArtistModal(artistId = null) {
     let artist = { name: '', bio: '', photo_path: '', id: null, links: [] };
