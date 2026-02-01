@@ -1829,6 +1829,7 @@ const App = {
             ${this.isRootAdmin ? '<button class="btn btn-outline" id="users-btn">Users</button>' : ''}
             <button class="btn btn-outline" id="posts-btn">Posts</button>
             ${this.isRootAdmin ? '<button class="btn btn-outline" id="rescan-btn">Rescan</button>' : ''}
+            ${this.isRootAdmin ? '<button class="btn btn-outline" id="consolidate-btn">Consolidate Library</button>' : ''}
             ${this.isRootAdmin ? '<button class="btn btn-outline" id="network-settings-btn">Network</button>' : ''}
             ${this.isRootAdmin ? '<button class="btn btn-outline" id="backup-btn">Backup</button>' : ''}
             <button class="btn btn-outline" id="logout-btn">Logout</button>
