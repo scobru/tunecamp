@@ -2565,6 +2565,98 @@ const App = {
         status.textContent = 'Failed: ' + err.message;
       }
     });
+
+    // Release Editor Handler (Added Fix)
+    const releaseForm = container.querySelector('#release-editor-form');
+    if (releaseForm) {
+      releaseForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = container.querySelector('#save-release-btn');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        try {
+          const title = container.querySelector('#release-title').value;
+          const artistId = container.querySelector('#release-artist').value;
+          const date = container.querySelector('#release-date').value;
+          const description = container.querySelector('#release-description').value;
+          const genresRaw = container.querySelector('#release-genres').value;
+          const genres = genresRaw ? genresRaw.split(',').map(g => g.trim()).filter(g => g) : [];
+          const download = container.querySelector('#release-download').value;
+          const coverFile = container.querySelector('#release-cover-input').files[0];
+
+          // Collect External Links
+          const links = Array.from(container.querySelectorAll('#release-external-links .track-item')).map(div => ({
+            label: div.querySelector('.link-label').value.trim(),
+            url: div.querySelector('.link-url').value.trim()
+          })).filter(l => l.label && l.url);
+
+          let result;
+          if (this.currentEditingReleaseId) {
+            await API.updateRelease(this.currentEditingReleaseId, {
+              title,
+              artistName: artistId,
+              date,
+              description,
+              genres,
+              download,
+              externalLinks: links
+            });
+            result = { id: this.currentEditingReleaseId, slug: this.currentEditingReleaseId };
+          } else {
+            result = await API.createRelease({
+              title,
+              artistId,
+              date,
+              description,
+              genres,
+              download,
+              externalLinks: links
+            });
+          }
+
+          if (coverFile) {
+            await API.uploadCover(coverFile, result.slug || result.id);
+          }
+
+          alert('Release saved successfully!');
+          window.location.reload();
+        } catch (err) {
+          alert('Failed to save release: ' + err.message);
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+
+      // Cover Preview Handler
+      container.querySelector('#release-cover-input')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const preview = container.querySelector('#release-cover-preview');
+            preview.style.backgroundImage = `url(${ev.target.result})`;
+            preview.style.backgroundSize = 'cover';
+            preview.style.backgroundPosition = 'center';
+            preview.innerHTML = '';
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Delete Release Handler
+      container.querySelector('#delete-release-editor-btn')?.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to delete this release? This cannot be undone.')) {
+          try {
+            await API.deleteRelease(this.currentEditingReleaseId);
+            window.location.reload();
+          } catch (err) {
+            alert('Delete failed: ' + err.message);
+          }
+        }
+      });
+    }
   },
 
   async renderAdminArtistsList() {
