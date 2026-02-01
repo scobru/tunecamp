@@ -99,6 +99,14 @@ export class ActivityPubService {
         const baseUrl = this.getBaseUrl();
         const userUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
 
+        let iconMediaType = "image/jpeg";
+        if (artist.photo_path) {
+            const ext = artist.photo_path.split('.').pop()?.toLowerCase();
+            if (ext === 'png') iconMediaType = "image/png";
+            else if (ext === 'webp') iconMediaType = "image/webp";
+            else if (ext === 'gif') iconMediaType = "image/gif";
+        }
+
         return {
             "@context": [
                 "https://www.w3.org/ns/activitystreams",
@@ -112,7 +120,7 @@ export class ActivityPubService {
             url: `${baseUrl}/@${artist.slug}`,
             icon: {
                 type: "Image",
-                mediaType: "image/jpeg",
+                mediaType: iconMediaType,
                 url: `${baseUrl}/api/artists/${artist.slug}/cover`
             },
             inbox: `${userUrl}/inbox`,

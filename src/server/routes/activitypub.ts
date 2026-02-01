@@ -65,13 +65,39 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const baseUrl = apService.getBaseUrl();
         const userUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
 
+        // Get public releases
+        const albums = db.getAlbumsByArtist(artist.id, true);
+        const releases = albums.filter(a => a.is_release && a.is_public);
+
+        const orderedItems = releases.map(release => {
+            const albumUrl = `${baseUrl}/album/${release.slug}`;
+            const published = release.published_at || release.created_at;
+
+            return {
+                type: "Create",
+                id: `${baseUrl}/activity/release/${release.slug}`,
+                actor: userUrl,
+                published: published,
+                to: ["https://www.w3.org/ns/activitystreams#Public"],
+                object: {
+                    type: "Note",
+                    id: `${baseUrl}/note/release/${release.slug}`,
+                    attributedTo: userUrl,
+                    content: `<p>New release available: <a href="${albumUrl}">${release.title}</a></p>`,
+                    url: albumUrl,
+                    published: published,
+                    to: ["https://www.w3.org/ns/activitystreams#Public"]
+                }
+            };
+        });
+
         res.setHeader("Content-Type", "application/activity+json");
         res.json({
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${userUrl}/outbox`,
             type: "OrderedCollection",
-            totalItems: 0,
-            orderedItems: []
+            totalItems: orderedItems.length,
+            orderedItems: orderedItems
         });
     });
 
