@@ -245,7 +245,11 @@ const App = {
     const modal = document.getElementById('unlock-modal');
     if (modal) {
       modal.dataset.albumId = albumId;
-      modal.classList.add('active');
+      if (typeof modal.showModal === 'function') {
+        modal.showModal();
+      } else {
+        modal.classList.add('active');
+      }
     }
   },
 
@@ -287,7 +291,11 @@ const App = {
 
     // Show modal on login click
     userLoginBtn.addEventListener('click', () => {
-      userAuthModal.classList.add('active');
+      if (typeof userAuthModal.showModal === 'function') {
+        userAuthModal.showModal();
+      } else {
+        userAuthModal.classList.add('active');
+      }
       userAuthError.textContent = '';
     });
 
@@ -726,7 +734,12 @@ const App = {
       `;
 
       document.getElementById('comment-login-link').addEventListener('click', () => {
-        document.getElementById('user-auth-modal').classList.add('active');
+        const modal = document.getElementById('user-auth-modal');
+        if (typeof modal.showModal === 'function') {
+          modal.showModal();
+        } else {
+          modal.classList.add('active');
+        }
       });
     }
 
@@ -1493,7 +1506,7 @@ const App = {
             </div>
             <div class="stat">
               <div class="stat-title">Listening Time</div>
-              <div class="stat-value text-secondary">${App.formatTimeAgo(overview.totalListeningTime * 1000).replace(' ago', '')}</div>
+              <div class="stat-value text-secondary">${Player.formatTime(overview.totalListeningTime)}</div>
             </div>
             <div class="stat">
               <div class="stat-title">Unique Tracks</div>
@@ -1842,22 +1855,22 @@ const App = {
           </div>
         </div>
         
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-value">${stats.artists}</div>
-            <div class="stat-label">Artists</div>
+        <div class="stats stats-vertical lg:stats-horizontal shadow bg-base-200 border border-white/5 w-full mb-12">
+          <div class="stat">
+            <div class="stat-title">Artists</div>
+            <div class="stat-value text-primary">${stats.artists}</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value">${stats.albums}</div>
-            <div class="stat-label">Albums</div>
+          <div class="stat">
+            <div class="stat-title">Albums</div>
+            <div class="stat-value text-secondary">${stats.albums}</div>
           </div>
-          <div class="stat-card">
-            <div class="stat-value">${stats.tracks}</div>
-            <div class="stat-label">Tracks</div>
+          <div class="stat">
+            <div class="stat-title">Tracks</div>
+            <div class="stat-value text-accent">${stats.tracks}</div>
           </div>
-          <div class="stat-card">
+          <div class="stat">
+            <div class="stat-title">Public</div>
             <div class="stat-value">${stats.publicAlbums}</div>
-            <div class="stat-label">Public</div>
           </div>
         </div>
 
@@ -3656,18 +3669,20 @@ bandcamp: https://artist.bandcamp.com"></textarea>
 
   renderAlbumGrid(container, albums) {
     if (!albums || albums.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-secondary);">No albums found</p>';
+      container.innerHTML = '<p class="text-secondary p-8 text-center w-full col-span-full">No albums found</p>';
       return;
     }
 
     container.innerHTML = albums.map(album => `
-      <a href="#/album/${album.slug || album.id}" class="card">
-        <div class="card-cover album-cover-placeholder" data-src="${API.getAlbumCoverUrl(album.slug || album.id)}">
-          <div class="placeholder-icon">🎵</div>
-        </div>
-        <div class="card-body">
-          <div class="card-title">${album.title}</div>
-          <div class="card-subtitle">${album.artist_name || ''}</div>
+      <a href="#/album/${album.slug || album.id}" class="card bg-base-200 hover:bg-base-300 transition-all border border-white/5 group overflow-hidden">
+        <figure class="aspect-square relative overflow-hidden bg-base-300">
+          <div class="album-cover-placeholder w-full h-full group-hover:scale-105 transition-transform duration-500" data-src="${API.getAlbumCoverUrl(album.slug || album.id)}">
+            <div class="flex items-center justify-center w-full h-full text-4xl opacity-20">🎵</div>
+          </div>
+        </figure>
+        <div class="card-body p-4">
+          <h2 class="card-title text-sm font-bold truncate block">${App.escapeHtml(album.title)}</h2>
+          <p class="text-xs opacity-60 truncate">${App.escapeHtml(album.artist_name || 'Unknown Artist')}</p>
         </div>
       </a>
       `).join('');
@@ -3675,7 +3690,12 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     // Load album covers with fallback
     container.querySelectorAll('.album-cover-placeholder').forEach(el => {
       const img = new Image();
-      img.onload = () => { el.innerHTML = ''; el.style.backgroundImage = `url(${el.dataset.src})`; el.style.backgroundSize = 'cover'; };
+      img.onload = () => {
+        el.innerHTML = '';
+        el.style.backgroundImage = `url(${el.dataset.src})`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      };
       img.onerror = () => { /* keep placeholder */ };
       img.src = el.dataset.src;
     });
@@ -3786,11 +3806,20 @@ bandcamp: https://artist.bandcamp.com"></textarea>
       });
     }
 
-    modal.classList.add('active');
+    if (typeof modal.showModal === 'function') {
+      modal.showModal();
+    } else {
+      modal.classList.add('active');
+    }
   },
 
   hideModal() {
-    document.getElementById('login-modal').classList.remove('active');
+    const modal = document.getElementById('login-modal');
+    if (typeof modal.close === 'function') {
+      modal.close();
+    } else {
+      modal.classList.remove('active');
+    }
   },
 
   async handleLogin(username, password) {
@@ -3958,7 +3987,11 @@ bandcamp: https://artist.bandcamp.com"></textarea>
         });
       }
 
-      modal.classList.add('active');
+      if (typeof modal.showModal === 'function') {
+        modal.showModal();
+      } else {
+        modal.classList.add('active');
+      }
     } catch (error) {
       console.error('Error loading playlists:', error);
       alert('Failed to load playlists');
@@ -3969,7 +4002,11 @@ bandcamp: https://artist.bandcamp.com"></textarea>
     try {
       await API.addTrackToPlaylist(playlistId, trackId);
       alert('Track added to playlist!');
-      document.getElementById('add-to-playlist-modal').classList.remove('active');
+      if (typeof modal.close === 'function') {
+        modal.close();
+      } else {
+        modal.classList.remove('active');
+      }
     } catch (error) {
       console.error('Error adding track:', error);
       alert('Failed to add track to playlist');
