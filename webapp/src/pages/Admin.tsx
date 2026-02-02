@@ -6,23 +6,24 @@ import { BarChart2, Settings, Database, RefreshCw, Save, User } from 'lucide-rea
 import { AdminUserModal } from '../components/modals/AdminUserModal';
 import { AdminReleaseModal } from '../components/modals/AdminReleaseModal';
 import { UploadTracksModal } from '../components/modals/UploadTracksModal';
+import { CreatePostModal } from '../components/modals/CreatePostModal';
 import { IdentityPanel } from '../components/admin/IdentityPanel';
 import type { SiteSettings } from '../types';
 
 export const Admin = () => {
-    const { user, isAuthenticated } = useAuthStore();
+    const { adminUser, isAdminAuthenticated } = useAuthStore();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'settings' | 'system' | 'identity'>('overview');
     const [stats, setStats] = useState<any>(null);
     // const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (!isAuthenticated || !user?.isAdmin) {
+        if (!isAdminAuthenticated || !adminUser?.isAdmin) {
              navigate('/');
              return;
         }
         loadStats();
-    }, [isAuthenticated, user]);
+    }, [isAdminAuthenticated, adminUser]);
 
     const loadStats = async () => {
         // setLoading(true);
@@ -48,7 +49,7 @@ export const Admin = () => {
         }
     };
 
-    if (!user?.isAdmin) return null;
+    if (!adminUser?.isAdmin) return null;
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -136,7 +137,10 @@ export const Admin = () => {
                      <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg">Releases</h3>
-                            <button className="btn btn-sm btn-primary" onClick={() => document.dispatchEvent(new CustomEvent('open-admin-release-modal'))}>Create Release</button>
+                            <div className="flex gap-2">
+                                <button className="btn btn-sm btn-outline" onClick={() => document.dispatchEvent(new CustomEvent('open-create-post-modal'))}>Create Post</button>
+                                <button className="btn btn-sm btn-primary" onClick={() => document.dispatchEvent(new CustomEvent('open-admin-release-modal'))}>Create Release</button>
+                            </div>
                         </div>
                         <AdminReleasesList />
                      </div>
@@ -149,6 +153,7 @@ export const Admin = () => {
             <AdminUserModal onUserUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-users'))} />
             <AdminReleaseModal onReleaseUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
             <UploadTracksModal onUploadComplete={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
+            <CreatePostModal onPostCreated={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
         </div>
     );
 };

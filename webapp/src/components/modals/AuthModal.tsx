@@ -8,13 +8,13 @@ export const AuthModal = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
-    const { login, register, error } = useAuthStore();
+    const { login, register, loginAdmin, error } = useAuthStore();
     const [localError, setLocalError] = useState('');
 
     useEffect(() => {
         const handleOpen = () => {
             dialogRef.current?.showModal();
-            setMode('admin'); // Default to admin or user preference? Admin is common for owner.
+            setMode('user'); 
         };
         document.addEventListener('open-auth-modal', handleOpen);
         return () => document.removeEventListener('open-auth-modal', handleOpen);
@@ -32,7 +32,7 @@ export const AuthModal = () => {
                 }
                 await register(username, password);
             } else if (mode === 'admin') {
-                await login('admin', password);
+                await loginAdmin(username, password);
             } else {
                 await login(username, password);
             }
@@ -55,14 +55,10 @@ export const AuthModal = () => {
                 
                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
                     {mode === 'register' ? <UserPlus size={20}/> : <LogIn size={20}/>} 
-                    {mode === 'register' ? 'Create Account' : (mode === 'admin' ? 'Admin Login' : 'User Login')}
+                    {mode === 'register' ? 'Create Account' : (mode === 'admin' ? 'Admin Login' : 'Community Login')}
                 </h3>
 
                 <div className="tabs tabs-boxed bg-base-200 p-1 mb-6">
-                    <button 
-                        className={`tab flex-1 ${mode === 'admin' ? 'tab-active' : ''}`}
-                        onClick={() => setMode('admin')}
-                    >Admin</button>
                     <button 
                         className={`tab flex-1 ${mode === 'user' ? 'tab-active' : ''}`}
                         onClick={() => setMode('user')}
@@ -71,25 +67,27 @@ export const AuthModal = () => {
                         className={`tab flex-1 ${mode === 'register' ? 'tab-active' : ''}`}
                         onClick={() => setMode('register')}
                     >Register</button>
+                    <button 
+                        className={`tab flex-1 ${mode === 'admin' ? 'tab-active' : ''}`}
+                        onClick={() => setMode('admin')}
+                    >Admin</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {mode !== 'admin' && (
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text">Username</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                placeholder="username" 
-                                className="input input-bordered w-full" 
-                                value={username}
-                                onChange={e => setUsername(e.target.value)}
-                                required
-                                autoComplete="username"
-                            />
-                        </div>
-                    )}
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Username</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            placeholder="username" 
+                            className="input input-bordered w-full" 
+                            value={username}
+                            onChange={e => setUsername(e.target.value)}
+                            required
+                            autoComplete="username"
+                        />
+                    </div>
 
                     <div className="form-control">
                         <label className="label">
@@ -97,7 +95,7 @@ export const AuthModal = () => {
                         </label>
                         <input 
                             type="password" 
-                            placeholder={mode === 'admin' ? "Admin Password" : "••••••"} 
+                            placeholder="••••••" 
                             className="input input-bordered w-full" 
                             value={password}
                             onChange={e => setPassword(e.target.value)}
@@ -105,18 +103,6 @@ export const AuthModal = () => {
                             autoComplete={mode === 'register' ? "new-password" : "current-password"}
                         />
                     </div>
-
-                    {/* Hidden username for accessibility/password managers in Admin mode */}
-                    {mode === 'admin' && (
-                        <input 
-                            type="text" 
-                            name="username" 
-                            value="admin" 
-                            readOnly 
-                            className="hidden" 
-                            autoComplete="username"
-                        />
-                    )}
                     
                     {mode === 'register' && (
                         <div className="form-control">
@@ -144,6 +130,7 @@ export const AuthModal = () => {
                     </button>
                 </form>
             </div>
+
             <form method="dialog" className="modal-backdrop">
                 <button>close</button>
             </form>

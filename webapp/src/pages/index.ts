@@ -10,3 +10,6 @@ export { Network } from './Network';
 // export { Admin } from './Admin';
 // export { Files } from './Files';
 export { Support } from './Support';
+export { Playlists } from './Playlists';
+export { PlaylistDetails } from './PlaylistDetails';
+export { PostPage as Post } from './Post';

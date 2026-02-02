@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Folder, File, ArrowLeft, Music, Image as ImageIcon } from 'lucide-react';
 import { GleamUtils } from '../utils/gleam';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import type { Track } from '../types';
 
 export const Files = () => {
@@ -12,6 +13,14 @@ export const Files = () => {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const { playTrack } = usePlayerStore();
+    const { isAdminAuthenticated, adminUser } = useAuthStore();
+    const routerNavigate = useNavigate();
+
+    useEffect(() => {
+        if (!isAdminAuthenticated || !adminUser?.isAdmin) {
+             routerNavigate('/');
+        }
+    }, [isAdminAuthenticated, adminUser]);
 
     useEffect(() => {
         loadData(currentPath);
@@ -29,18 +38,18 @@ export const Files = () => {
         }
     };
 
-    const navigate = (path: string) => {
+    const updatePath = (path: string) => {
         setSearchParams({ path });
     };
 
     const goUp = () => {
         const parent = currentPath.split('/').slice(0, -1).join('/') || '/';
-        navigate(parent);
+        updatePath(parent);
     };
 
     const handleFileClick = (item: any) => {
         if (item.type === 'directory') {
-            navigate(item.path);
+            updatePath(item.path);
         } else {
             // If audio, play
             const ext = GleamUtils.getFileExtension(item.name);
@@ -78,10 +87,10 @@ export const Files = () => {
                 </button>
                 <div className="text-xl font-mono opacity-70 breadcrumbs">
                     <ul>
-                        <li><button onClick={() => navigate('/')}>Root</button></li>
+                        <li><button onClick={() => updatePath('/')}>Root</button></li>
                         {currentPath.split('/').filter(Boolean).map((part, i, arr) => (
                              <li key={i}>
-                                 <button onClick={() => navigate('/' + arr.slice(0, i + 1).join('/'))}>{part}</button>
+                                 <button onClick={() => updatePath('/' + arr.slice(0, i + 1).join('/'))}>{part}</button>
                              </li>
                         ))}
                     </ul>

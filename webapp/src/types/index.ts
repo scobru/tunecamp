@@ -139,3 +139,9 @@ export interface AdminStats {
     storageUsed: number;
     networkSites: number;
 }
+
+export interface GunProfile {
+    pub: string;
+    alias: string;
+    epub: string;
+}
