@@ -6,6 +6,7 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { resolveFile } from "../utils/pathHelper.js";
 
 // Set ffmpeg path
 if (ffmpegPath) {
@@ -51,11 +52,12 @@ export function createTracksRoutes(database: DatabaseService) {
                 return res.status(404).json({ error: "Track not found" });
             }
 
-            if (!fs.existsSync(track.file_path)) {
+            const trackPath = resolveFile(track.file_path);
+            if (!trackPath) {
                 return res.status(404).json({ error: "File not found" });
             }
 
-            const metadata = await parseFile(track.file_path);
+            const metadata = await parseFile(trackPath);
             const lyrics = metadata.common.lyrics;
 
             res.json({ lyrics: lyrics || [] });
@@ -109,16 +111,17 @@ export function createTracksRoutes(database: DatabaseService) {
             // Note: Track streaming is allowed regardless of album visibility
             // This allows users to play tracks they have direct links to
 
-            if (!fs.existsSync(track.file_path)) {
+            const trackPath = resolveFile(track.file_path);
+            if (!trackPath) {
                 return res.status(404).json({ error: "Audio file not found" });
             }
 
-            const stat = fs.statSync(track.file_path);
+            const stat = fs.statSync(trackPath);
             const fileSize = stat.size;
             const range = req.headers.range;
 
             // Determine content type
-            const ext = path.extname(track.file_path).toLowerCase();
+            const ext = path.extname(trackPath).toLowerCase();
             const contentTypes: Record<string, string> = {
                 ".mp3": "audio/mpeg",
                 ".flac": "audio/flac",
@@ -148,7 +151,7 @@ export function createTracksRoutes(database: DatabaseService) {
                 res.setHeader("Content-Type", contentTypeMap[format] || 'audio/mpeg');
 
                 // Create ffmpeg command
-                const command = ffmpeg(track.file_path)
+                const command = ffmpeg(trackPath)
                     .format(format)
                     .audioBitrate(bitrate)
                     .on('error', (err) => {
@@ -170,7 +173,7 @@ export function createTracksRoutes(database: DatabaseService) {
                 const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
                 const chunkSize = end - start + 1;
 
-                const stream = fs.createReadStream(track.file_path, { start, end });
+                const stream = fs.createReadStream(trackPath, { start, end });
 
                 res.writeHead(206, {
                     "Content-Range": `bytes ${start}-${end}/${fileSize}`,
@@ -188,7 +191,7 @@ export function createTracksRoutes(database: DatabaseService) {
                     "Accept-Ranges": "bytes",
                 });
 
-                fs.createReadStream(track.file_path).pipe(res);
+                fs.createReadStream(trackPath).pipe(res);
             }
         } catch (error) {
             console.error("Error streaming track:", error);
@@ -304,10 +307,11 @@ export function createTracksRoutes(database: DatabaseService) {
             }
 
             if (deleteFile) {
-                if (fs.existsSync(track.file_path)) {
+                const trackPath = resolveFile(track.file_path);
+                if (trackPath) {
                     try {
-                        fs.unlinkSync(track.file_path);
-                        console.log(`🗑️  Deleted file: ${track.file_path}`);
+                        fs.unlinkSync(trackPath);
+                        console.log(`🗑️  Deleted file: ${trackPath}`);
                     } catch (err) {
                         console.error("Error deleting file:", err);
                         return res.status(500).json({ error: "Failed to delete file" });

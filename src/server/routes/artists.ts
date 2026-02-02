@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { resolveFile } from "../utils/pathHelper.js";
 
 export function createArtistsRoutes(database: DatabaseService) {
     const router = Router();
@@ -234,26 +235,10 @@ export function createArtistsRoutes(database: DatabaseService) {
             }
 
             // Try artist photo first
-            if (artist.photo_path && fs.existsSync(artist.photo_path)) {
-                const ext = path.extname(artist.photo_path).toLowerCase();
-                const contentTypes: Record<string, string> = {
-                    ".jpg": "image/jpeg",
-                    ".jpeg": "image/jpeg",
-                    ".png": "image/png",
-                    ".gif": "image/gif",
-                    ".webp": "image/webp",
-                };
-                res.setHeader("Content-Type", contentTypes[ext] || "application/octet-stream");
-                res.setHeader("Cache-Control", "public, max-age=86400");
-                fs.createReadStream(artist.photo_path).pipe(res);
-                return;
-            }
-
-            // Fallback to first album cover
-            const albums = database.getAlbumsByArtist(artist.id, false);
-            for (const album of albums) {
-                if (album.cover_path && fs.existsSync(album.cover_path)) {
-                    const ext = path.extname(album.cover_path).toLowerCase();
+            if (artist.photo_path) {
+                const photoPath = resolveFile(artist.photo_path);
+                if (photoPath) {
+                    const ext = path.extname(photoPath).toLowerCase();
                     const contentTypes: Record<string, string> = {
                         ".jpg": "image/jpeg",
                         ".jpeg": "image/jpeg",
@@ -263,8 +248,30 @@ export function createArtistsRoutes(database: DatabaseService) {
                     };
                     res.setHeader("Content-Type", contentTypes[ext] || "application/octet-stream");
                     res.setHeader("Cache-Control", "public, max-age=86400");
-                    fs.createReadStream(album.cover_path).pipe(res);
+                    fs.createReadStream(photoPath).pipe(res);
                     return;
+                }
+            }
+
+            // Fallback to first album cover
+            const albums = database.getAlbumsByArtist(artist.id, false);
+            for (const album of albums) {
+                if (album.cover_path) {
+                    const coverPath = resolveFile(album.cover_path);
+                    if (coverPath) {
+                        const ext = path.extname(coverPath).toLowerCase();
+                        const contentTypes: Record<string, string> = {
+                            ".jpg": "image/jpeg",
+                            ".jpeg": "image/jpeg",
+                            ".png": "image/png",
+                            ".gif": "image/gif",
+                            ".webp": "image/webp",
+                        };
+                        res.setHeader("Content-Type", contentTypes[ext] || "application/octet-stream");
+                        res.setHeader("Cache-Control", "public, max-age=86400");
+                        fs.createReadStream(coverPath).pipe(res);
+                        return;
+                    }
                 }
             }
 

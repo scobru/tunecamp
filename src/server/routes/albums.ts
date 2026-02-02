@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { resolveFile } from "../utils/pathHelper.js";
 
 export function createAlbumsRoutes(database: DatabaseService) {
     const router = Router();
@@ -119,11 +120,13 @@ export function createAlbumsRoutes(database: DatabaseService) {
             // Note: Cover images are accessible regardless of album visibility
             // This allows showing covers in player even for private albums
 
-            if (!album.cover_path || !fs.existsSync(album.cover_path)) {
+            // Verify file existence
+            const resolvedPath = resolveFile(album.cover_path);
+            if (!resolvedPath) {
                 return res.status(404).json({ error: "Cover not found" });
             }
 
-            const ext = path.extname(album.cover_path).toLowerCase();
+            const ext = path.extname(resolvedPath as string).toLowerCase();
             const contentTypes: Record<string, string> = {
                 ".jpg": "image/jpeg",
                 ".jpeg": "image/jpeg",
@@ -134,7 +137,7 @@ export function createAlbumsRoutes(database: DatabaseService) {
 
             res.setHeader("Content-Type", contentTypes[ext] || "application/octet-stream");
             res.setHeader("Cache-Control", "public, max-age=86400");
-            fs.createReadStream(album.cover_path).pipe(res);
+            fs.createReadStream(resolvedPath).pipe(res);
         } catch (error) {
             console.error("Error getting cover:", error);
             res.status(500).json({ error: "Failed to get cover" });
@@ -192,13 +195,14 @@ export function createAlbumsRoutes(database: DatabaseService) {
             // For single track, just send the file
             if (tracks.length === 1) {
                 const track = tracks[0];
-                if (!fs.existsSync(track.file_path)) {
+                const trackPath = resolveFile(track.file_path);
+                if (!trackPath) {
                     return res.status(404).json({ error: "Track file not found" });
                 }
-                const filename = path.basename(track.file_path);
+                const filename = path.basename(trackPath);
                 res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
                 res.setHeader("Content-Type", "application/octet-stream");
-                return fs.createReadStream(track.file_path).pipe(res);
+                return fs.createReadStream(trackPath).pipe(res);
             }
 
             // For multiple tracks, create a simple sequential download
@@ -212,8 +216,9 @@ export function createAlbumsRoutes(database: DatabaseService) {
             archive.pipe(res);
 
             for (const track of tracks) {
-                if (fs.existsSync(track.file_path)) {
-                    archive.file(track.file_path, { name: path.basename(track.file_path) });
+                const trackPath = resolveFile(track.file_path);
+                if (trackPath) {
+                    archive.file(trackPath, { name: path.basename(trackPath) });
                 }
             }
 

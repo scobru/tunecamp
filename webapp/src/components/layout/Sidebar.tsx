@@ -94,7 +94,7 @@ export const Sidebar = () => {
         )}
         
         {/* Helper for Admin Login if not authenticated */}
-        {!isAdminAuthenticated && (
+        {!isAdminAuthenticated && !isAuthenticated && (
             <button 
                 onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}
                 className="mt-2 text-xs opacity-30 hover:opacity-100 flex items-center gap-1 mx-auto"
