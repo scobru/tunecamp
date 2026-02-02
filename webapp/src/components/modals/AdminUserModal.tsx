@@ -45,7 +45,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setUsername(userToEdit.username);
                 setPassword('');
                 setIsAdmin(userToEdit.isAdmin);
-                setArtistId(userToEdit.artistId || '');
+                setArtistId(userToEdit.artistId || userToEdit.artist_id || '');
                 
                 dialogRef.current.dataset.userId = userToEdit.id;
                 dialogRef.current.dataset.mode = 'edit';

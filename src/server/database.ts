@@ -8,6 +8,7 @@ export interface Artist {
     bio: string | null;
     photo_path: string | null;
     links: string | null;  // JSON string of links
+    post_params: string | null; // JSON string of ActivityPub/Mastodon config
     public_key: string | null;
     private_key: string | null;
     created_at: string;
@@ -36,6 +37,7 @@ export interface Album {
     download: string | null; // 'free' | 'paid' | null
     external_links: string | null; // JSON string of ExternalLink[]
     is_public: boolean;
+    visibility: 'public' | 'private' | 'unlisted'; // Added
     is_release: boolean; // true = published release, false = library album
     published_at: string | null;
     created_at: string;
@@ -110,8 +112,8 @@ export interface DatabaseService {
     getArtist(id: number): Artist | undefined;
     getArtistByName(name: string): Artist | undefined;
     getArtistBySlug(slug: string): Artist | undefined;
-    createArtist(name: string, bio?: string, photoPath?: string, links?: any): number;
-    updateArtist(id: number, bio?: string, photoPath?: string, links?: any): void;
+    createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any): number;
+    updateArtist(id: number, bio?: string, photoPath?: string, links?: any, postParams?: any): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     deleteArtist(id: number): void;
     // Followers
@@ -128,7 +130,7 @@ export interface DatabaseService {
     getAlbumByTitle(title: string, artistId?: number): Album | undefined;
     getAlbumsByArtist(artistId: number, publicOnly?: boolean): Album[];
     createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
-    updateAlbumVisibility(id: number, isPublic: boolean): void;
+    updateAlbumVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     updateAlbumArtist(id: number, artistId: number): void;
     updateAlbumTitle(id: number, title: string): void;
     updateAlbumCover(id: number, coverPath: string): void;
@@ -372,6 +374,25 @@ export function createDatabase(dbPath: string): DatabaseService {
         // Column already exists
     }
 
+    // Migration: Add post_params to artists
+    try {
+        db.exec(`ALTER TABLE artists ADD COLUMN post_params TEXT`);
+        console.log("📦 Migrated database: added post_params to artists");
+    } catch (e) {
+        // Column already exists
+    }
+
+    // Migration: Add visibility to albums
+    try {
+        db.exec(`ALTER TABLE albums ADD COLUMN visibility TEXT DEFAULT 'private'`);
+        // Backfill based on is_public
+        db.prepare("UPDATE albums SET visibility = 'public' WHERE is_public = 1").run();
+        db.prepare("UPDATE albums SET visibility = 'private' WHERE is_public = 0").run();
+        console.log("📦 Migrated database: added visibility to albums");
+    } catch (e) {
+        // Column already exists
+    }
+
     return {
         db,
 
@@ -392,9 +413,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             return db.prepare("SELECT * FROM artists WHERE slug = ?").get(slug) as Artist | undefined;
         },
 
-        createArtist(name: string, bio?: string, photoPath?: string, links?: any): number {
+        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any): number {
             const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
             const linksJson = links ? JSON.stringify(links) : null;
+            const postParamsJson = postParams ? JSON.stringify(postParams) : null;
 
             // Try to insert, if slug exists add a number suffix
             let finalSlug = slug;
@@ -402,8 +424,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             while (attempt < 100) {
                 try {
                     const result = db
-                        .prepare("INSERT INTO artists (name, slug, bio, photo_path, links) VALUES (?, ?, ?, ?, ?)")
-                        .run(name, finalSlug, bio || null, photoPath || null, linksJson);
+                        .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params) VALUES (?, ?, ?, ?, ?, ?)")
+                        .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson);
                     return result.lastInsertRowid as number;
                 } catch (e: any) {
                     if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
@@ -417,10 +439,11 @@ export function createDatabase(dbPath: string): DatabaseService {
             throw new Error("Could not create unique slug for artist");
         },
 
-        updateArtist(id: number, bio?: string, photoPath?: string, links?: any): void {
+        updateArtist(id: number, bio?: string, photoPath?: string, links?: any, postParams?: any): void {
             const linksJson = links ? JSON.stringify(links) : null;
-            db.prepare("UPDATE artists SET bio = ?, photo_path = ?, links = ? WHERE id = ?")
-                .run(bio || null, photoPath || null, linksJson, id);
+            const postParamsJson = postParams ? JSON.stringify(postParams) : null;
+            db.prepare("UPDATE artists SET bio = ?, photo_path = ?, links = ?, post_params = ? WHERE id = ?")
+                .run(bio || null, photoPath || null, linksJson, postParamsJson, id);
         },
 
         updateArtistKeys(id: number, publicKey: string, privateKey: string): void {
@@ -463,7 +486,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const sql = publicOnly
                 ? `SELECT a.*, ar.name as artist_name, ar.slug as artist_slug FROM albums a 
            LEFT JOIN artists ar ON a.artist_id = ar.id 
-           WHERE a.is_public = 1 ORDER BY a.date DESC`
+           WHERE a.visibility = 'public' ORDER BY a.date DESC`
                 : `SELECT a.*, ar.name as artist_name, ar.slug as artist_slug FROM albums a 
            LEFT JOIN artists ar ON a.artist_id = ar.id 
            ORDER BY a.date DESC`;
@@ -474,7 +497,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const sql = publicOnly
                 ? `SELECT a.*, ar.name as artist_name, ar.slug as artist_slug FROM albums a 
            LEFT JOIN artists ar ON a.artist_id = ar.id 
-           WHERE a.is_release = 1 AND a.is_public = 1 ORDER BY a.date DESC`
+           WHERE a.is_release = 1 AND a.visibility = 'public' ORDER BY a.date DESC`
                 : `SELECT a.*, ar.name as artist_name, ar.slug as artist_slug FROM albums a 
            LEFT JOIN artists ar ON a.artist_id = ar.id 
            WHERE a.is_release = 1 ORDER BY a.date DESC`;
@@ -523,7 +546,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         getAlbumsByArtist(artistId: number, publicOnly = false): Album[] {
             const sql = publicOnly
-                ? "SELECT * FROM albums WHERE artist_id = ? AND is_public = 1 ORDER BY date DESC"
+                ? "SELECT * FROM albums WHERE artist_id = ? AND visibility = 'public' ORDER BY date DESC"
                 : "SELECT * FROM albums WHERE artist_id = ? ORDER BY date DESC";
             return db.prepare(sql).all(artistId) as Album[];
         },
@@ -538,8 +561,8 @@ export function createDatabase(dbPath: string): DatabaseService {
                 try {
                     const result = db
                         .prepare(
-                            `INSERT INTO albums (title, slug, artist_id, date, cover_path, genre, description, download, external_links, is_public, is_release, published_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                            `INSERT INTO albums (title, slug, artist_id, date, cover_path, genre, description, download, external_links, is_public, visibility, is_release, published_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                         )
                         .run(
                             album.title,
@@ -551,7 +574,8 @@ export function createDatabase(dbPath: string): DatabaseService {
                             album.description,
                             album.download,
                             album.external_links,
-                            album.is_public ? 1 : 0,
+                            album.visibility === 'public' || album.visibility === 'unlisted' ? 1 : 0,
+                            album.visibility || 'private',
                             album.is_release ? 1 : 0,
                             album.published_at
                         );
@@ -568,11 +592,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             throw new Error("Could not create unique slug for album");
         },
 
-        updateAlbumVisibility(id: number, isPublic: boolean): void {
+        updateAlbumVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void {
+            const isPublic = visibility === 'public' || visibility === 'unlisted';
             const publishedAt = isPublic ? new Date().toISOString() : null;
             db.prepare(
-                "UPDATE albums SET is_public = ?, published_at = ? WHERE id = ?"
-            ).run(isPublic ? 1 : 0, publishedAt, id);
+                "UPDATE albums SET is_public = ?, visibility = ?, published_at = ? WHERE id = ?"
+            ).run(isPublic ? 1 : 0, visibility, publishedAt, id);
         },
 
         updateAlbumArtist(id: number, artistId: number): void {

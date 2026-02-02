@@ -74,11 +74,19 @@ export const Home = () => {
                                 {/* Play overlay */}
                                 <button 
                                     className="absolute right-2 bottom-2 btn btn-circle btn-primary opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all shadow-xl"
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                         e.preventDefault();
-                                        // Need to fetch full album to play it? Or just play first track if available?
-                                        // For now just log
-                                        console.log('Play album', album.id);
+                                        e.stopPropagation();
+                                        try {
+                                            // Fetch full album details including tracks
+                                            const fullAlbum = await API.getAlbum(album.id);
+                                            if (fullAlbum && fullAlbum.tracks && fullAlbum.tracks.length > 0) {
+                                                const { playAlbum } = usePlayerStore.getState();
+                                                playAlbum(fullAlbum.tracks, 0); 
+                                            }
+                                        } catch (error) {
+                                            console.error("Failed to play album", error);
+                                        }
                                     }}
                                 >
                                     <Play fill="currentColor" size={20} />

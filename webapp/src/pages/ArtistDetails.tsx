@@ -83,6 +83,34 @@ export const ArtistDetails = () => {
                 </div>
              </div>
 
+             {/* Posts / News */}
+             {posts.length > 0 && (
+                <section>
+                    <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-white/5 pb-2">
+                        <Globe size={20}/>
+                        <h2 className="text-xl font-bold">Latest News</h2>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {posts.map(post => (
+                            <div key={post.id} className="card bg-base-200 border border-white/5 p-6 space-y-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="avatar placeholder">
+                                        <div className="bg-neutral text-neutral-content rounded-full w-8">
+                                            <span>{artist?.name[0]}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-sm">{artist?.name}</div>
+                                        <div className="text-xs opacity-50">{new Date(post.created_at || post.createdAt).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+                                <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+                            </div>
+                        ))}
+                    </div>
+                </section>
+             )}
+
              {/* Discography */}
              <section>
                 <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-white/5 pb-2">

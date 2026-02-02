@@ -39,15 +39,20 @@ export function createAdminRoutes(
     router.put("/releases/:id/visibility", async (req: any, res) => {
         try {
             const id = parseInt(req.params.id, 10);
-            const { isPublic } = req.body;
-
-            if (typeof isPublic !== "boolean") {
-                return res.status(400).json({ error: "isPublic must be a boolean" });
-            }
+            const { isPublic, visibility } = req.body;
 
             const album = database.getAlbum(id);
             if (!album) {
                 return res.status(404).json({ error: "Album not found" });
+            }
+
+            // Determine visibility
+            let newVisibility: 'public' | 'private' | 'unlisted' = 'private';
+            if (visibility) {
+                newVisibility = visibility;
+            } else if (typeof isPublic === 'boolean') {
+                // Backward compatibility
+                newVisibility = isPublic ? 'public' : 'private';
             }
 
             // Permission Check
@@ -55,7 +60,10 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied: You can only manage your own releases" });
             }
 
-            database.updateAlbumVisibility(id, isPublic);
+            const currentVisibility = album.visibility || (album.is_public ? 'public' : 'private');
+
+            // Update visibility in DB
+            database.updateAlbumVisibility(id, newVisibility);
 
             // Register/unregister tracks on GunDB based on visibility
             const publicUrl = database.getSetting("publicUrl") || config.publicUrl;
@@ -67,7 +75,8 @@ export function createAdminRoutes(
                     artistName: album.artist_name || "",
                 };
 
-                if (isPublic) {
+                // Public or Unlisted -> Register on GunDB/ActivityPub
+                if (newVisibility === 'public' || newVisibility === 'unlisted') {
                     // Ensure site is registered first
                     await gundbService.registerSite(siteInfo);
 
@@ -78,22 +87,23 @@ export function createAdminRoutes(
                     // ActivityPub Broadcast
                     // We must refetch the album to get the new published_at date which is used for the ID
                     const freshAlbum = database.getAlbum(id);
-                    if (freshAlbum && freshAlbum.is_public) {
+                    if (freshAlbum && (freshAlbum.visibility === 'public' || freshAlbum.visibility === 'unlisted')) {
                         apService.broadcastRelease(freshAlbum);
                     }
 
                 } else {
+                    // Private
                     // Unregister tracks from community
                     await gundbService.unregisterTracks(siteInfo, album);
 
-                    // ActivityPub Broadcast Delete
-                    if (album.is_public) {
+                    // ActivityPub Broadcast Delete if it was previously visible
+                    if (currentVisibility !== 'private') {
                         apService.broadcastDelete(album).catch(e => console.error("Failed to broadcast delete:", e));
                     }
                 }
             }
 
-            res.json({ message: "Visibility updated", isPublic });
+            res.json({ message: "Visibility updated", visibility: newVisibility });
         } catch (error) {
             console.error("Error updating visibility:", error);
             res.status(500).json({ error: "Failed to update visibility" });

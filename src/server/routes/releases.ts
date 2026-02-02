@@ -19,6 +19,7 @@ interface CreateReleaseBody {
 
 interface UpdateReleaseBody extends Partial<CreateReleaseBody> {
     isPublic?: boolean;
+    visibility?: 'public' | 'private' | 'unlisted';
 }
 
 export function createReleaseRoutes(
@@ -278,8 +279,11 @@ export function createReleaseRoutes(
                     database.updateAlbumArtist(id, artist.id);
                 }
             }
-            if (typeof body.isPublic === "boolean") {
-                database.updateAlbumVisibility(id, body.isPublic);
+            if (body.visibility) {
+                database.updateAlbumVisibility(id, body.visibility);
+            } else if (typeof body.isPublic === "boolean") {
+                // Backward compatibility
+                database.updateAlbumVisibility(id, body.isPublic ? 'public' : 'private');
             }
 
             await scanner.scanDirectory(musicDir);

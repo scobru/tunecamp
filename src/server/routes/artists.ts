@@ -47,7 +47,7 @@ export function createArtistsRoutes(database: DatabaseService) {
         }
 
         try {
-            const { name, bio, links } = req.body;
+            const { name, bio, links, postParams } = req.body;
 
             if (!name) {
                 return res.status(400).json({ error: "Name is required" });
@@ -69,7 +69,7 @@ export function createArtistsRoutes(database: DatabaseService) {
                 }
             }
 
-            const artistId = database.createArtist(name, bio || undefined, undefined, parsedLinks);
+            const artistId = database.createArtist(name, bio || undefined, undefined, parsedLinks, postParams);
             const artist = database.getArtist(artistId);
 
             console.log(`🎤 Created artist: ${name}`);
@@ -91,7 +91,7 @@ export function createArtistsRoutes(database: DatabaseService) {
 
         try {
             const id = parseInt(req.params.id as string, 10);
-            const { bio, links } = req.body;
+            const { bio, links, postParams } = req.body;
 
             const artist = database.getArtist(id);
             if (!artist) {
@@ -113,7 +113,21 @@ export function createArtistsRoutes(database: DatabaseService) {
                 }
             }
 
-            database.updateArtist(id, bio || artist.bio || undefined, artist.photo_path || undefined, parsedLinks);
+            // Parse postParams if it's a string, or fallback to existing
+            let parsedPostParams = postParams;
+            if (typeof postParams === 'string') {
+                try {
+                    parsedPostParams = JSON.parse(postParams);
+                } catch (e) {
+                    parsedPostParams = artist.post_params ? JSON.parse(artist.post_params) : null;
+                }
+            } else if (postParams === undefined && artist.post_params) {
+                // Convert existing string to object if not provided in update
+                try { parsedPostParams = JSON.parse(artist.post_params); } catch (e) { }
+            }
+
+
+            database.updateArtist(id, bio || artist.bio || undefined, artist.photo_path || undefined, parsedLinks, parsedPostParams);
 
             const updatedArtist = database.getArtist(id);
             console.log(`🎤 Updated artist: ${artist.name}`);
@@ -199,9 +213,18 @@ export function createArtistsRoutes(database: DatabaseService) {
                 }
             }
 
+            // Parse postParams for admin
+            let postParams = undefined;
+            if (req.isAdmin && artist.post_params) {
+                try {
+                    postParams = JSON.parse(artist.post_params);
+                } catch (e) { }
+            }
+
             res.json({
                 ...artist,
                 links,
+                postParams,
                 coverImage,
                 albums,
                 tracks: looseTracks,

@@ -116,8 +116,8 @@ export const API = {
     deleteRelease: (id: string, keepFiles = false) =>
         handleResponse(api.delete(`/admin/releases/${id}${keepFiles ? '?keepFiles=true' : ''}`)),
 
-    toggleReleaseVisibility: (id: string, isPublic: boolean) =>
-        handleResponse(api.put(`/admin/releases/${id}/visibility`, { isPublic })),
+    toggleReleaseVisibility: (id: string, visibility: boolean | 'public' | 'private' | 'unlisted') =>
+        handleResponse(api.put(`/admin/releases/${id}/visibility`, typeof visibility === 'boolean' ? { isPublic: visibility } : { visibility })),
 
     promoteToRelease: (id: string) => handleResponse(api.post(`/albums/${id}/promote`, {})),
 

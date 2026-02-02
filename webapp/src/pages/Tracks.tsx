@@ -11,10 +11,10 @@ export const Tracks = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
     const { playTrack } = usePlayerStore();
-    const { isAuthenticated } = useAuthStore();
+    const { isAuthenticated, isAdminAuthenticated } = useAuthStore();
 
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated && !isAdminAuthenticated) return;
         
         setLoading(true);
         API.getTracks()
@@ -27,7 +27,7 @@ export const Tracks = () => {
                 console.error(error);
                 setLoading(false);
             });
-    }, [isAuthenticated]);
+    }, [isAuthenticated, isAdminAuthenticated]);
 
     useEffect(() => {
         const lower = filter.toLowerCase();
@@ -45,15 +45,20 @@ export const Tracks = () => {
 
 
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isAdminAuthenticated) {
         return (
             <div className="p-12 text-center opacity-70 animate-fade-in">
                 <Music size={48} className="mx-auto mb-4 text-primary opacity-50"/>
                 <h2 className="text-xl font-bold mb-2">Login Required</h2>
                 <p className="mb-4">Please login to view specific tracks.</p>
-                <button className="btn btn-primary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}>
-                    <LogIn size={16}/> Login
-                </button>
+                <div className="flex justify-center gap-4">
+                     <button className="btn btn-primary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}>
+                        <LogIn size={16}/> Community Login
+                    </button>
+                    <button className="btn btn-secondary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-signin-modal'))}>
+                        <LogIn size={16}/> Admin Login
+                    </button>
+                </div>
             </div>
         );
     }

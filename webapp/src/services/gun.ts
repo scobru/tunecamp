@@ -12,8 +12,8 @@ const PEERS = [
 // Initialize Gun
 const gun = Gun({
     peers: PEERS,
-    localStorage: true, // Use Gun's internal storage
-    radisk: true
+    localStorage: false, // Use Gun's internal storage
+    radisk: false
 });
 
 const user = gun.user();

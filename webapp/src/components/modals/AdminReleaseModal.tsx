@@ -14,6 +14,8 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const [type, setType] = useState<'album'|'single'|'ep'>('album');
     const [year, setYear] = useState(new Date().getFullYear());
     
+    const [visibility, setVisibility] = useState<'public' | 'private' | 'unlisted'>('private');
+    
     // For simplicity, just text fields. In a real app, this would be more complex.
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -32,6 +34,12 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 setArtistId(e.detail.artistId || '');
                 setType(e.detail.type || 'album');
                 setYear(e.detail.year || new Date().getFullYear());
+                // Handle visibility: check new field, then fallback to isPublic (boolean)
+                if (e.detail.visibility) {
+                    setVisibility(e.detail.visibility);
+                } else {
+                    setVisibility(e.detail.isPublic ? 'public' : 'private');
+                }
             } else {
                 setIsEditing(false);
                 setEditId(null);
@@ -39,6 +47,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 setArtistId(''); 
                 setType('album');
                 setYear(new Date().getFullYear());
+                setVisibility('private');
             }
             
             setCoverFile(null);
@@ -71,14 +80,16 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                     title,
                     artistId: artistId || undefined,
                     type,
-                    year
+                    year,
+                    visibility
                 });
             } else {
                 release = await API.createRelease({ 
                     title, 
                     artistId: artistId || undefined, 
                     type, 
-                    year 
+                    year,
+                    visibility
                 });
             }
 
@@ -163,6 +174,28 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                                 onChange={e => setYear(parseInt(e.target.value))}
                             />
                         </div>
+                    </div>
+
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Network Visibility</span>
+                        </label>
+                        <select 
+                            className="select select-bordered w-full"
+                            value={visibility}
+                            onChange={e => setVisibility(e.target.value as any)}
+                        >
+                            <option value="private">Private (Admin only)</option>
+                            <option value="public">Public (Visible to Network)</option>
+                            <option value="unlisted">Unlisted (Hidden from Lists, Accessible via Link)</option>
+                        </select>
+                        <label className="label">
+                            <span className="label-text-alt opacity-70">
+                                {visibility === 'private' && "Only admins can see this release."}
+                                {visibility === 'public' && "Visible to everyone and federated to the network."}
+                                {visibility === 'unlisted' && "Accessible if you have the link/ID, but not shown in public catalogs."}
+                            </span>
+                        </label>
                     </div>
 
                     <div className="form-control">
