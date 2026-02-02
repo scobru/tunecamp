@@ -26,3 +26,20 @@
 @utility glass-effect {
   @apply backdrop-blur-md bg-base-200/70 border border-white/5;
 }
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/20;
+  }
+}

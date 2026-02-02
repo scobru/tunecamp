@@ -47,9 +47,12 @@ export function createCatalogRoutes(database: DatabaseService) {
     router.get("/search", (req: AuthenticatedRequest, res) => {
         try {
             const query = req.query.q as string;
-            if (!query || query.length < 2) {
-                return res.status(400).json({ error: "Query must be at least 2 characters" });
+            const query = req.query.q as string;
+            if (!query) {
+                return res.json([]);
             }
+            // Allow single character searches
+            // if (query.length < 2) ...
 
             const results = database.search(query, req.isAdmin !== true);
             res.json(results);

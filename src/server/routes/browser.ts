@@ -16,7 +16,13 @@ export function createBrowserRoutes(musicDir: string) {
      */
     router.get("/", async (req, res) => {
         try {
-            const relPath = (req.query.path as string) || "";
+            let relPath = (req.query.path as string) || "";
+
+            // Normalize path: remove leading slash to make it relative
+            if (relPath.startsWith("/")) {
+                relPath = relPath.substring(1);
+            }
+
             // Security check: unexpected ".." or absolute paths
             if (relPath.includes("..") || path.isAbsolute(relPath)) {
                 return res.status(400).json({ error: "Invalid path" });
