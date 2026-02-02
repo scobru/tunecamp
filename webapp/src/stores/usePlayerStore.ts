@@ -171,7 +171,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return {
             queue: newQueue,
             queueIndex: newIndex,
-            originalQueue: state.isShuffled ? state.originalQueue.filter(t => t.id !== state.queue[index].id) : newQueue
+            originalQueue: state.isShuffled
+                ? state.originalQueue.filter(t => t && state.queue[index] && t.id !== state.queue[index].id)
+                : newQueue
         };
     }),
 

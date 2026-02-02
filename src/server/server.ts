@@ -126,6 +126,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     // Serve static webapp
     const webappPath = path.join(__dirname, "..", "..", "webapp");
+    console.log(`📂 Serving webapp from: ${webappPath}`);
     app.use(express.static(webappPath));
 
     // SPA fallback - serve index.html for all non-API routes
