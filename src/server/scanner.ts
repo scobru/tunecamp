@@ -235,6 +235,7 @@ export function createScanner(database: DatabaseService): ScannerService {
                     download: config.download || null,
                     external_links: linksJson,
                     is_public: false, // Default to private
+                    visibility: 'private',
                     is_release: true, // Albums from release.yaml are releases
                     published_at: null,
                 });
@@ -396,6 +397,7 @@ export function createScanner(database: DatabaseService): ScannerService {
                         download: null,
                         external_links: null,
                         is_public: false,
+                        visibility: 'private',
                         is_release: false, // Albums from metadata are library albums
                         published_at: null,
                     });
