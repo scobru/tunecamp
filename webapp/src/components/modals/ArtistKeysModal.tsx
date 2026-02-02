@@ -5,7 +5,6 @@ import { Key, Copy, AlertTriangle } from 'lucide-react';
 export const ArtistKeysModal = () => {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const [artistName, setArtistName] = useState('');
-    const [artistId, setArtistId] = useState<string | null>(null);
     const [keys, setKeys] = useState<{ publicKey: string; privateKey: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -16,7 +15,6 @@ export const ArtistKeysModal = () => {
             const id = e.detail?.artistId;
             const name = e.detail?.artistName ?? 'Artist';
             if (!id) return;
-            setArtistId(id);
             setArtistName(name);
             setKeys(null);
             setError('');
@@ -35,8 +33,8 @@ export const ArtistKeysModal = () => {
             }
         };
 
-        document.addEventListener('open-artist-keys-modal', handleOpen as EventListener);
-        return () => document.removeEventListener('open-artist-keys-modal', handleOpen as EventListener);
+        document.addEventListener('open-artist-keys-modal', handleOpen as unknown as EventListener);
+        return () => document.removeEventListener('open-artist-keys-modal', handleOpen as unknown as EventListener);
     }, []);
 
     const copyToClipboard = (text: string) => {
