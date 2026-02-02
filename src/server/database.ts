@@ -844,7 +844,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const albums = (db.prepare("SELECT COUNT(*) as count FROM albums").get() as { count: number }).count;
             const tracks = (db.prepare("SELECT COUNT(*) as count FROM tracks").get() as { count: number }).count;
             const publicAlbums = (db.prepare("SELECT COUNT(*) as count FROM albums WHERE is_public = 1").get() as { count: number }).count;
-            const totalUsers = (db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number } | undefined)?.count || 0;
+            const totalUsers = (db.prepare("SELECT COUNT(*) as count FROM admin").get() as { count: number } | undefined)?.count || 0;
 
             // Calculate storage used (filesize of all tracks)
             // Note: This relies on filesystem or storing size in DB.
