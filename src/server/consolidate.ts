@@ -79,7 +79,7 @@ export class ConsolidationService {
      * Consolidates the entire library
      */
     async consolidateAll(): Promise<{ success: number; failed: number }> {
-        const stats = this.database.getStats();
+        const stats = await this.database.getStats();
         console.log(`[Consolidate] Starting consolidation of ${stats.tracks} tracks...`);
 
         const allTracks = this.database.getTracks();

@@ -9,9 +9,9 @@ export function createCatalogRoutes(database: DatabaseService) {
      * GET /api/catalog
      * Get catalog overview with stats
      */
-    router.get("/", (req: AuthenticatedRequest, res) => {
+    router.get("/", async (req: AuthenticatedRequest, res) => {
         try {
-            const stats = database.getStats();
+            const stats = await database.getStats();
             const recentAlbums = database
                 .getAlbums(req.isAdmin !== true)
                 .slice(0, 10);
@@ -26,7 +26,11 @@ export function createCatalogRoutes(database: DatabaseService) {
                     albums: stats.publicAlbums,
                     tracks: publicTracksCount,
                     artists: stats.artists,
-                    publicAlbums: stats.publicAlbums
+                    publicAlbums: stats.publicAlbums,
+                    totalUsers: stats.totalUsers,
+                    storageUsed: stats.storageUsed,
+                    networkSites: stats.networkSites,
+                    totalTracks: publicTracksCount
                 };
             }
 
@@ -46,7 +50,6 @@ export function createCatalogRoutes(database: DatabaseService) {
      */
     router.get("/search", (req: AuthenticatedRequest, res) => {
         try {
-            const query = req.query.q as string;
             const query = req.query.q as string;
             if (!query) {
                 return res.json([]);

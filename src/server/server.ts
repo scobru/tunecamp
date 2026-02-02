@@ -145,7 +145,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         if (authService.isFirstRun()) {
             console.log("⚠️  First run detected! Visit the server to set up admin password.");
         }
-        console.log(`📊 Stats: ${database.getStats().tracks} tracks in library`);
+        console.log(`📊 Stats: ${(await database.getStats()).tracks} tracks in library`);
 
         // Register server on GunDB community if publicUrl is set (either in config or db)
         const dbPublicUrl = database.getSetting("publicUrl");
@@ -164,7 +164,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
             const siteInfo = {
                 url: publicUrl,
                 title: dbSiteName || config.siteName || "TuneCamp Server",
-                description: dbSiteDescription || `Music server with ${database.getStats().tracks} tracks`,
+                description: dbSiteDescription || `Music server with ${(await database.getStats()).tracks} tracks`,
                 artistName,
                 coverImage: dbCoverImage || ""
             };

@@ -504,7 +504,7 @@ export function createScanner(database: DatabaseService): ScannerService {
             await processAudioFile(file);
         }
 
-        const stats = database.getStats();
+        const stats = await database.getStats();
         console.log("Scan complete: " + stats.artists + " artists, " + stats.albums + " albums, " + stats.tracks + " tracks");
     }
 
