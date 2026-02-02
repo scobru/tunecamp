@@ -3,12 +3,13 @@ import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
 import { Play, Disc, Globe } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import type { Artist, Album } from '../types';
+import type { Artist, Album, Post } from '../types';
 
 export const ArtistDetails = () => {
     const { id } = useParams();
     const [artist, setArtist] = useState<Artist | null>(null);
     const [albums, setAlbums] = useState<Album[]>([]);
+    const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const { playTrack } = usePlayerStore();
 
@@ -22,10 +23,12 @@ export const ArtistDetails = () => {
                  // We probably need to fetch all albums and filter, or add an endpoint.
                  // Legacy app: API.getArtist(slug) returns artist with relevant data?
                  // Let's rely on API.getArtist returning something or just fetch all albums for now as a fallback if not linked.
-                 API.getAlbums() // Inefficient but works for MVP
-            ]).then(([artistData, allAlbums]) => {
+                 API.getAlbums(), // Inefficient but works for MVP
+                 API.getArtistPosts(id)
+            ]).then(([artistData, allAlbums, artistPosts]) => {
                 setArtist(artistData);
                 setAlbums(allAlbums.filter(a => a.artistId === artistData.id));
+                setPosts(artistPosts);
             })
             .catch(console.error)
             .finally(() => setLoading(false));
@@ -101,7 +104,7 @@ export const ArtistDetails = () => {
                                     </div>
                                     <div>
                                         <div className="font-bold text-sm">{artist?.name}</div>
-                                        <div className="text-xs opacity-50">{new Date(post.created_at || post.createdAt).toLocaleDateString()}</div>
+                                        <div className="text-xs opacity-50">{new Date(post.createdAt).toLocaleDateString()}</div>
                                     </div>
                                 </div>
                                 <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />

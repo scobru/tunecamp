@@ -81,8 +81,8 @@ export const Home = () => {
                                             // Fetch full album details including tracks
                                             const fullAlbum = await API.getAlbum(album.id);
                                             if (fullAlbum && fullAlbum.tracks && fullAlbum.tracks.length > 0) {
-                                                const { playAlbum } = usePlayerStore.getState();
-                                                playAlbum(fullAlbum.tracks, 0); 
+                                                const { playQueue } = usePlayerStore.getState();
+                                                playQueue(fullAlbum.tracks, 0); 
                                             }
                                         } catch (error) {
                                             console.error("Failed to play album", error);
