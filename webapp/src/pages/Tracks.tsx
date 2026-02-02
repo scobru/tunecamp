@@ -31,11 +31,12 @@ export const Tracks = () => {
 
     useEffect(() => {
         const lower = filter.toLowerCase();
-        setFilteredTracks(tracks.filter(t => 
-            t.title.toLowerCase().includes(lower) || 
+        setFilteredTracks(tracks.filter(t => {
+            if (!t || !t.title) return false;
+            return t.title.toLowerCase().includes(lower) || 
             t.artistName?.toLowerCase().includes(lower) || 
-            t.albumName?.toLowerCase().includes(lower)
-        ));
+            t.albumName?.toLowerCase().includes(lower);
+        }));
     }, [filter, tracks]);
 
     const handleAddToPlaylist = (trackId: string) => {
@@ -90,7 +91,9 @@ export const Tracks = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredTracks.slice(0, 100).map((track, i) => ( // Limit to 100 for performance until virtual/pagination
+                        {filteredTracks.slice(0, 100).map((track, i) => {
+                            if (!track || !track.title) return null;
+                            return (
                             <tr key={track.id} className="hover:bg-white/5 group border-b border-white/5 last:border-0 transition-colors">
                                 <td className="text-center opacity-50 font-mono w-12 group-hover:text-primary">
                                     <span className="group-hover:hidden">{i + 1}</span>
@@ -129,7 +132,7 @@ export const Tracks = () => {
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </table>
                 {filteredTracks.length > 100 && (

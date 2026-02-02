@@ -105,6 +105,18 @@ export const AuthModal = () => {
                             autoComplete={mode === 'register' ? "new-password" : "current-password"}
                         />
                     </div>
+
+                    {/* Hidden username for accessibility/password managers in Admin mode */}
+                    {mode === 'admin' && (
+                        <input 
+                            type="text" 
+                            name="username" 
+                            value="admin" 
+                            readOnly 
+                            className="hidden" 
+                            autoComplete="username"
+                        />
+                    )}
                     
                     {mode === 'register' && (
                         <div className="form-control">

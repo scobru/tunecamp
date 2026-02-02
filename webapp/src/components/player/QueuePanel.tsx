@@ -19,7 +19,9 @@ export const QueuePanel = () => {
                     <div className="flex justify-center items-center h-full opacity-50">Queue is empty</div>
                 ) : (
                     <div className="space-y-1">
-                        {queue.map((track, i) => (
+                        {queue.map((track, i) => {
+                            if (!track) return null;
+                            return (
                             <div 
                                 key={`${track.id}-${i}`} 
                                 className={`flex items-center gap-2 p-2 rounded-lg group ${i === queueIndex ? 'bg-primary/20 text-primary' : 'hover:bg-white/5'}`}
@@ -44,7 +46,8 @@ export const QueuePanel = () => {
                                     </button>
                                 )}
                             </div>
-                        ))}
+                        )})
+                    }
                     </div>
                 )}
             </div>

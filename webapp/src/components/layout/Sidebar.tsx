@@ -25,7 +25,7 @@ export const Sidebar = () => {
   );
 
   return (
-    <aside className="w-64 bg-black flex-col gap-2 p-2 hidden lg:flex shrink-0 border-r border-white/5 h-screen">
+    <aside className="w-64 bg-black flex-col gap-2 p-2 hidden lg:flex shrink-0 border-r border-white/5 h-screen pb-28">
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 py-6 mb-2">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
