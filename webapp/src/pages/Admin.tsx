@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
-import { BarChart2, Settings, Database, RefreshCw, Save } from 'lucide-react';
+import { BarChart2, Settings, Database, RefreshCw, Save, User } from 'lucide-react';
 import { AdminUserModal } from '../components/modals/AdminUserModal';
 import { AdminReleaseModal } from '../components/modals/AdminReleaseModal';
 import { UploadTracksModal } from '../components/modals/UploadTracksModal';
@@ -279,15 +279,28 @@ const AdminUsersList = () => {
     return (
         <table className="table">
             <thead>
-                <tr><th>Username</th><th>Admin</th><th>Created</th><th>Actions</th></tr>
+                <tr><th>Username</th><th>Role</th><th>Linked Artist</th><th>Created</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 {users.map(u => (
                     <tr key={u.id}>
                         <td className="font-bold">{u.username}</td>
-                        <td>{u.isAdmin ? 'Yes' : 'No'}</td>
+                        <td>{u.isAdmin ? <span className="badge badge-primary badge-outline">Admin</span> : <span className="badge badge-ghost">User</span>}</td>
+                        <td className="opacity-70">
+                            {u.artistId ? (
+                                <span className="flex items-center gap-1"><User size={12}/> {u.artistName || 'Linked'}</span>
+                            ) : '-'}
+                        </td>
                         <td className="opacity-50">{new Date(u.createdAt).toLocaleDateString()}</td>
-                        <td><button className="btn btn-xs btn-ghost text-error">Delete</button></td>
+                        <td className="flex gap-2">
+                            <button 
+                                className="btn btn-xs btn-ghost" 
+                                onClick={() => document.dispatchEvent(new CustomEvent('open-admin-user-modal', { detail: u }))}
+                            >
+                                Edit
+                            </button>
+                            <button className="btn btn-xs btn-ghost text-error">Delete</button>
+                        </td>
                     </tr>
                 ))}
             </tbody>
