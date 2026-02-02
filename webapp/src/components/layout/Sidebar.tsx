@@ -42,18 +42,14 @@ export const Sidebar = () => {
       </ul>
 
       {/* Library Nav */}
-      {isAuthenticated && (
-        <>
-          <div className="px-4 py-2 mt-4 opacity-50 text-xs font-bold uppercase tracking-wider">Your Library</div>
-          <ul className="menu bg-base-200/50 rounded-box w-full gap-1 p-2 font-medium flex-1 overflow-y-auto">
-            <NavItem to="/albums" icon={Disc} label="Albums" />
-            <NavItem to="/artists" icon={User} label="Artists" />
-            <NavItem to="/tracks" icon={Music} label="Tracks" />
-            <NavItem to="/stats" icon={BarChart2} label="Stats" />
-            {user?.isAdmin && <NavItem to="/browser" icon={Folder} label="Files" />}
-          </ul>
-        </>
-      )}
+      <div className="px-4 py-2 mt-4 opacity-50 text-xs font-bold uppercase tracking-wider">Your Library</div>
+      <ul className="menu bg-base-200/50 rounded-box w-full gap-1 p-2 font-medium flex-1 overflow-y-auto">
+        <NavItem to="/albums" icon={Disc} label="Albums" />
+        <NavItem to="/artists" icon={User} label="Artists" />
+        <NavItem to="/tracks" icon={Music} label="Tracks" />
+        <NavItem to="/stats" icon={BarChart2} label="Stats" />
+        {user?.isAdmin && <NavItem to="/browser" icon={Folder} label="Files" />}
+      </ul>
 
       <ul className="menu bg-base-200/50 rounded-box w-full gap-1 p-2 font-medium mt-auto mb-2">
         <NavItem to="/support" icon={LifeBuoy} label="Support" />

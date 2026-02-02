@@ -22,12 +22,27 @@ export const PlayerBar = () => {
         if (!currentTrack || !audioRef.current) return;
         
         const audio = audioRef.current;
-        const newSrc = currentTrack.streamUrl || API.getStreamUrl(currentTrack.id);
         
+        let newSrc = currentTrack.streamUrl || API.getStreamUrl(currentTrack.id);
+        
+        // Auto-transcode lossless/heavy formats to MP3 for streaming (matching legacy behavior)
+        if (!currentTrack.streamUrl && currentTrack.format && ['wav', 'flac'].includes(currentTrack.format.toLowerCase())) {
+            newSrc += '?format=mp3';
+        }
+
         // Only update source if it changed to avoid reloading same track
-        if (audio.src !== newSrc && !audio.src.endsWith(newSrc) && audio.src !== newSrc + '/') { // Check for trailing slash issues sometimes
+        if (audio.src !== newSrc && !audio.src.endsWith(newSrc) && audio.src !== newSrc + '/') { 
+             console.log('Playing:', newSrc);
              audio.src = newSrc;
-             if (isPlaying) audio.play().catch(console.error);
+             if (isPlaying) {
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.error("Playback failed:", error);
+                        setIsPlaying(false);
+                    });
+                }
+             }
         }
 
         const updateTime = () => setProgress(audio.currentTime, audio.duration);
@@ -75,7 +90,11 @@ export const PlayerBar = () => {
     return (
         <>
             <div className="fixed bottom-0 left-0 right-0 lg:h-24 bg-base-200/90 backdrop-blur-xl border-t border-white/5 lg:px-6 flex flex-col lg:flex-row items-center gap-4 z-50 shadow-2xl pb-safe lg:pb-0">
-                <audio ref={audioRef} />
+                <audio 
+                    ref={audioRef} 
+                    crossOrigin="anonymous"
+                    onError={(e) => console.error("Audio Element Error:", e.currentTarget.error, e.currentTarget.src)}
+                />
                 
                 <div className="flex items-center gap-3 lg:gap-4 w-full lg:w-64 shrink-0 px-4 lg:px-0 pt-2 lg:pt-0">
                     {coverUrl ? (
