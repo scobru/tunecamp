@@ -73,6 +73,8 @@ RUN npm ci --omit=dev && \
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
+# Explicitly copy Gleam generated files if tsc missed them (safety check)
+COPY --from=builder /app/src/gleam_generated ./dist/gleam_generated
 COPY --from=builder /app/webapp/dist ./webapp
 COPY --from=builder /app/templates ./templates
 
