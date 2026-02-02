@@ -32,23 +32,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     }, []);
 
     useEffect(() => {
-        const handleOpen = () => {
-             // Basic prop-based open handling if needed, 
-             // but we primarily rely on the event listener below for dynamic data.
-             if (user) {
-                setUsername(user.username);
-                setIsAdmin(user.isAdmin);
-                setArtistId(user.artistId || '');
-            } else {
-                setUsername('');
-                setIsAdmin(false);
-                setArtistId('');
-            }
-            setPassword('');
-            setError('');
-            dialogRef.current?.showModal();
-        };
-        
+
         // If parent controls it purely via props/boolean, this would be used.
         // But the architecture seems to use events.
         
