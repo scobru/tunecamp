@@ -42,7 +42,7 @@ export const Tracks = () => {
         document.dispatchEvent(new CustomEvent('open-playlist-modal', { detail: { trackId } }));
     };
 
-    };
+
 
     if (!isAuthenticated) {
         return (
