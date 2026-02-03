@@ -36,9 +36,21 @@ export const Network = () => {
 
                 // Deduplicate Tracks
                 const seenTrackUrls = new Set();
+                const currentOrigin = window.location.origin;
+
                 const tracks = tracksData.filter((t: any) => {
                     if (!t.track) return false;
                     
+                    // Filter out local tracks (siteUrl === '/')
+                    if (t.siteUrl === '/' || t.siteUrl === '') return false;
+
+                    // Filter out self-reflected tracks (siteUrl matches current origin)
+                    try {
+                        const siteUrlObj = new URL(t.siteUrl);
+                        const currentUrlObj = new URL(currentOrigin);
+                        if (siteUrlObj.hostname === currentUrlObj.hostname) return false;
+                    } catch {}
+
                     // Use a composite key for deduplication
                     const uniqueKey = (t.siteUrl || '') + '::' + (t.track.id || '');
                     
