@@ -16,7 +16,10 @@ export function createAlbumsRoutes(database: DatabaseService) {
         try {
             // Show all albums (releases + library)
             // Filter by visibility for non-admins
-            const albums = database.getAlbums(!req.isAdmin);
+            const albums = database.getAlbums(!req.isAdmin).map(a => ({
+                ...a,
+                coverImage: a.cover_path
+            }));
             res.json(albums);
         } catch (error) {
             console.error("Error getting albums:", error);
@@ -31,7 +34,10 @@ export function createAlbumsRoutes(database: DatabaseService) {
     router.get("/releases", (req: AuthenticatedRequest, res) => {
         try {
             // Non-admin sees public releases only, admin sees all releases
-            const releases = database.getReleases(req.isAdmin !== true);
+            const releases = database.getReleases(req.isAdmin !== true).map(r => ({
+                ...r,
+                coverImage: r.cover_path
+            }));
             res.json(releases);
         } catch (error) {
             console.error("Error getting releases:", error);

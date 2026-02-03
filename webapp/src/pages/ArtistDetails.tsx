@@ -17,17 +17,20 @@ export const ArtistDetails = () => {
         if (id) {
             Promise.all([
                 API.getArtist(id),
-                 // We don't have a direct getArtistAlbums endpoint in API logic yet but usually it's filtered or separate. 
-                 // For now let's assume getArtist includes albums or we filter main albums list? 
-                 // Looking at API.ts, getArtist just gets artist. 
-                 // We probably need to fetch all albums and filter, or add an endpoint.
-                 // Legacy app: API.getArtist(slug) returns artist with relevant data?
-                 // Let's rely on API.getArtist returning something or just fetch all albums for now as a fallback if not linked.
-                 API.getAlbums(), // Inefficient but works for MVP
-                 API.getArtistPosts(id)
-            ]).then(([artistData, allAlbums, artistPosts]) => {
+                API.getArtistPosts(id)
+            ]).then(([artistData, artistPosts]) => {
                 setArtist(artistData);
-                setAlbums(allAlbums.filter(a => a.artistId === artistData.id));
+                // Use albums directly from artist response if available
+                // @ts-ignore
+                if (artistData.albums) {
+                    // @ts-ignore
+                    setAlbums(artistData.albums);
+                } else {
+                    // Fallback to fetching all (deprecated logic, but keeping for safety if backend older)
+                    API.getAlbums().then(allAlbums => {
+                         setAlbums(allAlbums.filter(a => a.artistId === artistData.id));
+                    });
+                }
                 setPosts(artistPosts);
             })
             .catch(console.error)

@@ -25,7 +25,14 @@ export function createArtistsRoutes(database: DatabaseService) {
             );
 
             const filteredArtists = allArtists.filter(a => artistsWithPublicReleases.has(a.id));
-            res.json(filteredArtists);
+
+            // Map to frontend expected format
+            const mappedArtists = (req.isAdmin ? allArtists : filteredArtists).map(a => ({
+                ...a,
+                coverImage: a.photo_path
+            }));
+
+            res.json(mappedArtists);
         } catch (error) {
             console.error("Error getting artists:", error);
             res.status(500).json({ error: "Failed to get artists" });

@@ -112,7 +112,15 @@ export const Tracks = () => {
                                 <td>
                                     <div className="flex items-center gap-3">
                                         <div className="avatar rounded-lg overflow-hidden w-10 h-10 shrink-0 opacity-80">
-                                            <img src={API.getAlbumCoverUrl(track.albumId)} loading="lazy"/>
+                                            <img 
+                                                src={track.albumId ? API.getAlbumCoverUrl(track.albumId) : API.getArtistCoverUrl(track.artistId)} 
+                                                loading="lazy"
+                                                alt={track.title}
+                                                onError={(e) => {
+                                                    // Fallback to placeholder if both fail
+                                                    e.currentTarget.style.display = 'none';
+                                                }}
+                                            />
                                         </div>
                                         <div>
                                             <div className="font-bold flex items-center gap-2">

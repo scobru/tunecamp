@@ -35,29 +35,45 @@ export const Network = () => {
                 const sites = Array.from(uniqueSites.values()) as NetworkSite[];
 
                 // Deduplicate Tracks
+                console.log('Raw tracks data:', tracksData);
                 const seenTrackUrls = new Set();
                 const currentOrigin = window.location.origin;
+                console.log('Current origin:', currentOrigin);
 
                 const tracks = tracksData.filter((t: any) => {
                     if (!t.track) return false;
                     
                     // Filter out local tracks (siteUrl === '/')
-                    if (t.siteUrl === '/' || t.siteUrl === '') return false;
+                    /*
+                    if (t.siteUrl === '/' || t.siteUrl === '') {
+                         // console.log('Filtering out local track:', t.track.title);
+                         return false;
+                    }
 
                     // Filter out self-reflected tracks (siteUrl matches current origin)
                     try {
                         const siteUrlObj = new URL(t.siteUrl);
                         const currentUrlObj = new URL(currentOrigin);
-                        if (siteUrlObj.hostname === currentUrlObj.hostname) return false;
-                    } catch {}
+                        if (siteUrlObj.hostname === currentUrlObj.hostname) {
+                            console.log('Filtering out self-reflected track:', t.track.title, t.siteUrl);
+                            return false;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse URL for filter:', t.siteUrl, e);
+                    }
+                    */
 
                     // Use a composite key for deduplication
                     const uniqueKey = (t.siteUrl || '') + '::' + (t.track.id || '');
                     
-                    if (seenTrackUrls.has(uniqueKey)) return false;
+                    if (seenTrackUrls.has(uniqueKey)) {
+                         console.log('Filtering out duplicate:', t.track.title, uniqueKey);
+                         return false;
+                    }
                     seenTrackUrls.add(uniqueKey);
                     return true;
                 });
+                console.log('Filtered tracks:', tracks);
 
                 setSites(sites);
                 setTracks(tracks);

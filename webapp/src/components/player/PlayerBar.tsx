@@ -105,7 +105,9 @@ export const PlayerBar = () => {
     if (!currentTrack) return <div className="fixed bottom-0 w-full h-24 bg-base-200 border-t border-white/5 flex items-center justify-center text-sm opacity-50 z-50">Select a track to play</div>;
 
     // Resolve cover URL
-    const coverUrl = currentTrack.coverUrl || (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId) : '');
+    const coverUrl = currentTrack.coverUrl || 
+                    (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId) : '') ||
+                    (currentTrack.artistId ? API.getArtistCoverUrl(currentTrack.artistId) : '');
 
     return (
         <>
