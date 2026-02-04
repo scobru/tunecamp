@@ -98,8 +98,11 @@ export const PlayerBar = () => {
 
     // Handle manual seek from waveform/progress bar
     const handleSeek = (percent: number) => {
-        if (audioRef.current && Number.isFinite(duration) && duration > 0) {
-            audioRef.current.currentTime = percent * duration;
+        if (audioRef.current) {
+            const d = (Number.isFinite(duration) && duration > 0) ? duration : audioRef.current.duration;
+            if (Number.isFinite(d) && d > 0) {
+                audioRef.current.currentTime = percent * d;
+            }
         }
     };
 
@@ -107,6 +110,7 @@ export const PlayerBar = () => {
 
     // Resolve cover URL
     const coverUrl = currentTrack.coverUrl || 
+                    currentTrack.coverImage ||
                     (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId) : '') ||
                     (currentTrack.artistId ? API.getArtistCoverUrl(currentTrack.artistId) : '');
 
@@ -115,6 +119,7 @@ export const PlayerBar = () => {
             <div className="fixed bottom-0 left-0 right-0 lg:h-24 bg-base-200/90 backdrop-blur-xl border-t border-white/5 lg:px-6 flex flex-col lg:flex-row items-center gap-4 z-50 shadow-2xl pb-safe lg:pb-0">
                 <audio 
                     ref={audioRef} 
+                    className="hidden"
                     onError={(e) => console.error("Audio Element Error:", e.currentTarget.error, e.currentTarget.src)}
                 />
                 
