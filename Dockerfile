@@ -71,7 +71,6 @@ RUN npm ci --omit=dev && \
 COPY --from=builder /app/dist ./dist
 
 COPY --from=builder /app/webapp/dist ./webapp
-COPY --from=builder /app/webapp/public ./webapp/public
 COPY --from=builder /app/templates ./templates
 
 
