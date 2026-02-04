@@ -108,6 +108,10 @@ export const API = {
     createPost: (artistId: string, content: string) => handleResponse(api.post<Post>('/admin/posts', { artistId, content })),
     deletePost: (id: string) => handleResponse(api.delete(`/admin/posts/${id}`)),
 
+    // --- ActivityPub Notes ---
+    getPublishedContent: (artistId: string | number) => handleResponse(api.get<any[]>(`/ap/published/${artistId}`)),
+    deletePublishedContent: (noteId: string) => handleResponse(api.delete(`/ap/note?id=${encodeURIComponent(noteId)}`)),
+
     // --- Network ---
     getNetworkSites: () => handleResponse(api.get<NetworkSite[]>('/stats/network/sites')),
     getNetworkTracks: () => handleResponse(api.get<NetworkTrack[]>('/stats/network/tracks')),

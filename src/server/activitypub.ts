@@ -325,6 +325,16 @@ export class ActivityPubService {
                     keyId: new URL(`${artistUrl.href}#main-key`)
                 } as any, inboxes.map(u => ({ id: null, inboxId: new URL(u) })) as any, create);
                 console.log(`✅ Broadcasted to ${inboxes.length} inboxes`);
+
+                // Track in DB
+                this.db.createApNote(
+                    artist.id,
+                    note.id!.href,
+                    'release',
+                    album.id,
+                    album.slug,
+                    album.title
+                );
             }
         } catch (e) {
             console.error("Failed to broadcast release via Fedify:", e);
@@ -359,6 +369,17 @@ export class ActivityPubService {
         for (const follower of followers) {
             await this.sendActivity(artist, follower.inbox_uri, activity);
         }
+
+        // Track in DB
+        this.db.createApNote(
+            artist.id,
+            note.id,
+            'post',
+            post.id,
+            post.slug,
+            // Use snippet of content as title
+            post.content.replace(/<[^>]*>?/gm, '').substring(0, 50) + (post.content.length > 50 ? '...' : '')
+        );
     }
 
     public async broadcastDelete(album: Album): Promise<void> {
@@ -398,6 +419,44 @@ export class ActivityPubService {
         for (const follower of followers) {
             await this.sendActivity(artist, follower.inbox_uri, activity);
         }
+
+        // Remove from DB tracking
+        this.db.deleteApNote(noteId);
+    }
+
+    public async broadcastPostDelete(post: Post): Promise<void> {
+        const artist = this.db.getArtist(post.artist_id);
+        if (!artist) return;
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length === 0) return;
+
+        console.log(`📢 Broadcasting delete for post "${post.slug}" to ${followers.length} followers`);
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const noteId = `${baseUrl}/api/ap/note/post/${post.slug}`;
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Delete",
+            actor: artistActorUrl,
+            object: {
+                id: noteId,
+                type: "Note",
+                atomUri: noteId
+            },
+            to: ["https://www.w3.org/ns/activitystreams#Public"]
+        };
+
+        // Send to all followers
+        for (const follower of followers) {
+            await this.sendActivity(artist, follower.inbox_uri, activity);
+        }
+
+        // Remove from DB tracking
+        this.db.deleteApNote(noteId);
     }
 
     public async sendActivity(artist: Artist, inboxUri: string, activity: any): Promise<void> {

@@ -259,6 +259,46 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         });
     });
 
+    // List published content for artist
+    router.get("/published/:artistId", (req, res) => {
+        const { artistId } = req.params;
+        const notes = db.getApNotes(Number(artistId));
+        res.json(notes);
+    });
+
+    // Delete published note
+    router.delete("/note", async (req, res) => {
+        const noteId = req.query.id as string;
+        if (!noteId) return res.status(400).send("Missing id");
+
+        const note = db.getApNote(noteId);
+        if (!note) return res.status(404).send("Note not found");
+
+        try {
+            if (note.note_type === 'release') {
+                const album = db.getAlbum(note.content_id);
+                if (album) {
+                    await apService.broadcastDelete(album);
+                } else {
+                    // Album gone, just delete note from DB
+                    db.deleteApNote(noteId);
+                }
+            } else if (note.note_type === 'post') {
+                const post = db.getPost(note.content_id);
+                if (post) {
+                    await apService.broadcastPostDelete(post);
+                } else {
+                    // Post gone, just delete note from DB
+                    db.deleteApNote(noteId);
+                }
+            }
+            res.send("Deleted");
+        } catch (e) {
+            console.error("Failed to delete AP note:", e);
+            res.status(500).send("Internal Error");
+        }
+    });
+
     return router;
 }
 

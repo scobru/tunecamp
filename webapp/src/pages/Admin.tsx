@@ -9,13 +9,15 @@ import { AdminArtistModal } from '../components/modals/AdminArtistModal';
 import { UploadTracksModal } from '../components/modals/UploadTracksModal';
 import { CreatePostModal } from '../components/modals/CreatePostModal';
 import { IdentityPanel } from '../components/admin/IdentityPanel';
+import { ActivityPubPanel } from '../components/admin/ActivityPubPanel';
 import type { SiteSettings } from '../types';
 
 export const Admin = () => {
     const { adminUser, isAdminAuthenticated } = useAuthStore();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'artists' | 'settings' | 'system' | 'identity'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'artists' | 'settings' | 'system' | 'identity' | 'activitypub'>('overview');
     const [stats, setStats] = useState<any>(null);
+
     // const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -89,6 +91,7 @@ export const Admin = () => {
                 <a role="tab" className={`tab ${activeTab === 'settings' ? 'tab-active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</a>
                 <a role="tab" className={`tab ${activeTab === 'system' ? 'tab-active' : ''}`} onClick={() => setActiveTab('system')}>System</a>
                 <a role="tab" className={`tab ${activeTab === 'identity' ? 'tab-active' : ''}`} onClick={() => setActiveTab('identity')}>Identity</a>
+                <a role="tab" className={`tab ${activeTab === 'activitypub' ? 'tab-active' : ''}`} onClick={() => setActiveTab('activitypub')}>ActivityPub</a>
             </div>
 
             <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px]">
@@ -191,6 +194,7 @@ export const Admin = () => {
                 
                 {activeTab === 'settings' && <AdminSettingsPanel />}
                 {activeTab === 'identity' && <IdentityPanel />}
+                {activeTab === 'activitypub' && <ActivityPubPanel />}
             </div>
             
             <AdminUserModal onUserUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-users'))} />

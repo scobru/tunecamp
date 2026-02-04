@@ -90,6 +90,18 @@ export interface Post {
     created_at: string;
 }
 
+export interface ApNote {
+    id: number;
+    artist_id: number;
+    note_id: string;  // Full AP Note URI
+    note_type: 'post' | 'release';  // What type of content
+    content_id: number;  // ID of post or album
+    content_slug: string;  // Slug for display
+    content_title: string;  // Title/preview
+    published_at: string;
+    deleted_at: string | null;
+}
+
 export interface TrackWithPlayCount extends Track {
     play_count: number;
 }
@@ -187,6 +199,13 @@ export interface DatabaseService {
     validateUnlockCode(code: string): { valid: boolean; releaseId?: number; isUsed: boolean };
     redeemUnlockCode(code: string): void;
     listUnlockCodes(releaseId?: number): any[];
+
+    // ActivityPub Notes
+    createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number;
+    getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
+    getApNote(noteId: string): ApNote | undefined;
+    markApNoteDeleted(noteId: string): void;
+    deleteApNote(noteId: string): void;
 }
 
 export function createDatabase(dbPath: string): DatabaseService {
@@ -325,6 +344,19 @@ export function createDatabase(dbPath: string): DatabaseService {
       slug TEXT NOT NULL UNIQUE,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS ap_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+      note_id TEXT NOT NULL UNIQUE,
+      note_type TEXT NOT NULL,
+      content_id INTEGER NOT NULL,
+      content_slug TEXT NOT NULL,
+      content_title TEXT NOT NULL,
+      published_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      deleted_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_ap_notes_artist ON ap_notes(artist_id);
   `);
 
     // Migration: Add is_release column if it doesn't exist
@@ -1050,6 +1082,34 @@ export function createDatabase(dbPath: string): DatabaseService {
                 return db.prepare("SELECT * FROM unlock_codes WHERE release_id = ? ORDER BY created_at DESC").all(releaseId);
             }
             return db.prepare("SELECT * FROM unlock_codes ORDER BY created_at DESC").all();
+        },
+
+        // ActivityPub Notes
+        createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number {
+            const result = db.prepare(`
+                INSERT INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(artistId, noteId, noteType, contentId, contentSlug, contentTitle);
+            return Number(result.lastInsertRowid);
+        },
+
+        getApNotes(artistId: number, includeDeleted: boolean = false): ApNote[] {
+            const query = includeDeleted
+                ? "SELECT * FROM ap_notes WHERE artist_id = ? ORDER BY published_at DESC"
+                : "SELECT * FROM ap_notes WHERE artist_id = ? AND deleted_at IS NULL ORDER BY published_at DESC";
+            return db.prepare(query).all(artistId) as ApNote[];
+        },
+
+        getApNote(noteId: string): ApNote | undefined {
+            return db.prepare("SELECT * FROM ap_notes WHERE note_id = ?").get(noteId) as ApNote | undefined;
+        },
+
+        markApNoteDeleted(noteId: string): void {
+            db.prepare("UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE note_id = ?").run(noteId);
+        },
+
+        deleteApNote(noteId: string): void {
+            db.prepare("DELETE FROM ap_notes WHERE note_id = ?").run(noteId);
         },
     };
 }
