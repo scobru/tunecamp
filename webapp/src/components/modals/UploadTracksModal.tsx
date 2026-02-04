@@ -72,7 +72,31 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
                 <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
                     <UploadCloud size={20} className="text-secondary"/> Upload Tracks
                 </h3>
-                {releaseTitle && <p className="text-sm opacity-70 mb-4">Adding to: <span className="font-bold">{releaseTitle}</span></p>}
+
+                {/* Single / Release Toggle */}
+                {!releaseTitle && (
+                    <div className="tabs tabs-boxed mb-4 bg-transparent p-0">
+                        <a 
+                            className={`tab tab-sm ${!releaseSlug ? 'tab-active' : ''}`} 
+                            onClick={() => setReleaseSlug('')}
+                        >
+                            Library (Single)
+                        </a>
+                        <a 
+                            className={`tab tab-sm ${releaseSlug ? 'tab-active opacity-50 cursor-not-allowed' : ''}`}
+                            title="To upload to a specific release, use the Releases page"
+                        >
+                            Release
+                        </a>
+                    </div>
+                )}
+
+                {releaseTitle && (
+                    <div className="alert alert-sm bg-base-200 mb-4 border-none flex-row">
+                        <Music size={16} className="opacity-50"/>
+                        <span className="text-sm">Adding to: <span className="font-bold">{releaseTitle}</span></span>
+                    </div>
+                )}
 
                 <form onSubmit={handleUpload} className="space-y-4">
                     <div className="form-control">

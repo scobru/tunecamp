@@ -29,12 +29,14 @@ function createStorage(musicDir: string) {
                 destDir = isAudio
                     ? path.join(musicDir, "releases", releaseSlug, "tracks")
                     : path.join(musicDir, "releases", releaseSlug, "artwork");
-            } else if (uploadType === "release") {
-                // No slug but type is release - use library as fallback
-                destDir = path.join(musicDir, "library");
             } else {
-                // Upload to library
-                destDir = path.join(musicDir, "library");
+                // FALLBACK: Upload to Library (legacy / single track mode)
+                // We'll organize by Artist if we can parse it, otherwise generic Library folder
+                // For now, simpler approach: music/Library/<filename> or just music/Library
+                // Better: Let scanner handle organization. But we need a target.
+
+                // Let's use a "Library" folder
+                destDir = path.join(musicDir, "Library");
             }
 
             await fs.ensureDir(destDir);
