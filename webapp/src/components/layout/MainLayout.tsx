@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import API from '../services/api';
+import API from '../../services/api';
 import type { SiteSettings } from '../../types';
 import { Sidebar } from './Sidebar';
 import { PlayerBar } from '../player/PlayerBar';
