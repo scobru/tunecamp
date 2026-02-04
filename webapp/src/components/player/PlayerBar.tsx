@@ -6,6 +6,7 @@ import { Waveform } from './Waveform';
 import { LyricsPanel } from './LyricsPanel';
 import { QueuePanel } from './QueuePanel';
 import { GleamUtils } from '../../utils/gleam';
+import { ScrollingText } from '../ui/ScrollingText';
 
 export const PlayerBar = () => {
     const { 
@@ -129,9 +130,9 @@ export const PlayerBar = () => {
                             <span className="text-xs opacity-50">?</span>
                          </div>
                     )}
-                    <div className="min-w-0">
-                        <div className="font-bold truncate text-sm lg:text-base">{currentTrack.title}</div>
-                        <div className="text-xs lg:text-sm opacity-60 truncate">{currentTrack.artistName}</div>
+                    <div className="min-w-0 flex-1">
+                        <ScrollingText className="font-bold text-sm lg:text-base">{currentTrack.title}</ScrollingText>
+                        <ScrollingText className="text-xs lg:text-sm opacity-60">{currentTrack.artistName}</ScrollingText>
                     </div>
                 </div>
 
