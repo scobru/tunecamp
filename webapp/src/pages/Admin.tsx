@@ -176,6 +176,7 @@ const AdminSettingsPanel = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [bgFile, setBgFile] = useState<File | null>(null);
+    const [coverFile, setCoverFile] = useState<File | null>(null);
 
     useEffect(() => {
         API.getSiteSettings().then(setSettings).catch(console.error);
@@ -192,9 +193,13 @@ const AdminSettingsPanel = () => {
             if (bgFile) {
                 await API.uploadBackgroundImage(bgFile);
             }
+            if (coverFile) {
+                await API.uploadSiteCover(coverFile);
+            }
 
             setMessage('Settings saved successfully.');
             setBgFile(null);
+            setCoverFile(null);
             // Refresh settings to get new bg url if needed
             API.getSiteSettings().then(setSettings);
         } catch (e) {
@@ -256,6 +261,19 @@ const AdminSettingsPanel = () => {
                     className="file-input file-input-bordered w-full"
                     accept="image/*"
                     onChange={e => setBgFile(e.target.files ? e.target.files[0] : null)}
+                />
+            </div>
+
+            <div className="form-control">
+                <label className="label">
+                    <span className="label-text">Site Cover (Network List Image)</span>
+                    <span className="label-text-alt opacity-50">Displayed on other nodes</span>
+                </label>
+                <input 
+                    type="file" 
+                    className="file-input file-input-bordered w-full"
+                    accept="image/*"
+                    onChange={e => setCoverFile(e.target.files ? e.target.files[0] : null)}
                 />
             </div>
 

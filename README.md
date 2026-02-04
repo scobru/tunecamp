@@ -57,10 +57,34 @@ For development or building from source:
 # Install dependencies
 npm install
 
-# Build the project (includes Gleam compilation)
 npm run gleam:build
 npm run build
+
+# Build the webapp (Required)
+cd webapp
+npm install
+npm run build
+cd ..
 ```
+
+### Docker Installation
+
+You can also run Tunecamp using Docker:
+
+1. **Configure Docker Compose:**
+   Edit `docker-compose.yml` to point to your music directory:
+   ```yaml
+   volumes:
+     - /path/to/your/music:/music:ro
+   ```
+
+2. **Run with Docker Compose:**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Access via Browser:**
+   Open http://localhost:1970
 
 ### Basic Usage
 

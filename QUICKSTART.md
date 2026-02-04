@@ -6,8 +6,15 @@ Get up and running with Tunecamp in 5 minutes!
 
 ```bash
 cd tunecamp
-yarn install
-yarn build
+npm install
+npm run gleam:build
+npm run build
+
+# Build the webapp
+cd webapp
+npm install
+npm run build
+cd ..
 ```
 
 ## Option 1: Use the Example

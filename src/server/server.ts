@@ -124,6 +124,25 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
     });
 
+    // Serve uploaded site cover image (public for network list)
+    app.get("/api/settings/cover", async (_req, res) => {
+        try {
+            const assetsDir = path.join(config.musicDir, "assets");
+            if (!(await fs.pathExists(assetsDir))) {
+                return res.status(404).json({ error: "No cover image" });
+            }
+            const files = await fs.readdir(assetsDir);
+            const coverFile = files.find((f) => f.startsWith("site-cover."));
+            if (!coverFile) {
+                return res.status(404).json({ error: "No cover image" });
+            }
+            const filePath = path.join(assetsDir, coverFile);
+            res.sendFile(path.resolve(filePath));
+        } catch {
+            res.status(404).json({ error: "Not found" });
+        }
+    });
+
     // Serve static webapp
     const webappPath = path.join(__dirname, "..", "..", "webapp");
     const webappPublicPath = path.join(webappPath, "public"); // Vite public dir

@@ -180,6 +180,13 @@ export const API = {
             headers: { 'Content-Type': 'multipart/form-data' }
         }));
     },
+    uploadSiteCover: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return handleResponse(api.post('/admin/upload/site-cover', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        }));
+    },
 
     // --- Admin: System ---
     rescan: () => handleResponse(api.post('/admin/scan')),

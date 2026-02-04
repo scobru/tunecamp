@@ -268,6 +268,34 @@ export function createUploadRoutes(
         }
     });
 
+    /** Multer for site cover image: save to musicDir/assets/ as site-cover.<ext> */
+    function createSiteCoverStorage(musicDir: string) {
+        return multer.diskStorage({
+            destination: async (_req, _file, cb) => {
+                const destDir = path.join(musicDir, "assets");
+                await fs.ensureDir(destDir);
+                cb(null, destDir);
+            },
+            filename: (_req, file, cb) => {
+                const ext = path.extname(file.originalname).toLowerCase() || ".png";
+                cb(null, "site-cover" + (IMAGE_EXTENSIONS.includes(ext) ? ext : ".png"));
+            },
+        });
+    }
+
+    const uploadSiteCover = multer({
+        storage: createSiteCoverStorage(musicDir),
+        fileFilter: (_req, file, cb) => {
+            const ext = path.extname(file.originalname).toLowerCase();
+            if (IMAGE_EXTENSIONS.includes(ext)) {
+                cb(null, true);
+            } else {
+                cb(new Error(`Unsupported image type: ${ext}`));
+            }
+        },
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    });
+
     /**
      * POST /api/admin/upload/background
      * Upload site background image (saved to server, URL stored in settings)
@@ -293,6 +321,34 @@ export function createUploadRoutes(
         } catch (error) {
             console.error("Background upload error:", error);
             res.status(500).json({ error: "Background upload failed" });
+        }
+    });
+
+    /**
+     * POST /api/admin/upload/site-cover
+     * Upload site cover image (for network list)
+     */
+    router.post("/site-cover", uploadSiteCover.single("file"), async (req: any, res) => {
+        try {
+            if (req.artistId) {
+                if (req.file) await fs.remove(req.file.path);
+                return res.status(403).json({ error: "Restricted admins cannot change site cover" });
+            }
+            const file = req.file;
+            if (!file) {
+                return res.status(400).json({ error: "No file uploaded" });
+            }
+            console.log(`🖼️ Uploaded site cover: ${file.filename}`);
+            const url = "/api/settings/cover";
+            database.setSetting("coverImage", url);
+            res.json({
+                message: "Site cover uploaded",
+                url,
+                file: { name: file.filename, size: file.size },
+            });
+        } catch (error) {
+            console.error("Site cover upload error:", error);
+            res.status(500).json({ error: "Site cover upload failed" });
         }
     });
 
