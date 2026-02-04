@@ -13,7 +13,9 @@ if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
-export function createTracksRoutes(database: DatabaseService) {
+import type { ActivityPubService } from "../activitypub.js";
+
+export function createTracksRoutes(database: DatabaseService, apService: ActivityPubService) {
     const router = Router();
 
     /**
@@ -275,6 +277,14 @@ export function createTracksRoutes(database: DatabaseService) {
             // Get updated track
             const updatedTrack = database.getTrack(id);
             res.json({ message: "Track updated", track: updatedTrack });
+
+            // ActivityPub Broadcast: Track updated
+            if (updatedTrack && updatedTrack.album_id) {
+                const album = database.getAlbum(updatedTrack.album_id);
+                if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
+                    apService.broadcastRelease(album).catch(e => console.error("AP Broadcast failed:", e));
+                }
+            }
         } catch (error) {
             console.error("Error updating track:", error);
             res.status(500).json({ error: "Failed to update track" });
@@ -323,6 +333,17 @@ export function createTracksRoutes(database: DatabaseService) {
             // Note: If file was deleted, watcher might have already triggered this, 
             // but it's safe to run again (idempotent if using specific ID delete)
             database.deleteTrack(id);
+
+            database.deleteTrack(id);
+
+            // ActivityPub Broadcast: Track deleted
+            // We need to re-fetch the album to get the current state (ActivityPub note will be updated/replaced)
+            if (track.album_id) {
+                const album = database.getAlbum(track.album_id);
+                if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
+                    apService.broadcastRelease(album).catch(e => console.error("AP Broadcast failed:", e));
+                }
+            }
 
             res.json({ message: "Track deleted" });
         } catch (error) {

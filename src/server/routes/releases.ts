@@ -182,8 +182,8 @@ export function createReleaseRoutes(
             await scanner.scanDirectory(musicDir);
 
             // SYNC WITH FEDERATION
-            // If visibility changed OR title changed (since slug depends on title), we need to update network
-            const shouldSync = visibilityChanged || !!body.title;
+            // If visibility changed OR ANY metadata changed (since it updates the Note content/attachments), we need to update network
+            const shouldSync = visibilityChanged || !!body.title || !!body.description || !!body.genres || !!body.artistName || !!body.download || !!body.externalLinks || !!body.date;
 
             if (shouldSync) {
                 const updatedAlbum = database.getAlbum(id);

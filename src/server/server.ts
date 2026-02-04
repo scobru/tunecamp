@@ -58,6 +58,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     // Scan music directory on startup
     console.log(`🎵 Music directory: ${config.musicDir}`);
+    await fs.ensureDir(config.musicDir);
     await scanner.scanDirectory(config.musicDir);
     scanner.startWatching(config.musicDir);
 
@@ -87,7 +88,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(database));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, apService));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database));
     app.use("/api/admin/upload", authMiddleware.requireAdmin, createUploadRoutes(database, scanner, config.musicDir));
     app.use("/api/admin/releases", authMiddleware.requireAdmin, createReleaseRoutes(database, scanner, config.musicDir, gundbService, config, apService));

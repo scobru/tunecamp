@@ -118,5 +118,43 @@ export function createBrowserRoutes(musicDir: string) {
         }
     });
 
+
+
+    /**
+     * DELETE /api/browser
+     * Delete a file or directory
+     * Query params:
+     * - path: Relative path from musicDir
+     */
+    router.delete("/", async (req, res) => {
+        try {
+            let relPath = (req.query.path as string) || "";
+
+            // Normalize path
+            if (relPath.startsWith("/")) {
+                relPath = relPath.substring(1);
+            }
+
+            // Security check
+            if (relPath.includes("..") || path.isAbsolute(relPath) || relPath === "" || relPath === "." || relPath === "./") {
+                return res.status(400).json({ error: "Invalid path or root directory protection" });
+            }
+
+            const absPath = path.join(musicDir, relPath);
+
+            if (!(await fs.pathExists(absPath))) {
+                return res.status(404).json({ error: "Path not found" });
+            }
+
+            await fs.remove(absPath);
+            console.log(`🗑️ Deleted via browser: ${relPath}`);
+
+            res.json({ message: "Deleted successfully" });
+        } catch (error) {
+            console.error("Error deleting path:", error);
+            res.status(500).json({ error: "Failed to delete" });
+        }
+    });
+
     return router;
 }
