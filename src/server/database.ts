@@ -896,7 +896,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const albumsSql = publicOnly
                 ? `SELECT a.*, ar.name as artist_name FROM albums a 
            LEFT JOIN artists ar ON a.artist_id = ar.id 
-           WHERE a.is_public = 1 AND (a.title LIKE ? OR ar.name LIKE ?)`
+           WHERE a.visibility IN ('public', 'unlisted') AND (a.title LIKE ? OR ar.name LIKE ?)`
                 : `SELECT a.*, ar.name as artist_name FROM albums a 
            LEFT JOIN artists ar ON a.artist_id = ar.id 
            WHERE a.title LIKE ? OR ar.name LIKE ?`;
@@ -907,7 +907,7 @@ export function createDatabase(dbPath: string): DatabaseService {
            FROM tracks t
            LEFT JOIN albums a ON t.album_id = a.id
            LEFT JOIN artists ar ON t.artist_id = ar.id
-           WHERE a.is_public = 1 AND (t.title LIKE ? OR ar.name LIKE ?)`
+           WHERE a.visibility IN ('public', 'unlisted') AND (t.title LIKE ? OR ar.name LIKE ?)`
                 : `SELECT t.*, a.title as album_title, ar.name as artist_name 
            FROM tracks t
            LEFT JOIN albums a ON t.album_id = a.id

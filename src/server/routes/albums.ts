@@ -87,8 +87,8 @@ export function createAlbumsRoutes(database: DatabaseService) {
                 return res.status(404).json({ error: "Album not found" });
             }
 
-            // Non-admin can only see public albums
-            if (!album.is_public && !req.isAdmin) {
+            // Non-admin can only see public/unlisted albums
+            if (album.visibility === 'private' && !req.isAdmin) {
                 return res.status(404).json({ error: "Album not found" });
             }
 
