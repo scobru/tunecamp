@@ -179,7 +179,11 @@ export const PlayerBar = () => {
                          ) : (
                             // Fallback simple progress bar
                             <div className="flex items-center w-full gap-2">
-                                <span className="min-w-[40px] text-right opacity-50">{GleamUtils.formatTimeAgo(0, currentTime * 1000).replace(' ago', '') === 'just now' ? '0:00' : new Date(currentTime * 1000).toISOString().substr(14, 5)}</span>
+                                <span className="min-w-[40px] text-right opacity-50">
+                                    {GleamUtils.formatTimeAgo(0, currentTime * 1000).replace(' ago', '') === 'just now' 
+                                        ? '0:00' 
+                                        : (Number.isFinite(currentTime) ? new Date(currentTime * 1000).toISOString().substr(14, 5) : '0:00')}
+                                </span>
                                 <input 
                                     type="range" 
                                     className="range range-xs range-primary flex-1" 
@@ -187,7 +191,9 @@ export const PlayerBar = () => {
                                     value={progress || 0}
                                     onChange={(e) => handleSeek(parseFloat(e.target.value) / 100)}
                                 />
-                                <span className="min-w-[40px] opacity-50">{new Date(duration * 1000).toISOString().substr(14, 5)}</span>
+                                <span className="min-w-[40px] opacity-50">
+                                    {Number.isFinite(duration) && duration > 0 ? new Date(duration * 1000).toISOString().substr(14, 5) : '0:00'}
+                                </span>
                             </div>
                          )}
                     </div>

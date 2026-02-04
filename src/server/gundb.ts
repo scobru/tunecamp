@@ -493,7 +493,8 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                                     artistName: trackData.artistName || "Me",
                                     albumId: trackData.releaseTitle || "local",
                                     playCount: 0,
-                                    coverUrl: trackData.coverUrl || ""
+                                    coverUrl: trackData.coverUrl || "",
+                                    streamUrl: trackData.audioUrl || "" // Explicitly set streamUrl
                                 },
                                 _secure: true,
                                 _isSelf: true
@@ -536,7 +537,8 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                                             filename: slug,
                                             playCount: 0,
                                             coverUrl: trackData.coverUrl || siteData.coverImage || "",
-                                            coverImage: trackData.coverUrl || siteData.coverImage || ""
+                                            coverImage: trackData.coverUrl || siteData.coverImage || "",
+                                            streamUrl: trackData.audioUrl || "" // Explicitly set streamUrl
                                         },
                                         _secure: true
                                     });
@@ -568,7 +570,8 @@ export function createGunDBService(database: DatabaseService, server?: any): Gun
                                             filename: slug,
                                             playCount: 0,
                                             coverUrl: trackData.coverUrl || siteData.coverImage || "",
-                                            coverImage: trackData.coverUrl || siteData.coverImage || ""
+                                            coverImage: trackData.coverUrl || siteData.coverImage || "",
+                                            streamUrl: trackData.audioUrl || "" // Explicitly set streamUrl
                                         },
                                         _secure: false
                                     });

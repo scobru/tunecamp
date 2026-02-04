@@ -115,13 +115,13 @@ export const Network = () => {
         // Construct a playable track object with remote URLs
         // Remove trailing slash from siteUrl if present
         const baseUrl = networkTrack.siteUrl.replace(/\/$/, '');
+        
         const track = {
             ...networkTrack.track,
-            // Override ID to avoid conflicts? Maybe not needed if we use streamUrl.
-            // But if we add to queue, we might want unique IDs.
-            // Let's keep ID but strictly rely on streamUrl.
-            streamUrl: `${baseUrl}/api/tracks/${networkTrack.track.id}/stream`,
-            coverUrl: networkTrack.track.albumId ? `${baseUrl}/api/albums/${networkTrack.track.albumId}/cover` : undefined
+            // PRIORITIZE EXISTING URLS from GunDB (which are already absolute)
+            // Fallback to construction only if missing (legacy support)
+            streamUrl: networkTrack.track.streamUrl || `${baseUrl}/api/tracks/${networkTrack.track.id}/stream`,
+            coverUrl: networkTrack.track.coverUrl || (networkTrack.track.albumId ? `${baseUrl}/api/albums/${networkTrack.track.albumId}/cover` : undefined)
         };
 
         playTrack(track, [track]); // Play as single track context for now
