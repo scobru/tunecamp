@@ -325,17 +325,17 @@ export class ActivityPubService {
                     keyId: new URL(`${artistUrl.href}#main-key`)
                 } as any, inboxes.map(u => ({ id: null, inboxId: new URL(u) })) as any, create);
                 console.log(`✅ Broadcasted to ${inboxes.length} inboxes`);
-
-                // Track in DB
-                this.db.createApNote(
-                    artist.id,
-                    note.id!.href,
-                    'release',
-                    album.id,
-                    album.slug,
-                    album.title
-                );
             }
+
+            // Track in DB (Always)
+            this.db.createApNote(
+                artist.id,
+                note.id!.href,
+                'release',
+                album.id,
+                album.slug,
+                album.title
+            );
         } catch (e) {
             console.error("Failed to broadcast release via Fedify:", e);
         }
@@ -345,6 +345,19 @@ export class ActivityPubService {
         const artist = this.db.getArtist(post.artist_id);
         if (!artist) return;
 
+        const note = this.generatePostNote(post, artist);
+
+        // Track in DB
+        this.db.createApNote(
+            artist.id,
+            note.id,
+            'post',
+            post.id,
+            post.slug,
+            // Use snippet of content as title
+            post.content.replace(/<[^>]*>?/gm, '').substring(0, 50) + (post.content.length > 50 ? '...' : '')
+        );
+
         const followers = this.db.getFollowers(artist.id);
         if (followers.length === 0) return;
 
@@ -352,8 +365,6 @@ export class ActivityPubService {
 
         const baseUrl = this.getBaseUrl();
         const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
-
-        const note = this.generatePostNote(post, artist);
 
         const activity = {
             "@context": "https://www.w3.org/ns/activitystreams",
@@ -367,19 +378,8 @@ export class ActivityPubService {
 
         // Send to all followers
         for (const follower of followers) {
-            await this.sendActivity(artist, follower.inbox_uri, activity);
+            this.sendActivity(artist, follower.inbox_uri, activity);
         }
-
-        // Track in DB
-        this.db.createApNote(
-            artist.id,
-            note.id,
-            'post',
-            post.id,
-            post.slug,
-            // Use snippet of content as title
-            post.content.replace(/<[^>]*>?/gm, '').substring(0, 50) + (post.content.length > 50 ? '...' : '')
-        );
     }
 
     public async broadcastDelete(album: Album): Promise<void> {

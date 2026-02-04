@@ -112,6 +112,33 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
     });
 
+    // Fix for legacy/short ActivityPub URLs linking to frontend
+    app.get("/note/release/:slug", (req, res) => {
+        const { slug } = req.params;
+        const album = database.getAlbumBySlug(slug);
+        if (album) {
+            res.redirect(`/#/album/${album.slug}`);
+        } else {
+            res.status(404).send("Release not found");
+        }
+    });
+
+    app.get("/note/post/:slug", (req, res) => {
+        const { slug } = req.params;
+        const post = database.getPostBySlug(slug);
+        if (post) {
+            // Need artist slug for the URL
+            const artist = database.getArtist(post.artist_id);
+            if (artist) {
+                res.redirect(`/#/artist/${artist.slug}?post=${post.slug}`);
+            } else {
+                res.redirect("/");
+            }
+        } else {
+            res.status(404).send("Post not found");
+        }
+    });
+
     // Serve uploaded site background image (public)
     app.get("/api/settings/background", async (_req, res) => {
         try {
