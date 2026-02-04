@@ -9,7 +9,7 @@ ARG RELAY_CACHE_BUST
 ARG CAPROVER_GIT_COMMIT_SHA
 
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Re-declare ARGs needed in this stage (multi-stage build)
 ARG CAPROVER_GIT_COMMIT_SHA
@@ -48,7 +48,7 @@ RUN cd webapp && npm install && npm run build
 # ===================================================
 # Production stage
 # ===================================================
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Re-declare ARG so production stage gets fresh value; busts cache so new code is always copied
 ARG CAPROVER_GIT_COMMIT_SHA
