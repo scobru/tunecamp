@@ -332,18 +332,21 @@ export function createArtistsRoutes(database: DatabaseService) {
             }
 
             const posts = database.getPostsByArtist(artist.id);
-            // Map snake_case to camelCase for frontend
-            const mappedPosts = posts.map(p => ({
-                id: p.id,
-                slug: p.slug,
-                content: p.content,
-                artistId: p.artist_id,
-                artistName: p.artist_name,
-                artistSlug: p.artist_slug,
-                artistAvatar: p.artist_photo,
-                createdAt: p.created_at,
-                isPublic: true
-            }));
+            // Map snake_case to camelCase for frontend and filter by visibility
+            const mappedPosts = posts
+                .filter(p => p.visibility === 'public' || (req as any).isAdmin) // (AuthenticatedRequest cast for safety)
+                .map(p => ({
+                    id: p.id,
+                    slug: p.slug,
+                    content: p.content,
+                    artistId: p.artist_id,
+                    artistName: p.artist_name,
+                    artistSlug: p.artist_slug,
+                    artistAvatar: p.artist_photo,
+                    createdAt: p.created_at,
+                    visibility: p.visibility,
+                    isPublic: p.visibility === 'public'
+                }));
             res.json(mappedPosts);
 
         } catch (error) {

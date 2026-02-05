@@ -499,7 +499,7 @@ export function createAdminRoutes(
      */
     router.post("/posts", async (req: any, res) => {
         try {
-            const { artistId, content } = req.body;
+            const { artistId, content, visibility } = req.body;
             if (!artistId || !content) {
                 return res.status(400).json({ error: "Missing artistId or content" });
             }
@@ -509,7 +509,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "You can only post for your assign artist" });
             }
 
-            const postId = database.createPost(artistId, content);
+            const postId = database.createPost(artistId, content, visibility || 'public');
             const post = database.getPost(postId);
 
             if (post) {
@@ -543,8 +543,8 @@ export function createAdminRoutes(
 
             database.deletePost(id);
 
-            // TODO: Broadcast Undo/Delete activity? 
-            // For now just local delete is fine.
+            // Broadcast Undo/Delete activity
+            apService.broadcastPostDelete(post).catch(e => console.error("Failed to broadcast post delete:", e));
 
             res.json({ message: "Post deleted" });
         } catch (error) {

@@ -87,6 +87,7 @@ export interface Post {
     artist_photo?: string;
     content: string;
     slug: string;
+    visibility: 'public' | 'private' | 'unlisted';
     created_at: string;
 }
 
@@ -177,7 +178,7 @@ export interface DatabaseService {
     getPostsByArtist(artistId: number): Post[];
     getPost(id: number): Post | undefined;
     getPostBySlug(slug: string): Post | undefined;
-    createPost(artistId: number, content: string): number;
+    createPost(artistId: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): number;
     deletePost(id: number): void;
     // Stats
     getStats(): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number }>;
@@ -342,6 +343,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
       content TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
+      visibility TEXT DEFAULT 'public',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -434,6 +436,14 @@ export function createDatabase(dbPath: string): DatabaseService {
         console.log("📦 Migrated database: added type and year to albums");
     } catch (e) {
         // Columns already exist
+    }
+
+    // Migration: Add visibility to posts
+    try {
+        db.exec(`ALTER TABLE posts ADD COLUMN visibility TEXT DEFAULT 'public'`);
+        console.log("📦 Migrated database: added visibility to posts");
+    } catch (e) {
+        // Column already exists
     }
 
     return {
@@ -866,15 +876,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             `).get(slug) as Post | undefined;
         },
 
-        createPost(artistId: number, content: string): number {
+        createPost(artistId: number, content: string, visibility: 'public' | 'private' | 'unlisted' = 'public'): number {
             // Generate slug from content snippet or random
             const snippet = content.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
             const random = Math.random().toString(36).substring(2, 8);
             const slug = snippet ? `${snippet}-${random}` : `post-${random}`;
 
             const result = db.prepare(
-                "INSERT INTO posts (artist_id, content, slug) VALUES (?, ?, ?)"
-            ).run(artistId, content, slug);
+                "INSERT INTO posts (artist_id, content, slug, visibility) VALUES (?, ?, ?, ?)"
+            ).run(artistId, content, slug, visibility);
 
             return result.lastInsertRowid as number;
         },

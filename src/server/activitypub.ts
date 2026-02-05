@@ -196,7 +196,7 @@ export class ActivityPubService {
         // Note: We use the canonical API URL for the ID, so it can be resolved by servers
         // We append the published timestamp to ensure uniqueness when republishing (Private -> Public -> Private -> Public)
         const sentTime = published ? new Date(published).getTime() : 0;
-        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}-${sentTime}`;
+        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
 
         return {
             type: "Note",
@@ -264,6 +264,7 @@ export class ActivityPubService {
 
         const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
         if (!publicUrl) return; // Cannot federate without public URL
+        const baseUrl = this.getBaseUrl();
 
         try {
             const ctx = this.federation.createContext(new URL(publicUrl));
@@ -272,7 +273,7 @@ export class ActivityPubService {
 
             // Construct Note
             const note = new Note({
-                id: new URL(`/note/release/${album.slug}`, publicUrl),
+                id: new URL(`${baseUrl}/api/ap/note/release/${album.slug}`),
                 attribution: artistUrl,
                 to: PUBLIC_COLLECTION,
                 content: `<p>New release available: <a href="${releaseUrl.href}">${album.title}</a></p>`,
@@ -282,7 +283,7 @@ export class ActivityPubService {
 
             // Construct Create Activity
             const create = new Create({
-                id: new URL(`/note/release/${album.slug}/activity`, publicUrl),
+                id: new URL(`${baseUrl}/api/ap/note/release/${album.slug}/activity`),
                 actor: artistUrl,
                 object: note,
                 to: PUBLIC_COLLECTION,
@@ -342,6 +343,8 @@ export class ActivityPubService {
     }
 
     public async broadcastPost(post: Post): Promise<void> {
+        if (post.visibility !== 'public') return; // Only broadcast public posts
+
         const artist = this.db.getArtist(post.artist_id);
         if (!artist) return;
 
@@ -394,13 +397,11 @@ export class ActivityPubService {
 
         const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
         if (!publicUrl) return;
+        const baseUrl = this.getBaseUrl();
 
-        // Use the SAME format as broadcastRelease (Fedify) to ensure IDs match
-        // broadcastRelease uses: new URL(`/users/${artist.slug}`, publicUrl)
-        const artistActorUrl = new URL(`/users/${artist.slug}`, publicUrl).href;
-
-        // broadcastRelease uses: new URL(`/note/release/${album.slug}`, publicUrl)
-        const noteId = new URL(`/note/release/${album.slug}`, publicUrl).href;
+        // Use the SAME format as broadcastRelease to ensure IDs match
+        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
 
         const activity = {
             "@context": "https://www.w3.org/ns/activitystreams",

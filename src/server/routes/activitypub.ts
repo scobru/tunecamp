@@ -69,8 +69,8 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const albums = db.getAlbumsByArtist(artist.id, true);
         const releases = albums.filter(a => a.is_release && a.is_public);
 
-        // Get posts
-        const posts = db.getPostsByArtist(artist.id);
+        // Get posts (only public)
+        const posts = db.getPostsByArtist(artist.id).filter(p => p.visibility === 'public');
 
         // Combine and sort
         const combined = [
@@ -218,7 +218,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { slug } = req.params;
         const post = db.getPostBySlug(slug);
 
-        if (!post) return res.status(404).send("Not found");
+        if (!post || post.visibility !== 'public') return res.status(404).send("Not found");
 
         const artist = db.getArtist(post.artist_id);
         if (!artist) return res.status(404).send("Artist not found");
@@ -245,7 +245,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { slug } = req.params;
         const post = db.getPostBySlug(slug);
 
-        if (!post) return res.status(404).send("Not found");
+        if (!post || post.visibility !== 'public') return res.status(404).send("Not found");
 
         const artist = db.getArtist(post.artist_id);
         if (!artist) return res.status(404).send("Artist not found");
