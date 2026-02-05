@@ -1,9 +1,9 @@
 import { Router } from "express";
 import type { DatabaseService } from "../database.js";
 import type { ActivityPubService } from "../activitypub.js";
-import { AuthMiddleware } from "../middleware/auth.js";
+import { createAuthMiddleware } from "../middleware/auth.js";
 
-export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService, authMiddleware: AuthMiddleware): Router {
+export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
     const router = Router();
 
     // Actor Endpoint

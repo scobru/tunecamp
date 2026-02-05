@@ -520,7 +520,7 @@ export function createAdminRoutes(
                 if (updatedPost.visibility === 'public') {
                     // If it became public or stayed public (but content changed)
                     apService.broadcastPost(updatedPost).catch(e => console.error("Failed to broadcast post update:", e));
-                } else if (oldVisibility === 'public' && updatedPost.visibility !== 'public') {
+                } else if (oldVisibility === 'public') {
                     // If it was public and became non-public
                     apService.broadcastPostDelete(updatedPost).catch(e => console.error("Failed to broadcast post delete for private:", e));
                 }
