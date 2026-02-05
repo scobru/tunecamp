@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe } from 'lucide-react';
+import { Play, Disc, Globe, Trash2, Edit2, Shield } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import type { Artist, Album, Post } from '../types';
 
 export const ArtistDetails = () => {
@@ -12,6 +13,7 @@ export const ArtistDetails = () => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const { playTrack } = usePlayerStore();
+    const { isAdminAuthenticated } = useAuthStore();
 
     useEffect(() => {
         if (id) {
@@ -48,6 +50,16 @@ export const ArtistDetails = () => {
         }
     };
 
+    const handleDeletePost = async (postId: number) => {
+        if (!confirm("Are you sure you want to delete this post? This will also remove it from the ActivityPub network.")) return;
+        try {
+            await API.deletePost(postId);
+            setPosts(posts.filter(p => p.id !== postId));
+        } catch (err: any) {
+            alert("Failed to delete post: " + err.message);
+        }
+    };
+
     return (
         <div className="space-y-12 animate-fade-in">
              {/* Header */}
@@ -57,7 +69,7 @@ export const ArtistDetails = () => {
                      {artist.coverImage ? (
                         <img src={API.getArtistCoverUrl(artist.id)} className="w-full h-full object-cover opacity-30 blur-sm scale-105" />
                      ) : (
-                         <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 h-full w-full"/>
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 h-full w-full"/>
                      )}
                      <div className="absolute inset-0 bg-gradient-to-t from-base-100 via-base-100/50 to-transparent"></div>
                 </div>
@@ -98,17 +110,34 @@ export const ArtistDetails = () => {
                     </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {posts.map(post => (
-                            <div key={post.id} className="card bg-base-200 border border-white/5 p-6 space-y-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className="avatar placeholder">
-                                        <div className="bg-neutral text-neutral-content rounded-full w-8">
-                                            <span>{artist?.name[0]}</span>
+                            <div key={post.id} className="card bg-base-200 border border-white/5 p-6 space-y-4 relative group">
+                                <div className="flex items-center justify-between gap-3 mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="avatar placeholder">
+                                            <div className="bg-neutral text-neutral-content rounded-full w-8">
+                                                <span>{artist?.name[0]}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-sm flex items-center gap-2">
+                                                {artist?.name}
+                                                {post.visibility === 'private' && <Shield size={12} className="text-warning" title="Private"/>}
+                                            </div>
+                                            <div className="text-xs opacity-50">{new Date(post.createdAt).toLocaleDateString()}</div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <div className="font-bold text-sm">{artist?.name}</div>
-                                        <div className="text-xs opacity-50">{new Date(post.createdAt).toLocaleDateString()}</div>
-                                    </div>
+                                    
+                                    {isAdminAuthenticated && (
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                className="btn btn-xs btn-circle btn-ghost text-error"
+                                                onClick={() => handleDeletePost(post.id)}
+                                                title="Delete Post"
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
                             </div>

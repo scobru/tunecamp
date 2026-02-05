@@ -99,7 +99,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/users", createUsersRoutes(gundbService));
     app.use("/api/comments", createCommentsRoutes(gundbService));
     app.use("/api/unlock", createUnlockRoutes(database));
-    app.use("/api/ap", createActivityPubRoutes(apService, database));
+    app.use("/api/ap", createActivityPubRoutes(apService, database, authMiddleware));
     // app.use("/.well-known", createWebFingerRoute(apService)); // Legacy, handled by Fedify
 
     // Human-readable profile redirect (for ActivityPub/WebFinger links)

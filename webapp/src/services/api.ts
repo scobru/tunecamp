@@ -105,8 +105,9 @@ export const API = {
     // --- Community / ActivityPub ---
     getArtistPosts: (idOrSlug: string) => handleResponse(api.get<Post[]>(`/artists/${idOrSlug}/posts`)),
     getPostBySlug: (slug: string) => handleResponse(api.get<Post>(`/posts/${slug}`)),
-    createPost: (artistId: string, content: string) => handleResponse(api.post<Post>('/admin/posts', { artistId, content })),
-    deletePost: (id: string) => handleResponse(api.delete(`/admin/posts/${id}`)),
+    createPost: (artistId: number, content: string, visibility: string) => handleResponse(api.post('/admin/posts', { artistId, content, visibility })),
+    updatePost: (id: number, content: string, visibility: string) => handleResponse(api.put(`/admin/posts/${id}`, { content, visibility })),
+    deletePost: (id: number) => handleResponse(api.delete(`/admin/posts/${id}`)),
 
     // --- ActivityPub Notes ---
     getPublishedContent: (artistId: string | number) => handleResponse(api.get<any[]>(`/ap/published/${artistId}`)),
@@ -198,6 +199,7 @@ export const API = {
     getAdminStats: () => handleResponse(api.get<AdminStats>('/admin/stats')),
     getBrowser: (path = '') => handleResponse(api.get<any>(`/browser?path=${encodeURIComponent(path)}`)),
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`/browser?path=${encodeURIComponent(path)}`)),
+    syncActivityPub: () => handleResponse(api.post('/ap/sync')),
 
     // --- Identity ---
     getIdentity: () => handleResponse(api.get<{ pub: string, epub: string, alias: string }>('/admin/system/identity')),

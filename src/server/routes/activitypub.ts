@@ -1,8 +1,9 @@
 import { Router } from "express";
 import type { DatabaseService } from "../database.js";
 import type { ActivityPubService } from "../activitypub.js";
+import { AuthMiddleware } from "../middleware/auth.js";
 
-export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService): Router {
+export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService, authMiddleware: AuthMiddleware): Router {
     const router = Router();
 
     // Actor Endpoint
@@ -296,6 +297,16 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         } catch (e) {
             console.error("Failed to delete AP note:", e);
             res.status(500).send("Internal Error");
+        }
+    });
+
+    router.post("/sync", authMiddleware.requireAdmin, async (req, res) => {
+        try {
+            const result = await apService.syncAllContent();
+            res.json({ message: "ActivityPub synchronization complete", ...result });
+        } catch (e) {
+            console.error("Failed to sync AP:", e);
+            res.status(500).json({ error: "Sync failed" });
         }
     });
 

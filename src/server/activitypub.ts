@@ -479,6 +479,76 @@ export class ActivityPubService {
         this.db.deleteApNote(noteId);
     }
 
+    /**
+     * Re-synchronizes all content for all artists with ActivityPub.
+     * Useful for fixing discrepancies or when the tracking database is lost.
+     */
+    public async syncAllContent(): Promise<{ artists: number; notes: number }> {
+        const artists = this.db.getArtists();
+        let artistCount = 0;
+        let noteCount = 0;
+
+        console.log(`🔄 Starting global ActivityPub synchronization for ${artists.length} artists...`);
+
+        for (const artist of artists) {
+            artistCount++;
+
+            // 1. Sync Albums/Releases
+            const albums = this.db.getAlbumsByArtist(artist.id, false); // Get all, including private
+            for (const album of albums) {
+                if (album.is_release) {
+                    if (album.visibility === 'public' || album.visibility === 'unlisted') {
+                        console.log(`  - Syncing public release: ${album.title}`);
+                        await this.broadcastRelease(album).catch(e => console.error(e));
+                    } else {
+                        console.log(`  - Syncing private release (Delete): ${album.title}`);
+                        await this.broadcastDelete(album).catch(e => console.error(e));
+                    }
+                    noteCount++;
+                }
+            }
+
+            // 2. Sync Posts
+            const posts = this.db.getPostsByArtist(artist.id);
+            for (const post of posts) {
+                if (post.visibility === 'public') {
+                    console.log(`  - Syncing public post: ${post.slug}`);
+                    await this.broadcastPost(post).catch(e => console.error(e));
+                } else {
+                    console.log(`  - Syncing private post (Delete): ${post.slug}`);
+                    await this.broadcastPostDelete(post).catch(e => console.error(e));
+                }
+                noteCount++;
+            }
+
+            // 3. Cleanup dangling AP Notes (notes for items that no longer exist)
+            const trackedNotes = this.db.getApNotes(artist.id, true);
+            for (const trackedNote of trackedNotes) {
+                let exists = false;
+                if (trackedNote.note_type === 'release') {
+                    exists = !!this.db.getAlbum(trackedNote.content_id);
+                } else if (trackedNote.note_type === 'post') {
+                    exists = !!this.db.getPost(trackedNote.content_id);
+                }
+
+                if (!exists) {
+                    console.log(`  - Cleaning up dangling note: ${trackedNote.content_slug} (${trackedNote.note_type})`);
+                    // We don't have the object anymore to construct a full delete broadcast easily if we lost metadata,
+                    // but we can try with the noteId we have.
+                    if (trackedNote.note_type === 'release') {
+                        // Dummy album for delete
+                        await this.broadcastDelete({ id: trackedNote.content_id, slug: trackedNote.content_slug, artist_id: artist.id } as any, trackedNote.note_id).catch(e => console.error(e));
+                    } else {
+                        await this.broadcastPostDelete({ id: trackedNote.content_id, slug: trackedNote.content_slug, artist_id: artist.id } as any, trackedNote.note_id).catch(e => console.error(e));
+                    }
+                }
+            }
+        }
+
+        console.log(`✅ ActivityPub sync complete. Processed ${artistCount} artists and ${noteCount} items.`);
+        return { artists: artistCount, notes: noteCount };
+    }
+
     public async sendActivity(artist: Artist, inboxUri: string, activity: any): Promise<void> {
         const body = JSON.stringify(activity);
         const url = new URL(inboxUri);

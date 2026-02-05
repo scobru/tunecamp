@@ -179,6 +179,7 @@ export interface DatabaseService {
     getPost(id: number): Post | undefined;
     getPostBySlug(slug: string): Post | undefined;
     createPost(artistId: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): number;
+    updatePost(id: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     deletePost(id: number): void;
     // Stats
     getStats(): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number }>;
@@ -891,6 +892,16 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         deletePost(id: number): void {
             db.prepare("DELETE FROM posts WHERE id = ?").run(id);
+        },
+
+        updatePost(id: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): void {
+            if (content !== undefined && visibility !== undefined) {
+                db.prepare("UPDATE posts SET content = ?, visibility = ? WHERE id = ?").run(content, visibility, id);
+            } else if (content !== undefined) {
+                db.prepare("UPDATE posts SET content = ? WHERE id = ?").run(content, id);
+            } else if (visibility !== undefined) {
+                db.prepare("UPDATE posts SET visibility = ? WHERE id = ?").run(visibility, id);
+            }
         },
 
         // Stats

@@ -142,16 +142,35 @@ export const Network = () => {
     return (
         <div className="space-y-12 animate-fade-in pb-12">
             <header className="flex flex-col gap-4 border-b border-white/5 pb-8">
-                <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-                        <Globe size={48} className="text-blue-400"/>
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                            <Globe size={48} className="text-blue-400"/>
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tight">Federated Network</h1>
+                            <p className="opacity-60 text-lg">
+                                Discover music from other TuneCamp instances across the globe.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-4xl font-black tracking-tight">Federated Network</h1>
-                        <p className="opacity-60 text-lg">
-                            Discover music from other TuneCamp instances across the globe.
-                        </p>
-                    </div>
+                    {isAdminAuthenticated && (
+                        <button 
+                            className="btn btn-primary btn-sm gap-2"
+                            onClick={async () => {
+                                if (confirm("Do you want to synchronize all content with ActivityPub? This will update metadata and ensure visibility settings are correct on remote instances.")) {
+                                    try {
+                                        const res = await API.syncActivityPub();
+                                        alert(`Sync complete! Processed ${res.artists} artists and ${res.notes} items.`);
+                                    } catch (err: any) {
+                                        alert("Sync failed: " + err.message);
+                                    }
+                                }
+                            }}
+                        >
+                            <Server size={16}/> Sync with ActivityPub
+                        </button>
+                    )}
                 </div>
             </header>
 

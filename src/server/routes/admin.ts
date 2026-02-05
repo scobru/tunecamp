@@ -492,6 +492,46 @@ export function createAdminRoutes(
         }
     });
 
+    /**
+     * PUT /api/admin/posts/:id
+     * Update a post
+     */
+    router.put("/posts/:id", async (req: any, res) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const { content, visibility } = req.body;
+
+            const post = database.getPost(id);
+            if (!post) {
+                return res.status(404).json({ error: "Post not found" });
+            }
+
+            // Permission Check
+            if (req.artistId && post.artist_id !== req.artistId) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            const oldVisibility = post.visibility;
+            database.updatePost(id, content, visibility);
+            const updatedPost = database.getPost(id);
+
+            if (updatedPost) {
+                // Handle AP sync
+                if (updatedPost.visibility === 'public') {
+                    // If it became public or stayed public (but content changed)
+                    apService.broadcastPost(updatedPost).catch(e => console.error("Failed to broadcast post update:", e));
+                } else if (oldVisibility === 'public' && updatedPost.visibility !== 'public') {
+                    // If it was public and became non-public
+                    apService.broadcastPostDelete(updatedPost).catch(e => console.error("Failed to broadcast post delete for private:", e));
+                }
+            }
+
+            res.json(updatedPost);
+        } catch (error) {
+            console.error("Error updating post:", error);
+            res.status(500).json({ error: "Failed to update post" });
+        }
+    });
 
     /**
      * POST /api/admin/posts
