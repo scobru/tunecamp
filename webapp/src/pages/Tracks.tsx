@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
-import { Music, Play, Heart, Plus, MoreHorizontal, Clock, Search, LogIn } from 'lucide-react';
+import { Music, Play, Heart, Plus, MoreHorizontal, Clock, Search, LogIn, Trash2 } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { Track } from '../types';
@@ -140,7 +140,24 @@ export const Tracks = () => {
                                         <label tabIndex={0} className="btn btn-ghost btn-xs btn-circle"><MoreHorizontal size={16}/></label>
                                         <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-white/10">
                                             <li><a onClick={() => handleAddToPlaylist(track.id)}><Plus size={16}/> Add to Playlist</a></li>
-                                            <li><a><Heart size={16}/> Like Song</a></li>
+                                             <li><a><Heart size={16}/> Like Song</a></li>
+                                             {isAdminAuthenticated && (
+                                                 <li>
+                                                     <a onClick={async (e) => {
+                                                         e.preventDefault();
+                                                         if (confirm(`Are you sure you want to delete "${track.title}"? This will remove it from the library database and disk.`)) {
+                                                             try {
+                                                                 await API.deleteTrack(track.id, true);
+                                                                 setTracks(tracks.filter(t => t.id !== track.id));
+                                                             } catch (err: any) {
+                                                                 alert("Failed to delete track: " + err.message);
+                                                             }
+                                                         }
+                                                     }} className="text-error">
+                                                         <Trash2 size={16}/> Delete Track
+                                                     </a>
+                                                 </li>
+                                             )}
                                         </ul>
                                     </div>
                                 </td>

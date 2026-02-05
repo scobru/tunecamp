@@ -278,7 +278,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             if (note.note_type === 'release') {
                 const album = db.getAlbum(note.content_id);
                 if (album) {
-                    await apService.broadcastDelete(album);
+                    await apService.broadcastDelete(album, note.note_id);
                 } else {
                     // Album gone, just delete note from DB
                     db.deleteApNote(noteId);
@@ -286,7 +286,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             } else if (note.note_type === 'post') {
                 const post = db.getPost(note.content_id);
                 if (post) {
-                    await apService.broadcastPostDelete(post);
+                    await apService.broadcastPostDelete(post, note.note_id);
                 } else {
                     // Post gone, just delete note from DB
                     db.deleteApNote(noteId);

@@ -197,6 +197,7 @@ export const API = {
     consolidate: () => handleResponse(api.post('/admin/consolidate')),
     getAdminStats: () => handleResponse(api.get<AdminStats>('/admin/stats')),
     getBrowser: (path = '') => handleResponse(api.get<any>(`/browser?path=${encodeURIComponent(path)}`)),
+    deleteBrowserPath: (path: string) => handleResponse(api.delete(`/browser?path=${encodeURIComponent(path)}`)),
 
     // --- Identity ---
     getIdentity: () => handleResponse(api.get<{ pub: string, epub: string, alias: string }>('/admin/system/identity')),

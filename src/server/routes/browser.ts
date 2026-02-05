@@ -45,28 +45,30 @@ export function createBrowserRoutes(musicDir: string) {
             const files = [];
 
             for (const entry of entries) {
+                const entryPath = path.join(absPath, entry.name);
+                const entryStats = await fs.stat(entryPath);
+
                 if (entry.isDirectory()) {
                     dirs.push({
                         name: entry.name,
                         path: path.join(relPath, entry.name).replace(/\\/g, "/"),
-                        type: "directory"
+                        type: "directory",
+                        mtime: entryStats.mtime
                     });
                 } else {
                     const ext = path.extname(entry.name).toLowerCase();
+                    const item = {
+                        name: entry.name,
+                        path: path.join(relPath, entry.name).replace(/\\/g, "/"),
+                        size: entryStats.size,
+                        mtime: entryStats.mtime,
+                        ext: ext
+                    };
+
                     if (AUDIO_EXTENSIONS.includes(ext)) {
-                        files.push({
-                            name: entry.name,
-                            path: path.join(relPath, entry.name).replace(/\\/g, "/"),
-                            type: "file",
-                            ext: ext
-                        });
+                        files.push({ ...item, type: "file" });
                     } else if (IMAGE_EXTENSIONS.includes(ext)) {
-                        files.push({
-                            name: entry.name,
-                            path: path.join(relPath, entry.name).replace(/\\/g, "/"),
-                            type: "image",
-                            ext: ext
-                        });
+                        files.push({ ...item, type: "image" });
                     }
                 }
             }

@@ -385,75 +385,94 @@ export class ActivityPubService {
         }
     }
 
-    public async broadcastDelete(album: Album): Promise<void> {
+    public async broadcastDelete(album: Album, manualNoteId?: string): Promise<void> {
         if (!album.artist_id) return;
         const artist = this.db.getArtist(album.artist_id);
         if (!artist) return;
 
-        const followers = this.db.getFollowers(artist.id);
-        if (followers.length === 0) return;
-
-        console.log(`📢 Broadcasting delete for release "${album.title}" to ${followers.length} followers`);
-
-        const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
-        if (!publicUrl) return;
         const baseUrl = this.getBaseUrl();
 
-        // Use the SAME format as broadcastRelease to ensure IDs match
-        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
-        const noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
-
-        const activity = {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: `${this.getBaseUrl()}/activity/${crypto.randomUUID()}`,
-            type: "Delete",
-            actor: artistActorUrl,
-            object: {
-                id: noteId,
-                type: "Note",
-                atomUri: noteId
-            },
-            to: ["https://www.w3.org/ns/activitystreams#Public"]
-        };
-
-        // Send to all followers
-        for (const follower of followers) {
-            await this.sendActivity(artist, follower.inbox_uri, activity);
+        // Find the note ID in the DB if not provided, to ensure we delete the correct record
+        let noteId = manualNoteId;
+        if (!noteId) {
+            const notes = this.db.getApNotes(artist.id, true);
+            const note = notes.find(n => n.note_type === 'release' && n.content_id === album.id);
+            if (note) noteId = note.note_id;
         }
 
-        // Remove from DB tracking
+        // Fallback to calculated ID if still nothing found
+        if (!noteId) {
+            noteId = `${baseUrl}/api/ap/note/release/${album.slug}`;
+        }
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length > 0) {
+            console.log(`📢 Broadcasting delete for release "${album.title}" to ${followers.length} followers`);
+
+            const activity = {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                id: `${this.getBaseUrl()}/activity/${crypto.randomUUID()}`,
+                type: "Delete",
+                actor: `${baseUrl}/api/ap/users/${artist.slug}`,
+                object: {
+                    id: noteId,
+                    type: "Note",
+                    atomUri: noteId
+                },
+                to: ["https://www.w3.org/ns/activitystreams#Public"]
+            };
+
+            // Send to all followers
+            for (const follower of followers) {
+                await this.sendActivity(artist, follower.inbox_uri, activity);
+            }
+        } else {
+            console.log(`ℹ️ No followers for ${artist.name}, skipping broadcast but deleting local note metadata.`);
+        }
+
+        // ALWAYS remove from DB tracking
         this.db.deleteApNote(noteId);
     }
 
-    public async broadcastPostDelete(post: Post): Promise<void> {
+    public async broadcastPostDelete(post: Post, manualNoteId?: string): Promise<void> {
         const artist = this.db.getArtist(post.artist_id);
         if (!artist) return;
 
-        const followers = this.db.getFollowers(artist.id);
-        if (followers.length === 0) return;
-
-        console.log(`📢 Broadcasting delete for post "${post.slug}" to ${followers.length} followers`);
-
         const baseUrl = this.getBaseUrl();
-        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
-        const noteId = `${baseUrl}/api/ap/note/post/${post.slug}`;
 
-        const activity = {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
-            type: "Delete",
-            actor: artistActorUrl,
-            object: {
-                id: noteId,
-                type: "Note",
-                atomUri: noteId
-            },
-            to: ["https://www.w3.org/ns/activitystreams#Public"]
-        };
+        // Find the note ID in the DB if not provided
+        let noteId = manualNoteId;
+        if (!noteId) {
+            const notes = this.db.getApNotes(artist.id, true);
+            const note = notes.find(n => n.note_type === 'post' && n.content_id === post.id);
+            if (note) noteId = note.note_id;
+        }
 
-        // Send to all followers
-        for (const follower of followers) {
-            await this.sendActivity(artist, follower.inbox_uri, activity);
+        if (!noteId) {
+            noteId = `${baseUrl}/api/ap/note/post/${post.slug}`;
+        }
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length > 0) {
+            console.log(`📢 Broadcasting delete for post "${post.slug}" to ${followers.length} followers`);
+
+            const activity = {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+                type: "Delete",
+                actor: `${baseUrl}/api/ap/users/${artist.slug}`,
+                object: {
+                    id: noteId,
+                    type: "Note",
+                    atomUri: noteId
+                },
+                to: ["https://www.w3.org/ns/activitystreams#Public"]
+            };
+
+            // Send to all followers
+            for (const follower of followers) {
+                await this.sendActivity(artist, follower.inbox_uri, activity);
+            }
         }
 
         // Remove from DB tracking

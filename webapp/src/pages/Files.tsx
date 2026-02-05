@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Folder, File, ArrowLeft, Music, Image as ImageIcon } from 'lucide-react';
+import { Folder, File, ArrowLeft, Music, Image as ImageIcon, Trash2, MoreHorizontal } from 'lucide-react';
 import { StringUtils } from '../utils/stringUtils';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -30,7 +30,13 @@ export const Files = () => {
         setLoading(true);
         try {
             const data = await API.getBrowser(path);
-            setItems(Array.isArray(data) ? data : []);
+            if (data && data.entries) {
+                setItems(data.entries);
+            } else if (Array.isArray(data)) {
+                setItems(data);
+            } else {
+                setItems([]);
+            }
         } catch (e) {
             console.error(e);
             setItems([]);
@@ -72,6 +78,18 @@ export const Files = () => {
         }
     };
 
+    const handleDelete = async (e: React.MouseEvent, item: any) => {
+        e.stopPropagation();
+        if (!confirm(`Are you sure you want to delete ${item.name}?`)) return;
+        
+        try {
+            await API.deleteBrowserPath(item.path);
+            loadData(currentPath);
+        } catch (err: any) {
+            alert("Failed to delete: " + err.message);
+        }
+    };
+
     const getIcon = (type: string, name: string) => {
         if (type === 'directory') return <Folder className="text-yellow-400" size={24}/>;
         const ext = StringUtils.getFileExtension(name);
@@ -109,24 +127,39 @@ export const Files = () => {
                                 <th>Name</th>
                                 <th className="text-right">Size</th>
                                 <th className="text-right">Modified</th>
+                                <th className="w-12"></th>
                             </tr>
                         </thead>
                         <tbody>
                             {items.map((item, i) => (
-                                <tr key={i} className="hover:bg-white/5 cursor-pointer" onClick={() => handleFileClick(item)}>
+                                <tr key={i} className="hover:bg-white/5 cursor-pointer group" onClick={() => handleFileClick(item)}>
                                     <td>{getIcon(item.type, item.name)}</td>
                                     <td className="font-medium">{item.name}</td>
-                                    <td className="text-right font-mono opacity-60 text-xs">
-                                        {item.type === 'file' ? (item.size / 1024 / 1024).toFixed(2) + ' MB' : '-'}
+                                    <td className="text-right font-mono opacity-60 text-xs text-nowrap">
+                                        {item.type === 'file' || item.type === 'image' ? (item.size / 1024 / 1024).toFixed(2) + ' MB' : '-'}
                                     </td>
-                                    <td className="text-right font-mono opacity-60 text-xs">
+                                    <td className="text-right font-mono opacity-60 text-xs text-nowrap">
                                         {item.mtime ? new Date(item.mtime).toLocaleDateString() : '-'}
+                                    </td>
+                                    <td>
+                                        <div className="dropdown dropdown-end group-hover:opacity-100 opacity-0 transition-opacity">
+                                            <label tabIndex={0} className="btn btn-ghost btn-xs btn-circle" onClick={e => e.stopPropagation()}>
+                                                <MoreHorizontal size={16}/>
+                                            </label>
+                                            <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 border border-white/10">
+                                                <li>
+                                                    <a onClick={(e) => handleDelete(e, item)} className="text-error">
+                                                        <Trash2 size={16}/> Delete
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                             {items.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="text-center py-8 opacity-50">Empty directory</td>
+                                    <td colSpan={5} className="text-center py-8 opacity-50">Empty directory</td>
                                 </tr>
                             )}
                         </tbody>
