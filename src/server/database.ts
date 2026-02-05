@@ -1108,7 +1108,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         // ActivityPub Notes
         createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number {
             const result = db.prepare(`
-                INSERT INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title)
+                INSERT OR IGNORE INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title)
                 VALUES (?, ?, ?, ?, ?, ?)
             `).run(artistId, noteId, noteType, contentId, contentSlug, contentTitle);
             return Number(result.lastInsertRowid);
