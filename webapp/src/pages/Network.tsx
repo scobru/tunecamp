@@ -160,7 +160,7 @@ export const Network = () => {
                             onClick={async () => {
                                 if (confirm("Do you want to synchronize all content with ActivityPub? This will update metadata and ensure visibility settings are correct on remote instances.")) {
                                     try {
-                                        const res = await API.syncActivityPub();
+                                        const res = await API.syncActivityPub() as { artists: number; notes: number };
                                         alert(`Sync complete! Processed ${res.artists} artists and ${res.notes} items.`);
                                     } catch (err: any) {
                                         alert("Sync failed: " + err.message);

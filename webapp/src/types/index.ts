@@ -107,6 +107,7 @@ export interface Post {
     publishedAt?: string;
     updatedAt: string;
     isPublic: boolean;
+    visibility?: 'public' | 'private' | 'unlisted';
 }
 
 export interface UnlockCode {

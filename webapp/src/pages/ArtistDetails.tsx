@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe, Trash2, Edit2, Shield } from 'lucide-react';
+import { Play, Disc, Globe, Trash2, Shield } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { Artist, Album, Post } from '../types';
@@ -50,7 +50,7 @@ export const ArtistDetails = () => {
         }
     };
 
-    const handleDeletePost = async (postId: number) => {
+    const handleDeletePost = async (postId: string) => {
         if (!confirm("Are you sure you want to delete this post? This will also remove it from the ActivityPub network.")) return;
         try {
             await API.deletePost(postId);
@@ -121,7 +121,7 @@ export const ArtistDetails = () => {
                                         <div>
                                             <div className="font-bold text-sm flex items-center gap-2">
                                                 {artist?.name}
-                                                {post.visibility === 'private' && <Shield size={12} className="text-warning" title="Private"/>}
+                                                {post.visibility === 'private' && <Shield size={12} className="text-warning"/>}
                                             </div>
                                             <div className="text-xs opacity-50">{new Date(post.createdAt).toLocaleDateString()}</div>
                                         </div>

@@ -39,7 +39,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         setError('');
 
         try {
-            await API.createPost(artistId, content);
+            await API.createPost(artistId, content, 'public');
             if (onPostCreated) onPostCreated();
             dialogRef.current?.close();
         } catch (e: any) {
