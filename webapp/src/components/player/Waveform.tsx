@@ -132,19 +132,27 @@ export const Waveform = ({
         setIsDragging(false);
     };
 
-    // Handle global mouse up to stop dragging even if mouse leaves canvas
+    // Handle global mouse events to fix seeking when mouse leaves canvas during drag
     useEffect(() => {
+        if (!isDragging) return;
+        
+        const handleGlobalMouseMove = (e: MouseEvent) => {
+            const percent = calculateSeekPercent(e.clientX);
+            onSeek(percent);
+        };
+        
         const handleGlobalMouseUp = () => {
-            if (isDragging) {
-                setIsDragging(false);
-            }
+            setIsDragging(false);
         };
 
-        if (isDragging) {
-            window.addEventListener('mouseup', handleGlobalMouseUp);
-            return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-        }
-    }, [isDragging]);
+        window.addEventListener('mousemove', handleGlobalMouseMove);
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+        
+        return () => {
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+        };
+    }, [isDragging, onSeek]);
 
     if (!waveformData) return null;
 

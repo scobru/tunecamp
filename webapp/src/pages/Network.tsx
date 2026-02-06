@@ -116,12 +116,18 @@ export const Network = () => {
         // Remove trailing slash from siteUrl if present
         const baseUrl = networkTrack.siteUrl.replace(/\/$/, '');
         
+        // Build the cover URL
+        const coverUrl = networkTrack.track.coverUrl || 
+                        networkTrack.track.coverImage || 
+                        (networkTrack.track.albumId ? `${baseUrl}/api/albums/${networkTrack.track.albumId}/cover` : undefined);
+        
         const track = {
             ...networkTrack.track,
             // PRIORITIZE EXISTING URLS from GunDB (which are already absolute)
             // Fallback to construction only if missing (legacy support)
             streamUrl: networkTrack.track.streamUrl || `${baseUrl}/api/tracks/${networkTrack.track.id}/stream`,
-            coverUrl: networkTrack.track.coverUrl || (networkTrack.track.albumId ? `${baseUrl}/api/albums/${networkTrack.track.albumId}/cover` : undefined)
+            coverUrl: coverUrl,
+            coverImage: coverUrl // Also set coverImage for PlayerBar fallback
         };
 
         playTrack(track, [track]); // Play as single track context for now
