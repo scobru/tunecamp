@@ -107,7 +107,8 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             const track = database.getTrack(id);
 
             if (!track) {
-                return res.status(404).json({ error: "Track not found" });
+                console.warn(`[Stream] Track ID ${id} not found in database. Recommend re-scan.`);
+                return res.status(404).json({ error: `Track ${id} not found locally. Please re-scan your library in the Admin panel.` });
             }
 
             // Security Check: Ensure track is public or user is admin
