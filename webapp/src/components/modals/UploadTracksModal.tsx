@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { UploadCloud, Music, X, Trash2 } from 'lucide-react';
 import type { Track } from '../../types';
@@ -56,7 +57,7 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
         
         try {
             await API.deleteTrack(trackId);
-            setExistingTracks(prev => prev.filter(t => t.id !== trackId));
+            setExistingTracks((prev: Track[]) => prev.filter((t: Track) => t.id !== trackId));
             if (onUploadComplete) onUploadComplete();
         } catch (e: any) {
             setError(e.message || 'Failed to delete track');
@@ -70,7 +71,7 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
     };
 
     const removeFile = (index: number) => {
-        setFiles(files.filter((_, i) => i !== index));
+        setFiles(files.filter((_: File, i: number) => i !== index));
     };
 
     const handleUpload = async (e: React.FormEvent) => {
@@ -152,7 +153,7 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
                                 <span className="label-text-alt uppercase font-bold opacity-50">Current Tracks</span>
                             </label>
                             <div className="bg-base-300/30 rounded p-2 max-h-40 overflow-y-auto space-y-1">
-                                {existingTracks.map((track) => (
+                                {existingTracks.map((track: Track) => (
                                     <div key={track.id} className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded border border-white/5">
                                         <div className="flex items-center gap-2 truncate">
                                             <Music size={12} className="text-secondary opacity-50"/> 
@@ -180,7 +181,7 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
                                 <span className="label-text-alt uppercase font-bold opacity-50 text-secondary">Files to Upload</span>
                             </label>
                             <div className="bg-base-200 rounded p-2 max-h-40 overflow-y-auto space-y-1">
-                                {files.map((file, i) => (
+                                {files.map((file: File, i: number) => (
                                     <div key={i} className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded">
                                         <div className="flex items-center gap-2 truncate">
                                             <Music size={12}/> {file.name}
