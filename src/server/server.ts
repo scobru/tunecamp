@@ -80,6 +80,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // DIAGNOSTIC LOGGING: Verify frontend file paths
     const webappPath = path.join(__dirname, "..", "..", "webapp");
     const webappDistPath = path.join(webappPath, "dist");
+    const webappPublicPath = path.join(webappPath, "public");
 
     // Robustly find a static file
     const findStaticFile = (filename: string) => {
