@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { usePlayerStore } from '../../stores/usePlayerStore';
 import API from '../../services/api';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, ListMusic, Shuffle, Repeat } from 'lucide-react';
@@ -97,14 +97,16 @@ export const PlayerBar = () => {
     }, [volume]);
 
     // Handle manual seek from waveform/progress bar
-    const handleSeek = (percent: number) => {
+    const handleSeek = useCallback((percent: number) => {
         if (audioRef.current) {
             const d = (Number.isFinite(duration) && duration > 0) ? duration : audioRef.current.duration;
             if (Number.isFinite(d) && d > 0) {
                 audioRef.current.currentTime = percent * d;
+            } else {
+                console.warn('Cannot seek: duration not available', { duration, audioDuration: audioRef.current.duration });
             }
         }
-    };
+    }, [duration]);
 
     if (!currentTrack) return <div className="fixed bottom-0 w-full h-24 bg-base-200 border-t border-white/5 flex items-center justify-center text-sm opacity-50 z-50">Select a track to play</div>;
 

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 
 interface WaveformProps {
     data: number[] | string | null | undefined;
@@ -21,8 +21,16 @@ export const Waveform = ({
     const [hoverX, setHoverX] = useState<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    // Parse data safely
-    const waveformData = typeof data === 'string' ? JSON.parse(data) : data;
+    // Parse data safely and memoize
+    const waveformData = useMemo(() => {
+        if (!data) return null;
+        try {
+            return typeof data === 'string' ? JSON.parse(data) : data;
+        } catch (e) {
+            console.error("Failed to parse waveform data", e);
+            return null;
+        }
+    }, [data]);
 
     const draw = () => {
         const canvas = canvasRef.current;
@@ -129,7 +137,7 @@ export const Waveform = ({
 
     const handleMouseLeave = () => {
         setHoverX(null);
-        setIsDragging(false);
+        // DO NOT stop dragging here, let global mouseUp handle it
     };
 
     // Handle global mouse events to fix seeking when mouse leaves canvas during drag
@@ -159,7 +167,7 @@ export const Waveform = ({
     return (
         <canvas 
             ref={canvasRef}
-            className="w-full h-full cursor-pointer opacity-80 hover:opacity-100 transition-opacity select-none"
+            className="w-full h-full cursor-pointer opacity-80 hover:opacity-100 transition-opacity select-none touch-none"
             style={{ height: `${height}px`, display: 'block' }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
