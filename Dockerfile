@@ -73,6 +73,9 @@ RUN npm ci --omit=dev && \
 COPY --from=builder /app/dist ./dist
 
 COPY --from=builder /app/webapp/dist ./webapp/dist
+# Explicitly copy PWA assets if they weren't bundled correctly
+COPY --from=builder /app/webapp/public/manifest.json ./webapp/dist/manifest.json
+COPY --from=builder /app/webapp/public/sw.js ./webapp/dist/sw.js
 COPY --from=builder /app/templates ./templates
 
 

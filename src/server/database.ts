@@ -162,7 +162,7 @@ export interface DatabaseService {
     updateTrackArtist(id: number, artistId: number | null): void;
     getTrackByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined;
     updateTrackTitle(id: number, title: string): void;
-    updateTrackPath(id: number, filePath: string, albumId: number): void;
+    updateTrackPath(id: number, filePath: string, albumId: number | null): void;
     updateTrackDuration(id: number, duration: number): void;
     updateTrackWaveform(id: number, waveform: string): void;
     deleteTrack(id: number): void;
@@ -785,7 +785,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.prepare("UPDATE tracks SET title = ? WHERE id = ?").run(title, id);
         },
 
-        updateTrackPath(id: number, filePath: string, albumId: number): void {
+        updateTrackPath(id: number, filePath: string, albumId: number | null): void {
             db.prepare("UPDATE tracks SET file_path = ?, album_id = ? WHERE id = ?").run(filePath, albumId, id);
         },
 

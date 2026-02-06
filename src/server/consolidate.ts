@@ -19,16 +19,17 @@ export class ConsolidationService {
         if (!track || !track.file_path) return false;
 
         const album = track.album_id ? this.database.getAlbum(track.album_id) : null;
-        const artist = track.artist_id ? this.database.getArtist(track.artist_id) : null;
-
-        if (!album || !artist) {
-            console.warn(`[Consolidate] Skipping track ${track.title}: Missing album or artist info`);
+        if (!album) {
+            console.warn(`[Consolidate] Skipping track ${track.title}: Missing album info`);
             return false;
         }
 
+        const trackArtist = track.artist_id ? this.database.getArtist(track.artist_id) : (album.artist_id ? this.database.getArtist(album.artist_id) : null);
+        const artistName = trackArtist?.name || "Unknown Artist";
+
         // 1. Calculate target directory: library/Artist - Album (Year)
         const targetDirName = formatAlbumDirectory(
-            artist.name,
+            artistName,
             album.title
         );
         const targetDir = path.join(this.rootDir, "library", targetDirName);

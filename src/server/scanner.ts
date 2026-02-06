@@ -317,13 +317,24 @@ export function createScanner(database: DatabaseService): ScannerService {
 
                 // We need artist/album to deduplicate safely
                 const dir = path.dirname(currentFilePath);
-                let albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
+                let detectedAlbumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
 
                 // If we found an existing record with same metadata, we'll update it instead of creating new
-                if (title && albumId) {
-                    const album = database.getAlbum(albumId);
+                if (title && detectedAlbumId) {
+                    const album = database.getAlbum(detectedAlbumId);
                     const artistId = album?.artist_id || null;
-                    existing = database.getTrackByMetadata(title, artistId, albumId);
+
+                    // 1. Try to find exact match
+                    existing = database.getTrackByMetadata(title, artistId, detectedAlbumId);
+
+                    // 2. If no exact match, try to find "loose" track (not in any album) to adopt
+                    if (!existing) {
+                        existing = database.getTrackByMetadata(title, artistId, null);
+                        if (existing) {
+                            console.log(`    [Scanner] Adopting loose track '${title}' into album ID ${detectedAlbumId}`);
+                        }
+                    }
+
                     if (existing) {
                         console.log(`    [Scanner] De-duplicated: found existing record for '${title}' at old path. Updating path.`);
                     }
@@ -332,20 +343,22 @@ export function createScanner(database: DatabaseService): ScannerService {
         }
 
         if (existing) {
+            const dir = path.dirname(currentFilePath);
+            const detectedAlbumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
+
             // Update path if changed (important for de-duplication)
             if (existing.file_path !== currentFilePath) {
-                database.updateTrackPath(existing.id, currentFilePath, existing.album_id || 0);
+                // Use detected albumId if possible, fallback to existing
+                database.updateTrackPath(existing.id, currentFilePath, detectedAlbumId || existing.album_id || null);
             }
             // ... (rest of the existing logic using currentFilePath instead of filePath)
             // console.log(`Debug: Checking existing track ${path.basename(currentFilePath)} - Waveform: ${existing.waveform ? 'Present' : 'Missing'}`);
-            const dir = path.dirname(currentFilePath);
-            const albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)); // Check parent too (e.g. tracks/)
 
             let needsUpdate = false;
 
-            if (albumId && !existing.album_id) {
-                console.log(`  Updating track album link: ${path.basename(currentFilePath)}`);
-                database.updateTrackAlbum(existing.id, albumId);
+            if (detectedAlbumId && (!existing.album_id || existing.album_id === 0)) {
+                console.log(`  Updating track album link: ${path.basename(currentFilePath)} -> ID ${detectedAlbumId}`);
+                database.updateTrackAlbum(existing.id, detectedAlbumId);
                 needsUpdate = true;
             }
 
@@ -418,8 +431,10 @@ export function createScanner(database: DatabaseService): ScannerService {
                     artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
                     console.log(`    [Library] Using metadata artist: ${common.artist}`);
                 } else {
-                    // No metadata artist - leave as "Unknown Artist" (no artistId)
-                    console.log(`    [Library] No metadata artist found`);
+                    // Try to find if an "Unknown Artist" already exists
+                    const unknownArtist = database.getArtistByName("Unknown Artist");
+                    artistId = unknownArtist ? unknownArtist.id : database.createArtist("Unknown Artist");
+                    console.log(`    [Library] No metadata artist found - using Unknown Artist`);
                 }
             } else if (albumId) {
                 // RELEASE MODE with album: use album's artist
@@ -457,6 +472,12 @@ export function createScanner(database: DatabaseService): ScannerService {
                                 console.log(`    [Heuristic] Inferring artist from folder: ${possibleArtist}`);
                             }
                         }
+                    }
+
+                    // FINAL FALLBACK
+                    if (!artistId) {
+                        const unknownArtist = database.getArtistByName("Unknown Artist");
+                        artistId = unknownArtist ? unknownArtist.id : database.createArtist("Unknown Artist");
                     }
                 }
             }
@@ -642,6 +663,10 @@ export function createScanner(database: DatabaseService): ScannerService {
             ignored: /(^|[\/\\])\../,
             persistent: true,
             ignoreInitial: true,
+            awaitWriteFinish: {
+                stabilityThreshold: 500,
+                pollInterval: 100
+            }
         });
 
         watcher.on("add", async (filePath: string) => {

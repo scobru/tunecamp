@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
-import { UploadCloud, Music, X } from 'lucide-react';
+import { UploadCloud, Music, X, Trash2 } from 'lucide-react';
+import type { Track } from '../../types';
 
 export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () => void }) => {
     const dialogRef = useRef<HTMLDialogElement>(null);
@@ -11,12 +11,19 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
     const [progress, setProgress] = useState(0); // Mock progress for now
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [existingTracks, setExistingTracks] = useState<Track[]>([]);
+    const [loadingExisting, setLoadingExisting] = useState(false);
 
     useEffect(() => {
         const handleOpen = (e: CustomEvent) => {
             if (e.detail) {
                 setReleaseSlug(e.detail.slug);
                 setReleaseTitle(e.detail.title);
+                if (e.detail.slug) {
+                    loadExistingTracks(e.detail.slug);
+                }
+            } else {
+                setExistingTracks([]);
             }
             setFiles([]);
             setError('');
@@ -29,6 +36,32 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
         document.addEventListener('open-upload-tracks-modal', handleOpen as EventListener);
         return () => document.removeEventListener('open-upload-tracks-modal', handleOpen as EventListener);
     }, []);
+
+    const loadExistingTracks = async (slug: string) => {
+        setLoadingExisting(true);
+        try {
+            const album = await API.getAlbum(slug);
+            if (album && album.tracks) {
+                setExistingTracks(album.tracks);
+            }
+        } catch (e) {
+            console.error('Failed to load existing tracks:', e);
+        } finally {
+            setLoadingExisting(false);
+        }
+    };
+
+    const handleDeleteTrack = async (trackId: string) => {
+        if (!confirm('Are you sure you want to delete this track? This will remove it from the database.')) return;
+        
+        try {
+            await API.deleteTrack(trackId);
+            setExistingTracks(prev => prev.filter(t => t.id !== trackId));
+            if (onUploadComplete) onUploadComplete();
+        } catch (e: any) {
+            setError(e.message || 'Failed to delete track');
+        }
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -112,18 +145,52 @@ export const UploadTracksModal = ({ onUploadComplete }: { onUploadComplete?: () 
                         />
                     </div>
 
-                    {files.length > 0 && (
-                        <div className="bg-base-200 rounded p-2 max-h-40 overflow-y-auto space-y-1">
-                            {files.map((file, i) => (
-                                <div key={i} className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded">
-                                    <div className="flex items-center gap-2 truncate">
-                                        <Music size={12}/> {file.name}
+                    {/* Existing Tracks List */}
+                    {releaseSlug && existingTracks.length > 0 && (
+                        <div className="space-y-2">
+                             <label className="label">
+                                <span className="label-text-alt uppercase font-bold opacity-50">Current Tracks</span>
+                            </label>
+                            <div className="bg-base-300/30 rounded p-2 max-h-40 overflow-y-auto space-y-1">
+                                {existingTracks.map((track) => (
+                                    <div key={track.id} className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded border border-white/5">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <Music size={12} className="text-secondary opacity-50"/> 
+                                            <span className="truncate">{track.title}</span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => handleDeleteTrack(track.id)} 
+                                            className="btn btn-ghost btn-xs btn-square text-error"
+                                            title="Delete track"
+                                        >
+                                            <Trash2 size={12}/>
+                                        </button>
                                     </div>
-                                    <button type="button" onClick={() => removeFile(i)} className="btn btn-ghost btn-xs btn-square">
-                                        <X size={12}/>
-                                    </button>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {loadingExisting && <div className="text-center py-2"><span className="loading loading-spinner loading-xs text-secondary"></span></div>}
+
+                    {files.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="label">
+                                <span className="label-text-alt uppercase font-bold opacity-50 text-secondary">Files to Upload</span>
+                            </label>
+                            <div className="bg-base-200 rounded p-2 max-h-40 overflow-y-auto space-y-1">
+                                {files.map((file, i) => (
+                                    <div key={i} className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <Music size={12}/> {file.name}
+                                        </div>
+                                        <button type="button" onClick={() => removeFile(i)} className="btn btn-ghost btn-xs btn-square">
+                                            <X size={12}/>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 

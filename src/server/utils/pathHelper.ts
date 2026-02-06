@@ -17,40 +17,37 @@ export function resolveFile(storedPath: string | null | undefined): string | nul
 
     // 3. Try relative logic
     // Common folders in this project
-    const markers = ['examples', 'music', 'releases', 'library', 'assets'];
+    const markers = ['examples', 'music', 'releases', 'library', 'tracks', 'audio', 'assets'];
 
     for (const marker of markers) {
-        if (normalized.includes(`/${marker}/`) || normalized.startsWith(`${marker}/`)) {
+        // Look for the marker as a directory segment
+        const markerSegment = `/${marker}/`;
+        if (normalized.includes(markerSegment) || normalized.startsWith(`${marker}/`)) {
             const idx = normalized.indexOf(marker);
             const relative = normalized.substring(idx);
 
             // Try relative to CWD
-            const candidateCwd = path.join(process.cwd(), relative);
+            const candidateCwd = path.resolve(process.cwd(), relative);
             if (fs.existsSync(candidateCwd)) return candidateCwd;
 
             // Try relative to root (Docker volume mapping often uses /music or /data)
             const candidateRoot = path.join("/", relative);
             if (fs.existsSync(candidateRoot)) return candidateRoot;
-
-            // Try resolving if storedPath was a Windows absolute path but we're on Linux (Docker)
-            // Stored: D:\shogun-2\tunecamp\music\...
-            // This is handled by the marker logic above if 'music' is a marker.
         }
     }
 
-    // DESPERATE FALLBACK: If it looks like a Windows path (D:\...) and we are on Linux/Darwin,
-    // try to match the relative part of the path from the current workspace
-    if (path.sep === '/' && (storedPath.includes(':\\') || storedPath.includes(':/'))) {
-        const parts = storedPath.split(/[\\/]/);
-        const tunecampIdx = parts.findIndex(p => p.toLowerCase() === 'tunecamp');
-        if (tunecampIdx !== -1) {
-            const relativeToProject = path.join(...parts.slice(tunecampIdx + 1));
-            const candidate = path.join(process.cwd(), relativeToProject);
+    // 4. DESPERATE FALLBACK for absolute paths in Docker
+    // If we are on Linux and the path looks like it should be in /music but isn't found
+    if (path.sep === '/' && !normalized.startsWith('/')) {
+        // Try prepending /music or /app/music if not there
+        const tryPrefixes = ['/music', '/app/music', '/app'];
+        for (const prefix of tryPrefixes) {
+            const candidate = path.join(prefix, normalized);
             if (fs.existsSync(candidate)) return candidate;
         }
     }
 
-    // 4. Try just basename in CWD (desperate fallback? No, too risky)
+    // 5. Basename fallback (very desperate, only if unique?) - skipped for now
 
     return null;
 }
