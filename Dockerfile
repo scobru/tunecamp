@@ -44,8 +44,10 @@ RUN npm run build
 
 # Build Frontend
 RUN cd webapp && npm install && npm run build
-# Ensure public assets are in dist (sometimes missed by Vite)
-RUN cp -r webapp/public/* webapp/dist/ 2>/dev/null || true
+# Ensure all public assets (manifest, sw, icons) are in dist
+RUN cp -v webapp/public/manifest.json webapp/dist/ 2>/dev/null || true
+RUN cp -v webapp/public/sw.js webapp/dist/ 2>/dev/null || true
+RUN cp -rv webapp/public/* webapp/dist/ 2>/dev/null || true
 
 # ===================================================
 # Production stage
@@ -71,11 +73,7 @@ RUN npm ci --omit=dev && \
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
-
 COPY --from=builder /app/webapp/dist ./webapp/dist
-# Explicitly copy PWA assets if they weren't bundled correctly
-COPY --from=builder /app/webapp/public/manifest.json ./webapp/dist/manifest.json
-COPY --from=builder /app/webapp/public/sw.js ./webapp/dist/sw.js
 COPY --from=builder /app/templates ./templates
 
 
