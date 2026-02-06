@@ -233,7 +233,7 @@ export function createArtistsRoutes(database: DatabaseService) {
                 links,
                 postParams,
                 coverImage,
-                albums,
+                albums: albums.map(a => ({ ...a, coverImage: a.cover_path })),
                 tracks: looseTracks,
             });
         } catch (error) {

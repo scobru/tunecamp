@@ -94,9 +94,17 @@ export function createAlbumsRoutes(database: DatabaseService) {
 
             const tracks = database.getTracks(album.id);
 
+            // Map tracks to include album cover info for the player
+            const mappedTracks = tracks.map(t => ({
+                ...t,
+                albumId: album.id,
+                coverImage: album.cover_path ? `/api/albums/${album.id}/cover` : undefined
+            }));
+
             res.json({
                 ...album,
-                tracks,
+                coverImage: album.cover_path,
+                tracks: mappedTracks,
             });
         } catch (error) {
             console.error("Error getting album:", error);
