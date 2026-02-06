@@ -5,7 +5,6 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, Mic2, ListMusic, Shuffle, 
 import { Waveform } from './Waveform';
 import { LyricsPanel } from './LyricsPanel';
 import { QueuePanel } from './QueuePanel';
-import { StringUtils } from '../../utils/stringUtils';
 import { ScrollingText } from '../ui/ScrollingText';
 
 export const PlayerBar = () => {
@@ -174,44 +173,35 @@ export const PlayerBar = () => {
                         </button>
                     </div>
 
-                    {/* Progress / Waveform */}
-                    <div className="w-full flex items-center gap-3 text-xs font-mono opacity-100 h-10 lg:h-12 relative group">
-                         {currentTrack.waveform ? (
-                             <div className="flex items-center w-full gap-2">
-                                 <span className="min-w-[40px] text-right opacity-50">
-                                     {Number.isFinite(currentTime) ? new Date(currentTime * 1000).toISOString().substr(14, 5) : '0:00'}
-                                 </span>
+                    {/* Progress Bar + Decorative Waveform */}
+                    <div className="w-full flex items-center gap-3 text-xs font-mono h-10 lg:h-12 relative">
+                         {/* Decorative waveform background */}
+                         {currentTrack.waveform && (
+                             <div className="absolute inset-0 opacity-30 pointer-events-none">
                                  <Waveform 
                                     data={currentTrack.waveform} 
                                     progress={progress / 100} 
-                                    onSeek={handleSeek}
                                     height={40}
                                     colorPlayed="oklch(var(--color-primary))" 
+                                    colorRemaining="rgba(255, 255, 255, 0.1)"
                                  />
-                                 <span className="min-w-[40px] opacity-50">
-                                     {Number.isFinite(duration) && duration > 0 ? new Date(duration * 1000).toISOString().substr(14, 5) : '0:00'}
-                                 </span>
                              </div>
-                         ) : (
-                            // Fallback simple progress bar
-                            <div className="flex items-center w-full gap-2">
-                                <span className="min-w-[40px] text-right opacity-50">
-                                    {StringUtils.formatTimeAgo(0, currentTime * 1000).replace(' ago', '') === 'just now' 
-                                        ? '0:00' 
-                                        : (Number.isFinite(currentTime) ? new Date(currentTime * 1000).toISOString().substr(14, 5) : '0:00')}
-                                </span>
-                                <input 
-                                    type="range" 
-                                    className="range range-xs range-primary flex-1" 
-                                    min="0" max="100" 
-                                    value={progress || 0}
-                                    onChange={(e) => handleSeek(parseFloat(e.target.value) / 100)}
-                                />
-                                <span className="min-w-[40px] opacity-50">
-                                    {Number.isFinite(duration) && duration > 0 ? new Date(duration * 1000).toISOString().substr(14, 5) : '0:00'}
-                                </span>
-                            </div>
                          )}
+                         
+                         {/* Always use simple progress bar for seeking */}
+                         <span className="min-w-[40px] text-right opacity-50 z-10">
+                             {Number.isFinite(currentTime) ? new Date(currentTime * 1000).toISOString().substr(14, 5) : '0:00'}
+                         </span>
+                         <input 
+                             type="range" 
+                             className="range range-xs range-primary flex-1 z-10" 
+                             min="0" max="100" 
+                             value={progress || 0}
+                             onChange={(e) => handleSeek(parseFloat(e.target.value) / 100)}
+                         />
+                         <span className="min-w-[40px] opacity-50 z-10">
+                             {Number.isFinite(duration) && duration > 0 ? new Date(duration * 1000).toISOString().substr(14, 5) : '0:00'}
+                         </span>
                     </div>
                 </div>
 
