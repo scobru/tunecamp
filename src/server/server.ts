@@ -210,6 +210,27 @@ export async function startServer(config: ServerConfig): Promise<void> {
     console.log(`   ✅ Using webappPath for static files (fallback)`);
     app.use(express.static(webappPath));
 
+    // Explicitly serve sw.js and manifest.json to avoid MIME type issues
+    app.get("/sw.js", (req, res) => {
+        const paths = [swJsPath, path.join(webappDistPath, "sw.js"), path.join(webappPublicPath, "sw.js")];
+        const foundPath = paths.find(p => fs.existsSync(p));
+        if (foundPath) {
+            console.log(`✅ Serving sw.js from: ${foundPath}`);
+            return res.sendFile(path.resolve(foundPath));
+        }
+        res.status(404).send("sw.js not found");
+    });
+
+    app.get("/manifest.json", (req, res) => {
+        const paths = [manifestPath, path.join(webappDistPath, "manifest.json"), path.join(webappPublicPath, "manifest.json")];
+        const foundPath = paths.find(p => fs.existsSync(p));
+        if (foundPath) {
+            console.log(`✅ Serving manifest.json from: ${foundPath}`);
+            return res.sendFile(path.resolve(foundPath));
+        }
+        res.status(404).json({ error: "manifest.json not found" });
+    });
+
     // SPA fallback - serve index.html for all non-API routes
     const indexHtmlPath = fs.existsSync(path.join(webappPath, "index.html"))
         ? path.join(webappPath, "index.html")

@@ -28,7 +28,21 @@ export function resolveFile(storedPath: string | null | undefined): string | nul
             const candidateCwd = path.join(process.cwd(), relative);
             if (fs.existsSync(candidateCwd)) return candidateCwd;
 
-            // Try relative to ../../ (if we are deep in src/server/utils - wait, process.cwd is likely project root)
+            // Try resolving if storedPath was a Windows absolute path but we're on Linux (Docker)
+            // Stored: D:\shogun-2\tunecamp\music\...
+            // This is handled by the marker logic above if 'music' is a marker.
+        }
+    }
+
+    // DESPERATE FALLBACK: If it looks like a Windows path (D:\...) and we are on Linux/Darwin,
+    // try to match the relative part of the path from the current workspace
+    if (path.sep === '/' && (storedPath.includes(':\\') || storedPath.includes(':/'))) {
+        const parts = storedPath.split(/[\\/]/);
+        const tunecampIdx = parts.findIndex(p => p.toLowerCase() === 'tunecamp');
+        if (tunecampIdx !== -1) {
+            const relativeToProject = path.join(...parts.slice(tunecampIdx + 1));
+            const candidate = path.join(process.cwd(), relativeToProject);
+            if (fs.existsSync(candidate)) return candidate;
         }
     }
 
