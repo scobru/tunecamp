@@ -32,7 +32,34 @@ function getDurationFromFfmpeg(filePath: string): Promise<number | null> {
     });
 }
 
+/**
+ * Convert a WAV file to MP3 using ffmpeg
+ * Returns the path to the new MP3 file
+ */
+function convertWavToMp3(wavPath: string, bitrate: string = '320k'): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const mp3Path = wavPath.replace(/\.wav$/i, '.mp3');
+
+        console.log(`    [Scanner] Converting WAV to MP3: ${path.basename(wavPath)}`);
+
+        ffmpeg(wavPath)
+            .audioBitrate(bitrate)
+            .audioCodec('libmp3lame')
+            .format('mp3')
+            .on('end', () => {
+                console.log(`    [Scanner] Converted to: ${path.basename(mp3Path)}`);
+                resolve(mp3Path);
+            })
+            .on('error', (err) => {
+                console.error(`    [Scanner] Conversion failed: ${err.message}`);
+                reject(err);
+            })
+            .save(mp3Path);
+    });
+}
+
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
+// Note: WAV files will be auto-converted to MP3 on import for better streaming support
 
 interface ArtistConfig {
     name: string;
@@ -256,20 +283,40 @@ export function createScanner(database: DatabaseService): ScannerService {
     }
 
     async function processAudioFile(filePath: string): Promise<void> {
-        const ext = path.extname(filePath).toLowerCase();
+        let currentFilePath = filePath;
+        let ext = path.extname(currentFilePath).toLowerCase();
+
         if (!AUDIO_EXTENSIONS.includes(ext)) return;
 
+        // Auto-convert WAV to MP3 on import
+        if (ext === '.wav') {
+            try {
+                const mp3Path = await convertWavToMp3(currentFilePath);
+                // If conversion successful, use the new MP3 path
+                if (await fs.pathExists(mp3Path)) {
+                    // Remove original WAV to keep library clean
+                    await fs.remove(currentFilePath);
+                    currentFilePath = mp3Path;
+                    ext = '.mp3';
+                    console.log(`    [Scanner] Switched to converted MP3: ${path.basename(currentFilePath)}`);
+                }
+            } catch (err) {
+                console.error(`    [Scanner] Could not convert WAV, proceeding with original: ${err instanceof Error ? err.message : String(err)}`);
+            }
+        }
+
         // Skip if already in database, but verify album/artist linking
-        const existing = database.getTrackByPath(filePath);
+        const existing = database.getTrackByPath(currentFilePath);
         if (existing) {
-            // console.log(`Debug: Checking existing track ${path.basename(filePath)} - Waveform: ${existing.waveform ? 'Present' : 'Missing'}`);
-            const dir = path.dirname(filePath);
+            // ... (rest of the existing logic using currentFilePath instead of filePath)
+            // console.log(`Debug: Checking existing track ${path.basename(currentFilePath)} - Waveform: ${existing.waveform ? 'Present' : 'Missing'}`);
+            const dir = path.dirname(currentFilePath);
             const albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)); // Check parent too (e.g. tracks/)
 
             let needsUpdate = false;
 
             if (albumId && !existing.album_id) {
-                console.log(`  Updating track album link: ${path.basename(filePath)}`);
+                console.log(`  Updating track album link: ${path.basename(currentFilePath)}`);
                 database.updateTrackAlbum(existing.id, albumId);
                 needsUpdate = true;
             }
@@ -277,13 +324,13 @@ export function createScanner(database: DatabaseService): ScannerService {
             // If track has no artist, try to get from metadata
             if (!existing.artist_id) {
                 try {
-                    const metadata = await parseFile(filePath);
+                    const metadata = await parseFile(currentFilePath);
                     const common = metadata.common;
                     if (common.artist) {
                         const existingArtist = database.getArtistByName(common.artist);
                         const artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
                         database.updateTrackArtist(existing.id, artistId);
-                        console.log(`  Updating track artist link: ${path.basename(filePath)} -> ${common.artist}`);
+                        console.log(`  Updating track artist link: ${path.basename(currentFilePath)} -> ${common.artist}`);
                     }
                 } catch (e) {
                     // Ignore metadata errors for existing tracks
@@ -293,24 +340,24 @@ export function createScanner(database: DatabaseService): ScannerService {
             // Check if waveform is missing
             if (!existing.waveform) {
                 // Generate waveform in background
-                WaveformService.generateWaveform(filePath)
+                WaveformService.generateWaveform(currentFilePath)
                     .then((peaks: number[]) => {
                         const json = JSON.stringify(peaks);
                         database.updateTrackWaveform(existing.id, json);
-                        console.log(`    [Backfill] Generated waveform for: ${path.basename(filePath)}`);
+                        console.log(`    [Backfill] Generated waveform for: ${path.basename(currentFilePath)}`);
                     })
                     .catch((err: Error) => {
-                        console.error(`    [Backfill] Failed to generate waveform for ${path.basename(filePath)}:`, err.message);
+                        console.error(`    [Backfill] Failed to generate waveform for ${path.basename(currentFilePath)}:`, err.message);
                     });
             }
 
             // Check if duration is missing or suspiciously short (likely wrong metadata)
             const needsDurationBackfill = !existing.duration || (existing.duration > 0 && existing.duration < 90);
             if (needsDurationBackfill) {
-                getDurationFromFfmpeg(filePath).then((duration) => {
+                getDurationFromFfmpeg(currentFilePath).then((duration) => {
                     if (duration && duration > 0) {
                         database.updateTrackDuration(existing.id, duration);
-                        console.log(`    [Backfill] Updated duration for: ${path.basename(filePath)} -> ${duration}s`);
+                        console.log(`    [Backfill] Updated duration for: ${path.basename(currentFilePath)} -> ${duration}s`);
                     }
                 }).catch(e => {
                     // ignore
@@ -321,11 +368,11 @@ export function createScanner(database: DatabaseService): ScannerService {
         }
 
         try {
-            console.log("  Processing track: " + path.basename(filePath));
-            const metadata = await parseFile(filePath);
+            console.log("  Processing track: " + path.basename(currentFilePath));
+            const metadata = await parseFile(currentFilePath);
             const common = metadata.common;
             const format = metadata.format;
-            const dir = path.dirname(filePath);
+            const dir = path.dirname(currentFilePath);
 
             // 1. Try to get Album ID from folder map (from release.yaml)
             let albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
@@ -386,10 +433,6 @@ export function createScanner(database: DatabaseService): ScannerService {
                     albumId = existingAlbum.id;
                 } else {
                     // Create new album from metadata
-                    // ... (cover finding logic same as before)
-                    let coverPath: string | null = null;
-                    // ...
-
                     albumId = database.createAlbum({
                         title: common.album,
                         slug: common.album.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
@@ -418,7 +461,7 @@ export function createScanner(database: DatabaseService): ScannerService {
 
 
             // Prefer ffprobe for duration (reads actual stream; metadata tags are often wrong)
-            let duration: number | null = await getDurationFromFfmpeg(filePath);
+            let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
             if (duration == null || !Number.isFinite(duration) || duration <= 0) {
                 const metaDuration = format.duration;
                 const parsed = metaDuration != null ? parseFloat(String(metaDuration)) : NaN;
@@ -430,12 +473,12 @@ export function createScanner(database: DatabaseService): ScannerService {
 
             // Create track
             const trackId = database.createTrack({
-                title: common.title || path.basename(filePath, ext),
+                title: common.title || path.basename(currentFilePath, ext),
                 album_id: albumId,
                 artist_id: artistId,
                 track_num: common.track?.no || null,
                 duration: duration || null,
-                file_path: filePath,
+                file_path: currentFilePath,
                 format: format.codec || ext.substring(1),
                 bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
                 sample_rate: format.sampleRate || null,
@@ -443,19 +486,18 @@ export function createScanner(database: DatabaseService): ScannerService {
             });
 
             // Generate waveform in background
-            // Generate waveform in background
-            WaveformService.generateWaveform(filePath)
+            WaveformService.generateWaveform(currentFilePath)
                 .then((peaks: number[]) => {
                     const json = JSON.stringify(peaks);
                     database.updateTrackWaveform(trackId, json);
-                    console.log(`    Generated waveform for: ${path.basename(filePath)}`);
+                    console.log(`    Generated waveform for: ${path.basename(currentFilePath)}`);
                 })
                 .catch((err: Error) => {
-                    console.error(`    Failed to generate waveform for ${path.basename(filePath)}:`, err.message);
+                    console.error(`    Failed to generate waveform for ${path.basename(currentFilePath)}:`, err.message);
                 });
 
         } catch (error) {
-            console.error("  Error processing " + filePath + ":", error);
+            console.error("  Error processing " + currentFilePath + ":", error);
         }
     }
 
