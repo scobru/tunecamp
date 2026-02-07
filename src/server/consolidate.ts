@@ -63,7 +63,7 @@ export class ConsolidationService {
         const targetPath = path.join(targetDir, targetFileName);
 
         // 3. Move file if path is different
-        if (path.resolve(track.file_path) === path.resolve(targetPath)) {
+        if (path.resolve(this.rootDir, track.file_path) === path.resolve(targetPath)) {
             return true;
         }
 
@@ -80,20 +80,20 @@ export class ConsolidationService {
             }
 
             console.log(`[Consolidate] Moving: ${path.basename(track.file_path)} -> ${targetPath}`);
-            await fs.move(track.file_path, targetPath, { overwrite: true });
+            await fs.move(path.join(this.rootDir, track.file_path), targetPath, { overwrite: true });
 
             // 4. Update database
             this.database.updateTrackPath(trackId, targetPath, album.id);
 
             // 5. Consolidate cover if it exists
-            if (album.cover_path && await fs.pathExists(album.cover_path)) {
+            if (album.cover_path && await fs.pathExists(path.join(this.rootDir, album.cover_path))) {
                 const coverExt = getFileExtension(album.cover_path);
                 const standardCoverName = getStandardCoverFilename(coverExt);
                 const targetCoverPath = path.join(targetDir, standardCoverName);
 
-                if (path.resolve(album.cover_path) !== path.resolve(targetCoverPath)) {
+                if (path.resolve(this.rootDir, album.cover_path) !== path.resolve(targetCoverPath)) {
                     console.log(`[Consolidate] Moving cover: ${path.basename(album.cover_path)} -> ${targetCoverPath}`);
-                    await fs.move(album.cover_path, targetCoverPath, { overwrite: true });
+                    await fs.move(path.join(this.rootDir, album.cover_path), targetCoverPath, { overwrite: true });
                     this.database.updateAlbumCover(album.id, targetCoverPath);
                 }
             }
