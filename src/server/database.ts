@@ -675,12 +675,23 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateAlbumTitle(id: number, title: string): void {
             // Also update slug to match scanner behavior
             const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-            // Handle uniqueness collision? 
-            // If another album has this slug, we might fail constraint. 
-            // Ideally we try-catch or check first.
-            // For now, let's try direct update. 
-            // If it fails, the user will get an error, which is better than silent failure.
-            db.prepare("UPDATE albums SET title = ?, slug = ? WHERE id = ?").run(title, slug, id);
+
+            let finalSlug = slug;
+            let attempt = 0;
+            while (attempt < 100) {
+                try {
+                    db.prepare("UPDATE albums SET title = ?, slug = ? WHERE id = ?").run(title, finalSlug, id);
+                    return;
+                } catch (e: any) {
+                    if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
+                        attempt++;
+                        finalSlug = `${slug}-${attempt}`;
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+            throw new Error("Could not create unique slug for album rename");
         },
 
         updateAlbumCover(id: number, coverPath: string): void {

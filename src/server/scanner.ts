@@ -373,6 +373,14 @@ export function createScanner(database: DatabaseService): ScannerService {
                 const mp3Path = currentFilePath.replace(/\.wav$/i, '.mp3');
 
                 const existingMp3Track = database.getTrackByPath(path.relative(musicDir, mp3Path));
+
+                // Check if we have a stale WAV track in DB and remove it
+                const staleWavTrack = database.getTrackByPath(path.relative(musicDir, filePath));
+                if (staleWavTrack) {
+                    console.log(`    [Scanner] Removing stale WAV track entry: ${path.basename(filePath)}`);
+                    database.deleteTrack(staleWavTrack.id);
+                }
+
                 if (await fs.pathExists(mp3Path) && existingMp3Track) {
                     return { originalPath: filePath, success: true, message: "MP3 already exists and processed.", convertedPath: mp3Path };
                 }
@@ -399,19 +407,23 @@ export function createScanner(database: DatabaseService): ScannerService {
 
         let existing = database.getTrackByPath(path.relative(musicDir, currentFilePath));
 
+        // Determine album ID from folder map
+        const dir = path.dirname(currentFilePath);
+        const albumId = folderToAlbumMap.get(dir) || null;
+
         if (!existing) {
             try {
                 const metadata = await parseFileWithRetry(currentFilePath);
                 const title = metadata.common.title || path.basename(currentFilePath, path.extname(currentFilePath));
                 const artistName = metadata.common.artist;
-                
+
                 let artistId: number | null = null;
                 if (artistName) {
                     const existingArtist = database.getArtistByName(artistName);
                     artistId = existingArtist ? existingArtist.id : null;
                 }
 
-                existing = database.getTrackByMetadata(title, artistId, null);
+                existing = database.getTrackByMetadata(title, artistId, albumId);
                 if (existing) {
                     console.log(`    [Scanner] De-duplicated: found existing record for '${title}' at old path. Updating path.`);
                 }
@@ -420,7 +432,13 @@ export function createScanner(database: DatabaseService): ScannerService {
 
         if (existing) {
             if (existing.file_path !== path.relative(musicDir, currentFilePath)) {
-                database.updateTrackPath(existing.id, path.relative(musicDir, currentFilePath), null);
+                database.updateTrackPath(existing.id, path.relative(musicDir, currentFilePath), albumId);
+            }
+
+            // Fix album linking for existing tracks
+            if (existing.album_id !== albumId) {
+                database.updateTrackAlbum(existing.id, albumId);
+                console.log(`    [Scanner] Linked track to album: ${existing.title} -> Album ID ${albumId}`);
             }
 
             if (!existing.waveform) {
@@ -452,7 +470,7 @@ export function createScanner(database: DatabaseService): ScannerService {
                 const unknownArtist = database.getArtistByName("Unknown Artist");
                 artistId = unknownArtist ? unknownArtist.id : database.createArtist("Unknown Artist");
             }
-            
+
             let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
             if (duration == null || !Number.isFinite(duration) || duration <= 0) {
                 const metaDuration = format.duration;
@@ -465,7 +483,7 @@ export function createScanner(database: DatabaseService): ScannerService {
 
             const trackId = database.createTrack({
                 title: common.title || path.basename(currentFilePath, ext),
-                album_id: null, // Tracks are created without an album
+                album_id: albumId, // Linked to album from release.yaml
                 artist_id: artistId,
                 track_num: common.track?.no || null,
                 duration: duration || null,

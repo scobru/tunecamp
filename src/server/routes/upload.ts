@@ -166,7 +166,7 @@ export function createUploadRoutes(
                 }
 
                 // Trigger rescan (async)
-                scanner.scanDirectory(musicDir);
+                // scanner.scanDirectory(musicDir); // REMOVED: Triggers full re-scan, causing timeouts. Watcher handles this.
             }
 
             res.json({
