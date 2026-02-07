@@ -433,13 +433,18 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Migration: Add visibility to albums
     try {
-        db.exec(`ALTER TABLE albums ADD COLUMN visibility TEXT DEFAULT 'private'`);
-        // Backfill based on is_public
-        db.prepare("UPDATE albums SET visibility = 'public' WHERE is_public = 1").run();
-        db.prepare("UPDATE albums SET visibility = 'private' WHERE is_public = 0").run();
-        console.log("📦 Migrated database: added visibility to albums");
+        const columns = db.pragma("table_info(albums)") as any[];
+        const hasVisibility = columns.some(c => c.name === "visibility");
+
+        if (!hasVisibility) {
+            db.exec(`ALTER TABLE albums ADD COLUMN visibility TEXT DEFAULT 'private'`);
+            // Backfill based on is_public
+            db.prepare("UPDATE albums SET visibility = 'public' WHERE is_public = 1").run();
+            db.prepare("UPDATE albums SET visibility = 'private' WHERE is_public = 0").run();
+            console.log("📦 Migrated database: added visibility to albums");
+        }
     } catch (e) {
-        // Column already exists
+        console.warn("⚠️  Migration warning (albums.visibility):", e);
     }
 
     // Migration: Add type and year to albums
