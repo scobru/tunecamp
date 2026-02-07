@@ -126,8 +126,8 @@ export function createUploadRoutes(
 
             console.log(`📤 Uploaded ${files.length} track(s)`);
 
-            // Trigger rescan to process new files
-            await scanner.scanDirectory(musicDir);
+            // Trigger rescan to process new files (async to avoid 504)
+            scanner.scanDirectory(musicDir);
 
             res.json({
                 message: `Uploaded ${files.length} file(s)`,
@@ -186,8 +186,8 @@ export function createUploadRoutes(
                     console.log(`📀 Updated cover for album: ${album.title}`);
                 }
 
-                // Trigger rescan
-                await scanner.scanDirectory(musicDir);
+                // Trigger rescan (async)
+                scanner.scanDirectory(musicDir);
             }
 
             res.json({

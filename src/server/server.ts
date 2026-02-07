@@ -92,7 +92,10 @@ export async function startServer(config: ServerConfig): Promise<void> {
             path.join(process.cwd(), "webapp", "public", filename),
             path.join(process.cwd(), "webapp", filename),
             path.join(process.cwd(), "dist", "webapp", "dist", filename), // Some Docker setups
-            path.join(__dirname, "..", "..", "webapp", "public", filename)
+            "/app/webapp/dist/" + filename,
+            "/app/webapp/public/" + filename, // Explicit absolute path for Docker
+            path.join(__dirname, "..", "..", "webapp", "public", filename),
+            path.join(__dirname, "..", "..", "webapp", "dist", filename)
         ];
         const found = candidates.find(p => fs.existsSync(p));
         if (!found) {

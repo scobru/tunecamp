@@ -190,6 +190,16 @@ export const AlbumDetails = () => {
                                         <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-white/10">
                                             <li><a onClick={() => handleAddToPlaylist(track.id)}><Plus size={16}/> Add to Playlist</a></li>
                                             <li><a><Heart size={16}/> Like Song</a></li>
+                                            {isAdmin && (
+                                                <li>
+                                                    <a onClick={(e) => {
+                                                        e.preventDefault();
+                                                        document.dispatchEvent(new CustomEvent('open-admin-track-modal', { detail: track }));
+                                                    }} className="text-primary font-medium">
+                                                        <Music size={16}/> Edit Metadata
+                                                    </a>
+                                                </li>
+                                            )}
                                             <li><a><Share2 size={16}/> Share</a></li>
                                         </ul>
                                     </div>

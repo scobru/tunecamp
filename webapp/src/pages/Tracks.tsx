@@ -142,21 +142,31 @@ export const Tracks = () => {
                                             <li><a onClick={() => handleAddToPlaylist(track.id)}><Plus size={16}/> Add to Playlist</a></li>
                                              <li><a><Heart size={16}/> Like Song</a></li>
                                              {isAdminAuthenticated && (
-                                                 <li>
-                                                     <a onClick={async (e) => {
-                                                         e.preventDefault();
-                                                         if (confirm(`Are you sure you want to delete "${track.title}"? This will remove it from the library database and disk.`)) {
-                                                             try {
-                                                                 await API.deleteTrack(track.id, true);
-                                                                 setTracks(tracks.filter(t => t.id !== track.id));
-                                                             } catch (err: any) {
-                                                                 alert("Failed to delete track: " + err.message);
-                                                             }
-                                                         }
-                                                     }} className="text-error">
-                                                         <Trash2 size={16}/> Delete Track
-                                                     </a>
-                                                 </li>
+                                                 <>
+                                                     <li>
+                                                         <a onClick={(e) => {
+                                                             e.preventDefault();
+                                                             document.dispatchEvent(new CustomEvent('open-admin-track-modal', { detail: track }));
+                                                         }} className="text-primary font-medium">
+                                                             <Music size={16}/> Edit Metadata
+                                                         </a>
+                                                     </li>
+                                                     <li>
+                                                         <a onClick={async (e) => {
+                                                              e.preventDefault();
+                                                              if (confirm(`Are you sure you want to delete "${track.title}"? This will remove it from the library database and disk.`)) {
+                                                                  try {
+                                                                      await API.deleteTrack(track.id, true);
+                                                                      setTracks(tracks.filter(t => t.id !== track.id));
+                                                                  } catch (err: any) {
+                                                                      alert("Failed to delete track: " + err.message);
+                                                                  }
+                                                              }
+                                                         }} className="text-error">
+                                                             <Trash2 size={16}/> Delete Track
+                                                         </a>
+                                                     </li>
+                                                 </>
                                              )}
                                         </ul>
                                     </div>

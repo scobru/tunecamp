@@ -320,11 +320,10 @@ export function createScanner(database: DatabaseService): ScannerService {
                 const mp3Path = await convertWavToMp3(currentFilePath);
                 // If conversion successful, use the new MP3 path
                 if (await fs.pathExists(mp3Path)) {
-                    // Remove original WAV to keep library clean
-                    await fs.remove(currentFilePath);
+                    // Keep original WAV for downloads, but switch scanner to MP3 for streaming
                     currentFilePath = mp3Path;
                     ext = '.mp3';
-                    console.log(`    [Scanner] Switched to converted MP3: ${path.basename(currentFilePath)}`);
+                    console.log(`    [Scanner] Switched to converted MP3: ${path.basename(currentFilePath)} (Keeping original WAV)`);
                 }
             } catch (err) {
                 console.error(`    [Scanner] Could not convert WAV, proceeding with original: ${err instanceof Error ? err.message : String(err)}`);

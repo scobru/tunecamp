@@ -94,7 +94,14 @@ export const API = {
         return url;
     },
     getLyrics: (trackId: string) => handleResponse(api.get<{ lyrics: string | { text: string }[] }>(`/tracks/${trackId}/lyrics`)),
-    recordPlay: (trackId: string) => handleResponse(api.post(`/stats/library/play/${trackId}`)),
+    recordPlay: (trackId: string | number) => {
+        // Only record play for database tracks (numeric IDs)
+        // prevents 404 for raw files in browser section
+        if (typeof trackId === 'string' && isNaN(parseInt(trackId, 10))) {
+            return Promise.resolve({ success: false, ignored: true });
+        }
+        return handleResponse(api.post(`/stats/library/play/${trackId}`));
+    },
 
     // --- Stats ---
     getRecentPlays: (limit = 50) => handleResponse(api.get<any[]>(`/stats/library/recent?limit=${limit}`)),

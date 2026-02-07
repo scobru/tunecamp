@@ -8,6 +8,7 @@ import { AuthModal } from '../modals/AuthModal';
 import { PlaylistModal } from '../modals/PlaylistModal';
 import { UnlockModal } from '../modals/UnlockModal';
 import { ArtistKeysModal } from '../modals/ArtistKeysModal';
+import { AdminTrackModal } from '../modals/AdminTrackModal';
 
 export const MainLayout = () => {
     const [bgUrl, setBgUrl] = useState('');
@@ -45,6 +46,7 @@ export const MainLayout = () => {
             <PlaylistModal />
             <UnlockModal />
             <ArtistKeysModal />
+            <AdminTrackModal onTrackUpdated={() => window.location.reload()} />
         </div>
     );
 };
