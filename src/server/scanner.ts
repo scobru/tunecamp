@@ -113,8 +113,13 @@ interface ExternalLink {
     url: string;
 }
 
+interface ScanResult {
+    successful: Array<{ originalPath: string; message: string; convertedPath?: string }>;
+    failed: Array<{ originalPath: string; message: string }>;
+}
+
 export interface ScannerService {
-    scanDirectory(dir: string): Promise<void>;
+    scanDirectory(dir: string): Promise<ScanResult>;
     startWatching(dir: string): void;
     stopWatching(): void;
 }
@@ -122,7 +127,7 @@ export interface ScannerService {
 export function createScanner(database: DatabaseService): ScannerService {
     let watcher: FSWatcher | null = null;
     let isScanning = false;
-    let pendingScan: Promise<void> | null = null;
+    let pendingScan: Promise<ScanResult> | null = null;
     // Map directory paths to album IDs to efficiently link tracks
     const folderToAlbumMap = new Map<string, number>();
     // Map directory paths to artist IDs
@@ -140,8 +145,8 @@ export function createScanner(database: DatabaseService): ScannerService {
                     let artistId: number;
                     // Use avatar field, fallback to image for legacy support
                     const avatarPath = config.avatar
-                        ? path.resolve(rootDir, config.avatar)
-                        : (config.image ? path.resolve(rootDir, config.image) : undefined);
+                        ? path.relative(rootDir, path.resolve(rootDir, config.avatar))
+                        : (config.image ? path.relative(rootDir, path.resolve(rootDir, config.image)) : undefined);
 
                     if (existingArtist) {
                         artistId = existingArtist.id;
@@ -188,7 +193,7 @@ export function createScanner(database: DatabaseService): ScannerService {
         }
     }
 
-    async function processReleaseConfig(filePath: string): Promise<void> {
+    async function processReleaseConfig(filePath: string, musicDir: string): Promise<void> {
         try {
             const dir = path.dirname(filePath);
             const content = await fs.readFile(filePath, "utf-8");
@@ -222,10 +227,13 @@ export function createScanner(database: DatabaseService): ScannerService {
                 }
             }
 
-            // Resolve cover path
+            // Resolve cover path to be relative to the music root
             let coverPath: string | null = null;
             if (config.cover) {
-                coverPath = path.resolve(dir, config.cover);
+                const absoluteCoverPath = path.resolve(dir, config.cover);
+                if (await fs.pathExists(absoluteCoverPath)) {
+                    coverPath = path.relative(musicDir, absoluteCoverPath);
+                }
             } else {
                 // Try common cover names, starting with Gleam-defined standard
                 const standardCoverJpg = getStandardCoverFilename("jpg");
@@ -234,7 +242,7 @@ export function createScanner(database: DatabaseService): ScannerService {
                 for (const name of coverNames) {
                     const p = path.resolve(dir, name);
                     if (await fs.pathExists(p)) {
-                        coverPath = p;
+                        coverPath = path.relative(musicDir, p);
                         break;
                     }
                 }
@@ -310,40 +318,56 @@ export function createScanner(database: DatabaseService): ScannerService {
         }
     }
 
-    async function processAudioFile(filePath: string): Promise<void> {
+    async function processAudioFile(filePath: string, musicDir: string): Promise<{ originalPath: string, success: boolean, message: string, convertedPath?: string } | null> {
         let currentFilePath = filePath;
         let ext = path.extname(currentFilePath).toLowerCase();
 
-        if (!AUDIO_EXTENSIONS.includes(ext)) return;
+        if (!AUDIO_EXTENSIONS.includes(ext)) {
+            return null;
+        }
 
         // Auto-convert WAV to MP3 on import
         if (ext === '.wav') {
             try {
                 const mp3Path = currentFilePath.replace(/\.wav$/i, '.mp3');
 
-                // Guard: Skip if MP3 already exists
-                if (await fs.pathExists(mp3Path)) {
-                    currentFilePath = mp3Path;
-                    ext = '.mp3';
-                    // No need to log loudly if it already exists, just proceed
-                    return processAudioFile(currentFilePath); // Re-process as MP3
+                // Check if the MP3 already exists and is already processed in the database
+                const existingMp3Track = database.getTrackByPath(path.relative(musicDir, mp3Path));
+                if (await fs.pathExists(mp3Path) && existingMp3Track) {
+                    return { originalPath: filePath, success: true, message: "MP3 already exists and processed.", convertedPath: mp3Path };
                 }
 
-                const convertedPath = await convertWavToMp3(currentFilePath);
-                // If conversion successful, use the new MP3 path
-                if (await fs.pathExists(convertedPath)) {
-                    // Keep original WAV for downloads, but switch scanner to MP3 for streaming
+                // If MP3 exists but not processed, or if it doesn't exist, proceed with conversion or processing of existing MP3
+                if (await fs.pathExists(mp3Path) && !existingMp3Track) {
+                    // MP3 exists but is not in DB, so we should process it as if it was just converted
                     currentFilePath = mp3Path;
                     ext = '.mp3';
-                    console.log(`    [Scanner] Switched to converted MP3: ${path.basename(currentFilePath)} (Keeping original WAV)`);
+                    console.log(`    [Scanner] Found existing MP3 for WAV: ${path.basename(currentFilePath)}`);
+                    // Fall through to process this MP3
+                } else {
+                    // MP3 does not exist, perform conversion
+                    const convertedPath = await convertWavToMp3(currentFilePath); // This might return an error if conversion fails
+                    // If conversion successful, use the new MP3 path
+                    if (await fs.pathExists(convertedPath)) {
+                        currentFilePath = mp3Path;
+                        ext = '.mp3';
+                        console.log(`    [Scanner] Switched to converted MP3: ${path.basename(currentFilePath)} (Keeping original WAV)`);
+                        // Fall through to process this MP3
+                    } else {
+                        // This case should ideally not be hit if convertWavToMp3 rejects on failure
+                        throw new Error("WAV to MP3 conversion failed but no error was thrown.");
+                    }
                 }
             } catch (err) {
                 console.error(`    [Scanner] Could not convert WAV, proceeding with original: ${err instanceof Error ? err.message : String(err)}`);
+                // If WAV conversion fails, proceed with the original WAV file but mark as failed conversion
+                // The rest of the function will process the original WAV
+                return { originalPath: filePath, success: false, message: `WAV to MP3 conversion failed: ${err instanceof Error ? err.message : String(err)}` };
             }
         }
 
         // Skip if already in database by path
-        let existing = database.getTrackByPath(currentFilePath);
+        let existing = database.getTrackByPath(path.relative(musicDir, currentFilePath));
 
         // IF NOT FOUND by path, check if another record for this SAME song exists (de-duplication)
         if (!existing) {
@@ -399,9 +423,9 @@ export function createScanner(database: DatabaseService): ScannerService {
             }
 
             // Update path if changed (important for de-duplication)
-            if (existing.file_path !== currentFilePath) {
+            if (existing.file_path !== path.relative(musicDir, currentFilePath)) {
                 // Use detected albumId if possible, fallback to existing
-                database.updateTrackPath(existing.id, currentFilePath, detectedAlbumId || existing.album_id || null);
+                database.updateTrackPath(existing.id, path.relative(musicDir, currentFilePath), detectedAlbumId || existing.album_id || null);
             }
             // ... (rest of the existing logic using currentFilePath instead of filePath)
             // console.log(`Debug: Checking existing track ${path.basename(currentFilePath)} - Waveform: ${existing.waveform ? 'Present' : 'Missing'}`);
@@ -445,19 +469,7 @@ export function createScanner(database: DatabaseService): ScannerService {
             }
 
             // Check if duration is missing or suspiciously short (likely wrong metadata)
-            const needsDurationBackfill = !existing.duration || (existing.duration > 0 && existing.duration < 90);
-            if (needsDurationBackfill) {
-                getDurationFromFfmpeg(currentFilePath).then((duration) => {
-                    if (duration && duration > 0) {
-                        database.updateTrackDuration(existing.id, duration);
-                        console.log(`    [Backfill] Updated duration for: ${path.basename(currentFilePath)} -> ${duration}s`);
-                    }
-                }).catch(e => {
-                    // ignore
-                });
-            }
-
-            return;
+            return { originalPath: filePath, success: true, message: "Track already exists and updated." };
         }
 
         try {
@@ -614,7 +626,7 @@ export function createScanner(database: DatabaseService): ScannerService {
                 artist_id: artistId,
                 track_num: common.track?.no || null,
                 duration: duration || null,
-                file_path: currentFilePath,
+                file_path: path.relative(musicDir, currentFilePath),
                 format: format.codec || ext.substring(1),
                 bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
                 sample_rate: format.sampleRate || null,
@@ -632,21 +644,26 @@ export function createScanner(database: DatabaseService): ScannerService {
                     console.error(`    Failed to generate waveform for ${path.basename(currentFilePath)}:`, err.message);
                 });
 
+            // Return success if everything above completed without error
+            return { originalPath: filePath, success: true, message: "Track processed successfully.", convertedPath: currentFilePath !== filePath ? currentFilePath : undefined };
+
         } catch (error) {
             console.error("  Error processing " + currentFilePath + ":", error);
+            // Return failure for any other general error during processing
+            return { originalPath: filePath, success: false, message: `Error processing audio file: ${error instanceof Error ? error.message : String(error)}` };
         }
     }
 
-    async function scanDirectory(dir: string): Promise<void> {
+    async function scanDirectory(dir: string): Promise<ScanResult> {
         if (isScanning) {
             console.log("  [Scanner] Scan already in progress, waiting for it to complete...");
-            return pendingScan || Promise.resolve();
+            return pendingScan || Promise.resolve({ successful: [], failed: [] });
         }
 
         isScanning = true;
         pendingScan = (async () => {
             try {
-                await doScan(dir);
+                return await doScan(dir);
             } finally {
                 isScanning = false;
                 pendingScan = null;
@@ -656,12 +673,12 @@ export function createScanner(database: DatabaseService): ScannerService {
         return pendingScan;
     }
 
-    async function doScan(dir: string): Promise<void> {
+    async function doScan(dir: string): Promise<ScanResult> {
         console.log("Scanning directory: " + dir);
 
         if (!(await fs.pathExists(dir))) {
             console.warn("Directory does not exist: " + dir);
-            return;
+            return { successful: [], failed: [] };
         }
 
         // Reset maps
@@ -698,29 +715,41 @@ export function createScanner(database: DatabaseService): ScannerService {
 
         // 3. Process Releases
         for (const configPath of releaseConfigs) {
-            await processReleaseConfig(configPath);
+            await processReleaseConfig(configPath, dir);
         }
+
+        const successful: Array<{ originalPath: string; message: string; convertedPath?: string }> = [];
+        const failed: Array<{ originalPath: string; message: string }> = [];
 
         // 4. Process Audio Files
         console.log("Found " + files.length + " audio file(s)");
         for (const file of files) {
-            await processAudioFile(file);
+            const result = await processAudioFile(file, dir);
+            if (result) {
+                if (result.success) {
+                    successful.push(result);
+                } else {
+                    failed.push(result);
+                }
+            }
         }
 
         const stats = await database.getStats();
         console.log("Scan complete: " + stats.artists + " artists, " + stats.albums + " albums, " + stats.tracks + " tracks");
 
         // Clean up stale records
-        await cleanupStaleTracks();
+        await cleanupStaleTracks(dir);
+
+        return { successful, failed };
     }
 
-    async function cleanupStaleTracks() {
+    async function cleanupStaleTracks(musicDir: string) {
         console.log("[Scanner] Cleaning up stale database records...");
         const allTracks = database.getTracks();
         let removed = 0;
         for (const track of allTracks) {
-            const resolved = resolveFile(track.file_path);
-            if (!resolved || !(await fs.pathExists(resolved))) {
+            const resolved = path.join(musicDir, track.file_path);
+            if (!await fs.pathExists(resolved)) {
                 console.log(`  [Cleanup] Removing stale track: ${track.title} (${track.file_path})`);
                 database.deleteTrack(track.id);
                 removed++;

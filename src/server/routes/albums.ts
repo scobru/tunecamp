@@ -1,11 +1,10 @@
 import { Router } from "express";
-import fs from "fs";
+import fs from "fs-extra";
 import path from "path";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
-import { resolveFile } from "../utils/pathHelper.js";
 
-export function createAlbumsRoutes(database: DatabaseService) {
+export function createAlbumsRoutes(database: DatabaseService, musicDir: string) {
     const router = Router();
 
     /**
@@ -116,7 +115,7 @@ export function createAlbumsRoutes(database: DatabaseService) {
      * GET /api/albums/:idOrSlug/cover
      * Get album cover image (supports ID or slug)
      */
-    router.get("/:idOrSlug/cover", (req: AuthenticatedRequest, res) => {
+    router.get("/:idOrSlug/cover", async (req: AuthenticatedRequest, res) => {
         try {
             const param = req.params.idOrSlug as string;
             let album;
@@ -127,17 +126,17 @@ export function createAlbumsRoutes(database: DatabaseService) {
                 album = database.getAlbumBySlug(param);
             }
 
-            if (!album) {
-                return res.status(404).json({ error: "Album not found" });
+            if (!album || !album.cover_path) {
+                return res.status(404).json({ error: "Album not found or no cover path" });
             }
 
             // Note: Cover images are accessible regardless of album visibility
             // This allows showing covers in player even for private albums
 
             // Verify file existence
-            const resolvedPath = resolveFile(album.cover_path);
-            if (!resolvedPath) {
-                return res.status(404).json({ error: "Cover not found" });
+            const resolvedPath = path.join(musicDir, album.cover_path);
+            if (!await fs.pathExists(resolvedPath)) {
+                return res.status(404).json({ error: "Cover not found on disk" });
             }
 
             const ext = path.extname(resolvedPath as string).toLowerCase();
@@ -209,8 +208,8 @@ export function createAlbumsRoutes(database: DatabaseService) {
             // For single track, just send the file
             if (tracks.length === 1) {
                 const track = tracks[0];
-                const trackPath = resolveFile(track.file_path);
-                if (!trackPath) {
+                const trackPath = path.join(musicDir, track.file_path);
+                if (!await fs.pathExists(trackPath)) {
                     return res.status(404).json({ error: "Track file not found" });
                 }
                 const filename = path.basename(trackPath);
@@ -230,8 +229,8 @@ export function createAlbumsRoutes(database: DatabaseService) {
             archive.pipe(res);
 
             for (const track of tracks) {
-                const trackPath = resolveFile(track.file_path);
-                if (trackPath) {
+                const trackPath = path.join(musicDir, track.file_path);
+                if (await fs.pathExists(trackPath)) {
                     archive.file(trackPath, { name: path.basename(trackPath) });
                 }
             }

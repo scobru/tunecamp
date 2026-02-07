@@ -1,12 +1,11 @@
 import { Router } from "express";
-import fs from "fs";
+import fs from "fs-extra";
 import path from "path";
 import { parseFile } from "music-metadata";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
-import { resolveFile } from "../utils/pathHelper.js";
 
 // Set ffmpeg path
 if (ffmpegPath) {
@@ -15,13 +14,9 @@ if (ffmpegPath) {
 
 import type { ActivityPubService } from "../activitypub.js";
 
-export function createTracksRoutes(database: DatabaseService, apService: ActivityPubService) {
+export function createTracksRoutes(database: DatabaseService, apService: ActivityPubService, musicDir: string) {
     const router = Router();
 
-    /**
-     * GET /api/tracks
-     * List all tracks (ADMIN ONLY)
-     */
     /**
      * GET /api/tracks
      * List all tracks (ADMIN ONLY)
@@ -50,12 +45,12 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             const id = parseInt(req.params.id as string, 10);
             const track = database.getTrack(id);
 
-            if (!track) {
+            if (!track || !track.file_path) {
                 return res.status(404).json({ error: "Track not found" });
             }
 
-            const trackPath = resolveFile(track.file_path);
-            if (!trackPath) {
+            const trackPath = path.join(musicDir, track.file_path);
+            if (!await fs.pathExists(trackPath)) {
                 return res.status(404).json({ error: "File not found" });
             }
 
@@ -101,7 +96,7 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
      * GET /api/tracks/:id/stream
      * Stream audio file with range support
      */
-    router.get("/:id/stream", (req: AuthenticatedRequest, res) => {
+    router.get("/:id/stream", async (req: AuthenticatedRequest, res) => {
         try {
             const id = parseInt(req.params.id as string, 10);
             const track = database.getTrack(id);
@@ -121,8 +116,8 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
                 }
             }
 
-            const trackPath = resolveFile(track.file_path);
-            if (!trackPath) {
+            const trackPath = path.join(musicDir, track.file_path);
+            if (!await fs.pathExists(trackPath)) {
                 console.warn(`❌ [Stream] Could not resolve file path: ${track.file_path}`);
                 return res.status(404).json({ error: "Audio file not found on disk. Try re-scanning your library." });
             }
@@ -225,13 +220,18 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             const id = parseInt(req.params.id as string, 10);
             const track = database.getTrack(id);
 
-            if (!track) {
+            if (!track || !track.file_path) {
                 return res.status(404).json({ error: "Track not found" });
             }
 
             // Permission Check: Restricted admin can only update their own tracks
             if (req.artistId && track.artist_id && track.artist_id !== req.artistId) {
                 return res.status(403).json({ error: "Access denied: You can only edit your own tracks" });
+            }
+            
+            const trackPath = path.join(musicDir, track.file_path);
+            if (!await fs.pathExists(trackPath)) {
+                return res.status(404).json({ error: "Track file not found on disk" });
             }
 
             const { title, artist, album, trackNumber, genre } = req.body;
@@ -243,7 +243,7 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
                     const NodeID3 = (await import("node-id3")).default;
 
                     // Read existing tags
-                    const existingTags = NodeID3.read(track.file_path) || {};
+                    const existingTags = NodeID3.read(trackPath) || {};
 
                     // Update tags
                     const newTags: any = { ...existingTags };
@@ -254,11 +254,11 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
                     if (genre !== undefined) newTags.genre = genre;
 
                     // Write tags to file
-                    const success = NodeID3.write(newTags, track.file_path);
+                    const success = NodeID3.write(newTags, trackPath);
                     if (!success) {
-                        console.warn(`⚠️  Could not write ID3 tags to ${track.file_path}`);
+                        console.warn(`⚠️  Could not write ID3 tags to ${trackPath}`);
                     } else {
-                        console.log(`🏷️  Updated ID3 tags for: ${track.file_path}`);
+                        console.log(`🏷️  Updated ID3 tags for: ${trackPath}`);
                     }
                 } catch (tagError) {
                     console.error("Error updating ID3 tags:", tagError);
@@ -318,7 +318,7 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             const deleteFile = req.query.deleteFile === "true";
 
             const track = database.getTrack(id);
-            if (!track) {
+            if (!track || !track.file_path) {
                 return res.status(404).json({ error: "Track not found" });
             }
 
@@ -328,8 +328,8 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             }
 
             if (deleteFile) {
-                const trackPath = resolveFile(track.file_path);
-                if (trackPath) {
+                const trackPath = path.join(musicDir, track.file_path);
+                if (await fs.pathExists(trackPath)) {
                     try {
                         fs.unlinkSync(trackPath);
                         console.log(`🗑️  Deleted file: ${trackPath}`);
@@ -343,8 +343,6 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             // Delete from database
             // Note: If file was deleted, watcher might have already triggered this, 
             // but it's safe to run again (idempotent if using specific ID delete)
-            database.deleteTrack(id);
-
             database.deleteTrack(id);
 
             // ActivityPub Broadcast: Track deleted

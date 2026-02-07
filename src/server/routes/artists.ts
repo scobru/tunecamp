@@ -1,9 +1,10 @@
 import { Router } from "express";
 import type { DatabaseService } from "../database.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
-import { resolveFile } from "../utils/pathHelper.js";
+import path from "path";
+import fs from "fs-extra";
 
-export function createArtistsRoutes(database: DatabaseService) {
+export function createArtistsRoutes(database: DatabaseService, musicDir: string) {
     const router = Router();
 
     /**
@@ -248,9 +249,6 @@ export function createArtistsRoutes(database: DatabaseService) {
      */
     router.get("/:idOrSlug/cover", async (req, res) => {
         try {
-            const fs = await import("fs");
-            const path = await import("path");
-
             const param = req.params.idOrSlug as string;
             let artist;
 
@@ -266,8 +264,8 @@ export function createArtistsRoutes(database: DatabaseService) {
 
             // Try artist photo first
             if (artist.photo_path) {
-                const photoPath = resolveFile(artist.photo_path);
-                if (photoPath) {
+                const photoPath = path.join(musicDir, artist.photo_path);
+                if (await fs.pathExists(photoPath)) {
                     const ext = path.extname(photoPath).toLowerCase();
                     const contentTypes: Record<string, string> = {
                         ".jpg": "image/jpeg",
@@ -278,8 +276,7 @@ export function createArtistsRoutes(database: DatabaseService) {
                     };
                     res.setHeader("Content-Type", contentTypes[ext] || "application/octet-stream");
                     res.setHeader("Cache-Control", "public, max-age=86400");
-                    fs.createReadStream(photoPath).pipe(res);
-                    return;
+                    return fs.createReadStream(photoPath).pipe(res);
                 }
             }
 
@@ -287,8 +284,8 @@ export function createArtistsRoutes(database: DatabaseService) {
             const albums = database.getAlbumsByArtist(artist.id, false);
             for (const album of albums) {
                 if (album.cover_path) {
-                    const coverPath = resolveFile(album.cover_path);
-                    if (coverPath) {
+                    const coverPath = path.join(musicDir, album.cover_path);
+                    if (await fs.pathExists(coverPath)) {
                         const ext = path.extname(coverPath).toLowerCase();
                         const contentTypes: Record<string, string> = {
                             ".jpg": "image/jpeg",
@@ -299,8 +296,7 @@ export function createArtistsRoutes(database: DatabaseService) {
                         };
                         res.setHeader("Content-Type", contentTypes[ext] || "application/octet-stream");
                         res.setHeader("Cache-Control", "public, max-age=86400");
-                        fs.createReadStream(coverPath).pipe(res);
-                        return;
+                        return fs.createReadStream(coverPath).pipe(res);
                     }
                 }
             }

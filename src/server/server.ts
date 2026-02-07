@@ -154,9 +154,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
         process.exit(0); // Docker/PM2 should handle restart
     }));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(database));
-    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database));
-    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, apService));
+    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
+    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, config.musicDir));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, apService, config.musicDir));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database));
     app.use("/api/admin/upload", authMiddleware.requireAdmin, createUploadRoutes(database, scanner, config.musicDir));
     app.use("/api/admin/releases", authMiddleware.requireAdmin, createReleaseRoutes(database, scanner, config.musicDir, gundbService, config, apService));

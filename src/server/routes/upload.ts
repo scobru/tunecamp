@@ -126,16 +126,23 @@ export function createUploadRoutes(
 
             console.log(`📤 Uploaded ${files.length} track(s)`);
 
-            // Trigger rescan to process new files (async to avoid 504)
-            scanner.scanDirectory(musicDir);
+            // Trigger rescan to process new files in the background
+            scanner.scanDirectory(musicDir).then(scanResult => {
+                // Optional: log completion or errors to server console
+                const hasConversionErrors = scanResult.failed.some(f => f.message.includes("WAV to MP3 conversion failed"));
+                if (hasConversionErrors) {
+                    console.warn('📢 Scan complete with some conversion failures.');
+                } else if (scanResult.failed.length > 0) {
+                    console.warn(`📢 Scan complete with ${scanResult.failed.length} failures.`);
+                } else {
+                    console.log('✅ Background scan complete.');
+                }
+            }).catch(err => {
+                console.error('❌ Background scan failed:', err);
+            });
 
-            res.json({
-                message: `Uploaded ${files.length} file(s)`,
-                files: files.map((f) => ({
-                    name: f.originalname,
-                    path: f.path,
-                    size: f.size,
-                })),
+            res.status(202).json({
+                message: `Upload accepted. A background scan has been initiated for ${files.length} file(s).`,
             });
         } catch (error) {
             console.error("Upload error:", error);
