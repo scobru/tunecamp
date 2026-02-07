@@ -91,7 +91,7 @@ export function createAlbumsRoutes(database: DatabaseService, musicDir: string) 
                 return res.status(404).json({ error: "Album not found" });
             }
 
-            const tracks = database.getTracks(album.id);
+            const tracks = database.getTracksByReleaseId(album.id);
 
             // Map tracks to include album cover info for the player
             const mappedTracks = tracks.map(t => ({

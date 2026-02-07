@@ -45,6 +45,7 @@ function App() {
         
         {/* Admin */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/tracks" element={<AdminTracks />} />
         <Route path="/browser" element={<Files />} />
         
         {/* Other */}

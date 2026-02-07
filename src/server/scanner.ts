@@ -372,132 +372,58 @@ export function createScanner(database: DatabaseService): ScannerService {
             try {
                 const mp3Path = currentFilePath.replace(/\.wav$/i, '.mp3');
 
-                // Check if the MP3 already exists and is already processed in the database
                 const existingMp3Track = database.getTrackByPath(path.relative(musicDir, mp3Path));
                 if (await fs.pathExists(mp3Path) && existingMp3Track) {
                     return { originalPath: filePath, success: true, message: "MP3 already exists and processed.", convertedPath: mp3Path };
                 }
 
-                // If MP3 exists but not processed, or if it doesn't exist, proceed with conversion or processing of existing MP3
                 if (await fs.pathExists(mp3Path) && !existingMp3Track) {
-                    // MP3 exists but is not in DB, so we should process it as if it was just converted
                     currentFilePath = mp3Path;
                     ext = '.mp3';
                     console.log(`    [Scanner] Found existing MP3 for WAV: ${path.basename(currentFilePath)}`);
-                    // Fall through to process this MP3
                 } else {
-                    // MP3 does not exist, perform conversion using queue
                     const convertedPath = await processQueue.add(() => convertWavToMp3(currentFilePath));
-                    // If conversion successful, use the new MP3 path
                     if (await fs.pathExists(convertedPath)) {
                         currentFilePath = mp3Path;
                         ext = '.mp3';
                         console.log(`    [Scanner] Switched to converted MP3: ${path.basename(currentFilePath)} (Keeping original WAV)`);
-                        // Fall through to process this MP3
                     } else {
-                        // This case should ideally not be hit if convertWavToMp3 rejects on failure
                         throw new Error("WAV to MP3 conversion failed but no error was thrown.");
                     }
                 }
             } catch (err) {
                 console.error(`    [Scanner] Could not convert WAV, proceeding with original: ${err instanceof Error ? err.message : String(err)}`);
-                // If WAV conversion fails, proceed with the original WAV file but mark as failed conversion
-                // The rest of the function will process the original WAV
                 return { originalPath: filePath, success: false, message: `WAV to MP3 conversion failed: ${err instanceof Error ? err.message : String(err)}` };
             }
         }
 
-        // Skip if already in database by path
         let existing = database.getTrackByPath(path.relative(musicDir, currentFilePath));
 
-        // IF NOT FOUND by path, check if another record for this SAME song exists (de-duplication)
         if (!existing) {
             try {
                 const metadata = await parseFileWithRetry(currentFilePath);
                 const title = metadata.common.title || path.basename(currentFilePath, path.extname(currentFilePath));
-
-                // We need artist/album to deduplicate safely
-                const dir = path.dirname(currentFilePath);
-                let detectedAlbumId: number | null = null;
-                let current = dir;
-                while (current.length >= path.dirname(current).length) {
-                    detectedAlbumId = folderToAlbumMap.get(current) || null;
-                    if (detectedAlbumId) break;
-                    const parent = path.dirname(current);
-                    if (parent === current) break;
-                    current = parent;
+                const artistName = metadata.common.artist;
+                
+                let artistId: number | null = null;
+                if (artistName) {
+                    const existingArtist = database.getArtistByName(artistName);
+                    artistId = existingArtist ? existingArtist.id : null;
                 }
 
-                // If we found an existing record with same metadata, we'll update it instead of creating new
-                if (title && detectedAlbumId) {
-                    const album = database.getAlbum(detectedAlbumId);
-                    const artistId = album?.artist_id || null;
-
-                    // 1. Try to find exact match
-                    existing = database.getTrackByMetadata(title, artistId, detectedAlbumId);
-
-                    // 2. If no exact match, try to find "loose" track (not in any album) to adopt
-                    if (!existing) {
-                        existing = database.getTrackByMetadata(title, artistId, null);
-                        if (existing) {
-                            console.log(`    [Scanner] Adopting loose track '${title}' into album ID ${detectedAlbumId}`);
-                        }
-                    }
-
-                    if (existing) {
-                        console.log(`    [Scanner] De-duplicated: found existing record for '${title}' at old path. Updating path.`);
-                    }
+                existing = database.getTrackByMetadata(title, artistId, null);
+                if (existing) {
+                    console.log(`    [Scanner] De-duplicated: found existing record for '${title}' at old path. Updating path.`);
                 }
             } catch (e) { }
         }
 
         if (existing) {
-            const dir = path.dirname(currentFilePath);
-            let detectedAlbumId: number | null = null;
-            let current = dir;
-            while (current.length >= path.dirname(current).length) {
-                detectedAlbumId = folderToAlbumMap.get(current) || null;
-                if (detectedAlbumId) break;
-                const parent = path.dirname(current);
-                if (parent === current) break;
-                current = parent;
-            }
-
-            // Update path if changed (important for de-duplication)
             if (existing.file_path !== path.relative(musicDir, currentFilePath)) {
-                // Use detected albumId if possible, fallback to existing
-                database.updateTrackPath(existing.id, path.relative(musicDir, currentFilePath), detectedAlbumId || existing.album_id || null);
-            }
-            // ... (rest of the existing logic using currentFilePath instead of filePath)
-            // console.log(`Debug: Checking existing track ${path.basename(currentFilePath)} - Waveform: ${existing.waveform ? 'Present' : 'Missing'}`);
-
-            let needsUpdate = false;
-
-            if (detectedAlbumId && (!existing.album_id || existing.album_id === 0)) {
-                console.log(`  Updating track album link: ${path.basename(currentFilePath)} -> ID ${detectedAlbumId}`);
-                database.updateTrackAlbum(existing.id, detectedAlbumId);
-                needsUpdate = true;
+                database.updateTrackPath(existing.id, path.relative(musicDir, currentFilePath), null);
             }
 
-            // If track has no artist, try to get from metadata
-            if (!existing.artist_id) {
-                try {
-                    const metadata = await parseFileWithRetry(currentFilePath);
-                    const common = metadata.common;
-                    if (common.artist) {
-                        const existingArtist = database.getArtistByName(common.artist);
-                        const artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
-                        database.updateTrackArtist(existing.id, artistId);
-                        console.log(`  Updating track artist link: ${path.basename(currentFilePath)} -> ${common.artist}`);
-                    }
-                } catch (e) {
-                    // Ignore metadata errors for existing tracks
-                }
-            }
-
-            // Check if waveform is missing
             if (!existing.waveform) {
-                // Generate waveform in background using queue
                 processQueue.add(() => WaveformService.generateWaveform(currentFilePath))
                     .then((peaks: number[]) => {
                         const json = JSON.stringify(peaks);
@@ -509,7 +435,6 @@ export function createScanner(database: DatabaseService): ScannerService {
                     });
             }
 
-            // Check if duration is missing or suspiciously short (likely wrong metadata)
             return { originalPath: filePath, success: true, message: "Track already exists and updated." };
         }
 
@@ -518,138 +443,16 @@ export function createScanner(database: DatabaseService): ScannerService {
             const metadata = await parseFileWithRetry(currentFilePath);
             const common = metadata.common;
             const format = metadata.format;
-            const dir = path.dirname(currentFilePath);
 
-            // 1. Try to get Album ID from folder map (from release.yaml)
-            let albumId: number | null = null;
-            let currentPath = dir;
-            while (currentPath.length >= path.dirname(currentPath).length) {
-                albumId = folderToAlbumMap.get(currentPath) || null;
-                if (albumId) break;
-                const parent = path.dirname(currentPath);
-                if (parent === currentPath) break;
-                currentPath = parent;
-            }
-
-            // Check if this is a "library" track (in library folder, not a release)
-            const isLibraryTrack = dir.includes(path.sep + "library") || dir.endsWith("library");
-
-            // 2. Determine artist based on track type
             let artistId: number | null = null;
-
-            if (isLibraryTrack) {
-                // LIBRARY MODE: ONLY use ID3 metadata, no fallback to artist.yaml
-                if (common.artist) {
-                    const existingArtist = database.getArtistByName(common.artist);
-                    artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
-                    console.log(`    [Library] Using metadata artist: ${common.artist}`);
-                } else {
-                    // Try to find if an "Unknown Artist" already exists
-                    const unknownArtist = database.getArtistByName("Unknown Artist");
-                    artistId = unknownArtist ? unknownArtist.id : database.createArtist("Unknown Artist");
-                    console.log(`    [Library] No metadata artist found - using Unknown Artist`);
-                }
-            } else if (albumId) {
-                // RELEASE MODE with album: use album's artist
-                const album = database.getAlbum(albumId);
-                if (album && album.artist_id) {
-                    artistId = album.artist_id;
-                }
+            if (common.artist) {
+                const existingArtist = database.getArtistByName(common.artist);
+                artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
             } else {
-                // LOOSE TRACK (not in library, not in release): check metadata first, then folder
-                if (common.artist) {
-                    const existingArtist = database.getArtistByName(common.artist);
-                    artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
-                    console.log(`    Using metadata artist: ${common.artist}`);
-                } else {
-                    // Fallback to parent folder artist config
-                    let current = dir;
-                    while (current.length >= path.dirname(current).length) {
-                        if (folderToArtistMap.has(current)) {
-                            artistId = folderToArtistMap.get(current)!;
-                            break;
-                        }
-                        const parent = path.dirname(current);
-                        if (parent === current) break;
-                        current = parent;
-                    }
-
-                    // HEURISTIC: If still no artist, and we are deep enough, try to use parent-parent folder as artist
-                    if (!artistId) {
-                        const parts = dir.split(path.sep);
-                        if (parts.length >= 2) {
-                            const possibleArtist = parts[parts.length - 2];
-                            if (possibleArtist && !['music', 'library', 'releases'].includes(possibleArtist.toLowerCase())) {
-                                const existingArtist = database.getArtistByName(possibleArtist);
-                                artistId = existingArtist ? existingArtist.id : database.createArtist(possibleArtist);
-                                console.log(`    [Heuristic] Inferring artist from folder: ${possibleArtist}`);
-                            }
-                        }
-                    }
-
-                    // FINAL FALLBACK
-                    if (!artistId) {
-                        const unknownArtist = database.getArtistByName("Unknown Artist");
-                        artistId = unknownArtist ? unknownArtist.id : database.createArtist("Unknown Artist");
-                    }
-                }
+                const unknownArtist = database.getArtistByName("Unknown Artist");
+                artistId = unknownArtist ? unknownArtist.id : database.createArtist("Unknown Artist");
             }
-
-            // 3. Fallback to metadata album if no release.yaml found
-            if (!albumId) {
-                let albumTitle = common.album;
-
-                // HEURISTIC: If no metadata album, use parent folder as album title
-                if (!albumTitle) {
-                    const parts = dir.split(path.sep);
-                    const folderName = parts[parts.length - 1];
-                    if (folderName && !['music', 'library', 'releases', 'tracks', 'audio'].includes(folderName.toLowerCase())) {
-                        albumTitle = folderName;
-                        console.log(`    [Heuristic] Inferring album from folder: ${albumTitle}`);
-                    }
-                }
-
-                if (albumTitle) {
-                    // Try to find artist ID from metadata if still not set
-                    if (!artistId && common.artist) {
-                        const existingArtist = database.getArtistByName(common.artist);
-                        artistId = existingArtist ? existingArtist.id : database.createArtist(common.artist);
-                    }
-
-                    const existingAlbum = database.getAlbumByTitle(albumTitle, artistId || undefined);
-                    if (existingAlbum) {
-                        albumId = existingAlbum.id;
-                    } else {
-                        // Create new album from metadata/folder
-                        albumId = database.createAlbum({
-                            title: albumTitle,
-                            slug: albumTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-                            artist_id: artistId,
-                            date: common.year?.toString() || null,
-                            cover_path: null, // Basic fallback
-                            genre: common.genre?.join(", ") || null,
-                            description: null,
-                            type: 'album',
-                            year: common.year || null,
-                            download: null,
-                            external_links: null,
-                            is_public: false,
-                            visibility: 'private',
-                            is_release: false, // Albums from metadata/folders are library albums
-                            published_at: null,
-                        });
-                    }
-                }
-            }
-
-            // If we have an album but no artist yet, try to get artist from album
-            if (albumId && !artistId) {
-                const album = database.getAlbum(albumId);
-                if (album && album.artist_id) artistId = album.artist_id;
-            }
-
-
-            // Prefer ffprobe for duration (reads actual stream; metadata tags are often wrong)
+            
             let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
             if (duration == null || !Number.isFinite(duration) || duration <= 0) {
                 const metaDuration = format.duration;
@@ -660,10 +463,9 @@ export function createScanner(database: DatabaseService): ScannerService {
                 }
             }
 
-            // Create track
             const trackId = database.createTrack({
                 title: common.title || path.basename(currentFilePath, ext),
-                album_id: albumId,
+                album_id: null, // Tracks are created without an album
                 artist_id: artistId,
                 track_num: common.track?.no || null,
                 duration: duration || null,
@@ -671,10 +473,9 @@ export function createScanner(database: DatabaseService): ScannerService {
                 format: format.codec || ext.substring(1),
                 bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
                 sample_rate: format.sampleRate || null,
-                waveform: null // Pattern for now
+                waveform: null
             });
 
-            // Generate waveform in background using queue
             processQueue.add(() => WaveformService.generateWaveform(currentFilePath))
                 .then((peaks: number[]) => {
                     const json = JSON.stringify(peaks);
@@ -685,12 +486,10 @@ export function createScanner(database: DatabaseService): ScannerService {
                     console.error(`    Failed to generate waveform for ${path.basename(currentFilePath)}:`, err.message);
                 });
 
-            // Return success if everything above completed without error
             return { originalPath: filePath, success: true, message: "Track processed successfully.", convertedPath: currentFilePath !== filePath ? currentFilePath : undefined };
 
         } catch (error) {
             console.error("  Error processing " + currentFilePath + ":", error);
-            // Return failure for any other general error during processing
             return { originalPath: filePath, success: false, message: `Error processing audio file: ${error instanceof Error ? error.message : String(error)}` };
         }
     }
@@ -726,11 +525,7 @@ export function createScanner(database: DatabaseService): ScannerService {
         folderToAlbumMap.clear();
         folderToArtistMap.clear();
 
-        // 1. Process Global Configs (artist.yaml)
-        await processGlobalConfigs(dir);
-
         const files: string[] = [];
-        const releaseConfigs: string[] = [];
 
         // 2. Discover files
         async function walkDir(currentDir: string): Promise<void> {
@@ -740,24 +535,15 @@ export function createScanner(database: DatabaseService): ScannerService {
                 if (entry.isDirectory()) {
                     await walkDir(fullPath);
                 } else if (entry.isFile()) {
-                    if (entry.name === "release.yaml" || entry.name === "album.yaml") {
-                        releaseConfigs.push(fullPath);
-                    } else {
-                        const ext = path.extname(entry.name).toLowerCase();
-                        if (AUDIO_EXTENSIONS.includes(ext)) {
-                            files.push(fullPath);
-                        }
+                    const ext = path.extname(entry.name).toLowerCase();
+                    if (AUDIO_EXTENSIONS.includes(ext)) {
+                        files.push(fullPath);
                     }
                 }
             }
         }
 
         await walkDir(dir);
-
-        // 3. Process Releases
-        for (const configPath of releaseConfigs) {
-            await processReleaseConfig(configPath, dir);
-        }
 
         const successful: Array<{ originalPath: string; message: string; convertedPath?: string }> = [];
         const failed: Array<{ originalPath: string; message: string }> = [];
@@ -820,12 +606,8 @@ export function createScanner(database: DatabaseService): ScannerService {
 
         watcher.on("add", async (filePath: string) => {
             const ext = path.extname(filePath).toLowerCase();
-            // Reload on yaml change? For now just audio
             if (AUDIO_EXTENSIONS.includes(ext)) {
                 await processAudioFile(filePath, dir);
-            } else if (path.basename(filePath) === 'release.yaml') {
-                await processReleaseConfig(filePath, dir);
-                // Ideally re-scan folder tracks, but this is okay for MVP
             }
         });
 

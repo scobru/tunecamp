@@ -15,23 +15,8 @@ const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 function createStorage(musicDir: string) {
     return multer.diskStorage({
         destination: (req, file, cb) => {
-            // Determine destination based on request
-            const releaseSlug = req.body.releaseSlug ? sanitizeFilename(req.body.releaseSlug) : undefined;
-
-            let destDir: string;
-
-            if (releaseSlug) {
-                // Upload to release folder
-                const isAudio = AUDIO_EXTENSIONS.includes(
-                    path.extname(file.originalname).toLowerCase()
-                );
-                destDir = isAudio
-                    ? path.join(musicDir, "releases", releaseSlug, "tracks")
-                    : path.join(musicDir, "releases", releaseSlug, "artwork");
-            } else {
-                // Use a "Library" folder
-                destDir = path.join(musicDir, "Library");
-            }
+            // All files are uploaded to a central "tracks" directory
+            const destDir = path.join(musicDir, "tracks");
 
             fs.ensureDir(destDir)
                 .then(() => cb(null, destDir))

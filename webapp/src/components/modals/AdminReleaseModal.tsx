@@ -23,9 +23,12 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState<string | null>(null);
+    const [allTracks, setAllTracks] = useState<any[]>([]);
+    const [selectedTrackIds, setSelectedTrackIds] = useState<number[]>([]);
 
     useEffect(() => {
-        const handleOpen = (e: CustomEvent) => {
+        const handleOpen = async (e: CustomEvent) => {
+            loadAllTracks();
             // Check if editing (passed via detail)
             if (e.detail && e.detail.id) {
                 setIsEditing(true);
@@ -36,6 +39,11 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 setYear(e.detail.year ? parseInt(e.detail.year) : new Date().getFullYear()); // Ensure year is a number
                 // Handle visibility: check new field, then fallback to is_public (boolean)
                 setVisibility(e.detail.visibility || (e.detail.is_public ? 'public' : 'private'));
+                
+                // Fetch release tracks and set selected IDs
+                const releaseDetails = await API.getAlbum(e.detail.id);
+                setSelectedTrackIds(releaseDetails.tracks.map((t: any) => t.id));
+
             } else {
                 setIsEditing(false);
                 setEditId(null);
@@ -44,6 +52,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 setType('album');
                 setYear(new Date().getFullYear());
                 setVisibility('private');
+                setSelectedTrackIds([]);
             }
             
             setCoverFile(null);
@@ -61,6 +70,21 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
             const data = await API.getArtists();
             setArtists(data);
         } catch (e) { console.error(e); }
+    };
+
+    const loadAllTracks = async () => {
+        try {
+            const data = await API.getTracks();
+            setAllTracks(data);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleTrackSelect = (trackId: number) => {
+        setSelectedTrackIds(prev => 
+            prev.includes(trackId) 
+                ? prev.filter(id => id !== trackId) 
+                : [...prev, trackId]
+        );
     };
 
     const handleDelete = async () => {
@@ -95,7 +119,8 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                     artistId: artistId || undefined,
                     type,
                     year,
-                    visibility
+                    visibility,
+                    track_ids: selectedTrackIds,
                 });
             } else {
                 release = await API.createRelease({ 
@@ -103,7 +128,8 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                     artistId: artistId || undefined, 
                     type, 
                     year,
-                    visibility
+                    visibility,
+                    track_ids: selectedTrackIds,
                 });
             }
 
@@ -227,6 +253,28 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         </label>
                     </div>
                     
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Tracks</span>
+                        </label>
+                        <div className="border border-base-content/10 rounded-box max-h-60 overflow-y-auto">
+                            {allTracks.map(track => (
+                                <div key={track.id} className="flex items-center gap-3 p-2 border-b border-base-content/5">
+                                    <input 
+                                        type="checkbox" 
+                                        className="checkbox checkbox-sm"
+                                        checked={selectedTrackIds.includes(track.id)}
+                                        onChange={() => handleTrackSelect(track.id)}
+                                    />
+                                    <div>
+                                        <div className="font-bold">{track.title}</div>
+                                        <div className="text-xs opacity-60">{track.artist_name || 'Unknown Artist'}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     {error && <div className="text-error text-sm text-center">{error}</div>}
 
                     <div className="modal-action flex justify-between items-center">

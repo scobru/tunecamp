@@ -79,6 +79,7 @@ export interface ReleaseConfig {
   credits?: Credit[];
   unlisted?: boolean; // If true, release is hidden from index but accessible via direct link
   artistSlug?: string; // For label mode: associate release with an artist
+  track_ids?: number[]; // For server mode: array of track IDs to include in the release
   metadata?: Record<string, any>;
 }
 
@@ -99,7 +100,7 @@ export interface TrackConfig {
   metadata?: Record<string, any>;
 }
 
-export interface TrackMetadata {
+export interface Track {
   file: string;
   filename: string;
   title: string;
@@ -117,7 +118,7 @@ export interface TrackMetadata {
 
 export interface Release {
   config: ReleaseConfig;
-  tracks: TrackMetadata[];
+  tracks: Track[];
   coverPath?: string;
   path: string;
   slug: string;

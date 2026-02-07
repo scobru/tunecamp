@@ -15,7 +15,7 @@ import type { SiteSettings } from '../types';
 export const Admin = () => {
     const { adminUser, isAdminAuthenticated } = useAuthStore();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'users' | 'artists' | 'settings' | 'system' | 'identity' | 'activitypub'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'tracks' | 'users' | 'artists' | 'settings' | 'system' | 'identity' | 'activitypub'>('overview');
     const [stats, setStats] = useState<any>(null);
 
     // const [loading, setLoading] = useState(false);
@@ -86,6 +86,7 @@ export const Admin = () => {
             <div role="tablist" className="tabs tabs-lifted">
                 <a role="tab" className={`tab ${activeTab === 'overview' ? 'tab-active' : ''}`} onClick={() => setActiveTab('overview')}>Overview</a>
                 <a role="tab" className={`tab ${activeTab === 'content' ? 'tab-active' : ''}`} onClick={() => setActiveTab('content')}>Content</a>
+                <a role="tab" className={`tab ${activeTab === 'tracks' ? 'tab-active' : ''}`} onClick={() => setActiveTab('tracks')}>Tracks</a>
                 <a role="tab" className={`tab ${activeTab === 'users' ? 'tab-active' : ''}`} onClick={() => setActiveTab('users')}>Users</a>
                 <a role="tab" className={`tab ${activeTab === 'artists' ? 'tab-active' : ''}`} onClick={() => setActiveTab('artists')}>Artists</a>
                 <a role="tab" className={`tab ${activeTab === 'settings' ? 'tab-active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</a>
@@ -191,6 +192,8 @@ export const Admin = () => {
                         <AdminReleasesList />
                      </div>
                 )}
+
+                {activeTab === 'tracks' && <AdminTracksList />}
                 
                 {activeTab === 'settings' && <AdminSettingsPanel />}
                 {activeTab === 'identity' && <IdentityPanel />}
@@ -494,6 +497,57 @@ const AdminReleasesList = () => {
                         <td className="flex gap-2">
                             <button className="btn btn-xs btn-ghost" onClick={() => document.dispatchEvent(new CustomEvent('open-admin-release-modal', { detail: r }))}>Edit</button>
                             <button className="btn btn-xs btn-ghost text-secondary" onClick={() => document.dispatchEvent(new CustomEvent('open-upload-tracks-modal', { detail: { slug: r.slug || r.id, title: r.title }}))}>Upload Tracks</button>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+};
+
+const AdminTracksList = () => {
+    const [tracks, setTracks] = useState<any[]>([]);
+
+    const loadTracks = () => API.getTracks().then(setTracks).catch(console.error);
+
+    useEffect(() => {
+        loadTracks();
+        window.addEventListener('refresh-admin-tracks', loadTracks);
+        return () => window.removeEventListener('refresh-admin-tracks', loadTracks);
+    }, []);
+
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`Are you sure you want to delete track ${name}? This cannot be undone.`)) return;
+        try {
+            await API.deleteTrack(id, true);
+            loadTracks();
+        } catch (e) {
+            console.error(e);
+            alert('Failed to delete track');
+        }
+    };
+
+    if (tracks.length === 0) return <div className="opacity-50 text-center py-4">No tracks found.</div>;
+
+    return (
+        <table className="table">
+            <thead>
+                <tr><th>Title</th><th>Artist</th><th>Album</th><th>Duration</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {tracks.map(t => (
+                    <tr key={t.id}>
+                        <td className="font-bold">{t.title}</td>
+                        <td>{t.artist_name}</td>
+                        <td>{t.album_title}</td>
+                        <td>{t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.floor(t.duration % 60)).padStart(2, '0')}` : '-'}</td>
+                        <td className="flex gap-2">
+                            <button 
+                                className="btn btn-xs btn-ghost text-error"
+                                onClick={() => handleDelete(t.id, t.title)}
+                            >
+                                Delete
+                            </button>
                         </td>
                     </tr>
                 ))}

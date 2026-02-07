@@ -14,9 +14,12 @@ interface CreateReleaseBody {
     download?: "free" | "paycurtain" | "codes" | "none";
     price?: number;
     artistName?: string;
+    artistId?: number;
     type?: 'album' | 'single' | 'ep';
     year?: number;
     externalLinks?: { label: string; url: string }[] | { [key: string]: string };
+    track_ids?: number[];
+    visibility?: 'public' | 'private' | 'unlisted';
 }
 
 interface UpdateReleaseBody extends Partial<CreateReleaseBody> {
@@ -41,6 +44,63 @@ export function createReleaseRoutes(
     apService: ActivityPubService
 ) {
     const router = Router();
+
+    router.post("/", async (req: any, res) => {
+        try {
+            const body = req.body as CreateReleaseBody;
+
+            // Basic validation
+            if (!body.title) {
+                return res.status(400).json({ error: "Title is required" });
+            }
+
+            // Determine artist
+            let artistId: number | null = body.artistId || null;
+            if (!artistId && body.artistName) {
+                const existingArtist = database.getArtistByName(body.artistName);
+                if (existingArtist) {
+                    artistId = existingArtist.id;
+                } else {
+                    artistId = database.createArtist(body.artistName);
+                }
+            }
+
+            const slug = slugify(body.title);
+
+            const newAlbumId = database.createAlbum({
+                title: body.title,
+                slug: slug,
+                artist_id: artistId,
+                date: body.date || new Date().toISOString(),
+                description: body.description || null,
+                type: body.type || 'album',
+                year: body.year || new Date().getFullYear(),
+                is_release: true,
+                visibility: body.visibility || 'private',
+                is_public: body.visibility === 'public' || body.visibility === 'unlisted',
+                cover_path: null,
+                genre: body.genres?.join(", ") || null,
+                download: body.download || null,
+                external_links: body.externalLinks ? JSON.stringify(body.externalLinks) : null,
+                published_at: body.visibility === 'public' || body.visibility === 'unlisted' ? new Date().toISOString() : null,
+            });
+
+            // Associate tracks
+            if (body.track_ids && body.track_ids.length > 0) {
+                for (const trackId of body.track_ids) {
+                    database.addTrackToRelease(newAlbumId, trackId);
+                }
+            }
+
+            const newAlbum = database.getAlbum(newAlbumId);
+
+            res.status(201).json(newAlbum);
+
+        } catch (error) {
+            console.error("Error creating release:", error);
+            res.status(500).json({ error: "Failed to create release" });
+        }
+    });
 
     // ... existing POST / ...
 
@@ -74,50 +134,19 @@ export function createReleaseRoutes(
                 }
             }
 
-            // Find release.yaml ... 
-            // We need to find the folder containing this album's tracks
-            const tracks = database.getTracks(id);
-            if (tracks.length === 0) {
-                // Allow updating releases without tracks - try to find by slug
-                const releaseDir = path.join(musicDir, "releases", album.slug);
-                const releaseYamlPath = path.join(releaseDir, "release.yaml");
+            // Update track associations
+            if (body.track_ids) {
+                const existingTrackIds = database.getTracksByReleaseId(id).map(t => t.id);
+                const newTrackIds = body.track_ids;
 
-                if (await fs.pathExists(releaseYamlPath)) {
-                    const { parse } = await import("yaml");
-                    const content = await fs.readFile(releaseYamlPath, "utf-8");
-                    const config = parse(content);
+                const toAdd = newTrackIds.filter(newId => !existingTrackIds.includes(newId));
+                const toRemove = existingTrackIds.filter(oldId => !newTrackIds.includes(oldId));
 
-                    if (body.title) config.title = body.title;
-                    if (body.date) config.date = body.date;
-                    if (body.description !== undefined) config.description = body.description;
-                    if (body.genres) config.genres = body.genres;
-                    if (body.download) config.download = body.download;
-                    if (body.price !== undefined) config.price = body.price;
-                    if (body.artistName) config.artist = body.artistName;
-                    if (body.externalLinks) config.links = body.externalLinks;
-
-                    await fs.writeFile(releaseYamlPath, stringify(config));
+                for (const trackId of toAdd) {
+                    database.addTrackToRelease(id, trackId);
                 }
-            } else {
-                const trackDir = path.dirname(tracks[0].file_path);
-                const releaseDir = trackDir.includes("tracks") ? path.dirname(trackDir) : trackDir;
-                const releaseYamlPath = path.join(releaseDir, "release.yaml");
-
-                if (await fs.pathExists(releaseYamlPath)) {
-                    const { parse } = await import("yaml");
-                    const content = await fs.readFile(releaseYamlPath, "utf-8");
-                    const config = parse(content);
-
-                    if (body.title) config.title = body.title;
-                    if (body.date) config.date = body.date;
-                    if (body.description !== undefined) config.description = body.description;
-                    if (body.genres) config.genres = body.genres;
-                    if (body.download !== undefined) config.download = body.download;
-                    if (body.price !== undefined) config.price = body.price;
-                    if (body.artistName) config.artist = body.artistName;
-                    if (body.externalLinks) config.links = body.externalLinks;
-
-                    await fs.writeFile(releaseYamlPath, stringify(config));
+                for (const trackId of toRemove) {
+                    database.removeTrackFromRelease(id, trackId);
                 }
             }
 
@@ -201,7 +230,7 @@ export function createReleaseRoutes(
                         // If it's Public/Unlisted -> Register
                         if (isPublic) {
                             await gundbService.registerSite(siteInfo);
-                            const freshTracks = database.getTracks(id);
+                            const freshTracks = database.getTracksByReleaseId(id);
                             await gundbService.registerTracks(siteInfo, updatedAlbum, freshTracks);
 
                             // ActivityPub update/create
@@ -245,25 +274,18 @@ export function createReleaseRoutes(
             }
 
             let releaseDir: string | null = null;
-            const tracks = database.getTracks(id);
+            const tracks = database.getTracksByReleaseId(id);
             if (tracks.length > 0) {
                 const trackDir = path.dirname(tracks[0].file_path);
                 releaseDir = trackDir.includes("tracks") ? path.dirname(trackDir) : trackDir;
             } else {
+                // Fallback for releases with no tracks
                 const releasesDir = path.join(musicDir, "releases");
                 const potentialDir = path.join(releasesDir, album.slug);
                 if (await fs.pathExists(potentialDir)) releaseDir = potentialDir;
-                else if (album.cover_path) {
-                    const coverDir = path.dirname(album.cover_path);
-                    releaseDir = coverDir.includes("artwork") ? path.dirname(coverDir) : coverDir;
-                }
             }
 
             if (keepFiles) {
-                if (releaseDir) {
-                    const yamlPath = path.join(releaseDir, "release.yaml");
-                    if (await fs.pathExists(yamlPath)) await fs.remove(yamlPath);
-                }
                 database.deleteAlbum(id, true);
                 res.json({ message: "Release deleted (files kept)" });
             } else {
@@ -290,7 +312,7 @@ export function createReleaseRoutes(
             const album = database.getAlbum(id);
             if (!album) return res.status(404).json({ error: "Release not found" });
 
-            const tracks = database.getTracks(id);
+            const tracks = database.getTracksByReleaseId(id);
             if (tracks.length === 0) return res.json({ folder: null, files: [] });
 
             const trackDir = path.dirname(tracks[0].file_path);

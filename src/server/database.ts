@@ -155,6 +155,7 @@ export interface DatabaseService {
     deleteAlbum(id: number, keepTracks?: boolean): void;
     // Tracks
     getTracks(albumId?: number): Track[];
+    getTracksByReleaseId(releaseId: number): Track[];
     getTrack(id: number): Track | undefined;
     getTrackByPath(filePath: string): Track | undefined;
     createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number;
@@ -166,6 +167,8 @@ export interface DatabaseService {
     updateTrackDuration(id: number, duration: number): void;
     updateTrackWaveform(id: number, waveform: string): void;
     deleteTrack(id: number): void;
+    addTrackToRelease(releaseId: number, trackId: number): void;
+    removeTrackFromRelease(releaseId: number, trackId: number): void;
     // Playlists
     getPlaylists(publicOnly?: boolean): Playlist[];
     getPlaylist(id: number): Playlist | undefined;
@@ -313,6 +316,14 @@ export function createDatabase(dbPath: string): DatabaseService {
       position INTEGER,
       PRIMARY KEY (playlist_id, track_id)
     );
+
+    CREATE TABLE IF NOT EXISTS release_tracks (
+      release_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
+      track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+      PRIMARY KEY (release_id, track_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_release_tracks_track_id ON release_tracks(track_id);
+
 
     CREATE TABLE IF NOT EXISTS play_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -689,6 +700,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
 
         deleteAlbum(id: number, keepTracks = false): void {
+            // Delete from release_tracks join table
+            db.prepare("DELETE FROM release_tracks WHERE release_id = ?").run(id);
+
             if (keepTracks) {
                 // Determine if we should unlink tracks or just nullify album_id
                 // For now, nullify album_id (move to loose tracks)
@@ -798,7 +812,33 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
 
         deleteTrack(id: number): void {
+            db.prepare("DELETE FROM release_tracks WHERE track_id = ?").run(id);
             db.prepare("DELETE FROM tracks WHERE id = ?").run(id);
+        },
+
+        addTrackToRelease(releaseId: number, trackId: number): void {
+            db.prepare(
+                "INSERT OR IGNORE INTO release_tracks (release_id, track_id) VALUES (?, ?)"
+            ).run(releaseId, trackId);
+        },
+
+        removeTrackFromRelease(releaseId: number, trackId: number): void {
+            db.prepare(
+                "DELETE FROM release_tracks WHERE release_id = ? AND track_id = ?"
+            ).run(releaseId, trackId);
+        },
+
+        getTracksByReleaseId(releaseId: number): Track[] {
+            return db
+                .prepare(
+                    `SELECT t.*, a.title as album_title, ar.name as artist_name 
+           FROM tracks t
+           JOIN release_tracks rt ON t.id = rt.track_id
+           LEFT JOIN albums a ON t.album_id = a.id
+           LEFT JOIN artists ar ON t.artist_id = ar.id
+           WHERE rt.release_id = ?`
+                )
+                .all(releaseId) as Track[];
         },
 
         // Playlists
