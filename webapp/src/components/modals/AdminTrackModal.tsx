@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { Music, Save, AlertCircle } from 'lucide-react';
-import type { Track, Artist, Album } from '../../types';
+import type { Track } from '../../types';
 
 interface AdminTrackModalProps {
     onTrackUpdated: () => void;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Clock, Heart, MoreHorizontal, Share2, Plus, Download, Unlock, ExternalLink, Shield } from 'lucide-react';
+import { Play, Clock, Heart, MoreHorizontal, Share2, Plus, Download, Unlock, ExternalLink, Shield, Music } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 
