@@ -19,6 +19,31 @@ if (ffprobePath && ffprobePath.path) {
     ffmpeg.setFfprobePath(ffprobePath.path);
 }
 
+/**
+ * Robust wrapper for music-metadata parseFile with retry mechanism.
+ * Helps avoid RangeError and FileHandle issues with freshly converted/moved files.
+ */
+async function parseFileWithRetry(filePath: string, retries = 3, delay = 500): Promise<any> {
+    let lastError: any;
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await parseFile(filePath);
+        } catch (err) {
+            lastError = err;
+            // Only retry on potential race condition errors
+            const isRangeError = err instanceof RangeError || (err as any)?.code === 'ERR_OUT_OF_RANGE';
+            if (isRangeError || (err as any)?.code === 'EBUSY' || (err as any)?.code === 'ENOENT') {
+                if (i < retries - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+                    continue;
+                }
+            }
+            throw err;
+        }
+    }
+    throw lastError;
+}
+
 function getDurationFromFfmpeg(filePath: string): Promise<number | null> {
     return new Promise((resolve) => {
         ffmpeg.ffprobe(filePath, (err, metadata) => {
@@ -312,12 +337,20 @@ export function createScanner(database: DatabaseService): ScannerService {
         // IF NOT FOUND by path, check if another record for this SAME song exists (de-duplication)
         if (!existing) {
             try {
-                const metadata = await parseFile(currentFilePath);
+                const metadata = await parseFileWithRetry(currentFilePath);
                 const title = metadata.common.title || path.basename(currentFilePath, path.extname(currentFilePath));
 
                 // We need artist/album to deduplicate safely
                 const dir = path.dirname(currentFilePath);
-                let detectedAlbumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
+                let detectedAlbumId: number | null = null;
+                let current = dir;
+                while (current.length >= path.dirname(current).length) {
+                    detectedAlbumId = folderToAlbumMap.get(current) || null;
+                    if (detectedAlbumId) break;
+                    const parent = path.dirname(current);
+                    if (parent === current) break;
+                    current = parent;
+                }
 
                 // If we found an existing record with same metadata, we'll update it instead of creating new
                 if (title && detectedAlbumId) {
@@ -344,7 +377,15 @@ export function createScanner(database: DatabaseService): ScannerService {
 
         if (existing) {
             const dir = path.dirname(currentFilePath);
-            const detectedAlbumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
+            let detectedAlbumId: number | null = null;
+            let current = dir;
+            while (current.length >= path.dirname(current).length) {
+                detectedAlbumId = folderToAlbumMap.get(current) || null;
+                if (detectedAlbumId) break;
+                const parent = path.dirname(current);
+                if (parent === current) break;
+                current = parent;
+            }
 
             // Update path if changed (important for de-duplication)
             if (existing.file_path !== currentFilePath) {
@@ -365,7 +406,7 @@ export function createScanner(database: DatabaseService): ScannerService {
             // If track has no artist, try to get from metadata
             if (!existing.artist_id) {
                 try {
-                    const metadata = await parseFile(currentFilePath);
+                    const metadata = await parseFileWithRetry(currentFilePath);
                     const common = metadata.common;
                     if (common.artist) {
                         const existingArtist = database.getArtistByName(common.artist);
@@ -410,13 +451,21 @@ export function createScanner(database: DatabaseService): ScannerService {
 
         try {
             console.log("  Processing track: " + path.basename(currentFilePath));
-            const metadata = await parseFile(currentFilePath);
+            const metadata = await parseFileWithRetry(currentFilePath);
             const common = metadata.common;
             const format = metadata.format;
             const dir = path.dirname(currentFilePath);
 
             // 1. Try to get Album ID from folder map (from release.yaml)
-            let albumId = folderToAlbumMap.get(dir) || folderToAlbumMap.get(path.dirname(dir)) || null;
+            let albumId: number | null = null;
+            let currentPath = dir;
+            while (currentPath.length >= path.dirname(currentPath).length) {
+                albumId = folderToAlbumMap.get(currentPath) || null;
+                if (albumId) break;
+                const parent = path.dirname(currentPath);
+                if (parent === currentPath) break;
+                currentPath = parent;
+            }
 
             // Check if this is a "library" track (in library folder, not a release)
             const isLibraryTrack = dir.includes(path.sep + "library") || dir.endsWith("library");

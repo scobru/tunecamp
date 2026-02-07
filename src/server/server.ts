@@ -87,12 +87,18 @@ export async function startServer(config: ServerConfig): Promise<void> {
         const candidates = [
             path.join(webappDistPath, filename),
             path.join(webappPath, filename),
-            path.join(webappPath, "public", filename),
+            path.join(webappPublicPath, filename),
             path.join(process.cwd(), "webapp", "dist", filename),
             path.join(process.cwd(), "webapp", "public", filename),
-            path.join(process.cwd(), "webapp", filename)
+            path.join(process.cwd(), "webapp", filename),
+            path.join(process.cwd(), "dist", "webapp", "dist", filename), // Some Docker setups
+            path.join(__dirname, "..", "..", "webapp", "public", filename)
         ];
-        return candidates.find(p => fs.existsSync(p));
+        const found = candidates.find(p => fs.existsSync(p));
+        if (!found) {
+            console.warn(`❌ [Express] Static file NOT FOUND: ${filename}. Checked: ${candidates.slice(0, 3).join(", ")} ...`);
+        }
+        return found;
     };
 
     // Diagnostic listing function

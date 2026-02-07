@@ -18,10 +18,23 @@ export class ConsolidationService {
         const track = this.database.getTrack(trackId);
         if (!track || !track.file_path) return false;
 
-        const album = track.album_id ? this.database.getAlbum(track.album_id) : null;
+        let album = track.album_id ? this.database.getAlbum(track.album_id) : null;
         if (!album) {
-            console.warn(`[Consolidate] Skipping track ${track.title}: Missing album info`);
-            return false;
+            // Autonomous recovery: try to find album by directory
+            const dir = path.dirname(track.file_path);
+            const parentDir = path.basename(dir);
+            console.log(`[Consolidate] Track ${track.title} missing album link, checking folder: ${parentDir}`);
+
+            // Try to find album by folder name (as slug or title)
+            const possibleAlbum = this.database.getAlbumByTitle(parentDir) || this.database.getAlbumBySlug(parentDir);
+            if (possibleAlbum) {
+                console.log(`[Consolidate] Recovered: Linked track ${track.title} to album ${possibleAlbum.title}`);
+                this.database.updateTrackAlbum(track.id, possibleAlbum.id);
+                album = possibleAlbum;
+            } else {
+                console.warn(`[Consolidate] Skipping track ${track.title}: Missing album info and could not recover from directory ${dir}`);
+                return false;
+            }
         }
 
         const trackArtist = track.artist_id ? this.database.getArtist(track.artist_id) : (album.artist_id ? this.database.getArtist(album.artist_id) : null);
