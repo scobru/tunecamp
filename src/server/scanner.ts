@@ -121,6 +121,8 @@ export interface ScannerService {
 
 export function createScanner(database: DatabaseService): ScannerService {
     let watcher: FSWatcher | null = null;
+    let isScanning = false;
+    let pendingScan: Promise<void> | null = null;
     // Map directory paths to album IDs to efficiently link tracks
     const folderToAlbumMap = new Map<string, number>();
     // Map directory paths to artist IDs
@@ -317,9 +319,19 @@ export function createScanner(database: DatabaseService): ScannerService {
         // Auto-convert WAV to MP3 on import
         if (ext === '.wav') {
             try {
-                const mp3Path = await convertWavToMp3(currentFilePath);
-                // If conversion successful, use the new MP3 path
+                const mp3Path = currentFilePath.replace(/\.wav$/i, '.mp3');
+
+                // Guard: Skip if MP3 already exists
                 if (await fs.pathExists(mp3Path)) {
+                    currentFilePath = mp3Path;
+                    ext = '.mp3';
+                    // No need to log loudly if it already exists, just proceed
+                    return processAudioFile(currentFilePath); // Re-process as MP3
+                }
+
+                const convertedPath = await convertWavToMp3(currentFilePath);
+                // If conversion successful, use the new MP3 path
+                if (await fs.pathExists(convertedPath)) {
                     // Keep original WAV for downloads, but switch scanner to MP3 for streaming
                     currentFilePath = mp3Path;
                     ext = '.mp3';
@@ -626,6 +638,25 @@ export function createScanner(database: DatabaseService): ScannerService {
     }
 
     async function scanDirectory(dir: string): Promise<void> {
+        if (isScanning) {
+            console.log("  [Scanner] Scan already in progress, waiting for it to complete...");
+            return pendingScan || Promise.resolve();
+        }
+
+        isScanning = true;
+        pendingScan = (async () => {
+            try {
+                await doScan(dir);
+            } finally {
+                isScanning = false;
+                pendingScan = null;
+            }
+        })();
+
+        return pendingScan;
+    }
+
+    async function doScan(dir: string): Promise<void> {
         console.log("Scanning directory: " + dir);
 
         if (!(await fs.pathExists(dir))) {

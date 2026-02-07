@@ -69,6 +69,16 @@ export class ConsolidationService {
 
         try {
             await fs.ensureDir(targetDir);
+
+            // Guard: Check if a track already exists at targetPath in DB
+            const existingTrack = this.database.getTrackByPath(targetPath);
+            if (existingTrack && existingTrack.id !== trackId) {
+                console.warn(`[Consolidate] Collision: A track record already exists for ${targetPath}. Skipping move to avoid UNIQUE constraint violation.`);
+                // We should probably mark this track as consolidated anyway or link it?
+                // For now, skip to be safe.
+                return false;
+            }
+
             console.log(`[Consolidate] Moving: ${path.basename(track.file_path)} -> ${targetPath}`);
             await fs.move(track.file_path, targetPath, { overwrite: true });
 

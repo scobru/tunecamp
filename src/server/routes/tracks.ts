@@ -240,7 +240,7 @@ export function createTracksRoutes(database: DatabaseService, apService: Activit
             const ext = path.extname(track.file_path).toLowerCase();
             if (ext === ".mp3") {
                 try {
-                    const NodeID3 = await import("node-id3");
+                    const NodeID3 = (await import("node-id3")).default;
 
                     // Read existing tags
                     const existingTags = NodeID3.read(track.file_path) || {};
