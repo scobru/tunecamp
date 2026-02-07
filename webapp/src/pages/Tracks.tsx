@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
-import { Music, Play, Heart, Plus, MoreHorizontal, Clock, Search, Trash2 } from 'lucide-react';
+import { Music, Play, Heart, Plus, MoreHorizontal, Clock, Search } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { Track } from '../types';
@@ -153,33 +153,7 @@ export const Tracks = () => {
                                         <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-white/10">
                                             <li><a onClick={() => handleAddToPlaylist(track.id)}><Plus size={16}/> Add to Playlist</a></li>
                                              <li><a onClick={() => handleLike()}><Heart size={16}/> Like Song</a></li>
-                                             {isAdminAuthenticated && (
-                                                 <>
-                                                     <li>
-                                                         <a onClick={(e) => {
-                                                             e.preventDefault();
-                                                             document.dispatchEvent(new CustomEvent('open-admin-track-modal', { detail: track }));
-                                                         }} className="text-primary font-medium">
-                                                             <Music size={16}/> Edit Metadata
-                                                         </a>
-                                                     </li>
-                                                     <li>
-                                                         <a onClick={async (e) => {
-                                                              e.preventDefault();
-                                                              if (confirm(`Are you sure you want to delete "${track.title}"? This will remove it from the library database and disk.`)) {
-                                                                  try {
-                                                                      await API.deleteTrack(track.id, true);
-                                                                      setTracks(tracks.filter(t => t.id !== track.id));
-                                                                  } catch (err: any) {
-                                                                      alert("Failed to delete track: " + err.message);
-                                                                  }
-                                                              }
-                                                         }} className="text-error">
-                                                             <Trash2 size={16}/> Delete Track
-                                                         </a>
-                                                     </li>
-                                                 </>
-                                             )}
+
                                         </ul>
                                     </div>
                                 </td>
