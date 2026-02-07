@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
-import { Music, Play, Heart, Plus, MoreHorizontal, Clock, Search, LogIn, Trash2 } from 'lucide-react';
+import { Music, Play, Heart, Plus, MoreHorizontal, Clock, Search, Trash2 } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { Track } from '../types';
@@ -14,7 +14,7 @@ export const Tracks = () => {
     const { isAuthenticated, isAdminAuthenticated } = useAuthStore();
 
     useEffect(() => {
-        if (!isAuthenticated && !isAdminAuthenticated) return;
+        // if (!isAuthenticated && !isAdminAuthenticated) return;
         
         setLoading(true);
         API.getTracks()
@@ -40,28 +40,40 @@ export const Tracks = () => {
     }, [filter, tracks]);
 
     const handleAddToPlaylist = (trackId: string) => {
+        if (!isAuthenticated) {
+            document.dispatchEvent(new CustomEvent('open-auth-modal'));
+            return;
+        }
         document.dispatchEvent(new CustomEvent('open-playlist-modal', { detail: { trackId } }));
+    };
+
+    const handleLike = () => {
+         if (!isAuthenticated) {
+            document.dispatchEvent(new CustomEvent('open-auth-modal'));
+            return;
+        }
+        // Logic for like would go here (not implemented in original snippet but good to have safeguard)
     };
 
 
 
-    if (!isAuthenticated && !isAdminAuthenticated) {
-        return (
-            <div className="p-12 text-center opacity-70 animate-fade-in">
-                <Music size={48} className="mx-auto mb-4 text-primary opacity-50"/>
-                <h2 className="text-xl font-bold mb-2">Login Required</h2>
-                <p className="mb-4">Please login to view specific tracks.</p>
-                <div className="flex justify-center gap-4">
-                     <button className="btn btn-primary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}>
-                        <LogIn size={16}/> Community Login
-                    </button>
-                    <button className="btn btn-secondary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-signin-modal'))}>
-                        <LogIn size={16}/> Admin Login
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    // if (!isAuthenticated && !isAdminAuthenticated) {
+    //     return (
+    //         <div className="p-12 text-center opacity-70 animate-fade-in">
+    //             <Music size={48} className="mx-auto mb-4 text-primary opacity-50"/>
+    //             <h2 className="text-xl font-bold mb-2">Login Required</h2>
+    //             <p className="mb-4">Please login to view specific tracks.</p>
+    //             <div className="flex justify-center gap-4">
+    //                  <button className="btn btn-primary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-auth-modal'))}>
+    //                     <LogIn size={16}/> Community Login
+    //                 </button>
+    //                 <button className="btn btn-secondary btn-sm gap-2" onClick={() => document.dispatchEvent(new CustomEvent('open-signin-modal'))}>
+    //                     <LogIn size={16}/> Admin Login
+    //                 </button>
+    //             </div>
+    //         </div>
+    //     );
+    // }
 
     if (loading) return <div className="p-12 text-center opacity-50">Loading tracks...</div>;
 
@@ -140,7 +152,7 @@ export const Tracks = () => {
                                         <label tabIndex={0} className="btn btn-ghost btn-xs btn-circle"><MoreHorizontal size={16}/></label>
                                         <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-white/10">
                                             <li><a onClick={() => handleAddToPlaylist(track.id)}><Plus size={16}/> Add to Playlist</a></li>
-                                             <li><a><Heart size={16}/> Like Song</a></li>
+                                             <li><a onClick={() => handleLike()}><Heart size={16}/> Like Song</a></li>
                                              {isAdminAuthenticated && (
                                                  <>
                                                      <li>

@@ -8,6 +8,7 @@ import { AdminReleaseModal } from '../components/modals/AdminReleaseModal';
 import { AdminArtistModal } from '../components/modals/AdminArtistModal';
 import { UploadTracksModal } from '../components/modals/UploadTracksModal';
 import { CreatePostModal } from '../components/modals/CreatePostModal';
+import { AdminTrackModal } from '../components/modals/AdminTrackModal';
 import { IdentityPanel } from '../components/admin/IdentityPanel';
 import { ActivityPubPanel } from '../components/admin/ActivityPubPanel';
 import type { SiteSettings } from '../types';
@@ -205,6 +206,7 @@ export const Admin = () => {
             <AdminReleaseModal onReleaseUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
             <UploadTracksModal onUploadComplete={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
             <CreatePostModal onPostCreated={() => window.dispatchEvent(new CustomEvent('refresh-admin-releases'))} />
+            <AdminTrackModal onTrackUpdated={() => window.dispatchEvent(new CustomEvent('refresh-admin-tracks'))} />
         </div>
     );
 };
@@ -542,6 +544,12 @@ const AdminTracksList = () => {
                         <td>{t.album_title}</td>
                         <td>{t.duration ? `${Math.floor(t.duration / 60)}:${String(Math.floor(t.duration % 60)).padStart(2, '0')}` : '-'}</td>
                         <td className="flex gap-2">
+                            <button 
+                                className="btn btn-xs btn-ghost" 
+                                onClick={() => document.dispatchEvent(new CustomEvent('open-admin-track-modal', { detail: t }))}
+                            >
+                                Edit
+                            </button>
                             <button 
                                 className="btn btn-xs btn-ghost text-error"
                                 onClick={() => handleDelete(t.id, t.title)}
