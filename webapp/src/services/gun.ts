@@ -1,5 +1,7 @@
 import Gun from 'gun';
 import 'gun/sea';
+import "gun/lib/yson.js"
+
 
 // Define Gun peers (should be configurable)
 const PEERS = [
