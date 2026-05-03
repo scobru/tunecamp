@@ -59,16 +59,28 @@ export function createAdminRoutes(
             const isRoot = req.isRootAdmin;
             let releases: any[] = [];
             
+            const includeLibrary = req.query.includeLibrary === 'true';
+            
             const canSeeAll = req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
             
             if (canSeeAll && !showMine) {
-                // Root admin and Super User/Admins see all releases if they don't explicitly ask for "mine"
+                // Root admin and Super User/Admins see all formal releases
                 const formalReleases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
-                const pendingAlbums = database.getAlbums(false).filter(a => a.status !== 'draft').map(a => ({ ...a, is_formal_release: false }));
-                releases = [...formalReleases, ...pendingAlbums];
+                releases = [...formalReleases];
+
+                // Only include pending library albums if requested (e.g. for Curation Queue)
+                if (includeLibrary) {
+                    const pendingAlbums = database.getAlbums(false)
+                        .filter(a => a.status !== 'draft')
+                        .map(a => ({ ...a, is_formal_release: false }));
+                    releases = [...releases, ...pendingAlbums];
+                }
             } else if (req.userId) {
+                // For artists viewing THEIR own content, we always include library albums being promoted
                 const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
-                const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, false).filter(a => a.status !== 'draft').map(a => ({ ...a, is_formal_release: false }));
+                const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, false)
+                    .filter(a => a.status !== 'draft')
+                    .map(a => ({ ...a, is_formal_release: false }));
                 releases = [...ownedFormalReleases, ...ownedPendingAlbums];
             } else {
                 res.json([]);

@@ -23,7 +23,7 @@ export class ActivityPubTransport {
             
             const ctx = this.federation.createContext(new URL(this.baseUrl), undefined);
             await ctx.sendActivity(
-                { identifier: actor.slug },
+                { handle: actor.slug },
                 { id: new URL(inboxUri), inboxId: new URL(inboxUri) },
                 activity
             );
@@ -121,7 +121,7 @@ export class ActivityPubTransport {
         signer.update(stringToSign);
         const signature = signer.sign(actor.private_key, "base64");
         
-        const keyId = `${this.baseUrl}/users/${actor.slug}#main-key`;
+        const keyId = `${this.baseUrl}/api/ap/users/${actor.slug}#main-key`;
         return `keyId="${keyId}",algorithm="rsa-sha256",headers="${headersList}",signature="${signature}"`;
     }
 }

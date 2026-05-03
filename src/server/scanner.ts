@@ -187,6 +187,21 @@ export class Scanner implements ScannerService {
         if (relativeDir === "." || relativeDir === "") return null;
         if (this.folderToAlbumMap.has(dir)) return this.folderToAlbumMap.get(dir)!;
 
+        // Check if this is a formal release directory (music/releases/slug)
+        // We use the slug from the directory name to look up the release
+        if (relativeDir.startsWith("releases/")) {
+            const pathParts = relativeDir.split("/");
+            if (pathParts.length >= 2) {
+                const releaseSlug = pathParts[1];
+                const formalRelease = this.database.getReleaseBySlug(releaseSlug);
+                if (formalRelease) {
+                    console.log(`📂 [Scanner] Recognized formal release directory: ${relativeDir} -> Release ${formalRelease.id}`);
+                    this.folderToAlbumMap.set(dir, formalRelease.id);
+                    return formalRelease.id;
+                }
+            }
+        }
+
         const folderName = path.basename(dir);
         const slug = slugify("lib-" + relativeDir); 
         let album = this.database.getAlbumBySlug(slug);

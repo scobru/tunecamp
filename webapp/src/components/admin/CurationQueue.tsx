@@ -9,9 +9,7 @@ export const CurationQueue = () => {
     const loadQueue = async () => {
         setLoading(true);
         try {
-            // We'll use a filtered version of getAdminReleases or a dedicated endpoint if we had one.
-            // For now, let's assume we can filter locally or the API handles it.
-            const releases = await API.getAdminReleases({ mine: false });
+            const releases = await API.getAdminReleases({ mine: false, includeLibrary: true });
             setPendingReleases(releases.filter((r: any) => r.status === 'pending'));
         } catch (e) {
             console.error(e);

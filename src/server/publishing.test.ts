@@ -12,6 +12,7 @@ describe('PublishingService', () => {
     let zendbMock: ZenDBService;
     let apMock: ActivityPubService;
     let configMock: ServerConfig;
+    let storageMock: any;
     let publishingService: PublishingService;
 
     beforeEach(() => {
@@ -31,14 +32,22 @@ describe('PublishingService', () => {
             generateNote: jest.fn().mockReturnValue('mock-note'),
         } as unknown as ActivityPubService;
 
+        // Setup Mock Storage
+        storageMock = {
+            ensureDir: jest.fn().mockReturnValue(Promise.resolve()),
+            writeFile: jest.fn().mockReturnValue(Promise.resolve()),
+            pathExists: jest.fn().mockReturnValue(Promise.resolve(true)),
+        };
+
         // Setup Config
         configMock = {
             publicUrl: 'https://test.tunecamp.org',
             siteName: 'Test Site',
+            musicDir: '/tmp/music'
         } as any;
 
         // Create Service
-        publishingService = new PublishingService(db, zendbMock, apMock, configMock);
+        publishingService = new PublishingService(db, zendbMock, apMock, configMock, storageMock);
 
         // Populate minimal data
         db.createArtist('Test Artist');

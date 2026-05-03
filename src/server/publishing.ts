@@ -1,14 +1,18 @@
+import { stringify } from "yaml";
+import path from "path";
 import type { DatabaseService, Post, Release } from "./database.js";
 import type { ZenDBService, SiteInfo } from "./zendb.js";
 import type { ActivityPubService } from "./activitypub.js";
 import type { ServerConfig } from "./config.js";
+import type { StorageEngine } from "./modules/storage/storage.engine.js";
 
 export class PublishingService {
     constructor(
         private db: DatabaseService,
         private zendb: ZenDBService,
         private ap: ActivityPubService,
-        private config: ServerConfig
+        private config: ServerConfig,
+        private storage: StorageEngine
     ) {}
 
     private getSiteInfo(artistName?: string): SiteInfo | null {
@@ -91,6 +95,9 @@ export class PublishingService {
             const release = this.db.getRelease(releaseId);
             if (!release) return;
 
+            // 1. Generate/Update release.yaml for portability and scanner recognition
+            await this.generateReleaseYaml(release);
+
             const isPublic = release.visibility === 'public' || release.visibility === 'unlisted';
 
             // Ensure our instance is registered in Zen for discovery
@@ -111,6 +118,66 @@ export class PublishingService {
             // Zen serves only as instance signaling.
         } catch (error) {
             console.error(`🔥 Critical error in syncRelease for ${releaseId}:`, error);
+        }
+    }
+
+    /**
+     * Generates or updates release.yaml on disk.
+     */
+    private async generateReleaseYaml(release: Release): Promise<void> {
+        try {
+            const releaseDir = path.join(this.config.musicDir, "releases", release.slug);
+            await this.storage.ensureDir(releaseDir);
+
+            const releaseTracks = this.db.getReleaseTracks(release.id);
+
+            const config: any = {
+                title: release.title,
+                date: release.date,
+                description: release.description,
+                artist: release.artist_name,
+                type: release.type || 'album',
+                year: release.year,
+                genre: release.genre ? release.genre.split(", ").map(g => g.trim()) : undefined,
+                download: release.download,
+                price: release.price,
+                price_usdc: release.price_usdc,
+                currency: release.currency,
+                license: release.license,
+                visibility: release.visibility,
+                metadata: {
+                    tracks: releaseTracks.map(rt => ({
+                        title: rt.title,
+                        artist: rt.artist_name,
+                        track: rt.track_num,
+                        duration: rt.duration,
+                        file: rt.file_path ? path.basename(rt.file_path) : undefined,
+                        price: rt.price
+                    }))
+                }
+            };
+
+            // Add cover if it exists relative to the release dir
+            if (release.cover_path) {
+                const absoluteCover = path.join(this.config.musicDir, release.cover_path);
+                const relativeCover = path.relative(releaseDir, absoluteCover).replace(/\\/g, "/");
+                if (!relativeCover.startsWith("..")) {
+                    config.cover = relativeCover;
+                }
+            }
+
+            // Add external links
+            if (release.external_links) {
+                try {
+                    config.links = JSON.parse(release.external_links);
+                } catch (e) {}
+            }
+
+            const yamlContent = stringify(config);
+            await this.storage.writeFile(path.join(releaseDir, "release.yaml"), yamlContent);
+            console.log(`📄 [Publishing] Generated release.yaml for: ${release.title}`);
+        } catch (e) {
+            console.error(`❌ Failed to generate release.yaml for release ${release.id}:`, e);
         }
     }
 
@@ -190,7 +257,8 @@ export function createPublishingService(
     db: DatabaseService,
     zendb: ZenDBService,
     ap: ActivityPubService,
-    config: ServerConfig
+    config: ServerConfig,
+    storage: StorageEngine
 ): PublishingService {
-    return new PublishingService(db, zendb, ap, config);
+    return new PublishingService(db, zendb, ap, config, storage);
 }

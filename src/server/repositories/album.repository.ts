@@ -107,7 +107,7 @@ export class AlbumRepository extends BaseRepository {
         const sql = publicOnly
             ? `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
-               WHERE r.visibility = 'public' ORDER BY r.date DESC`
+               WHERE r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
             : `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
                ORDER BY r.date DESC`;
@@ -130,7 +130,7 @@ export class AlbumRepository extends BaseRepository {
         const sql = publicOnly
             ? `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
-               WHERE r.artist_id = ? AND r.visibility = 'public' ORDER BY r.date DESC`
+               WHERE r.artist_id = ? AND r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
             : `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
                WHERE r.artist_id = ? ORDER BY r.date DESC`;

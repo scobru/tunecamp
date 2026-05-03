@@ -209,7 +209,13 @@ export const API = {
     syncPeer: (url?: string) => handleResponse(api.post('/admin/network/ap/sync', { url })),
 
     // --- Admin: Releases & Content ---
-    getAdminReleases: (options: { mine?: boolean } = {}) => handleResponse(api.get<Release[]>(`/admin/releases${options.mine ? '?mine=true' : ''}`)),
+    getAdminReleases: (options: { mine?: boolean, includeLibrary?: boolean } = {}) => {
+        const params = new URLSearchParams();
+        if (options.mine) params.set('mine', 'true');
+        if (options.includeLibrary) params.set('includeLibrary', 'true');
+        const queryString = params.toString();
+        return handleResponse(api.get<Release[]>(`/admin/releases${queryString ? `?${queryString}` : ''}`));
+    },
     getAdminRelease: (id: string | number) => handleResponse(api.get<Release>(`/admin/releases/${id}`)),
     createRelease: (data: Partial<Release>) => handleResponse(api.post<Release>('/admin/releases', data)),
     updateRelease: (id: string, data: Partial<Release>) => handleResponse(api.put<Release>(`/admin/releases/${id}`, data)),

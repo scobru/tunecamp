@@ -182,7 +182,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     await apService.generateKeysForAllArtists();
 
     // Initialize Publishing Service
-    const publishingService = createPublishingService(database, zendbService, apService, config);
+    const publishingService = createPublishingService(database, zendbService, apService, config, storage);
 
     // Initialize Lifecycle Service
     const lifecycleService = new LifecycleService(database, publishingService, apService);

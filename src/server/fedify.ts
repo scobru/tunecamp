@@ -238,7 +238,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 console.log(`📥 New site follower: ${follower.id?.toString()}`);
 
                 await ctx.sendActivity(
-                    { identifier: "site" },
+                    { handle: "site" },
                     follower,
                     new Accept({
                         actor: follow.objectId,
@@ -267,7 +267,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             // Send Accept activity back to the follower
             await ctx.sendActivity(
-                { identifier: handle },
+                { handle: handle },
                 follower,
                 new Accept({
                     actor: follow.objectId,
