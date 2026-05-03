@@ -233,7 +233,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             const transformedUser = result.user || {
                 username,
-                isAdmin: result.role === 'admin' || result.role === 'root_admin',
+                isAdmin: result.role === 'admin' || result.role === 'super_user' || result.role === 'root_admin',
                 isRootAdmin: !!result.isRootAdmin,
                 id: String(result.artistId ?? '0'),
                 userId: result.userId,
@@ -244,7 +244,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const userRole = (result as any).role || 'user';
             set({
                 isAuthenticated: true,
-                isAdminAuthenticated: userRole === 'admin' || userRole === 'root_admin', // compat
+                isAdminAuthenticated: userRole === 'admin' || userRole === 'super_user' || userRole === 'root_admin', // compat
                 user: { ...transformedUser, zenProfile },
                 adminUser: transformedUser, // compat
                 mustChangePassword: !!result.mustChangePassword,
@@ -291,7 +291,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 // Update the user structure with the result from the backend
                 const transformedUser = result.user || {
                     username,
-                    isAdmin: result.role === 'admin' || result.role === 'root_admin',
+                    isAdmin: result.role === 'admin' || result.role === 'super_user' || result.role === 'root_admin',
                     id: String(result.artistId ?? '0'),
                     artistId: result.artistId != null ? String(result.artistId) : undefined,
                     isActive: result.isActive
@@ -321,7 +321,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
                 set({
                     isAuthenticated: true,
-                    isAdminAuthenticated: userRole === 'admin' || userRole === 'root_admin',
+                    isAdminAuthenticated: userRole === 'admin' || userRole === 'super_user' || userRole === 'root_admin',
                     user: { ...transformedUser, zenProfile },
                     adminUser: transformedUser,
                     mustChangePassword: !!result.mustChangePassword,

@@ -308,7 +308,9 @@ export class LibraryService {
         const { title, artistId, artist, albumId, album, ownerId, trackNumber, genre, year, price, priceUsdc, currency, lyrics, externalArtwork, fileName, duration } = data;
 
         let finalArtistId = artistId !== undefined ? artistId : undefined;
-        if (finalArtistId === null && typeof artist === 'string' && artist.trim() !== "") {
+        
+        // If artist name string is provided, try to resolve it to an ID
+        if (typeof artist === 'string' && artist.trim() !== "") {
             const artistName = artist.trim();
             const existingArtist = this.db.getArtistByName(artistName);
             finalArtistId = existingArtist ? existingArtist.id : this.db.createArtist(artistName);
@@ -366,7 +368,30 @@ export class LibraryService {
 
         // 2. Database updates
         if (title !== undefined) this.db.updateTrackTitle(trackId, title);
-        if (finalArtistId !== undefined) this.db.updateTrackArtist(trackId, finalArtistId);
+        
+        if (finalArtistId !== undefined) {
+            const artistChanged = finalArtistId !== track.artist_id;
+            this.db.updateTrackArtist(trackId, finalArtistId);
+            
+            // If the artist actually changed and this track is the ONLY track in its album/release, move the album/release too
+            if (artistChanged && track.album_id) {
+                const tracksInAlbum = this.db.getTracksByAlbum(track.album_id);
+                if (tracksInAlbum.length === 1) {
+                    console.log(`[LibraryService] Moving single-track album ${track.album_id} to artist ${finalArtistId}`);
+                    this.db.updateAlbumArtist(track.album_id, finalArtistId);
+                    
+                    // Check if it's a formal release too
+                    const release = this.db.getRelease(track.album_id);
+                    if (release) {
+                        this.db.updateRelease(track.album_id, { artist_id: finalArtistId });
+                    }
+                }
+            }
+        } else if (artist !== undefined && (artist === null || artist === "")) {
+            // Explicitly clearing artist
+            this.db.updateTrackArtist(trackId, null);
+        }
+
         if (finalAlbumId !== undefined) this.db.updateTrackAlbum(trackId, finalAlbumId);
         if (ownerId !== undefined) {
             this.db.updateTrackOwner(trackId, ownerId);

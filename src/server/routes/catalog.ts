@@ -10,7 +10,7 @@ export function createCatalogRoutes(catalogService: CatalogService): Router {
      */
     router.get("/", async (req: any, res) => {
         try {
-            const results = await catalogService.getOverview(req.isAdmin);
+            const results = await catalogService.getOverview(req.isAdmin || req.isSuperUser);
             res.json(results);
         } catch (error) {
             console.error("Error getting catalog:", error);
@@ -24,7 +24,7 @@ export function createCatalogRoutes(catalogService: CatalogService): Router {
      */
     router.get("/genres", (req: any, res) => {
         try {
-            const genres = catalogService.getGenres(req.isAdmin);
+            const genres = catalogService.getGenres(req.isAdmin || req.isSuperUser);
             res.json(genres);
         } catch (error) {
             res.status(500).json({ error: "Failed to get genres" });
@@ -39,7 +39,7 @@ export function createCatalogRoutes(catalogService: CatalogService): Router {
     router.get("/random", async (req: any, res) => {
         try {
             const limit = parseInt(req.query.limit as string) || 1;
-            const tracks = catalogService.getRandomTracks(limit, req.isAdmin);
+            const tracks = catalogService.getRandomTracks(limit, req.isAdmin || req.isSuperUser);
             res.json(tracks);
         } catch (error) {
             console.error("Error getting random tracks:", error);
@@ -54,7 +54,7 @@ export function createCatalogRoutes(catalogService: CatalogService): Router {
     router.get("/search", async (req: any, res) => {
         try {
             const query = req.query.q as string;
-            const results = await catalogService.search(query, req.isAdmin);
+            const results = await catalogService.search(query, req.isAdmin || req.isSuperUser);
             res.json(results);
         } catch (error: any) {
             res.status(500).json({ error: error.message });

@@ -24,7 +24,7 @@ import clsx from "clsx";
 
 export const Profile = () => {
   const { user, isAuthenticated, role, isInitializing } = useAuthStore();
-  const isAdmin = role === 'admin' || user?.isRootAdmin;
+  const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
   const { address, externalAddress, useExternalWallet, isExternalConnected } = useWalletStore();
   const activeAddress = useExternalWallet && isExternalConnected ? externalAddress : address;
   const { loading: purchasesLoading, isPurchased } = usePurchases();

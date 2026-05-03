@@ -423,6 +423,7 @@ export interface DatabaseService {
     updateTrackNumber(id: number, trackNum: number): void;
     updateTracksOrder(trackOrders: { id: number, trackNum: number }[]): void;
     updateTrackArtist(id: number, artistId: number | null): void;
+    updateTrackArtistName(id: number, artistName: string | null): void;
     updateTrackOwner(id: number, ownerId: number | null): void;
     getTrackByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined;
     updateTrackTitle(id: number, title: string): void;

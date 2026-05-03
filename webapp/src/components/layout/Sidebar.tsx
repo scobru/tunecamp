@@ -27,7 +27,7 @@ export const Sidebar = () => {
   const { user, isAuthenticated, role, logout } = useAuthStore();
   const [siteName, setSiteName] = useState("TuneCamp");
  
-  const isAdmin = role === 'admin' || role === 'root_admin';
+  const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
   const isSuperUser = role === 'super_user';
   const isUser = role === 'user';
  

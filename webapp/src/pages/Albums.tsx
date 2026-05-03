@@ -8,7 +8,7 @@ import clsx from 'clsx';
 
 export const Albums = () => {
     const { isAuthenticated, role, user } = useAuthStore();
-    const isAdmin = role === 'admin' || user?.isRootAdmin;
+    const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
     const isArtist = !!user?.artistId;
     const [activeTab, setActiveTab] = useState<'releases' | 'library'>('releases');
     const [releases, setReleases] = useState<any[]>([]);

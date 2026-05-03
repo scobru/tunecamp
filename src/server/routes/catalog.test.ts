@@ -16,17 +16,20 @@ const mockCatalogService = {
 describe('Catalog Routes', () => {
     let app: express.Express;
     let mockIsAdmin = false;
+    let mockIsSuperUser = false;
 
     beforeEach(() => {
         jest.clearAllMocks();
         mockIsAdmin = false;
+        mockIsSuperUser = false;
 
         app = express();
         app.use(express.json());
 
-        // Middleware to mock req.isAdmin
+        // Middleware to mock req.isAdmin and req.isSuperUser
         app.use((req: any, res, next) => {
             req.isAdmin = mockIsAdmin;
+            req.isSuperUser = mockIsSuperUser;
             next();
         });
 

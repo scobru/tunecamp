@@ -1351,13 +1351,34 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateAlbumFederationSettings(id: number, publishedToGunDB: boolean, publishedToAP: boolean): void {
             db.prepare("UPDATE albums SET published_to_gundb = ?, published_to_ap = ? WHERE id = ?").run(publishedToGunDB ? 1 : 0, publishedToAP ? 1 : 0, id);
         },
-        updateAlbumArtist(id: number, artistId: number): void { db.prepare("UPDATE albums SET artist_id = ? WHERE id = ?").run(artistId, id); },
-        updateAlbumOwner(id: number, ownerId: number): void { db.prepare("UPDATE albums SET owner_id = ? WHERE id = ?").run(ownerId, id); },
+        updateAlbumArtist(id: number, artistId: number): void {
+            const artist = this.getArtist(artistId);
+            if (artist) {
+                db.prepare("UPDATE albums SET artist_id = ?, artist_name = ? WHERE id = ?").run(artistId, artist.name, id);
+                // Also update corresponding release if exists
+                db.prepare("UPDATE releases SET artist_id = ? WHERE id = ?").run(artistId, id);
+                
+                // Sync to all tracks in this album that don't have their own artist override
+                db.prepare("UPDATE tracks SET artist_name = ? WHERE album_id = ? AND artist_id IS NULL").run(artist.name, id);
+                db.prepare("UPDATE release_tracks SET artist_name = ? WHERE release_id = ? AND (track_id IS NULL OR track_id NOT IN (SELECT id FROM tracks WHERE artist_id IS NOT NULL))").run(artist.name, id);
+            } else {
+                db.prepare("UPDATE albums SET artist_id = ? WHERE id = ?").run(artistId, id);
+                db.prepare("UPDATE releases SET artist_id = ? WHERE id = ?").run(artistId, id);
+            }
+        },
+        updateAlbumOwner(id: number, ownerId: number): void { 
+            db.prepare("UPDATE albums SET owner_id = ? WHERE id = ?").run(ownerId, id);
+            db.prepare("UPDATE releases SET owner_id = ? WHERE id = ?").run(ownerId, id);
+        },
         updateAlbumTitle(id: number, title: string): void {
             const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "album";
             let finalSlug = slug; let attempt = 0;
             while (attempt < 100) {
-                try { db.prepare("UPDATE albums SET title = ?, slug = ? WHERE id = ?").run(title, finalSlug, id); return; }
+                try { 
+                    db.prepare("UPDATE albums SET title = ?, slug = ? WHERE id = ?").run(title, finalSlug, id); 
+                    db.prepare("UPDATE releases SET title = ?, slug = ? WHERE id = ?").run(title, finalSlug, id);
+                    return; 
+                }
                 catch (e: any) { if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) { attempt++; finalSlug = `${slug}-${attempt}`; } else throw e; }
             }
             throw new Error("Could not create unique slug for album rename");
@@ -1483,21 +1504,44 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
         },
         updateTrackOrder(id: number, trackNum: number): void { db.prepare("UPDATE tracks SET track_num = ? WHERE id = ?").run(trackNum, id); },
+        updateTrackNumber(id: number, trackNum: number): void { this.updateTrackOrder(id, trackNum); },
         updateTracksOrder(trackOrders: { id: number, trackNum: number }[]): void {
             const stmt = db.prepare("UPDATE tracks SET track_num = ? WHERE id = ?");
             db.transaction(() => trackOrders.forEach(o => stmt.run(o.trackNum, o.id)))();
         },
-        updateTrackArtist(id: number, artistId: number | null): void { db.prepare("UPDATE tracks SET artist_id = ? WHERE id = ?").run(artistId, id); },
+        updateTrackArtist(id: number, artistId: number | null): void {
+            const artist = artistId ? this.getArtist(artistId) : null;
+            if (artist) {
+                db.prepare("UPDATE tracks SET artist_id = ?, artist_name = ? WHERE id = ?").run(artistId, artist.name, id);
+                db.prepare("UPDATE release_tracks SET artist_name = ? WHERE track_id = ?").run(artist.name, id);
+            } else {
+                db.prepare("UPDATE tracks SET artist_id = ?, artist_name = NULL WHERE id = ?").run(artistId, id);
+                db.prepare("UPDATE release_tracks SET artist_name = NULL WHERE track_id = ?").run(id);
+            }
+        },
+        updateTrackArtistName(id: number, artistName: string | null): void {
+            db.prepare("UPDATE tracks SET artist_name = ? WHERE id = ?").run(artistName, id);
+            db.prepare("UPDATE release_tracks SET artist_name = ? WHERE track_id = ?").run(artistName, id);
+        },
         updateTrackOwner(id: number, ownerId: number | null): void { db.prepare("UPDATE tracks SET owner_id = ? WHERE id = ?").run(ownerId, id); },
-        updateTrackNumber(id: number, trackNum: number): void { this.updateTrackOrder(id, trackNum); },
         getTrackByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined {
             return db.prepare("SELECT * FROM tracks WHERE LOWER(title) = LOWER(?) AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL)) AND (album_id = ? OR (album_id IS NULL AND ? IS NULL))").get(title, artistId, artistId, albumId, albumId) as Track | undefined;
         },
-        updateTrackTitle(id: number, title: string): void { db.prepare("UPDATE tracks SET title = ? WHERE id = ?").run(title, id); },
-        updateTrackPath(id: number, filePath: string, albumId: number | null): void { db.prepare("UPDATE tracks SET file_path = ?, album_id = ? WHERE id = ?").run(filePath, albumId, id); },
-        updateTrackDuration(id: number, duration: number): void { db.prepare("UPDATE tracks SET duration = ? WHERE id = ?").run(duration, id); },
+        updateTrackTitle(id: number, title: string): void { 
+            db.prepare("UPDATE tracks SET title = ? WHERE id = ?").run(title, id);
+            db.prepare("UPDATE release_tracks SET title = ? WHERE track_id = ?").run(title, id);
+        },
         updateTrackPrice(id: number, price: number | null, price_usdc: number | null, currency: 'ETH' | 'USD' = 'ETH'): void {
             db.prepare("UPDATE tracks SET price = ?, price_usdc = ?, currency = ? WHERE id = ?").run(price || 0, price_usdc || 0, currency, id);
+            db.prepare("UPDATE release_tracks SET price = ?, price_usdc = ?, currency = ? WHERE track_id = ?").run(price || 0, price_usdc || 0, currency, id);
+        },
+        updateTrackDuration(id: number, duration: number): void { 
+            db.prepare("UPDATE tracks SET duration = ? WHERE id = ?").run(duration, id); 
+            db.prepare("UPDATE release_tracks SET duration = ? WHERE track_id = ?").run(duration, id);
+        },
+        updateTrackPath(id: number, filePath: string, albumId: number | null): void { 
+            db.prepare("UPDATE tracks SET file_path = ?, album_id = ? WHERE id = ?").run(filePath, albumId, id); 
+            db.prepare("UPDATE release_tracks SET file_path = ? WHERE track_id = ?").run(filePath, id);
         },
         updateTrackWaveform(id: number, waveform: string): void { db.prepare("UPDATE tracks SET waveform = ? WHERE id = ?").run(waveform, id); },
         updateTrackLosslessPath(id: number, losslessPath: string | null): void { db.prepare("UPDATE tracks SET lossless_path = ? WHERE id = ?").run(losslessPath, id); },
