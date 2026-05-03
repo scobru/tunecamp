@@ -11,7 +11,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Fetch the current ETH pool price in USD.
- * Uses a public API (CoinGecko) with local caching.
+ * Uses multiple public APIs (CoinGecko, CryptoCompare) with local caching for redundancy.
  */
 export async function getEthUsdRate(): Promise<number> {
     const now = Date.now();
@@ -21,40 +21,48 @@ export async function getEthUsdRate(): Promise<number> {
         return cache.rate;
     }
 
+    // Provider 1: CoinGecko
     try {
-        // Using CoinGecko simple price API
         const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-
-        if (!response.ok) {
+        if (response.ok) {
+            const data = await response.json() as any;
+            const rate = data?.ethereum?.usd;
+            if (rate) {
+                cache = { rate, timestamp: now };
+                return rate;
+            }
+        } else {
             await drainResponse(response);
-            throw new Error(`Price API returned non-OK status: ${response.status}`);
         }
-
-        const data = await response.json() as any;
-        const rate = data?.ethereum?.usd;
-
-        if (!rate) {
-            // response.json() already consumed the body, but it's good to be safe if json() had failed
-            throw new Error('Invalid response from price API');
-        }
-
-        // Update cache
-        cache = {
-            rate,
-            timestamp: now
-        };
-
-        return rate;
     } catch (error) {
-        console.error('Failed to fetch ETH price:', error);
-
-        // If we have an expired cache, return it as fallback instead of failing
-        if (cache) {
-            console.warn('Using expired price cache as fallback');
-            return cache.rate;
-        }
-
-        // Hardcoded fallback for extreme failure
-        return 2500;
+        console.warn('CoinGecko price fetch failed, trying fallback...');
     }
+
+    // Provider 2: CryptoCompare (Redundancy)
+    try {
+        const response = await fetch('https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD');
+        if (response.ok) {
+            const data = await response.json() as any;
+            const rate = data?.USD;
+            if (rate) {
+                console.log('Successfully fetched price from CryptoCompare fallback');
+                cache = { rate, timestamp: now };
+                return rate;
+            }
+        } else {
+            await drainResponse(response);
+        }
+    } catch (error) {
+        console.error('All price providers failed:', error);
+    }
+
+    // If we have an expired cache, return it as fallback instead of failing
+    if (cache) {
+        console.warn('Using expired price cache as final fallback');
+        return cache.rate;
+    }
+
+    // Extreme fallback: Last known reasonable price if everything else is down
+    console.error('CRITICAL: No price data available. Using hardcoded fallback.');
+    return 2500;
 }
