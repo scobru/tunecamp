@@ -37,6 +37,8 @@ app.use('/api/auth', createAuthRoutes(mockAuthService, { requireAdmin: (req: any
 const adminMiddleware = (req: any, res: any, next: any) => {
     req.username = 'admin'; // Mock admin user
     req.isRootAdmin = true;
+    req.role = 'admin';
+    req.context = { role: 'admin' as any, userId: 1 };
     next();
 };
 

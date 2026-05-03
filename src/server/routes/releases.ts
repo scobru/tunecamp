@@ -6,6 +6,7 @@ import type { DatabaseService } from "../database.js";
 import type { ScannerService } from "../scanner.js";
 import type { PublishingService } from "../publishing.js";
 import type { AuthService } from "../auth.js";
+import { VisibilityGuardian, Capability } from "../common/visibility.js";
 
 interface CreateReleaseBody {
     title: string;
@@ -218,11 +219,11 @@ export function createReleaseRouter(
     router.post("/", async (req: any, res) => {
         try {
             const body = req.body as CreateReleaseBody;
-            const isAdmin = req.isAdmin;
             const userArtistId = req.artistId;
-
-            if (!isAdmin && !req.isActive) {
-                return res.status(403).json({ error: "Access denied: Account must be activated by admin to create releases" });
+            const canCreate = req.context && VisibilityGuardian.can(req.context, Capability.CREATE_RELEASES);
+            
+            if (!canCreate) {
+                return res.status(403).json({ error: "Access denied: You must be an artist or root admin to create releases" });
             }
 
             if (!body.title) {
@@ -232,8 +233,8 @@ export function createReleaseRouter(
             // Determine the final Artist ID and ownership logic
             let artistId: number | null = body.artistId || body.artist_id || null;
             
-            // SECURITY CHECK: Non-admins cannot create releases for other artists or new artists
-            if (!isAdmin) {
+            // SECURITY CHECK: Non-root users cannot create releases for other artists or new artists
+            if (!req.isRootAdmin) {
                 if (artistId && artistId !== userArtistId) {
                     return res.status(403).json({ error: "Access denied: You can only create releases for your own artist profile" });
                 }
@@ -242,10 +243,8 @@ export function createReleaseRouter(
                     if (existingArtist && existingArtist.id !== userArtistId) {
                          return res.status(403).json({ error: "Access denied: Artist name belongs to another user" });
                     }
-                    // If artist doesn't exist, we allow creating it ONLY if it matches their intended profile name 
-                    // or if it's a library album (but for publishing platform mode, we prefer forcing their userArtistId)
                 }
-                // Force userArtistId for regular users
+                // Force userArtistId for regular users/artists
                 artistId = userArtistId;
             } else {
                 // Admin logic: allow creating/assigning to any artist
@@ -274,7 +273,7 @@ export function createReleaseRouter(
                     const track = trackMap.get(trackId);
                     if (track) {
                         // Admin can add anything, Users can only add their own tracks
-                        if (isAdmin || track.owner_id === req.userId) {
+                        if (req.isAdmin || track.owner_id === req.userId) {
                             validatedTrackIds.push(trackId);
                         } else {
                             console.warn(`⚠️ User ${req.username} tried to add unauthorized track ${trackId} to release`);

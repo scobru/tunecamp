@@ -48,12 +48,14 @@ export const AdminUsersList = () => {
           <tr key={u.id}>
             <td className="font-bold">{u.username}</td>
             <td>
-              {u.role === "admin" ? (
-                <span className="badge badge-primary badge-outline">Admin</span>
+              {u.role === "root_admin" ? (
+                <span className="badge badge-accent badge-outline">Root Admin</span>
+              ) : u.role === "admin" ? (
+                <span className="badge badge-primary badge-outline">Manager</span>
               ) : u.role === "super_user" ? (
-                <span className="badge badge-secondary badge-outline">Super User</span>
+                <span className="badge badge-info badge-outline">Curator</span>
               ) : (
-                <span className="badge badge-ghost">User</span>
+                <span className="badge badge-ghost">Listener</span>
               )}
               {u.is_active === 0 && (
                 <span className="badge badge-error ml-2">Disabled</span>

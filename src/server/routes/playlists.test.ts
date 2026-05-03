@@ -23,7 +23,9 @@ describe('Playlists Routes', () => {
             addTrackToPlaylist: jest.fn(),
             removeTrackFromPlaylist: jest.fn(),
             getTrack: jest.fn(),
-            getAlbum: jest.fn()
+            getAlbum: jest.fn(),
+            getGenres: jest.fn().mockReturnValue([]),
+            getGenreTrackCounts: jest.fn().mockReturnValue({})
         };
 
         app = express();
@@ -33,6 +35,8 @@ describe('Playlists Routes', () => {
         app.use((req: any, res, next) => {
             req.username = req.headers['x-username'] || 'testuser';
             req.isAdmin = req.headers['x-is-admin'] === 'true';
+            req.role = req.isAdmin ? 'admin' : 'user';
+            req.context = { role: req.role as any, userId: 1 };
             req.isActive = true;
             next();
         });

@@ -1,40 +1,50 @@
-# Project Overview - TuneCamp
+# Panoramica del Progetto TuneCamp
 
-## Description
-TuneCamp is a decentralized music platform designed for artists and labels. It combines traditional music streaming capabilities with modern federation via ActivityPub, decentralized storage/identity concepts, and support for the legacy Subsonic API.
+TuneCamp è una piattaforma musicale decentralizzata e federata che combina le funzionalità di un server musicale personale con le capacità dei protocolli social moderni (ActivityPub) e del web3 (IPFS/Zen).
 
-## Key Features
-- **Streaming & Catalog:** Manage artists, albums, and tracks with rich metadata.
-- **Federation:** Built-in ActivityPub support via Fedify for decentralized social interactions.
-- **Subsonic API:** Compatibility with a wide range of legacy music clients.
-- **Web3 Integration:** Blockchain-based features using Shogun contracts for ownership and payments.
-- **Admin Tools:** Maintenance, backup, and metadata management panels.
+## Obiettivi del Progetto
 
-## Technology Stack Summary
+- **Proprietà dei Dati**: Consentire agli utenti di ospitare e controllare la propria libreria musicale.
+- **Federazione**: Permettere l'interazione tra diversi server TuneCamp tramite il protocollo ActivityPub (Fediverse).
+- **Decentralizzazione**: Utilizzare tecnologie come Zen/IPFS per la distribuzione e la resilienza dei contenuti.
+- **Supporto agli Artisti**: Facilitare la pubblicazione diretta, il crowdfunding e la gestione dei diritti tramite contratti intelligenti e sistemi di sblocco.
+
+## Stack Tecnologico
 
 ### Backend
-- **Runtime:** Node.js (ESM)
-- **Framework:** Express
-- **Database:** SQLite (via `better-sqlite3`)
-- **Federation:** Fedify
-- **Audio:** FFmpeg, music-metadata, waveform-data
-- **Blockchain:** Ethers.js, Shogun Contracts SDK
+- **Linguaggio**: TypeScript
+- **Runtime**: Node.js (Express)
+- **Database**: SQLite (tramite `better-sqlite3`)
+- **Federazione**: Fedify (ActivityPub)
+- **Multimedia**: FFmpeg (per transcodifica e generazione waveform)
 
-### Frontend (WebApp)
-- **Framework:** React 19
-- **Build Tool:** Vite
-- **State:** Zustand
-- **Styling:** Tailwind CSS, DaisyUI
-- **Routing:** React-Router-Dom
+### Webapp (Frontend)
+- **Framework**: React
+- **Build Tool**: Vite
+- **Styling**: CSS (con supporto per temi)
+- **State Management**: Zustand
+- **Decentralizzazione**: Integrazione Zen.js per reti P2P
 
-## Repository Structure
-The project is organized as a **Monorepo** using npm workspaces:
-- `.` (Root): Backend server, contracts, and shared tools.
-- `webapp/`: React-based frontend application.
-- `website/`: Static landing page/marketing site.
-- `contracts/`: Solidity smart contracts.
-- `docs/`: Specialized technical documentation.
+### Blockchain & Smart Contracts
+- **Linguaggio**: Solidity
+- **Contratti**: Checkout, Factory, NFT per la gestione delle vendite e della proprietà.
 
-## Architecture Type
-- **Type:** Multi-part (Client-Server)
-- **Pattern:** Repository-based Backend / Component-driven Frontend
+## Struttura del Repository
+
+Il progetto è organizzato come un monorepo con le seguenti directory principali:
+
+- `src/server/`: Logica core del backend, database, rotte e protocolli.
+- `webapp/`: Applicazione frontend React.
+- `contracts/`: Smart contracts per le funzionalità web3.
+- `website/`: Sito web statico di presentazione.
+- `docs/`: Documentazione tecnica del progetto.
+
+## Documentazione Correlata
+
+- [Analisi dell'Albero dei Sorgenti](./source-tree-analysis.md)
+- [Architettura Backend](./architecture-backend.md)
+- [Architettura Webapp](./architecture-webapp.md)
+- [Inventario Componenti](./component-inventory.md)
+- [Contratti API](./api-contracts.md)
+- [Modelli Dati](./data-models.md)
+- [Guida allo Sviluppo](./development-guide.md)

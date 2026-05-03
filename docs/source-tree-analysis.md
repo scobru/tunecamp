@@ -1,46 +1,60 @@
-# Source Tree Analysis - TuneCamp
+# Analisi dell'Albero dei Sorgenti
 
-## Directory Structure Overview
+Questa sezione descrive la struttura del repository TuneCamp, evidenziando le directory critiche e il loro scopo.
 
-```text
+## Struttura del Progetto
+
+```
 tunecamp/
-├── contracts/          # Solidity Smart Contracts (TuneCampNFT, Factory, etc.)
-├── docs/               # Technical docs (Federation, Subsonic, Nginx)
-├── src/
-│   ├── index.ts        # Server Entry Point
-│   └── server/         # Backend Core
-│       ├── routes/     # REST & ActivityPub Endpoints
-│       ├── repositories/ # Data Access Layer (SQL queries)
-│       ├── middleware/ # Auth, Error Handling, Rate Limiting
-│       ├── modules/    # Specialized logic (ActivityPub, Storage, Waveform)
-│       ├── services/   # Business logic
-│       └── zendb.ts    # Database initialization
-├── webapp/             # React Frontend (Workspace)
-│   ├── src/
-│   │   ├── components/ # UI Components (Admin, Player, Modals)
-│   │   ├── stores/     # Zustand state management
-│   │   ├── services/   # API client services
-│   │   └── App.tsx     # Main App Component
-├── website/            # Static Landing Page
-├── deps/               # Local dependencies (zen)
-├── tools/              # Maintenance and migration scripts
-├── Dockerfile          # Container configuration
-└── package.json        # Project manifest & workspaces
+├── contracts/          # Smart Contracts (Solidity)
+│   ├── TuneCampCheckout.sol
+│   ├── TuneCampFactory.sol
+│   └── TuneCampNFT.sol
+├── docs/               # Documentazione tecnica (Markdown, JSON)
+├── src/                # Sorgenti del Backend e strumenti
+│   ├── server/         # Logica core del Server Express
+│   │   ├── common/     # Utilità e configurazioni condivise
+│   │   ├── middleware/ # Middleware Express (Auth, Error handling, Rate limit)
+│   │   ├── modules/    # Moduli funzionali (ActivityPub, Catalog, Storage)
+│   │   ├── repositories/ # Layer di accesso ai dati (Album, Artist, Track)
+│   │   ├── routes/     # Endpoint API REST
+│   │   └── services/   # Logica di business
+│   ├── tools/          # Script di manutenzione, backup e migrazione
+│   └── utils/          # Funzioni di utilità generale
+├── webapp/             # Applicazione Frontend React
+│   ├── public/         # Asset statici e file WASM
+│   └── src/            # Sorgenti React
+│       ├── components/ # Componenti UI organizzati per dominio
+│       ├── hooks/      # Custom React Hooks
+│       ├── pages/      # Componenti Pagina (Route entry points)
+│       ├── services/   # Client API e integrazione Zen
+│       └── stores/     # Gestione dello stato (Zustand)
+├── website/            # Sito web statico di presentazione
+└── docker-compose.yml  # Configurazione per il deployment containerizzato
 ```
 
-## Critical Folders & Files
+## Directory Critiche e Scopo
 
-### Backend
-- `src/index.ts`: The bootstrap file for the Express server.
-- `src/server/routes/`: Defines the API surface including Subsonic and ActivityPub.
-- `src/server/repositories/`: Direct interactions with the SQLite database.
-- `src/server/fedify.ts`: ActivityPub configuration and actor logic.
+### `src/server/`
+Contiene tutta la logica server-side. Utilizza un'architettura a layer:
+- **Routes**: Definiscono l'interfaccia API.
+- **Repositories**: Gestiscono le query SQLite.
+- **Modules**: Incapsulano funzionalità complesse come la federazione ActivityPub o la gestione dei file audio.
 
-### Frontend
-- `webapp/src/main.tsx`: React application entry point.
-- `webapp/src/stores/`: Global state for player, auth, and wallet.
-- `webapp/src/components/player/`: Core music playback UI logic.
+### `webapp/src/`
+Il cuore dell'interfaccia utente.
+- **Pages**: Directory fondamentale che mappa le rotte del frontend.
+- **Components**: Suddivisi in `ui/` (base) e directory tematiche (`player/`, `artist/`, `admin/`).
+- **Services**: `api.ts` è il gateway principale per la comunicazione col backend.
 
-### Infrastructure
-- `docker-compose.yml`: Orchestration for the server and potentially other services.
-- `nginx.md`: Reference for production proxy setup.
+### `contracts/`
+Definisce la logica on-chain per la monetizzazione e il controllo degli accessi.
+
+### `src/tools/`
+Essenziale per la gestione della libreria musicale (relink dei percorsi, migrazioni di database, generazione di codici di sblocco).
+
+## Punti di Ingresso (Entry Points)
+
+- **Backend**: `src/server/server.ts` - Avvia il server Express e i servizi correlati.
+- **Webapp**: `webapp/src/main.tsx` - Punto di mount dell'applicazione React.
+- **CLI/Tools**: Vari script in `src/tools/` e `index.ts` nella root.

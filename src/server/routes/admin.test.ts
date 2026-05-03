@@ -91,6 +91,11 @@ describe('Admin Routes Vulnerability Check', () => {
             req.username = req.headers['x-username'] || 'admin';
             req.role = req.headers['x-role'] || 'admin'; // Allow setting role via header
             req.isRootAdmin = mockAuthService.isRootAdmin(req.username);
+            req.context = {
+                role: req.role as any,
+                userId: req.username === 'root' ? 1 : 2,
+                artistId: req.headers['x-artist-id'] ? parseInt(req.headers['x-artist-id'] as string) : undefined
+            };
             next();
         });
 
@@ -192,6 +197,10 @@ describe('Admin Routes Vulnerability Check', () => {
     });
 
     describe('Super User Restriction', () => {
+        beforeEach(() => {
+            (mockAuthService.isRootAdmin as jest.Mock).mockImplementation((username) => username === 'root');
+        });
+
         test('Super user CAN perform GET requests', async () => {
             (mockDatabase.getStats as jest.Mock).mockReturnValue({ artists: 0, albums: 0, tracks: 0 });
             
@@ -211,7 +220,7 @@ describe('Admin Routes Vulnerability Check', () => {
                 .send({ siteName: 'Hacked' });
 
             expect(response.status).toBe(403);
-            expect(response.body.error).toMatch(/Super User is read-only/i);
+            expect(response.body.error).toMatch(/Access denied|Only root admin/i);
             expect(mockDatabase.setSetting).not.toHaveBeenCalled();
         });
 

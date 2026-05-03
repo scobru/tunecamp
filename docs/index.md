@@ -1,42 +1,37 @@
-# Project Documentation Index - TuneCamp
+# Indice della Documentazione di Progetto
 
-## Project Overview
-- **Type:** Monorepo (Backend + WebApp + Contracts)
-- **Primary Language:** TypeScript
-- **Architecture:** Layered Backend / Component-driven Frontend
+Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come punto di ingresso principale per comprendere l'architettura, le tecnologie e il funzionamento del sistema.
 
-## Quick Reference
+### Panoramica del Progetto
 
-### Backend (Server)
-- **Type:** Node.js Backend
-- **Tech Stack:** Express, SQLite, Fedify, FFmpeg
-- **Root:** `.`
+- [**Panoramica Progetto**](./project-overview.md): Obiettivi, stack tecnologico e struttura generale.
+- [**Analisi dell'Albero dei Sorgenti**](./source-tree-analysis.md): Descrizione dettagliata delle directory e dei punti di ingresso.
 
-### WebApp (Frontend)
-- **Type:** React Web Application
-- **Tech Stack:** React 19, Vite, Zustand, Tailwind
-- **Root:** `./webapp`
+### Architettura Tecnica
 
-## Generated Documentation
-- [Project Overview](./project-overview.md)
-- [Source Tree Analysis](./source-tree-analysis.md)
-- [Backend Architecture](./architecture-backend.md)
-- [WebApp Architecture](./architecture-webapp.md)
-- [Component Inventory](./component-inventory.md)
-- [API Contracts](./api-contracts.md)
-- [Data Models](./data-models.md)
-- [Development Guide](./development-guide.md)
+- [**Architettura Backend**](./architecture-backend.md): Dettagli sul server Express, SQLite, ActivityPub e integrazione Zen.
+- [**Architettura Webapp**](./architecture-webapp.md): Dettagli sull'applicazione React, gestione dello stato e integrazione P2P.
+- [**Modelli Dati**](./data-models.md): Schema del database e relazioni tra le entità.
 
-## Existing Documentation
-- [README.md](../../README.md) - Main project entry.
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) - How to contribute.
-- [ROLES.md](../../ROLES.md) - System roles.
-- [Federation (docs)](../../docs/FEDERATION.md) - ActivityPub details.
-- [Subsonic (docs)](../../docs/SUBSONIC.md) - API details.
+### Riferimenti API e Componenti
 
-## Getting Started
-To get the project running locally:
-1. `npm install` in the root.
-2. `npm run build` to compile the backend.
-3. `cd webapp && npm install && npm run dev` to start the frontend.
-4. Check the `README.md` for environment variable requirements.
+- [**Contratti API**](./api-contracts.md): Documentazione degli endpoint REST, autenticazione e protocolli supportati.
+- [**Inventario Componenti UI**](./component-inventory.md): Catalogo dei componenti React della webapp.
+
+### Guida per lo Sviluppatore
+
+- [**Guida allo Sviluppo**](./development-guide.md): Prerequisiti, installazione, esecuzione e test.
+- [**CONTRIBUTING.md**](../CONTRIBUTING.md): Linee guida per la contribuzione al codice.
+
+---
+
+### Documentazione Aggiuntiva (Specifica)
+
+- [Federazione](./federation.md): Dettagli sul protocollo ActivityPub in TuneCamp.
+- [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.
+- [Nginx](./nginx.md): Esempi di configurazione per reverse proxy.
+
+---
+
+*Ultimo aggiornamento: 3 Maggio 2026*
+*Generato tramite il workflow `bmad-document-project`*

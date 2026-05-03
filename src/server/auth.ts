@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { Zen } from "./zen.js";
 // ZEN handles its own crypto natively
 import { isSafeUrl } from "../utils/networkUtils.js";
+import { UserRole } from "./common/visibility.js";
 
 // Polyfill WebCrypto for Gun.SEA in Node.js ESM
 if (typeof global !== 'undefined' && !global.crypto) {
@@ -18,7 +19,6 @@ if (typeof global !== 'undefined' && !global.crypto) {
 const SALT_ROUNDS = 10;
 const JWT_EXPIRES_IN = "7d";
 
-export type UserRole = 'admin' | 'user' | 'super_user';
 
 export enum AuthProvider {
     MASTODON = "mastodon"
@@ -31,6 +31,7 @@ export interface TokenPayload {
     role: UserRole;
     isActive: boolean;
     userId: number;
+    isRootAdmin?: boolean;
 }
 
 export interface AuthService {
@@ -42,8 +43,8 @@ export interface AuthService {
     authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; pair?: any } | false>;
     verifyZenSignature(message: any, pubKey: string, proof: string): Promise<boolean>;
     verifySubsonicToken(username: string, token: string, salt: string): Promise<boolean>;
-    createAdmin(username: string, password: string, artistId?: number | null): Promise<{ id: number }>;
-    createUser(username: string, password: string, artistId: number | null, storageQuota?: number, pubKey?: string): Promise<{ id: number }>;
+    createAdmin(username: string, password: string, artistId?: number | null, role?: UserRole): Promise<{ id: number }>;
+    createUser(username: string, password: string, artistId: number | null, storageQuota?: number, pubKey?: string, role?: UserRole): Promise<{ id: number }>;
     updateAdmin(id: number, artistId: number | null, role?: UserRole): void;
     updateStorageUsed(userId: number, bytesUsed: number): void;
     getStorageInfo(userId: number): { storage_quota: number; storage_used: number } | null;
@@ -232,13 +233,17 @@ export function createAuthService(
         verifyToken(token: string): TokenPayload | null {
             try {
                 const decoded = jwt.verify(token, jwtSecret) as TokenPayload;
+                const role = (decoded.role as UserRole) || UserRole.NORMAL_USER;
+                const isRoot = decoded.isRootAdmin ?? (role === UserRole.ROOT_ADMIN || decoded.userId === 1);
+                
                 return {
-                    isAdmin: decoded.isAdmin ?? (decoded.role === 'admin' || decoded.role === 'super_user'),
+                    isAdmin: decoded.isAdmin ?? (role === UserRole.ADMIN || role === UserRole.SUPER_USER || role === UserRole.ROOT_ADMIN || isRoot),
                     username: decoded.username,
                     artistId: decoded.artistId ?? null,
-                    role: decoded.role || (decoded.isAdmin ? 'admin' : 'user'), // backward compat
-                    isActive: decoded.isActive ?? true, // backward compat
-                    userId: decoded.userId || 0
+                    role: role,
+                    isActive: decoded.isActive ?? true, 
+                    userId: decoded.userId || 0,
+                    isRootAdmin: isRoot
                 };
             } catch {
                 return null;
@@ -324,7 +329,8 @@ export function createAuthService(
                 console.log(`✅ [AUTH] ZEN verification succeeded for ${username}, skipping password check`);
             }
 
-            const userRole: UserRole = user.role || 'admin';
+            let userRole: UserRole = user.role ? (user.role as UserRole) : UserRole.ADMIN;
+            if (user.id === 1) userRole = UserRole.ROOT_ADMIN;
 
             // Handle ZEN Key Management for all users
             let gunPair: any = undefined;
@@ -396,7 +402,7 @@ export function createAuthService(
             return {
                 success: true,
                 id: user.id,
-                isAdmin: userRole === 'admin',
+                isAdmin: userRole === UserRole.ADMIN || userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN,
                 artistId: artistId,
                 role: userRole,
                 isActive: user.is_active === 1,
@@ -456,15 +462,15 @@ export function createAuthService(
             }
         },
 
-        async createAdmin(username: string, password: string, artistId: number | null = null): Promise<{ id: number }> {
+        async createAdmin(username: string, password: string, artistId: number | null = null, role: UserRole = UserRole.ADMIN): Promise<{ id: number }> {
             const hash = await this.hashPassword(password);
-            const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, is_active) VALUES (?, ?, ?, 'admin', 0, 1)").run(username, hash, artistId);
+            const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, is_active) VALUES (?, ?, ?, ?, 0, 1)").run(username, hash, artistId, role);
             return { id: Number(result.lastInsertRowid) };
         },
 
-        async createUser(username: string, password: string, artistId: number, storageQuota: number = 1024 * 1024 * 1024, pubKey?: string): Promise<{ id: number }> {
+        async createUser(username: string, password: string, artistId: number | null, storageQuota: number = 1024 * 1024 * 1024, pubKey?: string, role: UserRole = UserRole.NORMAL_USER): Promise<{ id: number }> {
             const hash = await this.hashPassword(password);
-            const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, storage_used, gun_pub, is_active) VALUES (?, ?, ?, 'user', ?, 0, ?, 1)").run(username, hash, artistId, storageQuota, pubKey || null);
+            const result = db.prepare("INSERT INTO admin (username, password_hash, artist_id, role, storage_quota, storage_used, gun_pub, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, 1)").run(username, hash, artistId, role, storageQuota, pubKey || null);
             return { id: Number(result.lastInsertRowid) };
         },
 

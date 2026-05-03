@@ -1,35 +1,47 @@
-# Component Inventory - TuneCamp WebApp
+# Inventario Componenti UI
 
-## UI Framework
-- **Base:** React 19, Tailwind CSS, DaisyUI.
-- **Icons:** Lucide-React.
+Questo documento elenca i componenti principali dell'interfaccia utente di TuneCamp, organizzati per categoria e responsabilità.
 
-## Core Components
+## Componenti Globali e Layout (`layout/`)
 
-### 1. Player System
-- **PlayerBar:** Global fixed playback controller. Handles audio node management, progress tracking, and volume.
-- **Waveform:** Visual audio representation. Supports Canvas rendering (JSON data) or SVG Mask rendering.
-- **LyricsPanel:** Overlay for synchronized or static lyrics.
-- **QueuePanel:** Playlist/Queue management drawer.
+- **`AppLayout.tsx`**: Struttura principale dell'applicazione (Sidebar, Player, Content area).
+- **`Sidebar.tsx`**: Navigazione principale tra le diverse sezioni (Home, Libreria, Social).
+- **`Header.tsx`**: Barra superiore con ricerca e profilo utente.
 
-### 2. Layout & Navigation
-- **MainLayout:** Primary wrapper with Sidebar and PlayerBar.
-- **Sidebar:** Navigation links (Home, Library, Search, Admin).
-- **CommandPalette:** Global search and quick action interface.
+## Player Musicale (`player/`)
 
-### 3. Administration Panels
-- **AdminUsersList:** Management table for local users and roles.
-- **AdminTracksList / AdminReleasesList:** Library management with batch edit capabilities.
-- **ActivityPubPanel:** Federation status and inbox/outbox monitoring.
-- **MaintenancePanel:** Library scan triggers and database cleanup tools.
+- **`Player.tsx`**: Il controller principale della riproduzione.
+- **`ProgressBar.tsx`**: Visualizzazione del progresso e seeking.
+- **`VolumeControl.tsx`**: Gestione del volume.
+- **`QueueManager.tsx`**: Visualizzazione e gestione della coda di riproduzione.
+- **`Waveform.tsx`**: Visualizzazione della forma d'onda della traccia corrente.
 
-### 4. Interactive Modals
-- **AuthModal:** Handles Login/Register with Zen identity integration.
-- **CheckoutModal:** Blockchain-based payment interface for releases.
-- **MetadataPickerModal:** Interface for selecting/editing audio tags.
-- **UploadTracksModal:** File upload and processing status.
+## Visualizzazione Contenuti (`artist/`, `albums/`)
 
-## Design Patterns
-- **State Integration:** Components are tightly coupled with `usePlayerStore` and `useAuthStore` via Zustand.
-- **Dynamic Theming:** Uses dominant color extraction from album art to tint the UI.
-- **Responsive Design:** Mobile-first approach with drawer-based navigation on small screens.
+- **`AlbumCard.tsx`**: Rappresentazione visuale di un album/release.
+- **`TrackList.tsx`**: Elenco delle tracce all'interno di un album o playlist.
+- **`ArtistProfile.tsx`**: Intestazione e informazioni sull'artista.
+
+## Amministrazione e Gestione (`admin/`)
+
+- **`UserList.tsx`**: Gestione degli utenti registrati sul server.
+- **`ScannerProgress.tsx`**: Monitoraggio dello stato della scansione della libreria.
+- **`SettingsForm.tsx`**: Configurazione dei parametri del server.
+
+## Componenti Social (`social/`, `Comments.tsx`)
+
+- **`Feed.tsx`**: Visualizzazione dei post dal Fediverso.
+- **`CommentSection.tsx`**: Sistema di commenti per album e tracce.
+- **`FollowButton.tsx`**: Gestione delle relazioni tra attori ActivityPub.
+
+## Componenti UI Base (`ui/`)
+
+- **`Button.tsx`**: Pulsante standard con varianti (primary, secondary, danger).
+- **`Input.tsx`**: Campo di testo personalizzato.
+- **`Modal.tsx`**: Wrapper per finestre di dialogo.
+- **`WalletPill.tsx`**: Indicatore dello stato del wallet blockchain.
+- **`ScrollingText.tsx`**: Testo a scorrimento per titoli lunghi.
+
+## Note sullo Sviluppo
+
+I componenti sono scritti in **TypeScript** utilizzando **Functional Components** e **Hooks**. Per lo styling viene utilizzato CSS standard con variabili per il supporto al tema scuro/chiaro.

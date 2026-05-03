@@ -20,8 +20,8 @@ export enum Capability {
 }
 
 export interface ViewerContext {
-  userId?: number;
-  artistId?: number;
+  userId?: number | null;
+  artistId?: number | null;
   role: UserRole;
 }
 
@@ -43,7 +43,7 @@ export class VisibilityGuardian {
   /**
    * Translates a user object (e.g. from an Express request) to a ViewerContext.
    */
-  static deriveContext(user: { userId?: number, artistId?: number, role: string, isActive?: boolean }): ViewerContext {
+  static deriveContext(user: { userId?: number | null, artistId?: number | null, role: string, isActive?: boolean }): ViewerContext {
     return {
       userId: user.userId,
       artistId: user.artistId,

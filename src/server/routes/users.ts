@@ -5,6 +5,7 @@ import type { DatabaseService } from "../database.js";
 import type { AuthService } from "../auth.js";
 import type { ActivityPubService } from "../activitypub.js";
 import { validatePassword } from "../validators.js";
+import { UserRole } from "../common/visibility.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../middleware/auth.js";
 
@@ -82,7 +83,7 @@ export function createUsersRoutes(
                 isAdmin: false,
                 username,
                 artistId: null,
-                role: 'user',
+                role: UserRole.NORMAL_USER,
                 isActive: true
             });
 
@@ -94,7 +95,7 @@ export function createUsersRoutes(
                 expiresIn: "7d",
                 username,
                 artistId: null,
-                role: 'user',
+                role: UserRole.NORMAL_USER,
                 isActive: true,
                 storageQuota: DEFAULT_QUOTA,
                 pubKey: pubKey || null

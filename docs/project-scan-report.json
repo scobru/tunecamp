@@ -1,26 +1,24 @@
 {
   "workflow_version": "1.2.0",
   "timestamps": {
-    "started": "2026-05-03T10:00:00Z",
-    "last_updated": "2026-05-03T10:00:00Z"
+    "started": "2026-05-03T11:15:00Z",
+    "last_updated": "2026-05-03T12:00:00Z",
+    "completed": "2026-05-03T12:00:00Z"
   },
   "mode": "full_rescan",
   "scan_level": "deep",
   "project_root": "D:\\shogun-2\\tunecamp",
-  "project_knowledge": "C:\\Users\\scobr\\.gemini\tmp\\tunecamp",
+  "project_knowledge": "D:\\shogun-2\\tunecamp\\docs",
   "completed_steps": [
-    {"step": "step_1", "status": "completed", "timestamp": "2026-05-03T10:05:00Z", "summary": "Classified as monorepo with 2 parts: backend and webapp"},
-    {"step": "step_2", "status": "completed", "timestamp": "2026-05-03T10:10:00Z", "summary": "Found 12 existing documentation files"},
-    {"step": "quick_scan_complete", "status": "completed", "timestamp": "2026-05-03T10:35:00Z", "summary": "Quick Scan documentation suite generated"},
-    {"step": "deep_scan_init", "status": "completed", "timestamp": "2026-05-03T10:40:00Z", "summary": "Deep Scan of critical directories complete. High-fidelity documentation generated."},
-    {"step": "deep_scan_refinement", "status": "completed", "timestamp": "2026-05-03T10:55:00Z", "summary": "Refined API, Data Models, and Architectures with source code insights. Generated Component Inventory."},
-    {"step": "step_12", "status": "completed", "timestamp": "2026-05-03T11:00:00Z", "summary": "Workflow complete"}
+    {"step": "step_1", "status": "completed", "timestamp": "2026-05-03T11:20:00Z", "summary": "Identificata struttura monorepo: backend (Express) e webapp (React/Vite)."},
+    {"step": "step_2", "status": "completed", "timestamp": "2026-05-03T11:25:00Z", "summary": "Inventario documenti esistenti completato."},
+    {"step": "step_3", "status": "completed", "timestamp": "2026-05-03T11:30:00Z", "summary": "Analisi stack tecnologico (Node, Express, React, SQLite, ActivityPub, Zen)."},
+    {"step": "step_4", "status": "completed", "timestamp": "2026-05-03T11:40:00Z", "summary": "Analisi condizionale API e Modelli Dati completata tramite scansione source code."},
+    {"step": "step_5", "status": "completed", "timestamp": "2026-05-03T11:45:00Z", "summary": "Generata analisi dell'albero dei sorgenti con annotazioni."},
+    {"step": "step_8", "status": "completed", "timestamp": "2026-05-03T11:50:00Z", "summary": "Generati documenti di architettura per Backend e Webapp."},
+    {"step": "step_9", "status": "completed", "timestamp": "2026-05-03T11:55:00Z", "summary": "Generati documenti di supporto (Overview, API, Models, Components, Dev Guide)."},
+    {"step": "step_10", "status": "completed", "timestamp": "2026-05-03T12:00:00Z", "summary": "Indice master (index.md) rigenerato."}
   ],
-  "timestamps": {
-    "started": "2026-05-03T10:00:00Z",
-    "last_updated": "2026-05-03T11:00:00Z",
-    "completed": "2026-05-03T11:00:00Z"
-  },
   "current_step": "completed",
   "outputs_generated": [
     "project-scan-report.json",
@@ -33,6 +31,5 @@
     "data-models.md",
     "development-guide.md",
     "index.md"
-  ],
-  "resume_instructions": "Starting from step 1"
+  ]
 }

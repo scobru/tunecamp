@@ -60,6 +60,9 @@ describe('Release Routes - Creation and Publishing', () => {
         app.use((req: any, res, next) => {
             req.isAdmin = true;
             req.isActive = true;
+            req.role = 'admin';
+            req.context = { role: 'admin' as any, userId: 1, artistId: 1 };
+            req.isRootAdmin = true;
             next();
         });
 

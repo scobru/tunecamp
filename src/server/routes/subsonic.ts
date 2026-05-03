@@ -254,9 +254,9 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
             const tokenValid = await auth.verifySubsonicToken(u, t, s);
             if (tokenValid) {
                 authorized = true;
-                const user = (db as any).db.prepare("SELECT role, artist_id FROM admin WHERE username = ?").get(u);
+                const user = (db as any).db.prepare("SELECT id, role, artist_id FROM admin WHERE username = ?").get(u);
                 if (user) {
-                    isAdmin = user.role === 'admin';
+                    isAdmin = user.role === 'admin' || user.role === 'root_admin' || user.id === 1;
                     artistId = user.artist_id;
                 }
             }

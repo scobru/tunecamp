@@ -1,29 +1,47 @@
-# WebApp Architecture - TuneCamp
+# Architettura Webapp
 
-## Overview
-The WebApp is a modern React application built with Vite, providing a rich, responsive interface for music discovery, playback, and administration.
+La webapp di TuneCamp è una Single Page Application (SPA) moderna costruita con React e Vite, ottimizzata per l'esperienza utente musicale e l'interazione decentralizzata.
 
-## Core Patterns
+## Stack Tecnologico
 
-### 1. State Management (Zustand)
-Global state is managed using lightweight Zustand stores:
-- `usePlayerStore`: Manages queue, playback status, and volume.
-- `useAuthStore`: Handles user session and permissions.
-- `useWalletStore`: Integrates with Ethereum wallets for on-chain interactions.
+- **Framework UI**: React (TypeScript)
+- **Build Tool**: Vite
+- **Gestione Stato**: Zustand
+- **Routing**: React Router
+- **Integrazione P2P**: Zen.js (WebAssembly/JS)
+- **Wallet**: Ethers.js / Wagmi (per interazioni blockchain)
 
-### 2. Component Architecture
-Components are organized by function:
-- **Player:** High-complexity components like `PlayerBar` and `Waveform`.
-- **Admin:** Panels for maintenance, backups, and user management.
-- **Modals:** Heavy use of modals for specific actions (Checkout, Metadata editing).
+## Organizzazione del Codice
 
-### 3. API Communication
-Uses `axios` for communicating with the Backend. Services are defined to wrap API calls, ensuring type safety with TypeScript.
+### 1. Componenti (`components/`)
+Organizzati per dominio funzionale:
+- **`player/`**: Il lettore musicale globale, gestisce lo stato di riproduzione, la coda e la visualizzazione delle waveform.
+- **`artist/`**, **`auth/`**, **`admin/`**: Componenti specifici per le diverse aree dell'applicazione.
+- **`ui/`**: Componenti atomici e riutilizzabili (pulsanti, input, caricatori).
 
-### 4. Styling
-- **Tailwind CSS:** Utility-first styling.
-- **DaisyUI:** Component library for consistent UI elements (buttons, modals, cards).
+### 2. Pagine (`pages/`)
+Ogni file rappresenta una rotta principale:
+- `Home.tsx`: Dashboard principale.
+- `Albums.tsx` / `Artists.tsx`: Esplorazione della libreria.
+- `Admin.tsx`: Pannello di gestione per l'amministratore del server.
+- `Network.tsx`: Visualizzazione della rete federata.
 
-## Integration
-- **Web3:** `ethers.js` is used to interact with the TuneCamp smart contracts directly from the browser for payments and minting.
-- **Audio:** Native HTML5 Audio API wrapped in custom React logic.
+### 3. Store di Stato (`stores/`)
+Utilizziamo Zustand per uno stato leggero e performante:
+- `usePlayerStore`: Stato della riproduzione corrente.
+- `useAuthStore`: Stato dell'utente loggato.
+- `useZenStore`: Stato della connessione alla rete P2P.
+
+### 4. Servizi (`services/`)
+- `api.ts`: Wrapper per le chiamate REST al backend TuneCamp.
+- `zen.ts`: Interfaccia con il protocollo Zen per la distribuzione decentralizzata dei contenuti.
+
+## Integrazione Zen.js
+
+La webapp integra `zen.js` per permettere la distribuzione dei file tramite P2P. Utilizza file WebAssembly (`pen.wasm`, `crypto.wasm`) caricati all'avvio per operazioni crittografiche e di rete efficienti direttamente nel browser.
+
+## Flusso di Navigazione e Riproduzione
+
+1. **Navigazione**: L'utente clicca su un album -> `AlbumDetails.tsx` richiede dati a `api.ts` -> Dati visualizzati tramite componenti `artist/`.
+2. **Riproduzione**: Clic su "Play" -> Traccia aggiunta a `usePlayerStore` -> Componente `player/` avvia lo streaming dal backend o tramite Zen P2P.
+3. **Interazione Web3**: Connessione wallet -> `wallet.ts` gestisce l'account -> Possibilità di acquistare release o sbloccare contenuti.

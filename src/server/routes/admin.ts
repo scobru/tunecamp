@@ -6,12 +6,13 @@ import type { DatabaseService } from "../database.js";
 import type { ScannerService } from "../scanner.js";
 import type { ZenDBService } from "../zendb.js";
 import type { ServerConfig } from "../config.js";
-import type { AuthService, UserRole } from "../auth.js";
+import type { AuthService } from "../auth.js";
 import { createAuthMiddleware } from "../middleware/auth.js";
 import { validatePassword } from "../validators.js";
 import type { PublishingService } from "../publishing.js";
 import type { ActivityPubService } from "../activitypub.js";
 import type { SoulseekService } from "../soulseek.js";
+import { VisibilityGuardian, Capability, UserRole } from "../common/visibility.js";
 
 export function createAdminRoutes(
     database: DatabaseService,
@@ -29,15 +30,20 @@ export function createAdminRoutes(
     const authMiddleware = createAuthMiddleware(authService);
 
     /**
-     * Restriction middleware: prevent super_user from making any changes via admin routes
+     * Restriction middleware: prevent restricted users from making changes via admin routes
      */
     router.use((req: AuthenticatedRequest, res, next) => {
-        if (req.method !== 'GET' && req.role === 'super_user') {
-            // Allow uploads for super users
-            if (req.path.startsWith('/upload')) {
+        if (req.method !== 'GET') {
+            const canManage = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
+            
+            // Allow uploads for users with manage capability
+            if (req.path.startsWith('/upload') && canManage) {
                 return next();
             }
-            return res.status(403).json({ error: "Access denied: Super User is read-only for administrative settings" });
+            
+            if (!canManage) {
+                return res.status(403).json({ error: "Access denied: You do not have permission to modify administrative settings" });
+            }
         }
         next();
     });
@@ -53,8 +59,8 @@ export function createAdminRoutes(
             const isRoot = req.isRootAdmin;
             let releases: any[] = [];
             
-            if (isRoot || req.isSuperUser) {
-                // Root admin and Super User see all releases
+            if (req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
+                // Root admin and Super User/Admins see all releases
                 releases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
             } else if (req.userId) {
                 releases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
@@ -106,7 +112,9 @@ export function createAdminRoutes(
 
             // Permission Check
             const ownerId = release ? release.owner_id : album?.owner_id;
-            if (req.userId !== undefined && !req.isRootAdmin && ownerId !== req.userId) {
+            const canManageAll = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            
+            if (req.userId !== undefined && !canManageAll && ownerId !== req.userId) {
                 return res.status(403).json({ error: "Access denied: You can only manage your own content" });
             }
 
@@ -863,16 +871,12 @@ export function createAdminRoutes(
                 return res.status(400).json({ error: passwordValidation.error });
             }
 
-            const targetRole: UserRole = role || (isAdmin ? 'admin' : 'user');
+            const targetRole: UserRole = role || (isAdmin ? UserRole.ADMIN : UserRole.NORMAL_USER);
 
-            if (targetRole === 'admin') {
-                await authService.createAdmin(username, password, artistId);
-            } else if (targetRole === 'super_user') {
-                // We don't have createSuperUser but we can createAdmin and then update role
-                const { id } = await authService.createAdmin(username, password, artistId);
-                authService.updateAdmin(id, artistId, 'super_user');
+            if (targetRole === UserRole.ADMIN || targetRole === UserRole.SUPER_USER) {
+                await authService.createAdmin(username, password, artistId, targetRole);
             } else {
-                await authService.createUser(username, password, artistId || null as any, 1024 * 1024 * 1024);
+                await authService.createUser(username, password, artistId || null, 1024 * 1024 * 1024, undefined, targetRole);
             }
             res.json({ message: "Admin user created" });
         } catch (error: any) {

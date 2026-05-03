@@ -11,7 +11,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const dialogRef = useRef<HTMLDialogElement>(null);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState(''); // Optional if editing
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [role, setRole] = useState('user');
     const [artistId, setArtistId] = useState<string>(''); // For linking to artist
     const [artists, setArtists] = useState<any[]>([]); // List of artists
     const [error, setError] = useState('');
@@ -53,7 +53,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 // Edit
                 setUsername(userToEdit.username);
                 setPassword('');
-                setIsAdmin(userToEdit.role === 'admin' || userToEdit.isAdmin);
+                setRole(userToEdit.role || (userToEdit.isAdmin ? 'admin' : 'user'));
                 setArtistId(userToEdit.artistId || userToEdit.artist_id || '');
                 setIsActive(userToEdit.is_active !== 0);
                 setInitialIsActive(userToEdit.is_active !== 0);
@@ -64,7 +64,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 // Create
                 setUsername('');
                 setPassword('');
-                setIsAdmin(false);
+                setRole('user');
                 setArtistId('');
                 setIsActive(true);
                 setInitialIsActive(true);
@@ -87,7 +87,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
         const targetUserId = dialogRef.current?.dataset.userId;
 
         try {
-            const payload: any = { username, isAdmin };
+            const payload: any = { username, role };
             if (password) payload.password = password; // Only send if set
             if (artistId) payload.artistId = artistId;
             else payload.artistId = null; // Explicitly unlink if empty
@@ -187,17 +187,22 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                         </label>
                     </div>
 
-                    <div className="flex gap-4">
-                        <div className="form-control">
-                            <label className="label cursor-pointer justify-start gap-4">
-                                <span className="label-text">Admin Access</span>
-                                <input 
-                                    type="checkbox" 
-                                    className="toggle toggle-primary"
-                                    checked={isAdmin}
-                                    onChange={e => setIsAdmin(e.target.checked)}
-                                />
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="form-control flex-1">
+                            <label className="label">
+                                <span className="label-text">User Role</span>
                             </label>
+                            <select 
+                                className="select select-bordered w-full"
+                                value={role}
+                                onChange={e => setRole(e.target.value)}
+                                disabled={dialogRef.current?.dataset.userId === '1'} // Cannot change root admin role
+                            >
+                                <option value="user">Listener (Standard User)</option>
+                                <option value="super_user">Curator (Super User / Library Management)</option>
+                                <option value="admin">Manager (Full Admin)</option>
+                                {role === 'root_admin' && <option value="root_admin">Root Admin</option>}
+                            </select>
                         </div>
 
                         {isRoot && dialogRef.current?.dataset.mode === 'edit' && (

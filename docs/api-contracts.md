@@ -1,47 +1,58 @@
-# API Contracts - TuneCamp
+# Contratti API
 
-## Overview
-TuneCamp provides a RESTful API for client interaction, ActivityPub for federation, and a Subsonic-compatible API for legacy clients.
+TuneCamp espone un'API RESTful per la comunicazione tra la webapp e il backend, oltre a endpoint specifici per ActivityPub e il protocollo Subsonic.
 
-## REST API Endpoints (Core)
+## Autenticazione
 
-### Authentication
-- `POST /api/auth/login`: 
-    - **Body:** `{ username, password, pubKey?, proof? }`
-    - **Logic:** Supports standard password auth or decentralized identity (Zen) via pubKey/proof.
-    - **Response:** JWT token, `pair` (Zen keys), `mustChangePassword` flag.
-- `POST /api/auth/setup`: First-run admin setup.
-- `POST /api/auth/password`: Change password (Admin only).
-- `GET /api/auth/status`: Check session, returns role and Zen identity status.
+La maggior parte degli endpoint richiede l'autenticazione tramite **JWT (JSON Web Token)** nell'header `Authorization`:
+`Authorization: Bearer <token>`
 
-### Music Catalog
-- `GET /api/albums/search?q=...&limit=...`: Search albums with visibility filters.
-- `POST /api/albums/:id/star`: Star/Unstar an album.
-- `POST /api/albums/:id/rating`: Set rating (0-5).
-- `POST /api/albums/:id/promote`: Promote a library album to a public "Release".
-- `GET /api/albums/:id/cover`: Get cover art (supports local paths or external redirects).
+---
 
-### Streaming
-- `GET /api/stream.view?id=tr_...&format=...&maxBitRate=...`: Subsonic-compatible stream endpoint.
-- **Logic:** Transcodes lossless (FLAC/WAV) to MP3 on-the-fly using FFmpeg if requested or needed for bandwidth.
-- **Proxy:** `/api/proxy/stream?url=...` for fetching remote federated audio safely.
+## Endpoint Principali
 
-### User Content
-- `GET /api/playlists`: List user/public playlists.
-- `POST /api/playlists`: Create a new playlist.
-- `GET /api/posts`: Get social posts (Fediverse).
-- `GET /api/comments`: Get comments for a track.
+### Autenticazione (`/api/auth`)
+- `POST /api/auth/register`: Registra un nuovo utente.
+- `POST /api/auth/login`: Autentica un utente e restituisce il token JWT.
+- `GET /api/auth/me`: Restituisce le informazioni dell'utente corrente.
 
-### Administration
-- `GET /api/admin/stats`: System-wide statistics.
-- `POST /api/admin/backup`: Trigger database backup.
-- `GET /api/admin/users`: Manage user accounts.
-- `POST /api/admin/maintenance`: Trigger library scans and cleanup.
+### Catalogo Musicale (`/api/catalog`, `/api/tracks`, `/api/albums`)
+- `GET /api/albums`: Elenco di tutti gli album locali.
+- `GET /api/albums/:id`: Dettagli di un album specifico, inclusa la lista tracce.
+- `GET /api/artists`: Elenco di tutti gli artisti.
+- `GET /api/tracks/:id`: Metadati di una traccia specifica.
+- `GET /api/tracks/:id/stream`: Stream binario del file audio.
+- `GET /api/tracks/:id/waveform`: Dati per la visualizzazione della forma d'onda.
 
-### Specialized APIs
-- **ActivityPub (`/api/activitypub/*`):** Handles webfinger, actor profiles, inboxes, and outboxes for federation.
-- **Subsonic (`/api/subsonic/*`):** Implements the Subsonic REST API (v1.16.1 compatible) for third-party apps like DSub, Amperfy, etc.
-- **Metadata (`/api/metadata/*`):** Integration with external services for tagging and cover art.
+### Social e Federazione (`/api/social`, `/api/activitypub`)
+- `GET /api/social/feed`: Post recenti dagli attori seguiti.
+- `POST /api/social/post`: Crea un nuovo post nel Fediverso.
+- `GET /api/activitypub/actor/:username`: Profilo ActivityPub di un utente locale.
+- `POST /api/activitypub/inbox`: Endpoint per la ricezione di messaggi remoti.
 
-## Common Response Formats
-Standard REST responses use JSON. Success responses typically return the requested object or an array. Error responses include a status code and an error message object.
+### Amministrazione (`/api/admin`)
+- `GET /api/admin/users`: Lista degli utenti (solo admin).
+- `POST /api/admin/scan`: Avvia una nuova scansione della libreria.
+- `GET /api/admin/stats`: Statistiche sull'utilizzo del server e del database.
+
+### Web3 e Pagamenti (`/api/payments`)
+- `GET /api/payments/prices`: Listino prezzi per le release.
+- `POST /api/payments/unlock`: Valida un codice o una transazione per sbloccare contenuti.
+
+---
+
+## Protocolli di Terze Parti
+
+### Subsonic API (`/rest`)
+TuneCamp implementa una parte del protocollo Subsonic per garantire la compatibilità con app mobili esistenti (es. DSub, Play:Sub).
+- Endpoint base: `/rest/*.view`
+- Supporta: `getAlbumList`, `getMusicDirectory`, `stream`, etc.
+
+## Formati di Risposta
+
+Tutte le risposte API (tranne lo streaming audio) sono in formato **JSON**. In caso di errore, il server restituisce un codice di stato HTTP appropriato e un oggetto errore:
+```json
+{
+  "error": "Messaggio di errore descrittivo"
+}
+```

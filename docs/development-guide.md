@@ -1,60 +1,71 @@
-# Development Guide - TuneCamp
+# Guida allo Sviluppo
 
-## Prerequisites
-- **Node.js:** v20+ recommended.
-- **npm:** v10+.
-- **FFmpeg:** Required for audio processing and metadata extraction.
-- **SQLite:** Pre-installed on most systems (accessed via `better-sqlite3`).
+Questa guida fornisce le istruzioni necessarie per configurare l'ambiente di sviluppo di TuneCamp e iniziare a contribuire al progetto.
 
-## Project Setup
-1. Clone the repository.
-2. Install dependencies in the root:
+## Prerequisiti
+
+- **Node.js**: Versione 18 o superiore.
+- **FFmpeg**: Necessario per la gestione dei file audio e la generazione delle waveform.
+- **SQLite3**: Opzionale (per ispezione manuale del database).
+
+## Configurazione Iniziale
+
+1. **Clona il repository**:
+   ```bash
+   git clone <repository-url>
+   cd tunecamp
+   ```
+
+2. **Installa le dipendenze**:
    ```bash
    npm install
-   ```
-3. Install dependencies for the webapp:
-   ```bash
    cd webapp && npm install
    ```
 
-## Local Development
+3. **Configura le variabili d'ambiente**:
+   Copia il file `.env.example` in `.env` e configura i parametri necessari (porte, secret JWT, percorsi cartelle musicali).
 
-### Running the Backend
-From the project root:
+## Esecuzione in Sviluppo
+
+### Backend
+Dalla root del progetto:
 ```bash
-# Start in development mode (with watch)
 npm run dev
 ```
-The server defaults to port `1970`.
+Il server sarà disponibile di default su `http://localhost:3000`.
 
-### Running the WebApp
-From the `webapp/` directory:
+### Webapp
+Dalla directory `webapp/`:
 ```bash
-# Start Vite development server
 npm run dev
 ```
-The frontend typically runs on `http://localhost:5173`.
+L'interfaccia utente sarà disponibile su `http://localhost:5173`.
 
-## Build Commands
-- **Backend:** `npm run build` (runs `tsc`).
-- **WebApp:** `npm run build` (runs `vite build`).
-- **CSS:** `npm run build:css` (runs Tailwind CLI).
+## Test
 
-## Testing
-The project uses **Jest** for testing.
+Il progetto utilizza **Jest** per i test unitari e di integrazione.
 ```bash
-# Run all tests
+# Esegui tutti i test
 npm test
+
+# Esegui test specifici
+npm test src/server/auth.test.ts
 ```
-Tests are located alongside the code (e.g., `*.test.ts`).
 
-## Maintenance Tools
-Located in `src/tools/`, these can be run using `node dist/tools/<script-name>.js`:
-- `migrate-dedupe.js`: Cleans up duplicate library entries.
-- `restore.js`: Restores the library from a backup.
-- `generate-zen-pair.js`: Generates a new identity for the server.
+## Strumenti Utili (`src/tools/`)
 
-## Coding Standards
-- Use **TypeScript** for all new code.
-- Follow the **Repository pattern** for database access.
-- Ensure all API routes have corresponding **validators** and **security tests**.
+Sono disponibili diversi script per compiti comuni:
+- `backup.ts`: Crea un backup del database e dei dati.
+- `generate-codes.ts`: Genera codici di sblocco per le release.
+- `relink-tracks.ts`: Aggiorna i percorsi dei file audio se la libreria viene spostata.
+
+## Convenzioni di Codifica
+
+- Utilizzare **TypeScript** per tutto il nuovo codice.
+- Seguire lo stile esistente basato su **Functional Components** in React.
+- Documentare le nuove API in `docs/api-contracts.md`.
+- Assicurarsi che ogni nuova tabella database sia aggiunta a `src/server/database.ts` con i relativi indici.
+
+## Contribuire
+
+Per maggiori dettagli sul processo di contribuzione, consulta il file `CONTRIBUTING.md` nella root del progetto.

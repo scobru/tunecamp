@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import type { AuthService } from "../auth.js";
-import type { UserRole, TokenPayload } from "../auth.js";
+import type { AuthService, TokenPayload } from "../auth.js";
+import { VisibilityGuardian, Capability, UserRole, ViewerContext } from "../common/visibility.js";
 
 export interface AuthenticatedRequest extends Request {
     isAdmin?: boolean;
@@ -11,6 +11,7 @@ export interface AuthenticatedRequest extends Request {
     role?: UserRole;
     isActive?: boolean;
     userId?: number;
+    context?: ViewerContext;
 }
 
 /**
@@ -45,18 +46,26 @@ export function createAuthMiddleware(authService: AuthService) {
         ) {
             const payload = extractPayload(req);
 
-            if (!payload || (!payload.isAdmin && payload.role !== 'super_user')) {
+            if (!payload) {
                 return res.status(403).json({ error: "Access denied: Admin only" });
             }
 
-            req.isAdmin = payload.isAdmin;
-            req.isSuperUser = payload.role === 'super_user';
+            const context = VisibilityGuardian.deriveContext(payload);
+            
+            // Check if user has administrative view capabilities
+            if (!VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY)) {
+                return res.status(403).json({ error: "Access denied: Admin only" });
+            }
+
+            req.isAdmin = payload.isAdmin || context.role === UserRole.ROOT_ADMIN;
+            req.isSuperUser = context.role === UserRole.SUPER_USER;
             req.username = payload.username;
             req.artistId = payload.artistId;
-            req.role = payload.role;
+            req.role = context.role;
             req.isActive = payload.isActive;
             req.userId = payload.userId;
-            req.isRootAdmin = authService.isRootAdmin(payload.username);
+            req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+            req.context = context;
             next();
         },
 
@@ -74,14 +83,17 @@ export function createAuthMiddleware(authService: AuthService) {
                 return res.status(401).json({ error: "No token provided" });
             }
 
-            req.isAdmin = payload.isAdmin;
-            req.isSuperUser = payload.role === 'super_user';
+            const context = VisibilityGuardian.deriveContext(payload);
+
+            req.isAdmin = payload.isAdmin || context.role === UserRole.ROOT_ADMIN;
+            req.isSuperUser = context.role === UserRole.SUPER_USER;
             req.username = payload.username;
             req.artistId = payload.artistId;
-            req.role = payload.role;
+            req.role = context.role;
             req.isActive = payload.isActive;
             req.userId = payload.userId;
-            req.isRootAdmin = authService.isRootAdmin(payload.username);
+            req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+            req.context = context;
             next();
         },
 
@@ -96,19 +108,22 @@ export function createAuthMiddleware(authService: AuthService) {
             const payload = extractPayload(req);
 
             if (payload) {
-                req.isAdmin = payload.isAdmin;
-                req.isSuperUser = payload.role === 'super_user';
+                const context = VisibilityGuardian.deriveContext(payload);
+                req.isAdmin = payload.isAdmin || context.role === UserRole.ROOT_ADMIN;
+                req.isSuperUser = context.role === UserRole.SUPER_USER;
                 req.username = payload.username;
                 req.artistId = payload.artistId;
-                req.role = payload.role;
+                req.role = context.role;
                 req.isActive = payload.isActive;
                 req.userId = payload.userId;
-                req.isRootAdmin = authService.isRootAdmin(payload.username);
+                req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+                req.context = context;
             } else {
                 req.isAdmin = false;
                 req.isSuperUser = false;
                 req.isActive = false;
                 req.isRootAdmin = false;
+                req.context = { role: UserRole.GUEST };
             }
 
             next();
@@ -121,12 +136,17 @@ export function createAuthMiddleware(authService: AuthService) {
             res: Response,
             next: NextFunction
         ) {
-            if (req.role === 'super_user') {
-                // Super user can upload but cannot do destructive/admin actions
-                // This middleware is used by upload routes
+            // Check if user has management capabilities (Super User and above)
+            if (req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY)) {
                 next();
                 return;
             }
+            
+            // Standard users can't write to private library by default
+            if (req.role === UserRole.NORMAL_USER) {
+                 return res.status(403).json({ error: "Access denied: Write access required" });
+            }
+            
             next();
         },
 
@@ -139,8 +159,14 @@ export function createAuthMiddleware(authService: AuthService) {
             next: NextFunction
         ) {
             const payload = extractPayload(req);
+            
+            if (!payload) {
+                return res.status(403).json({ error: "Access denied: Root Admin only" });
+            }
 
-            if (!payload || !authService.isRootAdmin(payload.username)) {
+            const context = VisibilityGuardian.deriveContext(payload);
+
+            if (!VisibilityGuardian.can(context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Access denied: Root Admin only" });
             }
 
@@ -148,9 +174,10 @@ export function createAuthMiddleware(authService: AuthService) {
             req.isRootAdmin = true;
             req.username = payload.username;
             req.artistId = payload.artistId;
-            req.role = payload.role;
+            req.role = context.role;
             req.isActive = payload.isActive;
             req.userId = payload.userId;
+            req.context = context;
             next();
         },
     };

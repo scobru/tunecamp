@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { AuthService } from "../auth.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { validatePassword } from "../validators.js";
+import { UserRole } from "../common/visibility.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 
 export function createAuthRoutes(authService: AuthService, authMiddleware: any): Router {
@@ -39,7 +40,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 isAdmin: result.isAdmin || false,
                 username: userToAuth,
                 artistId: result.artistId || null,
-                role: result.role || 'user',
+                role: result.role || UserRole.NORMAL_USER,
                 isActive: result.isActive ?? true,
                 userId: result.id
             });
@@ -50,7 +51,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 username: userToAuth,
                 isRootAdmin: authService.isRootAdmin(userToAuth),
                 artistId: result.artistId || null,
-                role: result.role || 'user',
+                role: result.role || UserRole.NORMAL_USER,
                 pair: result.pair || null, // Return GunDB identity pair
                 mustChangePassword: await authService.isDefaultPassword(userToAuth)
             });
@@ -85,7 +86,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 isAdmin: true,
                 username: userToCreate,
                 artistId: null,
-                role: 'admin',
+                role: UserRole.ROOT_ADMIN,
                 isActive: true,
                 userId: result.id
             });
@@ -141,7 +142,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 isAdmin: true,
                 username,
                 artistId,
-                role: req.role || 'admin',
+                role: req.role || UserRole.ADMIN,
                 isActive: req.isActive ?? true,
                 userId: req.userId || 0
             });
@@ -165,7 +166,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
     router.get("/status", async (req: AuthenticatedRequest, res) => {
         const username = req.username || "";
         res.json({
-            authenticated: req.isAdmin === true || req.role === 'user',
+            authenticated: req.isAdmin === true || req.role === UserRole.NORMAL_USER,
             username: username,
             isRootAdmin: username ? authService.isRootAdmin(username) : false,
             artistId: req.artistId || null,

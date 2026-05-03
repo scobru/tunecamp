@@ -36,7 +36,7 @@ export class LibraryService {
         const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
 
         if (canSeePrivate) {
-            if (options.mineOnly && context.userId !== undefined) {
+            if (options.mineOnly && context.userId !== undefined && context.userId !== null) {
                 tracks = this.db.getTracksByOwner(context.userId);
             } else {
                 // Root Admin, Admin, and Super Users see the entire Santuario
