@@ -45,7 +45,7 @@ export function createReleaseRouter(
     router.get("/", async (req: any, res) => {
         try {
             let releases: any[];
-            if (req.isAdmin) {
+            if (req.isAdmin || req.isSuperUser) {
                 releases = database.getReleases();
             } else if (req.userId !== undefined) {
                 // Show public releases OR those owned by the user
@@ -106,7 +106,7 @@ export function createReleaseRouter(
             }
 
             // Permission Check: Non-admin can only see public/unlisted releases, unless they are the owner
-            if (release.visibility === 'private' && !req.isAdmin && release.owner_id !== req.userId) {
+            if (release.visibility === 'private' && !req.isAdmin && !req.isSuperUser && release.owner_id !== req.userId) {
                 return res.status(404).json({ error: "Release not found" });
             }
 
@@ -304,6 +304,7 @@ export function createReleaseRouter(
                 published_at: body.visibility === 'public' || body.visibility === 'unlisted' ? new Date().toISOString() : null,
                 published_to_gundb: body.publishedToGunDB !== undefined ? body.publishedToGunDB : (body.visibility === 'public' || body.visibility === 'unlisted'),
                 published_to_ap: body.publishedToAP !== undefined ? body.publishedToAP : (body.visibility === 'public' || body.visibility === 'unlisted'),
+                status: 'draft',
             });
 
             // Associate only validated tracks

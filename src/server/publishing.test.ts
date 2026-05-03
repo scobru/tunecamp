@@ -73,7 +73,9 @@ describe('PublishingService', () => {
             owner_id: null,
             price: 0,
             price_usdc: 0,
-            currency: 'USD'
+            currency: 'USD',
+            status: 'released',
+            license: null,
         });
 
         // Add a track
@@ -129,7 +131,9 @@ describe('PublishingService', () => {
             owner_id: null,
             price: 0,
             price_usdc: 0,
-            currency: 'USD'
+            currency: 'USD',
+            status: 'released',
+            license: null,
         });
 
         await publishingService.syncRelease(albumId);

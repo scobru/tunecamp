@@ -65,10 +65,13 @@ import { createBrowserRoutes } from "./routes/browser.js";
 import { createMetadataRoutes } from "./routes/metadata.js";
 import { createUnlockRoutes } from "./routes/unlock.js";
 import { createPaymentsRoutes } from "./routes/payments.js";
-import { createActivityPubService } from "./activitypub.js";
+import { ActivityPubService, createActivityPubService } from "./activitypub.js";
+import type { FederationProvider } from "./modules/activitypub/federation.provider.js";
 import { createActivityPubRoutes } from "./routes/activitypub.js";
 import { createPublishingService } from "./publishing.js";
+import { LifecycleService } from "./services/lifecycle.service.js";
 import { LibraryService } from "./services/library.service.js";
+import { createLifecycleRoutes } from "./routes/lifecycle.js";
 import { integrateFederation } from "@fedify/express";
 import { createFedify } from "./fedify.js";
 import { createBackupRoutes } from "./routes/backup.js";
@@ -152,11 +155,37 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const federation = createFedify(database, config);
 
     // Initialize ActivityPub
-    const apService = createActivityPubService(database, config, federation);
+    const federationProvider: FederationProvider = {
+        getSetting: (key) => database.getSetting(key),
+        setSetting: (key, val) => database.setSetting(key, val),
+        getArtist: (id) => database.getArtist(id),
+        getArtistBySlug: (slug) => database.getArtistBySlug(slug),
+        getArtists: () => database.getArtists(),
+        updateArtistKeys: (id, pub, priv) => database.updateArtistKeys(id, pub, priv),
+        getReleases: () => database.getReleases(),
+        getReleasesByArtist: (id) => database.getReleasesByArtist(id),
+        getTracksByReleaseId: (id) => database.getTracksByReleaseId(id),
+        getPostsByArtist: (id) => database.getPostsByArtist(id),
+        getRemoteActor: (uri) => database.getRemoteActor(uri),
+        upsertRemoteActor: (actor) => database.upsertRemoteActor(actor as any),
+        upsertRemoteContent: (content) => database.upsertRemoteContent(content as any),
+        unfollowActor: (uri) => database.unfollowActor(uri),
+        getFollowers: (id) => database.getFollowers(id),
+        addFollower: (id, actor, inbox) => database.addFollower(id, actor, inbox),
+        createApNote: (aid, nid, type, cid, slug, title) => database.createApNote(aid, nid, type, cid, slug, title),
+        getApNotes: (id, del) => database.getApNotes(id, del),
+        getApNote: (id) => database.getApNote(id),
+        markApNoteDeleted: (id) => database.markApNoteDeleted(id)
+    };
+
+    const apService = createActivityPubService(federationProvider, config, federation);
     await apService.generateKeysForAllArtists();
 
     // Initialize Publishing Service
     const publishingService = createPublishingService(database, zendbService, apService, config);
+
+    // Initialize Lifecycle Service
+    const lifecycleService = new LifecycleService(database, publishingService, apService);
 
     // Initialize Library Service
     const libraryService = new LibraryService(database, publishingService, zendbService, storage, config.musicDir);
@@ -292,6 +321,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/comments", createCommentsRoutes(zendbService));
     app.use("/api/unlock", createUnlockRoutes(database, authMiddleware));
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
+    app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(lifecycleService));
+    app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(lifecycleService));
     app.use("/api/ap", createActivityPubRoutes(apService, database, authMiddleware));
     app.use("/api/proxy", createProxyRoutes());
     app.use("/api/search/content", authMiddleware.requireRootAdmin, createSearchRoutes(database, soulseekService, scanner));

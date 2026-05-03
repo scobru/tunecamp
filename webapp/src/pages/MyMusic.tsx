@@ -15,7 +15,7 @@ import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminTracksList } from "../components/admin/AdminTracksList";
 
 export const MyMusic = () => {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
     "overview" | "albums" | "tracks"
@@ -117,7 +117,7 @@ export const MyMusic = () => {
           <div className="space-y-6">
             <h3 className="font-bold text-lg">Quick Actions</h3>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {(user?.isAdmin || user?.isActive) && (
+              {(user?.isAdmin || user?.isActive || role === 'super_user') && (
                 <>
                   <button
                     className="btn btn-primary gap-2"
@@ -129,24 +129,28 @@ export const MyMusic = () => {
                   >
                     📤 Upload Tracks
                   </button>
-                  <button
-                    className="btn btn-secondary gap-2"
-                    onClick={() => navigate("/admin/release/new")}
-                  >
-                    💿 New Release
-                  </button>
+                  {((user?.isAdmin || user?.isActive) && (role !== 'super_user' || user?.artistId)) && (
+                    <button
+                      className="btn btn-secondary gap-2"
+                      onClick={() => navigate("/admin/release/new")}
+                    >
+                      💿 New Release
+                    </button>
+                  )}
                 </>
               )}
-              <button
-                className="btn btn-outline gap-2"
-                onClick={() =>
-                  document.dispatchEvent(
-                    new CustomEvent("open-create-post-modal"),
-                  )
-                }
-              >
-                📝 New Post
-              </button>
+              {((user?.isAdmin || user?.isActive) && (role !== 'super_user' || user?.artistId)) && (
+                <button
+                  className="btn btn-outline gap-2"
+                  onClick={() =>
+                    document.dispatchEvent(
+                      new CustomEvent("open-create-post-modal"),
+                    )
+                  }
+                >
+                  📝 New Post
+                </button>
+              )}
             </div>
             <div className="divider"></div>
             

@@ -16,7 +16,7 @@ export function createAlbumsRoutes(database: DatabaseService, libraryService: Li
      * List all albums
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin) throw new ForbiddenError("Access denied: Admin only");
+        if (!req.isAdmin && !req.isSuperUser) throw new ForbiddenError("Access denied: Admin only");
         res.json(database.getAlbums());
     }));
 
@@ -28,7 +28,7 @@ export function createAlbumsRoutes(database: DatabaseService, libraryService: Li
         const limit = parseInt(req.query.limit as string) || 50;
         if (!query) return res.json([]);
         
-        const albums = database.searchAlbums(query, limit, !req.isAdmin);
+        const albums = database.searchAlbums(query, limit, !(req.isAdmin || req.isSuperUser));
         res.json(albums.map((a: Album) => ({ ...a, coverImage: a.cover_path })));
     }));
 
@@ -85,39 +85,14 @@ export function createAlbumsRoutes(database: DatabaseService, libraryService: Li
      * GET /api/albums/:id
      */
     router.get("/:id", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        const param = req.params.id as string;
-        let album: Album | undefined;
-
-        if (/^\d+$/.test(param)) {
-            album = database.getAlbum(parseInt(param, 10));
-        } else {
-            album = database.getAlbumBySlug(param);
-        }
-
-        if (!album) throw new NotFoundError("Album not found");
-
-        if (!req.isAdmin && album.owner_id !== req.userId) {
-            if (!album.is_release) throw new ForbiddenError("Access denied");
-            if (album.visibility === 'private') throw new NotFoundError("Release not found");
-        }
-
-        const tracks = database.getTracksByAlbum(album.id);
-        const username = req.username;
-
-        res.json({
-            ...album,
-            coverImage: album.cover_path,
-            tracks: tracks.map((t: Track) => ({
-                ...t,
-                albumId: t.album_id,
-                artistId: t.artist_id,
-                coverUrl: t.external_artwork ? `/api/tracks/${t.id}/cover` : (t.album_id ? `/api/albums/${t.album_id}/cover` : null),
-                starred: username ? database.isStarred(username, 'track', String(t.id)) : false,
-                rating: username ? database.getItemRating(username, 'track', String(t.id)) : 0
-            })),
-            starred: username ? database.isStarred(username, 'album', String(album.id)) : false,
-            rating: username ? database.getItemRating(username, 'album', String(album.id)) : 0
+        const album = await libraryService.getAlbumForUser(req.params.id, {
+            userId: req.userId,
+            artistId: req.artistId,
+            role: req.role,
+            isActive: req.isActive,
+            username: req.username
         });
+        res.json(album);
     }));
 
     /**

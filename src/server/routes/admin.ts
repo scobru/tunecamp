@@ -33,7 +33,11 @@ export function createAdminRoutes(
      */
     router.use((req: AuthenticatedRequest, res, next) => {
         if (req.method !== 'GET' && req.role === 'super_user') {
-            return res.status(403).json({ error: "Access denied: Super User is read-only" });
+            // Allow uploads for super users
+            if (req.path.startsWith('/upload')) {
+                return next();
+            }
+            return res.status(403).json({ error: "Access denied: Super User is read-only for administrative settings" });
         }
         next();
     });
@@ -49,8 +53,8 @@ export function createAdminRoutes(
             const isRoot = req.isRootAdmin;
             let releases: any[] = [];
             
-            if (isRoot) {
-                // Root admin sees all releases
+            if (isRoot || req.isSuperUser) {
+                // Root admin and Super User see all releases
                 releases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
             } else if (req.userId) {
                 releases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
@@ -137,8 +141,8 @@ export function createAdminRoutes(
             const showMine = req.query.mine === 'true';
             const isAdmin = req.isAdmin;
             const isRoot = req.isRootAdmin;
-            const artistId = isRoot ? undefined : (req.artistId || undefined);
-            const ownerId = isRoot ? undefined : req.userId;
+            const artistId = (isRoot || req.isSuperUser) ? undefined : (req.artistId || undefined);
+            const ownerId = (isRoot || req.isSuperUser) ? undefined : req.userId;
             
             const stats = await database.getStats(artistId, ownerId);
             res.json(stats);

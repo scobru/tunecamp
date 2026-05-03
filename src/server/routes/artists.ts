@@ -25,7 +25,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             
             let filteredArtists = allArtists;
 
-            if (!req.isAdmin) {
+            if (!req.isAdmin && !req.isSuperUser) {
                 // Determine which artists have public FORMAL releases
                 const publicReleases = database.getReleases(true).filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
                 const publicArtistIds = new Set(
@@ -52,7 +52,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                 const isLibraryArtist = !!a.isLibraryArtist;
 
                 // Do not show library artists if they have no albums and no releases (unless admin)
-                if (!req.isAdmin && isLibraryArtist && !hasAlbums && !hasReleases) {
+                if (!req.isAdmin && !req.isSuperUser && isLibraryArtist && !hasAlbums && !hasReleases) {
                     return acc;
                 }
 
@@ -365,7 +365,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
      */
     router.get("/:idOrSlug", (req: AuthenticatedRequest, res) => {
         const param = req.params.idOrSlug as string;
-        console.log(`🔍 [Debug] GET /api/artists/${param} requested by user: ${req.username || 'guest'}, isAdmin: ${req.isAdmin}`);
+        console.log(`🔍 [Debug] GET /api/artists/${param} requested by user: ${req.username || 'guest'}, isAdmin: ${req.isAdmin}, isSuperUser: ${req.isSuperUser}`);
         try {
             let artist;
 
@@ -381,18 +381,18 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             }
 
             // Get formal releases (visible to everyone if public)
-            const formalReleases = database.getReleasesByArtist(artist.id, req.isAdmin !== true);
+            const formalReleases = database.getReleasesByArtist(artist.id, (!req.isAdmin && !req.isSuperUser));
             const publicFormalReleases = formalReleases.filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
 
             // SECURITY: If not admin and no public formal releases, hide the artist entirely
-            if (!req.isAdmin && publicFormalReleases.length === 0 && (!req.artistId || req.artistId !== artist.id)) {
+            if (!req.isAdmin && !req.isSuperUser && publicFormalReleases.length === 0 && (!req.artistId || req.artistId !== artist.id)) {
                 console.log(`⛔ [Security] Denying access to library-only artist ${artist.name} to non-admin user`);
                 return res.status(404).json({ error: "Artist not found" });
             }
 
             // Get library albums - ONLY for admins
             let libraryAlbums: any[] = [];
-            if (req.isAdmin) {
+            if (req.isAdmin || req.isSuperUser) {
                 libraryAlbums = database.getAlbumsByArtist(artist.id, false, artist.name);
             }
             
@@ -424,7 +424,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
 
             // Get tracks by this artist that have no album (loose tracks) - ONLY for admins
             let looseTracks: any[] = [];
-            if (req.isAdmin) {
+            if (req.isAdmin || req.isSuperUser) {
                 const allArtistTracks = database.getTracksByArtist(artist.id, false, artist.name);
                 looseTracks = allArtistTracks.filter(t => !t.album_id);
             }
@@ -441,7 +441,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
 
             // Parse postParams for admin
             let postParams = undefined;
-            if (req.isAdmin && artist.post_params) {
+            if ((req.isAdmin || req.isSuperUser) && artist.post_params) {
                 try {
                     postParams = JSON.parse(artist.post_params);
                 } catch (e) { }

@@ -1,19 +1,44 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Globe, Lock } from "lucide-react";
+import { Globe, Lock, Send, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import clsx from "clsx";
 
 export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   const navigate = useNavigate();
   const [releases, setReleases] = useState<any[]>([]);
+
+  const loadReleases = () =>
+    API.getAdminReleases({ mine }).then(setReleases).catch(console.error);
+
   useEffect(() => {
-    const loadReleases = () =>
-      API.getAdminReleases({ mine }).then(setReleases).catch(console.error);
     loadReleases();
     window.addEventListener("refresh-admin-releases", loadReleases);
     return () =>
       window.removeEventListener("refresh-admin-releases", loadReleases);
   }, [mine]);
+
+  const handlePromote = async (id: number) => {
+    if (!confirm("Request promotion to public release? This will notify the Admin.")) return;
+    try {
+        await API.requestPromotion(id);
+        alert("Promotion requested!");
+        loadReleases();
+    } catch (e: any) {
+        alert("Promotion failed: " + e.message);
+    }
+  };
+
+  const handleFinalize = async (id: number) => {
+    if (!confirm("Finalize release? This will broadcast it to the Fediverse and Zen network.")) return;
+    try {
+        await API.finalizeRelease(id);
+        alert("Release finalized!");
+        loadReleases();
+    } catch (e: any) {
+        alert("Finalization failed: " + e.message);
+    }
+  };
 
   const handleToggleVisibility = async (e: React.MouseEvent, release: any) => {
     e.stopPropagation(); // prevent row click if any
@@ -49,6 +74,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
           <th>Title</th>
           <th>Artist</th>
           <th>Type</th>
+          <th>Status</th>
           <th>Visibility</th>
           <th>Actions</th>
         </tr>
@@ -60,6 +86,16 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
             <td>{r.artistName}</td>
             <td>
               <div className="badge badge-sm">{r.type}</div>
+            </td>
+            <td>
+              <div className={clsx("badge badge-sm", {
+                'badge-ghost opacity-50': r.status === 'draft',
+                'badge-info': r.status === 'pending',
+                'badge-warning': r.status === 'approved' || r.status === 'awaiting_finalization',
+                'badge-success': r.status === 'released'
+              })}>
+                {r.status || 'draft'}
+              </div>
             </td>
             <td>
               <button
@@ -76,6 +112,22 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
               </button>
             </td>
             <td className="flex gap-2">
+              {r.status === 'draft' && mine && (
+                  <button 
+                    className="btn btn-xs btn-primary gap-1"
+                    onClick={() => handlePromote(r.id)}
+                  >
+                      <Send size={12} /> Promote
+                  </button>
+              )}
+              {r.status === 'awaiting_finalization' && mine && (
+                  <button 
+                    className="btn btn-xs btn-success gap-1"
+                    onClick={() => handleFinalize(r.id)}
+                  >
+                      <CheckCircle size={12} /> Finalize
+                  </button>
+              )}
               <button
                 className="btn btn-xs btn-ghost"
                 onClick={() => {

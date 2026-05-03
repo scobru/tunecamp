@@ -48,8 +48,10 @@ export const AdminUsersList = () => {
           <tr key={u.id}>
             <td className="font-bold">{u.username}</td>
             <td>
-              {u.role === "admin" || u.isAdmin ? (
+              {u.role === "admin" ? (
                 <span className="badge badge-primary badge-outline">Admin</span>
+              ) : u.role === "super_user" ? (
+                <span className="badge badge-secondary badge-outline">Super User</span>
               ) : (
                 <span className="badge badge-ghost">User</span>
               )}

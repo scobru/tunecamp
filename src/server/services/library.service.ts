@@ -1,7 +1,8 @@
-import type { DatabaseService, Album, Release, Track } from "../database.js";
+import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../database.js";
 import type { PublishingService } from "../publishing.js";
 import type { ZenDBService } from "../zendb.js";
 import type { StorageEngine } from "../modules/storage/storage.engine.js";
+import { VisibilityGuardian, Capability, UserRole, ViewerContext } from "../common/visibility.js";
 import path from "path";
 import NodeID3 from "node-id3";
 import { writeMetadata } from "../ffmpeg.js";
@@ -14,6 +15,114 @@ export class LibraryService {
         private storage: StorageEngine,
         private musicDir: string
     ) {}
+
+    // --- Query Operations ---
+
+    /**
+     * Retrieves tracks for a user, applying visibility rules and owner filters.
+     * Deepened logic: leverages VisibilityGuardian to separate "Santuario" from "Arena".
+     */
+    async getTracksForUser(user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }, options: { mineOnly?: boolean } = {}): Promise<TrackDTO[]> {
+        const context = VisibilityGuardian.deriveContext({
+            userId: user.userId,
+            artistId: user.artistId || undefined,
+            role: user.role || 'guest',
+            isActive: user.isActive
+        });
+
+        const username = user.username;
+        let tracks: Track[] = [];
+
+        const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
+
+        if (canSeePrivate) {
+            if (options.mineOnly && context.userId !== undefined) {
+                tracks = this.db.getTracksByOwner(context.userId);
+            } else {
+                // Root Admin, Admin, and Super Users see the entire Santuario
+                tracks = this.db.getTracks();
+            }
+        } else {
+            // Normal Users and Guests only see the Arena (Public Releases)
+            tracks = this.db.getTracks(undefined, true);
+        }
+
+        return tracks.map(t => this.mapTrackDTO(t, username));
+    }
+
+    /**
+     * Retrieves a single album with its tracks and user-specific metadata.
+     */
+    async getAlbumForUser(albumIdOrSlug: string | number, user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }): Promise<AlbumDTO> {
+        const context = VisibilityGuardian.deriveContext({
+            userId: user.userId,
+            artistId: user.artistId || undefined,
+            role: user.role || 'guest',
+            isActive: user.isActive
+        });
+
+        let album: Album | undefined;
+        if (typeof albumIdOrSlug === 'number' || /^\d+$/.test(albumIdOrSlug as string)) {
+            album = this.db.getAlbum(Number(albumIdOrSlug));
+        } else {
+            album = this.db.getAlbumBySlug(albumIdOrSlug as string);
+        }
+
+        if (!album) throw new Error("Album not found");
+
+        const isOwner = context.userId !== undefined && album.owner_id === context.userId;
+        const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
+
+        // Visibility / Ownership check
+        if (!canSeePrivate && !isOwner) {
+            // Normal users only see public releases that aren't private
+            if (!album.is_release) throw new Error("Access denied");
+            if (album.visibility === 'private') throw new Error("Release not found");
+        }
+
+        const tracks = this.db.getTracksByAlbum(album.id);
+        const username = user.username;
+
+        return {
+            ...this.mapAlbumDTO(album, username),
+            tracks: tracks.map(t => this.mapTrackDTO(t, username))
+        };
+    }
+
+    /**
+     * Map a raw database Track to a UI-friendly DTO.
+     */
+    mapTrackDTO(t: Track, username?: string): TrackDTO {
+        return {
+            ...t,
+            albumId: t.album_id,
+            artistId: t.artist_id,
+            losslessPath: t.lossless_path,
+            externalArtwork: t.external_artwork,
+            albumName: t.album_title,
+            albumDownload: t.album_download,
+            albumVisibility: t.album_visibility,
+            albumPrice: t.album_price,
+            artistName: t.artist_name,
+            path: t.file_path,
+            filename: t.file_path ? path.basename(t.file_path) : undefined,
+            coverUrl: t.external_artwork ? `/api/tracks/${t.id}/cover` : (t.album_id ? `/api/albums/${t.album_id}/cover` : null),
+            starred: username ? this.db.isStarred(username, 'track', String(t.id)) : false,
+            rating: username ? this.db.getItemRating(username, 'track', String(t.id)) : 0
+        };
+    }
+
+    /**
+     * Map a raw database Album to a UI-friendly DTO.
+     */
+    mapAlbumDTO(a: Album, username?: string): AlbumDTO {
+        return {
+            ...a,
+            coverImage: a.cover_path,
+            starred: username ? this.db.isStarred(username, 'album', String(a.id)) : false,
+            rating: username ? this.db.getItemRating(username, 'album', String(a.id)) : 0
+        };
+    }
 
     // --- Album Operations ---
 
@@ -215,7 +324,8 @@ export class LibraryService {
                 date: null, cover_path: null, genre: "Library", description: "",
                 type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
                 external_links: null, is_public: false, visibility: 'private', is_release: false,
-                published_at: null, published_to_gundb: false, published_to_ap: false, license: null
+                published_at: null, published_to_gundb: false, published_to_ap: false, license: null,
+                status: 'draft',
             });
         }
 

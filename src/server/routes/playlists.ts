@@ -12,8 +12,8 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
      */
     router.get("/", (req: AuthenticatedRequest, res) => {
         try {
-            const genres = database.getGenres(!req.isAdmin);
-            const genreCounts = database.getGenreTrackCounts(!req.isAdmin);
+            const genres = database.getGenres(!(req.isAdmin || req.isSuperUser));
+            const genreCounts = database.getGenreTrackCounts(!(req.isAdmin || req.isSuperUser));
             
             const dynamicPlaylists = genres.map(genre => ({
                 id: `genre:${genre}`,
@@ -26,7 +26,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 trackCount: genreCounts.get(genre.toLowerCase()) || 0 
             }));
 
-            if (req.isAdmin) {
+            if (req.isAdmin || req.isSuperUser) {
                 res.json([...database.getPlaylists(), ...dynamicPlaylists]);
             } else if (req.username) {
                 const myPlaylists = database.getPlaylists(req.username, false);
@@ -126,8 +126,8 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             // Handle dynamic genre playlists
             if (idStr.startsWith("genre:")) {
                 const genre = idStr.replace("genre:", "");
-                const tracks = database.getTracksByGenre(genre, !req.isAdmin);
-                const genreCounts = database.getGenreTrackCounts(!req.isAdmin);
+                const tracks = database.getTracksByGenre(genre, !(req.isAdmin || req.isSuperUser));
+                const genreCounts = database.getGenreTrackCounts(!(req.isAdmin || req.isSuperUser));
                 
                 return res.json({
                     id: idStr,
@@ -149,7 +149,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(404).json({ error: "Playlist not found" });
             }
 
-            if (!req.isAdmin && !playlist.isPublic) {
+            if (!req.isAdmin && !req.isSuperUser && !playlist.isPublic) {
                 return res.status(403).json({ error: "Unauthorized" });
             }
 

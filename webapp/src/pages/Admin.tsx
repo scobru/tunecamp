@@ -13,6 +13,7 @@ import { AdminSettingsPanel } from "../components/admin/AdminSettingsPanel";
 import { AdminUsersList } from "../components/admin/AdminUsersList";
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminMaintenancePanel } from "../components/admin/AdminMaintenancePanel";
+import { CurationQueue } from "../components/admin/CurationQueue";
 
 import { IdentityPanel } from "../components/admin/IdentityPanel";
 import { ActivityPubPanel } from "../components/admin/ActivityPubPanel";
@@ -27,6 +28,7 @@ export const Admin = () => {
   
   const [activeTab, setActiveTab] = useState<
     | "releases"
+    | "curation"
     | "users"
     | "settings"
     | "system"
@@ -125,6 +127,15 @@ export const Admin = () => {
         >
           {isAdmin ? "All Releases" : "My Releases"}
         </a>
+        {isAdmin && (
+          <a
+            role="tab"
+            className={`tab ${activeTab === "curation" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("curation")}
+          >
+            Curation Queue
+          </a>
+        )}
         {isRootAdmin && (
           <>
             <a
@@ -193,7 +204,7 @@ export const Admin = () => {
            <div className="space-y-4">
            <div className="flex justify-between items-center">
              <h3 className="font-bold text-lg">{isAdmin ? "All Releases" : "My Releases"}</h3>
-             {!isSuperUser && (
+             {(!isSuperUser || user?.artistId) && (
                <button
                  className="btn btn-sm btn-primary"
                  onClick={() => navigate("/admin/release/new")}
@@ -205,6 +216,8 @@ export const Admin = () => {
            <AdminReleasesList mine={!isAdmin} />
          </div>
         )}
+
+        {activeTab === "curation" && isAdmin && <CurationQueue />}
 
         {activeTab === "system" && isAdmin && (
           <div className="space-y-6">

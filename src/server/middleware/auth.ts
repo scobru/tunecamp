@@ -5,6 +5,7 @@ import type { UserRole, TokenPayload } from "../auth.js";
 export interface AuthenticatedRequest extends Request {
     isAdmin?: boolean;
     isRootAdmin?: boolean;
+    isSuperUser?: boolean;
     username?: string;
     artistId?: number | null;
     role?: UserRole;
@@ -44,17 +45,18 @@ export function createAuthMiddleware(authService: AuthService) {
         ) {
             const payload = extractPayload(req);
 
-            if (!payload || !payload.isAdmin) {
+            if (!payload || (!payload.isAdmin && payload.role !== 'super_user')) {
                 return res.status(403).json({ error: "Access denied: Admin only" });
             }
 
-            req.isAdmin = true;
+            req.isAdmin = payload.isAdmin;
+            req.isSuperUser = payload.role === 'super_user';
             req.username = payload.username;
             req.artistId = payload.artistId;
             req.role = payload.role;
             req.isActive = payload.isActive;
             req.userId = payload.userId;
-            req.isRootAdmin = authService.isRootAdmin(payload.username) || payload.role === 'super_user' || payload.username === 'sudo';
+            req.isRootAdmin = authService.isRootAdmin(payload.username);
             next();
         },
 
@@ -73,12 +75,13 @@ export function createAuthMiddleware(authService: AuthService) {
             }
 
             req.isAdmin = payload.isAdmin;
+            req.isSuperUser = payload.role === 'super_user';
             req.username = payload.username;
             req.artistId = payload.artistId;
             req.role = payload.role;
             req.isActive = payload.isActive;
             req.userId = payload.userId;
-            req.isRootAdmin = authService.isRootAdmin(payload.username) || payload.role === 'super_user' || payload.username === 'sudo';
+            req.isRootAdmin = authService.isRootAdmin(payload.username);
             next();
         },
 
@@ -94,14 +97,16 @@ export function createAuthMiddleware(authService: AuthService) {
 
             if (payload) {
                 req.isAdmin = payload.isAdmin;
+                req.isSuperUser = payload.role === 'super_user';
                 req.username = payload.username;
                 req.artistId = payload.artistId;
                 req.role = payload.role;
                 req.isActive = payload.isActive;
                 req.userId = payload.userId;
-                req.isRootAdmin = authService.isRootAdmin(payload.username) || payload.role === 'super_user' || payload.username === 'sudo';
+                req.isRootAdmin = authService.isRootAdmin(payload.username);
             } else {
                 req.isAdmin = false;
+                req.isSuperUser = false;
                 req.isActive = false;
                 req.isRootAdmin = false;
             }
@@ -117,7 +122,10 @@ export function createAuthMiddleware(authService: AuthService) {
             next: NextFunction
         ) {
             if (req.role === 'super_user') {
-                return res.status(403).json({ error: "Access denied: Super User is read-only" });
+                // Super user can upload but cannot do destructive/admin actions
+                // This middleware is used by upload routes
+                next();
+                return;
             }
             next();
         },

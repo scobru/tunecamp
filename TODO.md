@@ -1,3 +1,3 @@
-- A. Estrarre il dominio Social (Commenti, Like, Follower) in Repository dedicati (continuando il lavoro sul database).
-- B. Creare un LibraryService per spostare la logica di gestione tracce/album dalle rotte (src/server/routes/tracks.ts e albums.ts).
-- C. Migliorare l'Error Handling globale con un middleware più robusto e tipizzato.
+- [x] A. Estrarre il dominio Social (Commenti, Like, Follower) in Repository dedicati (continuando il lavoro sul database).
+- [x] B. Creare un LibraryService per spostare la logica di gestione tracce/album dalle rotte (src/server/routes/tracks.ts e albums.ts).
+- [x] C. Migliorare l'Error Handling globale con un middleware più robusto e tipizzato.

@@ -7,6 +7,7 @@ import type { Federation } from "@fedify/fedify";
 import { Follow, Announce } from "@fedify/fedify";
 import type { DatabaseService, Artist, Album, Track, Post } from "./database.js";
 import type { ServerConfig } from "./config.js";
+import type { FederationProvider } from "./modules/activitypub/federation.provider.js";
 
 import { ActivityPubRenderer } from "./modules/activitypub/activitypub.renderer.js";
 import { ActivityPubTransport } from "./modules/activitypub/activitypub.transport.js";
@@ -16,7 +17,7 @@ export class ActivityPubService {
     private transport: ActivityPubTransport;
 
     constructor(
-        private db: DatabaseService,
+        private db: FederationProvider,
         private config: ServerConfig,
         private federation: Federation<void>
     ) {
@@ -976,6 +977,6 @@ export class ActivityPubService {
     }
 }
 
-export function createActivityPubService(db: DatabaseService, config: ServerConfig, federation: Federation<void>): ActivityPubService {
+export function createActivityPubService(db: FederationProvider, config: ServerConfig, federation: Federation<void>): ActivityPubService {
     return new ActivityPubService(db, config, federation);
 }

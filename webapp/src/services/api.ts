@@ -99,6 +99,12 @@ export const API = {
     getArtist: (idOrSlug: string | number) => handleResponse(api.get<Artist>(`/artists/${idOrSlug}`)),
     getArtistCoverUrl: (idOrSlug: string | number, timestamp?: number) => idOrSlug ? `${API_URL}/artists/${idOrSlug}/cover${timestamp ? `?v=${timestamp}` : ''}` : '',
 
+    // --- Lifecycle ---
+    requestPromotion: (id: number) => handleResponse(api.post(`/lifecycle/promote/${id}`)),
+    approvePromotion: (id: number) => handleResponse(api.post(`/lifecycle/approve/${id}`)),
+    finalizeRelease: (id: number) => handleResponse(api.post(`/lifecycle/finalize/${id}`)),
+    rejectPromotion: (id: number, reason: string) => handleResponse(api.post(`/lifecycle/reject/${id}`, { reason })),
+
     getTracks: (options: { mine?: boolean } = {}) => handleResponse(api.get<Track[]>(`/tracks${options.mine ? '?mine=true' : ''}`)),
     getTrack: (id: string | number) => handleResponse(api.get<Track>(`/tracks/${id}`)),
 

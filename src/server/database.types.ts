@@ -76,6 +76,7 @@ export interface Album {
     visibility: 'public' | 'private' | 'unlisted';
     license?: string | null; // e.g. 'cc-by'
     is_release: boolean; // true = published release, false = library album
+    status: 'draft' | 'pending' | 'approved' | 'awaiting_finalization' | 'released';
     published_to_gundb: boolean;
     published_to_ap: boolean;
     published_at: string | null;
@@ -104,6 +105,8 @@ export interface Track {
     price: number | null;
     price_usdc: number | null;
     currency: 'ETH' | 'USD';
+    album_price?: number | null;
+    album_price_usdc?: number | null;
     lossless_path: string | null;
     waveform: string | null; // JSON string of number[]
     url: string | null;
@@ -137,6 +140,7 @@ export interface Release {
     currency: 'ETH' | 'USD';
     external_links: string | null;
     visibility: 'public' | 'private' | 'unlisted';
+    status: 'draft' | 'pending' | 'approved' | 'awaiting_finalization' | 'released';
     published_at: string | null;
     published_to_gundb: boolean;
     published_to_ap: boolean;
@@ -300,6 +304,30 @@ export interface SoulseekDownload {
     added_at: string;
 }
 
+export interface TrackDTO extends Track {
+    albumId: number | null;
+    artistId: number | null;
+    losslessPath: string | null;
+    externalArtwork: string | null;
+    albumName?: string;
+    albumDownload?: string;
+    albumVisibility?: string;
+    albumPrice?: number | null;
+    artistName?: string;
+    path: string | null;
+    filename?: string;
+    coverUrl: string | null;
+    starred: boolean;
+    rating: number;
+}
+
+export interface AlbumDTO extends Album {
+    coverImage: string | null;
+    tracks?: TrackDTO[];
+    starred: boolean;
+    rating: number;
+}
+
 export interface DatabaseService {
     db: DatabaseType;
     // Torrents
@@ -360,6 +388,9 @@ export interface DatabaseService {
     getAlbumsByOwner(ownerId: number, publicOnly?: boolean): Album[];
     createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateAlbumVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
+    updateAlbumStatus(id: number, status: Album['status']): void;
+    updateReleaseStatus(id: number, status: Release['status']): void;
+    updateAlbum(id: number, album: Partial<Album>): void;
     updateAlbumFederationSettings(id: number, publishedToGunDB: boolean, publishedToAP: boolean): void;
     updateAlbumArtist(id: number, artistId: number): void;
     updateAlbumOwner(id: number, ownerId: number): void;

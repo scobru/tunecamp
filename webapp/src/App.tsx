@@ -48,8 +48,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     return <LoadingSpinner />;
   }
 
-  // Allow if user is explicitly a Root Admin OR if they have the 'admin' role
-  if (!isAuthenticated || (!user?.isRootAdmin && role !== 'admin')) {
+  // Allow if user is explicitly a Root Admin OR if they have the 'admin' or 'super_user' role
+  if (!isAuthenticated || (!user?.isRootAdmin && role !== 'admin' && role !== 'super_user')) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
@@ -62,7 +62,7 @@ function EditorGuard({ children }: { children: React.ReactNode }) {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated || (role !== 'admin' && role !== 'user')) {
+  if (!isAuthenticated || (role !== 'admin' && role !== 'user' && role !== 'super_user')) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

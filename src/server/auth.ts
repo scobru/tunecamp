@@ -396,7 +396,7 @@ export function createAuthService(
             return {
                 success: true,
                 id: user.id,
-                isAdmin: userRole === 'admin' || userRole === 'super_user',
+                isAdmin: userRole === 'admin',
                 artistId: artistId,
                 role: userRole,
                 isActive: user.is_active === 1,
@@ -582,7 +582,7 @@ export function createAuthService(
 
         isRootAdmin(username: string): boolean {
             const row = db.prepare("SELECT id FROM admin WHERE username = ?").get(username) as { id: number } | undefined;
-            return row?.id === 1 || username === 'sudo';
+            return row?.id === 1;
         },
 
         getUserPair(username: string): any | null {

@@ -41,7 +41,8 @@ describe("ActivityPub Outbox Performance", () => {
                 owner_id: artistId,
                 price: 0,
                 price_usdc: 0,
-                currency: "USD"
+                currency: "USD",
+                status: 'draft'
             });
 
             // Create 10 tracks per release

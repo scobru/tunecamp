@@ -9,7 +9,7 @@ import { RemoteContentRepository } from "./repositories/remote-content.repositor
 
 // All types are defined in database.types.ts and re-exported here for backward compatibility
 export type {
-    OAuthClient, OAuthLink, Artist, Follower, LikeEntry, Album, Track, Release,
+    OAuthClient, OAuthLink, Artist, Follower, LikeEntry, Album, Track, TrackDTO, AlbumDTO, Release,
     ReleaseTrack, Playlist, PlayHistoryEntry, Post, ApNote, RemoteActor,
     RemoteContent, TrackWithPlayCount, ArtistWithPlayCount, ListeningStats,
     GunCacheEntry, Torrent, TorrentStatus, SoulseekDownload, DatabaseService
@@ -157,6 +157,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       visibility TEXT DEFAULT 'private',
       license TEXT,
       is_release INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'draft',
       published_to_gundb INTEGER DEFAULT 0,
       published_to_ap INTEGER DEFAULT 0,
       published_at TEXT,
@@ -230,6 +231,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       currency TEXT DEFAULT 'ETH',
       external_links TEXT,
       visibility TEXT DEFAULT 'private',
+      status TEXT DEFAULT 'draft',
       published_at TEXT,
       published_to_gundb INTEGER DEFAULT 0,
       published_to_ap INTEGER DEFAULT 0,
@@ -462,7 +464,24 @@ export function createDatabase(dbPath: string): DatabaseService {
     const remoteActorRepository = new RemoteActorRepository(db);
     const remoteContentRepository = new RemoteContentRepository(db);
 
-    // Migration: Add owner_id to torrents table
+    // Migration: Add status column to albums and releases table
+    try {
+        const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
+        const hasStatusAlbums = Array.isArray(tableInfoAlbums) && tableInfoAlbums.some(col => col.name === "status");
+        if (!hasStatusAlbums) {
+            console.log("📦 Migrating database: Adding status column to albums table...");
+            db.exec("ALTER TABLE albums ADD COLUMN status TEXT DEFAULT 'draft'");
+        }
+
+        const tableInfoReleases = db.pragma("table_info(releases)") as any[];
+        const hasStatusReleases = Array.isArray(tableInfoReleases) && tableInfoReleases.some(col => col.name === "status");
+        if (!hasStatusReleases) {
+            console.log("📦 Migrating database: Adding status column to releases table...");
+            db.exec("ALTER TABLE releases ADD COLUMN status TEXT DEFAULT 'draft'");
+        }
+    } catch (e) {
+        console.error("Migration error (status column):", e);
+    }
     try {
         const tableInfo = db.pragma("table_info(torrents)") as any[];
         const hasOwnerId = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "owner_id");
@@ -1318,6 +1337,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             const publishedAt = isPublic ? new Date().toISOString() : null;
             db.prepare("UPDATE albums SET is_public = ?, visibility = ?, published_at = ? WHERE id = ?").run(isPublic ? 1 : 0, visibility, publishedAt, id);
         },
+        updateAlbumStatus(id: number, status: string): void {
+            db.prepare("UPDATE albums SET status = ? WHERE id = ?").run(status, id);
+        },
+        updateReleaseStatus(id: number, status: string): void {
+            db.prepare("UPDATE releases SET status = ? WHERE id = ?").run(status, id);
+        },
         updateAlbumFederationSettings(id: number, publishedToGunDB: boolean, publishedToAP: boolean): void {
             db.prepare("UPDATE albums SET published_to_gundb = ?, published_to_ap = ? WHERE id = ?").run(publishedToGunDB ? 1 : 0, publishedToAP ? 1 : 0, id);
         },
@@ -1340,6 +1365,25 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.prepare("UPDATE albums SET price = ?, price_usdc = ?, currency = ? WHERE id = ?").run(price || 0, price_usdc || 0, currency, id);
         },
         updateAlbumLinks(id: number, links: string | null): void { db.prepare("UPDATE albums SET external_links = ? WHERE id = ?").run(links, id); },
+        updateAlbum(id: number, album: Partial<Album>): void {
+            const fields: string[] = [];
+            const values: any[] = [];
+
+            for (const [key, value] of Object.entries(album)) {
+                if (key === 'id' || key === 'created_at' || key === 'artist_name' || key === 'artist_slug') continue;
+                fields.push(`${key} = ?`);
+                if (key === 'published_to_gundb' || key === 'published_to_ap' || key === 'is_public' || key === 'is_release') {
+                    values.push(value ? 1 : 0);
+                } else {
+                    values.push(value);
+                }
+            }
+
+            if (fields.length === 0) return;
+
+            values.push(id);
+            db.prepare(`UPDATE albums SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+        },
         promoteToRelease(id: number): void {
             const album = db.prepare("SELECT * FROM albums WHERE id = ?").get(id) as any;
             if (!album) return;
@@ -1605,18 +1649,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             const s: any = {}; rows.forEach(r => s[r.key] = r.value); return s;
         },
         // Play History
-        recordPlay(trackId: number, playedAt?: string): void { if (playedAt) db.prepare("INSERT INTO play_history (track_id, played_at) VALUES (?, ?)").run(trackId, playedAt); else db.prepare("INSERT INTO play_history (track_id) VALUES (?)").run(trackId); },
-        getRecentPlays(limit = 50): PlayHistoryEntry[] { return db.prepare("SELECT ph.id, ph.track_id, t.title as track_title, COALESCE(ar_t.name, ar_a.name) as artist_name, al.title as album_title, ph.played_at FROM play_history ph LEFT JOIN tracks t ON ph.track_id = t.id LEFT JOIN artists ar_t ON t.artist_id = ar_t.id LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar_a ON al.artist_id = ar_a.id ORDER BY ph.played_at DESC LIMIT ?").all(limit) as any[]; },
-        getTopTracks(limit = 20, days = 30, filter: 'all' | 'library' | 'releases' = 'all'): TrackWithPlayCount[] {
-            const dateStr = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-            let fc = ''; if (filter === 'releases') fc = 'AND al.is_release = 1'; else if (filter === 'library') fc = 'AND (al.is_release = 0 OR al.id IS NULL)';
-            return db.prepare(`WITH RP AS (SELECT track_id, COUNT(*) as play_count FROM play_history ph JOIN tracks t ON ph.track_id = t.id LEFT JOIN albums al ON t.album_id = al.id WHERE ph.played_at >= ? ${fc} GROUP BY track_id) SELECT t.*, al.title as album_title, COALESCE(ar_t.name, ar_a.name) as artist_name, COALESCE(ar_t.id, ar_a.id) as artist_id, rp.play_count FROM RP rp JOIN tracks t ON t.id = rp.track_id LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar_t ON t.artist_id = ar_t.id LEFT JOIN artists ar_a ON al.artist_id = ar_a.id ORDER BY rp.play_count DESC LIMIT ?`).all(dateStr, limit) as any[];
-        },
-        getTopArtists(limit = 10, days = 30, filter: 'all' | 'library' | 'releases' = 'all'): ArtistWithPlayCount[] {
-            const dateStr = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-            let fc = ''; if (filter === 'releases') fc = 'AND al.is_release = 1'; else if (filter === 'library') fc = 'AND (al.is_release = 0 OR al.id IS NULL)';
-            return db.prepare(`WITH RP AS (SELECT COALESCE(t.artist_id, al.artist_id) as aid, COUNT(*) as play_count FROM play_history ph JOIN tracks t ON ph.track_id = t.id LEFT JOIN albums al ON t.album_id = al.id WHERE ph.played_at >= ? ${fc} GROUP BY aid) SELECT ar.*, SUM(rp.play_count) as play_count FROM RP rp JOIN artists ar ON ar.id = rp.aid GROUP BY ar.id ORDER BY play_count DESC LIMIT ?`).all(dateStr, limit) as any[];
-        },
+        recordPlay: (trackId: number, playedAt?: string) => socialRepository.recordPlay(trackId, playedAt),
+        getRecentPlays: (limit = 50) => socialRepository.getRecentPlays(limit),
+        getTopTracks: (limit = 20, days = 30, filter: 'all' | 'library' | 'releases' = 'all') => socialRepository.getTopTracks(limit, days, filter),
+        getTopArtists: (limit = 10, days = 30, filter: 'all' | 'library' | 'releases' = 'all') => socialRepository.getTopArtists(limit, days, filter),
         getPrimaryAdminId(): number | null {
             const admin = db.prepare("SELECT id FROM admin WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
             return admin ? admin.id : null;
@@ -1687,15 +1723,12 @@ export function createDatabase(dbPath: string): DatabaseService {
         starItems: (user: string, items: any[]) => { if (items.length === 0) return; db.transaction(() => items.forEach(i => socialRepository.starItem(user, i.type, i.id)))(); },
         unstarItem: (user: string, type: any, id: string) => socialRepository.unstarItem(user, type, id),
         unstarItems: (user: string, items: any[]) => { if (items.length === 0) return; db.transaction(() => items.forEach(i => socialRepository.unstarItem(user, i.type, i.id)))(); },
-        getStarredItems: (user: string, type?: any) => {
-            if (type) return db.prepare("SELECT item_type, item_id, created_at FROM starred_items WHERE username = ? AND item_type = ?").all(user, type) as { item_type: string; item_id: string; created_at: string }[];
-            return db.prepare("SELECT item_type, item_id, created_at FROM starred_items WHERE username = ?").all(user) as { item_type: string; item_id: string; created_at: string }[];
-        },
+        getStarredItems: (user: string, type?: any) => socialRepository.getStarredItems(user, type),
         isStarred: (user: string, type: any, id: string) => socialRepository.isStarred(user, type, id),
 
         setItemRating: (user: string, type: any, id: string, r: number) => socialRepository.setItemRating(user, type, id, r),
         getItemRating: (user: string, type: any, id: string) => socialRepository.getItemRating(user, type, id),
-        getItemRatings: (user: string, type: any) => new Map(db.prepare("SELECT item_id, rating FROM item_ratings WHERE username = ? AND item_type = ?").all(user, type).map((r: any) => [r.item_id, r.rating])),
+        getItemRatings: (user: string, type: any) => socialRepository.getItemRatings(user, type),
         // Play Queue (Subsonic)
         savePlayQueue: (username: string, trackIds: string[], current: string | null, positionMs: number) => {
             const val = JSON.stringify({ trackIds, current, positionMs });

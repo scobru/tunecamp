@@ -224,6 +224,7 @@ export function createUploadRoutes(
                             published_to_gundb: false,
                             published_to_ap: false,
                             license: 'copyright',
+                            status: 'draft',
                         });
                         album = database.getAlbum(newAlbumId);
                     }

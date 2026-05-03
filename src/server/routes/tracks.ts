@@ -22,51 +22,23 @@ import { metadataService } from "../metadata.js";
 export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, libraryService: LibraryService, musicDir: string, authService?: AuthService): Router {
     const router = Router();
 
-    const mapTrack = (t: any, username?: string) => ({
-        ...t,
-        albumId: t.album_id,
-        artistId: t.artist_id,
-        losslessPath: t.lossless_path,
-        externalArtwork: t.external_artwork,
-        albumName: t.album_title,
-        albumDownload: t.album_download,
-        albumVisibility: t.album_visibility,
-        albumPrice: t.album_price,
-        artistName: t.artist_name,
-        path: t.file_path,
-        filename: t.file_path ? path.basename(t.file_path) : undefined,
-        coverUrl: t.external_artwork ? `/api/tracks/${t.id}/cover` : (t.album_id ? `/api/albums/${t.album_id}/cover` : null),
-        starred: username ? database.isStarred(username, 'track', String(t.id)) : false,
-        rating: username ? database.getItemRating(username, 'track', String(t.id)) : 0
-    });
-
     /**
      * GET /api/tracks
      * List all tracks
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const showMine = req.query.mine === 'true';
-        const username = req.username;
-
-        if (req.isRootAdmin) {
-            // Administrative bypass: always show all tracks in admin views (Root Admin or Super User)
-            return res.json(database.getTracks().map(t => mapTrack(t, username)));
-        }
-        
-        if (req.userId !== undefined) {
-            const myTracks = database.getTracksByOwner(req.userId).map(t => mapTrack(t, username));
-            if (showMine) return res.json(myTracks);
-
-            const publicTracksRaw = database.getTracks(undefined, true);
-            const seenIds = new Set(myTracks.map(t => t.id));
-            const combined = [...myTracks];
-            for (const t of publicTracksRaw) {
-                if (!seenIds.has(t.id)) combined.push(mapTrack(t, username));
-            }
-            return res.json(combined);
-        }
-
-        res.json(database.getTracks(undefined, true).map(t => mapTrack(t, username)));
+        const tracks = await libraryService.getTracksForUser(
+            { 
+                userId: req.userId, 
+                artistId: req.artistId,
+                role: req.role, 
+                isActive: req.isActive,
+                username: req.username 
+            },
+            { mineOnly: showMine }
+        );
+        res.json(tracks);
     }));
 
     /**
@@ -74,9 +46,9 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      * Get pricing data for all tracks owned by the current user
      */
     router.get("/pricing/batch", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.isAdmin && !req.isSuperUser && !req.artistId) throw new ForbiddenError("Unauthorized");
 
-        const isRoot = req.isRootAdmin || req.role === 'super_user';
+        const isRoot = req.isRootAdmin || req.isSuperUser;
         let tracksToSync: any[] = [];
         
         if (isRoot) {
@@ -144,7 +116,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         });
 
         const newTrack = database.getTrack(trackId);
-        res.status(201).json(newTrack ? mapTrack(newTrack, req.username) : null);
+        res.status(201).json(newTrack ? libraryService.mapTrackDTO(newTrack, req.username) : null);
 
         if (albumId) {
             publishingService.syncRelease(albumId).catch(e => console.error("Sync failed:", e));
@@ -215,7 +187,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             }
         }
 
-        res.json(mapTrack(track, req.username));
+        res.json(libraryService.mapTrackDTO(track, req.username));
     }));
 
     /**
@@ -235,7 +207,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!isRoot && !isOwner) throw new ForbiddenError("Access denied: You can only edit your own tracks");
 
         const updated = await libraryService.updateTrack(id, req.body);
-        res.json({ message: "Track updated", track: updated ? mapTrack(updated, req.username) : null });
+        res.json({ message: "Track updated", track: updated ? libraryService.mapTrackDTO(updated, req.username) : null });
     }));
 
     /**
@@ -399,7 +371,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                     date: null, cover_path: null, genre: "Matched", description: "Matched",
                     type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
                     external_links: null, is_public: false, visibility: 'private', is_release: false,
-                    published_at: null, published_to_gundb: false, published_to_ap: false, license: null
+                    published_at: null, published_to_gundb: false, published_to_ap: false, license: null,
+                    status: 'draft',
                 });
                 alb = database.getAlbum(newId);
             }
@@ -410,7 +383,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (coverUrl) (database as any).db.prepare("UPDATE tracks SET external_artwork = ? WHERE id = ?").run(coverUrl, id);
 
         const updated = database.getTrack(id);
-        res.json({ message: "Metadata matched", track: updated ? mapTrack(updated, req.username) : null });
+        res.json({ message: "Metadata matched", track: updated ? libraryService.mapTrackDTO(updated, req.username) : null });
     }));
 
     /**

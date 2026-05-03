@@ -32,7 +32,7 @@ describe('Metadata Security', () => {
             req.isAdmin = true;
             next();
         });
-        app.use('/api/metadata', createMetadataRoutes(mockDb, '/tmp/music'));
+        app.use('/api/metadata', createMetadataRoutes(mockDb, '/tmp/music', { scanTracks: jest.fn(), scanDirectory: jest.fn() } as any));
     });
 
     test('POST /api/metadata/apply should block unsafe coverUrl', async () => {

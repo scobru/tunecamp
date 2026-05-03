@@ -247,6 +247,7 @@ export class Scanner implements ScannerService {
             published_to_gundb: false,
             published_to_ap: false,
             license: null,
+            status: 'draft',
         });
 
         this.folderToAlbumMap.set(dir, albumId);
@@ -399,6 +400,7 @@ export class Scanner implements ScannerService {
                     published_to_gundb: false,
                     published_to_ap: false,
                     license: null,
+                    status: 'draft',
                 });
             }
 
@@ -520,7 +522,8 @@ export class Scanner implements ScannerService {
                         published_at: new Date().toISOString(),
                         published_to_gundb: false,
                         published_to_ap: false,
-                        license: null
+                        license: null,
+                        status: 'draft',
                     });
                 } else {
                     albumId = album.id;
