@@ -27,7 +27,7 @@ export const Sidebar = () => {
   const { user, isAuthenticated, role, logout } = useAuthStore();
   const [siteName, setSiteName] = useState("TuneCamp");
  
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'root_admin';
   const isSuperUser = role === 'super_user';
   const isUser = role === 'user';
  
@@ -167,7 +167,7 @@ export const Sidebar = () => {
               </div>
 
               <div className="flex gap-1">
-                {user?.isRootAdmin && (
+                {(user?.isRootAdmin || isAdmin) && (
                   <Link
                     to="/admin"
                     className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100"

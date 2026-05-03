@@ -22,7 +22,7 @@ import { BackupPanel } from "../components/admin/BackupPanel";
 export const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = role === 'admin' || role === 'super_user';
+  const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin';
   const isSuperUser = role === 'super_user';
   const isRootAdmin = !!user?.isRootAdmin;
   
@@ -41,7 +41,7 @@ export const Admin = () => {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!isAuthenticated || (role !== 'admin' && role !== 'super_user')) {
+    if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) {
       navigate("/");
       return;
     }
@@ -86,7 +86,7 @@ export const Admin = () => {
     }
   };
 
-  if (!isAuthenticated || (role !== 'admin' && role !== 'super_user')) return null;
+  if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) return null;
 
   return (
     <div className="space-y-8 animate-fade-in">

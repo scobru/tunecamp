@@ -4,7 +4,7 @@ import { ZenAuth, type ZenProfile } from '../services/zen';
 import type { User } from '../types';
 import { useWalletStore } from './useWalletStore';
 
-type UserRole = 'admin' | 'user' | 'super_user' | null;
+type UserRole = 'admin' | 'user' | 'super_user' | 'root_admin' | null;
 
 interface AuthState {
     user: (User & { zenProfile?: ZenProfile | null }) | null;
@@ -62,7 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: true });
         try {
             const status = await API.getAuthStatus();
-            const isAdmin = status.authenticated && (status.role === 'admin' || status.role === 'super_user');
+            const isAdmin = status.authenticated && (status.role === 'admin' || status.role === 'super_user' || status.role === 'root_admin');
 
             let zenProfile: ZenProfile | null = null;
             if (status.pair) {
@@ -103,7 +103,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             const transformedUser = status.user || (status.username ? {
                 username: status.username,
-                isAdmin: status.role === 'admin' || status.role === 'super_user',
+                isAdmin: status.role === 'admin' || status.role === 'super_user' || status.role === 'root_admin',
                 isRootAdmin: !!status.isRootAdmin,
                 id: String(status.artistId ?? '0'),
                 artistId: status.artistId != null ? String(status.artistId) : undefined,
@@ -233,7 +233,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             const transformedUser = result.user || {
                 username,
-                isAdmin: result.role === 'admin',
+                isAdmin: result.role === 'admin' || result.role === 'root_admin',
                 isRootAdmin: !!result.isRootAdmin,
                 id: String(result.artistId ?? '0'),
                 artistId: result.artistId != null ? String(result.artistId) : undefined,
@@ -243,7 +243,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const userRole = (result as any).role || 'user';
             set({
                 isAuthenticated: true,
-                isAdminAuthenticated: userRole === 'admin', // compat
+                isAdminAuthenticated: userRole === 'admin' || userRole === 'root_admin', // compat
                 user: { ...transformedUser, zenProfile },
                 adminUser: transformedUser, // compat
                 mustChangePassword: !!result.mustChangePassword,
@@ -290,7 +290,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 // Update the user structure with the result from the backend
                 const transformedUser = result.user || {
                     username,
-                    isAdmin: result.role === 'admin',
+                    isAdmin: result.role === 'admin' || result.role === 'root_admin',
                     id: String(result.artistId ?? '0'),
                     artistId: result.artistId != null ? String(result.artistId) : undefined,
                     isActive: result.isActive
@@ -320,7 +320,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
                 set({
                     isAuthenticated: true,
-                    isAdminAuthenticated: userRole === 'admin',
+                    isAdminAuthenticated: userRole === 'admin' || userRole === 'root_admin',
                     user: { ...transformedUser, zenProfile },
                     adminUser: transformedUser,
                     mustChangePassword: !!result.mustChangePassword,

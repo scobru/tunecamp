@@ -75,7 +75,7 @@ export default function AdminReleaseEditor() {
   const navigate = useNavigate();
   const { user, role, isAuthenticated, isLoading } = useAuthStore();
   const isNew = !id;
-  const isAdmin = role === 'admin';
+  const isAdmin = role === 'admin' || role === 'root_admin';
   const isSuperUser = role === 'super_user';
 
 
@@ -129,7 +129,7 @@ export default function AdminReleaseEditor() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated || (role !== 'admin' && role !== 'user') || (!isAdmin && !user?.isActive)) {
+      if (!isAuthenticated || (role !== 'admin' && role !== 'user' && role !== 'super_user' && role !== 'root_admin') || (!isAdmin && !user?.isActive)) {
         navigate("/");
         return;
       }
@@ -612,7 +612,7 @@ export default function AdminReleaseEditor() {
           </h1>
         </div>
         <div className="flex-none gap-2">
-          {!isNew && !isSuperUser && (
+          {!isNew && (isAdmin || (isSuperUser && user?.artistId)) && (
             <button
               className="btn btn-ghost btn-sm text-error hidden sm:flex"
               id="delete-release-btn"
@@ -623,7 +623,7 @@ export default function AdminReleaseEditor() {
               Delete
             </button>
           )}
-          {!isSuperUser && (
+          {(isAdmin || (isSuperUser && user?.artistId)) && (
             <>
               <button
                 className="btn btn-ghost btn-sm"
@@ -658,10 +658,10 @@ export default function AdminReleaseEditor() {
               {/* Cover Art */}
               <div className="card bg-base-100 shadow-xl overflow-hidden border border-white/5">
                 <div
-                  className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${!isSuperUser ? 'cursor-pointer' : ''}`}
+                  className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${(isAdmin || (isSuperUser && user?.artistId)) ? 'cursor-pointer' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={!isSuperUser ? handleDropCover : undefined}
-                  onClick={() => !isSuperUser && document.getElementById("cover-upload-large")?.click()}
+                  onDrop={(isAdmin || (isSuperUser && user?.artistId)) ? handleDropCover : undefined}
+                  onClick={() => (isAdmin || (isSuperUser && user?.artistId)) && document.getElementById("cover-upload-large")?.click()}
                 >
                   {coverPreview ? (
                     <img
@@ -675,7 +675,7 @@ export default function AdminReleaseEditor() {
                       <span className="text-sm font-bold tracking-widest uppercase">Select Cover</span>
                     </div>
                   )}
-                  {!isSuperUser && (
+                  {(isAdmin || (isSuperUser && user?.artistId)) && (
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white p-4 text-center">
                       <Download className="w-8 h-8 mb-2" />
                       <span className="font-bold uppercase tracking-widest text-sm">Change Cover Image</span>
@@ -699,7 +699,7 @@ export default function AdminReleaseEditor() {
 
               {/* Album Primary Info */}
               <div className="card bg-base-100 shadow-xl border border-white/5 p-6 space-y-6">
-                {!isSuperUser && (
+                {(isAdmin || (isSuperUser && user?.artistId)) && (
                   <div className="form-control">
                     <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Import from Bandcamp</label>
                     <div className="flex gap-2">
@@ -729,7 +729,7 @@ export default function AdminReleaseEditor() {
                     value={metadata.title}
                     onChange={(e) => setMetadata((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="Release Title"
-                    disabled={isSuperUser}
+                    disabled={isSuperUser && !user?.artistId}
                   />
                 </div>
 
