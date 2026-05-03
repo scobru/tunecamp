@@ -51,6 +51,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 username: userToAuth,
                 isRootAdmin: authService.isRootAdmin(userToAuth),
                 artistId: result.artistId || null,
+                userId: result.id,
                 role: result.role || UserRole.NORMAL_USER,
                 pair: result.pair || null, // Return GunDB identity pair
                 mustChangePassword: await authService.isDefaultPassword(userToAuth)
@@ -96,6 +97,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 token,
                 expiresIn: "7d",
                 username: userToCreate,
+                userId: result.id,
                 isRootAdmin: true
             });
         } catch (error) {

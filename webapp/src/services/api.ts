@@ -64,7 +64,7 @@ export const API = {
     // --- Auth ---
     getAuthStatus: () => handleResponse(api.get<AuthStatus>('/auth/status')),
     login: (username: string, password?: string, pubKey?: string, proof?: string) =>
-        handleResponse(api.post<{ token: string, user?: User, username?: string, isRootAdmin?: boolean, artistId?: string, role?: string, mustChangePassword?: boolean, pair?: any, isActive?: boolean }>('/auth/login', { username, password, pubKey, proof })),
+        handleResponse(api.post<{ token: string, user?: User, username?: string, isRootAdmin?: boolean, artistId?: string, userId?: number, role?: string, mustChangePassword?: boolean, pair?: any, isActive?: boolean }>('/auth/login', { username, password, pubKey, proof })),
     registerUser: (username: string, password: string, pubKey?: string, signature?: string) =>
         handleResponse(api.post<{ success: boolean, token: string, username: string, artistId: number, role: string, storageQuota: number, isActive?: boolean }>('/users/register', { username, password, pubKey, signature })),
     /** First-time admin setup when no admin exists yet */
