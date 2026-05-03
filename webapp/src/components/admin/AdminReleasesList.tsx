@@ -84,7 +84,16 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
       <tbody>
         {releases.map((r) => (
           <tr key={r.id}>
-            <td className="font-bold">{r.title}</td>
+            <td className="font-bold">
+                <div className="flex items-center gap-2">
+                    {r.title}
+                    {r.is_formal_release ? (
+                        <span className="badge badge-outline badge-xs text-[10px] opacity-70">Release</span>
+                    ) : (
+                        <span className="badge badge-ghost badge-xs text-[10px] opacity-70">Library</span>
+                    )}
+                </div>
+            </td>
             <td>{r.artistName}</td>
             <td>
               <div className="badge badge-sm">{r.type}</div>
@@ -114,7 +123,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
               </button>
             </td>
             <td className="flex gap-2">
-              {r.status === 'draft' && mine && (user?.isRootAdmin || r.owner_id === user?.userId || (role === 'admin' && !user?.artistId)) && (
+              {r.status === 'draft' && mine && (user?.isRootAdmin || r.owner_id === user?.userId || (role === 'admin' && !user?.artistId) || role === 'super_user') && (
                   <button 
                     className="btn btn-xs btn-primary gap-1"
                     onClick={() => handlePromote(r.id)}

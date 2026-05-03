@@ -167,7 +167,7 @@ export const Sidebar = () => {
               </div>
 
               <div className="flex gap-1">
-                {(user?.isRootAdmin || isAdmin) && (
+                {(user?.isRootAdmin || isAdmin || isSuperUser) && (
                   <Link
                     to="/admin"
                     className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100"

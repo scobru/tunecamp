@@ -59,11 +59,17 @@ export function createAdminRoutes(
             const isRoot = req.isRootAdmin;
             let releases: any[] = [];
             
-            if (req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
-                // Root admin and Super User/Admins see all releases
-                releases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
+            const canSeeAll = req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+            
+            if (canSeeAll && !showMine) {
+                // Root admin and Super User/Admins see all releases if they don't explicitly ask for "mine"
+                const formalReleases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
+                const pendingAlbums = database.getAlbums(false).filter(a => a.status !== 'draft').map(a => ({ ...a, is_formal_release: false }));
+                releases = [...formalReleases, ...pendingAlbums];
             } else if (req.userId) {
-                releases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
+                const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
+                const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, false).filter(a => a.status !== 'draft').map(a => ({ ...a, is_formal_release: false }));
+                releases = [...ownedFormalReleases, ...ownedPendingAlbums];
             } else {
                 res.json([]);
                 return;
@@ -149,8 +155,8 @@ export function createAdminRoutes(
             const showMine = req.query.mine === 'true';
             const isAdmin = req.isAdmin;
             const isRoot = req.isRootAdmin;
-            const artistId = (isRoot || req.isSuperUser) ? undefined : (req.artistId || undefined);
-            const ownerId = (isRoot || req.isSuperUser) ? undefined : req.userId;
+            const artistId = (isRoot || req.isSuperUser) && !showMine ? undefined : (req.artistId || undefined);
+            const ownerId = (isRoot || req.isSuperUser) && !showMine ? undefined : req.userId;
             
             const stats = await database.getStats(artistId, ownerId);
             res.json(stats);

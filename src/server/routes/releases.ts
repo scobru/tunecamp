@@ -50,18 +50,27 @@ export function createReleaseRouter(
                 releases = database.getReleases();
             } else if (req.userId !== undefined) {
                 // Show public releases OR those owned by the user
-                const ownedReleases = database.getReleasesByOwner(req.userId, false); 
-                const publicReleases = database.getReleases(true); 
+                const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
+                const ownedLibraryAlbums = database.getAlbumsByOwner(req.userId, false).map(a => ({ ...a, is_formal_release: false }));
+                const publicReleases = database.getReleases(true).map(r => ({ ...r, is_formal_release: true }));
                 
                 // Merge and deduplicate by ID
                 const seenIds = new Set();
                 releases = [];
                 
-                // Prioritize owned releases (might be private/unlisted)
-                for (const r of ownedReleases) {
+                // Prioritize owned formal releases
+                for (const r of ownedFormalReleases) {
                     if (!seenIds.has(r.id)) {
                         releases.push(r);
                         seenIds.add(r.id);
+                    }
+                }
+
+                // Add owned library albums (drafts/pending)
+                for (const a of ownedLibraryAlbums) {
+                    if (!seenIds.has(a.id)) {
+                        releases.push(a);
+                        seenIds.add(a.id);
                     }
                 }
                 

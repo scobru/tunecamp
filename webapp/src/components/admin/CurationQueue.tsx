@@ -68,8 +68,12 @@ export const CurationQueue = () => {
                     <div key={r.id} className="card bg-base-200 border border-white/5 overflow-hidden">
                         <div className="flex flex-col md:flex-row items-center gap-6 p-4">
                             <div className="w-24 h-24 rounded-lg bg-neutral overflow-hidden flex-shrink-0">
-                                {r.coverPath ? (
-                                    <img src={r.coverPath} alt="" className="w-full h-full object-cover" />
+                                {r.cover_path ? (
+                                    <img 
+                                        src={r.is_formal_release ? API.getReleaseCoverUrl(r.id) : API.getAlbumCoverUrl(r.id)} 
+                                        alt="" 
+                                        className="w-full h-full object-cover" 
+                                    />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-2xl font-bold opacity-20">TC</div>
                                 )}
@@ -81,6 +85,11 @@ export const CurationQueue = () => {
                                 <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
                                     <div className="badge badge-sm badge-outline">{r.type}</div>
                                     <div className="badge badge-sm badge-outline">{r.genre}</div>
+                                    {r.is_formal_release ? (
+                                        <div className="badge badge-sm badge-outline opacity-70">Release</div>
+                                    ) : (
+                                        <div className="badge badge-sm badge-ghost opacity-70">Library</div>
+                                    )}
                                     {r.price > 0 && <div className="badge badge-sm badge-success">{r.price} {r.currency}</div>}
                                 </div>
                             </div>
