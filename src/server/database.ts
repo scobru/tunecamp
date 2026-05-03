@@ -1594,18 +1594,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             const allGenres = db.prepare(`SELECT genre FROM albums ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
             const allTrackGenres = db.prepare(`SELECT genre FROM tracks ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
             const genreSet = new Set<string>(); 
-            allGenres.forEach(r => r.genre.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
-            allTrackGenres.forEach(r => r.genre.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            allGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            allTrackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
             return { artists, albums, tracks, totalTracks: tracks, publicAlbums, totalUsers, storageUsed: (storage.total || 0) * 40 * 1024, networkSites: (artistId || ownerId) ? 0 : (db.prepare("SELECT COUNT(*) as count FROM remote_actors WHERE type = 'Service'").get() as any).count, genresCount: genreSet.size, genres: Array.from(genreSet).sort() };
         },
         getPublicTracksCount(): number { return (db.prepare("SELECT COUNT(t.id) as count FROM tracks t JOIN albums a ON t.album_id = a.id WHERE a.visibility = 'public'").get() as any).count; },
         getGenres(publicOnly = false): string[] {
             const genreSet = new Set<string>();
             const albumGenres = db.prepare(publicOnly ? "SELECT genre FROM albums WHERE is_release = 1 AND visibility IN ('public', 'unlisted') AND genre IS NOT NULL AND genre != ''" : "SELECT genre FROM albums WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];
-            albumGenres.forEach(r => r.genre.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            albumGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
             
             const trackGenres = db.prepare(publicOnly ? "SELECT t.genre FROM tracks t JOIN albums a ON t.album_id = a.id WHERE a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND t.genre IS NOT NULL AND t.genre != ''" : "SELECT genre FROM tracks WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];
-            trackGenres.forEach(r => r.genre.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            trackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
             
             return Array.from(genreSet).sort();
         },
@@ -1623,7 +1623,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const rows = db.prepare(sql).all() as { genre: string }[];
             const counts = new Map<string, number>();
             rows.forEach(r => {
-                r.genre.split(',').forEach(g => {
+                r.genre?.split(',').forEach(g => {
                     const name = g.trim().toLowerCase();
                     counts.set(name, (counts.get(name) || 0) + 1);
                 });

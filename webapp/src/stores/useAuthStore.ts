@@ -236,6 +236,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isAdmin: result.role === 'admin' || result.role === 'root_admin',
                 isRootAdmin: !!result.isRootAdmin,
                 id: String(result.artistId ?? '0'),
+                userId: result.userId,
                 artistId: result.artistId != null ? String(result.artistId) : undefined,
                 isActive: result.isActive
             } as User;

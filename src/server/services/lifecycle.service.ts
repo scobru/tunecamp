@@ -21,8 +21,8 @@ export class LifecycleService {
 
         const context: ViewerContext = VisibilityGuardian.deriveContext(user as any);
         
-        // Only owners (Super Users or Artists) can request promotion
-        if (album.owner_id !== user.userId && !VisibilityGuardian.can(context, Capability.MANAGE_SYSTEM)) {
+        // Only owners (Super Users or Artists) or Library Managers can request promotion
+        if (album.owner_id !== user.userId && !VisibilityGuardian.can(context, Capability.MANAGE_PRIVATE_LIBRARY)) {
             throw new Error("Only the owner can request promotion");
         }
 

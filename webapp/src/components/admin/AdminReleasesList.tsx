@@ -3,8 +3,10 @@ import API from "../../services/api";
 import { Globe, Lock, Send, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
+import { useAuthStore } from "../../stores/useAuthStore";
 
 export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
+  const { user, role } = useAuthStore();
   const navigate = useNavigate();
   const [releases, setReleases] = useState<any[]>([]);
 
@@ -112,7 +114,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
               </button>
             </td>
             <td className="flex gap-2">
-              {r.status === 'draft' && mine && (
+              {r.status === 'draft' && mine && (user?.isRootAdmin || r.owner_id === user?.userId || (role === 'admin' && !user?.artistId)) && (
                   <button 
                     className="btn btn-xs btn-primary gap-1"
                     onClick={() => handlePromote(r.id)}

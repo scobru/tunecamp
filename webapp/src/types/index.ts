@@ -172,6 +172,7 @@ export interface User {
     isAdmin: boolean;
     isRootAdmin?: boolean;
     artistId?: string;
+    userId?: number;
     mustChangePassword?: boolean;
     isActive?: boolean;
 }
@@ -182,6 +183,7 @@ export interface AuthStatus {
     user?: User;
     role?: string;
     artistId?: string | number;
+    userId?: number;
     isRootAdmin?: boolean;
     firstRun?: boolean;
     mustChangePassword?: boolean;

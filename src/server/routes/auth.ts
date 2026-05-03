@@ -170,6 +170,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
             username: username,
             isRootAdmin: username ? authService.isRootAdmin(username) : false,
             artistId: req.artistId || null,
+            userId: req.userId || null,
             role: req.role || null,
             pair: username ? authService.getUserPair(username) : null,
             firstRun: authService.isFirstRun(),
