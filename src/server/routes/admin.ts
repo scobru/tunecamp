@@ -583,102 +583,88 @@ export function createAdminRoutes(
                 updates.published_to_ap = true;
             }
 
-            if (Object.keys(updates).length > 0) {
-                if (release) {
-                    console.log(`   - Updating formal release metadata:`, Object.keys(updates));
-                    database.updateRelease(id, updates);
-                } else {
-                    console.log(`   - Updating library album metadata:`, Object.keys(updates));
-                    // Legacy album update - map generic fields to specific update methods or a generic one if available
-                    if (updates.title) database.updateAlbumTitle(id, updates.title);
-                    if (updates.genre) database.updateAlbumGenre(id, updates.genre);
-                    if (updates.year) database.updateAlbumYear(id, updates.year);
-                    if (updates.visibility) database.updateAlbumVisibility(id, updates.visibility);
-                    if (updates.download !== undefined) database.updateAlbumDownload(id, updates.download);
-                    if (updates.price !== undefined || updates.price_usdc !== undefined) {
-                         const curr = database.getAlbum(id);
-                         if (curr) {
-                             const p = updates.price !== undefined ? Number(updates.price) : (curr.price ?? 0);
-                             const pu = updates.price_usdc !== undefined ? Number(updates.price_usdc) : (curr.price_usdc ?? 0);
-                             database.updateAlbumPrice(id, p, pu, (updates.currency || curr.currency || 'ETH') as 'ETH' | 'USD');
-                         }
-                    }
-                    if (updates.external_links) database.updateAlbumLinks(id, updates.external_links);
-                    if (updates.published_to_gundb !== undefined || updates.published_to_ap !== undefined) {
-                        database.updateAlbumFederationSettings(id, !!updates.published_to_gundb, !!updates.published_to_ap);
+            // --- TRANSACTIONAL UPDATE ---
+            database.transaction(() => {
+                if (Object.keys(updates).length > 0) {
+                    if (release) {
+                        console.log(`   - Updating formal release metadata:`, Object.keys(updates));
+                        database.updateRelease(id, updates);
+                    } else {
+                        console.log(`   - Updating library album metadata:`, Object.keys(updates));
+                        if (updates.title) database.updateAlbumTitle(id, updates.title);
+                        if (updates.genre) database.updateAlbumGenre(id, updates.genre);
+                        if (updates.year) database.updateAlbumYear(id, updates.year);
+                        if (updates.visibility) database.updateAlbumVisibility(id, updates.visibility);
+                        if (updates.download !== undefined) database.updateAlbumDownload(id, updates.download);
+                        if (updates.price !== undefined || updates.price_usdc !== undefined) {
+                            const curr = database.getAlbum(id);
+                            if (curr) {
+                                const p = updates.price !== undefined ? Number(updates.price) : (curr.price ?? 0);
+                                const pu = updates.price_usdc !== undefined ? Number(updates.price_usdc) : (curr.price_usdc ?? 0);
+                                database.updateAlbumPrice(id, p, pu, (updates.currency || curr.currency || 'ETH') as 'ETH' | 'USD');
+                            }
+                        }
+                        if (updates.external_links) database.updateAlbumLinks(id, updates.external_links);
+                        if (updates.published_to_gundb !== undefined || updates.published_to_ap !== undefined) {
+                            database.updateAlbumFederationSettings(id, !!updates.published_to_gundb, !!updates.published_to_ap);
+                        }
                     }
                 }
-            }
+            })();
+
 
             // --- TRACKS UPDATE LOGIC ---
             if (body.track_ids && Array.isArray(body.track_ids)) {
                 const newTrackIds = body.track_ids.map((tid: any) => parseInt(tid, 10)).filter((tid: any) => !isNaN(tid));
-                console.log(`   - Received ${newTrackIds.length} track IDs from frontend:`, newTrackIds);
+                console.log(`   - Received ${newTrackIds.length} track IDs from frontend for sync:`, newTrackIds);
                 
                 if (release) {
-                    // Update formal release tracks
-                    const existingTrackIds = database.getReleaseTrackIds(id);
-                    console.log(`   - Existing formal release tracks:`, existingTrackIds);
+                    database.transaction(() => {
+                        // Atomic sync of tracks (wipe and re-add in order)
+                        console.log(`     🔄 Performing atomic track sync for formal release ${id}`);
+                        database.syncReleaseTracks(id, newTrackIds);
 
-                    const toAdd = newTrackIds.filter((ntid: number) => !existingTrackIds.includes(ntid));
-                    const toRemove = existingTrackIds.filter((etid: number) => !newTrackIds.includes(etid));
-
-                    database.cleanUpGhostTracks(id);
-
-                    console.log(`   - Formal Release Sync: existing=${existingTrackIds.length}, toAdd=${toAdd.length}, toRemove=${toRemove.length}`);
-
-                    for (const trackId of toAdd) {
-                        console.log(`     🔗 Adding track ${trackId} to formal release ${id}`);
-                        database.addTrackToRelease(id, trackId);
-                    }
-                    if (toRemove.length > 0) {
-                        console.log(`     ✂️ Unlinking ${toRemove.length} tracks from formal release ${id}`);
-                        database.removeTracksFromRelease(id, toRemove);
-                    }
-                    // Also update order if provided (preserving the list order)
-                    console.log(`     🔢 Updating track order for formal release ${id}:`, newTrackIds);
-                    database.updateReleaseTracksOrder(id, newTrackIds);
-
-                    if (body.tracks_data && Array.isArray(body.tracks_data)) {
-                        console.log(`     📝 Updating track metadata for formal release ${id}`);
-                        for (const td of body.tracks_data) {
-                            database.updateReleaseTrackMetadata(id, td.id, {
-                                title: td.title,
-                                price: td.price,
-                                price_usdc: td.priceUsdc,
-                                currency: td.currency || 'ETH'
-                            });
+                        // If additional per-track metadata was provided (e.g. custom titles for this release)
+                        if (body.tracks_data && Array.isArray(body.tracks_data)) {
+                            console.log(`     📝 Updating track override metadata for formal release ${id}`);
+                            for (const td of body.tracks_data) {
+                                database.updateReleaseTrackMetadata(id, td.id, {
+                                    title: td.title,
+                                    price: td.price,
+                                    price_usdc: td.priceUsdc,
+                                    currency: td.currency || 'ETH'
+                                });
+                            }
                         }
-                    }
+                    })();
                 } else if (album) {
-                    // Update library album tracks
-                    const existingTracks = database.getTracks(id);
-                    const existingTrackIds = existingTracks.map(t => t.id);
-                    console.log(`   - Existing library album tracks:`, existingTrackIds);
-                    
-                    const toAdd = newTrackIds.filter((ntid: number) => !existingTrackIds.includes(ntid));
-                    const toRemove = existingTrackIds.filter((etid: number) => !newTrackIds.includes(etid));
+                    database.transaction(() => {
+                        // Update library album tracks (standard library logic)
+                        const existingTracks = database.getTracks(id);
+                        const existingTrackIds = existingTracks.map(t => t.id);
+                        
+                        const toAdd = newTrackIds.filter((ntid: number) => !existingTrackIds.includes(ntid));
+                        const toRemove = existingTrackIds.filter((etid: number) => !newTrackIds.includes(etid));
 
-                    console.log(`   - Library Album Sync: existing=${existingTrackIds.length}, toAdd=${toAdd.length}, toRemove=${toRemove.length}`);
+                        console.log(`   - Library Album Sync: toAdd=${toAdd.length}, toRemove=${toRemove.length}`);
 
-                    if (toAdd.length > 0) {
-                        console.log(`     🔗 Linking ${toAdd.length} tracks to library album ${id}`);
-                        database.updateTracksAlbum(toAdd, id);
-                    }
-                    if (toRemove.length > 0) {
-                        console.log(`     ✂️ Unlinking ${toRemove.length} tracks from library album ${id}`);
-                        database.updateTracksAlbum(toRemove, null);
-                    }
+                        if (toAdd.length > 0) {
+                            database.updateTracksAlbum(toAdd, id);
+                        }
+                        if (toRemove.length > 0) {
+                            database.updateTracksAlbum(toRemove, null);
+                        }
 
-                    // For library albums, we should also update the track_num in the tracks table to preserve reordering
-                    console.log(`     🔢 Updating track order for library album ${id}`);
-                    const trackOrders = newTrackIds.map((trackId: number, index: number) => ({
-                        id: trackId,
-                        trackNum: index + 1
-                    }));
-                    database.updateTracksOrder(trackOrders);
+                        // Update order in the library tracks table
+                        const trackOrders = newTrackIds.map((trackId: number, index: number) => ({
+                            id: trackId,
+                            trackNum: index + 1
+                        }));
+                        database.updateTracksOrder(trackOrders);
+                    })();
                 }
             }
+
 
             // Sync changes
             publishingService.syncRelease(id).catch(e => console.error("❌ Failed to sync release update:", e));

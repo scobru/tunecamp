@@ -372,7 +372,10 @@ export interface DatabaseService {
     removeTracksFromRelease(releaseId: number, trackIds: number[]): void;
     deleteReleaseTrack(id: number): void; // New version by record ID
     updateReleaseTracksOrder(releaseId: number, trackIds: number[]): void;
+    syncReleaseTracks(releaseId: number, trackIds: number[]): void;
     cleanUpGhostTracks(releaseId: number): void;
+    transaction<T>(fn: () => T): () => T;
+
 
     // Legacy/Library Albums
     getAlbums(publicOnly?: boolean): Album[];

@@ -267,9 +267,16 @@ export function createReleaseRouter(
                 }
             }
 
+            // 1. Check for recent duplicates (debounce rapid clicks)
+            const recentDuplicate = database.getRecentReleaseByMetadata(body.title, artistId, 10);
+            if (recentDuplicate) {
+                console.log(`♻️ Returning recent duplicate release for "${body.title}"`);
+                return res.status(200).json(recentDuplicate);
+            }
+
             const slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "release";
 
-            // Verify Track Ownership before creating the release association
+            // 2. Validate Tracks Ownership
             const validatedTrackIds: number[] = [];
             if (body.track_ids && body.track_ids.length > 0) {
                 const tracks = database.getTracksByIds(body.track_ids);
@@ -281,48 +288,52 @@ export function createReleaseRouter(
                 for (const trackId of body.track_ids) {
                     const track = trackMap.get(trackId);
                     if (track) {
-                        // Admin can add anything, Users can only add their own tracks
                         if (req.isAdmin || track.owner_id === req.userId) {
                             validatedTrackIds.push(trackId);
                         } else {
-                            console.warn(`⚠️ User ${req.username} tried to add unauthorized track ${trackId} to release`);
+                            console.warn(`⚠️ User ${req.username} tried to add unauthorized track ${trackId}`);
                         }
                     }
                 }
             }
 
-            const newReleaseId = database.createRelease({
-                title: body.title,
-                slug: slug,
-                artist_id: artistId,
-                owner_id: req.userId || artistId, // Owner is the person who created/manages it
-                date: body.date || new Date().toISOString(),
-                description: body.description || null,
-                type: body.type || 'album',
-                year: body.year || new Date().getFullYear(),
-                license: body.license || null,
-                visibility: body.visibility || 'private',
-                cover_path: null,
-                genre: body.genres?.join(", ") || null,
-                download: body.download || null,
-                price: body.price !== undefined ? Number(body.price) : 0,
-                price_usdc: body.priceUsdc !== undefined ? Number(body.priceUsdc) : 0,
-                currency: body.currency || 'ETH',
-                external_links: body.externalLinks ? JSON.stringify(body.externalLinks) : null,
-                published_at: body.visibility === 'public' || body.visibility === 'unlisted' ? new Date().toISOString() : null,
-                published_to_gundb: body.publishedToGunDB !== undefined ? body.publishedToGunDB : (body.visibility === 'public' || body.visibility === 'unlisted'),
-                published_to_ap: body.publishedToAP !== undefined ? body.publishedToAP : (body.visibility === 'public' || body.visibility === 'unlisted'),
-                status: 'draft',
-            });
+            // 3. Create Release and Associate Tracks Atomically
+            let newReleaseId: number;
+            
+            database.transaction(() => {
+                newReleaseId = database.createRelease({
+                    title: body.title,
+                    slug: slug,
+                    artist_id: artistId,
+                    owner_id: req.userId || artistId,
+                    date: body.date || new Date().toISOString(),
+                    description: body.description || null,
+                    type: body.type || 'album',
+                    year: body.year || new Date().getFullYear(),
+                    license: body.license || null,
+                    visibility: body.visibility || 'private',
+                    cover_path: null,
+                    genre: body.genres?.join(", ") || null,
+                    download: body.download || null,
+                    price: body.price !== undefined ? Number(body.price) : 0,
+                    price_usdc: body.priceUsdc !== undefined ? Number(body.priceUsdc) : 0,
+                    currency: body.currency || 'ETH',
+                    external_links: body.externalLinks ? JSON.stringify(body.externalLinks) : null,
+                    published_at: (body.visibility === 'public' || body.visibility === 'unlisted') ? new Date().toISOString() : null,
+                    published_to_gundb: body.publishedToGunDB !== undefined ? body.publishedToGunDB : (body.visibility === 'public' || body.visibility === 'unlisted'),
+                    published_to_ap: body.publishedToAP !== undefined ? body.publishedToAP : (body.visibility === 'public' || body.visibility === 'unlisted'),
+                    status: 'draft',
+                });
 
-            // Associate only validated tracks
-            for (const trackId of validatedTrackIds) {
-                database.addTrackToRelease(newReleaseId, trackId);
-            }
+                if (validatedTrackIds.length > 0) {
+                    database.syncReleaseTracks(newReleaseId, validatedTrackIds);
+                }
+            })();
 
-            publishingService.syncRelease(newReleaseId).catch(e => console.error("Failed to sync new release:", e));
+            // 4. Background Sync
+            publishingService.syncRelease(newReleaseId!).catch(e => console.error("Failed to sync new release:", e));
 
-            const newRelease = database.getRelease(newReleaseId);
+            const newRelease = database.getRelease(newReleaseId!);
             res.status(201).json(newRelease);
 
         } catch (error) {

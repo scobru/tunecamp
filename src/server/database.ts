@@ -734,6 +734,16 @@ export function createDatabase(dbPath: string): DatabaseService {
             throw new Error("Could not create unique slug for release");
         },
 
+        getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined {
+            const row = db.prepare(`
+                SELECT * FROM releases 
+                WHERE title = ? AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL))
+                AND created_at >= datetime('now', ?)
+                ORDER BY created_at DESC LIMIT 1
+            `).get(title, artistId, artistId, `-${seconds} seconds`);
+            return row as Release | undefined;
+        },
+
         updateRelease(id: number, release: Partial<Release>): void {
             albumRepository.update(id, release);
         },
@@ -841,6 +851,36 @@ export function createDatabase(dbPath: string): DatabaseService {
                 });
             })();
         },
+
+        syncReleaseTracks(releaseId: number, trackIds: number[]): void {
+            db.transaction(() => {
+                // 1. Delete all existing tracks for this release
+                db.prepare("DELETE FROM release_tracks WHERE release_id = ?").run(releaseId);
+                
+                // 2. Validate and filter track IDs to avoid gaps in numbering
+                const validTrackIds = trackIds.filter(id => {
+                    if (!id) return false;
+                    const exists = db.prepare("SELECT 1 FROM tracks WHERE id = ?").get(id);
+                    return !!exists;
+                });
+
+                // 3. Add them back in order
+                const stmt = db.prepare(`
+                    INSERT INTO release_tracks (
+                        release_id, track_id, title, artist_name, track_num, 
+                        duration, file_path, price, price_usdc, currency
+                    )
+                    SELECT ?, t.id, t.title, t.artist_name, ?, 
+                           t.duration, t.file_path, t.price, t.price_usdc, t.currency
+                    FROM tracks t WHERE t.id = ?
+                `);
+                
+                validTrackIds.forEach((trackId, index) => {
+                    stmt.run(releaseId, index + 1, trackId);
+                });
+            })();
+        },
+
 
         cleanUpGhostTracks(releaseId: number): void {
             db.prepare("DELETE FROM release_tracks WHERE release_id = ? AND track_id IS NULL").run(releaseId);
@@ -1390,7 +1430,11 @@ export function createDatabase(dbPath: string): DatabaseService {
         getTorrent(h: string): any { return db.prepare("SELECT * FROM torrents WHERE info_hash = ?").get(h); },
         createTorrent(t: any): void { db.prepare("INSERT OR REPLACE INTO torrents (info_hash, name, magnet_uri, owner_id) VALUES (?, ?, ?, ?)").run(t.info_hash, t.name, t.magnet_uri, t.owner_id || null); },
         deleteTorrent(h: string): void { db.prepare("DELETE FROM torrents WHERE info_hash = ?").run(h); },
+        transaction<T>(fn: () => T): () => T {
+            return db.transaction(fn);
+        },
         // Gun Cache
+
         getGunCache(k: string): any {
             const r = db.prepare("SELECT * FROM gun_cache WHERE key = ?").get(k) as any;
             if (!r) return undefined;
