@@ -63,12 +63,18 @@ export function createAdminRoutes(
             
             const canSeeAll = req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
             
-            if (canSeeAll && !showMine) {
-                // Root admin and Super User/Admins see all formal releases
+            if (showMine) {
+                // "My Releases" view: always show ONLY formal releases owned by this user.
+                // Library albums (scanned content) are never shown here, regardless of role.
+                releases = req.userId
+                    ? database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }))
+                    : [];
+            } else if (canSeeAll) {
+                // Admin/SuperUser global view: all formal releases
                 const formalReleases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
                 releases = [...formalReleases];
 
-                // Only include pending library albums if requested (e.g. for Curation Queue)
+                // Only include library albums in promotion pipeline if explicitly requested (Curation Queue)
                 if (includeLibrary) {
                     const pendingAlbums = database.getAlbums(false)
                         .filter(a => a.status !== 'draft')
@@ -76,11 +82,10 @@ export function createAdminRoutes(
                     releases = [...releases, ...pendingAlbums];
                 }
             } else if (req.userId) {
-                // For artists viewing THEIR own content, include formal releases + library albums in promotion pipeline
-                // Draft library albums are NOT shown here — they are just scanned library content, not user-created releases
+                // Non-admin artist: their formal releases + library albums they submitted for promotion
                 const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
                 const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, false)
-                    .filter(a => a.status !== 'draft' && a.status !== null && a.status !== undefined)
+                    .filter(a => a.status && a.status !== 'draft')
                     .map(a => ({ ...a, is_formal_release: false }));
                 releases = [...ownedFormalReleases, ...ownedPendingAlbums];
             } else {
