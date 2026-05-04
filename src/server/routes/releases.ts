@@ -230,7 +230,7 @@ export function createReleaseRouter(
     router.post("/", async (req: any, res) => {
         try {
             const body = req.body as CreateReleaseBody;
-            const userArtistId = req.artistId;
+            const userArtistId = req.artistId ? Number(req.artistId) : null;
             const canCreate = req.context && VisibilityGuardian.can(req.context, Capability.CREATE_RELEASES);
             
             if (!canCreate) {
@@ -242,10 +242,10 @@ export function createReleaseRouter(
             }
 
             // Determine the final Artist ID and ownership logic
-            let artistId: number | null = body.artistId || body.artist_id || null;
+            let artistId: number | null = (body.artistId || body.artist_id) ? Number(body.artistId || body.artist_id) : null;
             
-            // SECURITY CHECK: Non-root users cannot create releases for other artists or new artists
-            if (!req.isRootAdmin) {
+            // SECURITY CHECK: Non-admin users cannot create releases for other artists or new artists
+            if (!req.isAdmin) {
                 if (artistId && artistId !== userArtistId) {
                     return res.status(403).json({ error: "Access denied: You can only create releases for your own artist profile" });
                 }
