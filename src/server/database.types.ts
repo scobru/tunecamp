@@ -359,6 +359,7 @@ export interface DatabaseService {
     getReleasesByOwner(ownerId: number, publicOnly?: boolean): Release[];
     createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateRelease(id: number, release: Partial<Release>): void;
+    getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined;
     deleteRelease(id: number): void;
     
     // Release Tracks
