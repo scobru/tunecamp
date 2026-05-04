@@ -324,9 +324,24 @@ export class TrackRepository extends BaseRepository {
 
     getByReleaseId(releaseId: number): Track[] {
         const rows = this.db.prepare(`
-            SELECT rt.*, t.file_path as original_file_path, t.waveform, t.lyrics,
-                   r.title as album_title, r.cover_path as album_cover_path,
-                   ar.name as artist_name, ar.wallet_address as walletAddress
+            SELECT 
+                COALESCE(rt.track_id, rt.id) as id,
+                rt.id as release_track_id,
+                rt.track_id as library_track_id,
+                rt.release_id,
+                rt.title,
+                rt.artist_name,
+                rt.track_num,
+                rt.duration,
+                rt.file_path,
+                rt.price,
+                rt.price_usdc,
+                rt.currency,
+                t.waveform, 
+                t.lyrics,
+                r.title as album_title, 
+                r.cover_path as album_cover_path,
+                ar.wallet_address as walletAddress
             FROM release_tracks rt
             JOIN releases r ON rt.release_id = r.id
             LEFT JOIN tracks t ON rt.track_id = t.id
