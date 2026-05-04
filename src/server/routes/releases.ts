@@ -51,7 +51,9 @@ export function createReleaseRouter(
             } else if (req.userId !== undefined) {
                 // Show public releases OR those owned by the user
                 const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
-                const ownedLibraryAlbums = database.getAlbumsByOwner(req.userId, false).map(a => ({ ...a, is_formal_release: false }));
+                const ownedLibraryAlbums = database.getAlbumsByOwner(req.userId, false)
+                    .filter(a => a.status !== 'draft' && a.status !== null && a.status !== undefined)
+                    .map(a => ({ ...a, is_formal_release: false }));
                 const publicReleases = database.getReleases(true).map(r => ({ ...r, is_formal_release: true }));
                 
                 // Merge and deduplicate by ID

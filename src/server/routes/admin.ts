@@ -76,10 +76,11 @@ export function createAdminRoutes(
                     releases = [...releases, ...pendingAlbums];
                 }
             } else if (req.userId) {
-                // For artists viewing THEIR own content, we always include library albums being promoted
+                // For artists viewing THEIR own content, include formal releases + library albums in promotion pipeline
+                // Draft library albums are NOT shown here — they are just scanned library content, not user-created releases
                 const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
                 const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, false)
-                    .filter(a => a.status !== 'draft')
+                    .filter(a => a.status !== 'draft' && a.status !== null && a.status !== undefined)
                     .map(a => ({ ...a, is_formal_release: false }));
                 releases = [...ownedFormalReleases, ...ownedPendingAlbums];
             } else {
