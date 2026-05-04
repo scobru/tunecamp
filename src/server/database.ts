@@ -974,7 +974,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Albums (Library)
         getAlbums(publicOnly = false): Album[] {
-            return albumRepository.getByOwner(0, publicOnly); // This was problematic, let's fix it
+            return albumRepository.getLibraryAlbums(publicOnly);
         },
         getAlbumsWithStats(publicOnly = false): (Album & { songCount: number; duration: number })[] {
             return albumRepository.getWithStats(publicOnly);
