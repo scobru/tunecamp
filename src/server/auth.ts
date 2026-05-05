@@ -43,7 +43,7 @@ export interface AuthService {
     // ... rest of methods
 
     // Multi-user management
-    authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; pair?: any } | false>;
+    authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number; pair?: any } | false>;
     verifyZenSignature(message: any, pubKey: string, proof: string): Promise<boolean>;
     verifySubsonicToken(username: string, token: string, salt: string): Promise<boolean>;
     createAdmin(username: string, password: string, artistId?: number | null, role?: UserRole): Promise<{ id: number }>;

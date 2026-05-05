@@ -84,7 +84,8 @@ export function createUsersRoutes(
                 username,
                 artistId: null,
                 role: UserRole.NORMAL_USER,
-                isActive: true
+                isActive: true,
+                tokenVersion: 0
             });
 
             console.log(`🆕 New user registered: ${username} (user: ${userId}, pubKey: ${pubKey ? 'linked' : 'none'})`);

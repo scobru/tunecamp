@@ -90,7 +90,8 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 artistId: null,
                 role: UserRole.ROOT_ADMIN,
                 isActive: true,
-                userId: result.id
+                userId: result.id,
+                tokenVersion: 0
             });
 
             res.json({
@@ -140,14 +141,17 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 return res.status(401).json({ error: "Current password is incorrect" });
             }
 
-            await authService.changePassword(username, newPassword);
+            const authResult = await authService.authenticateUser(username, newPassword);
+            const tokenVersion = (authResult && authResult.success) ? authResult.tokenVersion : 0;
+
             const token = authService.generateToken({
                 isAdmin: true,
                 username,
                 artistId,
                 role: req.role || UserRole.ADMIN,
                 isActive: req.isActive ?? true,
-                userId: req.userId || 0
+                userId: req.userId || 0,
+                tokenVersion: tokenVersion
             });
 
             res.json({
