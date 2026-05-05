@@ -691,135 +691,157 @@ export function createDatabase(dbPath: string): DatabaseService {
         const albumsNeedsFix = checkFks('albums');
         const tracksNeedsFix = checkFks('tracks');
         const releasesNeedsFix = checkFks('releases');
+        const releaseTracksNeedsFix = checkFks('release_tracks');
 
-        if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix) {
+        if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix || releaseTracksNeedsFix) {
             console.log("📦 [Database] Deep schema repair required for ownership constraints...");
             
-            const deepFix = db.transaction(() => {
-                db.exec("PRAGMA foreign_keys = OFF");
-                
-                if (albumsNeedsFix) {
-                    console.log("   - Repairing 'albums' table...");
-                    db.exec("ALTER TABLE albums RENAME TO albums_old");
-                    db.exec(`
-                        CREATE TABLE albums (
-                          id INTEGER PRIMARY KEY AUTOINCREMENT,
-                          title TEXT NOT NULL,
-                          slug TEXT NOT NULL UNIQUE,
-                          artist_id INTEGER REFERENCES artists(id),
-                          owner_id INTEGER REFERENCES admin(id),
-                          artist_name TEXT,
-                          date TEXT,
-                          cover_path TEXT,
-                          genre TEXT,
-                          description TEXT,
-                          type TEXT,
-                          year INTEGER,
-                          download TEXT,
-                          price REAL DEFAULT 0,
-                          price_usdc REAL DEFAULT 0,
-                          price_usdt REAL DEFAULT 0,
-                          currency TEXT DEFAULT 'ETH',
-                          external_links TEXT,
-                          is_public INTEGER DEFAULT 0,
-                          visibility TEXT DEFAULT 'public',
-                          license TEXT,
-                          is_release INTEGER DEFAULT 0,
-                          status TEXT DEFAULT 'draft',
-                          published_to_gundb INTEGER DEFAULT 0,
-                          published_to_ap INTEGER DEFAULT 0,
-                          published_at TEXT,
-                          use_nft INTEGER DEFAULT 0,
-                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    db.exec("INSERT INTO albums SELECT * FROM albums_old");
-                    db.exec("DROP TABLE albums_old");
-                }
+            // PRAGMA foreign_keys = OFF MUST be called outside of a transaction to take effect
+            db.exec("PRAGMA foreign_keys = OFF");
 
-                if (tracksNeedsFix) {
-                    console.log("   - Repairing 'tracks' table...");
-                    db.exec("ALTER TABLE tracks RENAME TO tracks_old");
-                    db.exec(`
-                        CREATE TABLE tracks (
-                          id INTEGER PRIMARY KEY AUTOINCREMENT,
-                          title TEXT NOT NULL,
-                          album_id INTEGER REFERENCES albums(id),
-                          artist_id INTEGER REFERENCES artists(id),
-                          owner_id INTEGER REFERENCES admin(id),
-                          artist_name TEXT,
-                          track_num INTEGER,
-                          duration REAL,
-                          file_path TEXT,
-                          lossless_path TEXT,
-                          format TEXT,
-                          bitrate INTEGER,
-                          sample_rate INTEGER,
-                          price REAL DEFAULT 0,
-                          price_usdc REAL DEFAULT 0,
-                          price_usdt REAL DEFAULT 0,
-                          currency TEXT DEFAULT 'ETH',
-                          waveform TEXT,
-                          url TEXT,
-                          service TEXT,
-                          external_artwork TEXT,
-                          lyrics TEXT,
-                          hash TEXT,
-                          genre TEXT,
-                          year INTEGER,
-                          external_id TEXT,
-                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    db.exec("INSERT INTO tracks SELECT * FROM tracks_old");
-                    db.exec("DROP TABLE tracks_old");
-                }
-
-                if (releasesNeedsFix) {
-                    console.log("   - Repairing 'releases' table...");
-                    db.exec("ALTER TABLE releases RENAME TO releases_old");
-                    db.exec(`
-                        CREATE TABLE releases (
-                          id INTEGER PRIMARY KEY AUTOINCREMENT,
-                          title TEXT NOT NULL,
-                          slug TEXT NOT NULL UNIQUE,
-                          artist_id INTEGER REFERENCES artists(id),
-                          owner_id INTEGER REFERENCES admin(id),
-                          date TEXT,
-                          cover_path TEXT,
-                          genre TEXT,
-                          description TEXT,
-                          type TEXT,
-                          year INTEGER,
-                          download TEXT,
-                          price REAL DEFAULT 0,
-                          price_usdc REAL DEFAULT 0,
-                          price_usdt REAL DEFAULT 0,
-                          currency TEXT DEFAULT 'ETH',
-                          external_links TEXT,
-                          visibility TEXT DEFAULT 'private',
-                          status TEXT DEFAULT 'draft',
-                          published_at TEXT,
-                          published_to_gundb INTEGER DEFAULT 0,
-                          published_to_ap INTEGER DEFAULT 0,
-                          license TEXT,
-                          use_nft INTEGER DEFAULT 1,
-                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    db.exec("INSERT INTO releases SELECT * FROM releases_old");
-                    db.exec("DROP TABLE releases_old");
-                }
-                
-                db.exec("PRAGMA foreign_keys = ON");
-            });
-            
             try {
+                const deepFix = db.transaction(() => {
+                    if (albumsNeedsFix) {
+                        console.log("   - Repairing 'albums' table...");
+                        db.exec("ALTER TABLE albums RENAME TO albums_old");
+                        db.exec(`
+                            CREATE TABLE albums (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              title TEXT NOT NULL,
+                              slug TEXT NOT NULL UNIQUE,
+                              artist_id INTEGER REFERENCES artists(id),
+                              owner_id INTEGER REFERENCES admin(id),
+                              artist_name TEXT,
+                              date TEXT,
+                              cover_path TEXT,
+                              genre TEXT,
+                              description TEXT,
+                              type TEXT,
+                              year INTEGER,
+                              download TEXT,
+                              price REAL DEFAULT 0,
+                              price_usdc REAL DEFAULT 0,
+                              price_usdt REAL DEFAULT 0,
+                              currency TEXT DEFAULT 'ETH',
+                              external_links TEXT,
+                              is_public INTEGER DEFAULT 0,
+                              visibility TEXT DEFAULT 'public',
+                              license TEXT,
+                              is_release INTEGER DEFAULT 0,
+                              status TEXT DEFAULT 'draft',
+                              published_to_gundb INTEGER DEFAULT 0,
+                              published_to_ap INTEGER DEFAULT 0,
+                              published_at TEXT,
+                              use_nft INTEGER DEFAULT 0,
+                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `);
+                        db.exec("INSERT INTO albums SELECT * FROM albums_old");
+                        db.exec("DROP TABLE albums_old");
+                    }
+
+                    if (tracksNeedsFix) {
+                        console.log("   - Repairing 'tracks' table...");
+                        db.exec("ALTER TABLE tracks RENAME TO tracks_old");
+                        db.exec(`
+                            CREATE TABLE tracks (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              title TEXT NOT NULL,
+                              album_id INTEGER REFERENCES albums(id),
+                              artist_id INTEGER REFERENCES artists(id),
+                              owner_id INTEGER REFERENCES admin(id),
+                              artist_name TEXT,
+                              track_num INTEGER,
+                              duration REAL,
+                              file_path TEXT,
+                              lossless_path TEXT,
+                              format TEXT,
+                              bitrate INTEGER,
+                              sample_rate INTEGER,
+                              price REAL DEFAULT 0,
+                              price_usdc REAL DEFAULT 0,
+                              price_usdt REAL DEFAULT 0,
+                              currency TEXT DEFAULT 'ETH',
+                              waveform TEXT,
+                              url TEXT,
+                              service TEXT,
+                              external_artwork TEXT,
+                              lyrics TEXT,
+                              hash TEXT,
+                              genre TEXT,
+                              year INTEGER,
+                              external_id TEXT,
+                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `);
+                        db.exec("INSERT INTO tracks SELECT * FROM tracks_old");
+                        db.exec("DROP TABLE tracks_old");
+                    }
+
+                    if (releasesNeedsFix) {
+                        console.log("   - Repairing 'releases' table...");
+                        db.exec("ALTER TABLE releases RENAME TO releases_old");
+                        db.exec(`
+                            CREATE TABLE releases (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              title TEXT NOT NULL,
+                              slug TEXT NOT NULL UNIQUE,
+                              artist_id INTEGER REFERENCES artists(id),
+                              owner_id INTEGER REFERENCES admin(id),
+                              date TEXT,
+                              cover_path TEXT,
+                              genre TEXT,
+                              description TEXT,
+                              type TEXT,
+                              year INTEGER,
+                              download TEXT,
+                              price REAL DEFAULT 0,
+                              price_usdc REAL DEFAULT 0,
+                              price_usdt REAL DEFAULT 0,
+                              currency TEXT DEFAULT 'ETH',
+                              external_links TEXT,
+                              visibility TEXT DEFAULT 'private',
+                              status TEXT DEFAULT 'draft',
+                              published_at TEXT,
+                              published_to_gundb INTEGER DEFAULT 0,
+                              published_to_ap INTEGER DEFAULT 0,
+                              license TEXT,
+                              use_nft INTEGER DEFAULT 1,
+                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `);
+                        db.exec("INSERT INTO releases SELECT * FROM releases_old");
+                        db.exec("DROP TABLE releases_old");
+                    }
+
+                    if (releaseTracksNeedsFix) {
+                        console.log("   - Repairing 'release_tracks' table...");
+                        db.exec("ALTER TABLE release_tracks RENAME TO release_tracks_old");
+                        db.exec(`
+                            CREATE TABLE release_tracks (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              release_id INTEGER REFERENCES releases(id) ON DELETE CASCADE,
+                              track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+                              owner_id INTEGER REFERENCES admin(id),
+                              track_num INTEGER,
+                              price REAL DEFAULT 0,
+                              price_usdc REAL DEFAULT 0,
+                              price_usdt REAL DEFAULT 0,
+                              currency TEXT DEFAULT 'ETH',
+                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `);
+                        db.exec("INSERT INTO release_tracks SELECT * FROM release_tracks_old");
+                        db.exec("DROP TABLE release_tracks_old");
+                    }
+                });
+                
                 deepFix();
                 console.log("✅ [Database] Deep schema repair complete.");
             } catch (e) {
                 console.error("❌ [Database] Deep schema repair failed:", e);
-                // Try to restore if possible, but rename is destructive
+            } finally {
+                db.exec("PRAGMA foreign_keys = ON");
             }
         }
 
