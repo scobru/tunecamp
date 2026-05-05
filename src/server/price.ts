@@ -62,7 +62,9 @@ export async function getEthUsdRate(): Promise<number> {
         return cache.rate;
     }
 
-    // Extreme fallback: Last known reasonable price if everything else is down
-    console.error('CRITICAL: No price data available. Using hardcoded fallback.');
-    return 2500;
+    // Extreme fallback: No data available. We MUST throw an error instead of using a hardcoded price.
+    // A hardcoded price could lead to massive loss of funds for artists (underpricing) or users (overpricing)
+    // if the real ETH price fluctuates significantly while APIs are down.
+    console.error('CRITICAL: No price data available and cache is empty. Failing gracefully to protect funds.');
+    throw new Error('Price feed unavailable. Checkout temporarily disabled to protect funds.');
 }

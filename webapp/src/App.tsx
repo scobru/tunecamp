@@ -85,7 +85,7 @@ function App() {
 
   return (
     <>
-      <ForcePasswordChangeModal />
+      <SetupWizardModal />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route element={<MainLayout />}>

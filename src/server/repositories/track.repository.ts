@@ -102,9 +102,20 @@ export class TrackRepository extends BaseRepository {
         return results;
     }
 
-    getAll(publicOnly = false): Track[] {
-        const stmt = publicOnly ? this.getAllPublicTracksStmt : this.getAllTracksStmt;
-        const rows = stmt.all();
+    getAll(publicOnly = false, limit?: number, offset?: number): Track[] {
+        let sql = publicOnly ? this.getAllPublicTracksStmt.source : this.getAllTracksStmt.source;
+        
+        if (limit !== undefined) {
+            sql += ` LIMIT ${Number(limit)}`;
+            if (offset !== undefined) {
+                sql += ` OFFSET ${Number(offset)}`;
+            }
+        } else {
+            // Safety default limit to prevent OOM on massive libraries
+            sql += " LIMIT 5000";
+        }
+
+        const rows = this.db.prepare(sql).all();
         return rows.map(row => this.mapTrack(row));
     }
 

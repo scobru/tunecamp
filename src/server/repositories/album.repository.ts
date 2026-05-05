@@ -70,14 +70,22 @@ export class AlbumRepository extends BaseRepository {
         return this.mapAlbum(row);
     }
 
-    getLibraryAlbums(publicOnly = false): Album[] {
-        const sql = `
+    getLibraryAlbums(publicOnly = false, limit?: number, offset?: number): Album[] {
+        let sql = `
             SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
             FROM albums a 
             LEFT JOIN artists ar ON a.artist_id = ar.id 
             WHERE a.is_release = 0 ${publicOnly ? "AND a.visibility = 'public'" : ""}
             ORDER BY a.title
         `;
+        
+        if (limit !== undefined) {
+            sql += ` LIMIT ${Number(limit)}`;
+            if (offset !== undefined) sql += ` OFFSET ${Number(offset)}`;
+        } else {
+            sql += " LIMIT 1000";
+        }
+
         const rows = this.db.prepare(sql).all();
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }

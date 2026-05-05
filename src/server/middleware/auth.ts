@@ -21,7 +21,7 @@ export function createAuthMiddleware(authService: AuthService) {
     /**
      * Extracts and verifies token from request
      */
-    function extractPayload(req: AuthenticatedRequest): TokenPayload | null {
+    async function extractPayload(req: AuthenticatedRequest): Promise<TokenPayload | null> {
         let token: string | undefined;
         const authHeader = req.headers.authorization;
 
@@ -32,19 +32,19 @@ export function createAuthMiddleware(authService: AuthService) {
         }
 
         if (!token) return null;
-        return authService.verifyToken(token);
+        return await authService.verifyToken(token);
     }
 
     return {
         /**
          * Middleware that requires valid admin authentication (role='admin')
          */
-        requireAdmin(
+        async requireAdmin(
             req: AuthenticatedRequest,
             res: Response,
             next: NextFunction
         ) {
-            const payload = extractPayload(req);
+            const payload = await extractPayload(req);
 
             if (!payload) {
                 return res.status(403).json({ error: "Access denied: Admin only" });
@@ -72,12 +72,12 @@ export function createAuthMiddleware(authService: AuthService) {
         /**
          * Middleware that requires any authenticated user (admin OR user role)
          */
-        requireUser(
+        async requireUser(
             req: AuthenticatedRequest,
             res: Response,
             next: NextFunction
         ) {
-            const payload = extractPayload(req);
+            const payload = await extractPayload(req);
 
             if (!payload) {
                 return res.status(401).json({ error: "No token provided" });
@@ -100,12 +100,12 @@ export function createAuthMiddleware(authService: AuthService) {
         /**
          * Middleware that optionally authenticates (doesn't fail if no token)
          */
-        optionalAuth(
+        async optionalAuth(
             req: AuthenticatedRequest,
             res: Response,
             next: NextFunction
         ) {
-            const payload = extractPayload(req);
+            const payload = await extractPayload(req);
 
             if (payload) {
                 const context = VisibilityGuardian.deriveContext(payload);
@@ -153,12 +153,12 @@ export function createAuthMiddleware(authService: AuthService) {
         /**
          * Middleware that requires root admin access
          */
-        requireRootAdmin(
+        async requireRootAdmin(
             req: AuthenticatedRequest,
             res: Response,
             next: NextFunction
         ) {
-            const payload = extractPayload(req);
+            const payload = await extractPayload(req);
             
             if (!payload) {
                 return res.status(403).json({ error: "Access denied: Root Admin only" });

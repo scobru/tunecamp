@@ -23,7 +23,6 @@ const JWT_EXPIRES_IN = "7d";
 export enum AuthProvider {
     MASTODON = "mastodon"
 }
-
 export interface TokenPayload {
     isAdmin: boolean;
     username: string;
@@ -31,6 +30,7 @@ export interface TokenPayload {
     role: UserRole;
     isActive: boolean;
     userId: number;
+    tokenVersion: number;
     isRootAdmin?: boolean;
 }
 
@@ -38,7 +38,10 @@ export interface AuthService {
     hashPassword(password: string): Promise<string>;
     verifyPassword(password: string, hash: string): Promise<boolean>;
     generateToken(payload: TokenPayload): string;
-    verifyToken(token: string): TokenPayload | null;
+    verifyToken(token: string): Promise<TokenPayload | null>;
+    revokeTokens(userId: number): void;
+    // ... rest of methods
+
     // Multi-user management
     authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; pair?: any } | false>;
     verifyZenSignature(message: any, pubKey: string, proof: string): Promise<boolean>;
@@ -109,6 +112,7 @@ export function createAuthService(
                     gun_priv TEXT,
                     gun_auth_mode TEXT NOT NULL DEFAULT 'local',
                     is_active INTEGER DEFAULT 1,
+                    token_version INTEGER DEFAULT 0,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
@@ -122,6 +126,16 @@ export function createAuthService(
             const hasGunPub = columns.some(c => c.name === 'gun_pub');
             const hasSubsonic = columns.some(c => c.name === 'subsonic_token');
             const hasIsActive = columns.some(c => c.name === 'is_active');
+            const hasTokenVersion = columns.some(c => c.name === 'token_version');
+
+            if (!hasTokenVersion) {
+                console.log("📦 Migrating admin table: Adding token_version column...");
+                try {
+                    db.exec("ALTER TABLE admin ADD COLUMN token_version INTEGER DEFAULT 0");
+                } catch (e) {
+                    console.error("Failed to add token_version column:", e);
+                }
+            }
 
             if (!hasUsername || !hasArtistId || !hasRole || !hasGunPub || !hasSubsonic || !hasIsActive) {
                 console.log("📦 Migrating admin table to multi-user support (with roles, quotas, keys, and status)...");
@@ -230,19 +244,28 @@ export function createAuthService(
             return jwt.sign(payload, jwtSecret, { expiresIn: JWT_EXPIRES_IN });
         },
 
-        verifyToken(token: string): TokenPayload | null {
+        async verifyToken(token: string): Promise<TokenPayload | null> {
             try {
                 const decoded = jwt.verify(token, jwtSecret) as TokenPayload;
                 const role = (decoded.role as UserRole) || UserRole.NORMAL_USER;
                 const isRoot = decoded.isRootAdmin ?? (role === UserRole.ROOT_ADMIN || decoded.userId === 1);
                 
+                // SECURITY CHECK: Verify token version against database
+                const user = db.prepare("SELECT token_version, is_active FROM admin WHERE id = ?").get(decoded.userId) as { token_version: number; is_active: number } | undefined;
+                
+                if (!user || user.is_active === 0 || user.token_version !== decoded.tokenVersion) {
+                    console.warn(`🚨 [AUTH] Token verification failed: User inactive or token revoked (User: ${decoded.username})`);
+                    return null;
+                }
+
                 return {
                     isAdmin: decoded.isAdmin ?? (role === UserRole.ADMIN || role === UserRole.SUPER_USER || role === UserRole.ROOT_ADMIN || isRoot),
                     username: decoded.username,
                     artistId: decoded.artistId ?? null,
                     role: role,
-                    isActive: decoded.isActive ?? true, 
+                    isActive: user.is_active === 1, 
                     userId: decoded.userId || 0,
+                    tokenVersion: user.token_version,
                     isRootAdmin: isRoot
                 };
             } catch {
@@ -250,9 +273,14 @@ export function createAuthService(
             }
         },
 
-        async authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; pair?: any } | false> {
+        revokeTokens(userId: number): void {
+            db.prepare("UPDATE admin SET token_version = token_version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
+            console.log(`🛡️ [AUTH] Revoked all tokens for user ID: ${userId}`);
+        },
+
+        async authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number; pair?: any } | false> {
             console.log(`[AUTH] Attempting login for user: ${username} (hasPubKey: ${!!pubKey}, hasProof: ${!!proof}, hasPassword: ${!!password})`);
-            let user = db.prepare("SELECT id, password_hash, artist_id, role, gun_pub, gun_priv, is_active FROM admin WHERE username = ?").get(username) as { id: number; password_hash: string; artist_id: number | null; role: UserRole; gun_pub: string | null; gun_priv: string | null; is_active: number } | undefined;
+            let user = db.prepare("SELECT id, password_hash, artist_id, role, gun_pub, gun_priv, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; password_hash: string; artist_id: number | null; role: UserRole; gun_pub: string | null; gun_priv: string | null; is_active: number; token_version: number } | undefined;
             
             let gunVerified = false;
 
@@ -406,6 +434,7 @@ export function createAuthService(
                 artistId: artistId,
                 role: userRole,
                 isActive: user.is_active === 1,
+                tokenVersion: user.token_version,
                 pair: gunPair
             };
         },

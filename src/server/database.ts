@@ -27,9 +27,9 @@ const _insertQueueTrackStmts = new Map<number, any>();
 export function createDatabase(dbPath: string): DatabaseService {
     const db = new Database(dbPath);
     
-    // Disable foreign key constraints to allow manual relationship management
-    // and prevent 'FOREIGN KEY constraint failed' errors during updates/migrations.
-    db.pragma("foreign_keys = OFF");
+    // Enable foreign key constraints to ensure referential integrity.
+    // Migration scripts should handle temporary disabling if needed.
+    db.pragma("foreign_keys = ON");
 
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");

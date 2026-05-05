@@ -16,12 +16,12 @@ import type { StorageEngine } from "./modules/storage/storage.engine.js";
 class ProcessingQueue {
     private queue: (() => Promise<any>)[] = [];
     private processing = false;
-    private MAX_QUEUE_SIZE = 500;
+    private MAX_QUEUE_SIZE = 100; // Reduced from 500 to prevent memory pressure
 
     async add<T>(task: () => Promise<T>): Promise<T> {
         if (this.queue.length >= this.MAX_QUEUE_SIZE) {
-            console.warn(`[Queue] Maximum queue size (${this.MAX_QUEUE_SIZE}) reached. Throttling...`);
-            await new Promise(r => setTimeout(r, 1000));
+            console.warn(`[Queue] ⚠️ Maximum queue size (${this.MAX_QUEUE_SIZE}) reached. Throttling scanner...`);
+            await new Promise(r => setTimeout(r, 2000)); // Increased wait time
         }
 
         return new Promise((resolve, reject) => {

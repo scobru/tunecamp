@@ -50,39 +50,53 @@ describe("AuthService", () => {
     });
 
     describe("Token Management", () => {
-        const payload = { isAdmin: true, username: "admin", artistId: 1, role: "admin" as const, isActive: true };
+        const payload = { isAdmin: true, username: "admin", artistId: 1, role: "admin" as const, isActive: true, userId: 1, tokenVersion: 0 };
         const secret = "secret";
 
-        test("generateToken and verifyToken (happy path)", () => {
+        test("generateToken and verifyToken (happy path)", async () => {
             const token = authService.generateToken(payload);
             expect(token).toBeDefined();
 
-            const decoded = authService.verifyToken(token);
+            const decoded = await authService.verifyToken(token);
             expect(decoded).toMatchObject(payload);
         });
 
-        test("generateToken and verifyToken with null artistId", () => {
-            const nullArtistPayload = { isAdmin: false, username: "user", artistId: null, role: "user" as const, isActive: true };
+        test("generateToken and verifyToken with null artistId", async () => {
+            // Create user first to satisfy DB check in verifyToken
+            await authService.createUser("user", "password", null, 0, undefined, "user");
+            const nullArtistPayload = { isAdmin: false, username: "user", artistId: null, role: "user" as const, isActive: true, userId: 2, tokenVersion: 0 };
+            
             const token = authService.generateToken(nullArtistPayload);
-            const decoded = authService.verifyToken(token);
+            const decoded = await authService.verifyToken(token);
             expect(decoded).toMatchObject(nullArtistPayload);
         });
 
-        test("verifyToken returns null for invalid token", () => {
-            const decoded = authService.verifyToken("not-a-valid-jwt");
+        test("verifyToken returns null for invalid token", async () => {
+            const decoded = await authService.verifyToken("not-a-valid-jwt");
             expect(decoded).toBeNull();
         });
 
-        test("verifyToken returns null for token signed with different secret", () => {
+        test("verifyToken returns null for token signed with different secret", async () => {
             const differentSecretToken = jwt.sign(payload, "wrong-secret");
-            const decoded = authService.verifyToken(differentSecretToken);
+            const decoded = await authService.verifyToken(differentSecretToken);
             expect(decoded).toBeNull();
         });
 
         test("verifyToken returns null for expired token", async () => {
             // Create a token that expires in 0 seconds
             const expiredToken = jwt.sign(payload, secret, { expiresIn: -1 });
-            const decoded = authService.verifyToken(expiredToken);
+            const decoded = await authService.verifyToken(expiredToken);
+            expect(decoded).toBeNull();
+        });
+
+        test("revokeTokens invalidates existing tokens", async () => {
+            const token = authService.generateToken(payload);
+            let decoded = await authService.verifyToken(token);
+            expect(decoded).not.toBeNull();
+
+            authService.revokeTokens(payload.userId);
+            
+            decoded = await authService.verifyToken(token);
             expect(decoded).toBeNull();
         });
     });

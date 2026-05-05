@@ -100,7 +100,13 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // Middleware
     app.use(compression());
     app.use(securityHeaders);
-    app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); // General rate limit: 1000 requests per 15 minutes
+    
+    // API Rate limit: 1000 requests per 15 minutes for standard API
+    app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); 
+    
+    // Subsonic Rate limit: 5000 requests per 15 minutes to allow heavy initial syncs (fetching covers/tracks)
+    app.use('/rest', rateLimit({ windowMs: 15 * 60 * 1000, max: 5000 }));
+
     // Improved CORS handling: if no origins defined, allow all to facilitate community discovery
     const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : true;
     app.use(cors({ origin: corsOrigin, credentials: true }));

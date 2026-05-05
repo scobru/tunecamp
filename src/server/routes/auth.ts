@@ -42,7 +42,8 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
                 artistId: result.artistId || null,
                 role: result.role || UserRole.NORMAL_USER,
                 isActive: result.isActive ?? true,
-                userId: result.id
+                userId: result.id,
+                tokenVersion: result.tokenVersion || 0
             });
 
             res.json({

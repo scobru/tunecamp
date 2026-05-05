@@ -52,8 +52,8 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
             jwtSecret = crypto.randomBytes(32).toString("hex");
             try {
                 (fs.existsSync(dbDir) ? Promise.resolve() : fs.promises.mkdir(dbDir, { recursive: true }))
-                    .then(() => fs.promises.writeFile(secretFilePath, jwtSecret as string))
-                    .then(() => console.log(`🔒 Generated new JWT secret and saved to ${secretFilePath}`))
+                    .then(() => fs.promises.writeFile(secretFilePath, jwtSecret as string, { mode: 0o600 }))
+                    .then(() => console.log(`🔒 Generated new JWT secret and saved to ${secretFilePath} (restricted permissions)`))
                     .catch((err) => console.warn("⚠️  Could not save JWT secret to file, sessions may be lost on restart:", err));
             } catch (err) {
                 console.warn("⚠️  Could not save JWT secret to file, sessions may be lost on restart:", err);
