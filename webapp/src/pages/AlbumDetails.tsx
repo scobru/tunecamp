@@ -31,7 +31,7 @@ export const AlbumDetails = () => {
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
 
   const isTrackUnlocked = (track: any) => {
-    return isPurchased(track.id) || 
+    return isAdmin || isPurchased(track.id) || 
            ownedNFTs.some(n => n.trackId === Number(track.id)) ||
            (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)));
   };
@@ -247,7 +247,7 @@ export const AlbumDetails = () => {
               <img
                 src={isRelease ? API.getReleaseCoverUrl(album.id, coverVersion) : API.getAlbumCoverUrl(album.id, coverVersion)}
                 alt={album.title}
-                className="w-56 h-56 md:w-72 md:h-72 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-white/10"
+                className="w-56 h-56 md:w-72 md:h-72 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-base-content/10"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "https://placehold.co/500x500?text=No+Cover";
                 }}
@@ -280,24 +280,24 @@ export const AlbumDetails = () => {
                    </span>
                  )}
               </div>
-              <h1 className="text-5xl lg:text-8xl font-black tracking-tighter text-white leading-none">
+              <h1 className="text-5xl lg:text-8xl font-black tracking-tighter text-prominent leading-none">
                 {album.title}
               </h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-lg lg:text-2xl font-medium tracking-tight">
                 {album.artistId ? (
                   <Link
                     to={`/artists/${album.artist_slug || album.artistSlug || album.artistId}`}
-                    className="hover:text-primary transition-colors underline decoration-white/10 underline-offset-8"
+                    className="hover:text-primary transition-colors underline decoration-base-content/10 underline-offset-8"
                   >
                     {album.artistName || album.artist_name}
                   </Link>
                 ) : (
                   <span className="opacity-80">{album.artistName}</span>
                 )}
-                <span className="opacity-20 text-sm">•</span>
-                <span className="opacity-40">{album.year}</span>
-                <span className="opacity-20 text-sm">•</span>
-                <span className="opacity-40 text-base">
+                <span className="opacity-60 font-black">•</span>
+                <span className="opacity-70">{album.year}</span>
+                <span className="opacity-60 font-black">•</span>
+                <span className="opacity-70 text-base">
                   {album.tracks?.length} tracks
                 </span>
               </div>
@@ -394,8 +394,8 @@ export const AlbumDetails = () => {
       {/* Tracklist using daisyUI 5 list-row */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-4">
-           <h2 className="text-sm font-black uppercase tracking-[0.2em] opacity-40">Tracklist</h2>
-           <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest opacity-20">
+           <h2 className="text-sm font-black uppercase tracking-[0.2em] opacity-60">Tracklist</h2>
+           <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest opacity-40">
               <span className="hidden md:block">Duration</span>
               <span className="w-8"></span>
            </div>
@@ -410,7 +410,7 @@ export const AlbumDetails = () => {
                 key={track.id}
                 className="list-row items-center hover:bg-base-content/5 transition-colors px-6 py-4 group border-b border-base-content/5 last:border-0"
               >
-                <div className="text-xs font-black opacity-20 w-8 group-hover:opacity-0 transition-opacity">
+                <div className="text-xs font-black opacity-40 w-8 group-hover:opacity-0 transition-opacity">
                    {String(i + 1).padStart(2, '0')}
                 </div>
                 
@@ -428,7 +428,7 @@ export const AlbumDetails = () => {
                   </div>
                 </div>
 
-                <div className="hidden md:block opacity-40 font-mono text-sm tabular-nums">
+                <div className="hidden md:block opacity-60 font-mono text-sm tabular-nums">
                    {new Date(track.duration * 1000).toISOString().substr(14, 5)}
                 </div>
 
@@ -456,7 +456,7 @@ export const AlbumDetails = () => {
                          <li>
                            {unlocked ? (
                              <a className="text-success font-bold" onClick={async () => {
-                                if (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId))) {
+                                if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
                                   window.open(API.getTrackDownloadUrl(track.id), "_blank");
                                   return;
                                 }
@@ -516,11 +516,11 @@ export const AlbumDetails = () => {
            <Copyright size={18} />
            <span className="text-sm font-medium tracking-tight">
               {licenseInfo.url ? (
-                <a href={licenseInfo.url} target="_blank" className="hover:text-primary underline underline-offset-4 decoration-white/10">{licenseInfo.name}</a>
+                <a href={licenseInfo.url} target="_blank" className="hover:text-primary underline underline-offset-4 decoration-base-content/10">{licenseInfo.name}</a>
               ) : licenseInfo.name}
            </span>
         </div>
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-20">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
            Published on TuneCamp • {album.year}
         </div>
       </div>

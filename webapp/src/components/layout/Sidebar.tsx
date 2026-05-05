@@ -82,7 +82,7 @@ export const Sidebar = () => {
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-4">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
-          <Music className="text-white w-6 h-6" />
+          <Music className="text-primary-content w-6 h-6" />
         </div>
         <span className="text-xl font-black tracking-tighter uppercase">{siteName}</span>
       </div>
@@ -150,7 +150,7 @@ export const Sidebar = () => {
                 to="/profile"
                 className="avatar placeholder"
               >
-                <div className="bg-neutral text-neutral-content rounded-lg w-10 ring-1 ring-white/10 cursor-pointer hover:ring-primary/50 transition-all overflow-hidden">
+                <div className="bg-neutral text-neutral-content rounded-lg w-10 ring-1 ring-base-content/10 cursor-pointer hover:ring-primary/50 transition-all overflow-hidden">
                   {user?.zenProfile?.profile?.avatar ? (
                     <img
                       src={user.zenProfile.profile.avatar}

@@ -72,6 +72,8 @@
   --color-accent: oklch(70% 0.15 190);
   --color-accent-content: oklch(10% 0.05 190);
 
+  --color-prominent: oklch(10% 0.02 280);
+
   --radius-selector: 0.5rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
@@ -86,6 +88,8 @@
   --color-base-200: oklch(25% 0.01 280);
   --color-base-300: oklch(20% 0.01 280);
   --color-base-content: oklch(90% 0.01 280);
+
+  --color-prominent: oklch(100% 0 0);
 
   --color-primary: oklch(75% 0 0); /* Metallic Silver */
   --color-primary-content: oklch(15% 0 0);
@@ -107,6 +111,8 @@
   --color-base-300: oklch(89% 0.035 220);
   --color-base-content: oklch(25% 0.08 220);
 
+  --color-prominent: oklch(10% 0.1 220);
+
   --color-primary: oklch(65% 0.18 215); /* Vibrant Celeste */
   --color-primary-content: oklch(100% 0 0);
 
@@ -122,6 +128,8 @@
 @theme {
   --font-sans: "Outfit", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  --color-prominent: oklch(100% 0 0); /* Default to white for dark themes */
 
   /* Legacy Color mappings for existing code using specific utils */
   --color-tunecamp-bg: oklch(15% 0.02 240);

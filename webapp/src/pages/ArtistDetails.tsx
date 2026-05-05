@@ -115,7 +115,7 @@ export const ArtistDetails = () => {
                          )}
                      </figure>
                      <div className="flex-1 space-y-2">
-                         <h1 className="text-5xl md:text-7xl font-black tracking-tight">{artist.name}</h1>
+                         <h1 className="text-5xl md:text-7xl font-black tracking-tight text-prominent">{artist.name}</h1>
                          {artist.bio && (
                              <p className="text-lg opacity-80 max-w-2xl line-clamp-2" title={artist.bio}>{artist.bio}</p>
                          )}
@@ -181,7 +181,7 @@ export const ArtistDetails = () => {
                           <div className="flex gap-4 items-center flex-wrap">
                               <div className="flex gap-2 flex-wrap flex-1">
                                  {artist.links?.map((link, i) => (
-                                     <a href={link.url} key={i} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline gap-2 bg-base-content/5 border-base-content/10 hover:bg-base-content/10 text-white rounded-xl">
+                                     <a href={link.url} key={i} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline gap-2 bg-base-content/5 border-base-content/10 hover:bg-base-content/10 text-base-content rounded-xl">
                                          <PlatformIcon platform={link.platform || link.url} />
                                          <span className="capitalize">{link.platform || 'Link'}</span>
                                      </a>

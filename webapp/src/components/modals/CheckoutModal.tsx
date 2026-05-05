@@ -358,7 +358,7 @@ export const CheckoutModal = () => {
               <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6 text-success animate-bounce">
                 <CheckCircle2 size={40} />
               </div>
-              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 mb-2">
+              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-base-content to-base-content/70 mb-2">
                 Purchase Successful!
               </h3>
               <p className="text-base-content/60 mb-6 font-medium">
@@ -401,9 +401,9 @@ export const CheckoutModal = () => {
                 <Wallet size={32} className="text-white transform -rotate-3" />
               </div>
 
-              <h3 className="text-2xl font-bold mb-2">Unlock Track</h3>
-              <p className="text-white/70 mb-8 max-w-sm">
-                Support <strong className="text-white">{track.artist}</strong>{" "}
+               <h3 className="text-2xl font-bold mb-2">Unlock Track</h3>
+              <p className="text-base-content/70 mb-8 max-w-sm">
+                Support <strong className="text-base-content">{track.artist}</strong>{" "}
                 directly. This transaction runs on Base Mainnet.
               </p>
 
@@ -435,8 +435,8 @@ export const CheckoutModal = () => {
               </div>
 
               <div className="flex justify-between items-center mb-6 text-sm opacity-70 w-full px-1">
-                <span>Paying with:</span>
-                <span className="font-semibold text-white">
+                 <span>Paying with:</span>
+                <span className="font-semibold text-prominent">
                   {activeWalletLabel}
                 </span>
               </div>

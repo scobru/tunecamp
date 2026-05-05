@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
 import { Play, Music, Disc, User, ArrowLeft, Heart, Share2 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -148,7 +148,7 @@ export const SharePage = () => {
                 <button onClick={() => navigate(-1)} className="btn btn-ghost btn-circle">
                     <ArrowLeft size={20} />
                 </button>
-                <h1 className="text-sm font-black uppercase tracking-widest opacity-40">Shared Content</h1>
+                <h1 className="text-sm font-black uppercase tracking-widest opacity-60">Shared Content</h1>
             </div>
 
             <div className="relative group rounded-[3rem] overflow-hidden border border-base-content/5 bg-base-200/40 p-8 lg:p-12 shadow-2xl">
@@ -162,7 +162,7 @@ export const SharePage = () => {
                         <img 
                             src={coverUrl} 
                             alt={title}
-                            className="w-64 h-64 md:w-80 md:h-80 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-white/10"
+                            className="w-64 h-64 md:w-80 md:h-80 rounded-[2.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-base-content/10"
                             onError={(e) => { (e.target as HTMLImageElement).src = "https://placehold.co/500x500?text=No+Cover"; }}
                         />
                     </div>
@@ -180,7 +180,7 @@ export const SharePage = () => {
                                 )}
                             </div>
                             
-                            <h2 className="text-4xl lg:text-7xl font-black tracking-tighter text-white leading-tight">
+                            <h2 className="text-4xl lg:text-7xl font-black tracking-tighter text-prominent leading-tight">
                                 {title}
                             </h2>
 
@@ -247,7 +247,7 @@ export const SharePage = () => {
 
             {/* Extra context or suggestions could go here */}
             <div className="px-4 text-center">
-                <p className="text-xs font-bold opacity-20 uppercase tracking-[0.3em]">
+                <p className="text-xs font-bold opacity-40 uppercase tracking-[0.3em]">
                     Powered by TuneCamp • Decentralized Music Federation
                 </p>
             </div>
@@ -255,6 +255,5 @@ export const SharePage = () => {
     );
 };
 
-// Help with Link import
-import { Link } from "react-router-dom";
+// Help with Link import - removed duplicate
 

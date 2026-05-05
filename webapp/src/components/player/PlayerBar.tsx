@@ -381,7 +381,7 @@ export const PlayerBar = () => {
             />
           </div>
           <div className="flex gap-1 h-10 items-center border-l border-base-content/5 pl-4 ml-2">
-            {(useAuthStore.getState().user?.isRootAdmin || 
+            {(useAuthStore.getState().user?.isAdmin || 
               (currentTrack.owner_id && String(currentTrack.owner_id) === String(useAuthStore.getState().user?.id)) ||
               (currentTrack.artistId && String(currentTrack.artistId) === String(useAuthStore.getState().user?.artistId))) && (
               <a

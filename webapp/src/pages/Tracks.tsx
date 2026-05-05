@@ -126,14 +126,14 @@ export const Tracks = () => {
           <h1 className="text-4xl lg:text-6xl font-black tracking-tighter uppercase">
             Tracks
           </h1>
-          <p className="text-sm opacity-40 font-medium tracking-widest uppercase">
+          <p className="text-sm opacity-60 font-medium tracking-widest uppercase">
             Explore the complete audio library ({tracks.length})
           </p>
         </div>
 
         <div className="relative group max-w-md w-full">
           <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20 group-focus-within:opacity-100 transition-opacity"
+            className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40 group-focus-within:opacity-100 transition-opacity"
             size={18}
           />
           <input
@@ -152,7 +152,7 @@ export const Tracks = () => {
           {filteredTracks.slice(0, 100).map((track, i) => {
             if (!track || !track.title) return null;
             const isLiked = track.liked || likedTrackIds.has(String(track.id));
-            const purchased = isPurchased(String(track.id)) || 
+            const purchased = isAdminAuthenticated || isPurchased(String(track.id)) || 
                              ownedNFTs.some(n => n.trackId === Number(track.id) && n.balance > 0) || 
                              (user?.artistId && String(track.artistId) === String(user.artistId));
             
@@ -161,7 +161,7 @@ export const Tracks = () => {
                 key={track.id}
                 className="list-row items-center hover:bg-base-content/5 transition-colors px-4 py-2 group border-b border-base-content/5 last:border-0"
               >
-                <div className="text-xs font-black opacity-20 w-8 tabular-nums group-hover:opacity-0 transition-opacity">
+                <div className="text-xs font-black opacity-40 w-8 tabular-nums group-hover:opacity-0 transition-opacity">
                    {String(i + 1).padStart(2, '0')}
                 </div>
                 
@@ -178,12 +178,12 @@ export const Tracks = () => {
                     )}
                     {isLiked && <Heart size={10} className="text-primary" fill="currentColor" />}
                   </div>
-                  <div className="text-xs opacity-40 font-medium truncate uppercase tracking-widest mt-0.5">
+                  <div className="text-xs opacity-60 font-medium truncate uppercase tracking-widest mt-0.5">
                     {track.artistName} • {track.albumName}
                   </div>
                 </div>
 
-                <div className="hidden md:block opacity-40 font-mono text-xs tabular-nums">
+                <div className="hidden md:block opacity-60 font-mono text-xs tabular-nums">
                   {new Date(track.duration * 1000).toISOString().substr(14, 5)}
                 </div>
 
@@ -209,7 +209,10 @@ export const Tracks = () => {
                     <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
                       {purchased && (
                         <li>
-                          <a className="text-success font-bold">
+                          <a 
+                            className="text-success font-bold"
+                            onClick={() => window.open(API.getTrackDownloadUrl(track.id), "_blank")}
+                          >
                             <CheckCircle2 size={16} /> Download
                           </a>
                         </li>

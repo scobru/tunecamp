@@ -92,7 +92,10 @@ export const Home = () => {
         )}
         
         <div className="relative z-10 max-w-2xl">
-          <h1 className="text-4xl lg:text-7xl font-black tracking-tighter text-white mb-4 leading-tight">
+          <h1 className={clsx(
+            "text-4xl lg:text-7xl font-black tracking-tighter mb-4 leading-tight",
+            siteSettings?.coverImage ? "text-white" : "text-prominent"
+          )}>
             {welcomeTitle}
           </h1>
           <p className="text-lg lg:text-xl text-base-content/60 mb-8 max-w-lg leading-relaxed">
