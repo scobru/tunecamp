@@ -56,6 +56,13 @@ export const ArtistFediversePanel = () => {
         if (artistId) {
             loadData(artistId);
         }
+
+        const handleRefresh = () => {
+            if (artistId) loadData(artistId);
+        };
+
+        window.addEventListener('refresh-social-content', handleRefresh);
+        return () => window.removeEventListener('refresh-social-content', handleRefresh);
     }, [artistId]);
 
     const loadData = async (id: string) => {
@@ -127,7 +134,7 @@ export const ArtistFediversePanel = () => {
             </div>
 
             {/* Followers Section */}
-            <div className="card bg-base-200 border border-white/5">
+            <div className="card card-m3 bg-base-200/50">
                 <div className="card-body p-6">
                     <h3 className="font-bold flex items-center gap-2 mb-4">
                         <Users size={20} className="text-primary"/> Followers ({followers.length})
@@ -140,9 +147,9 @@ export const ArtistFediversePanel = () => {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {followers.map(follower => (
-                                <div key={follower.uri} className="flex items-center gap-3 p-3 bg-base-100 rounded-box border border-white/5">
+                                <div key={follower.uri} className="flex items-center gap-3 p-3 bg-base-100/50 rounded-box border border-white/5 hover:border-primary/30 transition-colors">
                                     <div className="avatar placeholder">
-                                        <div className="w-10 rounded-full bg-neutral-focus text-neutral-content">
+                                        <div className="w-10 rounded-full bg-neutral text-neutral-content shadow-sm">
                                             {follower.actor?.icon_url ? (
                                                 <img src={follower.actor.icon_url} alt={follower.actor.name} />
                                             ) : (
@@ -170,7 +177,7 @@ export const ArtistFediversePanel = () => {
                         <MessageSquare size={20} className="text-secondary"/> Published Content
                     </h3>
                     <button
-                        className="btn btn-sm btn-secondary gap-2"
+                        className="btn btn-sm btn-secondary gap-2 shadow-md"
                         onClick={() => document.dispatchEvent(new CustomEvent('open-create-post-modal'))}
                     >
                         <PenTool size={16}/> Create Post
@@ -178,26 +185,26 @@ export const ArtistFediversePanel = () => {
                 </div>
 
                 {notes.length === 0 && !loading ? (
-                    <div className="text-center py-12 opacity-50 border-2 border-dashed border-base-300 rounded-box">
+                    <div className="text-center py-12 opacity-50 border-2 border-dashed border-base-300 rounded-box bg-base-200/30">
                         <AlertTriangle className="mx-auto mb-2 opacity-50"/>
                         <p>No content published to the Fediverse yet.</p>
                     </div>
                 ) : (
                     <div className="grid gap-4">
                         {notes.map(note => (
-                            <div key={note.id} className="card bg-base-100 shadow-xl border border-white/5">
+                            <div key={note.id} className="card card-m3 bg-base-100 hover:bg-base-200/50 transition-all">
                                 <div className="card-body p-4 sm:p-6">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex gap-4">
-                                            <div className={`p-3 rounded-full h-fit ${note.note_type === 'release' ? 'bg-secondary/10 text-secondary' : 'bg-accent/10 text-accent'}`}>
+                                            <div className={`p-3 rounded-full h-fit shadow-inner ${note.note_type === 'release' ? 'bg-secondary/10 text-secondary' : 'bg-accent/10 text-accent'}`}>
                                                 {note.note_type === 'release' ? <Disc size={24}/> : <MessageSquare size={24}/>}
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg">{note.content_title || 'Untitled'}</h3>
-                                                <div className="badge badge-outline gap-2 mt-1">
+                                                <div className="badge badge-outline badge-sm gap-2 mt-1 opacity-70">
                                                     {note.note_type === 'release' ? 'Release' : 'Post'}
                                                 </div>
-                                                <div className="text-xs opacity-50 mt-2">
+                                                <div className="text-xs opacity-50 mt-2 font-medium">
                                                     {new Date(note.published_at).toLocaleString()}
                                                 </div>
                                             </div>

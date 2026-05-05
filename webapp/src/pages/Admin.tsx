@@ -15,8 +15,6 @@ import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminMaintenancePanel } from "../components/admin/AdminMaintenancePanel";
 import { CurationQueue } from "../components/admin/CurationQueue";
 
-import { IdentityPanel } from "../components/admin/IdentityPanel";
-import { ActivityPubPanel } from "../components/admin/ActivityPubPanel";
 import { BackupPanel } from "../components/admin/BackupPanel";
 
 export const Admin = () => {
@@ -32,8 +30,6 @@ export const Admin = () => {
     | "users"
     | "settings"
     | "system"
-    | "identity"
-    | "activitypub"
     | "backup"
     | "maintenance"
   >(isRootAdmin ? "users" : "releases");
@@ -97,22 +93,22 @@ export const Admin = () => {
       {/* Stats Cards */}
       {isAdmin && stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">Total Users</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Total Users</div>
             <div className="stat-value text-primary">{stats.totalUsers}</div>
           </div>
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">Total Tracks</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Total Tracks</div>
             <div className="stat-value text-secondary">{stats.totalTracks}</div>
           </div>
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">Storage Used</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Storage Used</div>
             <div className="stat-value text-accent">
               {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB
             </div>
           </div>
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">Network Sites</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Network Sites</div>
             <div className="stat-value">{stats.networkSites}</div>
           </div>
         </div>
@@ -169,20 +165,6 @@ export const Admin = () => {
             </a>
             <a
               role="tab"
-              className={`tab ${activeTab === "identity" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("identity")}
-            >
-              Identity
-            </a>
-            <a
-              role="tab"
-              className={`tab ${activeTab === "activitypub" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("activitypub")}
-            >
-              ActivityPub
-            </a>
-            <a
-              role="tab"
               className={`tab ${activeTab === "backup" ? "tab-active" : ""}`}
               onClick={() => setActiveTab("backup")}
             >
@@ -199,14 +181,14 @@ export const Admin = () => {
         )}
       </div>
 
-      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px]">
+      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
         {activeTab === "releases" && (
            <div className="space-y-4">
            <div className="flex justify-between items-center">
              <h3 className="font-bold text-lg">{isAdmin ? "All Releases" : "My Releases"}</h3>
              {(!isSuperUser || user?.artistId) && (
                <button
-                 className="btn btn-sm btn-primary"
+                 className="btn btn-sm btn-primary shadow-md"
                  onClick={() => navigate("/admin/release/new")}
                >
                  New Release
@@ -223,7 +205,7 @@ export const Admin = () => {
           <div className="space-y-6">
             <h3 className="font-bold text-lg">System Maintenance</h3>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="card bg-base-200 border border-white/5">
+              <div className="card card-m3 bg-base-200/50">
                 <div className="card-body">
                   <h2 className="card-title text-accent">
                     <RefreshCw /> Cleanup
@@ -234,7 +216,7 @@ export const Admin = () => {
                   </p>
                   <div className="card-actions justify-end mt-4">
                     <button
-                      className="btn btn-accent btn-outline"
+                      className="btn btn-accent btn-outline btn-sm"
                       onClick={() => handleSystemAction("cleanup")}
                     >
                       Network Cleanup
@@ -243,7 +225,7 @@ export const Admin = () => {
                 </div>
               </div>
 
-              <div className="card bg-base-200 border border-white/5">
+              <div className="card card-m3 bg-base-200/50">
                 <div className="card-body">
                   <h2 className="card-title text-primary">
                     <Save /> Consolidate
@@ -253,7 +235,7 @@ export const Admin = () => {
                   </p>
                   <div className="card-actions justify-end mt-4">
                     <button
-                      className="btn btn-primary btn-outline"
+                      className="btn btn-primary btn-outline btn-sm"
                       onClick={() => handleSystemAction("consolidate")}
                     >
                       Consolidate Files
@@ -270,7 +252,7 @@ export const Admin = () => {
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-lg">User Management</h3>
               <button
-                className="btn btn-sm btn-primary"
+                className="btn btn-sm btn-primary shadow-md"
                 onClick={() =>
                   document.dispatchEvent(
                     new CustomEvent("open-admin-user-modal"),
@@ -285,8 +267,6 @@ export const Admin = () => {
         )}
 
         {activeTab === "settings" && isAdmin && <AdminSettingsPanel />}
-        {activeTab === "identity" && isAdmin && <IdentityPanel isRootAdmin={isRootAdmin} />}
-        {activeTab === "activitypub" && isAdmin && <ActivityPubPanel />}
         {activeTab === "backup" && isAdmin && <BackupPanel />}
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
       </div>

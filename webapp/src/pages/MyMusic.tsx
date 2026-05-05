@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { AdminReleaseModal } from "../components/modals/AdminReleaseModal";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
-import { CreatePostModal } from "../components/modals/CreatePostModal";
 
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminTracksList } from "../components/admin/AdminTracksList";
@@ -66,22 +65,22 @@ export const MyMusic = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">My Releases</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">My Releases</div>
             <div className="stat-value text-primary">{stats.albums}</div>
           </div>
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">My Tracks</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">My Tracks</div>
             <div className="stat-value text-secondary">{stats.totalTracks}</div>
           </div>
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">Storage Used</div>
-            <div className="stat-value text-accent">
-              {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(4)} GB
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">Storage Used</div>
+            <div className="stat-value text-accent text-2xl">
+              {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(3)} GB
             </div>
           </div>
-          <div className="stat bg-base-200 rounded-box border border-white/5">
-            <div className="stat-title">Genres</div>
+          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">Genres</div>
             <div className="stat-value">{stats.genresCount}</div>
           </div>
         </div>
@@ -112,15 +111,15 @@ export const MyMusic = () => {
         </a>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px]">
+      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
         {activeTab === "overview" && (
           <div className="space-y-6">
-            <h3 className="font-bold text-lg">Quick Actions</h3>
+            <h3 className="font-bold text-lg tracking-tight px-1">Quick Actions</h3>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {(user?.isAdmin || user?.isActive || role === 'super_user') && (
                 <>
                   <button
-                    className="btn btn-primary gap-2"
+                    className="btn btn-primary gap-2 shadow-lg shadow-primary/10 hover:scale-[1.02] transition-transform"
                     onClick={() =>
                       document.dispatchEvent(
                         new CustomEvent("open-upload-tracks-modal"),
@@ -131,7 +130,7 @@ export const MyMusic = () => {
                   </button>
                   {((user?.isAdmin || user?.isActive) && (role !== 'super_user' || user?.artistId)) && (
                     <button
-                      className="btn btn-secondary gap-2"
+                      className="btn btn-secondary gap-2 shadow-lg shadow-secondary/10 hover:scale-[1.02] transition-transform"
                       onClick={() => navigate("/admin/release/new")}
                     >
                       💿 New Release
@@ -139,31 +138,19 @@ export const MyMusic = () => {
                   )}
                 </>
               )}
-              {((user?.isAdmin || user?.isActive) && (role !== 'super_user' || user?.artistId)) && (
-                <button
-                  className="btn btn-outline gap-2"
-                  onClick={() =>
-                    document.dispatchEvent(
-                      new CustomEvent("open-create-post-modal"),
-                    )
-                  }
-                >
-                  📝 New Post
-                </button>
-              )}
             </div>
-            <div className="divider"></div>
+            <div className="divider opacity-10"></div>
             
             {stats && stats.genres && stats.genres.length > 0 && (
               <div className="space-y-4">
-                <h3 className="font-bold text-lg flex items-center gap-2">
+                <h3 className="font-bold text-lg flex items-center gap-2 px-1">
                   <BarChart2 size={20} className="text-accent" /> Library Genres
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {stats.genres.map((genre: string) => (
                     <button
                       key={genre}
-                      className="btn btn-sm btn-outline btn-accent rounded-full lowercase"
+                      className="btn btn-sm btn-outline btn-accent rounded-full lowercase hover:bg-accent/10 transition-colors"
                       onClick={() => navigate(`/search?q=${encodeURIComponent(genre)}`)}
                     >
                       {genre}
@@ -173,9 +160,9 @@ export const MyMusic = () => {
               </div>
             )}
 
-            <div className="text-center opacity-50 py-8">
+            <div className="text-center opacity-30 py-12 bg-base-200/20 rounded-box border border-white/5">
               <BarChart2 size={48} className="mx-auto mb-4" />
-              <p>Personal analytics and sales data coming soon.</p>
+              <p className="font-medium">Personal analytics and sales data coming soon.</p>
             </div>
           </div>
         )}
@@ -183,21 +170,11 @@ export const MyMusic = () => {
         {activeTab === "albums" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg">My Releases</h3>
+              <h3 className="font-bold text-lg tracking-tight">My Releases</h3>
               <div className="flex gap-2">
-                <button
-                  className="btn btn-sm btn-outline"
-                  onClick={() =>
-                    document.dispatchEvent(
-                      new CustomEvent("open-create-post-modal"),
-                    )
-                  }
-                >
-                  Create Post
-                </button>
                 {(user?.isAdmin || user?.isActive) && (
                   <button
-                    className="btn btn-sm btn-primary"
+                    className="btn btn-sm btn-primary shadow-md"
                     onClick={() => navigate("/admin/release/new")}
                   >
                     Create Release
@@ -219,11 +196,6 @@ export const MyMusic = () => {
       />
       <UploadTracksModal
         onUploadComplete={() =>
-          window.dispatchEvent(new CustomEvent("refresh-admin-releases"))
-        }
-      />
-      <CreatePostModal
-        onPostCreated={() =>
           window.dispatchEvent(new CustomEvent("refresh-admin-releases"))
         }
       />

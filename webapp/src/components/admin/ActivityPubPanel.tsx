@@ -154,12 +154,12 @@ export const ActivityPubPanel = () => {
             <div className="flex flex-col md:flex-row gap-4 items-end md:items-center justify-between">
                 <div>
                      <h2 className="text-2xl font-bold flex items-center gap-2">ActivityPub Status</h2>
-                     <p className="opacity-70 text-sm">Manage content published to the Fediverse (Mastodon, etc)</p>
+                     <p className="opacity-70 text-sm font-medium">Manage content published to the Fediverse (Mastodon, etc)</p>
                 </div>
                 
                 <div className="flex gap-2 w-full md:w-auto">
                     <select 
-                        className="select select-bordered w-full md:w-64"
+                        className="select select-bordered w-full md:w-64 bg-base-200/50 focus:border-primary"
                         value={selectedArtistId}
                         onChange={(e) => setSelectedArtistId(e.target.value)}
                     >
@@ -168,7 +168,7 @@ export const ActivityPubPanel = () => {
                         ))}
                     </select>
                     <button 
-                        className="btn btn-primary btn-outline gap-2"
+                        className="btn btn-primary btn-outline gap-2 shadow-sm"
                         onClick={handleSync}
                         disabled={loading}
                         title="Synchronize with Fediverse"
@@ -176,7 +176,7 @@ export const ActivityPubPanel = () => {
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''}/> Sync
                     </button>
                     <button 
-                        className="btn btn-square btn-ghost"
+                        className="btn btn-square btn-ghost hover:bg-base-300"
                         onClick={() => selectedArtistId && loadNotes(selectedArtistId)}
                         disabled={loading}
                         title="Refresh list"
@@ -187,38 +187,39 @@ export const ActivityPubPanel = () => {
             </div>
 
             {selectedArtist && (
-                <div className="stats shadow w-full bg-base-200 border border-white/5">
+                <div className="stats shadow-m3-1 w-full bg-base-200/50 border border-white/5 overflow-hidden rounded-box">
                     <div className="stat">
                         <div className="stat-figure text-primary">
                             <div className="avatar placeholder">
-                                <div className="w-12 rounded-full bg-neutral-focus text-neutral-content">
-                                    <span>{selectedArtist.name[0]}</span>
+                                <div className="w-12 rounded-full bg-primary/10 text-primary shadow-inner">
+                                    <span className="font-bold">{selectedArtist.name[0]}</span>
                                 </div>
                             </div>
                         </div>
-                        <div className="stat-title">Followers</div>
-                        {/* We don't have follower count readily available here without another API call, possibly add later or fetch stats */}
+                        <div className="stat-title opacity-60 uppercase text-[10px] font-bold tracking-widest">Followers</div>
                         <div className="stat-value text-primary">--</div> 
-                        <div className="stat-desc">on @{selectedArtist.slug}@{window.location.hostname}</div>
+                        <div className="stat-desc font-mono text-[10px] mt-1 opacity-50">on @{selectedArtist.slug}@{window.location.hostname}</div>
                     </div>
                 </div>
             )}
 
-            <div className="card bg-base-200 border border-white/5">
-                <div className="card-body p-4">
-                    <h3 className="font-bold mb-2">Federation & Peers</h3>
-                    <p className="text-sm opacity-70 mb-4">Connect to other TuneCamp instances or ActivityPub Relays to discover music in your Community tab.</p>
+            <div className="card card-m3 bg-base-200/30">
+                <div className="card-body p-6">
+                    <h3 className="font-bold mb-2 flex items-center gap-2">
+                        <Globe size={18} className="text-accent" /> Federation & Peers
+                    </h3>
+                    <p className="text-sm opacity-70 mb-4 font-medium">Connect to other TuneCamp instances or ActivityPub Relays to discover music in your Community tab.</p>
                     <form onSubmit={handleFollowPeer} className="flex gap-2 mb-6">
                         <input 
                             type="url" 
-                            className="input input-bordered flex-1" 
+                            className="input input-bordered flex-1 bg-base-100/50 focus:border-primary transition-all" 
                             placeholder="https://another-instance.com/users/site"
                             value={peerUrl}
                             onChange={(e) => setPeerUrl(e.target.value)}
                         />
                         <button 
                             type="submit" 
-                            className="btn btn-primary"
+                            className="btn btn-primary shadow-lg"
                             disabled={peerLoading || !peerUrl}
                         >
                             {peerLoading ? <span className="loading loading-spinner loading-xs"/> : 'Follow Peer'}
@@ -226,28 +227,28 @@ export const ActivityPubPanel = () => {
                     </form>
 
                     {peers.length > 0 && (
-                        <div className="space-y-2 mt-4">
-                            <h4 className="text-xs uppercase font-bold opacity-50 mb-2">Followed Peers</h4>
+                        <div className="space-y-3 mt-4">
+                            <h4 className="text-[10px] uppercase font-bold opacity-40 tracking-widest mb-2">Followed Peers</h4>
                             <div className="grid gap-2">
                                 {peers.map(peer => (
-                                    <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-300/50 rounded-lg border border-white/5 group">
+                                    <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-white/5 group hover:bg-base-100/60 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="avatar placeholder">
-                                                <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content">
-                                                    <span className="text-xs">{peer.username?.[0] || peer.uri.split('/').pop()?.[0] || 'P'}</span>
+                                                <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content shadow-sm">
+                                                    <span className="text-xs font-bold">{peer.username?.[0] || peer.uri.split('/').pop()?.[0] || 'P'}</span>
                                                 </div>
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="font-bold text-sm truncate">{peer.name || peer.username}</div>
-                                                <div className="text-xs opacity-50 truncate flex items-center gap-1">
+                                                <div className="text-[10px] opacity-40 truncate flex items-center gap-1 font-mono">
                                                     <span className="truncate">{peer.uri}</span>
-                                                    <a href={peer.uri} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 hover:text-primary">
+                                                    <a href={peer.uri} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity">
                                                         <ExternalLink size={10}/>
                                                     </a>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button 
                                                 className="btn btn-ghost btn-xs btn-square"
                                                 onClick={() => handleSyncPeer(peer.uri)}
@@ -256,7 +257,7 @@ export const ActivityPubPanel = () => {
                                                 <RefreshCw size={14}/>
                                             </button>
                                             <button 
-                                                className="btn btn-ghost btn-xs btn-square text-error"
+                                                className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error"
                                                 onClick={() => handleUnfollowPeer(peer.uri)}
                                                 title="Unfollow Peer"
                                             >
@@ -271,34 +272,34 @@ export const ActivityPubPanel = () => {
 
                     {peersLoading && peers.length === 0 && (
                         <div className="flex justify-center py-4">
-                            <span className="loading loading-spinner loading-md opacity-50"/>
+                            <span className="loading loading-spinner loading-md opacity-30"/>
                         </div>
                     )}
                 </div>
             </div>
 
             {notes.length === 0 && !loading ? (
-                <div className="text-center py-12 opacity-50 border-2 border-dashed border-base-300 rounded-box">
+                <div className="text-center py-12 opacity-50 border-2 border-dashed border-base-300 rounded-box bg-base-200/20">
                     <AlertTriangle className="mx-auto mb-2 opacity-50"/>
-                    <p>No published content found for this artist.</p>
+                    <p className="font-medium">No published content found for this artist.</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
                     {notes.map(note => (
-                        <div key={note.id} className="card bg-base-100 shadow-xl border border-white/5">
+                        <div key={note.id} className="card card-m3 bg-base-100 hover:bg-base-200/50 transition-all">
                             <div className="card-body p-4 sm:p-6">
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex gap-4">
-                                        <div className={`p-3 rounded-full h-fit ${note.note_type === 'release' ? 'bg-secondary/10 text-secondary' : 'bg-accent/10 text-accent'}`}>
+                                        <div className={`p-3 rounded-full h-fit shadow-inner ${note.note_type === 'release' ? 'bg-secondary/10 text-secondary' : 'bg-accent/10 text-accent'}`}>
                                             {note.note_type === 'release' ? <Disc size={24}/> : <MessageSquare size={24}/>}
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-lg">{note.content_title || 'Untitled'}</h3>
-                                            <div className="text-xs opacity-50 font-mono mb-2 break-all">{note.note_id}</div>
-                                            <div className="badge badge-outline gap-2">
+                                            <div className="text-[10px] opacity-40 font-mono mb-2 break-all">{note.note_id}</div>
+                                            <div className="badge badge-outline badge-sm gap-2 opacity-70">
                                                 {note.note_type === 'release' ? 'Release' : 'Post'}
                                             </div>
-                                            <span className="text-xs opacity-50 ml-2">
+                                            <span className="text-xs opacity-50 ml-2 font-medium">
                                                 {new Date(note.published_at).toLocaleString()}
                                             </span>
                                         </div>
@@ -312,7 +313,7 @@ export const ActivityPubPanel = () => {
                                             }
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="btn btn-ghost btn-sm btn-square"
+                                            className="btn btn-ghost btn-sm btn-square hover:text-primary transition-colors"
                                         >                                            <ExternalLink size={18}/>
                                         </a>
                                         <button 

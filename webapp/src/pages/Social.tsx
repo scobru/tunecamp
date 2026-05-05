@@ -8,9 +8,11 @@ import {
   User,
   MessageSquare,
   PenTool,
+  Network,
 } from "lucide-react";
 import { IdentityPanel } from "../components/admin/IdentityPanel";
 import { ArtistFediversePanel } from "../components/artist/ArtistFediversePanel";
+import { ActivityPubPanel } from "../components/admin/ActivityPubPanel";
 import { CreatePostModal } from "../components/modals/CreatePostModal";
 import API from "../services/api";
 
@@ -18,7 +20,7 @@ export const Social = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "community" | "identity" | "automation"
+    "community" | "identity" | "automation" | "federation"
   >("community");
 
   const [artistData, setArtistData] = useState<any>(null);
@@ -28,6 +30,7 @@ export const Social = () => {
   const [message, setMessage] = useState("");
 
   const isAdmin = role === "admin" || user?.isRootAdmin;
+  const isRootAdmin = !!user?.isRootAdmin;
 
   useEffect(() => {
     if (isLoading) return;
@@ -100,6 +103,16 @@ export const Social = () => {
           <Shield size={16} className="mr-2" />
           Identity
         </a>
+        {isRootAdmin && (
+          <a
+            role="tab"
+            className={`tab ${activeTab === "federation" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("federation")}
+          >
+            <Network size={16} className="mr-2" />
+            Federation
+          </a>
+        )}
         <a
           role="tab"
           className={`tab ${activeTab === "automation" ? "tab-active" : ""}`}
@@ -110,12 +123,12 @@ export const Social = () => {
         </a>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px]">
+      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
         {activeTab === "community" && <ArtistFediversePanel />}
 
         {activeTab === "identity" && (
           <div className="space-y-4">
-            <div className="alert alert-info py-2">
+            <div className="alert alert-info py-2 shadow-m3-1">
               <User size={16} />
               <span>
                 Configure your ActivityPub identity. This is how other users on
@@ -126,20 +139,22 @@ export const Social = () => {
           </div>
         )}
 
+        {activeTab === "federation" && isRootAdmin && <ActivityPubPanel />}
+
         {activeTab === "automation" && (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <PenTool size={24} className="text-indigo-400" />
+                <PenTool size={24} className="text-primary" />
                 Federation & Automation
               </h2>
-              <p className="opacity-70 text-sm mt-1">
+              <p className="opacity-70 text-sm mt-1 font-medium">
                 Cross-post activities to external Mastodon instances.
               </p>
             </div>
 
-            <div className="card bg-base-100/50 border border-white/5 overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-500/10 to-transparent p-6 border-b border-white/5">
+            <div className="card card-m3 overflow-hidden">
+              <div className="bg-gradient-to-r from-primary/10 to-transparent p-6 border-b border-white/5">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   Mastodon Cross-Posting
                 </h3>
@@ -157,7 +172,7 @@ export const Social = () => {
                   </label>
                   <input
                     type="url"
-                    className="input input-bordered"
+                    className="input input-bordered focus:border-primary transition-all"
                     value={mastodonInstance}
                     onChange={(e) => setMastodonInstance(e.target.value)}
                     placeholder="https://mastodon.social"
@@ -171,7 +186,7 @@ export const Social = () => {
                   </label>
                   <input
                     type="password"
-                    className="input input-bordered"
+                    className="input input-bordered focus:border-primary transition-all"
                     value={mastodonToken}
                     onChange={(e) => setMastodonToken(e.target.value)}
                     placeholder="Bearer Token"
@@ -180,7 +195,7 @@ export const Social = () => {
               </div>
               <div className="p-6 pt-0 flex items-center gap-4">
                 <button
-                  className="btn btn-primary gap-2"
+                  className="btn btn-primary gap-2 shadow-lg"
                   onClick={handleSaveAutomation}
                   disabled={isSaving}
                 >
@@ -193,7 +208,7 @@ export const Social = () => {
                 </button>
                 {message && (
                   <span
-                    className={`text-sm ${message.includes("Failed") ? "text-error" : "text-success"}`}
+                    className={`text-sm font-medium ${message.includes("Failed") ? "text-error" : "text-success"}`}
                   >
                     {message}
                   </span>
@@ -206,9 +221,10 @@ export const Social = () => {
 
       <CreatePostModal
         onPostCreated={() =>
-          window.dispatchEvent(new CustomEvent("refresh-admin-releases"))
+          window.dispatchEvent(new CustomEvent("refresh-social-content"))
         }
       />
     </div>
   );
 };
+

@@ -120,8 +120,8 @@ export const Sidebar = () => {
               {(user?.isRootAdmin || isAdmin || isSuperUser) && (
                 <NavItem to="/my-music" icon={Upload} label="My Music" />
               )}
-              {(user?.isRootAdmin || isAdmin || isSuperUser) && user?.artistId && (
-                <NavItem to="/social" icon={Globe} label="Social" />
+              {(user?.isRootAdmin || isAdmin || isSuperUser) && (user?.artistId || user?.isRootAdmin) && (
+                <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
               {user?.isRootAdmin && (
                 <NavItem to="/search/content" icon={Globe} label="Search Content" />
