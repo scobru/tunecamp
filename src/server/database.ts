@@ -668,6 +668,161 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Migration: Fix foreign key constraints for ownership tables (should reference admin, not artists)
     try {
+        // Deep Verification of Ownership Foreign Keys
+        const checkFks = (table: string) => {
+            try {
+                const fks = db.prepare(`PRAGMA foreign_key_list(${table})`).all() as any[];
+                const ownerFk = fks.find(f => f.from === 'owner_id');
+                if (ownerFk) {
+                    console.log(`📦 [Database] FK Check: ${table}.owner_id -> ${ownerFk.table}(${ownerFk.to})`);
+                    if (ownerFk.table === 'artists') {
+                        console.warn(`⚠️ [Database] CRITICAL: ${table}.owner_id incorrectly references 'artists'! This will cause FOREIGN KEY failures.`);
+                        return true;
+                    }
+                } else {
+                    console.log(`📦 [Database] FK Check: ${table}.owner_id has no foreign key constraint.`);
+                }
+            } catch (e) {
+                console.error(`❌ [Database] Failed to check FKs for ${table}:`, e);
+            }
+            return false;
+        };
+
+        const albumsNeedsFix = checkFks('albums');
+        const tracksNeedsFix = checkFks('tracks');
+        const releasesNeedsFix = checkFks('releases');
+
+        if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix) {
+            console.log("📦 [Database] Deep schema repair required for ownership constraints...");
+            
+            const deepFix = db.transaction(() => {
+                db.exec("PRAGMA foreign_keys = OFF");
+                
+                if (albumsNeedsFix) {
+                    console.log("   - Repairing 'albums' table...");
+                    db.exec("ALTER TABLE albums RENAME TO albums_old");
+                    db.exec(`
+                        CREATE TABLE albums (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          slug TEXT NOT NULL UNIQUE,
+                          artist_id INTEGER REFERENCES artists(id),
+                          owner_id INTEGER REFERENCES admin(id),
+                          artist_name TEXT,
+                          date TEXT,
+                          cover_path TEXT,
+                          genre TEXT,
+                          description TEXT,
+                          type TEXT,
+                          year INTEGER,
+                          download TEXT,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          price_usdt REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          external_links TEXT,
+                          is_public INTEGER DEFAULT 0,
+                          visibility TEXT DEFAULT 'public',
+                          license TEXT,
+                          is_release INTEGER DEFAULT 0,
+                          status TEXT DEFAULT 'draft',
+                          published_to_gundb INTEGER DEFAULT 0,
+                          published_to_ap INTEGER DEFAULT 0,
+                          published_at TEXT,
+                          use_nft INTEGER DEFAULT 0,
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
+                    db.exec("INSERT INTO albums SELECT * FROM albums_old");
+                    db.exec("DROP TABLE albums_old");
+                }
+
+                if (tracksNeedsFix) {
+                    console.log("   - Repairing 'tracks' table...");
+                    db.exec("ALTER TABLE tracks RENAME TO tracks_old");
+                    db.exec(`
+                        CREATE TABLE tracks (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          album_id INTEGER REFERENCES albums(id),
+                          artist_id INTEGER REFERENCES artists(id),
+                          owner_id INTEGER REFERENCES admin(id),
+                          artist_name TEXT,
+                          track_num INTEGER,
+                          duration REAL,
+                          file_path TEXT,
+                          lossless_path TEXT,
+                          format TEXT,
+                          bitrate INTEGER,
+                          sample_rate INTEGER,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          price_usdt REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          waveform TEXT,
+                          url TEXT,
+                          service TEXT,
+                          external_artwork TEXT,
+                          lyrics TEXT,
+                          hash TEXT,
+                          genre TEXT,
+                          year INTEGER,
+                          external_id TEXT,
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
+                    db.exec("INSERT INTO tracks SELECT * FROM tracks_old");
+                    db.exec("DROP TABLE tracks_old");
+                }
+
+                if (releasesNeedsFix) {
+                    console.log("   - Repairing 'releases' table...");
+                    db.exec("ALTER TABLE releases RENAME TO releases_old");
+                    db.exec(`
+                        CREATE TABLE releases (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          slug TEXT NOT NULL UNIQUE,
+                          artist_id INTEGER REFERENCES artists(id),
+                          owner_id INTEGER REFERENCES admin(id),
+                          date TEXT,
+                          cover_path TEXT,
+                          genre TEXT,
+                          description TEXT,
+                          type TEXT,
+                          year INTEGER,
+                          download TEXT,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          price_usdt REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          external_links TEXT,
+                          visibility TEXT DEFAULT 'private',
+                          status TEXT DEFAULT 'draft',
+                          published_at TEXT,
+                          published_to_gundb INTEGER DEFAULT 0,
+                          published_to_ap INTEGER DEFAULT 0,
+                          license TEXT,
+                          use_nft INTEGER DEFAULT 1,
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
+                    db.exec("INSERT INTO releases SELECT * FROM releases_old");
+                    db.exec("DROP TABLE releases_old");
+                }
+                
+                db.exec("PRAGMA foreign_keys = ON");
+            });
+            
+            try {
+                deepFix();
+                console.log("✅ [Database] Deep schema repair complete.");
+            } catch (e) {
+                console.error("❌ [Database] Deep schema repair failed:", e);
+                // Try to restore if possible, but rename is destructive
+            }
+        }
+
         const fixKey = "ownership_fk_to_admin_v1";
         const isFixed = (db.prepare("SELECT value FROM settings WHERE key = ?").get(fixKey) as { value: string } | undefined);
 
