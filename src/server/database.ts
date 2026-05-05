@@ -696,16 +696,15 @@ export function createDatabase(dbPath: string): DatabaseService {
         if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix || releaseTracksNeedsFix) {
             console.log("📦 [Database] Deep schema repair required for ownership constraints...");
             
-            // PRAGMA foreign_keys = OFF MUST be called outside of a transaction to take effect
             db.exec("PRAGMA foreign_keys = OFF");
 
             try {
                 const deepFix = db.transaction(() => {
                     if (albumsNeedsFix) {
                         console.log("   - Repairing 'albums' table...");
-                        db.exec("ALTER TABLE albums RENAME TO albums_old");
+                        db.exec("DROP TABLE IF EXISTS albums_new");
                         db.exec(`
-                            CREATE TABLE albums (
+                            CREATE TABLE albums_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               title TEXT NOT NULL,
                               slug TEXT NOT NULL UNIQUE,
@@ -736,15 +735,16 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO albums SELECT * FROM albums_old");
-                        db.exec("DROP TABLE albums_old");
+                        db.exec("INSERT INTO albums_new SELECT * FROM albums");
+                        db.exec("DROP TABLE albums");
+                        db.exec("ALTER TABLE albums_new RENAME TO albums");
                     }
 
                     if (tracksNeedsFix) {
                         console.log("   - Repairing 'tracks' table...");
-                        db.exec("ALTER TABLE tracks RENAME TO tracks_old");
+                        db.exec("DROP TABLE IF EXISTS tracks_new");
                         db.exec(`
-                            CREATE TABLE tracks (
+                            CREATE TABLE tracks_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               title TEXT NOT NULL,
                               album_id INTEGER REFERENCES albums(id),
@@ -774,15 +774,16 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO tracks SELECT * FROM tracks_old");
-                        db.exec("DROP TABLE tracks_old");
+                        db.exec("INSERT INTO tracks_new SELECT * FROM tracks");
+                        db.exec("DROP TABLE tracks");
+                        db.exec("ALTER TABLE tracks_new RENAME TO tracks");
                     }
 
                     if (releasesNeedsFix) {
                         console.log("   - Repairing 'releases' table...");
-                        db.exec("ALTER TABLE releases RENAME TO releases_old");
+                        db.exec("DROP TABLE IF EXISTS releases_new");
                         db.exec(`
-                            CREATE TABLE releases (
+                            CREATE TABLE releases_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               title TEXT NOT NULL,
                               slug TEXT NOT NULL UNIQUE,
@@ -810,15 +811,16 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO releases SELECT * FROM releases_old");
-                        db.exec("DROP TABLE releases_old");
+                        db.exec("INSERT INTO releases_new SELECT * FROM releases");
+                        db.exec("DROP TABLE releases");
+                        db.exec("ALTER TABLE releases_new RENAME TO releases");
                     }
 
                     if (releaseTracksNeedsFix) {
                         console.log("   - Repairing 'release_tracks' table...");
-                        db.exec("ALTER TABLE release_tracks RENAME TO release_tracks_old");
+                        db.exec("DROP TABLE IF EXISTS release_tracks_new");
                         db.exec(`
-                            CREATE TABLE release_tracks (
+                            CREATE TABLE release_tracks_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               release_id INTEGER REFERENCES releases(id) ON DELETE CASCADE,
                               track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
@@ -831,8 +833,9 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO release_tracks SELECT * FROM release_tracks_old");
-                        db.exec("DROP TABLE release_tracks_old");
+                        db.exec("INSERT INTO release_tracks_new SELECT * FROM release_tracks");
+                        db.exec("DROP TABLE release_tracks");
+                        db.exec("ALTER TABLE release_tracks_new RENAME TO release_tracks");
                     }
                 });
                 
@@ -840,6 +843,8 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("✅ [Database] Deep schema repair complete.");
             } catch (e) {
                 console.error("❌ [Database] Deep schema repair failed:", e);
+                // If it failed halfway, we might have ..._new tables left. 
+                // We should try to clean up or the next run will fail with "table already exists".
             } finally {
                 db.exec("PRAGMA foreign_keys = ON");
             }
