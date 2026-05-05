@@ -316,13 +316,26 @@ export class LibraryService {
             finalArtistId = existingArtist ? existingArtist.id : this.db.createArtist(artistName);
         }
 
+        let finalOwnerId = ownerId !== undefined ? ownerId : track.owner_id;
+        
+        // Safety check for owner_id integrity (especially if it was corrupted by the old artist_id bug)
+        if (finalOwnerId) {
+            const isValidAdmin = this.db.db.prepare("SELECT 1 FROM admin WHERE id = ?").get(finalOwnerId);
+            if (!isValidAdmin) {
+                console.warn(`[LibraryService] Invalid owner_id ${finalOwnerId} detected for track ${trackId}. Falling back to primary admin.`);
+                finalOwnerId = this.db.getPrimaryAdminId();
+            }
+        } else {
+            finalOwnerId = this.db.getPrimaryAdminId();
+        }
+
         let finalAlbumId = albumId !== undefined ? albumId : undefined;
         if (finalAlbumId === null && typeof album === 'string' && album.trim() !== "") {
             const albumName = album.trim();
             const slug = "lib-" + albumName.toLowerCase().replace(/[^a-z0-9]/g, '-');
             const existingAlbum = this.db.getAlbumBySlug(slug);
             finalAlbumId = existingAlbum ? existingAlbum.id : this.db.createAlbum({
-                title: albumName, slug, artist_id: finalArtistId || track.artist_id, owner_id: ownerId !== undefined ? ownerId : track.owner_id,
+                title: albumName, slug, artist_id: finalArtistId || track.artist_id, owner_id: finalOwnerId,
                 date: null, cover_path: null, genre: "Library", description: "",
                 type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
                 external_links: null, is_public: false, visibility: 'private', is_release: false,
@@ -394,7 +407,7 @@ export class LibraryService {
 
         if (finalAlbumId !== undefined) this.db.updateTrackAlbum(trackId, finalAlbumId);
         if (ownerId !== undefined) {
-            this.db.updateTrackOwner(trackId, ownerId);
+            this.db.updateTrackOwner(trackId, finalOwnerId);
         }
         if (trackNumber !== undefined) {
             this.db.updateTrackNumber(trackId, trackNumber);
