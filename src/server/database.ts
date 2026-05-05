@@ -779,12 +779,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             while (attempt < 100) {
                 try {
                     const result = db.prepare(`
-                        INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `).run(
                         release.title, finalSlug, release.artist_id, release.owner_id,
                         release.date, release.cover_path, release.genre, release.description, release.type, release.year,
-                        release.download, release.price || 0, release.price_usdc || 0, release.currency || 'ETH', release.external_links,
+                        release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', release.external_links,
                         release.visibility || 'private', release.published_at, 
                         release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
                         release.license
@@ -851,6 +851,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const filePath = metadata?.file_path || libraryTrack?.file_path || null;
             const price = metadata?.price || 0;
             const priceUsdc = metadata?.price_usdc || 0;
+            const priceUsdt = metadata?.price_usdt || 0;
             const currency = metadata?.currency || 'ETH';
 
             let trackNum = metadata?.track_num;
@@ -860,9 +861,9 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
 
             const result = db.prepare(`
-                INSERT INTO release_tracks (release_id, track_id, title, artist_name, track_num, duration, file_path, price, price_usdc, currency)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(releaseId, effectiveTrackId, title, artistName, trackNum, duration, filePath, price, priceUsdc, currency);
+                INSERT INTO release_tracks (release_id, track_id, title, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(releaseId, effectiveTrackId, title, artistName, trackNum, duration, filePath, price, priceUsdc, priceUsdt, currency);
 
             return result.lastInsertRowid as number;
         },
@@ -936,10 +937,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 const stmt = db.prepare(`
                     INSERT INTO release_tracks (
                         release_id, track_id, title, artist_name, track_num, 
-                        duration, file_path, price, price_usdc, currency
+                        duration, file_path, price, price_usdc, price_usdt, currency
                     )
                     SELECT ?, t.id, t.title, t.artist_name, ?, 
-                           t.duration, t.file_path, t.price, t.price_usdc, t.currency
+                           t.duration, t.file_path, t.price, t.price_usdc, t.price_usdt, t.currency
                     FROM tracks t WHERE t.id = ?
                 `);
                 
