@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import React from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import API from '../../services/api';
-import { ShieldAlert, Rocket, Music, Camera } from 'lucide-react';
+import { ShieldAlert, Music } from 'lucide-react';
 
 export const SetupWizardModal = () => {
-    const { mustChangePassword, checkAuth, logout, user } = useAuthStore();
+    const { mustChangePassword, checkAuth, logout } = useAuthStore();
     const [step, setStep] = useState(1);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -14,8 +14,7 @@ export const SetupWizardModal = () => {
     // Site Identity
     const [siteName, setSiteName] = useState('');
     const [siteDescription, setSiteDescription] = useState('');
-    const [logo, setLogo] = useState<File | null>(null);
-    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);

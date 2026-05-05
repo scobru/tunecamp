@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { lazy, Suspense, useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
-import { ForcePasswordChangeModal } from "./components/modals/ForcePasswordChangeModal";
+import { SetupWizardModal } from "./components/modals/SetupWizardModal";
 
 // Lazy-load all page components to reduce initial bundle size
 const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
