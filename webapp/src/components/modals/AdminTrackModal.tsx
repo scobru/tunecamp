@@ -187,7 +187,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
 
   return (
     <dialog id="admin-track-modal" className="modal" ref={dialogRef}>
-      <div className="modal-box bg-base-100 border border-white/5">
+      <div className="modal-box bg-base-100 border border-base-content/5">
         <form method="dialog">
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
             ✕
@@ -412,3 +412,4 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
     </dialog>
   );
 };
+

@@ -224,7 +224,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
 
     return (
         <dialog id="admin-artist-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-white/5 w-11/12 max-w-2xl">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
@@ -393,7 +393,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                             <div className="flex items-center gap-4">
                                 {isEditing && editId && !avatarFile && (
                                     <div className="avatar">
-                                        <div className="w-16 h-16 rounded-full border border-white/10">
+                                        <div className="w-16 h-16 rounded-full border border-base-content/10">
                                             <img src={API.getArtistCoverUrl(editId, Date.now())} />
                                         </div>
                                     </div>
@@ -454,3 +454,4 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
         </dialog>
     );
 };
+

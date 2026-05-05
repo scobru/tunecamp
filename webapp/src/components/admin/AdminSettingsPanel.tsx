@@ -196,7 +196,7 @@ export const AdminSettingsPanel = () => {
 
   return (
     <form onSubmit={handleSave} className="space-y-8 max-w-4xl">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+      <div className="flex items-center justify-between border-b border-base-content/10 pb-4 mb-6">
         <div className="flex items-center gap-3">
           <Cog className="text-primary" size={24} />
           <h3 className="font-bold text-2xl">Site Settings</h3>
@@ -219,7 +219,7 @@ export const AdminSettingsPanel = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* General Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-primary/80">
             <Layout size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">General Configuration</h4>
@@ -250,7 +250,7 @@ export const AdminSettingsPanel = () => {
             />
           </div>
 
-          <div className="form-control pt-2 border-t border-white/5 mt-4">
+          <div className="form-control pt-2 border-t border-base-content/5 mt-4">
             <label className="label cursor-pointer justify-between">
               <div className="flex items-center gap-2">
                 <Shield size={16} className="opacity-60" />
@@ -270,7 +270,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Federation Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-secondary/80">
             <Globe size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">Federation & Network</h4>
@@ -309,7 +309,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Branding Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-accent/80">
             <Palette size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">Branding & Appearance</h4>
@@ -360,8 +360,8 @@ export const AdminSettingsPanel = () => {
               </div>
               
               {settings.backgroundImage && (
-                <div className="mt-2 text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-white/5">
-                  <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-white/10" style={{ backgroundImage: `url(${settings.backgroundImage})` }}></div>
+                <div className="mt-2 text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5">
+                  <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.backgroundImage})` }}></div>
                   <span className="truncate">Current Background: {settings.backgroundImage}</span>
                 </div>
               )}
@@ -370,7 +370,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Web3 Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-yellow-400">
             <Wallet size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">Web3 Store Configuration (Base Network)</h4>
@@ -404,7 +404,7 @@ export const AdminSettingsPanel = () => {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5">
+          <div className="pt-4 border-t border-base-content/5">
             {hasDeployedStore ? (
               <div className="bg-success/10 border border-success/30 p-4 rounded-xl flex items-center gap-3">
                 <div className="p-2 bg-success/20 rounded-full text-success">
@@ -440,7 +440,7 @@ export const AdminSettingsPanel = () => {
         </div>
         
         {/* Revenue & Fees Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-green-400">
             <Save size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">Revenue & Fees (Label Admin)</h4>
@@ -483,7 +483,7 @@ export const AdminSettingsPanel = () => {
             </div>
           </div>
           
-          <div className="pt-4 border-t border-white/5 flex flex-col md:flex-row items-center gap-4">
+          <div className="pt-4 border-t border-base-content/5 flex flex-col md:flex-row items-center gap-4">
             <div className="flex-1 opacity-60 text-xs">
               <p>If you have a deployed Web3 Store, you must sync the treasury address to the blockchain to collect contract fees.</p>
             </div>
@@ -499,7 +499,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Telegram Bot Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-blue-400">
             <Shield size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">Telegram Music Ingester</h4>
@@ -545,7 +545,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Soulseek Configuration */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-white/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-primary">
             <Activity size={18} />
             <h4 className="font-bold uppercase text-xs tracking-wider">Soulseek Configuration</h4>
@@ -598,3 +598,4 @@ export const AdminSettingsPanel = () => {
     </form>
   );
 };
+

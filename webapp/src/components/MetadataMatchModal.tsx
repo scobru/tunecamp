@@ -73,8 +73,8 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-base-300 w-full max-w-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+      <div className="bg-base-300 w-full max-w-2xl rounded-2xl border border-base-content/10 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="p-6 border-b border-base-content/10 flex items-center justify-between bg-base-content/5">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Music className="text-primary" /> Match Metadata
           </h2>
@@ -121,7 +121,7 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
               results.map((match) => (
                 <div
                   key={match.id}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all group"
+                  className="flex items-center gap-4 p-4 rounded-xl bg-base-content/5 hover:bg-base-content/10 border border-transparent hover:border-base-content/10 transition-all group"
                 >
                   <div className="w-12 h-12 rounded-lg bg-base-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                     {match.coverUrl ? (
@@ -197,3 +197,4 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
     </div>
   );
 };
+

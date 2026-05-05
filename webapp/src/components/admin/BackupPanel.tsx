@@ -45,7 +45,7 @@ export const BackupPanel = () => {
 
             <div className="grid gap-6 md:grid-cols-2">
                 {/* Backup Section */}
-                <div className="card bg-base-200 border border-white/5">
+                <div className="card bg-base-200 border border-base-content/5">
                     <div className="card-body">
                         <h2 className="card-title"><Download /> Export Data</h2>
                         <p className="opacity-70 text-sm mb-4">Download a complete snapshot of your TuneCamp instance.</p>
@@ -114,3 +114,4 @@ export const BackupPanel = () => {
         </div>
     );
 };
+

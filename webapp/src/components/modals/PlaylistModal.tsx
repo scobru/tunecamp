@@ -97,7 +97,7 @@ export const PlaylistModal = () => {
 
     return (
         <dialog id="playlist-modal" className="modal modal-bottom sm:modal-middle" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-white/5 p-0 overflow-hidden max-w-md">
+            <div className="modal-box bg-base-100 border border-base-content/5 p-0 overflow-hidden max-w-md">
                 <div className="p-6 pb-0 flex justify-between items-center">
                     <h3 className="font-black text-xl flex items-center gap-3 uppercase tracking-tighter">
                         <ListMusic size={24} className="text-primary"/> Add to Playlist
@@ -115,7 +115,7 @@ export const PlaylistModal = () => {
                                 <p className="text-xs font-bold uppercase tracking-widest">Loading Playlists...</p>
                             </div>
                         ) : playlists.length === 0 ? (
-                            <div className="text-center py-12 bg-base-200/50 rounded-3xl border border-dashed border-white/5">
+                            <div className="text-center py-12 bg-base-200/50 rounded-3xl border border-dashed border-base-content/5">
                                 <p className="opacity-40 text-sm font-medium italic">No playlists found.</p>
                             </div>
                         ) : (
@@ -128,12 +128,12 @@ export const PlaylistModal = () => {
                                         key={p.id} 
                                         className={clsx(
                                             "flex items-center gap-4 p-3 rounded-2xl transition-all text-left group",
-                                            isSuccess ? "bg-success/10 text-success" : "hover:bg-white/5"
+                                            isSuccess ? "bg-success/10 text-success" : "hover:bg-base-content/5"
                                         )}
                                         onClick={() => addToPlaylist(p.id)}
                                         disabled={!!successId}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-base-300 flex items-center justify-center overflow-hidden shrink-0 border border-white/5">
+                                        <div className="w-12 h-12 rounded-xl bg-base-300 flex items-center justify-center overflow-hidden shrink-0 border border-base-content/5">
                                             {p.coverPath ? (
                                                 <img src={p.coverPath} className="w-full h-full object-cover" alt="" />
                                             ) : (
@@ -176,7 +176,7 @@ export const PlaylistModal = () => {
                                 </label>
                                 <input 
                                     type="text" 
-                                    className="input input-bordered bg-base-200 border-white/5 focus:border-primary/30 rounded-2xl w-full" 
+                                    className="input input-bordered bg-base-200 border-base-content/5 focus:border-primary/30 rounded-2xl w-full" 
                                     placeholder="e.g. Summer Vibes 2026" 
                                     value={newPlaylistName}
                                     onChange={e => setNewPlaylistName(e.target.value)}
@@ -210,3 +210,4 @@ export const PlaylistModal = () => {
         </dialog>
     );
 };
+

@@ -55,7 +55,7 @@ const SiteCard = memo(({ site }: { site: any }) => {
       href={site.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`card bg-base-200 border ${isLocal ? 'border-primary/50' : 'border-white/5'} hover:border-primary/30 transition-all hover:scale-[1.01] group`}
+      className={`card bg-base-200 border ${isLocal ? 'border-primary/50' : 'border-base-content/5'} hover:border-primary/30 transition-all hover:scale-[1.01] group`}
     >
       <figure className="h-32 bg-base-300 relative overflow-hidden">
         {coverUrl ? (
@@ -87,7 +87,7 @@ const SiteCard = memo(({ site }: { site: any }) => {
           {site.description || "No description provided."}
         </p>
 
-        <div className="flex items-center justify-between text-xs font-mono opacity-50 border-t border-white/5 pt-4 mt-2">
+        <div className="flex items-center justify-between text-xs font-mono opacity-50 border-t border-base-content/5 pt-4 mt-2">
           <span className={`badge badge-xs ${getFederationBadge(site.federation).class}`}>
             {getFederationBadge(site.federation).label}
           </span>
@@ -118,7 +118,7 @@ const PostCard = memo(({
 
     return (
       <div
-        className={`card border hover:bg-base-200 transition-all group shadow-sm hover:shadow-md ${isHidden ? "bg-error/10 border-error/20 opacity-70" : "bg-base-200/50 border-white/5"}`}
+        className={`card border hover:bg-base-200 transition-all group shadow-sm hover:shadow-md ${isHidden ? "bg-error/10 border-error/20 opacity-70" : "bg-base-200/50 border-base-content/5"}`}
       >
         <div className="p-4 flex flex-col gap-3">
           <div className="flex items-start justify-between gap-2">
@@ -159,7 +159,7 @@ const PostCard = memo(({
         <div className="text-sm opacity-80 line-clamp-4 prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.content || "" }}>
         </div>
 
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
+        <div className="flex items-center justify-between mt-auto pt-3 border-t border-base-content/5">
           <a
             href={siteUrl}
             target="_blank"
@@ -221,7 +221,7 @@ const TrackCard = memo(({
 
   return (
     <div
-      className={`card border hover:bg-base-200 transition-all cursor-pointer group shadow-sm hover:shadow-md ${isHidden ? "bg-error/10 border-error/20 opacity-70" : "bg-base-200/50 border-white/5"}`}
+      className={`card border hover:bg-base-200 transition-all cursor-pointer group shadow-sm hover:shadow-md ${isHidden ? "bg-error/10 border-error/20 opacity-70" : "bg-base-200/50 border-base-content/5"}`}
       onClick={() => onPlay(item)}
     >
       <div className="p-3 flex items-center gap-4">
@@ -447,7 +447,7 @@ export const Network = () => {
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">
-      <header className="flex flex-col gap-4 border-b border-white/5 pb-8">
+      <header className="flex flex-col gap-4 border-b border-base-content/5 pb-8">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
@@ -527,7 +527,7 @@ export const Network = () => {
             ></div>
             ActivityPub: {status?.activitypub?.enabled ? "ACTIVE" : "SETUP REQUIRED"}
           </div>
-          <div className="px-3 py-1 rounded-full border border-white/10 text-white/50 font-bold">
+          <div className="px-3 py-1 rounded-full border border-base-content/10 text-base-content/50 font-bold">
             {(status?.sites || 0)} instances • {allReleases.length} tracks
           </div>
         </div>
@@ -535,7 +535,7 @@ export const Network = () => {
 
       {/* Remote Network Content */}
       <section className="space-y-8">
-        <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+        <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
           <Globe size={24} className="text-accent" />
           <div>
             <h2 className="text-2xl font-bold">Network Releases</h2>
@@ -560,15 +560,15 @@ export const Network = () => {
             })}
           </div>
         ) : (
-          <div className="text-center py-8 opacity-40 border border-dashed border-white/5 rounded-xl text-sm">
+          <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
             No remote tracks discovered yet. Other instances will appear once they register via GunDB or ActivityPub.
           </div>
         )}
       </section>
 
       {/* Local Content */}
-      <section className="space-y-8 bg-white/5 p-8 rounded-3xl border border-white/5">
-        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+      <section className="space-y-8 bg-base-content/5 p-8 rounded-3xl border border-base-content/5">
+        <div className="flex items-center gap-3 border-b border-base-content/10 pb-4">
           <Music size={24} className="text-primary" />
           <div>
             <h2 className="text-2xl font-bold">My Instance</h2>
@@ -593,7 +593,7 @@ export const Network = () => {
             })}
           </div>
         ) : (
-          <div className="text-center py-8 opacity-40 border border-dashed border-white/10 rounded-xl text-sm">
+          <div className="text-center py-8 opacity-40 border border-dashed border-base-content/10 rounded-xl text-sm">
             No public releases on this instance.
           </div>
         )}
@@ -602,7 +602,7 @@ export const Network = () => {
       {/* Community Posts */}
       {allPosts.length > 0 && (
         <section className="space-y-8">
-          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+          <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
             <Globe size={24} className="text-info" />
             <div>
               <h2 className="text-2xl font-bold">Community Posts</h2>
@@ -625,7 +625,7 @@ export const Network = () => {
 
       {/* Instance Directory */}
       <section className="space-y-8">
-        <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+        <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
           <Server size={24} className="text-info" />
           <div>
             <h2 className="text-2xl font-bold">Instance Directory</h2>
@@ -640,7 +640,7 @@ export const Network = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 opacity-40 border border-dashed border-white/5 rounded-xl text-sm">
+          <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
             No instances discovered yet.
           </div>
         )}
@@ -648,3 +648,4 @@ export const Network = () => {
     </div>
   );
 };
+

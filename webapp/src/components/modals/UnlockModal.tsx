@@ -55,7 +55,7 @@ export const UnlockModal = () => {
 
     return (
         <dialog id="unlock-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-white/5 max-w-sm">
+            <div className="modal-box bg-base-100 border border-base-content/5 max-w-sm">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
@@ -92,3 +92,4 @@ export const UnlockModal = () => {
         </dialog>
     );
 };
+

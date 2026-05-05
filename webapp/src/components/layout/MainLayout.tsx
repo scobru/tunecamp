@@ -13,10 +13,17 @@ import { AdminArtistModal } from "../modals/AdminArtistModal";
 import { CheckoutModal } from "../modals/CheckoutModal";
 import { CommandPalette } from "../modals/CommandPalette";
 import { usePlayerStore } from "../../stores/usePlayerStore";
+import { useUIStore } from "../../stores/useUIStore";
 
 export const MainLayout = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const dominantColor = usePlayerStore(state => state.dominantColor);
+  const theme = useUIStore(state => state.theme);
+
+  useEffect(() => {
+    // Apply theme on mount and when it changes
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     API.getSiteSettings()
@@ -46,7 +53,7 @@ export const MainLayout = () => {
         />
 
         {/* Mobile Header */}
-        <div className="navbar lg:hidden bg-base-100/80 backdrop-blur-md border-b border-white/5 min-h-16 z-20">
+        <div className="navbar lg:hidden bg-base-100/80 backdrop-blur-md border-b border-base-content/5 min-h-16 z-20">
           <div className="flex-none">
             <label
               htmlFor="main-drawer"
@@ -118,3 +125,4 @@ export const MainLayout = () => {
     </div>
   );
 };
+

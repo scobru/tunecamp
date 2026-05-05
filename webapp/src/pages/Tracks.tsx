@@ -140,7 +140,7 @@ export const Tracks = () => {
             type="text"
             aria-label="Filter tracks"
             placeholder="Search titles, artists, albums..."
-            className="input input-lg bg-base-200/50 border-white/5 focus:border-primary/30 w-full pl-12 rounded-2xl transition-all"
+            className="input input-lg bg-base-200/50 border-base-content/5 focus:border-primary/30 w-full pl-12 rounded-2xl transition-all"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
@@ -148,7 +148,7 @@ export const Tracks = () => {
       </div>
 
       <div className="space-y-2">
-        <div className="list bg-base-200/20 rounded-[2rem] border border-white/5 overflow-hidden">
+        <div className="list bg-base-200/20 rounded-[2rem] border border-base-content/5 overflow-hidden">
           {filteredTracks.slice(0, 100).map((track, i) => {
             if (!track || !track.title) return null;
             const isLiked = track.liked || likedTrackIds.has(String(track.id));
@@ -159,7 +159,7 @@ export const Tracks = () => {
             return (
               <div
                 key={track.id}
-                className="list-row items-center hover:bg-white/5 transition-colors px-4 py-2 group border-b border-white/5 last:border-0"
+                className="list-row items-center hover:bg-base-content/5 transition-colors px-4 py-2 group border-b border-base-content/5 last:border-0"
               >
                 <div className="text-xs font-black opacity-20 w-8 tabular-nums group-hover:opacity-0 transition-opacity">
                    {String(i + 1).padStart(2, '0')}
@@ -174,7 +174,7 @@ export const Tracks = () => {
                       {track.title}
                     </button>
                     {track.losslessPath && (
-                      <span className="text-[8px] font-black opacity-30 border border-white/10 px-1 rounded uppercase">Hi-Res</span>
+                      <span className="text-[8px] font-black opacity-30 border border-base-content/10 px-1 rounded uppercase">Hi-Res</span>
                     )}
                     {isLiked && <Heart size={10} className="text-primary" fill="currentColor" />}
                   </div>
@@ -206,7 +206,7 @@ export const Tracks = () => {
                     <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle">
                       <MoreHorizontal size={16} />
                     </div>
-                    <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-white/10 mt-2">
+                    <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
                       {purchased && (
                         <li>
                           <a className="text-success font-bold">
@@ -250,4 +250,5 @@ export const Tracks = () => {
     </div>
   );
 };
+
 

@@ -15,7 +15,7 @@ export const About = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="card bg-base-200 border border-white/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Cpu size={28} />
@@ -28,7 +28,7 @@ export const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-white/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
               <Music size={28} />
@@ -41,7 +41,7 @@ export const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-white/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
               <Globe size={28} />
@@ -54,7 +54,7 @@ export const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-white/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Shield size={28} />
@@ -67,7 +67,7 @@ export const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-white/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
               <Users size={28} />
@@ -80,7 +80,7 @@ export const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-white/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
               <Zap size={28} />
@@ -94,7 +94,7 @@ export const About = () => {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-8 border border-white/5 text-center space-y-6">
+      <div className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-8 border border-base-content/5 text-center space-y-6">
         <h2 className="text-3xl font-bold">Open Source & Community Driven</h2>
         <p className="text-lg opacity-70 max-w-3xl mx-auto">
           TuneCamp is built by and for the independent music community. We
@@ -120,3 +120,4 @@ export const About = () => {
 };
 
 export default About;
+

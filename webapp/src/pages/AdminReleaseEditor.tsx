@@ -597,7 +597,7 @@ export default function AdminReleaseEditor() {
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* Header / Toolbar - Sticky and Responsive */}
-      <div className="sticky top-0 z-50 navbar bg-base-100/60 backdrop-blur-xl border-b border-white/5 px-4 lg:px-6 min-h-[4rem]">
+      <div className="sticky top-0 z-50 navbar bg-base-100/60 backdrop-blur-xl border-b border-base-content/5 px-4 lg:px-6 min-h-[4rem]">
         <div className="flex-1 gap-2 lg:gap-4 overflow-hidden">
           <button
             onClick={() => navigate("/admin")}
@@ -656,7 +656,7 @@ export default function AdminReleaseEditor() {
             {/* LEFT COLUMN: PRIMARY METADATA & COVER */}
             <div className="lg:col-span-4 xl:col-span-3 space-y-8">
               {/* Cover Art */}
-              <div className="card bg-base-100 shadow-xl overflow-hidden border border-white/5">
+              <div className="card bg-base-100 shadow-xl overflow-hidden border border-base-content/5">
                 <div
                   className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${(isAdmin || (isSuperUser && user?.artistId)) ? 'cursor-pointer' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
@@ -698,7 +698,7 @@ export default function AdminReleaseEditor() {
               </div>
 
               {/* Album Primary Info */}
-              <div className="card bg-base-100 shadow-xl border border-white/5 p-6 space-y-6">
+              <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-6">
                 {(isAdmin || (isSuperUser && user?.artistId)) && (
                   <div className="form-control">
                     <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Import from Bandcamp</label>
@@ -746,7 +746,7 @@ export default function AdminReleaseEditor() {
                       ))}
                     </select>
                   ) : (
-                    <div className="bg-base-200/50 p-3 rounded-lg text-sm font-medium border border-white/5">
+                    <div className="bg-base-200/50 p-3 rounded-lg text-sm font-medium border border-base-content/5">
                        {artists.find(a => a.id.toString() === metadata.artist_id?.toString())?.name || "Loading..."}
                     </div>
                   )}
@@ -789,11 +789,11 @@ export default function AdminReleaseEditor() {
               </div>
 
               {/* Visibility & Federation */}
-              <div className="card bg-base-100 shadow-xl border border-white/5 p-6 space-y-4">
+              <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-4">
                 <h3 className="text-xs font-bold uppercase tracking-widest opacity-50">Visibility & Distribution</h3>
                 <div className="grid grid-cols-1 gap-2">
                    {["public", "unlisted", "private"].map((v) => (
-                     <label key={v} className={`flex items-center gap-3 p-3 rounded-xl border border-white/5 cursor-pointer transition-all ${metadata.visibility === v ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
+                     <label key={v} className={`flex items-center gap-3 p-3 rounded-xl border border-base-content/5 cursor-pointer transition-all ${metadata.visibility === v ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
                         <input
                           type="radio"
                           name="visibility"
@@ -814,7 +814,7 @@ export default function AdminReleaseEditor() {
                 </div>
 
                 {(metadata.visibility === "public" || metadata.visibility === "unlisted") && (
-                  <div className="space-y-2 mt-4 pt-4 border-t border-white/5">
+                  <div className="space-y-2 mt-4 pt-4 border-t border-base-content/5">
                     <label className="flex items-center gap-3 p-2 cursor-pointer hover:bg-base-200 rounded-lg transition-colors">
                       <input
                         type="checkbox"
@@ -842,7 +842,7 @@ export default function AdminReleaseEditor() {
             <div className="lg:col-span-8 xl:col-span-9 space-y-8">
               
               {/* Actions Toolbar */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-4 rounded-2xl shadow-lg border border-white/5">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-4 rounded-2xl shadow-lg border border-base-content/5">
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
                     <Music className="w-6 h-6 text-primary" /> Tracks
@@ -870,7 +870,7 @@ export default function AdminReleaseEditor() {
               </div>
 
               {/* Tracks Table */}
-              <div className="card bg-base-100 shadow-2xl border border-white/5 overflow-hidden font-sans">
+              <div className="card bg-base-100 shadow-2xl border border-base-content/5 overflow-hidden font-sans">
                 <div className="overflow-x-auto">
                   <table className="table table-md w-full">
                     <thead>
@@ -1112,7 +1112,7 @@ export default function AdminReleaseEditor() {
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {filesToUpload.map((file, idx) => (
-                        <div key={`upload-${idx}`} className="flex items-center gap-3 bg-base-100 p-2 rounded-lg text-xs border border-white/5">
+                        <div key={`upload-${idx}`} className="flex items-center gap-3 bg-base-100 p-2 rounded-lg text-xs border border-base-content/5">
                           {uploadingFileIndex !== null ? <span className="loading loading-spinner loading-xs text-primary"></span> : <Music className="w-3 h-3 opacity-30" />}
                           <span className="flex-1 truncate opacity-70">{file.name}</span>
                           <button className="btn btn-ghost btn-xs btn-circle text-error" onClick={() => setFilesToUpload(prev => prev.filter((_, i) => i !== idx))} disabled={uploadingFileIndex !== null}>
@@ -1126,7 +1126,7 @@ export default function AdminReleaseEditor() {
               </div>
 
                {/* Description & Credits - Full Width */}
-               <div className="card bg-base-100 shadow-xl border border-white/5 p-6 mt-8">
+               <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 mt-8">
                  <h3 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4 flex items-center gap-2">
                      <Disc className="w-4 h-4" /> Description & Credits
                  </h3>
@@ -1144,13 +1144,13 @@ export default function AdminReleaseEditor() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
                 {/* Payment & Web3 */}
                 <div className="space-y-6">
-                  <div className="card bg-base-100 shadow-xl border border-white/5 p-6 space-y-4">
+                  <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest opacity-50 flex items-center gap-2">
                        <Download className="w-3 h-3" /> Payment & Web3 Settings
                     </h3>
                     <div className="form-control">
                       <label className="label-text-alt font-black uppercase tracking-widest opacity-40 mb-2">Smart Contract Mode</label>
-                      <div className="flex items-center justify-between bg-base-200 p-3 rounded-xl border border-white/5">
+                      <div className="flex items-center justify-between bg-base-200 p-3 rounded-xl border border-base-content/5">
                         <span className={`text-[10px] font-bold ${metadata.use_nft === false ? 'text-primary' : 'opacity-40'}`}>Direct Payment</span>
                         <input 
                           type="checkbox" className="toggle toggle-primary toggle-sm mx-2" 
@@ -1183,11 +1183,11 @@ export default function AdminReleaseEditor() {
 
                 {/* Downloads & Advanced */}
                 <div className="space-y-6">
-                  <div className="card bg-base-100 shadow-xl border border-white/5 p-6 space-y-4">
+                  <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest opacity-50">Download Experience</h3>
                     <div className="grid grid-cols-1 gap-2">
                        {["none", "free", "codes"].map((d) => (
-                         <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border border-white/5 cursor-pointer transition-all ${metadata.download === d || (!metadata.download && d === "none") ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
+                         <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border border-base-content/5 cursor-pointer transition-all ${metadata.download === d || (!metadata.download && d === "none") ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
                             <input
                               type="radio" name="download_method" className="radio radio-primary radio-sm"
                               checked={metadata.download === d || (!metadata.download && d === "none")}
@@ -1211,7 +1211,7 @@ export default function AdminReleaseEditor() {
                     )}
                   </div>
 
-                  <div className="card bg-base-100 shadow-xl border border-white/5 p-6">
+                  <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6">
                     <h3 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4">Legals & Rights</h3>
                     <select
                       className="select select-bordered w-full text-sm"
@@ -1250,3 +1250,4 @@ export default function AdminReleaseEditor() {
     </div>
   );
 }
+

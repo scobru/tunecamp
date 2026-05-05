@@ -154,7 +154,7 @@ export const Social = () => {
             </div>
 
             <div className="card card-m3 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-transparent p-6 border-b border-white/5">
+              <div className="bg-gradient-to-r from-primary/10 to-transparent p-6 border-b border-base-content/5">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   Mastodon Cross-Posting
                 </h3>
@@ -227,4 +227,5 @@ export const Social = () => {
     </div>
   );
 };
+
 

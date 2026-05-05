@@ -98,8 +98,8 @@ export const Artists = () => {
                     <div key={artist.id} className={clsx(
                         "group relative transition-all duration-200",
                         viewMode === 'grid' && "text-center block",
-                        viewMode === 'list' && "flex items-center gap-4 bg-base-200 p-4 rounded-xl hover:bg-base-300 transition-colors shadow-sm border border-white/5",
-                        viewMode === 'minimal' && "flex items-center gap-3 bg-base-200/40 p-2 px-3 rounded-lg hover:bg-base-200 transition-colors border border-white/5"
+                        viewMode === 'list' && "flex items-center gap-4 bg-base-200 p-4 rounded-xl hover:bg-base-300 transition-colors shadow-sm border border-base-content/5",
+                        viewMode === 'minimal' && "flex items-center gap-3 bg-base-200/40 p-2 px-3 rounded-lg hover:bg-base-200 transition-colors border border-base-content/5"
                     )}>
                         {currentUser?.isAdmin && (
                             <div className={clsx(
@@ -172,3 +172,4 @@ export const Artists = () => {
         </div>
     );
 };
+

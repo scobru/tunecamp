@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle, Globe } from 'lucide-react';
 import API from '../../services/api';
 import type { Artist } from '../../types';
 
@@ -187,7 +187,7 @@ export const ActivityPubPanel = () => {
             </div>
 
             {selectedArtist && (
-                <div className="stats shadow-m3-1 w-full bg-base-200/50 border border-white/5 overflow-hidden rounded-box">
+                <div className="stats shadow-m3-1 w-full bg-base-200/50 border border-base-content/5 overflow-hidden rounded-box">
                     <div className="stat">
                         <div className="stat-figure text-primary">
                             <div className="avatar placeholder">
@@ -231,7 +231,7 @@ export const ActivityPubPanel = () => {
                             <h4 className="text-[10px] uppercase font-bold opacity-40 tracking-widest mb-2">Followed Peers</h4>
                             <div className="grid gap-2">
                                 {peers.map(peer => (
-                                    <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-white/5 group hover:bg-base-100/60 transition-colors">
+                                    <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-base-content/5 group hover:bg-base-100/60 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="avatar placeholder">
                                                 <div className="w-8 h-8 rounded-full bg-neutral text-neutral-content shadow-sm">
@@ -334,3 +334,4 @@ export const ActivityPubPanel = () => {
         </div>
     );
 };
+

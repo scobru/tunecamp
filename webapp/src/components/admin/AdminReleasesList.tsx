@@ -162,3 +162,4 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
     </table>
   );
 };
+

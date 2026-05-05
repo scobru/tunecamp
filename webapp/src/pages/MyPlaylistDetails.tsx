@@ -307,10 +307,10 @@ export const MyPlaylistDetails = () => {
       </div>
 
       {/* Track list */}
-      <div className="overflow-x-auto bg-base-200/30 rounded-xl border border-white/5">
+      <div className="overflow-x-auto bg-base-200/30 rounded-xl border border-base-content/5">
         <table className="table w-full">
           <thead>
-            <tr className="border-b border-white/10 text-xs uppercase opacity-50">
+            <tr className="border-b border-base-content/10 text-xs uppercase opacity-50">
               <th className="w-12 text-center">#</th>
               <th>Title</th>
               <th>Source</th>
@@ -325,7 +325,7 @@ export const MyPlaylistDetails = () => {
               playlist.tracks.map((track, i) => (
                 <tr
                   key={`${track.id}-${i}`}
-                  className="hover:bg-white/5 group border-b border-white/5 last:border-0"
+                  className="hover:bg-base-content/5 group border-b border-base-content/5 last:border-0"
                 >
                   <td className="text-center opacity-50 font-mono w-12 group-hover:text-primary">
                     <span className="group-hover:hidden">{i + 1}</span>
@@ -380,7 +380,7 @@ export const MyPlaylistDetails = () => {
                         </label>
                         <ul
                           tabIndex={0}
-                          className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-white/10"
+                          className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-base-content/10"
                         >
                           <li>
                             {isOwner && (
@@ -449,3 +449,4 @@ export const MyPlaylistDetails = () => {
 };
 
 export default MyPlaylistDetails;
+

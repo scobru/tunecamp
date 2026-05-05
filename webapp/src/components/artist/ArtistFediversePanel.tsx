@@ -147,7 +147,7 @@ export const ArtistFediversePanel = () => {
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             {followers.map(follower => (
-                                <div key={follower.uri} className="flex items-center gap-3 p-3 bg-base-100/50 rounded-box border border-white/5 hover:border-primary/30 transition-colors">
+                                <div key={follower.uri} className="flex items-center gap-3 p-3 bg-base-100/50 rounded-box border border-base-content/5 hover:border-primary/30 transition-colors">
                                     <div className="avatar placeholder">
                                         <div className="w-10 rounded-full bg-neutral text-neutral-content shadow-sm">
                                             {follower.actor?.icon_url ? (
@@ -230,3 +230,4 @@ export const ArtistFediversePanel = () => {
         </div>
     );
 };
+

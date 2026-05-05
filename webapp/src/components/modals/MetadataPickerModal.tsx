@@ -71,7 +71,7 @@ export const MetadataPickerModal = ({ track, isOpen, onClose, onApplied }: Metad
                     </button>
                 </div>
 
-                <div className="mb-6 p-4 bg-base-300 rounded-box border border-white/5">
+                <div className="mb-6 p-4 bg-base-300 rounded-box border border-base-content/5">
                     <div className="text-xs uppercase opacity-50 font-bold mb-1">Current Track Info</div>
                     <div className="font-bold">{track.artist_name} - {track.title}</div>
                     <div className="text-sm opacity-70 italic">{track.album_title || "Unknown Album"}</div>
@@ -91,10 +91,10 @@ export const MetadataPickerModal = ({ track, isOpen, onClose, onApplied }: Metad
                         candidates.map((c, i) => (
                             <div 
                                 key={`${c.id}-${i}`} 
-                                className="flex gap-4 p-4 bg-base-100 rounded-xl border border-white/5 hover:border-primary/50 transition-all group cursor-pointer"
+                                className="flex gap-4 p-4 bg-base-100 rounded-xl border border-base-content/5 hover:border-primary/50 transition-all group cursor-pointer"
                                 onClick={() => !isApplying && handleSelect(c)}
                             >
-                                <div className="w-20 h-20 bg-base-300 rounded-lg overflow-hidden flex-shrink-0 border border-white/5">
+                                <div className="w-20 h-20 bg-base-300 rounded-lg overflow-hidden flex-shrink-0 border border-base-content/5">
                                     {c.coverUrl ? (
                                         <img src={c.coverUrl} alt="Cover" className="w-full h-full object-cover" />
                                     ) : (
@@ -136,3 +136,4 @@ export const MetadataPickerModal = ({ track, isOpen, onClose, onApplied }: Metad
         </div>
     );
 };
+

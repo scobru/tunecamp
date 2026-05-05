@@ -36,8 +36,8 @@ export const WalletPill = () => {
   if (isWalletLoading) {
     return (
       <div className="flex bg-base-300 rounded-full px-3 py-1 items-center gap-2 animate-pulse mt-2 ring ring-primary/20">
-        <Wallet size={14} className="text-white/50" />
-        <span className="text-xs text-white/50">Loading...</span>
+        <Wallet size={14} className="text-base-content/50" />
+        <span className="text-xs text-base-content/50">Loading...</span>
       </div>
     );
   }
@@ -61,14 +61,14 @@ export const WalletPill = () => {
         "flex mt-2 bg-gradient-to-r from-base-300 to-base-200 rounded-full px-3 py-1 items-center justify-between gap-3 tooltip tooltip-right z-50 transition-all hover:scale-105",
         hasFunds
           ? "ring ring-primary/40 shadow-[0_0_10px_rgba(var(--color-primary),0.3)]"
-          : "border border-white/10 opacity-70 cursor-pointer",
+          : "border border-base-content/10 opacity-70 cursor-pointer",
       )}
       data-tip="Your TuneCamp Wallet"
     >
       <div className="flex items-center gap-1.5 text-xs text-white/80 font-medium">
         <Wallet
           size={12}
-          className={hasFunds ? "text-primary" : "text-white/50"}
+          className={hasFunds ? "text-primary" : "text-base-content/50"}
         />
         {usdcNum > 0 ? (
           <span className="text-secondary">{usdcNum.toFixed(2)} USDC</span>
@@ -79,3 +79,4 @@ export const WalletPill = () => {
     </Link>
   );
 };
+

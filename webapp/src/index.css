@@ -39,11 +39,11 @@
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
 
-  --rounded-btn: 0.5rem; /* Less rounded for a sharper, cleaner look */
+  --rounded-btn: 0.5rem;
   --rounded-badge: 0.25rem;
   --tab-radius: 0.25rem;
 
-  --border-btn: 1px; /* Subtle borders */
+  --border-btn: 1px;
   --animation-btn: 0.2s;
   --btn-focus-scale: 0.98;
 
@@ -51,8 +51,72 @@
   --size-field: 0.25rem;
 
   --border: 1px;
-  --depth: 0; /* Remove 3D depth for a flatter, more modern look */
+  --depth: 0;
   --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(96% 0.01 280);
+  --color-base-300: oklch(92% 0.02 280);
+  --color-base-content: oklch(15% 0.02 280);
+
+  --color-primary: oklch(60% 0.25 290);
+  --color-primary-content: oklch(100% 0 0);
+
+  --color-secondary: oklch(60% 0.01 280);
+  --color-secondary-content: oklch(100% 0 0);
+
+  --color-accent: oklch(70% 0.15 190);
+  --color-accent-content: oklch(10% 0.05 190);
+
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --rounded-btn: 0.5rem;
+  --rounded-badge: 0.25rem;
+}
+
+@plugin "daisyui/theme" {
+  name: "grey";
+  color-scheme: dark;
+  --color-base-100: oklch(30% 0.01 280); /* Charcoal */
+  --color-base-200: oklch(25% 0.01 280);
+  --color-base-300: oklch(20% 0.01 280);
+  --color-base-content: oklch(90% 0.01 280);
+
+  --color-primary: oklch(75% 0 0); /* Metallic Silver */
+  --color-primary-content: oklch(15% 0 0);
+
+  --color-secondary: oklch(55% 0.01 280);
+  --color-accent: oklch(80% 0.1 200); /* Steel Blue */
+
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.4rem;
+  --rounded-btn: 0.25rem;
+}
+
+@plugin "daisyui/theme" {
+  name: "nordic";
+  color-scheme: light;
+  --color-base-100: oklch(97% 0.015 220); /* Ice Blue Base */
+  --color-base-200: oklch(93% 0.025 220);
+  --color-base-300: oklch(89% 0.035 220);
+  --color-base-content: oklch(25% 0.08 220);
+
+  --color-primary: oklch(65% 0.18 215); /* Vibrant Celeste */
+  --color-primary-content: oklch(100% 0 0);
+
+  --color-secondary: oklch(50% 0.1 220);
+  --color-accent: oklch(75% 0.15 160); /* Frosty Mint */
+
+  --radius-selector: 0.8rem;
+  --radius-field: 0.8rem;
+  --radius-box: 1.2rem;
+  --rounded-btn: 0.8rem;
 }
 
 @theme {
@@ -72,7 +136,7 @@
 
 /* Custom Utilities */
 @utility glass-effect {
-  @apply backdrop-blur-md bg-base-200/70 border border-white/5;
+  @apply backdrop-blur-md bg-base-200/60 border border-base-content/5;
 }
 
 @utility scrollbar-thin {

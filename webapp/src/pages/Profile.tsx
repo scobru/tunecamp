@@ -150,7 +150,7 @@ export const Profile = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-20 p-6 md:p-0">
       {/* Profile Header */}
-      <div className="flex flex-col md:flex-row items-center gap-8 border-b border-white/5 pb-10">
+      <div className="flex flex-col md:flex-row items-center gap-8 border-b border-base-content/5 pb-10">
         <div className="relative group">
           <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-primary/20 bg-neutral flex items-center justify-center text-4xl font-black">
             {avatar ? (
@@ -245,7 +245,7 @@ export const Profile = () => {
       <div className="min-h-[400px]">
         {activeTab === "settings" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="card bg-base-100/50 border border-white/5 p-6 space-y-6">
+            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <User size={20} className="text-primary" /> Account Settings
               </h3>
@@ -329,7 +329,7 @@ export const Profile = () => {
               </div>
             </div>
 
-            <div className="card bg-base-100/50 border border-white/5 p-6 space-y-6">
+            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Camera size={20} className="text-secondary" /> Profile Visuals
               </h3>
@@ -369,7 +369,7 @@ export const Profile = () => {
                 Loading favorites...
               </div>
             ) : starredTracks.length === 0 ? (
-              <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-white/10">
+              <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-base-content/10">
                 <Heart size={48} className="mx-auto mb-4" />
                 <p>You haven't liked any tracks yet.</p>
               </div>
@@ -389,7 +389,7 @@ export const Profile = () => {
                 Loading collection...
               </div>
             ) : purchasedTracks.length === 0 ? (
-              <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-white/10">
+              <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-base-content/10">
                 <Download size={48} className="mx-auto mb-4" />
                 <p>Your collection is empty.</p>
               </div>
@@ -532,13 +532,13 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Left Column: Profile & Identity */}
       <div className="lg:col-span-4 space-y-6">
-        <div className="card bg-base-100/50 border border-white/5 p-6 space-y-6">
+        <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <User size={20} className="text-primary" /> Artist Identity
           </h3>
 
           <div className="flex flex-col items-center gap-4 py-2">
-            <div className="w-32 h-32 rounded-2xl overflow-hidden bg-neutral border border-white/10 shadow-xl relative group">
+            <div className="w-32 h-32 rounded-2xl overflow-hidden bg-neutral border border-base-content/10 shadow-xl relative group">
               {avatarPreview ? (
                 <img src={avatarPreview} className="w-full h-full object-cover" />
               ) : initialData?.id ? (
@@ -608,7 +608,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
       <div className="lg:col-span-8 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Monetization Section */}
-          <div className="card bg-base-100/50 border border-white/5 p-6 space-y-4">
+          <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <span className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
                 <Check size={18} />
@@ -647,7 +647,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           </div>
 
           {/* Social Section */}
-          <div className="card bg-base-100/50 border border-white/5 p-6 space-y-4">
+          <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Globe size={20} className="text-sky-400" /> Web Links
             </h3>
@@ -680,8 +680,8 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
         </div>
 
         {/* Federation Section */}
-        <div className="card bg-base-100/50 border border-white/5 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500/10 to-transparent p-6 border-b border-white/5">
+        <div className="card bg-base-100/50 border border-base-content/5 overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-500/10 to-transparent p-6 border-b border-base-content/5">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Play size={20} className="text-indigo-400" /> Federation & Automation
             </h3>
@@ -753,10 +753,10 @@ const TrackList = ({
   onPlay: (t: Track) => void;
 }) => {
   return (
-    <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-white/5 min-h-[300px]">
+    <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-base-content/5 min-h-[300px]">
       <table className="table w-full">
         <thead>
-          <tr className="border-b border-white/10 opacity-50 text-xs uppercase tracking-wider">
+          <tr className="border-b border-base-content/10 opacity-50 text-xs uppercase tracking-wider">
             <th className="w-12 text-center">#</th>
             <th>Title</th>
             <th>Album</th>
@@ -769,7 +769,7 @@ const TrackList = ({
           {tracks.map((track, i) => (
             <tr
               key={track.id}
-              className="hover:bg-white/5 group border-b border-white/5 last:border-0 transition-colors"
+              className="hover:bg-base-content/5 group border-b border-base-content/5 last:border-0 transition-colors"
             >
               <td className="text-center font-mono w-12 relative">
                 <span className="opacity-40 group-hover:opacity-0 transition-opacity absolute inset-0 flex items-center justify-center">
@@ -797,3 +797,4 @@ const TrackList = ({
     </div>
   );
 };
+

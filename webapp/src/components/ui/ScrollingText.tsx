@@ -65,3 +65,4 @@ export const ScrollingText = ({ children, className = '' }: { children: React.Re
         </div>
     );
 };
+

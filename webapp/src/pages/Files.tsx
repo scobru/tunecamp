@@ -134,7 +134,7 @@ export const Files = () => {
                 </div>
              </div>
 
-             <div className="bg-base-200 rounded-lg overflow-hidden border border-white/5">
+             <div className="bg-base-200 rounded-lg overflow-hidden border border-base-content/5">
                 {loading ? (
                     <div className="p-12 text-center opacity-50">Loading...</div>
                 ) : (
@@ -150,7 +150,7 @@ export const Files = () => {
                         </thead>
                         <tbody>
                             {items.map((item, i) => (
-                                <tr key={i} className="hover:bg-white/5 cursor-pointer group" onClick={() => handleFileClick(item)}>
+                                <tr key={i} className="hover:bg-base-content/5 cursor-pointer group" onClick={() => handleFileClick(item)}>
                                     <td>{getIcon(item.type, item.name)}</td>
                                     <td className="font-medium">{item.name}</td>
                                     <td className="text-right font-mono opacity-60 text-xs text-nowrap">
@@ -164,7 +164,7 @@ export const Files = () => {
                                             <label tabIndex={0} aria-label="More options" className="btn btn-ghost btn-xs btn-circle" onClick={e => e.stopPropagation()}>
                                                 <MoreHorizontal size={16}/>
                                             </label>
-                                            <ul tabIndex={0} className="dropdown-content z-[50] menu p-2 shadow bg-base-300 rounded-box w-52 border border-white/10">
+                                            <ul tabIndex={0} className="dropdown-content z-[50] menu p-2 shadow bg-base-300 rounded-box w-52 border border-base-content/10">
                                                 <li>
                                                     <button type="button" onMouseDown={(e) => handleRename(e, item)} className="text-left">
                                                         <Edit2 size={16}/> Rename
@@ -194,3 +194,4 @@ export const Files = () => {
 };
 
 export default Files;
+

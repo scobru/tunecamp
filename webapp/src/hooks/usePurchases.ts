@@ -129,3 +129,4 @@ export function usePurchases() {
 
     return { purchases, loading, isPurchased, getCode, getPurchase, verifyAndGetCode };
 }
+

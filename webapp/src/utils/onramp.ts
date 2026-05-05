@@ -37,3 +37,4 @@ export async function openCoinbaseOnramp(address: string, asset: string = "ETH",
     window.open(legacyUrl, "_blank", "noopener,noreferrer");
   }
 }
+

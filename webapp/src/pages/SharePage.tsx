@@ -151,7 +151,7 @@ export const SharePage = () => {
                 <h1 className="text-sm font-black uppercase tracking-widest opacity-40">Shared Content</h1>
             </div>
 
-            <div className="relative group rounded-[3rem] overflow-hidden border border-white/5 bg-base-200/40 p-8 lg:p-12 shadow-2xl">
+            <div className="relative group rounded-[3rem] overflow-hidden border border-base-content/5 bg-base-200/40 p-8 lg:p-12 shadow-2xl">
                 {/* Background Blur */}
                 <div className="absolute inset-0 z-0">
                     <img src={coverUrl} className="w-full h-full object-cover opacity-10 blur-[100px] scale-150" alt="" />
@@ -208,14 +208,14 @@ export const SharePage = () => {
 
                             <button 
                                 onClick={handleLike}
-                                className={clsx("btn btn-lg btn-square rounded-2xl border border-white/5 hover:bg-white/5", isLiked && "text-primary")}
+                                className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5", isLiked && "text-primary")}
                             >
                                 <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
                             </button>
 
                             <button 
                                 onClick={handleShare}
-                                className="btn btn-lg btn-square rounded-2xl border border-white/5 hover:bg-white/5"
+                                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5"
                             >
                                 <Share2 size={24} />
                             </button>
@@ -257,3 +257,4 @@ export const SharePage = () => {
 
 // Help with Link import
 import { Link } from "react-router-dom";
+

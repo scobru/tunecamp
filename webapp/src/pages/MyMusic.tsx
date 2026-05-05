@@ -65,21 +65,21 @@ export const MyMusic = () => {
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+          <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
             <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">My Releases</div>
             <div className="stat-value text-primary">{stats.albums}</div>
           </div>
-          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+          <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
             <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">My Tracks</div>
             <div className="stat-value text-secondary">{stats.totalTracks}</div>
           </div>
-          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+          <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
             <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">Storage Used</div>
             <div className="stat-value text-accent text-2xl">
               {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(3)} GB
             </div>
           </div>
-          <div className="stat bg-base-200/50 rounded-box border border-white/5 shadow-m3-1">
+          <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
             <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">Genres</div>
             <div className="stat-value">{stats.genresCount}</div>
           </div>
@@ -160,7 +160,7 @@ export const MyMusic = () => {
               </div>
             )}
 
-            <div className="text-center opacity-30 py-12 bg-base-200/20 rounded-box border border-white/5">
+            <div className="text-center opacity-30 py-12 bg-base-200/20 rounded-box border border-base-content/5">
               <BarChart2 size={48} className="mx-auto mb-4" />
               <p className="font-medium">Personal analytics and sales data coming soon.</p>
             </div>
@@ -202,3 +202,4 @@ export const MyMusic = () => {
     </div>
   );
 };
+

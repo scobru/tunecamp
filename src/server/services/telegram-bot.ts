@@ -9,12 +9,34 @@ export class TelegramBotService {
     private bot?: Telegraf;
     private isRunning = false;
     private recentContext = new Map<string, { photoId?: string, caption?: string, timestamp: number }>();
+    private userCooldowns = new Map<string, number>();
+    private readonly COMMAND_COOLDOWN = 3000; // 3 seconds between commands per user
 
     constructor(
         private database: DatabaseService,
         private scanner: ScannerService,
         private musicDir: string
     ) {}
+
+    private checkRateLimit(ctx: any): boolean {
+        const userId = ctx.from?.id?.toString() || ctx.chat?.id?.toString();
+        if (!userId) return true;
+
+        const now = Date.now();
+        const lastRequest = this.userCooldowns.get(userId) || 0;
+        
+        if (now - lastRequest < this.COMMAND_COOLDOWN) {
+            const remaining = Math.ceil((this.COMMAND_COOLDOWN - (now - lastRequest)) / 1000);
+            console.warn(`[TelegramBot] User ${userId} rate limited. Wait ${remaining}s.`);
+            // Silent ignore for very frequent requests (spam), send a hint for slower but still fast ones
+            if (now - lastRequest < 1000) return false; 
+            this.safeReply(ctx, `⏳ Calmati! Aspetta ${remaining} secondi... / Wait ${remaining}s...`);
+            return false;
+        }
+
+        this.userCooldowns.set(userId, now);
+        return true;
+    }
 
     private async safeReply(ctx: any, text: string, retryCount = 0): Promise<any> {
         try {
@@ -47,8 +69,11 @@ export class TelegramBotService {
         try {
             this.bot = new Telegraf(token);
 
-            // Debug logging for all updates
+            // Global middleware for logging and rate limiting
             this.bot.use(async (ctx, next) => {
+                if (ctx.message || ctx.channelPost || ctx.callbackQuery) {
+                    if (!this.checkRateLimit(ctx)) return;
+                }
                 console.log(`[TelegramBot] Update received: ${ctx.updateType}`);
                 return next();
             });
@@ -149,8 +174,6 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                     return this.safeReply(ctx, debugInfo);
                 },
                 'search': async (ctx) => {
-                    // Removed authorization check to make search public
-                    
                     const text = (ctx.message?.text || ctx.channelPost?.text || '');
                     const query = text.split(' ').slice(1).join(' ').trim();
                     
@@ -158,21 +181,19 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
 
                     console.log(`[TelegramBot] Searching for: "${query}"`);
 
-                    // 1. Search in Tracks (Library)
-                    let results = this.database.db.prepare(`
-                        SELECT t.*, ar.name as artist_name, al.cover_path as album_cover
-                        FROM tracks t 
-                        LEFT JOIN artists ar ON t.artist_id = ar.id 
-                        LEFT JOIN albums al ON t.album_id = al.id
-                        WHERE t.title LIKE ? 
-                           OR ar.name LIKE ? 
-                           OR t.artist_name LIKE ?
-                           OR al.title LIKE ?
-                        ORDER BY t.id DESC
-                        LIMIT 10
-                    `).all(`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`) as any[];
+                    // 1. Use the main database search which is more comprehensive
+                    const searchResults = this.database.search(query, false);
+                    let tracks: any[] = [...searchResults.tracks];
 
-                    // 2. Search in Release Tracks (Published Releases)
+                    // 2. If no tracks found but an artist matched, fetch all tracks for that artist
+                    if (tracks.length === 0 && searchResults.artists.length > 0) {
+                        const artist = searchResults.artists[0];
+                        console.log(`[TelegramBot] No direct track matches, but artist "${artist.name}" found. Fetching artist tracks.`);
+                        const artistTracks = this.database.getTracksByArtist(artist.id);
+                        tracks.push(...artistTracks);
+                    }
+
+                    // 3. Search in Release Tracks (Published Releases compartment)
                     const releaseResults = this.database.db.prepare(`
                         SELECT rt.*, r.title as album_title, ar.name as artist_name, r.cover_path as album_cover
                         FROM release_tracks rt
@@ -182,30 +203,35 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                            OR ar.name LIKE ? 
                            OR rt.artist_name LIKE ?
                            OR r.title LIKE ?
-                        ORDER BY rt.id DESC
                         LIMIT 10
                     `).all(`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`) as any[];
 
                     // Merge and deduplicate (by file_path)
-                    const seenPaths = new Set(results.map(r => r.file_path));
+                    const seenPaths = new Set(tracks.map(t => t.file_path));
                     for (const rr of releaseResults) {
                         if (rr.file_path && !seenPaths.has(rr.file_path)) {
-                            results.push(rr);
+                            tracks.push(rr);
                             seenPaths.add(rr.file_path);
                         }
                     }
 
-                    if (results.length === 0) {
+                    if (tracks.length === 0) {
                         console.log(`[TelegramBot] No results found for query: ${query}`);
                         return this.safeReply(ctx, `❌ No results found for "${query}". Try /artists to see available names.`);
                     }
 
-                    console.log(`[TelegramBot] Found ${results.length} results for "${query}"`);
+                    // LIMIT RESULTS to prevent server/Telegram overload (Max 5 tracks per search)
+                    const limit = 5;
+                    const resultsToSend = tracks.slice(0, limit);
+
+                    if (tracks.length > limit) {
+                        await this.safeReply(ctx, `🔎 Found ${tracks.length} results. Sending the top ${limit}...`);
+                    }
 
                     let sentCount = 0;
                     let missingCount = 0;
 
-                    for (const track of results) {
+                    for (const track of resultsToSend) {
                         let fullPath = track.file_path;
                         if (fullPath && !path.isAbsolute(fullPath)) {
                             fullPath = path.join(this.musicDir, fullPath);
@@ -224,8 +250,17 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                                 caption: `🎵 ${track.title} - ${track.artist_name || 'Unknown'}`
                             };
 
+                            // Try to find a cover
                             if (track.album_cover && fs.existsSync(track.album_cover)) {
                                 extra.thumb = { source: track.album_cover };
+                            } else if (track.album_id) {
+                                const album = this.database.getAlbum(track.album_id);
+                                if (album?.cover_path) {
+                                    const fullCoverPath = path.isAbsolute(album.cover_path) ? album.cover_path : path.join(this.musicDir, album.cover_path);
+                                    if (fs.existsSync(fullCoverPath)) {
+                                        extra.thumb = { source: fullCoverPath };
+                                    }
+                                }
                             }
 
                             await ctx.replyWithAudio({ source: fullPath }, extra);
@@ -236,7 +271,7 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                     }
 
                     if (sentCount === 0 && missingCount > 0) {
-                        return this.safeReply(ctx, `⚠️ Found ${missingCount} matches, but the physical files are missing from the server library.`);
+                        return this.safeReply(ctx, `⚠️ Found results, but the physical files are missing on the server.`);
                     }
                 },
                 'play': (ctx) => commands['search'](ctx),

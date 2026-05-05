@@ -45,7 +45,7 @@ export const CreatePlaylistModal = ({ onCreated }: { onCreated?: () => void }) =
 
     return (
         <dialog id="create-playlist-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-white/5">
+            <div className="modal-box bg-base-100 border border-base-content/5">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
@@ -98,3 +98,4 @@ export const CreatePlaylistModal = ({ onCreated }: { onCreated?: () => void }) =
         </dialog>
     );
 };
+

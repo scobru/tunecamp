@@ -66,7 +66,7 @@ export const Albums = () => {
                 </h1>
                 
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1 border border-white/5 w-full sm:w-auto">
+                    <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1 border border-base-content/5 w-full sm:w-auto">
                         <button
                             role="tab"
                             className={clsx("tab tab-sm md:tab-md transition-all gap-2", activeTab === 'releases' && "tab-active !bg-primary !text-primary-content")}
@@ -131,7 +131,7 @@ export const Albums = () => {
 
                     return (
                         <Link to={linkTo} key={item.id} className={clsx(
-                            "group transition-all duration-300 shadow-xl border border-white/5 overflow-hidden",
+                            "group transition-all duration-300 shadow-xl border border-base-content/5 overflow-hidden",
                             viewMode === 'grid' && "card bg-base-200 hover:bg-base-300 hover:-translate-y-1",
                             viewMode === 'list' && "flex items-center gap-4 bg-base-200 p-4 rounded-xl hover:bg-base-300",
                             viewMode === 'minimal' && "flex items-center gap-3 bg-base-200/40 p-2 px-3 rounded-lg hover:bg-base-200"
@@ -215,3 +215,4 @@ export const Albums = () => {
         </div>
     );
 };
+

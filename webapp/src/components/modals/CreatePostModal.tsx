@@ -70,7 +70,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
 
     return (
         <dialog id="create-post-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-white/5 w-11/12 max-w-2xl">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
@@ -81,7 +81,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                      {isRestrictedArtist ? (
-                        <div className="bg-base-200/50 p-4 rounded-xl border border-white/5 flex items-center justify-between">
+                        <div className="bg-base-200/50 p-4 rounded-xl border border-base-content/5 flex items-center justify-between">
                             <span className="text-sm opacity-60">Posting as Artist</span>
                             <span className="font-bold text-primary">{selectedArtist?.name || '...'}</span>
                         </div>
@@ -132,3 +132,4 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         </dialog>
     );
 };
+

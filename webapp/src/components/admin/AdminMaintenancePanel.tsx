@@ -122,7 +122,7 @@ export const AdminMaintenancePanel = () => {
                 </button>
             </div>
 
-            <div className="overflow-x-auto bg-base-200 rounded-box border border-white/5">
+            <div className="overflow-x-auto bg-base-200 rounded-box border border-base-content/5">
                 <table className="table table-zebra table-sm">
                     <thead>
                         <tr>
@@ -202,3 +202,4 @@ export const AdminMaintenancePanel = () => {
         </div>
     );
 };
+

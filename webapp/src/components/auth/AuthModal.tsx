@@ -35,7 +35,7 @@ export const AuthModal = () => {
 
     return (
         <dialog id="auth-modal" ref={dialogRef} className="modal">
-            <div className="modal-box bg-base-100 border border-white/5 max-w-sm">
+            <div className="modal-box bg-base-100 border border-base-content/5 max-w-sm">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold">{mode === 'login' ? 'Welcome Back' : 'Join TuneCamp'}</h2>
                     <form method="dialog">
@@ -90,3 +90,4 @@ export const AuthModal = () => {
         </dialog>
     );
 };
+

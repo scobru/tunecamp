@@ -141,7 +141,7 @@ export const BatchTrackEditModal = ({ selectedIds, onTracksUpdated, onClose }: B
 
   return (
     <dialog id="batch-track-edit-modal" className="modal" ref={dialogRef} onClose={onClose}>
-      <div className="modal-box bg-base-100 border border-white/5 max-w-2xl">
+      <div className="modal-box bg-base-100 border border-base-content/5 max-w-2xl">
         <form method="dialog">
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onClick={handleClose}>
             ✕
@@ -382,3 +382,4 @@ export const BatchTrackEditModal = ({ selectedIds, onTracksUpdated, onClose }: B
     </dialog>
   );
 };
+

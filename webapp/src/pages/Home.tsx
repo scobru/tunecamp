@@ -50,7 +50,7 @@ export const Home = () => {
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
             <div
               key={i}
-              className="card bg-base-200 border border-white/5 shadow-xl"
+              className="card bg-base-200 border border-base-content/5 shadow-xl"
             >
               <figure className="aspect-square w-full">
                 <div className="skeleton w-full h-full rounded-none"></div>
@@ -82,7 +82,7 @@ export const Home = () => {
       {/* Hero Section */}
       <div
         className={clsx(
-          "relative min-h-[30vh] lg:min-h-[40vh] flex items-center px-6 lg:px-12 rounded-[2rem] overflow-hidden border border-white/5",
+          "relative min-h-[30vh] lg:min-h-[40vh] flex items-center px-6 lg:px-12 rounded-[2rem] overflow-hidden border border-base-content/5",
           !siteSettings?.coverImage && "bg-gradient-to-br from-primary/5 to-secondary/5"
         )}
         style={heroStyle}
@@ -95,7 +95,7 @@ export const Home = () => {
           <h1 className="text-4xl lg:text-7xl font-black tracking-tighter text-white mb-4 leading-tight">
             {welcomeTitle}
           </h1>
-          <p className="text-lg lg:text-xl text-white/60 mb-8 max-w-lg leading-relaxed">
+          <p className="text-lg lg:text-xl text-base-content/60 mb-8 max-w-lg leading-relaxed">
             {siteSettings?.siteDescription ||
               "Your decentralized, self-hosted music streaming gateway."}
           </p>
@@ -110,7 +110,7 @@ export const Home = () => {
             >
                Browse Music
             </button>
-            <Link to="/about" className="btn btn-ghost rounded-xl border border-white/10">
+            <Link to="/about" className="btn btn-ghost rounded-xl border border-base-content/10">
               Explore Network
             </Link>
           </div>
@@ -123,28 +123,28 @@ export const Home = () => {
 
       {/* Stats Section - Minimalist */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-2">
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-white/5">
+        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Total Library</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-primary">{stats.albums || 0}</span>
              <span className="text-xs opacity-40 font-bold uppercase">Albums</span>
            </div>
         </div>
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-white/5">
+        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Audio Files</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-secondary">{stats.tracks || 0}</span>
              <span className="text-xs opacity-40 font-bold uppercase">Tracks</span>
            </div>
         </div>
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-white/5">
+        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Diverse Styles</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-accent">{stats.genresCount || 0}</span>
              <span className="text-xs opacity-40 font-bold uppercase">Genres</span>
            </div>
         </div>
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-white/5">
+        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Storage</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-neutral-content">{stats.totalSize || "0 GB"}</span>
@@ -156,11 +156,11 @@ export const Home = () => {
       {/* Genres Section */}
       {stats.genres && stats.genres.length > 0 && (
         <div className="px-2">
-          <div className="flex flex-wrap gap-2 justify-center py-6 px-4 rounded-3xl bg-base-200/20 border border-white/5">
+          <div className="flex flex-wrap gap-2 justify-center py-6 px-4 rounded-3xl bg-base-200/20 border border-base-content/5">
             {stats.genres.map((genre: string) => (
               <button
                 key={genre}
-                className="btn btn-xs md:btn-sm btn-ghost border border-white/10 hover:bg-primary hover:text-primary-content hover:border-primary transition-all rounded-full lowercase"
+                className="btn btn-xs md:btn-sm btn-ghost border border-base-content/10 hover:bg-primary hover:text-primary-content hover:border-primary transition-all rounded-full lowercase"
                 onClick={() => navigate(`/search?q=${encodeURIComponent(genre)}`)}
               >
                 {genre}
@@ -238,10 +238,10 @@ export const Home = () => {
                     {album.artistName || album.artist_name}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[10px] font-black opacity-30 border border-white/10 px-1.5 py-0.5 rounded uppercase">
+                    <span className="text-[10px] font-black opacity-30 border border-base-content/10 px-1.5 py-0.5 rounded uppercase">
                       {album.year}
                     </span>
-                    <span className="text-[10px] font-black opacity-30 border border-white/10 px-1.5 py-0.5 rounded uppercase">
+                    <span className="text-[10px] font-black opacity-30 border border-base-content/10 px-1.5 py-0.5 rounded uppercase">
                       {album.type}
                     </span>
                   </div>
@@ -304,3 +304,4 @@ export const Home = () => {
     </section>
   );
 };
+

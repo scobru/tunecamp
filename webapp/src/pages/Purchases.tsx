@@ -80,7 +80,7 @@ export const Purchases = () => {
       </div>
 
       {purchasedTracks.length === 0 ? (
-        <div className="p-12 text-center opacity-70 bg-base-200/30 rounded-xl border border-white/5">
+        <div className="p-12 text-center opacity-70 bg-base-200/30 rounded-xl border border-base-content/5">
           <Music size={48} className="mx-auto mb-4 opacity-30" />
           <h2 className="text-xl font-medium mb-2">No purchases yet</h2>
           <p className="mb-4 text-sm opacity-70">
@@ -92,10 +92,10 @@ export const Purchases = () => {
           </Link>
         </div>
       ) : (
-        <div className="overflow-x-auto bg-base-200/30 rounded-xl border border-white/5">
+        <div className="overflow-x-auto bg-base-200/30 rounded-xl border border-base-content/5">
           <table className="table w-full table-sm md:table-md">
             <thead>
-              <tr className="border-b border-white/10 text-xs uppercase opacity-50">
+              <tr className="border-b border-base-content/10 text-xs uppercase opacity-50">
                 <th className="w-12 text-center">#</th>
                 <th>Title</th>
                 <th>Album</th>
@@ -111,7 +111,7 @@ export const Purchases = () => {
                 return (
                   <tr
                     key={track.id}
-                    className="hover:bg-white/5 group border-b border-white/5 last:border-0 transition-colors focus-within:bg-white/5"
+                    className="hover:bg-base-content/5 group border-b border-base-content/5 last:border-0 transition-colors focus-within:bg-base-content/5"
                   >
                     <td className="text-center font-mono w-12 relative">
                       <span className="opacity-50 group-hover:opacity-0 group-focus-within:opacity-0 transition-opacity absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -190,3 +190,4 @@ export const Purchases = () => {
     </div>
   );
 };
+

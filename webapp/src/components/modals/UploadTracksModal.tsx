@@ -197,7 +197,7 @@ export const UploadTracksModal = ({
 
   return (
     <dialog id="upload-tracks-modal" className="modal" ref={dialogRef}>
-      <div className="modal-box bg-base-100 border border-white/5">
+      <div className="modal-box bg-base-100 border border-base-content/5">
         <form method="dialog">
           <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
             ✕
@@ -302,7 +302,7 @@ export const UploadTracksModal = ({
                 {existingTracks.map((track: Track) => (
                   <div
                     key={track.id}
-                    className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded border border-white/5"
+                    className="flex justify-between items-center text-xs p-2 hover:bg-base-content/5 rounded border border-base-content/5"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Music size={12} className="text-secondary opacity-50" />
@@ -339,7 +339,7 @@ export const UploadTracksModal = ({
                 {files.map((file: File, i: number) => (
                   <div
                     key={i}
-                    className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded"
+                    className="flex justify-between items-center text-xs p-1 hover:bg-base-content/5 rounded"
                   >
                     <div className="flex items-center gap-2 truncate">
                       <Music size={12} /> {file.name}
@@ -399,3 +399,4 @@ export const UploadTracksModal = ({
     </dialog>
   );
 };
+

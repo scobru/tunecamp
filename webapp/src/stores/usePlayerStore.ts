@@ -249,3 +249,4 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     toggleLyrics: () => set((state) => ({ isLyricsOpen: !state.isLyricsOpen, isQueueOpen: false })),
     setDominantColor: (color) => set({ dominantColor: color }),
 }));
+

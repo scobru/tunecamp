@@ -192,7 +192,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     <label className="label py-1">
                       <span className="label-text text-[10px] font-bold uppercase opacity-40">Public Key (pub)</span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all border border-white/5 shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all border border-base-content/5 shadow-inner">
                       {identity.pub}
                     </div>
                   </div>
@@ -202,7 +202,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-white/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_priv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_priv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
                       >
                         {identity.priv}
                       </div>
@@ -225,7 +225,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                         Encryption Public Key (epub)
                       </span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all border border-white/5 shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all border border-base-content/5 shadow-inner">
                       {identity.epub}
                     </div>
                   </div>
@@ -237,7 +237,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-white/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_epriv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_epriv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
                       >
                         {identity.epriv}
                       </div>
@@ -258,7 +258,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     <label className="label py-1">
                       <span className="label-text text-[10px] font-bold uppercase opacity-40">Alias</span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-sm border border-white/5 shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-sm border border-base-content/5 shadow-inner">
                       {identity.alias || "N/A"}
                     </div>
                   </div>
@@ -384,7 +384,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                         RSA Public Key
                       </span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all max-h-32 overflow-y-auto border border-white/5 scrollbar-thin shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all max-h-32 overflow-y-auto border border-base-content/5 scrollbar-thin shadow-inner">
                       {siteApIdentity.publicKey}
                     </div>
                   </div>
@@ -397,7 +397,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-white/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys["site"] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys["site"] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
                       >
                         {siteApIdentity.privateKey || "No private key stored"}
                       </div>
@@ -465,7 +465,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                             RSA Public Key
                           </span>
                         </label>
-                        <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all max-h-32 overflow-y-auto border border-white/5 scrollbar-thin shadow-inner">
+                        <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all max-h-32 overflow-y-auto border border-base-content/5 scrollbar-thin shadow-inner">
                           {publicKey}
                         </div>
                       </div>
@@ -478,7 +478,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                         </label>
                         <div className="relative group">
                           <div
-                            className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-white/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys[artist.id] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
+                            className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys[artist.id] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
                           >
                             {privateKey || "No private key stored"}
                           </div>
@@ -510,3 +510,4 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
     </div>
   );
 };
+

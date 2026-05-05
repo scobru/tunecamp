@@ -233,14 +233,14 @@ export const PlayerBar = () => {
 
   if (!currentTrack)
     return (
-      <div className="fixed bottom-0 w-full h-24 bg-base-200 border-t border-white/5 flex items-center justify-center text-sm opacity-50 z-50">
+      <div className="fixed bottom-0 w-full h-24 bg-base-200 border-t border-base-content/5 flex items-center justify-center text-sm opacity-50 z-50">
         Select a track to play
       </div>
     );
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-white/5 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-base-content/5 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
         <PlayerBackground coverUrl={coverUrl} />
         
         <audio
@@ -338,7 +338,7 @@ export const PlayerBar = () => {
             </span>
 
             <div className="flex-1 relative h-1.5 group">
-               <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-full bg-white/5 rounded-full overflow-hidden">
+               <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-full bg-base-content/5 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary/40 rounded-full transition-all duration-200"
                   style={{ width: `${progress}%` }}
@@ -380,7 +380,7 @@ export const PlayerBar = () => {
               onChange={(e) => setVolume(parseFloat(e.target.value))}
             />
           </div>
-          <div className="flex gap-1 h-10 items-center border-l border-white/5 pl-4 ml-2">
+          <div className="flex gap-1 h-10 items-center border-l border-base-content/5 pl-4 ml-2">
             {(useAuthStore.getState().user?.isRootAdmin || 
               (currentTrack.owner_id && String(currentTrack.owner_id) === String(useAuthStore.getState().user?.id)) ||
               (currentTrack.artistId && String(currentTrack.artistId) === String(useAuthStore.getState().user?.artistId))) && (
@@ -416,3 +416,4 @@ export const PlayerBar = () => {
     </>
   );
 };
+

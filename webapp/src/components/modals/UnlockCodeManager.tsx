@@ -52,7 +52,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
 
     return (
         <div className="modal modal-open">
-            <div className="modal-box bg-base-100 border border-white/5 max-w-2xl">
+            <div className="modal-box bg-base-100 border border-base-content/5 max-w-2xl">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="font-bold text-lg flex items-center gap-2">
                         <Key size={20} className="text-primary" /> Unlock Codes
@@ -62,7 +62,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Generator Side */}
-                    <div className="md:col-span-1 border-r border-white/5 pr-6 space-y-4">
+                    <div className="md:col-span-1 border-r border-base-content/5 pr-6 space-y-4">
                         <h4 className="text-sm font-bold opacity-70 uppercase tracking-wider">Generate Codes</h4>
                         <form onSubmit={handleGenerate} className="space-y-4">
                             <div className="form-control">
@@ -91,7 +91,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
                             </button>
                         </div>
 
-                        <div className="max-h-64 overflow-y-auto rounded-lg bg-base-200/50 border border-white/5">
+                        <div className="max-h-64 overflow-y-auto rounded-lg bg-base-200/50 border border-base-content/5">
                             {codes.length === 0 ? (
                                 <div className="p-8 text-center opacity-50 text-sm">
                                     No codes generated yet for this release.
@@ -107,7 +107,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
                                     </thead>
                                     <tbody>
                                         {codes.map((code, i) => (
-                                            <tr key={i} className="hover:bg-white/5">
+                                            <tr key={i} className="hover:bg-base-content/5">
                                                 <td className="font-mono">{code.code || 'N/A'}</td>
                                                 <td>
                                                     {(code.isRedeemed || code.isUsed || code.is_used === 1) ? (
@@ -140,3 +140,4 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
         </div>
     );
 };
+

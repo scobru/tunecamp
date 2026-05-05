@@ -74,7 +74,7 @@ export const Wallet = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 p-6 md:p-0">
-      <div className="flex items-center gap-4 border-b border-white/5 pb-6">
+      <div className="flex items-center gap-4 border-b border-base-content/5 pb-6">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
           <WalletIcon size={32} className="text-white" />
         </div>
@@ -101,7 +101,7 @@ export const Wallet = () => {
             "card bg-base-100/50 border shadow-xl transition-all",
             !useExternalWallet
               ? "border-primary/50 shadow-primary/10"
-              : "border-white/5 opacity-80",
+              : "border-base-content/5 opacity-80",
           )}
         >
           <div className="card-body">
@@ -117,8 +117,8 @@ export const Wallet = () => {
 
             {isWalletLoading ? (
               <div className="animate-pulse space-y-4">
-                <div className="h-8 bg-white/5 rounded w-1/2"></div>
-                <div className="h-4 bg-white/5 rounded w-full"></div>
+                <div className="h-8 bg-base-content/5 rounded w-1/2"></div>
+                <div className="h-4 bg-base-content/5 rounded w-full"></div>
               </div>
             ) : !isWalletReady ? (
               <div className="text-center py-8 opacity-50">
@@ -142,7 +142,7 @@ export const Wallet = () => {
                   )}
                 </div>
 
-                <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
                   <div className="text-xs uppercase tracking-wider opacity-50 mb-2">
                     Address
                   </div>
@@ -177,7 +177,7 @@ export const Wallet = () => {
                   </button>
                   <button
                     onClick={() => openCoinbaseOnramp(address || "", "ETH")}
-                    className="btn btn-ghost border-white/10 hover:bg-primary/20"
+                    className="btn btn-ghost border-base-content/10 hover:bg-primary/20"
                     title="Fund with Credit Card / Coinbase"
                   >
                     <span className="text-lg">💳</span>
@@ -194,7 +194,7 @@ export const Wallet = () => {
             "card bg-base-100/50 border shadow-xl transition-all",
             useExternalWallet
               ? "border-secondary/50 shadow-secondary/10"
-              : "border-white/5 opacity-80",
+              : "border-base-content/5 opacity-80",
           )}
         >
           <div className="card-body">
@@ -243,7 +243,7 @@ export const Wallet = () => {
                   )}
                 </div>
 
-                <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
                   <div className="text-xs uppercase tracking-wider opacity-50 mb-2">
                     Address
                   </div>
@@ -293,7 +293,7 @@ export const Wallet = () => {
         </div>
       </div>
 
-      <div className="bg-base-200/50 rounded-2xl p-6 border border-white/5 space-y-6">
+      <div className="bg-base-200/50 rounded-2xl p-6 border border-base-content/5 space-y-6">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
              <span className="text-xl">🖼️</span>
@@ -304,7 +304,7 @@ export const Wallet = () => {
         {nftsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="aspect-square bg-white/5 rounded-xl"></div>
+              <div key={i} className="aspect-square bg-base-content/5 rounded-xl"></div>
             ))}
           </div>
         ) : ownedNFTs.length === 0 ? (
@@ -314,8 +314,8 @@ export const Wallet = () => {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
              {ownedNFTs.map((nft, idx) => (
-               <div key={`${nft.trackId}-${nft.role}-${idx}`} className="group relative bg-black/40 rounded-xl overflow-hidden border border-white/5 hover:border-primary/50 transition-colors">
-                  <div className="aspect-square bg-white/5 relative">
+               <div key={`${nft.trackId}-${nft.role}-${idx}`} className="group relative bg-black/40 rounded-xl overflow-hidden border border-base-content/5 hover:border-primary/50 transition-colors">
+                  <div className="aspect-square bg-base-content/5 relative">
                      {nft.coverUrl ? (
                          <img src={nft.coverUrl} alt={nft.title} className="w-full h-full object-cover" />
                      ) : (
@@ -341,7 +341,7 @@ export const Wallet = () => {
         )}
       </div>
 
-      <div className="bg-base-200/50 rounded-2xl p-6 border border-white/5 space-y-6">
+      <div className="bg-base-200/50 rounded-2xl p-6 border border-base-content/5 space-y-6">
         <div>
           <h3 className="text-xl font-bold mb-2">How it works</h3>
           <p className="opacity-70 text-sm leading-relaxed max-w-2xl">
@@ -353,7 +353,7 @@ export const Wallet = () => {
           </p>
         </div>
 
-        <div className="border-t border-white/5 pt-6">
+        <div className="border-t border-base-content/5 pt-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Shield size={20} className="text-primary" />
@@ -379,7 +379,7 @@ export const Wallet = () => {
               </div>
 
               {/* Ethereum Private Key */}
-              <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+              <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
                 <div className="text-xs uppercase tracking-wider opacity-50 mb-2 flex justify-between items-center">
                   <span>Integrated Wallet Private Key</span>
                   <span className="text-[10px] opacity-40">
@@ -409,7 +409,7 @@ export const Wallet = () => {
               </div>
 
               {/* Zen SEA Pair */}
-              <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+              <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
                 <div className="text-xs uppercase tracking-wider opacity-50 mb-2 flex justify-between items-center">
                   <span>Zen SEA Pair (Account Export)</span>
                   <span className="text-[10px] opacity-40">JSON Format</span>
@@ -447,3 +447,4 @@ export const Wallet = () => {
     </div>
   );
 };
+

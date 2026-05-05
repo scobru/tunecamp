@@ -14,3 +14,4 @@ declare module 'color-thief-react' {
     options?: ColorThiefOptions
   ): ColorThiefResult;
 }
+

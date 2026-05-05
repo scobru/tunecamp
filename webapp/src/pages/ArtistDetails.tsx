@@ -96,7 +96,7 @@ export const ArtistDetails = () => {
     return (
         <div className="space-y-12 animate-fade-in">
              {/* Header */}
-             <div className="relative h-80 rounded-2xl overflow-hidden flex items-end p-8 border border-white/5">
+             <div className="relative h-80 rounded-2xl overflow-hidden flex items-end p-8 border border-base-content/5">
                  <div className="absolute inset-0 z-0">
                      {artist.coverImage ? (
                         <img src={API.getArtistCoverUrl(artist.id, coverVersion)} className="w-full h-full object-cover opacity-30 blur-sm scale-105" />
@@ -181,7 +181,7 @@ export const ArtistDetails = () => {
                           <div className="flex gap-4 items-center flex-wrap">
                               <div className="flex gap-2 flex-wrap flex-1">
                                  {artist.links?.map((link, i) => (
-                                     <a href={link.url} key={i} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline gap-2 bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-xl">
+                                     <a href={link.url} key={i} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline gap-2 bg-base-content/5 border-base-content/10 hover:bg-base-content/10 text-white rounded-xl">
                                          <PlatformIcon platform={link.platform || link.url} />
                                          <span className="capitalize">{link.platform || 'Link'}</span>
                                      </a>
@@ -198,13 +198,13 @@ export const ArtistDetails = () => {
              {/* Posts / News */}
              {posts.length > 0 && (
                 <section>
-                    <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-white/5 pb-2">
+                    <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
                         <Globe size={20}/>
                         <h2 className="text-xl font-bold">Latest News</h2>
                     </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {posts.map(post => (
-                            <div key={post.id} className="card bg-base-200 border border-white/5 p-6 space-y-4 relative group">
+                            <div key={post.id} className="card bg-base-200 border border-base-content/5 p-6 space-y-4 relative group">
                                 <div className="flex items-center justify-between gap-3 mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className="avatar placeholder">
@@ -243,7 +243,7 @@ export const ArtistDetails = () => {
               {/* Discography / Releases */}
              {formalReleases.length > 0 && (
                 <section>
-                    <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-white/5 pb-2">
+                    <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
                         <Disc />
                         <h2 className="text-xl font-bold">Discography</h2>
                     </div>
@@ -278,7 +278,7 @@ export const ArtistDetails = () => {
               {/* Library Additions - ADMIN ONLY */}
               {isAdminAuthenticated && libraryAlbums.length > 0 && (
                  <section>
-                     <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-white/5 pb-2">
+                     <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
                          <Disc />
                          <h2 className="text-xl font-bold">Library Additions</h2>
                      </div>
@@ -313,14 +313,14 @@ export const ArtistDetails = () => {
               {/* Loose Tracks - ADMIN ONLY */}
               {isAdminAuthenticated && looseTracks.length > 0 && (
                  <section>
-                     <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-white/5 pb-2">
+                     <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
                          <Play size={20} />
                          <h2 className="text-xl font-bold">Singles & Orphaned Tracks</h2>
                      </div>
-                     <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-white/5">
+                     <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-base-content/5">
                          <table className="table w-full">
                              <thead>
-                                 <tr className="border-b border-white/10 opacity-50 text-xs uppercase tracking-wider">
+                                 <tr className="border-b border-base-content/10 opacity-50 text-xs uppercase tracking-wider">
                                      <th className="w-12 text-center">#</th>
                                      <th>Title</th>
                                      <th className="text-right">Duration</th>
@@ -328,7 +328,7 @@ export const ArtistDetails = () => {
                              </thead>
                              <tbody>
                                  {looseTracks.map((track, i) => (
-                                     <tr key={track.id} className="hover:bg-white/5 group border-b border-white/5 last:border-0 transition-colors cursor-pointer" onClick={() => playTrack(track, looseTracks)}>
+                                     <tr key={track.id} className="hover:bg-base-content/5 group border-b border-base-content/5 last:border-0 transition-colors cursor-pointer" onClick={() => playTrack(track, looseTracks)}>
                                          <td className="text-center font-mono w-12 relative">
                                              <span className="opacity-40 group-hover:opacity-0 transition-opacity absolute inset-0 flex items-center justify-center">
                                                  {i + 1}
@@ -354,3 +354,4 @@ export const ArtistDetails = () => {
         </div>
     );
 };
+

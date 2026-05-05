@@ -348,7 +348,7 @@ export const CheckoutModal = () => {
     <div
       className={`modal ${isOpen ? "modal-open" : ""} bg-black/60 backdrop-blur-sm`}
     >
-      <div className="modal-box bg-base-100/80 backdrop-blur-2xl border border-white/10 shadow-[0_0_40px_rgba(var(--color-primary),0.15)] rounded-3xl p-8 relative overflow-hidden">
+      <div className="modal-box bg-base-100/80 backdrop-blur-2xl border border-base-content/10 shadow-[0_0_40px_rgba(var(--color-primary),0.15)] rounded-3xl p-8 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-accent"></div>
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 blur-[80px] rounded-full pointer-events-none"></div>
 
@@ -361,12 +361,12 @@ export const CheckoutModal = () => {
               <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70 mb-2">
                 Purchase Successful!
               </h3>
-              <p className="text-white/60 mb-6 font-medium">
+              <p className="text-base-content/60 mb-6 font-medium">
                 "{track.title}" by {track.artist} has been added to your
                 collection.
               </p>
-              <div className="bg-black/40 rounded-xl p-4 w-full mb-8 border border-white/5 break-all text-left">
-                <span className="text-xs text-white/40 uppercase tracking-wider block mb-1">
+              <div className="bg-black/40 rounded-xl p-4 w-full mb-8 border border-base-content/5 break-all text-left">
+                <span className="text-xs text-base-content/40 uppercase tracking-wider block mb-1">
                   Transaction Hash
                 </span>
                 <a
@@ -407,13 +407,13 @@ export const CheckoutModal = () => {
                 directly. This transaction runs on Base Mainnet.
               </p>
 
-              <div className="w-full bg-black/40 rounded-2xl p-5 mb-2 border border-white/5">
+              <div className="w-full bg-black/40 rounded-2xl p-5 mb-2 border border-base-content/5">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-white/60">Item</span>
+                  <span className="text-base-content/60">Item</span>
                   <span className="font-semibold">{track.title}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-white/60">Price</span>
+                  <span className="text-base-content/60">Price</span>
                   <div className="flex flex-col text-right">
                     <span className="text-xl font-bold text-primary">
                       {track.currency === "USD" && track.price
@@ -444,13 +444,13 @@ export const CheckoutModal = () => {
               {showUsdc && (
                 <div className="flex bg-base-300 rounded-lg p-1 w-full mb-6 relative z-20">
                   <button 
-                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${paymentMethod === "ETH" ? "bg-primary text-white shadow" : "text-white/50 hover:text-white"}`}
+                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${paymentMethod === "ETH" ? "bg-primary text-white shadow" : "text-base-content/50 hover:text-white"}`}
                     onClick={() => { setPaymentMethod("ETH"); setError(null); }}
                   >
                     ETH
                   </button>
                   <button 
-                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${paymentMethod === "USDC" ? "bg-[#2775CA] text-white shadow" : "text-white/50 hover:text-white"}`}
+                    className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${paymentMethod === "USDC" ? "bg-[#2775CA] text-white shadow" : "text-base-content/50 hover:text-white"}`}
                     onClick={async () => {
                       setPaymentMethod("USDC");
                       setError(null);
@@ -478,7 +478,7 @@ export const CheckoutModal = () => {
                   </p>
                   <button
                     onClick={() => openCoinbaseOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "ETH", track.currency === "USD" ? track.price : undefined)}
-                    className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-white/10 hover:bg-primary/20"
+                    className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-base-content/10 hover:bg-primary/20"
                   >
                     💳 Fund with Credit Card / Coinbase
                   </button>
@@ -492,7 +492,7 @@ export const CheckoutModal = () => {
                   </p>
                   <button
                     onClick={() => openCoinbaseOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "USDC", currentStablePrice)}
-                    className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-white/10 hover:bg-[#2775CA]/20"
+                    className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-base-content/10 hover:bg-[#2775CA]/20"
                   >
                     💳 Buy USDC via Coinbase
                   </button>
@@ -507,7 +507,7 @@ export const CheckoutModal = () => {
 
               <div className="modal-action w-full mt-6 space-x-3">
                 <button
-                  className="btn btn-ghost rounded-xl flex-1 border border-white/10 hover:bg-white/5"
+                  className="btn btn-ghost rounded-xl flex-1 border border-base-content/10 hover:bg-base-content/5"
                   onClick={handleClose}
                   disabled={isProcessing}
                 >
@@ -543,3 +543,4 @@ export const CheckoutModal = () => {
     </div>
   );
 };
+

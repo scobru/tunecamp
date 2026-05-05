@@ -18,8 +18,10 @@ import {
   LogOut,
   Heart,
   Upload,
+  MessageSquare,
 } from "lucide-react";
 import clsx from "clsx";
+import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 import { WalletPill } from "../ui/WalletPill";
 
 export const Sidebar = () => {
@@ -76,7 +78,7 @@ export const Sidebar = () => {
   );
  
   return (
-    <div className="menu p-4 w-64 min-h-full bg-base-200/30 backdrop-blur-xl text-base-content border-r border-white/5 flex flex-col gap-6 pb-28">
+    <div className="menu p-4 w-64 min-h-full bg-base-200/30 backdrop-blur-xl text-base-content border-r border-base-content/5 flex flex-col gap-6 pb-28">
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-4">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
@@ -137,7 +139,11 @@ export const Sidebar = () => {
         </ul>
 
         {/* User Footer */}
-        <div className="pt-4 border-t border-white/5 w-full">
+        <div className="pt-4 border-t border-base-content/5 w-full space-y-4">
+          <div className="px-2">
+            <ThemeSwitcher />
+          </div>
+          
           {isAuthenticated ? (
             <div className="flex items-center gap-3 px-2">
               <Link
@@ -206,3 +212,4 @@ export const Sidebar = () => {
     </div>
   );
 };
+

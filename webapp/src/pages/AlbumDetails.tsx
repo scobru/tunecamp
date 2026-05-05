@@ -231,7 +231,7 @@ export const AlbumDetails = () => {
   return (
     <div className="space-y-12 animate-fade-in pb-20">
       {/* Header / Hero */}
-      <div className="relative group rounded-[2.5rem] overflow-hidden border border-white/5 bg-base-200/20">
+      <div className="relative group rounded-[2.5rem] overflow-hidden border border-base-content/5 bg-base-200/20">
         {/* Background Ambient Blur */}
         <div className="absolute inset-0 z-0">
           {album?.coverImage && (
@@ -312,7 +312,7 @@ export const AlbumDetails = () => {
               </button>
 
               <button
-                className={clsx("btn btn-lg btn-square rounded-2xl border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all", isAlbumLiked && "text-primary")}
+                className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all", isAlbumLiked && "text-primary")}
                 onClick={handleLikeAlbum}
                 title={isAlbumLiked ? "Unstar Album" : "Star Album"}
               >
@@ -320,7 +320,7 @@ export const AlbumDetails = () => {
               </button>
 
               <button
-                className="btn btn-lg btn-square rounded-2xl border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all"
+                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all"
                 onClick={handleShareAlbum}
                 title="Share Album"
               >
@@ -338,11 +338,11 @@ export const AlbumDetails = () => {
               )}
 
               {(album.download === "free" || album.download === "codes") && (
-                <div className="flex gap-1 bg-base-300/50 p-1 rounded-[1.25rem] border border-white/5 backdrop-blur-md">
+                <div className="flex gap-1 bg-base-300/50 p-1 rounded-[1.25rem] border border-base-content/5 backdrop-blur-md">
                   {album.download === "free" && (
                     <a
                       href={`/api/${isRelease ? 'releases' : 'albums'}/${album.slug || album.id}/download?format=${downloadFormat}`}
-                      className="btn btn-ghost btn-md rounded-xl gap-2 hover:bg-white/10"
+                      className="btn btn-ghost btn-md rounded-xl gap-2 hover:bg-base-content/10"
                       target="_blank"
                     >
                       <Download size={18} /> Download
@@ -351,7 +351,7 @@ export const AlbumDetails = () => {
 
                   {album.download === "codes" && (
                     <button
-                      className="btn btn-ghost btn-md rounded-xl gap-2 hover:bg-white/10"
+                      className="btn btn-ghost btn-md rounded-xl gap-2 hover:bg-base-content/10"
                       onClick={handleUnlock}
                     >
                       <Unlock size={18} /> Unlock
@@ -378,7 +378,7 @@ export const AlbumDetails = () => {
                       key={i}
                       href={link.url}
                       target="_blank"
-                      className="btn btn-ghost btn-lg btn-square rounded-2xl border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all"
+                      className="btn btn-ghost btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all"
                       title={link.label}
                     >
                       <ExternalLink size={20} className="opacity-40" />
@@ -401,14 +401,14 @@ export const AlbumDetails = () => {
            </div>
         </div>
 
-        <div className="list bg-base-200/10 rounded-[2.5rem] border border-white/5 overflow-visible">
+        <div className="list bg-base-200/10 rounded-[2.5rem] border border-base-content/5 overflow-visible">
           {album.tracks?.map((track: any, i: number) => {
             if (!track) return null;
             const unlocked = isTrackUnlocked(track);
             return (
               <div
                 key={track.id}
-                className="list-row items-center hover:bg-white/5 transition-colors px-6 py-4 group border-b border-white/5 last:border-0"
+                className="list-row items-center hover:bg-base-content/5 transition-colors px-6 py-4 group border-b border-base-content/5 last:border-0"
               >
                 <div className="text-xs font-black opacity-20 w-8 group-hover:opacity-0 transition-opacity">
                    {String(i + 1).padStart(2, '0')}
@@ -423,7 +423,7 @@ export const AlbumDetails = () => {
                       {track.title}
                     </button>
                     {track.losslessPath && (
-                       <span className="text-[9px] font-black opacity-30 border border-white/10 px-1.5 rounded uppercase">Hi-Res</span>
+                       <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase">Hi-Res</span>
                     )}
                   </div>
                 </div>
@@ -451,7 +451,7 @@ export const AlbumDetails = () => {
                     <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle">
                        <MoreHorizontal size={18} />
                     </div>
-                    <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-white/10 mt-2">
+                    <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
                        {(unlocked || album.download === "free" || isRelease) && (
                          <li>
                            {unlocked ? (
@@ -495,7 +495,7 @@ export const AlbumDetails = () => {
                          </a>
                        </li>
                        {isAdmin && (
-                         <li className="border-t border-white/5 mt-1 pt-1 opacity-50 hover:opacity-100">
+                         <li className="border-t border-base-content/5 mt-1 pt-1 opacity-50 hover:opacity-100">
                            <a onClick={() => document.dispatchEvent(new CustomEvent("open-admin-track-modal", { detail: track }))}>
                              <Music size={16} /> Edit Metadata
                            </a>
@@ -511,7 +511,7 @@ export const AlbumDetails = () => {
       </div>
 
       {/* Footer Info / License */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6 px-4 py-8 border-t border-white/5">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-6 px-4 py-8 border-t border-base-content/5">
         <div className="flex items-center gap-3 opacity-40">
            <Copyright size={18} />
            <span className="text-sm font-medium tracking-tight">
@@ -535,4 +535,5 @@ export const AlbumDetails = () => {
     </div>
   );
 };
+
 

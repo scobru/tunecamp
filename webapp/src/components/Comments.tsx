@@ -139,7 +139,7 @@ export const Comments = ({ trackId }: CommentsProps) => {
           comments.map((c) => (
             <div
               key={c.id}
-              className="bg-base-200/50 p-3 rounded-lg border border-white/5 flex gap-3 group"
+              className="bg-base-200/50 p-3 rounded-lg border border-base-content/5 flex gap-3 group"
             >
               <div className="avatar placeholder">
                 <div className="bg-neutral text-neutral-content rounded-full w-8 h-8">
@@ -170,3 +170,4 @@ export const Comments = ({ trackId }: CommentsProps) => {
     </div>
   );
 };
+

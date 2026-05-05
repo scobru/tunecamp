@@ -51,7 +51,7 @@ export const CurationQueue = () => {
 
     if (pendingReleases.length === 0) {
         return (
-            <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-white/10">
+            <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-base-content/10">
                 <Info size={48} className="mx-auto mb-4" />
                 <p>Curation queue is empty. No releases pending approval.</p>
             </div>
@@ -63,7 +63,7 @@ export const CurationQueue = () => {
             <h2 className="text-xl font-bold">Pending Approvals</h2>
             <div className="grid gap-4">
                 {pendingReleases.map(r => (
-                    <div key={r.id} className="card bg-base-200 border border-white/5 overflow-hidden">
+                    <div key={r.id} className="card bg-base-200 border border-base-content/5 overflow-hidden">
                         <div className="flex flex-col md:flex-row items-center gap-6 p-4">
                             <div className="w-24 h-24 rounded-lg bg-neutral overflow-hidden flex-shrink-0">
                                 {r.cover_path ? (
@@ -120,3 +120,4 @@ export const CurationQueue = () => {
         </div>
     );
 };
+

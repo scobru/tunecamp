@@ -188,7 +188,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
 
     return (
         <dialog id="admin-release-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-white/5">
+            <div className="modal-box bg-base-100 border border-base-content/5">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
@@ -333,7 +333,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         </label>
                         {isEditing && editId && !coverFile && (
                             <div className="mb-2">
-                                <img src={API.getAlbumCoverUrl(editId, Date.now())} className="w-24 h-24 rounded object-cover shadow border border-white/10" />
+                                <img src={API.getAlbumCoverUrl(editId, Date.now())} className="w-24 h-24 rounded object-cover shadow border border-base-content/10" />
                             </div>
                         )}
                         <input 
@@ -431,3 +431,4 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
         </dialog>
     );
 };
+

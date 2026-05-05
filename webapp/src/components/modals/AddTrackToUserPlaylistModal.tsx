@@ -198,7 +198,7 @@ export const AddTrackToUserPlaylistModal = ({
       className="modal"
       ref={dialogRef}
     >
-      <div className="modal-box bg-base-100 border border-white/5 max-w-2xl p-0 overflow-hidden">
+      <div className="modal-box bg-base-100 border border-base-content/5 max-w-2xl p-0 overflow-hidden">
         <div className="p-6 pb-0">
           <form method="dialog">
             <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
@@ -233,7 +233,7 @@ export const AddTrackToUserPlaylistModal = ({
 
           <div className="form-control mb-4">
             <div className="input-group flex gap-2">
-              <span className="flex items-center px-3 bg-base-200 rounded-l-lg border border-r-0 border-white/10">
+              <span className="flex items-center px-3 bg-base-200 rounded-l-lg border border-r-0 border-base-content/10">
                 <Search size={16} className="opacity-50" />
               </span>
               <input
@@ -396,7 +396,7 @@ export const AddTrackToUserPlaylistModal = ({
           )}
         </div>
 
-        <div className="p-4 border-t border-white/5 bg-base-200/50 flex justify-end">
+        <div className="p-4 border-t border-base-content/5 bg-base-200/50 flex justify-end">
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -413,3 +413,4 @@ export const AddTrackToUserPlaylistModal = ({
     </dialog>
   );
 };
+
