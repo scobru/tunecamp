@@ -70,6 +70,7 @@ export interface Album {
     download: string | null;
     price: number | null;
     price_usdc: number | null;
+    price_usdt: number | null;
     currency: 'ETH' | 'USD';
     external_links: string | null; // JSON string of ExternalLink[]
     is_public: boolean;
@@ -104,6 +105,7 @@ export interface Track {
     sample_rate: number | null;
     price: number | null;
     price_usdc: number | null;
+    price_usdt: number | null;
     currency: 'ETH' | 'USD';
     album_price?: number | null;
     album_price_usdc?: number | null;
@@ -137,6 +139,7 @@ export interface Release {
     download: string | null;
     price: number | null;
     price_usdc: number | null;
+    price_usdt: number | null;
     currency: 'ETH' | 'USD';
     external_links: string | null;
     visibility: 'public' | 'private' | 'unlisted';
@@ -160,6 +163,7 @@ export interface ReleaseTrack {
     file_path: string | null;
     price: number | null;
     price_usdc: number | null;
+    price_usdt: number | null;
     currency: 'ETH' | 'USD';
     created_at: string;
 }

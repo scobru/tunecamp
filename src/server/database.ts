@@ -402,13 +402,13 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     CREATE TABLE IF NOT EXISTS album_ownership (
       album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
-      owner_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+      owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
       PRIMARY KEY (album_id, owner_id)
     );
 
     CREATE TABLE IF NOT EXISTS track_ownership (
       track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
-      owner_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+      owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
       PRIMARY KEY (track_id, owner_id)
     );
 
@@ -559,11 +559,11 @@ export function createDatabase(dbPath: string): DatabaseService {
 
                 if (data.length > 0) {
                     const insert = db.prepare(`
-                        INSERT INTO release_tracks (id, release_id, track_id, title, artist_name, track_num, duration, file_path, price, currency, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO release_tracks (id, release_id, track_id, title, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `);
                     for (const row of data) {
-                        insert.run(row.id, row.release_id, row.track_id, row.title, row.artist_name, row.track_num, row.duration, row.file_path, row.price, row.currency, row.created_at);
+                        insert.run(row.id, row.release_id, row.track_id, row.title, row.artist_name, row.track_num, row.duration, row.file_path, row.price, row.price_usdc || 0, row.price_usdt || 0, row.currency, row.created_at);
                     }
                 }
 
@@ -664,6 +664,74 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
     } catch (e) {
         console.error("Migration error (admin telegram settings):", e);
+    }
+
+    // Migration: Fix foreign key constraints for ownership tables (should reference admin, not artists)
+    try {
+        const fixKey = "ownership_fk_to_admin_v1";
+        const isFixed = (db.prepare("SELECT value FROM settings WHERE key = ?").get(fixKey) as { value: string } | undefined);
+
+        if (!isFixed) {
+            console.log("📦 Migrating database: Fixing ownership table foreign keys...");
+            
+            const migrate = db.transaction(() => {
+                // 1. Recreate album_ownership
+                const albumData = db.prepare("SELECT * FROM album_ownership").all() as any[];
+                db.exec("DROP TABLE IF EXISTS album_ownership");
+                db.exec(`
+                    CREATE TABLE IF NOT EXISTS album_ownership (
+                      album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
+                      owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+                      PRIMARY KEY (album_id, owner_id)
+                    )
+                `);
+                if (albumData.length > 0) {
+                    const insert = db.prepare("INSERT INTO album_ownership (album_id, owner_id) VALUES (?, ?)");
+                    for (const row of albumData) {
+                        try {
+                            insert.run(row.album_id, row.owner_id);
+                        } catch (e) {
+                            // If owner_id doesn't exist in admin, skip it (it was corrupted anyway)
+                        }
+                    }
+                }
+
+                // 2. Recreate track_ownership
+                const trackData = db.prepare("SELECT * FROM track_ownership").all() as any[];
+                db.exec("DROP TABLE IF EXISTS track_ownership");
+                db.exec(`
+                    CREATE TABLE IF NOT EXISTS track_ownership (
+                      track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+                      owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+                      PRIMARY KEY (track_id, owner_id)
+                    )
+                `);
+                if (trackData.length > 0) {
+                    const insert = db.prepare("INSERT INTO track_ownership (track_id, owner_id) VALUES (?, ?)");
+                    for (const row of trackData) {
+                        try {
+                            insert.run(row.track_id, row.owner_id);
+                        } catch (e) {
+                            // Skip corrupted
+                        }
+                    }
+                }
+
+                db.exec("CREATE INDEX IF NOT EXISTS idx_track_ownership_owner ON track_ownership(owner_id)");
+                db.exec("CREATE INDEX IF NOT EXISTS idx_album_ownership_owner ON album_ownership(owner_id)");
+                db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(fixKey, "true");
+            });
+
+            db.exec("PRAGMA foreign_keys = OFF");
+            try {
+                migrate();
+            } finally {
+                db.exec("PRAGMA foreign_keys = ON");
+            }
+            console.log("✅ Database migrated: ownership tables now correctly reference admin users.");
+        }
+    } catch (e) {
+        console.error("Migration error (ownership fk fix):", e);
     }
 
     // Optimized: Performance Test Requirement: Explicit index creation call (MUST be after table creation)
