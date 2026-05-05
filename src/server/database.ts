@@ -1048,7 +1048,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
         createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number {
             const albumId = albumRepository.create(album);
-            const ownerId = album.owner_id || album.artist_id;
+            const ownerId = album.owner_id;
             if (ownerId) this.addAlbumOwner(albumId, ownerId);
             return albumId;
         },
@@ -1133,7 +1133,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
         createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number {
             const trackId = trackRepository.create(track);
-            const ownerId = track.owner_id || track.artist_id;
+            const ownerId = track.owner_id;
             if (ownerId) this.addTrackOwner(trackId, ownerId);
             return trackId;
         },

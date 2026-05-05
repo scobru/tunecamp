@@ -73,13 +73,18 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                     WHERE owner_id NOT IN (SELECT id FROM admin)
                 `).run(adminId);
 
-                const totalChanges = trackFix.changes + albumFix.changes + releaseFix.changes + invalidTrackFix.changes + invalidAlbumFix.changes + invalidReleaseFix.changes;
+                // 0.3 Clean up redundant/corrupted ownership tables
+                const cleanTrackOwnership = database.db.prepare(`DELETE FROM track_ownership WHERE owner_id NOT IN (SELECT id FROM admin)`).run();
+                const cleanAlbumOwnership = database.db.prepare(`DELETE FROM album_ownership WHERE owner_id NOT IN (SELECT id FROM admin)`).run();
+
+                const totalChanges = trackFix.changes + albumFix.changes + releaseFix.changes + invalidTrackFix.changes + invalidAlbumFix.changes + invalidReleaseFix.changes + cleanTrackOwnership.changes + cleanAlbumOwnership.changes;
                 if (totalChanges > 0) {
                     console.log(`✅ [Maintenance] Ownership repair complete:`);
                     if (trackFix.changes > 0) console.log(`   - Claimed ${trackFix.changes} orphan tracks`);
                     if (invalidTrackFix.changes > 0) console.log(`   - Repaired ${invalidTrackFix.changes} tracks with invalid owner IDs`);
                     if (albumFix.changes + releaseFix.changes > 0) console.log(`   - Claimed ${albumFix.changes + releaseFix.changes} orphan albums/releases`);
                     if (invalidAlbumFix.changes + invalidReleaseFix.changes > 0) console.log(`   - Repaired ${invalidAlbumFix.changes + invalidReleaseFix.changes} albums/releases with invalid owner IDs`);
+                    if (cleanTrackOwnership.changes + cleanAlbumOwnership.changes > 0) console.log(`   - Removed ${cleanTrackOwnership.changes + cleanAlbumOwnership.changes} corrupted secondary ownership records`);
                 }
             } finally {
                 database.db.exec("PRAGMA foreign_keys = ON");

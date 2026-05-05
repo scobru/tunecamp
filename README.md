@@ -61,6 +61,7 @@ docker-compose up -d --build
 - 📤 **Bulk Upload**: Multi-file upload with automatic metadata extraction and album assignment.
 - ✏️ **Batch Editing**: Edit cover art, metadata, and pricing across multiple tracks at once.
 - 📁 **File Browser**: Browse the server filesystem and attach files to the library.
+- 🤖 **Telegram Bot**: Rapid ingestion of music files and remote management. See [TELEGRAM.md](docs/TELEGRAM.md).
 - 💾 **Backup & Restore**: Full database backup/restore via the admin panel or CLI.
 - 📊 **Statistics**: Play counts, listening time, top tracks/artists, and library stats.
 
@@ -146,6 +147,7 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_ADMIN_USER` | Default admin username | `admin` |
 | `TUNECAMP_ADMIN_PASS` | Default admin password | `admin` |
 | `TUNECAMP_PUBLIC_URL` | Public HTTPS URL (required for ActivityPub federation) | — |
+| `TUNECAMP_TELEGRAM_BOT_TOKEN` | Telegram Bot API token for ingestion | — |
 | `TUNECAMP_SITE_NAME` | Human-readable instance name | `My TuneCamp Server` |
 | `TUNECAMP_ZEN_PEERS` | Comma-separated Zen relay peer URLs | — |
 | `VITE_ZEN_PEERS` | Same as above, for the frontend build | — |
@@ -208,10 +210,11 @@ See the [contracts/](./contracts/) directory.
 
 ## Roles & Permissions
 
-Tunecamp uses a role-based access control (RBAC) system with three tiers:
-- **Root Admin**: Full system control, user management, server identity keys.
-- **Admin**: Federation management, content moderation, own releases.
-- **Artist/User**: Upload music, manage own releases, use Subsonic, manage profile.
+Tunecamp uses a role-based access control (RBAC) system with tiered permissions:
+- **Instance Owner (Root Admin)**: Full system control, server identity, and global configuration.
+- **Manager (Full Admin)**: User monitoring, federation management, and cross-artist content control.
+- **Curator (Super User)**: Advanced library management, metadata correction, and global content visibility.
+- **Listener (Standard User)**: Content upload, discography management, and personal profile interaction.
 
 See the [Roles & Permissions Guide →](ROLES.md)
 
