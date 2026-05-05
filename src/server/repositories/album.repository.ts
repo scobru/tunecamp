@@ -273,7 +273,7 @@ export class AlbumRepository extends BaseRepository {
         this.db.transaction(() => {
             this.db.prepare(`INSERT OR IGNORE INTO releases (id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, created_at, use_nft)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-                .run(album.id, album.title, album.slug, album.artist_id, album.owner_id || album.artist_id, album.date, album.cover_path, album.genre, album.description, album.type, album.year, album.download, album.price, album.price_usdc || 0, album.currency, album.external_links, album.visibility, album.published_at, album.published_to_gundb, album.published_to_ap, album.license, album.created_at, album.use_nft ?? 1);
+                .run(album.id, album.title, album.slug, album.artist_id, album.owner_id, album.date, album.cover_path, album.genre, album.description, album.type, album.year, album.download, album.price, album.price_usdc || 0, album.currency, album.external_links, album.visibility, album.published_at, album.published_to_gundb, album.published_to_ap, album.license, album.created_at, album.use_nft ?? 1);
             
             const tracks = this.db.prepare("SELECT * FROM tracks WHERE album_id = ?").all(id) as any[];
             for (const track of tracks) {
@@ -307,7 +307,7 @@ export class AlbumRepository extends BaseRepository {
                     INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).run(
-                    release.title, finalSlug, release.artist_id, release.owner_id || release.artist_id,
+                    release.title, finalSlug, release.artist_id, release.owner_id,
                     release.date, release.cover_path, release.genre, release.description, release.type, release.year,
                     release.download, release.price || 0, release.price_usdc || 0, release.currency || 'ETH', release.external_links,
                     release.visibility || 'private', release.published_at, 

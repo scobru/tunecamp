@@ -1325,7 +1325,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         getTopTracks: (limit = 20, days = 30, filter: 'all' | 'library' | 'releases' = 'all') => socialRepository.getTopTracks(limit, days, filter),
         getTopArtists: (limit = 10, days = 30, filter: 'all' | 'library' | 'releases' = 'all') => socialRepository.getTopArtists(limit, days, filter),
         getPrimaryAdminId(): number | null {
-            const admin = db.prepare("SELECT id FROM admin WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
+            const admin = db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
             return admin ? admin.id : null;
         },
         getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover'): Track[] {

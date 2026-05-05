@@ -238,7 +238,7 @@ export class TrackRepository extends BaseRepository {
             INSERT INTO tracks (title, album_id, artist_id, owner_id, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-            track.title, track.album_id, track.artist_id, track.owner_id || track.artist_id, 
+            track.title, track.album_id, track.artist_id, track.owner_id, 
             track.track_num, track.duration, track.file_path, track.format, track.bitrate, 
             track.sample_rate, track.price || 0, track.price_usdc || 0, track.currency || 'ETH', 
             track.lossless_path || null, track.url || null, track.service || null, 

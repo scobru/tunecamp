@@ -156,7 +156,7 @@ export class Scanner implements ScannerService {
 
     private lookupPrimaryAdmin() {
         try {
-            const admin = this.database.db.prepare("SELECT id FROM admin WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
+            const admin = this.database.db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
             if (admin) {
                 this.primaryAdminId = admin.id;
             }
