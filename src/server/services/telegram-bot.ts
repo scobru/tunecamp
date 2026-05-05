@@ -11,7 +11,7 @@ export class TelegramBotService {
     private isRunning = false;
     private recentContext = new Map<string, { photoId?: string, caption?: string, timestamp: number }>();
     private userCooldowns = new Map<string, number>();
-    private readonly COMMAND_COOLDOWN = 3000; // 3 seconds between commands per user
+    private readonly COMMAND_COOLDOWN = 1000; // 1 second between commands per user
 
     constructor(
         private database: DatabaseService,
@@ -20,6 +20,14 @@ export class TelegramBotService {
     ) {}
 
     private checkRateLimit(ctx: any): boolean {
+        const msg = ctx.message || ctx.channelPost;
+        
+        // NEVER rate limit media uploads (batch ingestion)
+        if (msg?.audio || msg?.document || msg?.photo) return true;
+        
+        // ONLY rate limit text messages that look like commands
+        if (msg?.text && !msg.text.startsWith('/')) return true;
+
         const userId = ctx.from?.id?.toString() || ctx.chat?.id?.toString();
         if (!userId) return true;
 
@@ -30,8 +38,8 @@ export class TelegramBotService {
             const remaining = Math.ceil((this.COMMAND_COOLDOWN - (now - lastRequest)) / 1000);
             console.warn(`[TelegramBot] User ${userId} rate limited. Wait ${remaining}s.`);
             // Silent ignore for very frequent requests (spam), send a hint for slower but still fast ones
-            if (now - lastRequest < 1000) return false; 
-            this.safeReply(ctx, `⏳ Calmati! Aspetta ${remaining} secondi... / Wait ${remaining}s...`);
+            if (now - lastRequest < 500) return false; 
+            this.safeReply(ctx, `⏳ Calmati! Aspetta un attimo... / Wait a second...`);
             return false;
         }
 
@@ -535,7 +543,7 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
             await fs.ensureDir(importDir);
 
             const filePath = path.join(importDir, fileName);
-            const isVerbose = this.database.getSetting('telegram_debug') !== 'false'; // Default to verbose if not set or set to 'true'
+            const isVerbose = this.database.getSetting('telegram_debug') === 'true'; // Default to quiet if not explicitly 'true'
 
             if (isVerbose) {
                 await this.safeReply(ctx, `📥 Downloading ${fileName}...`);
