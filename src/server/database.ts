@@ -201,7 +201,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       title TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
       artist_id INTEGER REFERENCES artists(id),
-      owner_id INTEGER REFERENCES artists(id),
+      owner_id INTEGER REFERENCES admin(id),
       date TEXT,
       cover_path TEXT,
       genre TEXT,

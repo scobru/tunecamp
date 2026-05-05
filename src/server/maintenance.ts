@@ -40,37 +40,49 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
     try {
         // 0. Repair Ownership Gaps (Claim orphans for primary admin)
         console.log(`📦 [Maintenance] Repairing ownership gaps...`);
-        const primaryAdmin = database.db.prepare("SELECT id FROM admin WHERE role = 'admin' ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
+        const primaryAdmin = database.db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
         
         if (primaryAdmin) {
             const adminId = primaryAdmin.id;
             
-            // 0.1 Fix Missing Ownership
-            const trackFix = database.db.prepare("UPDATE tracks SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
-            const albumFix = database.db.prepare("UPDATE albums SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
-            const releaseFix = database.db.prepare("UPDATE releases SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
-            
-            // 0.2 Fix Invalid Ownership (Foreign Key leaks)
-            // Identify and repair any records where owner_id does NOT exist in the admin table
-            const invalidTrackFix = database.db.prepare(`
-                UPDATE tracks 
-                SET owner_id = ? 
-                WHERE owner_id NOT IN (SELECT id FROM admin)
-            `).run(adminId);
-            
-            const invalidAlbumFix = database.db.prepare(`
-                UPDATE albums 
-                SET owner_id = ? 
-                WHERE owner_id NOT IN (SELECT id FROM admin)
-            `).run(adminId);
+            // Temporarily disable FK checks to fix legacy corrupted data or schema inconsistencies
+            database.db.exec("PRAGMA foreign_keys = OFF");
 
-            const totalChanges = trackFix.changes + albumFix.changes + releaseFix.changes + invalidTrackFix.changes + invalidAlbumFix.changes;
-            if (totalChanges > 0) {
-                console.log(`✅ [Maintenance] Ownership repair complete:`);
-                if (trackFix.changes > 0) console.log(`   - Claimed ${trackFix.changes} orphan tracks`);
-                if (invalidTrackFix.changes > 0) console.log(`   - Repaired ${invalidTrackFix.changes} tracks with invalid owner IDs`);
-                if (albumFix.changes + releaseFix.changes > 0) console.log(`   - Claimed ${albumFix.changes + releaseFix.changes} orphan albums`);
-                if (invalidAlbumFix.changes > 0) console.log(`   - Repaired ${invalidAlbumFix.changes} albums with invalid owner IDs`);
+            try {
+                // 0.1 Fix Missing Ownership
+                const trackFix = database.db.prepare("UPDATE tracks SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
+                const albumFix = database.db.prepare("UPDATE albums SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
+                const releaseFix = database.db.prepare("UPDATE releases SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
+                
+                // 0.2 Fix Invalid Ownership (Foreign Key leaks)
+                const invalidTrackFix = database.db.prepare(`
+                    UPDATE tracks 
+                    SET owner_id = ? 
+                    WHERE owner_id NOT IN (SELECT id FROM admin)
+                `).run(adminId);
+                
+                const invalidAlbumFix = database.db.prepare(`
+                    UPDATE albums 
+                    SET owner_id = ? 
+                    WHERE owner_id NOT IN (SELECT id FROM admin)
+                `).run(adminId);
+
+                const invalidReleaseFix = database.db.prepare(`
+                    UPDATE releases 
+                    SET owner_id = ? 
+                    WHERE owner_id NOT IN (SELECT id FROM admin)
+                `).run(adminId);
+
+                const totalChanges = trackFix.changes + albumFix.changes + releaseFix.changes + invalidTrackFix.changes + invalidAlbumFix.changes + invalidReleaseFix.changes;
+                if (totalChanges > 0) {
+                    console.log(`✅ [Maintenance] Ownership repair complete:`);
+                    if (trackFix.changes > 0) console.log(`   - Claimed ${trackFix.changes} orphan tracks`);
+                    if (invalidTrackFix.changes > 0) console.log(`   - Repaired ${invalidTrackFix.changes} tracks with invalid owner IDs`);
+                    if (albumFix.changes + releaseFix.changes > 0) console.log(`   - Claimed ${albumFix.changes + releaseFix.changes} orphan albums/releases`);
+                    if (invalidAlbumFix.changes + invalidReleaseFix.changes > 0) console.log(`   - Repaired ${invalidAlbumFix.changes + invalidReleaseFix.changes} albums/releases with invalid owner IDs`);
+                }
+            } finally {
+                database.db.exec("PRAGMA foreign_keys = ON");
             }
         }
 
