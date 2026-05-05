@@ -152,6 +152,40 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
             console.log(`✅ [Maintenance] Repaired ${encodedRepairCount} URL-encoded track paths.`);
         }
 
+        // 1.5. Deduplicate tracks by file_path
+        console.log(`📦 [Maintenance] Checking for duplicate tracks by file path...`);
+        const duplicates = database.db.prepare(`
+            SELECT file_path, COUNT(*) as count 
+            FROM tracks 
+            WHERE file_path IS NOT NULL 
+            GROUP BY file_path 
+            HAVING count > 1
+        `).all() as { file_path: string, count: number }[];
+
+        if (duplicates.length > 0) {
+            console.log(`📦 [Maintenance] Found ${duplicates.length} duplicate file paths. Cleaning up...`);
+            let removedCount = 0;
+            for (const dup of duplicates) {
+                const tracks = database.db.prepare("SELECT id, album_id, duration FROM tracks WHERE file_path = ?").all(dup.file_path) as any[];
+                // Sort by: 1. has album_id, 2. has duration, 3. lowest ID (oldest)
+                tracks.sort((a, b) => {
+                    if (a.album_id && !b.album_id) return -1;
+                    if (!a.album_id && b.album_id) return 1;
+                    if (a.duration && !b.duration) return -1;
+                    if (!a.duration && b.duration) return 1;
+                    return a.id - b.id;
+                });
+                // Keep the first one, delete others
+                const keepId = tracks[0].id;
+                const deleteIds = tracks.slice(1).map(t => t.id);
+                for (const id of deleteIds) {
+                    database.db.prepare("DELETE FROM tracks WHERE id = ?").run(id);
+                    removedCount++;
+                }
+            }
+            console.log(`✅ [Maintenance] Removed ${removedCount} duplicate track records.`);
+        }
+
         // 2. Relink Orphaned Files (Restore Lost Tracks)
         console.log(`📦 [Maintenance] Scanning for orphaned music files in ${musicDir}...`);
         const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: musicDir, posix: true });
@@ -160,10 +194,15 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
         // Use a selective query for paths only, and iterate
         const pathIterator = database.db.prepare("SELECT file_path FROM tracks WHERE file_path IS NOT NULL").iterate() as IterableIterator<{file_path: string}>;
         for (const t of pathIterator) {
-            dbPaths.add(t.file_path.toLowerCase());
+            // Normalize path to forward slashes for consistent comparison
+            const normalizedPath = t.file_path.replace(/\\/g, '/').toLowerCase();
+            dbPaths.add(normalizedPath);
         }
 
-        const orphans = files.filter(f => !dbPaths.has(f.toLowerCase()));
+        const orphans = files.filter(f => {
+            const normalizedFile = f.replace(/\\/g, '/').toLowerCase();
+            return !dbPaths.has(normalizedFile);
+        });
 
         if (orphans.length > 0) {
             console.log(`📦 [Maintenance] Found ${orphans.length} orphaned files on disk. Restoring...`);
