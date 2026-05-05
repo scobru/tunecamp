@@ -158,7 +158,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       artist_name TEXT,
       track_num INTEGER,
       duration REAL,
-      file_path TEXT,
+      file_path TEXT UNIQUE,
       lossless_path TEXT,
       format TEXT,
       bitrate INTEGER,
@@ -669,41 +669,72 @@ export function createDatabase(dbPath: string): DatabaseService {
     // Migration: Fix foreign key constraints for ownership tables (should reference admin, not artists)
     try {
         // Deep Verification of Ownership Foreign Keys
-        const checkFks = (table: string) => {
+        const checkTableNeedsFix = (table: string) => {
             try {
+                // Check for missing owner_id column
+                const columns = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
+                if (!columns.some(c => c.name === 'owner_id')) return true;
+
+                // Check for wrong FK reference
                 const fks = db.prepare(`PRAGMA foreign_key_list(${table})`).all() as any[];
-                const ownerFk = fks.find(f => f.from === 'owner_id');
-                if (ownerFk) {
-                    console.log(`📦 [Database] FK Check: ${table}.owner_id -> ${ownerFk.table}(${ownerFk.to})`);
-                    if (ownerFk.table === 'artists') {
-                        console.warn(`⚠️ [Database] CRITICAL: ${table}.owner_id incorrectly references 'artists'! This will cause FOREIGN KEY failures.`);
-                        return true;
-                    }
-                } else {
-                    console.log(`📦 [Database] FK Check: ${table}.owner_id has no foreign key constraint.`);
-                }
+                const ownershipFk = fks.find(f => f.from === 'owner_id' && f.table === 'artists');
+                return !!ownershipFk;
             } catch (e) {
-                console.error(`❌ [Database] Failed to check FKs for ${table}:`, e);
+                return false; 
             }
-            return false;
         };
 
-        const albumsNeedsFix = checkFks('albums');
-        const tracksNeedsFix = checkFks('tracks');
-        const releasesNeedsFix = checkFks('releases');
-        const releaseTracksNeedsFix = checkFks('release_tracks');
+        // Rescue Phase: Recover from interrupted migrations
+        const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks'];
+        for (const table of tablesToRescue) {
+            const mainExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+            const oldExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_old`);
+            const newExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_new`);
+            
+            if (!mainExists && oldExists) {
+                console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
+                db.exec(`ALTER TABLE ${table}_old RENAME TO ${table}`);
+            } else if (!mainExists && newExists) {
+                console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
+                db.exec(`ALTER TABLE ${table}_new RENAME TO ${table}`);
+            }
+        }
+
+        const albumsNeedsFix = checkTableNeedsFix('albums');
+        const tracksNeedsFix = checkTableNeedsFix('tracks');
+        const releasesNeedsFix = checkTableNeedsFix('releases');
+        const releaseTracksNeedsFix = checkTableNeedsFix('release_tracks');
 
         if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix || releaseTracksNeedsFix) {
             console.log("📦 [Database] Deep schema repair required for ownership constraints...");
             
             db.exec("PRAGMA foreign_keys = OFF");
 
+            const migrateTable = (tableName: string, createSql: string) => {
+                console.log(`   - Repairing '${tableName}' table...`);
+                const tempName = `${tableName}_new`;
+                db.exec(`DROP TABLE IF EXISTS ${tempName}`);
+                db.exec(createSql);
+                
+                // Column-aware insertion: only copy columns that exist in both versions
+                const oldCols = (db.prepare(`PRAGMA table_info(${tableName})`).all() as any[]).map(c => c.name);
+                const newCols = (db.prepare(`PRAGMA table_info(${tempName})`).all() as any[]).map(c => c.name);
+                const commonCols = oldCols.filter(c => newCols.includes(c));
+                
+                if (commonCols.length > 0) {
+                    const colsStr = commonCols.join(', ');
+                    db.exec(`INSERT OR IGNORE INTO ${tempName} (${colsStr}) SELECT ${colsStr} FROM ${tableName}`);
+                }
+                
+                db.exec(`DROP TABLE ${tableName}`);
+                db.exec(`ALTER TABLE ${tempName} RENAME TO ${tableName}`);
+            };
+
             try {
-                const deepFix = db.transaction(() => {
+                // Run repair in a single transaction for atomicity
+                db.transaction(() => {
                     if (albumsNeedsFix) {
-                        console.log("   - Repairing 'albums' table...");
-                        db.exec("DROP TABLE IF EXISTS albums_new");
-                        db.exec(`
+                        migrateTable('albums', `
                             CREATE TABLE albums_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               title TEXT NOT NULL,
@@ -724,26 +755,21 @@ export function createDatabase(dbPath: string): DatabaseService {
                               currency TEXT DEFAULT 'ETH',
                               external_links TEXT,
                               is_public INTEGER DEFAULT 0,
-                              visibility TEXT DEFAULT 'public',
+                              visibility TEXT DEFAULT 'private',
                               license TEXT,
                               is_release INTEGER DEFAULT 0,
                               status TEXT DEFAULT 'draft',
                               published_to_gundb INTEGER DEFAULT 0,
                               published_to_ap INTEGER DEFAULT 0,
                               published_at TEXT,
-                              use_nft INTEGER DEFAULT 0,
+                              use_nft INTEGER DEFAULT 1,
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO albums_new SELECT * FROM albums");
-                        db.exec("DROP TABLE albums");
-                        db.exec("ALTER TABLE albums_new RENAME TO albums");
                     }
 
                     if (tracksNeedsFix) {
-                        console.log("   - Repairing 'tracks' table...");
-                        db.exec("DROP TABLE IF EXISTS tracks_new");
-                        db.exec(`
+                        migrateTable('tracks', `
                             CREATE TABLE tracks_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               title TEXT NOT NULL,
@@ -753,7 +779,7 @@ export function createDatabase(dbPath: string): DatabaseService {
                               artist_name TEXT,
                               track_num INTEGER,
                               duration REAL,
-                              file_path TEXT,
+                              file_path TEXT UNIQUE,
                               lossless_path TEXT,
                               format TEXT,
                               bitrate INTEGER,
@@ -774,15 +800,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO tracks_new SELECT * FROM tracks");
-                        db.exec("DROP TABLE tracks");
-                        db.exec("ALTER TABLE tracks_new RENAME TO tracks");
                     }
 
                     if (releasesNeedsFix) {
-                        console.log("   - Repairing 'releases' table...");
-                        db.exec("DROP TABLE IF EXISTS releases_new");
-                        db.exec(`
+                        migrateTable('releases', `
                             CREATE TABLE releases_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               title TEXT NOT NULL,
@@ -811,21 +832,20 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO releases_new SELECT * FROM releases");
-                        db.exec("DROP TABLE releases");
-                        db.exec("ALTER TABLE releases_new RENAME TO releases");
                     }
 
                     if (releaseTracksNeedsFix) {
-                        console.log("   - Repairing 'release_tracks' table...");
-                        db.exec("DROP TABLE IF EXISTS release_tracks_new");
-                        db.exec(`
+                        migrateTable('release_tracks', `
                             CREATE TABLE release_tracks_new (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               release_id INTEGER REFERENCES releases(id) ON DELETE CASCADE,
                               track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
                               owner_id INTEGER REFERENCES admin(id),
+                              title TEXT NOT NULL,
+                              artist_name TEXT,
                               track_num INTEGER,
+                              duration REAL,
+                              file_path TEXT,
                               price REAL DEFAULT 0,
                               price_usdc REAL DEFAULT 0,
                               price_usdt REAL DEFAULT 0,
@@ -833,18 +853,11 @@ export function createDatabase(dbPath: string): DatabaseService {
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
                             )
                         `);
-                        db.exec("INSERT INTO release_tracks_new SELECT * FROM release_tracks");
-                        db.exec("DROP TABLE release_tracks");
-                        db.exec("ALTER TABLE release_tracks_new RENAME TO release_tracks");
                     }
-                });
-                
-                deepFix();
+                })();
                 console.log("✅ [Database] Deep schema repair complete.");
-            } catch (e) {
-                console.error("❌ [Database] Deep schema repair failed:", e);
-                // If it failed halfway, we might have ..._new tables left. 
-                // We should try to clean up or the next run will fail with "table already exists".
+            } catch (err) {
+                console.error("❌ [Database] Critical error during schema repair:", err);
             } finally {
                 db.exec("PRAGMA foreign_keys = ON");
             }

@@ -235,7 +235,7 @@ export class TrackRepository extends BaseRepository {
 
     create(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number {
         const result = this.db.prepare(`
-            INSERT INTO tracks (title, album_id, artist_id, owner_id, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, price_usdt, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id)
+            INSERT OR IGNORE INTO tracks (title, album_id, artist_id, owner_id, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, price_usdt, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             track.title, track.album_id, track.artist_id, track.owner_id, 
