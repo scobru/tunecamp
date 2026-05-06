@@ -27,10 +27,6 @@ const _insertQueueTrackStmts = new Map<number, any>();
 export function createDatabase(dbPath: string): DatabaseService {
     const db = new Database(dbPath, { verbose: console.log });
     
-    // Enable foreign key constraints to ensure referential integrity.
-    // Migration scripts should handle temporary disabling if needed.
-    db.pragma("foreign_keys = ON");
-
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");
     db.pragma("busy_timeout = 5000");
@@ -67,20 +63,28 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Deep Clean: Remove any indices, triggers or views referencing _old or _new tables
         // These often cause "no such table" errors if they persist after a migration
-        const artifacts = db.prepare("SELECT name, type FROM sqlite_master WHERE sql LIKE '%_old%' OR sql LIKE '%_new%'").all() as { name: string, type: string }[];
+        const artifacts = db.prepare("SELECT name, type FROM sqlite_master WHERE (sql LIKE '%_old%' OR sql LIKE '%_new%') AND name NOT LIKE '%_old%' AND name NOT LIKE '%_new%'").all() as { name: string, type: string }[];
         for (const artifact of artifacts) {
-            if (artifact.type === 'index') {
-                console.log(`🧹 [Database] Dropping stale index: ${artifact.name}`);
-                db.exec(`DROP INDEX IF EXISTS "${artifact.name}"`);
-            } else if (artifact.type === 'trigger') {
-                console.log(`🧹 [Database] Dropping stale trigger: ${artifact.name}`);
-                db.exec(`DROP TRIGGER IF EXISTS "${artifact.name}"`);
-            } else if (artifact.type === 'view') {
-                console.log(`🧹 [Database] Dropping stale view: ${artifact.name}`);
-                db.exec(`DROP VIEW IF EXISTS "${artifact.name}"`);
+            try {
+                if (artifact.type === 'index') {
+                    console.log(`🧹 [Database] Dropping stale index: ${artifact.name}`);
+                    db.exec(`DROP INDEX IF EXISTS "${artifact.name}"`);
+                } else if (artifact.type === 'trigger') {
+                    console.log(`🧹 [Database] Dropping stale trigger: ${artifact.name}`);
+                    db.exec(`DROP TRIGGER IF EXISTS "${artifact.name}"`);
+                } else if (artifact.type === 'view') {
+                    console.log(`🧹 [Database] Dropping stale view: ${artifact.name}`);
+                    db.exec(`DROP VIEW IF EXISTS "${artifact.name}"`);
+                }
+            } catch (err) {
+                console.warn(`⚠️ [Database] Failed to drop stale artifact ${artifact.name}:`, err);
             }
         }
     })();
+
+    // Enable foreign key constraints AFTER the Rescue Phase.
+    // This ensures that renames and drops during recovery don't trigger broken FK checks.
+    db.pragma("foreign_keys = ON");
 
     // Register custom Levenshtein function
     db.function("levenshtein", (a: string, b: string) => {
@@ -721,27 +725,39 @@ export function createDatabase(dbPath: string): DatabaseService {
         // Deep Verification of Ownership Foreign Keys
         const checkTableNeedsFix = (table: string) => {
             try {
+                // Check if table exists
+                const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+                if (!tableExists) return false;
+
                 // Check for missing owner_id column
                 const columns = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
                 if (!columns.some(c => c.name === 'owner_id')) return true;
 
-                // Check for wrong FK reference
+                // Check for foreign keys
                 const fks = db.prepare(`PRAGMA foreign_key_list(${table})`).all() as any[];
+                
+                // 1. Fix legacy artists reference for ownership
                 const ownershipFk = fks.find(f => f.from === 'owner_id' && f.table === 'artists');
-                return !!ownershipFk;
+                if (ownershipFk) return true;
+
+                // 2. Fix broken references to migration artifacts (stuck on _old or _new)
+                const brokenFk = fks.find(f => f.table.includes('_old') || f.table.includes('_new'));
+                if (brokenFk) return true;
+
+                return false;
             } catch (e) {
                 return false; 
             }
         };
 
-
-
         const albumsNeedsFix = checkTableNeedsFix('albums');
         const tracksNeedsFix = checkTableNeedsFix('tracks');
         const releasesNeedsFix = checkTableNeedsFix('releases');
         const releaseTracksNeedsFix = checkTableNeedsFix('release_tracks');
+        const trackOwnershipNeedsFix = checkTableNeedsFix('track_ownership');
+        const albumOwnershipNeedsFix = checkTableNeedsFix('album_ownership');
 
-        if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix || releaseTracksNeedsFix) {
+        if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix || releaseTracksNeedsFix || trackOwnershipNeedsFix || albumOwnershipNeedsFix) {
             console.log("📦 [Database] Deep schema repair required for ownership constraints...");
             
             db.exec("PRAGMA foreign_keys = OFF");
@@ -899,6 +915,25 @@ export function createDatabase(dbPath: string): DatabaseService {
                               price_usdt REAL DEFAULT 0,
                               currency TEXT DEFAULT 'ETH',
                               created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `);
+                    }
+                    if (albumOwnershipNeedsFix) {
+                        migrateTable('album_ownership', `
+                            CREATE TABLE album_ownership_new (
+                              album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
+                              owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+                              PRIMARY KEY (album_id, owner_id)
+                            )
+                        `);
+                    }
+
+                    if (trackOwnershipNeedsFix) {
+                        migrateTable('track_ownership', `
+                            CREATE TABLE track_ownership_new (
+                              track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+                              owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+                              PRIMARY KEY (track_id, owner_id)
                             )
                         `);
                     }

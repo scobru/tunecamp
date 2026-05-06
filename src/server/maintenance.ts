@@ -329,18 +329,41 @@ async function cleanupTorrentFragments(database: DatabaseService, config: Server
                 if (item.track.id === canonical.id) continue;
 
                 try {
+                    // Defensive check: Ensure both tracks still exist before attempting merge
+                    const checkFrom = database.getTrack(item.track.id);
+                    const checkTo = database.getTrack(canonical.id);
+                    
+                    if (!checkFrom || !checkTo) {
+                        console.warn(`⚠️ [Maintenance] Skipping fragment cleanup: One of the tracks disappeared (From: ${item.track.id}, To: ${canonical.id})`);
+                        continue;
+                    }
+
                     // Merge DB references (ownership, release placement)
-                    database.mergeTracks(item.track.id, canonical.id);
+                    try {
+                        database.mergeTracks(item.track.id, canonical.id);
+                    } catch (mergeErr) {
+                        // Specifically catch "no such table: tracks_old" or similar schema artifacts
+                        console.error(`❌ [Maintenance] DB Merge failed for fragment ${item.path}:`, mergeErr);
+                        continue; // Skip the rest for this item but continue the loop
+                    }
 
                     // Delete file from disk
                     if (fs.existsSync(item.path)) {
-                        await fs.remove(item.path);
-                        savingsBytes += item.bytes;
-                        fragmentCount++;
+                        try {
+                            await fs.remove(item.path);
+                            savingsBytes += item.bytes;
+                            fragmentCount++;
+                        } catch (fsErr) {
+                            console.warn(`⚠️ [Maintenance] Failed to remove file ${item.path}:`, fsErr);
+                        }
                     }
 
                     // Delete track from database
-                    database.deleteTrack(item.track.id);
+                    try {
+                        database.deleteTrack(item.track.id);
+                    } catch (delErr) {
+                        console.error(`❌ [Maintenance] Failed to delete track record ${item.track.id}:`, delErr);
+                    }
                 } catch (err) {
                     console.error(`❌ [Maintenance] Failed to cleanup fragment ${item.path}:`, err);
                 }

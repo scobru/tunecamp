@@ -298,14 +298,19 @@ export class TrackRepository extends BaseRepository {
 
     merge(fromId: number, toId: number, targetFilePath: string): void {
         this.db.transaction(() => {
-            this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id = ?").run(toId, fromId);
-            this.db.prepare("UPDATE release_tracks SET track_id = ?, file_path = ? WHERE track_id = ?").run(toId, targetFilePath, fromId);
-            this.db.prepare("UPDATE play_history SET track_id = ? WHERE track_id = ?").run(toId, fromId);
-            this.db.prepare("UPDATE bookmarks SET track_id = ? WHERE track_id = ?").run(toId, String(fromId));
-            this.db.prepare("UPDATE starred_items SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
-            this.db.prepare("UPDATE item_ratings SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
-            this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(fromId);
-            this.db.prepare("DELETE FROM tracks WHERE id = ?").run(fromId);
+            try {
+                this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id = ?").run(toId, fromId);
+                this.db.prepare("UPDATE release_tracks SET track_id = ?, file_path = ? WHERE track_id = ?").run(toId, targetFilePath, fromId);
+                this.db.prepare("UPDATE play_history SET track_id = ? WHERE track_id = ?").run(toId, fromId);
+                this.db.prepare("UPDATE bookmarks SET track_id = ? WHERE track_id = ?").run(toId, String(fromId));
+                this.db.prepare("UPDATE starred_items SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
+                this.db.prepare("UPDATE item_ratings SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
+                this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(fromId);
+                this.db.prepare("DELETE FROM tracks WHERE id = ?").run(fromId);
+            } catch (err) {
+                console.error(`🚨 [TrackRepository] Merge failed during transaction (${fromId} -> ${toId}):`, err);
+                throw err; // Re-throw to ensure transaction rollback
+            }
         })();
     }
 
