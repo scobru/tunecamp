@@ -921,8 +921,6 @@ export function createDatabase(dbPath: string): DatabaseService {
         db.exec("PRAGMA foreign_keys = ON");
     }
 
-    }
-
     // Optimized: Performance Test Requirement: Explicit index creation call (MUST be after table creation)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC)`);
 
