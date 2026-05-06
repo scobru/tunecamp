@@ -44,13 +44,27 @@ export class MaintenanceService {
                 if (!album) {
                     const albumId = this.db.createAlbum({
                         title: metadata.albumTitle,
+                        slug: metadata.albumTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "album",
                         artist_id: track.artist_id || null,
                         owner_id: track.owner_id || null,
                         genre: metadata.genre || null,
                         year: metadata.year || null,
+                        date: metadata.date || null,
+                        description: null,
                         cover_path: metadata.coverUrl || null,
                         type: 'album',
-                        visibility: 'private'
+                        download: null,
+                        price: 0,
+                        price_usdc: 0,
+                        currency: 'ETH',
+                        external_links: null,
+                        is_public: false,
+                        visibility: 'private',
+                        is_release: false,
+                        status: 'draft',
+                        published_to_gundb: false,
+                        published_to_ap: false,
+                        published_at: null
                     });
                     updateData.albumId = albumId;
                 } else {

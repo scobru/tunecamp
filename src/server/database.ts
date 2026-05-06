@@ -63,9 +63,12 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Deep Clean: Remove any indices, triggers or views referencing _old or _new tables
         // These often cause "no such table" errors if they persist after a migration
-        const artifacts = db.prepare("SELECT name, type FROM sqlite_master WHERE (sql LIKE '%_old%' OR sql LIKE '%_new%') AND name NOT LIKE '%_old%' AND name NOT LIKE '%_new%'").all() as { name: string, type: string }[];
+        const artifacts = db.prepare("SELECT name, type FROM sqlite_master WHERE (sql LIKE '%_old%' OR sql LIKE '%_new%')").all() as { name: string, type: string }[];
         for (const artifact of artifacts) {
             try {
+                // Don't drop the tables themselves here, they are handled by the rescue loop above
+                if (artifact.type === 'table') continue;
+
                 if (artifact.type === 'index') {
                     console.log(`🧹 [Database] Dropping stale index: ${artifact.name}`);
                     db.exec(`DROP INDEX IF EXISTS "${artifact.name}"`);
