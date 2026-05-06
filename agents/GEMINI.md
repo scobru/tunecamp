@@ -179,3 +179,16 @@ These rules apply even when no project GEMINI.md exists:
 - **Never log PII.** Mask emails, IDs, tokens before any log statement.
 
 ---
+
+## 10. Task Diary
+
+**Maintain a permanent log of all completed tasks and significant architectural decisions.**
+
+1. **Location**: `agents/DIARY.md`
+2. **Timing**: Update the diary immediately after completing a Directive or a major research Inquiry.
+3. **Format**: Use a chronological list with the date, a short title, and a concise summary of what was achieved and why.
+4. **Content**: Include file paths modified, new endpoints created, and any "gotchas" discovered.
+
+This diary serves as the project's long-term memory for cross-session continuity.
+
+---
