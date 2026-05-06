@@ -46,7 +46,7 @@ export function createReleaseRouter(
     router.get("/", async (req: any, res) => {
         try {
             let releases: any[];
-            if (req.isAdmin) {
+            if (req.isAdmin || req.isSuperUser) {
                 releases = database.getReleases();
             } else if (req.userId !== undefined) {
                 // Show public releases OR those owned by the user

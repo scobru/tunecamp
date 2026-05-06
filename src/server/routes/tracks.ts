@@ -179,8 +179,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const track = database.getTrack(id);
         if (!track) throw new NotFoundError("Track not found");
 
-        const isRoot = req.isRootAdmin;
-        if (!isRoot && !req.isAdmin && track.album_id) {
+        const canSeePrivate = VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+        if (!canSeePrivate && track.album_id) {
             const album = database.getAlbum(track.album_id);
             if (album && album.visibility === 'private' && track.owner_id !== req.userId) {
                 if (!database.isTrackInPublicPlaylist(id)) throw new ForbiddenError("Access denied");
@@ -414,7 +414,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!track) throw new NotFoundError("Track not found");
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-        if (!req.isAdmin && !isOwner) {
+        const canSeePrivate = VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+        if (!canSeePrivate && !isOwner) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
                 if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(id)) throw new ForbiddenError("Access denied");
@@ -488,7 +489,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!track) throw new NotFoundError("Track not found");
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-        if (!req.isAdmin && !isOwner) {
+        const canSeePrivate = VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+        if (!canSeePrivate && !isOwner) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
                 if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(id)) throw new ForbiddenError("Access denied");

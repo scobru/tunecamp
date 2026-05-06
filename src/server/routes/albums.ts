@@ -16,9 +16,9 @@ export function createAlbumsRoutes(database: DatabaseService, libraryService: Li
      * List all albums
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (req.isAdmin) {
+        if (req.isAdmin || req.isSuperUser) {
             res.json(database.getAlbums());
-        } else if (req.isSuperUser || req.userId) {
+        } else if (req.userId) {
             // Artists and users only see their own albums + public ones
             const owned = database.getAlbumsByOwner(req.userId!, false);
             const publicAlbums = database.getAlbums(true);
