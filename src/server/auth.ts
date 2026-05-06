@@ -411,15 +411,21 @@ export function createAuthService(
 
             let artistId = user.artist_id;
 
-            // Handle Artist Profile (Actor) Management - Only link if already exists or manually set
+            // Handle Artist Profile (Actor) Management
             if (!artistId) {
                 console.log(`🔍 Checking for existing artist profile for ${userRole} ${username}...`);
                 
-                // Check if an artist with the same name exists (e.g. created manually by admin before user registered)
-                const existingArtist = db.prepare("SELECT id FROM artists WHERE name = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
+                // Check if an artist with the same name exists
+                let existingArtist = db.prepare("SELECT id FROM artists WHERE name = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
                 
+                if (!existingArtist && userRole === UserRole.SUPER_USER) {
+                    console.log(`🎨 Auto-creating artist profile for SUPER_USER: ${username}`);
+                    const result = db.prepare("INSERT INTO artists (name, visibility) VALUES (?, 'public')").run(username);
+                    existingArtist = { id: Number(result.lastInsertRowid) };
+                }
+
                 if (existingArtist) {
-                    console.log(`🔗 Found existing artist profile for ${username}, linking it...`);
+                    console.log(`🔗 Linking artist profile for ${username}, id: ${existingArtist.id}`);
                     artistId = existingArtist.id;
                     db.prepare("UPDATE admin SET artist_id = ? WHERE id = ?").run(artistId, user.id);
                 } else {

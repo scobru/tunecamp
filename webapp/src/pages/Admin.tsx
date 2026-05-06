@@ -190,7 +190,7 @@ export const Admin = () => {
            <div className="space-y-4">
            <div className="flex justify-between items-center">
              <h3 className="font-bold text-lg">{isAdmin ? "All Releases" : "My Releases"}</h3>
-             {(!isSuperUser || user?.artistId) && (
+             {(isAdmin || isSuperUser) && (
                <button
                  className="btn btn-sm btn-primary shadow-md"
                  onClick={() => navigate("/admin/release/new")}

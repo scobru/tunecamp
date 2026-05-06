@@ -154,10 +154,12 @@ export default function AdminReleaseEditor() {
       if (isNew && data.length > 0) {
         // If user is a specific artist, pre-set it
         const currentUserId = user?.artistId?.toString();
-        const userArtistExists = data.some(a => a.id.toString() === currentUserId);
-        const targetArtistId = userArtistExists ? user!.artistId : data[0].id;
+        const userArtistExists = currentUserId && data.some(a => a.id.toString() === currentUserId);
+        const targetArtistId = userArtistExists ? user!.artistId : (data.length > 0 ? data[0].id : null);
         
-        setMetadata((prev) => ({ ...prev, artist_id: parseInt(targetArtistId as string) }));
+        if (targetArtistId) {
+            setMetadata((prev) => ({ ...prev, artist_id: parseInt(targetArtistId as string) }));
+        }
       }
     } catch (e) {
       console.error(e);
@@ -623,7 +625,7 @@ export default function AdminReleaseEditor() {
               Delete
             </button>
           )}
-          {(isAdmin || (isSuperUser && user?.artistId)) && (
+          {(isAdmin || isSuperUser) && (
             <>
               <button
                 className="btn btn-ghost btn-sm"
@@ -658,10 +660,10 @@ export default function AdminReleaseEditor() {
               {/* Cover Art */}
               <div className="card bg-base-100 shadow-xl overflow-hidden border border-base-content/5">
                 <div
-                  className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${(isAdmin || (isSuperUser && user?.artistId)) ? 'cursor-pointer' : ''}`}
+                  className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${(isAdmin || isSuperUser) ? 'cursor-pointer' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={(isAdmin || (isSuperUser && user?.artistId)) ? handleDropCover : undefined}
-                  onClick={() => (isAdmin || (isSuperUser && user?.artistId)) && document.getElementById("cover-upload-large")?.click()}
+                  onDrop={(isAdmin || isSuperUser) ? handleDropCover : undefined}
+                  onClick={() => (isAdmin || isSuperUser) && document.getElementById("cover-upload-large")?.click()}
                 >
                   {coverPreview ? (
                     <img
@@ -729,7 +731,7 @@ export default function AdminReleaseEditor() {
                     value={metadata.title}
                     onChange={(e) => setMetadata((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="Release Title"
-                    disabled={isSuperUser && !user?.artistId}
+                    disabled={!isAdmin && !isSuperUser}
                   />
                 </div>
 
