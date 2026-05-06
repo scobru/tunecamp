@@ -14,6 +14,7 @@ import clsx from "clsx";
 
 
 import { Comments } from "../components/Comments";
+import { RelatedTracks } from "../components/RelatedTracks";
 
 export const AlbumDetails = () => {
   const { idOrSlug } = useParams();
@@ -509,9 +510,16 @@ export const AlbumDetails = () => {
             );
           })}
         </div>
-      </div>
+        </div>
 
-      {/* Footer Info / License */}
+        {/* AI Recommendations */}
+        {album.tracks?.[0] && (
+        <div className="px-2">
+          <RelatedTracks trackId={album.tracks[0].id} />
+        </div>
+        )}
+
+        {/* Footer Info / License */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 px-4 py-8 border-t border-base-content/5">
         <div className="flex items-center gap-3 opacity-40">
            <Copyright size={18} />

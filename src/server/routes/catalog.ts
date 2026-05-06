@@ -103,5 +103,21 @@ export function createCatalogRoutes(catalogService: CatalogService): Router {
         }
     });
 
+    /**
+     * GET /api/catalog/tracks/:id/related
+     * Get AI-suggested related tracks
+     */
+    router.get("/tracks/:id/related", async (req, res) => {
+        const trackId = parseInt(req.params.id);
+        try {
+            const limit = parseInt(req.query.limit as string) || 5;
+            const related = await catalogService.getAiRecommendations(trackId, limit);
+            res.json(related);
+        } catch (error) {
+            console.error("Error getting AI recommendations:", error);
+            res.status(500).json({ error: "Failed to get recommendations" });
+        }
+    });
+
     return router;
 }

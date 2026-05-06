@@ -38,6 +38,9 @@ services:
       # Telegram Integration
       - TUNECAMP_TELEGRAM_BOT_TOKEN=
       - TUNECAMP_TELEGRAM_MASTER_ID=
+      # OpenRouter AI Integration
+      - OPENROUTER_API_KEY=
+      - OPENROUTER_MODEL=openai/gpt-4o-mini
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 

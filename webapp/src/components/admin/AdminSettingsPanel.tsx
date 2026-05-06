@@ -583,6 +583,52 @@ export const AdminSettingsPanel = () => {
             <p>These credentials allow the server to connect to the Soulseek network for music discovery. Configuration is global for this server instance.</p>
           </div>
         </div>
+
+        {/* OpenRouter AI Configuration */}
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2 text-secondary">
+            <Activity size={18} />
+            <h4 className="font-bold uppercase text-xs tracking-wider">AI Integration (OpenRouter)</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">OpenRouter API Key</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.openrouter_api_key || ""}
+                onChange={(e) => setSettings({ ...settings, openrouter_api_key: e.target.value })}
+                placeholder="sk-or-v1-..."
+              />
+              <label className="label">
+                <span className="label-text-alt opacity-40 text-[10px]">Your API key from openrouter.ai</span>
+              </label>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">AI Model</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.openrouter_model || ""}
+                onChange={(e) => setSettings({ ...settings, openrouter_model: e.target.value })}
+                placeholder="openai/gpt-4o-mini"
+              />
+              <label className="label">
+                <span className="label-text-alt opacity-40 text-[10px]">The model ID to use for metadata and recommendations.</span>
+              </label>
+            </div>
+          </div>
+          
+          <div className="bg-secondary/5 border border-secondary/20 p-4 rounded-xl text-xs opacity-70">
+            <p>Integrating OpenRouter allows TuneCamp to use Large Language Models for automated metadata enrichment and smart track recommendations. You can find model IDs at <a href="https://openrouter.ai/models" target="_blank" rel="noreferrer" className="link link-primary">openrouter.ai/models</a>.</p>
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end pt-6">

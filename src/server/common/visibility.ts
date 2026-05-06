@@ -108,4 +108,25 @@ export class VisibilityGuardian {
       userId: context.userId
     };
   }
+
+  /**
+   * Checks if a specific item should be visible to the viewer.
+   * Centralizes the logic for Public Stage vs Private Library + Approval Status.
+   */
+  static isItemVisible(item: { visibility: string, status?: string, owner_id?: number | null }, context: ViewerContext): boolean {
+    // 1. Admins see everything
+    if (this.can(context, Capability.MANAGE_ALL_CONTENT)) return true;
+
+    // 2. Owners see their own content (even drafts/pending)
+    if (context.userId && item.owner_id === context.userId) return true;
+
+    // 3. Public consumption logic
+    if (item.visibility === 'public' || item.visibility === 'unlisted') {
+      // ONLY 'released' content is visible to the public or other users
+      return item.status === 'released';
+    }
+
+    // 4. Everything else is private
+    return false;
+  }
 }

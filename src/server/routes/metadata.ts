@@ -171,6 +171,22 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
+     * POST /api/metadata/maintenance/ai-autofill
+     * Autofill metadata for selected tracks using AI (OpenRouter)
+     */
+    router.post("/maintenance/ai-autofill", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const { trackIds, force } = req.body;
+        if (!Array.isArray(trackIds)) return res.status(400).json({ error: "trackIds array required" });
+
+        const results = await maintenance.aiAutofillMetadata(trackIds, {
+            force: !!force
+        });
+
+        res.json(results);
+    });
+
+    /**
      * GET /api/metadata/maintenance/candidates/:trackId
      * Get metadata candidates for manual selection
      */

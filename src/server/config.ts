@@ -20,6 +20,8 @@ export interface ServerConfig {
     coinbaseCdpApiKeySecret?: string;
     telegramBotToken?: string;
     telegramMasterId?: string;
+    openrouterApiKey?: string;
+    openrouterModel?: string;
 }
 
 /**
@@ -82,5 +84,7 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         coinbaseCdpApiKeySecret: process.env.COINBASE_CDP_API_KEY_SECRET?.replace(/\\n/g, '\n') || overrides?.coinbaseCdpApiKeySecret,
         telegramBotToken: process.env.TUNECAMP_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || overrides?.telegramBotToken,
         telegramMasterId: process.env.TUNECAMP_TELEGRAM_MASTER_ID || process.env.TELEGRAM_MASTER_ID || overrides?.telegramMasterId,
+        openrouterApiKey: process.env.OPENROUTER_API_KEY || overrides?.openrouterApiKey,
+        openrouterModel: process.env.OPENROUTER_MODEL || overrides?.openrouterModel || "openai/gpt-4o-mini",
     };
 }

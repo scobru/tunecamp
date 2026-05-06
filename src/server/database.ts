@@ -557,8 +557,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
 
         // Backfill: Existing public releases should be marked as 'released'
-        db.exec("UPDATE releases SET status = 'released' WHERE status = 'draft' AND (visibility = 'public' OR visibility = 'unlisted')");
-        db.exec("UPDATE albums SET status = 'released' WHERE status = 'draft' AND (visibility = 'public' OR visibility = 'unlisted')");
+        // We do this even if the column already existed, to catch any drift
+        db.exec("UPDATE releases SET status = 'released' WHERE (visibility = 'public' OR visibility = 'unlisted') AND (status = 'draft' OR status IS NULL)");
+        db.exec("UPDATE albums SET status = 'released' WHERE (visibility = 'public' OR visibility = 'unlisted') AND (status = 'draft' OR status IS NULL)");
     } catch (e) {
         console.error("Migration error (status column):", e);
     }
@@ -1364,10 +1365,24 @@ export function createDatabase(dbPath: string): DatabaseService {
             albumRepository.update(id, { is_public: isPublic, visibility, published_at: publishedAt });
         },
         updateAlbumStatus(id: number, status: string): void {
-            albumRepository.update(id, { status: status as any });
+            const updates: any = { status };
+            if (status === 'released') {
+                const item = albumRepository.getById(id);
+                if (item && !item.published_at) {
+                    updates.published_at = new Date().toISOString();
+                }
+            }
+            albumRepository.update(id, updates);
         },
         updateReleaseStatus(id: number, status: string): void {
-            albumRepository.updateReleaseStatus(id, status);
+            const updates: any = { status };
+            if (status === 'released') {
+                const item = albumRepository.getById(id); // getById handles both tables
+                if (item && !item.published_at) {
+                    updates.published_at = new Date().toISOString();
+                }
+            }
+            albumRepository.update(id, updates);
         },
         updateAlbumFederationSettings(id: number, publishedToGunDB: boolean, publishedToAP: boolean): void {
             albumRepository.update(id, { published_to_gundb: publishedToGunDB, published_to_ap: publishedToAP });

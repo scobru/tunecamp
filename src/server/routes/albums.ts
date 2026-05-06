@@ -16,8 +16,24 @@ export function createAlbumsRoutes(database: DatabaseService, libraryService: Li
      * List all albums
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.isSuperUser) throw new ForbiddenError("Access denied: Admin only");
-        res.json(database.getAlbums());
+        if (req.isAdmin) {
+            res.json(database.getAlbums());
+        } else if (req.isSuperUser || req.userId) {
+            // Artists and users only see their own albums + public ones
+            const owned = database.getAlbumsByOwner(req.userId!, false);
+            const publicAlbums = database.getAlbums(true);
+            
+            // Merge and deduplicate
+            const seen = new Set();
+            const result = [...owned, ...publicAlbums].filter(a => {
+                if (seen.has(a.id)) return false;
+                seen.add(a.id);
+                return true;
+            });
+            res.json(result);
+        } else {
+            throw new ForbiddenError("Access denied");
+        }
     }));
 
     /**

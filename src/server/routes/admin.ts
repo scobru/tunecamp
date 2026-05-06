@@ -561,7 +561,30 @@ export function createAdminRoutes(
             if (body.type) updates.type = body.type;
             if (body.year) updates.year = body.year;
             if (body.license !== undefined) updates.license = body.license;
-            if (body.visibility) updates.visibility = body.visibility;
+            if (body.visibility) {
+                const oldVisibility = release ? release.visibility : album?.visibility;
+                updates.visibility = body.visibility;
+                
+                // If visibility is changing TO public/unlisted OR it was public but had no status
+                const isBecomingPublic = (body.visibility === 'public' || body.visibility === 'unlisted') && 
+                                       (oldVisibility !== 'public' && oldVisibility !== 'unlisted');
+                
+                if (isBecomingPublic) {
+                    if (isPrivileged) {
+                        updates.status = 'released';
+                        updates.published_at = new Date().toISOString();
+                    } else {
+                        updates.status = 'pending';
+                        updates.published_at = null; // Don't set until released
+                    }
+                }
+            }
+            if (body.status && isPrivileged) {
+                updates.status = body.status;
+                if (body.status === 'released' && !item.published_at) {
+                    updates.published_at = new Date().toISOString();
+                }
+            }
             if (body.download !== undefined) updates.download = body.download;
             if (body.price !== undefined) updates.price = body.price;
             if (body.priceUsdc !== undefined) updates.price_usdc = body.priceUsdc;

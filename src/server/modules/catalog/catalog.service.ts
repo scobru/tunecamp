@@ -1,7 +1,39 @@
 import type { DatabaseService } from "../../database.js";
+import type { OpenRouterService } from "../../services/openrouter.service.js";
 
 export class CatalogService {
-    constructor(private database: DatabaseService) {}
+    constructor(
+        private database: DatabaseService,
+        private openRouter: OpenRouterService
+    ) {}
+
+    async getAiRecommendations(trackId: number, limit: number = 5) {
+        const targetTrack = this.database.getTrack(trackId);
+        if (!targetTrack) throw new Error("Track not found");
+
+        // Fetch a sample of other tracks (candidates)
+        // We pick a larger sample (e.g., 50 random tracks or tracks from same genre) to let AI choose
+        const candidates = this.database.getRandomTracks(50).filter(t => t.id !== trackId);
+
+        const recommendedIds = await this.openRouter.suggestRelatedTracks(targetTrack, candidates);
+        
+        if (recommendedIds.length === 0) {
+            // Fallback to simple genre matching if AI fails or is not configured
+            return candidates
+                .filter(t => t.genre === targetTrack.genre)
+                .slice(0, limit)
+                .map(t => ({
+                    ...t,
+                    coverImage: t.album_id ? `/api/albums/${t.album_id}/cover` : undefined
+                }));
+        }
+
+        const recommendedTracks = this.database.getTracksByIds(recommendedIds);
+        return recommendedTracks.map(t => ({
+            ...t,
+            coverImage: t.album_id ? `/api/albums/${t.album_id}/cover` : undefined
+        }));
+    }
 
     async getOverview(isAdmin: boolean) {
         const stats = await this.database.getStats();

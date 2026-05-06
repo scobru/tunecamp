@@ -46,7 +46,7 @@ export function createReleaseRouter(
     router.get("/", async (req: any, res) => {
         try {
             let releases: any[];
-            if (req.isAdmin || req.isSuperUser) {
+            if (req.isAdmin) {
                 releases = database.getReleases();
             } else if (req.userId !== undefined) {
                 // Show public releases OR those owned by the user
@@ -327,7 +327,8 @@ export function createReleaseRouter(
                     published_at: (body.visibility === 'public' || body.visibility === 'unlisted') ? new Date().toISOString() : null,
                     published_to_gundb: body.publishedToGunDB !== undefined ? body.publishedToGunDB : (body.visibility === 'public' || body.visibility === 'unlisted'),
                     published_to_ap: body.publishedToAP !== undefined ? body.publishedToAP : (body.visibility === 'public' || body.visibility === 'unlisted'),
-                    status: 'draft',
+                    status: (isPrivileged && (body.visibility === 'public' || body.visibility === 'unlisted')) ? 'released' : 
+                            ((body.visibility === 'public' || body.visibility === 'unlisted') ? 'pending' : 'draft'),
                 });
 
                 if (validatedTrackIds.length > 0) {

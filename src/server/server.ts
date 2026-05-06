@@ -83,6 +83,7 @@ import { rateLimit } from "./middleware/rateLimit.js";
 import { SoulseekService } from "./soulseek.js";
 import { TelegramBotService } from "./services/telegram-bot.js";
 import { MaintenanceService } from "./services/maintenance.service.js";
+import { OpenRouterService } from "./services/openrouter.service.js";
 import { createSearchRoutes } from "./routes/search.js";
 import { runStartupMaintenance } from "./maintenance.js";
 import { errorHandler } from "./middleware/error-handling.js";
@@ -118,8 +119,11 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // Initialize Storage Engine
     const storage = new LocalDiskStorage();
 
+    // Initialize OpenRouter AI Service
+    const openRouterService = new OpenRouterService(database, config);
+
     // Initialize Catalog Service
-    const catalogService = new CatalogService(database);
+    const catalogService = new CatalogService(database, openRouterService);
 
     // Run Startup Maintenance (Repair paths + Restore Orphans)
     if (process.env.SKIP_STARTUP_MAINTENANCE === 'true') {
@@ -197,7 +201,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const libraryService = new LibraryService(database, publishingService, zendbService, storage, config.musicDir);
 
     // Initialize Maintenance Service
-    const maintenanceService = new MaintenanceService(database, libraryService);
+    const maintenanceService = new MaintenanceService(database, libraryService, openRouterService);
 
     // Initialize Content Search Services
     const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));

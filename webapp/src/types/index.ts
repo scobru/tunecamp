@@ -209,6 +209,8 @@ export interface SiteSettings {
     adminTreasuryAddress?: string;
     soulseek_username?: string;
     soulseek_password?: string;
+    openrouter_api_key?: string;
+    openrouter_model?: string;
 }
 
 export interface Post {

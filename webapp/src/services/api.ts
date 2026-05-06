@@ -349,6 +349,12 @@ export const API = {
     autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'album')[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/autofill', { trackIds, fields, force })),
 
+    aiAutofillMetadata: (trackIds: (string | number)[], force?: boolean) =>
+        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/ai-autofill', { trackIds, force })),
+
+    getRelatedTracks: (trackId: string | number, limit = 5) =>
+        handleResponse(api.get<Track[]>(`/catalog/tracks/${trackId}/related?limit=${limit}`)),
+
     uploadBackup: async (file: File, onProgress?: (percent: number) => void) => {
         // Chunked upload to avoid timeouts on large files/slow connections
         const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB

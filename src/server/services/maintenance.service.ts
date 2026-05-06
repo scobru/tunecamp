@@ -1,12 +1,60 @@
 import type { DatabaseService, Track } from "../database.js";
 import { metadataService } from "../metadata.js";
 import type { LibraryService } from "./library.service.js";
+import type { OpenRouterService } from "./openrouter.service.js";
 
 export class MaintenanceService {
     constructor(
         private db: DatabaseService,
-        private libraryService: LibraryService
+        private libraryService: LibraryService,
+        private openRouter: OpenRouterService
     ) {}
+
+    /**
+     * Attempts to automatically fill missing metadata for a list of tracks using AI.
+     */
+    async aiAutofillMetadata(trackIds: number[], options: { force?: boolean }): Promise<any> {
+        const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
+        const tracks = this.db.getTracksByIds(trackIds);
+
+        for (const track of tracks) {
+            try {
+                if (!options.force && track.genre && track.year && track.genre !== 'Library') {
+                    results.skipped++;
+                    continue;
+                }
+
+                console.log(`[Maintenance] Attempting AI autofill for: ${track.artist_name} - ${track.title}`);
+                const aiData = await this.openRouter.enrichMetadata(track.title, track.artist_name || 'Unknown Artist');
+
+                if (!aiData) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const updateData: any = {};
+                if (aiData.genre) updateData.genre = aiData.genre;
+                if (aiData.year) updateData.year = aiData.year;
+                if (aiData.description) {
+                    // We might want to save the description somewhere. 
+                    // Tracks don't have a dedicated description field in DB yet, 
+                    // but we could use it for future features or logs.
+                }
+
+                if (Object.keys(updateData).length > 0) {
+                    await this.libraryService.updateTrack(track.id, updateData);
+                    results.success++;
+                } else {
+                    results.skipped++;
+                }
+            } catch (err: any) {
+                results.failed++;
+                results.errors.push(`Track ${track.id}: ${err.message}`);
+            }
+        }
+
+        return results;
+    }
 
     /**
      * Gets tracks missing specific metadata fields.

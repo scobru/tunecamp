@@ -9,8 +9,9 @@ export const AdminMaintenancePanel = () => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isAIProcessing, setIsAIProcessing] = useState(false);
     const [results, setResults] = useState<{ success: number, failed: number, skipped: number } | null>(null);
-    
+
     const [pickerTrack, setPickerTrack] = useState<any | null>(null);
 
     useEffect(() => {
@@ -61,6 +62,22 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleAIAutofill = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        if (!confirm(`Are you sure you want to attempt AI Magic Autofill for ${ids.length} tracks? This will use your OpenRouter credits.`)) return;
+
+        setIsAIProcessing(true);
+        try {
+            const res = await API.aiAutofillMetadata(ids, false);
+            setResults(res);
+            loadTracks(); // Refresh list
+        } catch (e: any) {
+            alert("AI Autofill failed: " + e.message);
+        } finally {
+            setIsAIProcessing(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -104,23 +121,44 @@ export const AdminMaintenancePanel = () => {
                 </div>
             )}
 
-            <div className="flex gap-2 items-center">
-                <button 
-                    className="btn btn-sm btn-primary"
-                    disabled={selectedIds.length === 0 || isProcessing}
-                    onClick={() => handleAutofill(selectedIds)}
-                >
-                    {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
-                    Autofill Selected ({selectedIds.length})
-                </button>
-                
-                <button 
-                    className="btn btn-sm btn-outline"
-                    disabled={tracks.length === 0 || isProcessing}
-                    onClick={() => handleAutofill(tracks.map(t => t.id))}
-                >
-                    Autofill All ({tracks.length})
-                </button>
+            <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
+                    <button 
+                        className="btn btn-sm btn-primary"
+                        disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                        onClick={() => handleAutofill(selectedIds)}
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
+                        Autofill Selected ({selectedIds.length})
+                    </button>
+                    
+                    <button 
+                        className="btn btn-sm btn-outline"
+                        disabled={tracks.length === 0 || isProcessing || isAIProcessing}
+                        onClick={() => handleAutofill(tracks.map(t => t.id))}
+                    >
+                        All
+                    </button>
+                </div>
+
+                <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
+                    <button 
+                        className="btn btn-sm btn-secondary"
+                        disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                        onClick={() => handleAIAutofill(selectedIds)}
+                    >
+                        {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
+                        AI Magic Autofill ({selectedIds.length})
+                    </button>
+                    
+                    <button 
+                        className="btn btn-sm btn-outline btn-secondary"
+                        disabled={tracks.length === 0 || isProcessing || isAIProcessing}
+                        onClick={() => handleAIAutofill(tracks.map(t => t.id))}
+                    >
+                        All
+                    </button>
+                </div>
             </div>
 
             <div className="overflow-x-auto bg-base-200 rounded-box border border-base-content/5">

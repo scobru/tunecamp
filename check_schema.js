@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
 const db = new Database('tunecamp.db');
-const schema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tracks'").get();
-console.log(schema.sql);
+const info = db.prepare("PRAGMA table_info(releases)").all();
+console.log(JSON.stringify(info, null, 2));
 db.close();
