@@ -720,300 +720,207 @@ export function createDatabase(dbPath: string): DatabaseService {
         console.error("Migration error (admin telegram settings):", e);
     }
 
-    // Migration: Fix foreign key constraints for ownership tables (should reference admin, not artists)
+    // Migration: Fix foreign key constraints and schema artifacts (Deep Repair Phase)
     try {
-        // Deep Verification of Ownership Foreign Keys
-        const checkTableNeedsFix = (table: string) => {
+        db.exec("PRAGMA foreign_keys = OFF");
+
+        const checkNeedsRepair = (tableName: string) => {
             try {
                 // Check if table exists
-                const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+                const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
                 if (!tableExists) return false;
 
-                // Check for missing owner_id column
-                const columns = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
-                if (!columns.some(c => c.name === 'owner_id')) return true;
+                const fks = db.prepare(`PRAGMA foreign_key_list("${tableName}")`).all() as any[];
+                const hasBrokenFK = fks.some(fk => 
+                    fk.table.includes('_old') || 
+                    fk.table.includes('_new') || 
+                    (fk.from === 'owner_id' && fk.table === 'artists')
+                );
+                if (hasBrokenFK) return true;
 
-                // Check for foreign keys
-                const fks = db.prepare(`PRAGMA foreign_key_list(${table})`).all() as any[];
-                
-                // 1. Fix legacy artists reference for ownership
-                const ownershipFk = fks.find(f => f.from === 'owner_id' && f.table === 'artists');
-                if (ownershipFk) return true;
-
-                // 2. Fix broken references to migration artifacts (stuck on _old or _new)
-                const brokenFk = fks.find(f => f.table.includes('_old') || f.table.includes('_new'));
-                if (brokenFk) return true;
+                // Also check SQL for stale table references
+                const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?").get(tableName) as { sql: string } | undefined;
+                if (row?.sql && (row.sql.includes('_old') || row.sql.includes('_new'))) return true;
 
                 return false;
             } catch (e) {
-                return false; 
+                return false;
             }
         };
 
-        const albumsNeedsFix = checkTableNeedsFix('albums');
-        const tracksNeedsFix = checkTableNeedsFix('tracks');
-        const releasesNeedsFix = checkTableNeedsFix('releases');
-        const releaseTracksNeedsFix = checkTableNeedsFix('release_tracks');
-        const trackOwnershipNeedsFix = checkTableNeedsFix('track_ownership');
-        const albumOwnershipNeedsFix = checkTableNeedsFix('album_ownership');
-
-        if (albumsNeedsFix || tracksNeedsFix || releasesNeedsFix || releaseTracksNeedsFix || trackOwnershipNeedsFix || albumOwnershipNeedsFix) {
-            console.log("📦 [Database] Deep schema repair required for ownership constraints...");
-            
-            db.exec("PRAGMA foreign_keys = OFF");
-
-            const migrateTable = (tableName: string, createSql: string) => {
-                console.log(`   - Repairing '${tableName}' table...`);
-                const tempName = `${tableName}_new`;
+        const migrateTable = (tableName: string, createSql: string) => {
+            console.log(`🛠️ [Database] Repairing '${tableName}' table...`);
+            const tempName = `${tableName}_new`;
+            try {
+                db.exec(`DROP TABLE IF EXISTS ${tempName}`);
+                db.exec(createSql);
                 
-                try {
-                    db.exec(`DROP TABLE IF EXISTS ${tempName}`);
-                    db.exec(createSql);
-                    
-                    // Drop all indexes associated with the table to prevent "ghost" references
-                    const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=?").all(tableName) as { name: string }[];
-                    for (const idx of indexes) {
-                        db.exec(`DROP INDEX IF EXISTS "${idx.name}"`);
-                    }
-
-                    // Column-aware insertion: only copy columns that exist in both versions
-                    const oldCols = (db.prepare(`PRAGMA table_info(${tableName})`).all() as any[]).map(c => c.name);
-                    const newCols = (db.prepare(`PRAGMA table_info(${tempName})`).all() as any[]).map(c => c.name);
-                    const commonCols = oldCols.filter(c => newCols.includes(c));
-                    
-                    if (commonCols.length > 0) {
-                        const colsStr = commonCols.join(', ');
-                        db.exec(`INSERT OR IGNORE INTO ${tempName} (${colsStr}) SELECT ${colsStr} FROM ${tableName}`);
-                    }
-                    
-                    db.exec(`DROP TABLE ${tableName}`);
-                    db.exec(`ALTER TABLE ${tempName} RENAME TO ${tableName}`);
-                } catch (err) {
-                    console.error(`❌ [Database] Failed to migrate table '${tableName}':`, err);
-                    throw err; // Re-throw to trigger transaction rollback
+                const oldCols = (db.prepare(`PRAGMA table_info(${tableName})`).all() as any[]).map(c => c.name);
+                const newCols = (db.prepare(`PRAGMA table_info(${tempName})`).all() as any[]).map(c => c.name);
+                const commonCols = oldCols.filter(c => newCols.includes(c));
+                
+                if (commonCols.length > 0) {
+                    const colsStr = commonCols.join(', ');
+                    db.exec(`INSERT OR IGNORE INTO ${tempName} (${colsStr}) SELECT ${colsStr} FROM ${tableName}`);
                 }
-            };
-
-            try {
-                // Run repair in a single transaction for atomicity
-                db.transaction(() => {
-                    if (albumsNeedsFix) {
-                        migrateTable('albums', `
-                            CREATE TABLE albums_new (
-                              id INTEGER PRIMARY KEY AUTOINCREMENT,
-                              title TEXT NOT NULL,
-                              slug TEXT NOT NULL UNIQUE,
-                              artist_id INTEGER REFERENCES artists(id),
-                              owner_id INTEGER REFERENCES admin(id),
-                              artist_name TEXT,
-                              date TEXT,
-                              cover_path TEXT,
-                              genre TEXT,
-                              description TEXT,
-                              type TEXT,
-                              year INTEGER,
-                              download TEXT,
-                              price REAL DEFAULT 0,
-                              price_usdc REAL DEFAULT 0,
-                              price_usdt REAL DEFAULT 0,
-                              currency TEXT DEFAULT 'ETH',
-                              external_links TEXT,
-                              is_public INTEGER DEFAULT 0,
-                              visibility TEXT DEFAULT 'private',
-                              license TEXT,
-                              is_release INTEGER DEFAULT 0,
-                              status TEXT DEFAULT 'draft',
-                              published_to_gundb INTEGER DEFAULT 0,
-                              published_to_ap INTEGER DEFAULT 0,
-                              published_at TEXT,
-                              use_nft INTEGER DEFAULT 1,
-                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                            )
-                        `);
-                    }
-
-                    if (tracksNeedsFix) {
-                        migrateTable('tracks', `
-                            CREATE TABLE tracks_new (
-                              id INTEGER PRIMARY KEY AUTOINCREMENT,
-                              title TEXT NOT NULL,
-                              album_id INTEGER REFERENCES albums(id),
-                              artist_id INTEGER REFERENCES artists(id),
-                              owner_id INTEGER REFERENCES admin(id),
-                              artist_name TEXT,
-                              track_num INTEGER,
-                              duration REAL,
-                              file_path TEXT UNIQUE,
-                              lossless_path TEXT,
-                              format TEXT,
-                              bitrate INTEGER,
-                              sample_rate INTEGER,
-                              price REAL DEFAULT 0,
-                              price_usdc REAL DEFAULT 0,
-                              price_usdt REAL DEFAULT 0,
-                              currency TEXT DEFAULT 'ETH',
-                              waveform TEXT,
-                              url TEXT,
-                              service TEXT,
-                              external_artwork TEXT,
-                              lyrics TEXT,
-                              hash TEXT,
-                              genre TEXT,
-                              year INTEGER,
-                              external_id TEXT,
-                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                            )
-                        `);
-                    }
-
-                    if (releasesNeedsFix) {
-                        migrateTable('releases', `
-                            CREATE TABLE releases_new (
-                              id INTEGER PRIMARY KEY AUTOINCREMENT,
-                              title TEXT NOT NULL,
-                              slug TEXT NOT NULL UNIQUE,
-                              artist_id INTEGER REFERENCES artists(id),
-                              owner_id INTEGER REFERENCES admin(id),
-                              date TEXT,
-                              cover_path TEXT,
-                              genre TEXT,
-                              description TEXT,
-                              type TEXT,
-                              year INTEGER,
-                              download TEXT,
-                              price REAL DEFAULT 0,
-                              price_usdc REAL DEFAULT 0,
-                              price_usdt REAL DEFAULT 0,
-                              currency TEXT DEFAULT 'ETH',
-                              external_links TEXT,
-                              visibility TEXT DEFAULT 'private',
-                              status TEXT DEFAULT 'draft',
-                              published_at TEXT,
-                              published_to_gundb INTEGER DEFAULT 0,
-                              published_to_ap INTEGER DEFAULT 0,
-                              license TEXT,
-                              use_nft INTEGER DEFAULT 1,
-                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                            )
-                        `);
-                    }
-
-                    if (releaseTracksNeedsFix) {
-                        migrateTable('release_tracks', `
-                            CREATE TABLE release_tracks_new (
-                              id INTEGER PRIMARY KEY AUTOINCREMENT,
-                              release_id INTEGER REFERENCES releases(id) ON DELETE CASCADE,
-                              track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
-                              owner_id INTEGER REFERENCES admin(id),
-                              title TEXT NOT NULL,
-                              artist_name TEXT,
-                              track_num INTEGER,
-                              duration REAL,
-                              file_path TEXT,
-                              price REAL DEFAULT 0,
-                              price_usdc REAL DEFAULT 0,
-                              price_usdt REAL DEFAULT 0,
-                              currency TEXT DEFAULT 'ETH',
-                              created_at TEXT DEFAULT CURRENT_TIMESTAMP
-                            )
-                        `);
-                    }
-                    if (albumOwnershipNeedsFix) {
-                        migrateTable('album_ownership', `
-                            CREATE TABLE album_ownership_new (
-                              album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
-                              owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
-                              PRIMARY KEY (album_id, owner_id)
-                            )
-                        `);
-                    }
-
-                    if (trackOwnershipNeedsFix) {
-                        migrateTable('track_ownership', `
-                            CREATE TABLE track_ownership_new (
-                              track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
-                              owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
-                              PRIMARY KEY (track_id, owner_id)
-                            )
-                        `);
-                    }
-                })();
-                console.log("✅ [Database] Deep schema repair complete.");
+                
+                db.exec(`DROP TABLE ${tableName}`);
+                db.exec(`ALTER TABLE ${tempName} RENAME TO ${tableName}`);
             } catch (err) {
-                console.error("❌ [Database] Critical error during schema repair:", err);
-            } finally {
-                db.exec("PRAGMA foreign_keys = ON");
+                console.error(`❌ [Database] Failed to migrate table '${tableName}':`, err);
+                throw err;
             }
-        }
+        };
 
-        const fixKey = "ownership_fk_to_admin_v1";
-        const isFixedSetting = (db.prepare("SELECT value FROM settings WHERE key = ?").get(fixKey) as { value: string } | undefined);
-        
-        // Robust check: Verify schema directly in case the setting was lost or corrupted
-        const trackOwnershipSchema = db.prepare("SELECT sql FROM sqlite_master WHERE name='track_ownership'").get() as { sql: string } | undefined;
-        const needsFixBySchema = trackOwnershipSchema && trackOwnershipSchema.sql.includes("REFERENCES artists");
+        const tablesToCheck = ['tracks', 'albums', 'releases', 'release_tracks', 'album_ownership', 'track_ownership'];
+        const needsRepair = tablesToCheck.some(t => checkNeedsRepair(t));
 
-        if (!isFixedSetting || needsFixBySchema) {
-            console.log("📦 Migrating database: Fixing ownership table foreign keys...");
-            
-            const migrate = db.transaction(() => {
-                // 1. Recreate album_ownership
-                const albumData = db.prepare("SELECT * FROM album_ownership").all() as any[];
-                db.exec("DROP TABLE IF EXISTS album_ownership");
-                db.exec(`
-                    CREATE TABLE IF NOT EXISTS album_ownership (
-                      album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
-                      owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
-                      PRIMARY KEY (album_id, owner_id)
-                    )
-                `);
-                if (albumData.length > 0) {
-                    const insert = db.prepare("INSERT INTO album_ownership (album_id, owner_id) VALUES (?, ?)");
-                    for (const row of albumData) {
-                        try {
-                            insert.run(row.album_id, row.owner_id);
-                        } catch (e) {
-                            // If owner_id doesn't exist in admin, skip it (it was corrupted anyway)
-                        }
-                    }
+        if (needsRepair) {
+            console.log("📦 [Database] Deep schema repair required...");
+            db.transaction(() => {
+                if (checkNeedsRepair('tracks')) {
+                    migrateTable('tracks', `
+                        CREATE TABLE tracks_new (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          album_id INTEGER REFERENCES albums(id),
+                          artist_id INTEGER REFERENCES artists(id),
+                          owner_id INTEGER REFERENCES admin(id),
+                          artist_name TEXT,
+                          track_num INTEGER,
+                          duration REAL,
+                          file_path TEXT,
+                          format TEXT,
+                          bitrate INTEGER,
+                          sample_rate INTEGER,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          price_usdt REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          waveform TEXT,
+                          url TEXT,
+                          service TEXT,
+                          external_artwork TEXT,
+                          lyrics TEXT,
+                          lossless_path TEXT,
+                          external_id TEXT,
+                          hash TEXT,
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
                 }
 
-                // 2. Recreate track_ownership
-                const trackData = db.prepare("SELECT * FROM track_ownership").all() as any[];
-                db.exec("DROP TABLE IF EXISTS track_ownership");
-                db.exec(`
-                    CREATE TABLE IF NOT EXISTS track_ownership (
-                      track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
-                      owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
-                      PRIMARY KEY (track_id, owner_id)
-                    )
-                `);
-                if (trackData.length > 0) {
-                    const insert = db.prepare("INSERT INTO track_ownership (track_id, owner_id) VALUES (?, ?)");
-                    for (const row of trackData) {
-                        try {
-                            insert.run(row.track_id, row.owner_id);
-                        } catch (e) {
-                            // Skip corrupted
-                        }
-                    }
+                if (checkNeedsRepair('albums')) {
+                    migrateTable('albums', `
+                        CREATE TABLE albums_new (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          slug TEXT NOT NULL UNIQUE,
+                          artist_id INTEGER REFERENCES artists(id),
+                          owner_id INTEGER REFERENCES admin(id),
+                          date TEXT,
+                          cover_path TEXT,
+                          genre TEXT,
+                          description TEXT,
+                          type TEXT DEFAULT 'album',
+                          year INTEGER,
+                          download TEXT,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          external_links TEXT,
+                          is_public INTEGER DEFAULT 0,
+                          visibility TEXT DEFAULT 'private',
+                          is_release INTEGER DEFAULT 0,
+                          published_at TEXT,
+                          published_to_gundb INTEGER DEFAULT 0,
+                          published_to_ap INTEGER DEFAULT 0,
+                          license TEXT,
+                          status TEXT DEFAULT 'draft',
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
                 }
 
-                db.exec("CREATE INDEX IF NOT EXISTS idx_track_ownership_owner ON track_ownership(owner_id)");
-                db.exec("CREATE INDEX IF NOT EXISTS idx_album_ownership_owner ON album_ownership(owner_id)");
-                db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(fixKey, "true");
-            });
+                if (checkNeedsRepair('releases')) {
+                    migrateTable('releases', `
+                        CREATE TABLE releases_new (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          slug TEXT NOT NULL UNIQUE,
+                          artist_id INTEGER REFERENCES artists(id),
+                          owner_id INTEGER REFERENCES admin(id),
+                          date TEXT,
+                          cover_path TEXT,
+                          genre TEXT,
+                          description TEXT,
+                          type TEXT DEFAULT 'album',
+                          year INTEGER,
+                          download TEXT,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          external_links TEXT,
+                          visibility TEXT DEFAULT 'private',
+                          published_at TEXT,
+                          published_to_gundb INTEGER DEFAULT 0,
+                          published_to_ap INTEGER DEFAULT 0,
+                          license TEXT,
+                          status TEXT DEFAULT 'draft',
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
+                }
 
-            db.exec("PRAGMA foreign_keys = OFF");
-            try {
-                migrate();
-            } finally {
-                db.exec("PRAGMA foreign_keys = ON");
-            }
-            console.log("✅ Database migrated: ownership tables now correctly reference admin users.");
+                if (checkNeedsRepair('release_tracks')) {
+                    migrateTable('release_tracks', `
+                        CREATE TABLE release_tracks_new (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          release_id INTEGER REFERENCES releases(id) ON DELETE CASCADE,
+                          track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+                          owner_id INTEGER REFERENCES admin(id),
+                          title TEXT NOT NULL,
+                          artist_name TEXT,
+                          track_num INTEGER,
+                          duration REAL,
+                          file_path TEXT,
+                          price REAL DEFAULT 0,
+                          price_usdc REAL DEFAULT 0,
+                          price_usdt REAL DEFAULT 0,
+                          currency TEXT DEFAULT 'ETH',
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                    `);
+                }
+
+                if (checkNeedsRepair('album_ownership')) {
+                    migrateTable('album_ownership', `
+                        CREATE TABLE album_ownership_new (
+                          album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
+                          owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+                          PRIMARY KEY (album_id, owner_id)
+                        )
+                    `);
+                }
+
+                if (checkNeedsRepair('track_ownership')) {
+                    migrateTable('track_ownership', `
+                        CREATE TABLE track_ownership_new (
+                          track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+                          owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+                          PRIMARY KEY (track_id, owner_id)
+                        )
+                    `);
+                }
+            })();
+            console.log("✅ [Database] Deep schema repair complete.");
         }
     } catch (e) {
-        console.error("Migration error (ownership fk fix):", e);
+        console.error("❌ [Database] Critical error during schema repair:", e);
+    } finally {
+        db.exec("PRAGMA foreign_keys = ON");
+    }
+
     }
 
     // Optimized: Performance Test Requirement: Explicit index creation call (MUST be after table creation)
