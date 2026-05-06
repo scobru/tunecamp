@@ -60,11 +60,12 @@ export const Admin = () => {
     }
   };
 
-  const handleSystemAction = async (action: "cleanup" | "consolidate") => {
+  const handleSystemAction = async (action: "cleanup" | "consolidate" | "rescan") => {
     const isCleanup = action === "cleanup";
+    const isRescan = action === "rescan";
     if (
       !confirm(
-        `Are you sure you want to ${isCleanup ? "cleanup the network" : "consolidate files"}? This may take a while.`,
+        `Are you sure you want to ${isCleanup ? "cleanup the network" : isRescan ? "trigger a full library rescan" : "consolidate files"}? This may take a while.`,
       )
     )
       return;
@@ -72,6 +73,9 @@ export const Admin = () => {
       if (isCleanup) {
         await API.cleanupNetwork();
         alert(`Network cleanup finished successfully.`);
+      } else if (isRescan) {
+        await API.triggerRescan();
+        alert(`Full library rescan triggered in background. Changes will appear soon.`);
       } else {
         const res = await API.consolidateFiles();
         alert(`File consolidation finished. Success: ${res.success}, Failed: ${res.failed}, Skipped: ${res.skipped}`);
@@ -239,6 +243,25 @@ export const Admin = () => {
                       onClick={() => handleSystemAction("consolidate")}
                     >
                       Consolidate Files
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card card-m3 bg-base-200/50">
+                <div className="card-body">
+                  <h2 className="card-title text-secondary">
+                    <RefreshCw /> Full Rescan
+                  </h2>
+                  <p className="opacity-70 text-sm">
+                    Deep scan of the music directory to detect new files and update existing metadata.
+                  </p>
+                  <div className="card-actions justify-end mt-4">
+                    <button
+                      className="btn btn-secondary btn-outline btn-sm"
+                      onClick={() => handleSystemAction("rescan")}
+                    >
+                      Rescan Library
                     </button>
                   </div>
                 </div>

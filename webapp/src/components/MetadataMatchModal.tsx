@@ -9,7 +9,7 @@ interface MetadataMatch {
   artist: string;
   albumTitle?: string;
   coverUrl?: string;
-  source?: "musicbrainz" | "discogs";
+  source?: "musicbrainz" | "discogs" | "itunes";
   date?: string;
 }
 
@@ -191,7 +191,7 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
         </div>
 
         <div className="p-4 bg-base-200/50 text-[10px] uppercase tracking-wider opacity-30 text-center">
-          Data provided by MusicBrainz and Discogs API
+          Data provided by MusicBrainz, Discogs, and iTunes API
         </div>
       </div>
     </div>

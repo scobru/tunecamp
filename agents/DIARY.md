@@ -21,3 +21,11 @@ Chronological log of completed tasks and significant architectural decisions.
 **Summary**: Updated project instructions to include a mandatory task diary.
 - **Files Modified**: `agents/GEMINI.md`.
 - **New Artifact**: `agents/DIARY.md`.
+
+### 3. Frontend UI Enhancements & Rescan Functionality
+**Summary**: Added missing "Full Rescan" functionality to the Admin UI and enhanced metadata search visibility.
+- **Frontend Changes**:
+  - `webapp/src/pages/Admin.tsx`: Added **"Full Rescan"** button in the System tab to trigger a deep library scan.
+  - `webapp/src/services/api.ts`: Added `triggerRescan` method.
+  - `webapp/src/components/MetadataMatchModal.tsx`: Updated UI to show iTunes as a metadata source and updated credits.
+- **Verification**: Verified that the new buttons are present and correctly linked to the backend endpoints.
