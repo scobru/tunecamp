@@ -148,6 +148,7 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_ADMIN_PASS` | Default admin password | `admin` |
 | `TUNECAMP_PUBLIC_URL` | Public HTTPS URL (required for ActivityPub federation) | — |
 | `TUNECAMP_TELEGRAM_BOT_TOKEN` | Telegram Bot API token for ingestion | — |
+| `TUNECAMP_TELEGRAM_MASTER_ID` | Telegram User ID of the master administrator | — |
 | `TUNECAMP_SITE_NAME` | Human-readable instance name | `My TuneCamp Server` |
 | `TUNECAMP_ZEN_PEERS` | Comma-separated Zen relay peer URLs | — |
 | `VITE_ZEN_PEERS` | Same as above, for the frontend build | — |

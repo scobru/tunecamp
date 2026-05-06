@@ -35,6 +35,9 @@ services:
       # ZEN Relay peer - must use /zen WebSocket path
       - TUNECAMP_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://shogun-relay.scobrudot.dev/zen}
       - VITE_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://shogun-relay.scobrudot.dev/zen}
+      # Telegram Integration
+      - TUNECAMP_TELEGRAM_BOT_TOKEN=
+      - TUNECAMP_TELEGRAM_MASTER_ID=
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 

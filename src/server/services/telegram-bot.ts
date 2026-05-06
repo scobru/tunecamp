@@ -5,6 +5,7 @@ import fs from 'fs-extra';
 import axios from 'axios';
 import { ScannerService } from '../scanner.js';
 import { DatabaseService } from '../database.js';
+import type { ServerConfig } from '../config.js';
 
 export class TelegramBotService {
     private bot?: Telegraf;
@@ -16,11 +17,15 @@ export class TelegramBotService {
     constructor(
         private database: DatabaseService,
         private scanner: ScannerService,
-        private musicDir: string
+        private config: ServerConfig
     ) {}
 
+    private get musicDir(): string {
+        return this.config.musicDir;
+    }
+
     private getMasterId(): string | undefined {
-        return process.env.TELEGRAM_MASTER_ID || this.database.getSetting('telegram_master_id');
+        return this.config.telegramMasterId || this.database.getSetting('telegram_master_id');
     }
 
     private checkRateLimit(ctx: any): boolean {
@@ -72,7 +77,7 @@ export class TelegramBotService {
         if (this.isRunning) return;
 
         // SECURITY: Prefer Environment Variable over Database settings for secrets
-        let token = process.env.TELEGRAM_BOT_TOKEN;
+        let token = this.config.telegramBotToken;
         
         if (!token) {
             token = this.database.getSetting('telegram_bot_token');

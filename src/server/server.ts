@@ -207,7 +207,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
 
     // Initialize Telegram Bot
-    const telegramBotService = new TelegramBotService(database, scanner, config.musicDir);
+    const telegramBotService = new TelegramBotService(database, scanner, config);
     telegramBotService.start().catch(err => console.error("Telegram Bot failed to start:", err));
 
     // Upload routes - MOVED BEFORE FEDIFY/BODY PARSERS to avoid stream consumption issues

@@ -18,6 +18,8 @@ export interface ServerConfig {
     downloadDir?: string;
     coinbaseCdpApiKeyName?: string;
     coinbaseCdpApiKeySecret?: string;
+    telegramBotToken?: string;
+    telegramMasterId?: string;
 }
 
 /**
@@ -78,5 +80,7 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         downloadDir: process.env.TUNECAMP_DOWNLOAD_DIR || overrides?.downloadDir || defaultDownloadDir,
         coinbaseCdpApiKeyName: process.env.COINBASE_CDP_API_KEY_NAME || overrides?.coinbaseCdpApiKeyName,
         coinbaseCdpApiKeySecret: process.env.COINBASE_CDP_API_KEY_SECRET?.replace(/\\n/g, '\n') || overrides?.coinbaseCdpApiKeySecret,
+        telegramBotToken: process.env.TUNECAMP_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || overrides?.telegramBotToken,
+        telegramMasterId: process.env.TUNECAMP_TELEGRAM_MASTER_ID || process.env.TELEGRAM_MASTER_ID || overrides?.telegramMasterId,
     };
 }
