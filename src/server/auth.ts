@@ -158,6 +158,7 @@ export function createAuthService(
                         gun_pub TEXT,
                         gun_priv TEXT,
                         is_active INTEGER DEFAULT 1,
+                        token_version INTEGER DEFAULT 0,
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                     )
@@ -165,7 +166,7 @@ export function createAuthService(
 
                 // 3. Migrate data - existing users keep role='admin' and unlimited quota (0)
                 const oldAdmins = db.prepare("SELECT * FROM admin_old").all() as any[];
-                const insertStmt = db.prepare("INSERT INTO admin (id, username, password_hash, created_at, updated_at, artist_id, role, storage_quota, storage_used, gun_pub, gun_priv, subsonic_token, subsonic_password, is_active) VALUES (?, ?, ?, ?, ?, ?, 'admin', 0, 0, ?, ?, ?, ?, ?)");
+                const insertStmt = db.prepare("INSERT INTO admin (id, username, password_hash, created_at, updated_at, artist_id, role, storage_quota, storage_used, gun_pub, gun_priv, subsonic_token, subsonic_password, is_active, token_version) VALUES (?, ?, ?, ?, ?, ?, 'admin', 0, 0, ?, ?, ?, ?, ?, ?)");
 
                 for (const old of oldAdmins) {
                     let username = old.username;
@@ -181,7 +182,8 @@ export function createAuthService(
                         old.gun_priv || null,
                         old.subsonic_token || null,
                         old.subsonic_password || null,
-                        old.is_active !== undefined ? old.is_active : 1
+                        old.is_active !== undefined ? old.is_active : 1,
+                        old.token_version || 0
                     );
                 }
 
@@ -425,9 +427,29 @@ export function createAuthService(
                 
                 if (!existingArtist && userRole === UserRole.SUPER_USER) {
                     console.log(`🎨 Auto-creating artist profile for SUPER_USER: ${username}`);
-                    const result = db.prepare("INSERT INTO artists (name, visibility) VALUES (?, 'public')").run(username);
-                    existingArtist = { id: Number(result.lastInsertRowid) };
+                    
+                    const slug = username.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
+                    let finalSlug = slug;
+                    let attempt = 0;
+                    
+                    while (attempt < 100) {
+                        try {
+                            const result = db.prepare("INSERT INTO artists (name, slug, visibility) VALUES (?, ?, 'public')").run(username, finalSlug);
+                            existingArtist = { id: Number(result.lastInsertRowid) };
+                            break;
+                        } catch (e: any) {
+                            if (e.message && e.message.includes('UNIQUE constraint failed: artists.slug')) {
+                                attempt++;
+                                finalSlug = `${slug}-${attempt}`;
+                                continue;
+                            }
+                            // If it's another error (like name collision), we let it fail or handle it
+                            console.error(`❌ Failed to auto-create artist profile: ${e.message}`);
+                            break;
+                        }
+                    }
                 }
+
 
                 if (existingArtist) {
                     console.log(`🔗 Linking artist profile for ${username}, id: ${existingArtist.id}`);
