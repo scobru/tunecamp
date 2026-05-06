@@ -37,7 +37,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Rescue Phase: Recover from interrupted migrations
     // MUST run before "CREATE TABLE IF NOT EXISTS" blocks
-    const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks'];
+    const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks', 'admin', 'artists'];
     db.transaction(() => {
         for (const table of tablesToRescue) {
             const mainExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
@@ -47,21 +47,37 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!mainExists) {
                 if (oldExists) {
                     console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
-                    db.exec(`ALTER TABLE ${table}_old RENAME TO ${table}`);
+                    db.exec(`ALTER TABLE "${table}_old" RENAME TO "${table}"`);
                 } else if (newExists) {
                     console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
-                    db.exec(`ALTER TABLE ${table}_new RENAME TO ${table}`);
+                    db.exec(`ALTER TABLE "${table}_new" RENAME TO "${table}"`);
                 }
             } else {
                 // Cleanup legacy artifacts if main table exists
                 if (oldExists) {
                     console.log(`🧹 [Database] Cleaning up legacy ${table}_old artifact...`);
-                    db.exec(`DROP TABLE ${table}_old`);
+                    db.exec(`DROP TABLE "${table}_old"`);
                 }
                 if (newExists) {
                     console.log(`🧹 [Database] Cleaning up legacy ${table}_new artifact...`);
-                    db.exec(`DROP TABLE ${table}_new`);
+                    db.exec(`DROP TABLE "${table}_new"`);
                 }
+            }
+        }
+
+        // Deep Clean: Remove any indices, triggers or views referencing _old or _new tables
+        // These often cause "no such table" errors if they persist after a migration
+        const artifacts = db.prepare("SELECT name, type FROM sqlite_master WHERE sql LIKE '%_old%' OR sql LIKE '%_new%'").all() as { name: string, type: string }[];
+        for (const artifact of artifacts) {
+            if (artifact.type === 'index') {
+                console.log(`🧹 [Database] Dropping stale index: ${artifact.name}`);
+                db.exec(`DROP INDEX IF EXISTS "${artifact.name}"`);
+            } else if (artifact.type === 'trigger') {
+                console.log(`🧹 [Database] Dropping stale trigger: ${artifact.name}`);
+                db.exec(`DROP TRIGGER IF EXISTS "${artifact.name}"`);
+            } else if (artifact.type === 'view') {
+                console.log(`🧹 [Database] Dropping stale view: ${artifact.name}`);
+                db.exec(`DROP VIEW IF EXISTS "${artifact.name}"`);
             }
         }
     })();
@@ -625,9 +641,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec(`DROP TABLE tracks;`);
                 db.exec(`ALTER TABLE tracks_new RENAME TO tracks;`);
 
-                db.exec(`CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);`);
-                db.exec(`CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);`);
-                db.exec(`CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));`);
+                db.exec(`DROP INDEX IF EXISTS idx_tracks_album;`);
+                db.exec(`DROP INDEX IF EXISTS idx_tracks_artist;`);
+                db.exec(`DROP INDEX IF EXISTS idx_tracks_title_lower;`);
+                db.exec(`CREATE INDEX idx_tracks_album ON tracks(album_id);`);
+                db.exec(`CREATE INDEX idx_tracks_artist ON tracks(artist_id);`);
+                db.exec(`CREATE INDEX idx_tracks_title_lower ON tracks(lower(title));`);
             })();
             console.log("✅ Database migrated: tracks.file_path is now nullable.");
         }
@@ -735,6 +754,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                     db.exec(`DROP TABLE IF EXISTS ${tempName}`);
                     db.exec(createSql);
                     
+                    // Drop all indexes associated with the table to prevent "ghost" references
+                    const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=?").all(tableName) as { name: string }[];
+                    for (const idx of indexes) {
+                        db.exec(`DROP INDEX IF EXISTS "${idx.name}"`);
+                    }
+
                     // Column-aware insertion: only copy columns that exist in both versions
                     const oldCols = (db.prepare(`PRAGMA table_info(${tableName})`).all() as any[]).map(c => c.name);
                     const newCols = (db.prepare(`PRAGMA table_info(${tempName})`).all() as any[]).map(c => c.name);
@@ -887,9 +912,13 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
 
         const fixKey = "ownership_fk_to_admin_v1";
-        const isFixed = (db.prepare("SELECT value FROM settings WHERE key = ?").get(fixKey) as { value: string } | undefined);
+        const isFixedSetting = (db.prepare("SELECT value FROM settings WHERE key = ?").get(fixKey) as { value: string } | undefined);
+        
+        // Robust check: Verify schema directly in case the setting was lost or corrupted
+        const trackOwnershipSchema = db.prepare("SELECT sql FROM sqlite_master WHERE name='track_ownership'").get() as { sql: string } | undefined;
+        const needsFixBySchema = trackOwnershipSchema && trackOwnershipSchema.sql.includes("REFERENCES artists");
 
-        if (!isFixed) {
+        if (!isFixedSetting || needsFixBySchema) {
             console.log("📦 Migrating database: Fixing ownership table foreign keys...");
             
             const migrate = db.transaction(() => {
