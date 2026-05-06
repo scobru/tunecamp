@@ -129,7 +129,7 @@ export default function AdminReleaseEditor() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!isAuthenticated || (role !== 'admin' && role !== 'user' && role !== 'super_user' && role !== 'root_admin') || (!isAdmin && !user?.isActive)) {
+      if (!isAuthenticated || (role !== 'admin' && role !== 'user' && role !== 'super_user' && role !== 'root_admin') || (!isAdmin && user && user.isActive === false)) {
         navigate("/");
         return;
       }
