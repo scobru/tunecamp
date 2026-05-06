@@ -86,6 +86,31 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                     if (invalidAlbumFix.changes + invalidReleaseFix.changes > 0) console.log(`   - Repaired ${invalidAlbumFix.changes + invalidReleaseFix.changes} albums/releases with invalid owner IDs`);
                     if (cleanTrackOwnership.changes + cleanAlbumOwnership.changes > 0) console.log(`   - Removed ${cleanTrackOwnership.changes + cleanAlbumOwnership.changes} corrupted secondary ownership records`);
                 }
+
+                // 0.4 Fix Visibility and Orphaned Releases
+                const fixOrphanedAlbums = database.db.prepare(`UPDATE albums SET is_release = 0 WHERE (is_release = 1 OR is_release IS NULL) AND id NOT IN (SELECT id FROM releases)`).run();
+                if (fixOrphanedAlbums.changes > 0) {
+                    console.log(`✅ [Maintenance] Restored ${fixOrphanedAlbums.changes} orphaned albums to library (were stuck in release limbo).`);
+                }
+
+                // 0.5 Fix missing artist_id on albums based on track associations
+                let fixedArtistsCount = 0;
+                const orphanAlbums = database.db.prepare(`SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL AND artist_id IS NOT NULL`).all() as any[];
+                for (const { album_id } of orphanAlbums) {
+                    const tracks = database.db.prepare(`SELECT DISTINCT artist_id FROM tracks WHERE album_id = ? AND artist_id IS NOT NULL`).all(album_id) as any[];
+                    // If all tracks in this album belong to exactly one artist, assign the album to that artist
+                    if (tracks.length === 1) {
+                        const artistId = tracks[0].artist_id;
+                        const album = database.db.prepare(`SELECT artist_id FROM albums WHERE id = ?`).get(album_id) as any;
+                        if (album && album.artist_id !== artistId) {
+                            database.db.prepare(`UPDATE albums SET artist_id = ? WHERE id = ?`).run(artistId, album_id);
+                            fixedArtistsCount++;
+                        }
+                    }
+                }
+                if (fixedArtistsCount > 0) {
+                    console.log(`✅ [Maintenance] Auto-assigned ${fixedArtistsCount} albums to their track artists.`);
+                }
             } finally {
                 database.db.exec("PRAGMA foreign_keys = ON");
             }
