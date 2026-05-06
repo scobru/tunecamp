@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Sparkles, Music, Play } from "lucide-react";
+import { Sparkles, Play } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import type { Track } from "../types";
 

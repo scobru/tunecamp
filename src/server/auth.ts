@@ -279,9 +279,15 @@ export function createAuthService(
         },
 
         async authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number; pair?: any } | false> {
-            console.log(`[AUTH] Attempting login for user: ${username} (hasPubKey: ${!!pubKey}, hasProof: ${!!proof}, hasPassword: ${!!password})`);
-            let user = db.prepare("SELECT id, password_hash, artist_id, role, gun_pub, gun_priv, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; password_hash: string; artist_id: number | null; role: UserRole; gun_pub: string | null; gun_priv: string | null; is_active: number; token_version: number } | undefined;
+            console.log(`[AUTH] Attempting login for user: '${username}' (password provided: ${!!password}, pubKey: ${!!pubKey})`);
+            let user = db.prepare("SELECT id, username, password_hash, artist_id, role, gun_pub, gun_priv, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; username: string; password_hash: string; artist_id: number | null; role: UserRole; gun_pub: string | null; gun_priv: string | null; is_active: number; token_version: number } | undefined;
             
+            if (!user) {
+                // Try case-insensitive fallback if not found (just in case)
+                user = db.prepare("SELECT id, username, password_hash, artist_id, role, gun_pub, gun_priv, is_active, token_version FROM admin WHERE username = ? COLLATE NOCASE").get(username) as any;
+                if (user) console.log(`[AUTH] Found user '${user.username}' via case-insensitive lookup for '${username}'`);
+            }
+
             let gunVerified = false;
 
             // 1. Verify ZEN identity if provided
@@ -289,7 +295,7 @@ export function createAuthService(
                 console.log(`🔐 [AUTH] Verifying ZEN proof for ${username}...`);
                 const isValid = await this.verifyZenSignature(username, pubKey, proof);
                 if (isValid) {
-                    console.log(`✨ [AUTH] ZEN proof verified for ${username} (pub: ${pubKey.slice(0, 8)}...)`);
+                    console.log(`✨ [AUTH] ZEN proof verified for ${username}`);
                     
                     // If user doesn't exist locally, lazy-create (Roaming)
                     if (!user) {
@@ -301,7 +307,7 @@ export function createAuthService(
                         db.prepare("UPDATE admin SET gun_pub = ? WHERE id = ?").run(pubKey, id);
                         
                         // Reload user record
-                        user = db.prepare("SELECT id, password_hash, artist_id, role, gun_pub, gun_priv, is_active FROM admin WHERE id = ?").get(id) as any;
+                        user = db.prepare("SELECT id, username, password_hash, artist_id, role, gun_pub, gun_priv, is_active FROM admin WHERE id = ?").get(id) as any;
                     } else if (!user.gun_pub) {
                         // User exists but has no ZEN link yet - link it now
                         console.log(`🔗 [AUTH] Linking existing local user ${username} to ZEN identity`);
@@ -322,20 +328,19 @@ export function createAuthService(
             }
 
             if (!user) {
-                console.log(`❌ [AUTH] User not found and no valid roaming proof for: ${username}`);
+                console.log(`❌ [AUTH] User not found: '${username}'`);
                 return false;
             }
 
             // 2. Verification check: Either ZEN proof was verified OR local password must match
             if (!gunVerified) {
-                console.log(`🔍 [AUTH] ZEN verification failed or skipped for ${username}, checking password...`);
                 if (!password) {
                     console.log(`❌ [AUTH] No password provided and ZEN verification failed for: ${username}`);
                     return false;
                 }
                 const valid = await this.verifyPassword(password, user.password_hash);
                 if (!valid) {
-                    console.log(`❌ [AUTH] Password mismatch for ${username}`);
+                    console.log(`❌ [AUTH] Password mismatch for ${username}. Hash in DB starts with: ${user.password_hash.slice(0, 10)}`);
                     return false;
                 }
                 console.log(`✅ [AUTH] Password verified for ${username}`);

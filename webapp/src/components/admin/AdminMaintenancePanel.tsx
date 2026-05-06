@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity } from "lucide-react";
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 
 export const AdminMaintenancePanel = () => {
