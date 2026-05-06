@@ -33,6 +33,7 @@ export interface Artist {
     wallet_address: string | null;
     walletAddress?: string | null; // Added for frontend compatibility
     isLibraryArtist?: number; // 1 if metadata-only, 0 if user/release artist
+    visibility?: 'public' | 'private' | 'unlisted';
     created_at: string;
 }
 
@@ -346,8 +347,8 @@ export interface DatabaseService {
     getArtistsByIds(ids: number[]): Artist[];
     getArtistByName(name: string): Artist | undefined;
     getArtistBySlug(slug: string): Artist | undefined;
-    createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string): number;
-    updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string): void;
+    createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): number;
+    updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     deleteArtist(id: number): void;
     // Followers

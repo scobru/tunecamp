@@ -172,6 +172,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       public_key TEXT,
       private_key TEXT,
       wallet_address TEXT,
+      visibility TEXT DEFAULT 'public',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -573,6 +574,18 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
     } catch (e) {
         console.error("Migration error (torrents owner_id):", e);
+    }
+    
+    // Migration: Add visibility column to artists table
+    try {
+        const tableInfo = db.pragma("table_info(artists)") as any[];
+        const hasVisibility = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "visibility");
+        if (!hasVisibility) {
+            console.log("📦 Migrating database: Adding visibility column to artists table...");
+            db.exec("ALTER TABLE artists ADD COLUMN visibility TEXT DEFAULT 'public'");
+        }
+    } catch (e) {
+        console.error("Migration error (artists visibility):", e);
     }
 
     // Migration: Move existing releases from 'albums' to 'releases' table
@@ -1238,7 +1251,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             return artistRepository.getBySlug(slug);
         },
 
-        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string): number {
+        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'public'): number {
             const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
             const linksJson = links ? JSON.stringify(links) : null;
             const postParamsJson = postParams ? JSON.stringify(postParams) : null;
@@ -1247,8 +1260,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             while (attempt < 100) {
                 try {
                     const result = db
-                        .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params, wallet_address) VALUES (?, ?, ?, ?, ?, ?, ?)")
-                        .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson, walletAddress || null);
+                        .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params, wallet_address, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+                        .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson, walletAddress || null, visibility);
                     return result.lastInsertRowid as number;
                 } catch (e: any) {
                     if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
@@ -1262,7 +1275,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             throw new Error("Could not create unique slug for artist");
         },
 
-        updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string): void {
+        updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void {
             const linksJson = links ? JSON.stringify(links) : undefined;
             const postParamsJson = postParams ? JSON.stringify(postParams) : undefined;
             db.prepare(`
@@ -1272,9 +1285,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                     photo_path = COALESCE(?, photo_path),
                     links = COALESCE(?, links),
                     post_params = COALESCE(?, post_params),
-                    wallet_address = COALESCE(?, wallet_address)
+                    wallet_address = COALESCE(?, wallet_address),
+                    visibility = COALESCE(?, visibility)
                 WHERE id = ?
-            `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, id);
+            `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, visibility ?? null, id);
         },
 
         updateArtistKeys(id: number, publicKey: string, privateKey: string): void {
