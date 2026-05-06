@@ -372,7 +372,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                 if (!alb) {
                     console.log(`   - Creating new library album: "${albumTitle}" (slug: ${slug})`);
                     const newId = database.createAlbum({
-                        title: albumTitle, slug, artist_id: artistId, owner_id: req.artistId || artistId,
+                        title: albumTitle, slug, artist_id: artistId, owner_id: req.userId || null,
                         date: null, cover_path: null, genre: "Matched", description: "Matched",
                         type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
                         external_links: null, is_public: false, visibility: 'private', is_release: false,
