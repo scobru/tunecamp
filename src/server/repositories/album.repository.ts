@@ -9,8 +9,16 @@ export class AlbumRepository extends BaseRepository {
 
     getByTitle(title: string, artistId?: number): Album | undefined {
         const sql = artistId
-            ? "SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title = ? AND a.artist_id = ?"
-            : "SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title = ?";
+            ? `SELECT a.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug 
+               FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title = ? AND a.artist_id = ?`
+            : `SELECT a.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug 
+               FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title = ?`;
         const params = artistId ? [title, artistId] : [title];
         const row = this.db.prepare(sql).get(...params);
         return this.mapAlbum(row);
@@ -30,7 +38,10 @@ export class AlbumRepository extends BaseRepository {
 
     getById(id: number): Album | undefined {
         let row = this.db.prepare(`
-            SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress, own.username as owner_name 
+            SELECT a.*, 
+            COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+            COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+            ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress, own.username as owner_name 
             FROM albums a
             LEFT JOIN artists ar ON a.artist_id = ar.id
             LEFT JOIN admin own ON a.owner_id = own.id
@@ -39,7 +50,10 @@ export class AlbumRepository extends BaseRepository {
         
         if (!row) {
             row = this.db.prepare(`
-                SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.wallet_address as walletAddress 
+                SELECT r.*, 
+                COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                ar.slug as artist_slug, ar.wallet_address as walletAddress 
                 FROM releases r
                 LEFT JOIN artists ar ON r.artist_id = ar.id
                 WHERE r.id = ?
@@ -52,7 +66,10 @@ export class AlbumRepository extends BaseRepository {
 
     getBySlug(slug: string): Album | undefined {
         let row = this.db.prepare(`
-            SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
+            SELECT a.*, 
+            COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+            COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+            ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
             FROM albums a 
             LEFT JOIN artists ar ON a.artist_id = ar.id 
             WHERE a.slug = ?
@@ -60,7 +77,10 @@ export class AlbumRepository extends BaseRepository {
 
         if (!row) {
             row = this.db.prepare(`
-                SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.wallet_address as walletAddress 
+                SELECT r.*, 
+                COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                ar.slug as artist_slug, ar.wallet_address as walletAddress 
                 FROM releases r
                 LEFT JOIN artists ar ON r.artist_id = ar.id
                 WHERE r.slug = ?
@@ -72,7 +92,10 @@ export class AlbumRepository extends BaseRepository {
 
     getLibraryAlbums(publicOnly = false, limit?: number, offset?: number): Album[] {
         let sql = `
-            SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
+            SELECT a.*, 
+            COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+            COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+            ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
             FROM albums a 
             LEFT JOIN artists ar ON a.artist_id = ar.id 
             WHERE a.is_release = 0 ${publicOnly ? "AND a.visibility = 'public'" : ""}
@@ -93,7 +116,10 @@ export class AlbumRepository extends BaseRepository {
     getWithStats(publicOnly = false): (Album & { songCount: number; duration: number })[] {
         const sql = `
             SELECT
-                a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress,
+                a.*, 
+                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress,
                 COUNT(t.id) as songCount,
                 SUM(IFNULL(t.duration, 0)) as duration
             FROM albums a
@@ -115,7 +141,10 @@ export class AlbumRepository extends BaseRepository {
             const chunk = ids.slice(i, i + CHUNK_SIZE);
             const placeholders = chunk.map(() => "?").join(",");
             const rows = this.db.prepare(`
-                SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress FROM albums a
+                SELECT a.*, 
+                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress FROM albums a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 WHERE a.id IN (${placeholders})
             `).all(...chunk);
@@ -127,7 +156,10 @@ export class AlbumRepository extends BaseRepository {
             if (missingIds.length > 0) {
                 const missingPlaceholders = missingIds.map(() => "?").join(",");
                 const releaseRows = this.db.prepare(`
-                    SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.wallet_address as walletAddress FROM releases r
+                    SELECT r.*, 
+                    COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                    COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                    ar.slug as artist_slug, ar.wallet_address as walletAddress FROM releases r
                     LEFT JOIN artists ar ON r.artist_id = ar.id
                     WHERE r.id IN (${missingPlaceholders})
                 `).all(...missingIds);
@@ -140,10 +172,16 @@ export class AlbumRepository extends BaseRepository {
 
     getReleases(publicOnly = false): Release[] {
         const sql = publicOnly
-            ? `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
+            ? `SELECT r.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
                WHERE r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
-            : `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
+            : `SELECT r.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
                ORDER BY r.date DESC`;
         const rows = this.db.prepare(sql).all();
@@ -152,11 +190,17 @@ export class AlbumRepository extends BaseRepository {
 
     getByArtist(artistId: number, publicOnly = false, artistName?: string): Album[] {
         const sql = publicOnly
-            ? `SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
+            ? `SELECT a.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
                LEFT JOIN artists ar ON a.artist_id = ar.id 
                WHERE (a.artist_id = ? ${artistName ? 'OR (a.artist_id IS NULL AND a.title LIKE ?)' : ''}) 
                AND a.is_release = 0 AND a.visibility = 'public' ORDER BY a.date DESC`
-            : `SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
+            : `SELECT a.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
                LEFT JOIN artists ar ON a.artist_id = ar.id 
                WHERE (a.artist_id = ? ${artistName ? 'OR (a.artist_id IS NULL AND (a.title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND t.artist_name = ?)))' : ''}) 
                AND a.is_release = 0 ORDER BY a.date DESC`;
@@ -184,11 +228,17 @@ export class AlbumRepository extends BaseRepository {
 
     getByOwner(ownerId: number, publicOnly = false): Album[] {
         const sql = publicOnly
-            ? `SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
+            ? `SELECT a.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
                JOIN album_ownership ao ON a.id = ao.album_id
                LEFT JOIN artists ar ON a.artist_id = ar.id 
                WHERE ao.owner_id = ? AND a.is_release = 0 AND a.visibility = 'public' ORDER BY a.date DESC`
-            : `SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug FROM albums a 
+            : `SELECT a.*, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+               ar.slug as artist_slug FROM albums a 
                JOIN album_ownership ao ON a.id = ao.album_id
                LEFT JOIN artists ar ON a.artist_id = ar.id 
                WHERE ao.owner_id = ? AND a.is_release = 0 ORDER BY a.date DESC`;

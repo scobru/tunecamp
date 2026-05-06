@@ -32,6 +32,12 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                     publicReleases.map(r => r.artist_id).filter(id => id !== null)
                 );
 
+                // ALSO include artists with public library albums
+                const publicAlbums = database.getAlbums(true).filter(a => a.visibility === 'public' || a.visibility === 'unlisted');
+                for (const pa of publicAlbums) {
+                    if (pa.artist_id) publicArtistIds.add(pa.artist_id);
+                }
+
                 filteredArtists = allArtists.filter(a => 
                     publicArtistIds.has(a.id) || (req.artistId && a.id === req.artistId)
                 );
