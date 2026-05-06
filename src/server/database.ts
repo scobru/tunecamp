@@ -82,8 +82,28 @@ export function createDatabase(dbPath: string): DatabaseService {
             } catch (err) {
                 console.warn(`⚠️ [Database] Failed to drop stale artifact ${artifact.name}:`, err);
             }
+        // Deep Clean: Find child tables with corrupted Foreign Keys (referencing _old or _new)
+        // These tables need to be rebuilt so they point to the correct main tables again.
+        const corruptedTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%\\_old' ESCAPE '\\' AND name NOT LIKE '%\\_new' ESCAPE '\\' AND (sql LIKE '%_old%' OR sql LIKE '%_new%')").all() as { name: string }[];
+        
+        for (const ct of corruptedTables) {
+            console.log(`📦 [Database] Found corrupted schema for table ${ct.name}. Preparing for rebuild...`);
+            try {
+                // Drop indices of this table so they can be cleanly recreated by the schema block
+                const indices = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name=? AND sql IS NOT NULL").all(ct.name) as { name: string }[];
+                for (const idx of indices) {
+                    db.exec(`DROP INDEX IF EXISTS "${idx.name}"`);
+                }
+                // Backup the table to be rebuilt
+                db.exec(`ALTER TABLE "${ct.name}" RENAME TO "${ct.name}_corrupt"`);
+            } catch (err) {
+                console.warn(`⚠️ [Database] Failed to prep corrupted table ${ct.name} for rebuild:`, err);
+            }
         }
     })();
+
+    // Expose corruptedTables so we can restore them after schema creation
+    const corruptedTablesToRestore = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%\\_corrupt' ESCAPE '\\'").all() as { name: string }[];
 
     // Enable foreign key constraints AFTER the Rescue Phase.
     // This ensures that renames and drops during recovery don't trigger broken FK checks.
@@ -491,6 +511,22 @@ export function createDatabase(dbPath: string): DatabaseService {
     CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));
     CREATE INDEX IF NOT EXISTS idx_albums_visibility ON albums(visibility);
   `);
+
+    // Restore data for any rebuilt corrupted tables
+    if (corruptedTablesToRestore.length > 0) {
+        db.transaction(() => {
+            for (const ct of corruptedTablesToRestore) {
+                const originalName = ct.name.replace('_corrupt', '');
+                console.log(`📦 [Database] Restoring data for rebuilt table ${originalName}...`);
+                try {
+                    db.exec(`INSERT INTO "${originalName}" SELECT * FROM "${ct.name}"`);
+                    db.exec(`DROP TABLE "${ct.name}"`);
+                } catch (err) {
+                    console.error(`🚨 [Database] Failed to restore data for ${originalName}:`, err);
+                }
+            }
+        })();
+    }
 
     // Performance Test Requirement: Explicit index creation call (MUST be after table creation)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC)`);
