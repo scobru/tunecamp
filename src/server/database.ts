@@ -1432,6 +1432,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateTrackDuration(id: number, duration: number): void { 
             trackRepository.update(id, { duration });
         },
+        updateTrackBitrate(id: number, bitrate: number): void {
+            trackRepository.update(id, { bitrate });
+        },
         updateTrackPath(id: number, filePath: string, albumId: number | null): void { 
             trackRepository.update(id, { file_path: filePath, album_id: albumId });
         },

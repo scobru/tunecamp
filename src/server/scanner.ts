@@ -184,7 +184,8 @@ export class Scanner implements ScannerService {
 
     public async getOrCreateLibraryAlbum(dir: string, musicDir: string, forcedCoverPath?: string, ownerId?: number | null): Promise<number | null> {
         const relativeDir = this.normalizePath(dir, musicDir);
-        if (relativeDir === "." || relativeDir === "") return null;
+        const isRoot = relativeDir === "." || relativeDir === "";
+
         if (this.folderToAlbumMap.has(dir)) return this.folderToAlbumMap.get(dir)!;
 
         // Check if this is a formal release directory (music/releases/slug)
@@ -202,8 +203,8 @@ export class Scanner implements ScannerService {
             }
         }
 
-        const folderName = path.basename(dir);
-        const slug = slugify("lib-" + relativeDir); 
+        const folderName = isRoot ? path.basename(musicDir) : path.basename(dir);
+        const slug = slugify("lib-" + (isRoot ? "root" : relativeDir)); 
         let album = this.database.getAlbumBySlug(slug);
 
         if (album) {
@@ -595,6 +596,18 @@ export class Scanner implements ScannerService {
                 if (existing.album_id !== albumId) this.database.updateTrackAlbum(existing.id, albumId);
                 if (artistId && existing.artist_id !== artistId) this.database.updateTrackArtist(existing.id, artistId);
                 
+                // If duration is missing, re-fetch it
+                if (!existing.duration || existing.duration <= 0) {
+                    const { common, format } = await parseFile(currentFilePath);
+                    let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
+                    if (duration == null) duration = format.duration || null;
+                    if (duration) {
+                        this.database.updateTrackDuration(existing.id, duration);
+                        // Also update bitrate/sample rate if available
+                        if (format.bitrate) this.database.updateTrackBitrate(existing.id, Math.round(format.bitrate / 1000));
+                    }
+                }
+
                 if (!existing.waveform) {
                     processQueueWaveform(currentFilePath, existing.id, existing.duration, this.processQueue, this.database);
                 }
@@ -604,6 +617,10 @@ export class Scanner implements ScannerService {
             // 5. Create New Track
             let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
             if (duration == null) duration = format.duration || null;
+
+            if (duration === null) {
+                console.warn(`⚠️ [Scanner] Could not determine duration for: ${path.basename(currentFilePath)}. This will result in 0 storage usage stats.`);
+            }
 
             const isLossless = LOSSLESS_EXTENSIONS.includes(ext);
             const trackId = this.database.createTrack({

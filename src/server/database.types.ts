@@ -438,6 +438,7 @@ export interface DatabaseService {
     updateTrackPath(id: number, filePath: string, albumId: number | null): void;
     updateTrackPrice(id: number, price: number | null, price_usdc: number | null, currency?: 'ETH' | 'USD'): void;
     updateTrackDuration(id: number, duration: number): void;
+    updateTrackBitrate(id: number, bitrate: number): void;
     updateTrackWaveform(id: number, waveform: string): void;
     updateTrackLosslessPath(id: number, losslessPath: string | null): void;
     updateTrackExternalArtwork(id: number, artworkPath: string | null): void;
