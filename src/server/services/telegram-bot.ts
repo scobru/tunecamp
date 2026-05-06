@@ -19,6 +19,10 @@ export class TelegramBotService {
         private musicDir: string
     ) {}
 
+    private getMasterId(): string | undefined {
+        return process.env.TELEGRAM_MASTER_ID || this.database.getSetting('telegram_master_id');
+    }
+
     private checkRateLimit(ctx: any): boolean {
         const msg = ctx.message || ctx.channelPost;
         
@@ -30,6 +34,9 @@ export class TelegramBotService {
 
         const userId = ctx.from?.id?.toString() || ctx.chat?.id?.toString();
         if (!userId) return true;
+
+        // NEVER rate limit the Master Admin
+        if (userId === this.getMasterId()) return true;
 
         const now = Date.now();
         const lastRequest = this.userCooldowns.get(userId) || 0;
@@ -443,7 +450,10 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
         if (!allowedChannelsSetting) return true; // If no whitelist configured, allow all
         
         const allowed = allowedChannelsSetting.split(',').map(s => s.trim());
+        const masterId = this.getMasterId();
         
+        if (masterId && senderId === masterId) return true;
+
         if (chatType === 'channel') {
             // In a channel, if the channel itself is whitelisted, we allow commands
             return allowed.includes(chatId);
@@ -469,7 +479,10 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
         }
 
         // Check for file size limit (20MB for standard Bot API)
-        if (audio.file_size && audio.file_size > 20 * 1024 * 1024) {
+        const masterId = this.getMasterId();
+        const isMaster = masterId && ctx.from?.id?.toString() === masterId;
+
+        if (!isMaster && audio.file_size && audio.file_size > 20 * 1024 * 1024) {
             const fileName = audio.file_name || audio.title || 'audio file';
             const sizeMB = (audio.file_size / (1024 * 1024)).toFixed(1);
             console.warn(`[TelegramBot] File ${fileName} is too big (${sizeMB}MB)`);

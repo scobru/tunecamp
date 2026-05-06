@@ -25,7 +25,7 @@ import type {
 const _insertQueueTrackStmts = new Map<number, any>();
 
 export function createDatabase(dbPath: string): DatabaseService {
-    const db = new Database(dbPath);
+    const db = new Database(dbPath, { verbose: console.log });
     
     // Enable foreign key constraints to ensure referential integrity.
     // Migration scripts should handle temporary disabling if needed.
@@ -34,6 +34,37 @@ export function createDatabase(dbPath: string): DatabaseService {
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");
     db.pragma("busy_timeout = 5000");
+
+    // Rescue Phase: Recover from interrupted migrations
+    // MUST run before "CREATE TABLE IF NOT EXISTS" blocks
+    const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks'];
+    db.transaction(() => {
+        for (const table of tablesToRescue) {
+            const mainExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+            const oldExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_old`);
+            const newExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_new`);
+            
+            if (!mainExists) {
+                if (oldExists) {
+                    console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
+                    db.exec(`ALTER TABLE ${table}_old RENAME TO ${table}`);
+                } else if (newExists) {
+                    console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
+                    db.exec(`ALTER TABLE ${table}_new RENAME TO ${table}`);
+                }
+            } else {
+                // Cleanup legacy artifacts if main table exists
+                if (oldExists) {
+                    console.log(`🧹 [Database] Cleaning up legacy ${table}_old artifact...`);
+                    db.exec(`DROP TABLE ${table}_old`);
+                }
+                if (newExists) {
+                    console.log(`🧹 [Database] Cleaning up legacy ${table}_new artifact...`);
+                    db.exec(`DROP TABLE ${table}_new`);
+                }
+            }
+        }
+    })();
 
     // Register custom Levenshtein function
     db.function("levenshtein", (a: string, b: string) => {
@@ -684,21 +715,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
         };
 
-        // Rescue Phase: Recover from interrupted migrations
-        const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks'];
-        for (const table of tablesToRescue) {
-            const mainExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
-            const oldExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_old`);
-            const newExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_new`);
-            
-            if (!mainExists && oldExists) {
-                console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
-                db.exec(`ALTER TABLE ${table}_old RENAME TO ${table}`);
-            } else if (!mainExists && newExists) {
-                console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
-                db.exec(`ALTER TABLE ${table}_new RENAME TO ${table}`);
-            }
-        }
+
 
         const albumsNeedsFix = checkTableNeedsFix('albums');
         const tracksNeedsFix = checkTableNeedsFix('tracks');
@@ -713,21 +730,27 @@ export function createDatabase(dbPath: string): DatabaseService {
             const migrateTable = (tableName: string, createSql: string) => {
                 console.log(`   - Repairing '${tableName}' table...`);
                 const tempName = `${tableName}_new`;
-                db.exec(`DROP TABLE IF EXISTS ${tempName}`);
-                db.exec(createSql);
                 
-                // Column-aware insertion: only copy columns that exist in both versions
-                const oldCols = (db.prepare(`PRAGMA table_info(${tableName})`).all() as any[]).map(c => c.name);
-                const newCols = (db.prepare(`PRAGMA table_info(${tempName})`).all() as any[]).map(c => c.name);
-                const commonCols = oldCols.filter(c => newCols.includes(c));
-                
-                if (commonCols.length > 0) {
-                    const colsStr = commonCols.join(', ');
-                    db.exec(`INSERT OR IGNORE INTO ${tempName} (${colsStr}) SELECT ${colsStr} FROM ${tableName}`);
+                try {
+                    db.exec(`DROP TABLE IF EXISTS ${tempName}`);
+                    db.exec(createSql);
+                    
+                    // Column-aware insertion: only copy columns that exist in both versions
+                    const oldCols = (db.prepare(`PRAGMA table_info(${tableName})`).all() as any[]).map(c => c.name);
+                    const newCols = (db.prepare(`PRAGMA table_info(${tempName})`).all() as any[]).map(c => c.name);
+                    const commonCols = oldCols.filter(c => newCols.includes(c));
+                    
+                    if (commonCols.length > 0) {
+                        const colsStr = commonCols.join(', ');
+                        db.exec(`INSERT OR IGNORE INTO ${tempName} (${colsStr}) SELECT ${colsStr} FROM ${tableName}`);
+                    }
+                    
+                    db.exec(`DROP TABLE ${tableName}`);
+                    db.exec(`ALTER TABLE ${tempName} RENAME TO ${tableName}`);
+                } catch (err) {
+                    console.error(`❌ [Database] Failed to migrate table '${tableName}':`, err);
+                    throw err; // Re-throw to trigger transaction rollback
                 }
-                
-                db.exec(`DROP TABLE ${tableName}`);
-                db.exec(`ALTER TABLE ${tempName} RENAME TO ${tableName}`);
             };
 
             try {
