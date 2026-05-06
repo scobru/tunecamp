@@ -24,6 +24,11 @@ La maggior parte degli endpoint richiede l'autenticazione tramite **JWT (JSON We
 - `GET /api/tracks/:id/stream`: Stream binario del file audio.
 - `GET /api/tracks/:id/waveform`: Dati per la visualizzazione della forma d'onda.
 
+### Metadati e Ricerca Esterna (`/api/metadata`)
+- `GET /api/metadata/search?q=...`: Ricerca metadati album su provider esterni (MusicBrainz, Discogs, iTunes, TheAudioDB).
+- `GET /api/metadata/lyrics?artist=...&title=...`: Recupera il testo di una canzone (via Lyrics.ovh).
+- `POST /api/metadata/maintenance/apply-track`: Applica metadati selezionati a una traccia locale.
+
 ### Social e Federazione (`/api/social`, `/api/activitypub`)
 - `GET /api/social/feed`: Post recenti dagli attori seguiti.
 - `POST /api/social/post`: Crea un nuovo post nel Fediverso.

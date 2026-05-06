@@ -8,6 +8,7 @@ TuneCamp è una piattaforma musicale decentralizzata e federata che combina le f
 - **Federazione**: Permettere l'interazione tra diversi server TuneCamp tramite il protocollo ActivityPub (Fediverse).
 - **Decentralizzazione**: Utilizzare tecnologie come Zen/IPFS per la distribuzione e la resilienza dei contenuti.
 - **Supporto agli Artisti**: Facilitare la pubblicazione diretta, il crowdfunding e la gestione dei diritti tramite contratti intelligenti e sistemi di sblocco.
+- **Arricchimento Metadati**: Integrazione con iTunes e Lyrics.ovh per automatizzare il recupero di cover ad alta risoluzione e testi delle canzoni.
 
 ## Stack Tecnologico
 

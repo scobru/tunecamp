@@ -26,7 +26,7 @@ Permette a TuneCamp di interagire con altre istanze del Fediverso (come Mastodon
 ### 3. Modulo Catalog (`modules/catalog/`)
 Responsabile della scansione e dell'organizzazione della musica locale.
 - **Scanner**: Analizza le cartelle per nuovi file audio.
-- **Metadata**: Estrae tag (ID3, Vorbis) e genera waveform.
+- **Metadata**: Estrae tag (ID3, Vorbis), genera waveform e integra provider esterni (MusicBrainz, Discogs, iTunes, Lyrics.ovh) per l'arricchimento dei dati e dei testi.
 
 ### 4. Sicurezza e Autenticazione (`auth.ts`, `middleware/auth.ts`)
 - Gestione utenti locali.
