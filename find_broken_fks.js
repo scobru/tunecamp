@@ -1,15 +1,13 @@
-const Database = require('better-sqlite3');
+import Database from 'better-sqlite3';
 const db = new Database('tunecamp.db');
-
 const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-
 for (const table of tables) {
     const fks = db.prepare(`PRAGMA foreign_key_list("${table.name}")`).all();
     for (const fk of fks) {
-        if (fk.table === 'tracks_old' || fk.table === 'tracks') {
-            console.log(`Table: ${table.name}, FK:`, JSON.stringify(fk));
+        if (fk.table === 'tracks_old') {
+            console.log(`🚨 Table "${table.name}" has an FK pointing to "tracks_old"!`);
+            console.log(JSON.stringify(fk, null, 2));
         }
     }
 }
-
 db.close();
