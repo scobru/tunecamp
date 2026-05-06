@@ -82,6 +82,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             } catch (err) {
                 console.warn(`⚠️ [Database] Failed to drop stale artifact ${artifact.name}:`, err);
             }
+        } // Added missing brace
+
         // Deep Clean: Find child tables with corrupted Foreign Keys (referencing _old or _new)
         // These tables need to be rebuilt so they point to the correct main tables again.
         const corruptedTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%\\_old' ESCAPE '\\' AND name NOT LIKE '%\\_new' ESCAPE '\\' AND (sql LIKE '%_old%' OR sql LIKE '%_new%')").all() as { name: string }[];
