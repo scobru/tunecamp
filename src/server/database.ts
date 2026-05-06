@@ -1379,8 +1379,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         repairArtistLinks(artistId: number, artistName: string): { tracks: number, albums: number } {
             return db.transaction(() => {
                 const trackRes = db.prepare("UPDATE tracks SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND (artist_name LIKE ? OR artist_name = ?)").run(artistId, artistName, artistId, `%${artistName}%`, artistName);
-                const albumRes = db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id IS NULL AND (title = ? OR title LIKE ?)").run(artistId, artistName, `%${artistName}%`);
-                const albumTracksRes = db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id IS NULL AND id IN (SELECT DISTINCT album_id FROM tracks WHERE artist_id = ? AND album_id IS NOT NULL)").run(artistId, artistId);
+                // Improved album repair: now also catches albums linked to duplicate artists
+                const albumRes = db.prepare("UPDATE albums SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND (title = ? OR title LIKE ?)").run(artistId, artistName, artistId, artistName, `%${artistName}%`);
+                const albumTracksRes = db.prepare("UPDATE albums SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND id IN (SELECT DISTINCT album_id FROM tracks WHERE artist_id = ? AND album_id IS NOT NULL)").run(artistId, artistName, artistId, artistId);
                 return { tracks: trackRes.changes, albums: albumRes.changes + albumTracksRes.changes };
             })();
         },

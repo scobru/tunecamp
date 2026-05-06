@@ -195,18 +195,19 @@ export class AlbumRepository extends BaseRepository {
                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
                ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
                LEFT JOIN artists ar ON a.artist_id = ar.id 
-               WHERE (a.artist_id = ? ${artistName ? 'OR (a.artist_id IS NULL AND a.title LIKE ?)' : ''}) 
+               WHERE (a.artist_id = ? ${artistName ? 'OR ar.name = ? OR (a.artist_id IS NULL AND a.title LIKE ?)' : ''}) 
                AND a.is_release = 0 AND a.visibility = 'public' ORDER BY a.date DESC`
             : `SELECT a.*, 
                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
                ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
                LEFT JOIN artists ar ON a.artist_id = ar.id 
-               WHERE (a.artist_id = ? ${artistName ? 'OR (a.artist_id IS NULL AND (a.title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND t.artist_name = ?)))' : ''}) 
+               WHERE (a.artist_id = ? ${artistName ? 'OR ar.name = ? OR (a.artist_id IS NULL AND (a.title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND t.artist_name = ?)))' : ''}) 
                AND a.is_release = 0 ORDER BY a.date DESC`;
         
         const params: (number | string)[] = [artistId];
         if (artistName) {
+            params.push(artistName);
             params.push(`%${artistName}%`);
             if (!publicOnly) params.push(artistName);
         }

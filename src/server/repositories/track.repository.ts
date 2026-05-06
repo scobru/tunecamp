@@ -142,7 +142,8 @@ export class TrackRepository extends BaseRepository {
 
         const condition = `
             (t.artist_id = ? 
-             OR (t.artist_id IS NULL AND a.artist_id = ?)
+             OR ar_t.name = ?
+             OR (t.artist_id IS NULL AND (a.artist_id = ? OR ar_a.name = ?))
              OR (t.artist_id IS NULL AND a.artist_id IS NULL AND t.artist_name LIKE ?))
         `;
 
@@ -157,7 +158,13 @@ export class TrackRepository extends BaseRepository {
             ? `${baseSelect} WHERE ${condition} ${publicCondition} ORDER BY a.title, t.track_num`
             : `${baseSelect} WHERE ${condition} ORDER BY a.title, t.track_num`;
         
-        const rows = this.db.prepare(sql).all(artistId, artistId, artistName ? `%${artistName}%` : null);
+        const rows = this.db.prepare(sql).all(
+            artistId, 
+            artistName || null, 
+            artistId, 
+            artistName || null, 
+            artistName ? `%${artistName}%` : null
+        );
         return rows.map(row => this.mapTrack(row));
     }
 
