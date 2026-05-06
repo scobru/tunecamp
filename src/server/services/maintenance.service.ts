@@ -11,7 +11,7 @@ export class MaintenanceService {
     /**
      * Gets tracks missing specific metadata fields.
      */
-    getTracksWithMissingMetadata(filter: 'genre' | 'year' | 'cover') {
+    getTracksWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album') {
         return this.db.getTracksMissingMetadata(filter);
     }
 
@@ -34,6 +34,30 @@ export class MaintenanceService {
         if (metadata.genre) updateData.genre = metadata.genre;
         if (metadata.year) updateData.year = metadata.year;
         if (metadata.coverUrl) updateData.externalArtwork = metadata.coverUrl;
+        
+        // Handle Album matching/creation
+        if (metadata.albumTitle) {
+            const track = this.db.getTrack(trackId);
+            if (track) {
+                // Find or create album
+                let album = this.db.getAlbumByTitle(metadata.albumTitle, track.artist_id || undefined);
+                if (!album) {
+                    const albumId = this.db.createAlbum({
+                        title: metadata.albumTitle,
+                        artist_id: track.artist_id || null,
+                        owner_id: track.owner_id || null,
+                        genre: metadata.genre || null,
+                        year: metadata.year || null,
+                        cover_path: metadata.coverUrl || null,
+                        type: 'album',
+                        visibility: 'private'
+                    });
+                    updateData.albumId = albumId;
+                } else {
+                    updateData.albumId = album.id;
+                }
+            }
+        }
         
         await this.libraryService.updateTrack(trackId, updateData);
     }

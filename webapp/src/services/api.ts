@@ -342,11 +342,13 @@ export const API = {
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`/browser?path=${encodeURIComponent(path)}`)),
     renameBrowserPath: (oldPath: string, newPath: string) => handleResponse(api.put("/browser", { oldPath, newPath })),
     syncActivityPub: () => handleResponse(api.post('/ap/sync')),
-    getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
+    getMainMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
+    getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
     getMetadataCandidates: (trackId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/candidates/${trackId}`)),
     applyTrackMetadata: (trackId: number, metadata: any) => handleResponse(api.post<{ success: boolean }>(`/metadata/maintenance/apply-track`, { trackId, metadata })),
-    autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover')[], force?: boolean) => 
+    autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'album')[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/autofill', { trackIds, fields, force })),
+
     uploadBackup: async (file: File, onProgress?: (percent: number) => void) => {
         // Chunked upload to avoid timeouts on large files/slow connections
         const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB

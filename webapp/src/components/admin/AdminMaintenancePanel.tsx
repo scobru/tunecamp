@@ -4,7 +4,7 @@ import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2 } from "luc
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 
 export const AdminMaintenancePanel = () => {
-    const [filter, setFilter] = useState<'genre' | 'year' | 'cover'>('genre');
+    const [filter, setFilter] = useState<'genre' | 'year' | 'cover' | 'album'>('genre');
     const [tracks, setTracks] = useState<any[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -75,6 +75,7 @@ export const AdminMaintenancePanel = () => {
                         value={filter}
                         onChange={(e) => setFilter(e.target.value as any)}
                     >
+                        <option value="album">Missing Album</option>
                         <option value="genre">Missing Genre</option>
                         <option value="year">Missing Year</option>
                         <option value="cover">Missing Cover</option>

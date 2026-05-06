@@ -29,3 +29,13 @@ Chronological log of completed tasks and significant architectural decisions.
   - `webapp/src/services/api.ts`: Added `triggerRescan` method.
   - `webapp/src/components/MetadataMatchModal.tsx`: Updated UI to show iTunes as a metadata source and updated credits.
 - **Verification**: Verified that the new buttons are present and correctly linked to the backend endpoints.
+
+### 4. Album Metadata Maintenance
+**Summary**: Enhanced the Maintenance panel to identify and fix tracks with missing album associations.
+- **Backend Changes**:
+  - `src/server/database.ts`: Added `album` filter to `getTracksMissingMetadata` to find orphaned tracks.
+  - `src/server/services/maintenance.service.ts`: Updated `applyMetadataToTrack` to automatically create/match albums when applying metadata.
+- **Frontend Changes**:
+  - `webapp/src/components/admin/AdminMaintenancePanel.tsx`: Added **"Missing Album"** filter to the maintenance UI.
+  - `webapp/src/services/api.ts`: Updated type definitions for maintenance methods.
+- **Functionality**: Users can now scan for tracks without an album and use the "Match" feature (powered by iTunes/MusicBrainz) to automatically create the missing album and link the track to it.
