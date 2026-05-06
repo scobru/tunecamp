@@ -171,10 +171,9 @@ export function createAdminRoutes(
     router.get("/stats", async (req: AuthenticatedRequest, res: any) => {
         try {
             const showMine = req.query.mine === 'true';
-            const isAdmin = req.isAdmin;
-            const isRoot = req.isRootAdmin;
-            const artistId = (isRoot || req.isSuperUser) && !showMine ? undefined : (req.artistId || undefined);
-            const ownerId = (isRoot || req.isSuperUser) && !showMine ? undefined : req.userId;
+            const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+            const artistId = (isPrivileged) && !showMine ? undefined : (req.artistId || undefined);
+            const ownerId = (isPrivileged) && !showMine ? undefined : req.userId;
             
             const stats = await database.getStats(artistId, ownerId);
             res.json(stats);
@@ -189,7 +188,7 @@ export function createAdminRoutes(
      * Get all site settings
      */
     router.get("/settings", (req: AuthenticatedRequest, res: any) => {
-        if (!req.isRootAdmin) return res.status(403).json({ error: "Super Root access required" });
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) return res.status(403).json({ error: "Super Root access required" });
         try {
             const settings = database.getAllSettings();
             res.json(settings);
@@ -206,7 +205,7 @@ export function createAdminRoutes(
     router.put("/settings", async (req: AuthenticatedRequest, res: any) => {
         try {
             // Only root admin can change global settings
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only root admin can change site settings" });
             }
 
@@ -412,7 +411,7 @@ export function createAdminRoutes(
      */
     router.post("/system/rescan", async (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!req.isAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
                 return res.status(403).json({ error: "Only admin can trigger rescan" });
             }
             
@@ -438,7 +437,7 @@ export function createAdminRoutes(
     router.post("/system/sync", async (req: AuthenticatedRequest, res: any) => {
         try {
             // Only super root admin can force sync
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only super root admin can force sync" });
             }
             await zendbService.syncNetwork();
@@ -547,7 +546,8 @@ export function createAdminRoutes(
 
             // Permission Check
             const ownerId = release ? release.owner_id : album?.owner_id;
-            if (req.userId !== undefined && !req.isRootAdmin && ownerId !== req.userId) {
+            const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+            if (req.userId !== undefined && !isPrivileged && ownerId !== req.userId) {
                 console.warn(`⛔ [Debug] Access Denied for user ${req.username} on item ${id}. Owner: ${ownerId}, Request UserId: ${req.userId}`);
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -805,7 +805,8 @@ export function createAdminRoutes(
 
             // Permission Check
             // ONLY the artist themselves or root admin can see keys.
-            if (!req.isRootAdmin && (!req.artistId || req.artistId !== artistId)) {
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            if (!isSystemAdmin && (!req.artistId || req.artistId !== artistId)) {
                 return res.status(403).json({ error: "Access denied: Only the artist or root admin can access their identity keys" });
             }
 
@@ -851,7 +852,7 @@ export function createAdminRoutes(
     router.get("/system/users", (req: AuthenticatedRequest, res: any) => {
         try {
             // Only root admin can list users
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only Root Admin can list users" });
             }
             const admins = authService.listAdmins();
@@ -868,7 +869,7 @@ export function createAdminRoutes(
      */
     router.post("/system/users", async (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only the primary admin can create new admins" });
             }
             const { username, password, artistId, isAdmin, role } = req.body;
@@ -904,7 +905,7 @@ export function createAdminRoutes(
      */
     router.put("/system/users/:id", async (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only the primary admin can manage users" });
             }
             const id = parseInt(req.params.id, 10);
@@ -925,7 +926,7 @@ export function createAdminRoutes(
      */
     router.delete("/system/users/:id", (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only the primary admin can remove admins" });
             }
             const id = parseInt(req.params.id, 10);
@@ -946,7 +947,7 @@ export function createAdminRoutes(
      */
     router.put("/system/users/:id/status", async (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!req.isRootAdmin) {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only the primary admin can manage user status" });
             }
             const id = parseInt(req.params.id, 10);

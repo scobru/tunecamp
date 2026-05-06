@@ -244,8 +244,10 @@ export function createReleaseRouter(
             // Determine the final Artist ID and ownership logic
             let artistId: number | null = (body.artistId || body.artist_id) ? Number(body.artistId || body.artist_id) : null;
             
+            const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+            
             // SECURITY CHECK: Non-admin users cannot create releases for other artists or new artists
-            if (!req.isAdmin) {
+            if (!isPrivileged) {
                 if (artistId && artistId !== userArtistId) {
                     return res.status(403).json({ error: "Access denied: You can only create releases for your own artist profile" });
                 }
@@ -290,7 +292,8 @@ export function createReleaseRouter(
                 for (const trackId of body.track_ids) {
                     const track = trackMap.get(trackId);
                     if (track) {
-                        if (req.isAdmin || track.owner_id === req.userId) {
+                        const isTrackAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+                        if (isTrackAdmin || track.owner_id === req.userId) {
                             validatedTrackIds.push(trackId);
                         } else {
                             console.warn(`⚠️ User ${req.username} tried to add unauthorized track ${trackId}`);

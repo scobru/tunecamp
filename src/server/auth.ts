@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { Zen } from "./zen.js";
 // ZEN handles its own crypto natively
 import { isSafeUrl } from "../utils/networkUtils.js";
-import { UserRole } from "./common/visibility.js";
+import { UserRole, VisibilityGuardian } from "./common/visibility.js";
 
 // Polyfill WebCrypto for Gun.SEA in Node.js ESM
 if (typeof global !== 'undefined' && !global.crypto) {
@@ -436,7 +436,7 @@ export function createAuthService(
             return {
                 success: true,
                 id: user.id,
-                isAdmin: userRole === UserRole.ADMIN || userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN,
+                isAdmin: VisibilityGuardian.isAdminRole(userRole),
                 artistId: artistId,
                 role: userRole,
                 isActive: user.is_active === 1,

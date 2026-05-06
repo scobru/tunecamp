@@ -57,7 +57,7 @@ export function createAuthMiddleware(authService: AuthService) {
                 return res.status(403).json({ error: "Access denied: Admin only" });
             }
 
-            req.isAdmin = payload.isAdmin || context.role === UserRole.ROOT_ADMIN;
+            req.isAdmin = VisibilityGuardian.isAdminRole(context.role);
             req.isSuperUser = context.role === UserRole.SUPER_USER;
             req.username = payload.username;
             req.artistId = payload.artistId;
@@ -85,7 +85,7 @@ export function createAuthMiddleware(authService: AuthService) {
 
             const context = VisibilityGuardian.deriveContext(payload);
 
-            req.isAdmin = payload.isAdmin || context.role === UserRole.ROOT_ADMIN;
+            req.isAdmin = VisibilityGuardian.isAdminRole(context.role);
             req.isSuperUser = context.role === UserRole.SUPER_USER;
             req.username = payload.username;
             req.artistId = payload.artistId;
@@ -109,7 +109,7 @@ export function createAuthMiddleware(authService: AuthService) {
 
             if (payload) {
                 const context = VisibilityGuardian.deriveContext(payload);
-                req.isAdmin = payload.isAdmin || context.role === UserRole.ROOT_ADMIN;
+                req.isAdmin = VisibilityGuardian.isAdminRole(context.role);
                 req.isSuperUser = context.role === UserRole.SUPER_USER;
                 req.username = payload.username;
                 req.artistId = payload.artistId;

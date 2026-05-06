@@ -16,6 +16,7 @@ export enum Capability {
   VIEW_PRIVATE_LIBRARY = 'VIEW_PRIVATE_LIBRARY',
   MANAGE_PRIVATE_LIBRARY = 'MANAGE_PRIVATE_LIBRARY',
   CREATE_RELEASES = 'CREATE_RELEASES',
+  MANAGE_ALL_CONTENT = 'MANAGE_ALL_CONTENT',
   MANAGE_SYSTEM = 'MANAGE_SYSTEM'
 }
 
@@ -26,6 +27,13 @@ export interface ViewerContext {
 }
 
 export class VisibilityGuardian {
+  /**
+   * Helper to check if a role has administrative capabilities (access to admin area)
+   */
+  static isAdminRole(role: UserRole): boolean {
+    return [UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role);
+  }
+
   /**
    * Translates database user roles to the Visibility Guardian's internal roles.
    */
@@ -69,6 +77,9 @@ export class VisibilityGuardian {
         // Root Admin is omnipotent.
         if (role === UserRole.ROOT_ADMIN) return true;
         return [UserRole.ADMIN, UserRole.SUPER_USER].includes(role);
+
+      case Capability.MANAGE_ALL_CONTENT:
+        return [UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role);
 
       case Capability.MANAGE_SYSTEM:
         return role === UserRole.ROOT_ADMIN;

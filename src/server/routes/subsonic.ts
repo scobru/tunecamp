@@ -9,6 +9,7 @@ import { transcode } from '../ffmpeg.js';
 import type { DatabaseService, Track } from '../database';
 import type { AuthService } from '../auth';
 import type { ZenDBService } from '../zendb';
+import { UserRole, VisibilityGuardian } from '../common/visibility.js';
 
 // Types for Subsonic
 interface SubsonicContext {
@@ -256,7 +257,8 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
                 authorized = true;
                 const user = (db as any).db.prepare("SELECT id, role, artist_id FROM admin WHERE username = ?").get(u);
                 if (user) {
-                    isAdmin = user.role === 'admin' || user.role === 'root_admin' || user.id === 1;
+                    const derivedRole = VisibilityGuardian.deriveRole(user.role, user.is_active !== 0);
+                    isAdmin = VisibilityGuardian.isAdminRole(derivedRole);
                     artistId = user.artist_id;
                 }
             }

@@ -173,7 +173,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
     router.get("/status", async (req: AuthenticatedRequest, res) => {
         const username = req.username || "";
         res.json({
-            authenticated: req.isAdmin === true || req.role === UserRole.NORMAL_USER || req.role === UserRole.SUPER_USER,
+            authenticated: req.role !== UserRole.GUEST,
             username: username,
             isRootAdmin: username ? authService.isRootAdmin(username) : false,
             artistId: req.artistId || null,
