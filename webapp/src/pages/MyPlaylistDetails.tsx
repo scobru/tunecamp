@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { UserPlaylist, Playlist, UserPlaylistTrack, Track } from "../types";
 import { AddTrackToUserPlaylistModal } from "../components/modals/AddTrackToUserPlaylistModal";
+import { formatDuration } from "../utils/format";
 
 /**
  * Convert a UserPlaylistTrack to a playable Track object for the player store
@@ -363,11 +364,7 @@ export const MyPlaylistDetails = () => {
                     </div>
                   </td>
                   <td className="text-right opacity-50 font-mono text-xs">
-                    {track.duration
-                      ? new Date(track.duration * 1000)
-                          .toISOString()
-                          .substr(14, 5)
-                      : "-"}
+                    {formatDuration(track.duration)}
                   </td>
                   <td className="w-12 text-right">
                     {isOwner && (

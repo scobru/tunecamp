@@ -3,6 +3,7 @@ import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search as SearchIcon, Music, Disc, User, Globe } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { formatDuration } from '../utils/format';
 import type { Track, Album, Artist } from '../types';
 
 export const Search = () => {
@@ -162,7 +163,7 @@ export const Search = () => {
                                             <div className="text-xs opacity-60 truncate">{track.artistName}</div>
                                         </div>
                                         <div className="text-xs font-mono opacity-50">
-                                            {new Date(track.duration * 1000).toISOString().substr(14, 5)}
+                                            {formatDuration(track.duration)}
                                         </div>
                                     </div>
                                 ))}

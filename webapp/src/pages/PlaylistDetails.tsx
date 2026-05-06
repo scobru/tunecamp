@@ -13,6 +13,7 @@ import {
   Lock,
   Image as ImageIcon,
 } from "lucide-react";
+import { formatDuration } from "../utils/format";
 import type { Playlist } from "../types";
 
 export const PlaylistDetails = () => {
@@ -223,11 +224,7 @@ export const PlaylistDetails = () => {
                   </td>
                   <td className="opacity-60 text-sm">{track.albumName}</td>
                   <td className="text-right opacity-50 font-mono text-xs">
-                    {track.duration
-                      ? new Date(track.duration * 1000)
-                          .toISOString()
-                          .substr(14, 5)
-                      : "-"}
+                    {formatDuration(track.duration)}
                   </td>
                   <td>
                     {isAdminAuthenticated && !id?.startsWith("genre:") && (

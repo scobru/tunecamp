@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Play, Disc, Globe, Trash2, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { formatDuration } from '../utils/format';
 import type { Artist, Album, Post, Track } from '../types';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
@@ -342,7 +343,7 @@ export const ArtistDetails = () => {
                                              <div className="text-xs opacity-40">{track.artistName}</div>
                                          </td>
                                          <td className="text-right opacity-40 font-mono text-xs">
-                                             {new Date((track.duration || 0) * 1000).toISOString().substr(14, 5)}
+                                             {formatDuration(track.duration)}
                                          </td>
                                      </tr>
                                  ))}

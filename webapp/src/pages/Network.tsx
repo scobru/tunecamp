@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { Globe, Server, Music, ExternalLink, Play } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { StringUtils } from "../utils/stringUtils";
+import { formatDuration } from "../utils/format";
 import type { NetworkSite, NetworkTrack, NetworkStatus } from "../types";
 
 const getHostname = (url: string) => {
@@ -271,11 +272,7 @@ const TrackCard = memo(({
 
         <div className="flex flex-col items-end gap-1">
           <div className="text-xs font-mono opacity-40">
-            {duration
-              ? new Date(duration * 1000)
-                  .toISOString()
-                  .substr(14, 5)
-              : "--:--"}
+            {formatDuration(duration)}
           </div>
           {isAdmin && (
             <button

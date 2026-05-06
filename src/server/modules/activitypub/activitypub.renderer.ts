@@ -67,7 +67,9 @@ export class ActivityPubRenderer {
                 mediaType: this.getAudioMimeType(track.file_path),
                 url: track.file_path ? `${this.baseUrl}/api/tracks/${track.id}/stream` : track.url,
                 name: track.title,
-                duration: track.duration ? new Date(track.duration * 1000).toISOString().substr(11, 8) : undefined,
+                duration: (track.duration && Number.isFinite(track.duration)) 
+                    ? `${Math.floor(track.duration / 3600).toString().padStart(2, '0')}:${Math.floor((track.duration % 3600) / 60).toString().padStart(2, '0')}:${Math.floor(track.duration % 60).toString().padStart(2, '0')}`
+                    : undefined,
                 "https://funkwhale.audio/ns#bitrate": track.bitrate,
                 "https://funkwhale.audio/ns#duration": track.duration
             };

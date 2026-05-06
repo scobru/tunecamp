@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
+import { formatDuration } from "../utils/format";
 import type { Track } from "../types";
 import clsx from "clsx";
 
@@ -788,7 +789,7 @@ const TrackList = ({
               </td>
               <td className="opacity-60 text-sm">{track.albumName}</td>
               <td className="text-right opacity-40 font-mono text-xs">
-                {new Date(track.duration * 1000).toISOString().substr(14, 5)}
+                {formatDuration(track.duration)}
               </td>
             </tr>
           ))}

@@ -16,6 +16,7 @@ import { usePurchases } from "../hooks/usePurchases";
 import { useWalletStore } from "../stores/useWalletStore";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { ZenSocial } from "../services/zen";
+import { formatDuration } from "../utils/format";
 import type { Track } from "../types";
 import clsx from "clsx";
 
@@ -184,7 +185,7 @@ export const Tracks = () => {
                 </div>
 
                 <div className="hidden md:block opacity-60 font-mono text-xs tabular-nums">
-                  {new Date(track.duration * 1000).toISOString().substr(14, 5)}
+                  {formatDuration(track.duration)}
                 </div>
 
                 <div className="list-col-wrap flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

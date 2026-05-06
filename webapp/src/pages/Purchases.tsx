@@ -8,6 +8,7 @@ import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { useWalletStore } from "../stores/useWalletStore";
 import type { Track } from "../types";
 import { Link } from "react-router-dom";
+import { formatDuration } from "../utils/format";
 
 export const Purchases = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -148,9 +149,7 @@ export const Purchases = () => {
                       {track.albumName}
                     </td>
                     <td className="text-right opacity-50 font-mono text-xs">
-                      {new Date(track.duration * 1000)
-                        .toISOString()
-                        .substr(14, 5)}
+                      {formatDuration(track.duration)}
                     </td>
                     <td className="text-right">
                         <button

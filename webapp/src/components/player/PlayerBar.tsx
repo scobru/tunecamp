@@ -20,6 +20,7 @@ import clsx from "clsx";
 import * as ColorThiefReactModule from "color-thief-react";
 import { LyricsPanel } from "./LyricsPanel";
 import { QueuePanel } from "./QueuePanel";
+import { formatDuration } from "../../utils/format";
 
 // Robust interop for color-thief-react which has inconsistent exports across versions/builds
 const ColorThiefReact: any = ColorThiefReactModule;
@@ -334,7 +335,7 @@ export const PlayerBar = () => {
 
           <div className="w-full flex items-center gap-4 text-[10px] font-black tracking-widest opacity-40 h-6">
             <span className="w-10 text-right tabular-nums">
-              {Number.isFinite(currentTime) ? new Date(currentTime * 1000).toISOString().substr(14, 5) : "00:00"}
+              {formatDuration(currentTime)}
             </span>
 
             <div className="flex-1 relative h-1.5 group">
@@ -357,7 +358,7 @@ export const PlayerBar = () => {
             </div>
 
             <span className="w-10 tabular-nums">
-              {Number.isFinite(duration) && duration > 0 ? new Date(duration * 1000).toISOString().substr(14, 5) : "00:00"}
+              {formatDuration(duration)}
             </span>
           </div>
         </div>
