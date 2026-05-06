@@ -268,6 +268,8 @@ export const API = {
     matchTrackMetadata: (id: string | number, metadata: { title: string, artist: string, albumTitle?: string, coverUrl?: string }) =>
         handleResponse(api.post<{ message: string, track: Track }>(`/tracks/${id}/match-metadata`, metadata)),
 
+    fetchLyricsMetadata: (artist: string, title: string) => handleResponse(api.get<{ lyrics: string, source: string }>(`/metadata/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`)),
+
     // --- Admin: Uploads ---
     uploadTracks: (files: File[], options: { releaseSlug?: string, artistId?: string | number, artist?: string, album?: string, onProgress?: (percent: number) => void } = {}) => {
         const formData = new FormData();

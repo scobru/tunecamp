@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
-import { Music, Trash2, Save, Search } from "lucide-react";
+import { Music, Trash2, Save, Search, FileText, Loader2 } from "lucide-react";
 import { MetadataMatchModal } from "../MetadataMatchModal";
 
 interface AdminTrackModalProps {
@@ -21,6 +21,8 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
   const [showMetadataModal, setShowMetadataModal] = useState(false);
   const [genre, setGenre] = useState("");
   const [year, setYear] = useState("");
+  const [lyrics, setLyrics] = useState("");
+  const [fetchingLyrics, setFetchingLyrics] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingArtwork, setUploadingArtwork] = useState(false);
@@ -46,6 +48,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
         setHasCustomArtwork(!!e.detail.external_artwork);
         setGenre(e.detail.genre || "");
         setYear(e.detail.year ? String(e.detail.year) : "");
+        setLyrics(e.detail.lyrics || "");
         setCurrentTrackData(e.detail);
 
         loadData();
@@ -76,6 +79,26 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
       setAdmins(adminsData);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleFetchLyrics = async () => {
+    if (!artistName || !title) {
+      setError("Artist and Title are required to fetch lyrics");
+      return;
+    }
+
+    setFetchingLyrics(true);
+    setError("");
+    try {
+      const res = await API.fetchLyricsMetadata(artistName, title);
+      if (res.lyrics) {
+        setLyrics(res.lyrics);
+      }
+    } catch (err: any) {
+      setError(err.message || "Lyrics not found");
+    } finally {
+      setFetchingLyrics(false);
     }
   };
 
@@ -142,6 +165,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
         trackNumber: trackNum ? parseInt(trackNum) : undefined,
         genre,
         year: year ? parseInt(year) : null,
+        lyrics,
       };
 
       if (matchedArtist) {
@@ -352,6 +376,27 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
               className="input input-bordered w-full"
               value={trackNum}
               onChange={(e) => setTrackNum(e.target.value)}
+            />
+          </div>
+
+          <div className="form-control">
+            <label className="label flex justify-between items-center">
+              <span className="label-text">Lyrics</span>
+              <button
+                type="button"
+                className="btn btn-xs btn-ghost gap-1 text-primary"
+                onClick={handleFetchLyrics}
+                disabled={fetchingLyrics || !artistName || !title}
+              >
+                {fetchingLyrics ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                Fetch from lyrics.ovh
+              </button>
+            </label>
+            <textarea
+              className="textarea textarea-bordered w-full h-32 font-mono text-xs"
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              placeholder="Song lyrics..."
             />
           </div>
 

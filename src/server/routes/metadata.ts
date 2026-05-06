@@ -202,5 +202,30 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         }
     });
 
+    /**
+     * GET /api/metadata/lyrics
+     * Fetch lyrics for a track
+     */
+    router.get("/lyrics", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin && req.userId === undefined) return res.status(401).json({ error: "Unauthorized" });
+
+        const artist = req.query.artist as string;
+        const title = req.query.title as string;
+
+        if (!artist || !title) return res.status(400).json({ error: "Artist and title required" });
+
+        try {
+            const result = await metadataService.getLyrics(artist, title);
+            if (result) {
+                res.json(result);
+            } else {
+                res.status(404).json({ error: "Lyrics not found" });
+            }
+        } catch (error) {
+            console.error("Error fetching lyrics route:", error);
+            res.status(500).json({ error: "Failed to fetch lyrics" });
+        }
+    });
+
     return router;
 }

@@ -15,16 +15,16 @@ export interface MetadataMatch {
     genre?: string;
     coverUrl?: string;
     albumTitle?: string;
-    source: "musicbrainz" | "discogs" | "theaudiodb";
+    source: "musicbrainz" | "discogs" | "theaudiodb" | "itunes";
+}
+
+export interface LyricsResult {
+    lyrics: string;
+    source: string;
 }
 
 export interface ArtistMetadata {
-    id: string;
-    name: string;
-    bio?: string;
-    bioIT?: string;
-    avatarUrl?: string;
-    links?: { platform: string; url: string; type: 'social' | 'support' | 'music' }[];
+// ... (rest of the interface)
     source: "theaudiodb";
 }
 
@@ -34,6 +34,88 @@ export interface MetadataProvider {
     searchRecording(query: string): Promise<MetadataMatch[]>;
     getCoverUrl(id: string): Promise<string | null>;
     searchArtist?(query: string): Promise<ArtistMetadata[]>;
+}
+
+class ITunesProvider implements MetadataProvider {
+    name = "itunes";
+
+    async searchRelease(query: string): Promise<MetadataMatch[]> {
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=album&limit=10`;
+
+        try {
+            const response = await fetch(url, {
+                headers: { "User-Agent": USER_AGENT }
+            });
+
+            if (!response.ok) {
+                await drainResponse(response);
+                return [];
+            }
+
+            const data = await response.json() as any;
+            const results = (data.results || []);
+
+            return results.map((r: any) => ({
+                id: r.collectionId.toString(),
+                title: r.collectionName,
+                artist: r.artistName,
+                date: r.releaseDate || "",
+                year: r.releaseDate ? parseInt(r.releaseDate.substring(0, 4)) : undefined,
+                genre: r.primaryGenreName,
+                // Replace 100x100 with 1400x1400 for high quality
+                coverUrl: r.artworkUrl100 ? r.artworkUrl100.replace("100x100bb", "1400x1400bb") : undefined,
+                source: "itunes"
+            }));
+        } catch (error) {
+            console.error("Error searching iTunes:", error);
+            return [];
+        }
+    }
+
+    async searchRecording(query: string): Promise<MetadataMatch[]> {
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=10`;
+
+        try {
+            const response = await fetch(url, {
+                headers: { "User-Agent": USER_AGENT }
+            });
+
+            if (!response.ok) {
+                await drainResponse(response);
+                return [];
+            }
+
+            const data = await response.json() as any;
+            const results = (data.results || []);
+
+            return results.map((r: any) => ({
+                id: r.trackId.toString(),
+                title: r.trackName,
+                artist: r.artistName,
+                date: r.releaseDate || "",
+                year: r.releaseDate ? parseInt(r.releaseDate.substring(0, 4)) : undefined,
+                genre: r.primaryGenreName,
+                coverUrl: r.artworkUrl100 ? r.artworkUrl100.replace("100x100bb", "1400x1400bb") : undefined,
+                albumTitle: r.collectionName,
+                source: "itunes"
+            }));
+        } catch (error) {
+            console.error("Error searching iTunes songs:", error);
+            return [];
+        }
+    }
+
+    async getCoverUrl(id: string): Promise<string | null> {
+        const url = `https://itunes.apple.com/lookup?id=${id}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json() as any;
+            const result = data.results?.[0];
+            return result?.artworkUrl100 ? result.artworkUrl100.replace("100x100bb", "1400x1400bb") : null;
+        } catch {
+            return null;
+        }
+    }
 }
 
 class MusicBrainzProvider implements MetadataProvider {
@@ -232,6 +314,7 @@ class TheAudioDBProvider implements MetadataProvider {
 
 export class MetadataService {
     private providers: MetadataProvider[] = [
+        new ITunesProvider(),
         new MusicBrainzProvider(),
         new DiscogsProvider(),
         new TheAudioDBProvider()
@@ -261,6 +344,28 @@ export class MetadataService {
             return provider.getCoverUrl(id);
         }
         return null;
+    }
+
+    async getLyrics(artist: string, title: string): Promise<LyricsResult | null> {
+        const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                await drainResponse(response);
+                return null;
+            }
+            const data = await response.json() as any;
+            if (data.lyrics) {
+                return {
+                    lyrics: data.lyrics,
+                    source: "lyrics.ovh"
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error("Error fetching lyrics from lyrics.ovh:", error);
+            return null;
+        }
     }
 }
 
