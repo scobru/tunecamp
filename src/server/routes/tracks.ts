@@ -353,37 +353,56 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!isRoot && !req.isAdmin && track.owner_id !== req.artistId) throw new ForbiddenError("Access denied");
 
         const { title, artist, albumTitle, coverUrl } = req.body;
+        console.log(`🔍 [Metadata Match] Processing track ${id}:`, { title, artist, albumTitle, hasCover: !!coverUrl });
 
-        // Simplified logic: delegate to existing database methods for now
-        let artistId = track.artist_id;
-        if (artist) {
-            const a = database.getArtistByName(artist);
-            artistId = a ? a.id : database.createArtist(artist);
-            database.updateTrackArtist(id, artistId);
-        }
-
-        if (albumTitle) {
-            const slug = "lib-" + albumTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
-            let alb = database.getAlbumBySlug(slug);
-            if (!alb) {
-                const newId = database.createAlbum({
-                    title: albumTitle, slug, artist_id: artistId, owner_id: req.artistId || artistId,
-                    date: null, cover_path: null, genre: "Matched", description: "Matched",
-                    type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
-                    external_links: null, is_public: false, visibility: 'private', is_release: false,
-                    published_at: null, published_to_gundb: false, published_to_ap: false, license: null,
-                    status: 'draft',
-                });
-                alb = database.getAlbum(newId);
+        try {
+            let artistId = track.artist_id;
+            if (artist) {
+                console.log(`   - Matching artist: "${artist}"`);
+                const a = database.getArtistByName(artist);
+                artistId = a ? a.id : database.createArtist(artist);
+                console.log(`   - Artist ID: ${artistId}`);
+                database.updateTrackArtist(id, artistId);
             }
-            if (alb) database.updateTrackAlbum(id, alb.id);
+
+            if (albumTitle) {
+                console.log(`   - Matching album: "${albumTitle}"`);
+                const slug = "lib-" + albumTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                let alb = database.getAlbumBySlug(slug);
+                if (!alb) {
+                    console.log(`   - Creating new library album: "${albumTitle}" (slug: ${slug})`);
+                    const newId = database.createAlbum({
+                        title: albumTitle, slug, artist_id: artistId, owner_id: req.artistId || artistId,
+                        date: null, cover_path: null, genre: "Matched", description: "Matched",
+                        type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
+                        external_links: null, is_public: false, visibility: 'private', is_release: false,
+                        published_at: null, published_to_gundb: false, published_to_ap: false, license: null,
+                        status: 'draft',
+                    });
+                    alb = database.getAlbum(newId);
+                }
+                if (alb) {
+                    console.log(`   - Associating track with album ID: ${alb.id}`);
+                    database.updateTrackAlbum(id, alb.id);
+                }
+            }
+
+            if (title) {
+                console.log(`   - Updating title: "${title}"`);
+                database.updateTrackTitle(id, title);
+            }
+            
+            if (coverUrl) {
+                console.log(`   - Updating external artwork: ${coverUrl.substring(0, 50)}...`);
+                (database as any).db.prepare("UPDATE tracks SET external_artwork = ? WHERE id = ?").run(coverUrl, id);
+            }
+
+            const updated = database.getTrack(id);
+            res.json({ message: "Metadata matched", track: updated ? libraryService.mapTrackDTO(updated, req.username) : null });
+        } catch (error: any) {
+            console.error(`❌ [Metadata Match Error] Track ${id}:`, error);
+            throw error;
         }
-
-        if (title) database.updateTrackTitle(id, title);
-        if (coverUrl) (database as any).db.prepare("UPDATE tracks SET external_artwork = ? WHERE id = ?").run(coverUrl, id);
-
-        const updated = database.getTrack(id);
-        res.json({ message: "Metadata matched", track: updated ? libraryService.mapTrackDTO(updated, req.username) : null });
     }));
 
     /**
