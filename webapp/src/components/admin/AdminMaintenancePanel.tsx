@@ -101,6 +101,21 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleConsolidate = async () => {
+        if (!confirm("Are you sure you want to consolidate the database? This will permanently remove empty albums, releases, and artists with no tracks.")) return;
+        setIsProcessing(true);
+        try {
+            await API.consolidateDatabase();
+            alert("Database consolidated successfully!");
+            if (mode === 'artists') loadArtists();
+            else loadTracks();
+        } catch (e: any) {
+            alert("Consolidation failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -152,19 +167,7 @@ export const AdminMaintenancePanel = () => {
 
                     <button 
                         className="btn btn-sm btn-outline btn-error"
-                        onClick={async () => {
-                            if (!confirm("Are you sure you want to deep clean the database? This will permanently remove artists and albums with 0 tracks.")) return;
-                            setIsProcessing(true);
-                            try {
-                                const res = await API.consolidateDatabase();
-                                alert(res.message);
-                                loadTracks();
-                            } catch (e: any) {
-                                alert("Consolidation failed: " + e.message);
-                            } finally {
-                                setIsProcessing(false);
-                            }
-                        }}
+                        onClick={handleConsolidate}
                         disabled={isProcessing}
                     >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}

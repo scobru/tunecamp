@@ -129,7 +129,7 @@ export class TrackRepository extends BaseRepository {
         const baseSelect = `
             SELECT t.*, a.title as album_title, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
             COALESCE(ar_t.id, ar_a.id) as artist_id,
-            COALESCE(ar_t.name, ar_a.name, t.artist_name) as artist_name, 
+            COALESCE(ar_t.name, t.artist_name, ar_a.name, 'Unknown Artist') as artist_name, 
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
             COALESCE(t.owner_id, a.owner_id) as owner_id,
             own.username as owner_name
@@ -140,12 +140,9 @@ export class TrackRepository extends BaseRepository {
             LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id
         `;
 
-        const condition = `
-            (t.artist_id = ? 
-             OR ar_t.name = ?
-             OR (t.artist_id IS NULL AND (a.artist_id = ? OR ar_a.name = ?))
-             OR (t.artist_id IS NULL AND a.artist_id IS NULL AND t.artist_name LIKE ?))
-        `;
+        const condition = artistName 
+            ? `(t.artist_id = ? OR ar_t.name = ? OR t.artist_name = ? OR t.artist_name LIKE ? OR (t.artist_id IS NULL AND (a.artist_id = ? OR ar_a.name = ?)))`
+            : `(t.artist_id = ? OR (t.artist_id IS NULL AND a.artist_id = ?))`;
 
         const publicCondition = `
             AND (
@@ -158,13 +155,18 @@ export class TrackRepository extends BaseRepository {
             ? `${baseSelect} WHERE ${condition} ${publicCondition} ORDER BY a.title, t.track_num`
             : `${baseSelect} WHERE ${condition} ORDER BY a.title, t.track_num`;
         
-        const rows = this.db.prepare(sql).all(
-            artistId, 
-            artistName || null, 
-            artistId, 
-            artistName || null, 
-            artistName ? `%${artistName}%` : null
-        );
+        const params: (number | string)[] = [artistId];
+        if (artistName) {
+            params.push(artistName);
+            params.push(artistName);
+            params.push(`%${artistName}%`);
+            params.push(artistId);
+            params.push(artistName);
+        } else {
+            params.push(artistId);
+        }
+
+        const rows = this.db.prepare(sql).all(...params);
         return rows.map(row => this.mapTrack(row));
     }
 

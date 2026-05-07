@@ -387,7 +387,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             }
 
             // Get formal releases (visible to everyone if public)
-            const formalReleases = database.getReleasesByArtist(artist.id, (!req.isAdmin && !req.isSuperUser));
+            const formalReleases = database.getReleasesByArtist(artist.id, (!req.isAdmin && !req.isSuperUser), artist.name);
             const publicFormalReleases = formalReleases.filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
 
             // SECURITY: If not admin and no public formal releases, hide the artist entirely

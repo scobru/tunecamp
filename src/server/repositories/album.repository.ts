@@ -189,41 +189,52 @@ export class AlbumRepository extends BaseRepository {
     }
 
     getByArtist(artistId: number, publicOnly = false, artistName?: string): Album[] {
-        const sql = publicOnly
-            ? `SELECT a.*, 
+        const condition = artistName 
+            ? `(a.artist_id = ? OR ar.name = ? OR a.title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND (t.artist_id = ? OR t.artist_name = ?)))`
+            : `(a.artist_id = ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND t.artist_id = ?))`;
+
+        const sql = `SELECT a.*, 
                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
                COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
                ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
                LEFT JOIN artists ar ON a.artist_id = ar.id 
-               WHERE (a.artist_id = ? ${artistName ? 'OR ar.name = ? OR (a.artist_id IS NULL AND a.title LIKE ?)' : ''}) 
-               AND a.is_release = 0 AND a.visibility = 'public' AND a.status = 'released' ORDER BY a.date DESC`
-            : `SELECT a.*, 
-               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-               COALESCE(ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
-               LEFT JOIN artists ar ON a.artist_id = ar.id 
-               WHERE (a.artist_id = ? ${artistName ? 'OR ar.name = ? OR (a.artist_id IS NULL AND (a.title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND t.artist_name = ?)))' : ''}) 
-               AND a.is_release = 0 ORDER BY a.date DESC`;
+               WHERE ${condition}
+               AND a.is_release = 0 
+               ${publicOnly ? "AND a.visibility = 'public' AND a.status = 'released'" : ""}
+               ORDER BY a.date DESC`;
         
         const params: (number | string)[] = [artistId];
         if (artistName) {
             params.push(artistName);
             params.push(`%${artistName}%`);
-            if (!publicOnly) params.push(artistName);
+            params.push(artistId);
+            params.push(artistName);
+        } else {
+            params.push(artistId);
         }
+        
         const rows = this.db.prepare(sql).all(...params);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 
-    getReleasesByArtist(artistId: number, publicOnly = false): Release[] {
-        const sql = publicOnly
-            ? `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
+    getReleasesByArtist(artistId: number, publicOnly = false, artistName?: string): Release[] {
+        const condition = artistName
+            ? `(r.artist_id = ? OR ar.name = ? OR EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.release_id = r.id AND rt.artist_name = ?))`
+            : `(r.artist_id = ?)`;
+
+        const sql = `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.slug as artist_slug FROM releases r
                LEFT JOIN artists ar ON r.artist_id = ar.id
-               WHERE r.artist_id = ? AND r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
-            : `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
-               LEFT JOIN artists ar ON r.artist_id = ar.id
-               WHERE r.artist_id = ? ORDER BY r.date DESC`;
-        const rows = this.db.prepare(sql).all(artistId);
+               WHERE ${condition}
+               ${publicOnly ? "AND r.visibility = 'public' AND r.status = 'released'" : ""}
+               ORDER BY r.date DESC`;
+        
+        const params: (number | string)[] = [artistId];
+        if (artistName) {
+            params.push(artistName);
+            params.push(artistName);
+        }
+
+        const rows = this.db.prepare(sql).all(...params);
         return rows.map((row: any) => ({ ...row, is_release: 1 })) as any[];
     }
 

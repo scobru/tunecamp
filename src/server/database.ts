@@ -1000,8 +1000,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             return albumRepository.getBySlug(slug) as Release | undefined;
         },
 
-        getReleasesByArtist(artistId: number, publicOnly = false): Release[] {
-            return albumRepository.getReleasesByArtist(artistId, publicOnly);
+        getReleasesByArtist(artistId: number, publicOnly = false, artistName?: string): Release[] {
+            return albumRepository.getReleasesByArtist(artistId, publicOnly, artistName);
         },
 
         getReleasesByOwner(ownerId: number, publicOnly = false): Release[] {
