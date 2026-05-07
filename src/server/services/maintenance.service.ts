@@ -192,4 +192,51 @@ export class MaintenanceService {
 
         return results;
     }
+    /**
+     * Gets artists missing specific metadata fields.
+     */
+    async getArtistsWithMissingPhotos(): Promise<any[]> {
+        return this.db.getArtistsMissingMetadata('photo');
+    }
+
+    /**
+     * Gets artist metadata candidates using AI to disambiguate.
+     */
+    async getArtistPhotoCandidates(artistId: number): Promise<any[]> {
+        const artist = this.db.getArtist(artistId);
+        if (!artist) throw new Error("Artist not found");
+
+        const albums = this.db.getAlbumsByArtist(artistId);
+        const releaseTitles = albums.map(a => a.title);
+
+        // 1. AI help for better search query
+        const identity = await this.openRouter.identifyArtist(artist.name, releaseTitles);
+        const query = identity?.searchQuery || artist.name;
+
+        // 2. Search providers
+        const candidates = await metadataService.searchArtist(query);
+        
+        // Add the AI bio to help user decide
+        if (identity?.bio) {
+            candidates.forEach(c => {
+                if (!c.bio) (c as any).aiBio = identity.bio;
+            });
+        }
+
+        return candidates;
+    }
+
+    /**
+     * Applies metadata to an artist.
+     */
+    async applyMetadataToArtist(artistId: number, metadata: any): Promise<void> {
+        // Update basic info if provided
+        this.db.updateArtist(
+            artistId,
+            metadata.name || undefined,
+            metadata.bio || undefined,
+            metadata.avatarUrl || undefined, // URL for now, will be downloaded if route uses download logic
+            metadata.links ? metadata.links : undefined
+        );
+    }
 }

@@ -343,10 +343,12 @@ export const API = {
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`/browser?path=${encodeURIComponent(path)}`)),
     renameBrowserPath: (oldPath: string, newPath: string) => handleResponse(api.put("/browser", { oldPath, newPath })),
     syncActivityPub: () => handleResponse(api.post('/ap/sync')),
-    getMainMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
     getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
     getMetadataCandidates: (trackId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/candidates/${trackId}`)),
     applyTrackMetadata: (trackId: number, metadata: any) => handleResponse(api.post<{ success: boolean }>(`/metadata/maintenance/apply-track`, { trackId, metadata })),
+    getArtistsMissingPhotos: () => handleResponse(api.get<any[]>(`/metadata/maintenance/artists/missing`)),
+    getArtistMetadataCandidates: (artistId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/artists/candidates/${artistId}`)),
+    applyArtistMetadata: (artistId: number, metadata: any) => handleResponse(api.post<{ success: boolean, photoPath?: string }>(`/metadata/maintenance/artists/apply`, { artistId, metadata })),
     autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'album')[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/autofill', { trackIds, fields, force })),
 

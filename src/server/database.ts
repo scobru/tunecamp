@@ -1678,6 +1678,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
             return db.prepare(query).all() as Track[];
         },
+        getArtistsMissingMetadata(filter: 'photo'): Artist[] {
+            if (filter === 'photo') {
+                return db.prepare("SELECT * FROM artists WHERE photo_path IS NULL OR photo_path = ''").all() as Artist[];
+            }
+            return [];
+        },
         getListeningStats(): ListeningStats {
             const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
             const week = new Date(now.getTime() - 7*24*3600000).toISOString(); const month = new Date(now.getTime() - 30*24*3600000).toISOString();

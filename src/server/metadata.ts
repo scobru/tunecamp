@@ -24,8 +24,12 @@ export interface LyricsResult {
 }
 
 export interface ArtistMetadata {
-// ... (rest of the interface)
-    source: "theaudiodb";
+    id: string;
+    name: string;
+    bio?: string;
+    avatarUrl?: string;
+    links?: any;
+    source: string;
 }
 
 export interface MetadataProvider {

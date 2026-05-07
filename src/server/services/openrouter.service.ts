@@ -127,4 +127,49 @@ ${JSON.stringify(libraryContext)}`;
             return [];
         }
     }
+
+    async identifyArtist(artistName: string, releaseTitles: string[]): Promise<{ searchQuery: string, bio?: string } | null> {
+        const apiKey = this.getApiKey();
+        if (!apiKey) return null;
+
+        const prompt = `I am looking for the official identity and a photo of the music artist "${artistName}".
+They have released the following albums/tracks: ${releaseTitles.join(", ")}.
+
+Provide a refined search query for music databases (like MusicBrainz or Discogs) that uniquely identifies this artist.
+Also provide a very brief (1 sentence) summary of who they are to help confirm the match.
+
+Output ONLY valid JSON in this format:
+{"searchQuery": "refined search query", "bio": "brief summary"}`;
+
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://tunecamp.app",
+                    "X-Title": "TuneCamp"
+                },
+                body: JSON.stringify({
+                    model: this.getModel(),
+                    messages: [
+                        { role: "system", content: "You are a music historian and metadata expert." },
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json() as any;
+            const content = data.choices[0]?.message?.content;
+            if (!content) return null;
+
+            return JSON.parse(content);
+        } catch (error) {
+            console.error("[OpenRouter] Error identifying artist:", error);
+            return null;
+        }
+    }
 }

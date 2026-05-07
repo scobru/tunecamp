@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User } from "lucide-react";
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
+import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
 
 export const AdminMaintenancePanel = () => {
+    const [mode, setMode] = useState<'tracks' | 'artists'>('tracks');
     const [filter, setFilter] = useState<'genre' | 'year' | 'cover' | 'album'>('genre');
     const [tracks, setTracks] = useState<any[]>([]);
+    const [artists, setArtists] = useState<any[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -13,16 +16,35 @@ export const AdminMaintenancePanel = () => {
     const [results, setResults] = useState<{ success: number, failed: number, skipped: number } | null>(null);
 
     const [pickerTrack, setPickerTrack] = useState<any | null>(null);
+    const [pickerArtist, setPickerArtist] = useState<any | null>(null);
 
     useEffect(() => {
-        loadTracks();
-    }, [filter]);
+        if (mode === 'tracks') {
+            loadTracks();
+        } else {
+            loadArtists();
+        }
+    }, [filter, mode]);
 
     const loadTracks = async () => {
         setIsLoading(true);
         try {
             const data = await API.getMaintenanceMissing(filter);
             setTracks(data);
+            setSelectedIds([]);
+            setResults(null);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const loadArtists = async () => {
+        setIsLoading(true);
+        try {
+            const data = await API.getArtistsMissingPhotos();
+            setArtists(data);
             setSelectedIds([]);
             setResults(null);
         } catch (e) {
@@ -39,10 +61,11 @@ export const AdminMaintenancePanel = () => {
     };
 
     const toggleSelectAll = () => {
-        if (selectedIds.length === tracks.length) {
+        const list = mode === 'tracks' ? tracks : artists;
+        if (selectedIds.length === list.length) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(tracks.map(t => t.id));
+            setSelectedIds(list.map(t => t.id));
         }
     };
 
@@ -81,26 +104,44 @@ export const AdminMaintenancePanel = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <Database className="text-primary" />
-                    <h3 className="font-bold text-lg">Metadata Maintenance</h3>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                        <Database className="text-primary" />
+                        <h3 className="font-bold text-lg">Metadata Maintenance</h3>
+                    </div>
+                    <div className="tabs tabs-boxed bg-base-300 w-fit mt-2">
+                        <button 
+                            className={`tab tab-sm ${mode === 'tracks' ? 'tab-active' : ''}`}
+                            onClick={() => setMode('tracks')}
+                        >
+                            Tracks
+                        </button>
+                        <button 
+                            className={`tab tab-sm ${mode === 'artists' ? 'tab-active' : ''}`}
+                            onClick={() => setMode('artists')}
+                        >
+                            Artists
+                        </button>
+                    </div>
                 </div>
                 
                 <div className="flex gap-2">
-                    <select 
-                        className="select select-bordered select-sm"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value as any)}
-                    >
-                        <option value="album">Missing Album</option>
-                        <option value="genre">Missing Genre</option>
-                        <option value="year">Missing Year</option>
-                        <option value="cover">Missing Cover</option>
-                    </select>
+                    {mode === 'tracks' && (
+                        <select 
+                            className="select select-bordered select-sm"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value as any)}
+                        >
+                            <option value="album">Missing Album</option>
+                            <option value="genre">Missing Genre</option>
+                            <option value="year">Missing Year</option>
+                            <option value="cover">Missing Cover</option>
+                        </select>
+                    )}
                     
                     <button 
                         className="btn btn-sm btn-ghost"
-                        onClick={loadTracks}
+                        onClick={mode === 'tracks' ? loadTracks : loadArtists}
                         disabled={isLoading}
                     >
                         {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
@@ -144,105 +185,148 @@ export const AdminMaintenancePanel = () => {
                 </div>
             )}
 
-            <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
-                    <button 
-                        className="btn btn-sm btn-primary"
-                        disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
-                        onClick={() => handleAutofill(selectedIds)}
-                    >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
-                        Autofill Selected ({selectedIds.length})
-                    </button>
-                    
-                    <button 
-                        className="btn btn-sm btn-outline"
-                        disabled={tracks.length === 0 || isProcessing || isAIProcessing}
-                        onClick={() => handleAutofill(tracks.map(t => t.id))}
-                    >
-                        All
-                    </button>
-                </div>
+            {mode === 'tracks' ? (
+                <div className="flex flex-wrap gap-2 items-center">
+                    <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
+                        <button 
+                            className="btn btn-sm btn-primary"
+                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                            onClick={() => handleAutofill(selectedIds)}
+                        >
+                            {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
+                            Autofill Selected ({selectedIds.length})
+                        </button>
+                        
+                        <button 
+                            className="btn btn-sm btn-outline"
+                            disabled={tracks.length === 0 || isProcessing || isAIProcessing}
+                            onClick={() => handleAutofill(tracks.map(t => t.id))}
+                        >
+                            All
+                        </button>
+                    </div>
 
-                <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
-                    <button 
-                        className="btn btn-sm btn-secondary"
-                        disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
-                        onClick={() => handleAIAutofill(selectedIds)}
-                    >
-                        {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
-                        AI Magic Autofill ({selectedIds.length})
-                    </button>
-                    
-                    <button 
-                        className="btn btn-sm btn-outline btn-secondary"
-                        disabled={tracks.length === 0 || isProcessing || isAIProcessing}
-                        onClick={() => handleAIAutofill(tracks.map(t => t.id))}
-                    >
-                        All
-                    </button>
+                    <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
+                        <button 
+                            className="btn btn-sm btn-secondary"
+                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                            onClick={() => handleAIAutofill(selectedIds)}
+                        >
+                            {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
+                            AI Magic Autofill ({selectedIds.length})
+                        </button>
+                        
+                        <button 
+                            className="btn btn-sm btn-outline btn-secondary"
+                            disabled={tracks.length === 0 || isProcessing || isAIProcessing}
+                            onClick={() => handleAIAutofill(tracks.map(t => t.id))}
+                        >
+                            All
+                        </button>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
+                    <User className="text-primary" />
+                    <div>
+                        <h3 className="font-bold">Artist Profile Enrichment</h3>
+                        <div className="text-xs opacity-70">
+                            Missing photos? Click "Enrich" to use AI and external providers to find high-quality imagery and bios.
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="overflow-x-auto bg-base-200 rounded-box border border-base-content/5">
                 <table className="table table-zebra table-sm">
                     <thead>
-                        <tr>
-                            <th>
-                                <input 
-                                    type="checkbox" 
-                                    className="checkbox checkbox-xs" 
-                                    checked={tracks.length > 0 && selectedIds.length === tracks.length}
-                                    onChange={toggleSelectAll}
-                                />
-                            </th>
-                            <th>Track</th>
-                            <th>Artist</th>
-                            <th>Album</th>
-                            <th>Current</th>
-                            <th className="text-right">Actions</th>
-                        </tr>
+                        {mode === 'tracks' ? (
+                            <tr>
+                                <th>
+                                    <input 
+                                        type="checkbox" 
+                                        className="checkbox checkbox-xs" 
+                                        checked={tracks.length > 0 && selectedIds.length === tracks.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
+                                <th>Track</th>
+                                <th>Artist</th>
+                                <th>Album</th>
+                                <th>Current</th>
+                                <th className="text-right">Actions</th>
+                            </tr>
+                        ) : (
+                            <tr>
+                                <th>
+                                    <input 
+                                        type="checkbox" 
+                                        className="checkbox checkbox-xs" 
+                                        checked={artists.length > 0 && selectedIds.length === artists.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
+                                <th>Artist</th>
+                                <th>Slug</th>
+                                <th>Bio Status</th>
+                                <th className="text-right">Actions</th>
+                            </tr>
+                        )}
                     </thead>
                     <tbody>
                         {isLoading ? (
                             <tr>
                                 <td colSpan={6} className="text-center py-12">
                                     <Loader2 className="animate-spin mx-auto opacity-50" size={32} />
-                                    <p className="mt-2 opacity-50">Scanning library...</p>
+                                    <p className="mt-2 opacity-50">Scanning {mode}...</p>
                                 </td>
                             </tr>
-                        ) : tracks.length === 0 ? (
+                        ) : (mode === 'tracks' ? tracks : artists).length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="text-center py-12 opacity-50">
                                     <AlertCircle className="mx-auto mb-2" size={32} />
-                                    No tracks found with missing {filter}.
+                                    No {mode} found {mode === 'tracks' ? `with missing ${filter}` : 'missing photos'}.
                                 </td>
                             </tr>
                         ) : (
-                            tracks.map(t => (
-                                <tr key={t.id} className="hover:bg-base-100 group">
+                            (mode === 'tracks' ? tracks : artists).map((item: any) => (
+                                <tr key={item.id} className="hover:bg-base-100 group">
                                     <td>
                                         <input 
                                             type="checkbox" 
                                             className="checkbox checkbox-xs" 
-                                            checked={selectedIds.includes(t.id)}
-                                            onChange={() => toggleSelect(t.id)}
+                                            checked={selectedIds.includes(item.id)}
+                                            onChange={() => toggleSelect(item.id)}
                                         />
                                     </td>
-                                    <td className="font-medium">{t.title}</td>
-                                    <td>{t.artist_name}</td>
-                                    <td className="opacity-70">{t.album_title}</td>
-                                    <td>
-                                        <div className="badge badge-outline badge-xs opacity-50 italic">
-                                            {filter === 'genre' ? (t.genre || 'empty') : filter === 'year' ? (t.year || '0') : 'missing'}
-                                        </div>
-                                    </td>
+                                    {mode === 'tracks' ? (
+                                        <>
+                                            <td className="font-medium">{item.title}</td>
+                                            <td>{item.artist_name}</td>
+                                            <td className="opacity-70">{item.album_title}</td>
+                                            <td>
+                                                <div className="badge badge-outline badge-xs opacity-50 italic">
+                                                    {filter === 'genre' ? (item.genre || 'empty') : filter === 'year' ? (item.year || '0') : 'missing'}
+                                                </div>
+                                            </td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="font-medium">{item.name}</td>
+                                            <td className="opacity-70">{item.slug}</td>
+                                            <td>
+                                                <div className={`badge badge-xs ${item.bio ? 'badge-success/20 text-success' : 'badge-ghost opacity-50'}`}>
+                                                    {item.bio ? 'Bio Present' : 'No Bio'}
+                                                </div>
+                                            </td>
+                                        </>
+                                    )}
                                     <td className="text-right">
                                         <button 
                                             className="btn btn-xs btn-ghost opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => setPickerTrack(t)}
+                                            onClick={() => mode === 'tracks' ? setPickerTrack(item) : setPickerArtist(item)}
                                         >
-                                            <Wand2 size={12} /> Match
+                                            <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : 'Enrich'}
                                         </button>
                                     </td>
                                 </tr>
@@ -256,10 +340,14 @@ export const AdminMaintenancePanel = () => {
                 track={pickerTrack}
                 isOpen={!!pickerTrack}
                 onClose={() => setPickerTrack(null)}
-                onApplied={() => {
-                    loadTracks();
-                    setPickerTrack(null);
-                }}
+                onApplied={loadTracks}
+            />
+
+            <ArtistMetadataPickerModal
+                artist={pickerArtist}
+                isOpen={!!pickerArtist}
+                onClose={() => setPickerArtist(null)}
+                onApplied={loadArtists}
             />
         </div>
     );

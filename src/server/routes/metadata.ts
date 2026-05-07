@@ -243,5 +243,108 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         }
     });
 
+    /**
+     * Helper to download an image from a URL
+     */
+    async function downloadImage(url: string, dest: string): Promise<boolean> {
+        if (!(await isSafeUrl(url))) return false;
+
+        let currentUrl = url;
+        let response: any = null;
+
+        for (let i = 0; i <= 3; i++) {
+            response = await fetch(currentUrl, {
+                redirect: 'manual',
+                size: 10 * 1024 * 1024 // 10MB limit
+            });
+
+            if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+                const location = response.headers.get('location');
+                if (!location) break;
+                currentUrl = new URL(location, currentUrl).toString();
+                await drainResponse(response);
+                if (!(await isSafeUrl(currentUrl))) return false;
+                continue;
+            }
+            break;
+        }
+
+        if (response && response.ok) {
+            const buffer = await response.buffer();
+            await fs.writeFile(dest, buffer);
+            return true;
+        } else if (response) {
+            await drainResponse(response);
+        }
+        return false;
+    }
+
+    /**
+     * GET /api/metadata/maintenance/artists/missing
+     */
+    router.get("/maintenance/artists/missing", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const artists = await maintenance.getArtistsWithMissingPhotos();
+        res.json(artists);
+    });
+
+    /**
+     * GET /api/metadata/maintenance/artists/candidates/:artistId
+     */
+    router.get("/maintenance/artists/candidates/:artistId", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const artistId = parseInt(req.params.artistId);
+        try {
+            const candidates = await maintenance.getArtistPhotoCandidates(artistId);
+            res.json(candidates);
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    /**
+     * POST /api/metadata/maintenance/artists/apply
+     */
+    router.post("/maintenance/artists/apply", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const { artistId, metadata } = req.body;
+        if (!artistId || !metadata) return res.status(400).json({ error: "artistId and metadata required" });
+
+        try {
+            const artist = database.getArtist(artistId);
+            if (!artist) return res.status(404).json({ error: "Artist not found" });
+
+            let photoPath = artist.photo_path;
+
+            // Download photo if URL provided
+            if (metadata.avatarUrl) {
+                const artistAssetsDir = path.join(musicDir, "artists", artist.slug || String(artistId));
+                await fs.ensureDir(artistAssetsDir);
+                
+                const ext = path.extname(new URL(metadata.avatarUrl).pathname) || ".jpg";
+                const dest = path.join(artistAssetsDir, `photo-${Date.now()}${ext}`);
+                
+                const success = await downloadImage(metadata.avatarUrl, dest);
+                if (success) {
+                    photoPath = path.relative(musicDir, dest).replace(/\\/g, "/");
+                }
+            }
+
+            // Update Database
+            database.updateArtist(
+                artistId,
+                metadata.name || undefined,
+                metadata.bio || undefined,
+                photoPath || undefined,
+                metadata.links || undefined
+            );
+
+            res.json({ success: true, photoPath });
+        } catch (e: any) {
+            console.error("Error applying artist metadata:", e);
+            res.status(500).json({ error: e.message });
+        }
+    });
+
     return router;
 }
