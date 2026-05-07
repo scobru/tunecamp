@@ -59,7 +59,7 @@ export class MaintenanceService {
     /**
      * Gets tracks missing specific metadata fields.
      */
-    getTracksWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album') {
+    getTracksWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description') {
         return this.db.getTracksMissingMetadata(filter);
     }
 

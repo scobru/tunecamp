@@ -1708,7 +1708,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const admin = db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
             return admin ? admin.id : null;
         },
-        getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album'): Track[] {
+        getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description'): Track[] {
             let query = "";
             if (filter === 'genre') {
                 query = "SELECT t.*, al.title as album_title, ar.name as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.genre IS NULL OR t.genre = '' OR t.genre = 'Library'";
