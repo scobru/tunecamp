@@ -48,21 +48,17 @@ export function createReleaseRouter(
             let releases: any[] = [];
             
             if (req.isAdmin || req.isSuperUser) {
-                // For Admins and Super Users, return ALL formal releases AND ALL library albums
-                const formalReleases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
-                const libraryAlbums = database.getAlbums(false).map(a => ({ ...a, is_formal_release: false }));
-                releases = [...formalReleases, ...libraryAlbums];
+                // For Admins and Super Users, return ALL formal releases (including drafts/private)
+                releases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
             } else if (req.userId) {
-                // For logged-in users, merge their owned items (formal + library) with public releases
+                // For logged-in users, merge their owned releases with public ones
                 const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
-                const ownedLibraryAlbums = database.getAlbumsByOwner(req.userId, false).map(a => ({ ...a, is_formal_release: false }));
                 const publicReleases = database.getReleases(true).map(r => ({ ...r, is_formal_release: true }));
 
-                // Merge and deduplicate by ID (prioritizing formal releases/owned status)
+                // Merge and deduplicate by ID
                 const releaseMap = new Map();
-                [...publicReleases, ...ownedLibraryAlbums, ...ownedFormalReleases].forEach(r => {
-                    const key = `${r.is_formal_release ? 'f' : 'l'}-${r.id}`;
-                    releaseMap.set(key, r);
+                [...publicReleases, ...ownedFormalReleases].forEach(r => {
+                    releaseMap.set(r.id, r);
                 });
                 releases = Array.from(releaseMap.values());
             } else {
