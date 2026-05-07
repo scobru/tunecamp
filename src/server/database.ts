@@ -223,6 +223,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       published_to_ap INTEGER DEFAULT 0,
       published_at TEXT,
       use_nft INTEGER DEFAULT 1,
+      album_artist TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -298,6 +299,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       published_to_ap INTEGER DEFAULT 0,
       license TEXT,
       use_nft INTEGER DEFAULT 1,
+      album_artist TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -564,6 +566,25 @@ export function createDatabase(dbPath: string): DatabaseService {
         db.exec("UPDATE albums SET status = 'released' WHERE (visibility = 'public' OR visibility = 'unlisted') AND (status = 'draft' OR status IS NULL)");
     } catch (e) {
         console.error("Migration error (status column):", e);
+    }
+
+    // Migration: Add album_artist column to albums and releases table
+    try {
+        const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
+        const hasAlbumArtistAlbums = Array.isArray(tableInfoAlbums) && tableInfoAlbums.some(col => col.name === "album_artist");
+        if (!hasAlbumArtistAlbums) {
+            console.log("📦 Migrating database: Adding album_artist column to albums table...");
+            db.exec("ALTER TABLE albums ADD COLUMN album_artist TEXT");
+        }
+
+        const tableInfoReleases = db.pragma("table_info(releases)") as any[];
+        const hasAlbumArtistReleases = Array.isArray(tableInfoReleases) && tableInfoReleases.some(col => col.name === "album_artist");
+        if (!hasAlbumArtistReleases) {
+            console.log("📦 Migrating database: Adding album_artist column to releases table...");
+            db.exec("ALTER TABLE releases ADD COLUMN album_artist TEXT");
+        }
+    } catch (e) {
+        console.error("Migration error (album_artist column):", e);
     }
 
     try {
@@ -1007,14 +1028,14 @@ export function createDatabase(dbPath: string): DatabaseService {
         getReleasesByOwner(ownerId: number, publicOnly = false): Release[] {
             const sql = publicOnly
                 ? `SELECT r.*, 
-                   COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                   COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
                    ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                    LEFT JOIN artists ar ON r.artist_id = ar.id
                    WHERE r.owner_id = ? AND r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
                 : `SELECT r.*, 
-                   COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                   COALESCE(ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
+                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
+                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
                    ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
                    LEFT JOIN artists ar ON r.artist_id = ar.id
                    WHERE r.owner_id = ? ORDER BY r.date DESC`;

@@ -13,9 +13,9 @@ export class TrackRepository extends BaseRepository {
         super(db);
         
         const baseSelect = `
-            SELECT t.*, a.title as album_title, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
+            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
             ar_t.id as artist_id,
-            COALESCE(ar_t.name, t.artist_name, ar_a.name, 'Unknown Artist') as artist_name, 
+            COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name, 
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
             COALESCE(t.owner_id, a.owner_id) as owner_id,
             own.username as owner_name
@@ -84,7 +84,7 @@ export class TrackRepository extends BaseRepository {
             const chunk = ids.slice(i, i + CHUNK_SIZE);
             const placeholders = chunk.map(() => "?").join(",");
             const rows = this.db.prepare(`
-                SELECT t.*, a.title as album_title, a.download as album_download, a.visibility as album_visibility, a.price as album_price,
+                SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price,
                 COALESCE(ar_t.id, ar_a.id) as artist_id,
                 COALESCE(ar_t.name, ar_a.name, t.artist_name) as artist_name,
                 COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
@@ -127,9 +127,9 @@ export class TrackRepository extends BaseRepository {
 
     getByArtist(artistId: number, publicOnly = false, artistName?: string): Track[] {
         const baseSelect = `
-            SELECT t.*, a.title as album_title, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
+            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
             COALESCE(ar_t.id, ar_a.id) as artist_id,
-            COALESCE(ar_t.name, t.artist_name, ar_a.name, 'Unknown Artist') as artist_name, 
+            COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name, 
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
             COALESCE(t.owner_id, a.owner_id) as owner_id,
             own.username as owner_name
@@ -172,7 +172,7 @@ export class TrackRepository extends BaseRepository {
 
     getByOwner(ownerId: number, publicOnly = false): Track[] {
         const baseSelect = `
-            SELECT t.*, a.title as album_title, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
+            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
             COALESCE(ar_t.id, ar_a.id) as artist_id, 
             COALESCE(ar_t.name, ar_a.name) as artist_name, 
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress, 
@@ -204,7 +204,7 @@ export class TrackRepository extends BaseRepository {
 
     getRandom(limit: number): Track[] {
         const baseSelect = `
-            SELECT t.*, a.title as album_title, a.download as album_download, a.visibility as album_visibility, a.price as album_price,
+            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price,
             COALESCE(ar_t.id, ar_a.id) as artist_id,
             COALESCE(ar_t.name, ar_a.name, t.artist_name) as artist_name,
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
@@ -222,7 +222,7 @@ export class TrackRepository extends BaseRepository {
 
     getByPath(filePath: string): Track | undefined {
         const row = this.db.prepare(`
-            SELECT t.*, a.title as album_title, 
+            SELECT t.*, a.title as album_title, a.album_artist, 
             COALESCE(ar_t.id, ar_a.id) as artist_id, 
             COALESCE(ar_t.name, ar_a.name) as artist_name, 
             COALESCE(t.owner_id, a.owner_id) as owner_id, 
@@ -365,6 +365,7 @@ export class TrackRepository extends BaseRepository {
                 t.waveform, 
                 t.lyrics,
                 r.title as album_title, 
+                r.album_artist,
                 r.cover_path as album_cover_path,
                 ar.wallet_address as walletAddress
             FROM release_tracks rt

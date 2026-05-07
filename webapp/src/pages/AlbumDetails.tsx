@@ -286,7 +286,9 @@ export const AlbumDetails = () => {
                 {album.title}
               </h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-lg lg:text-2xl font-medium tracking-tight">
-                {album.artistId ? (
+                {album.album_artist || album.albumArtist ? (
+                  <span className="text-primary font-bold">{album.album_artist || album.albumArtist}</span>
+                ) : album.artistId ? (
                   <Link
                     to={`/artists/${album.artist_slug || album.artistSlug || album.artistId}`}
                     className="hover:text-primary transition-colors underline decoration-base-content/10 underline-offset-8"
@@ -294,7 +296,7 @@ export const AlbumDetails = () => {
                     {album.artistName || album.artist_name}
                   </Link>
                 ) : (
-                  <span className="opacity-80">{album.artistName}</span>
+                  <span className="opacity-80">{album.artistName || album.artist_name}</span>
                 )}
                 <span className="opacity-60 font-black">•</span>
                 <span className="opacity-70">{album.year}</span>
@@ -416,19 +418,25 @@ export const AlbumDetails = () => {
                    {String(i + 1).padStart(2, '0')}
                 </div>
                 
-                <div className="list-col-grow min-w-0">
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => playTrack(track, album.tracks!)}
-                      className="font-bold text-lg truncate hover:text-primary transition-colors text-left tracking-tight"
-                    >
-                      {track.title}
-                    </button>
-                    {track.losslessPath && (
-                       <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase">Hi-Res</span>
-                    )}
-                  </div>
-                </div>
+                 <div className="list-col-grow min-w-0">
+                   <div className="flex flex-col">
+                     <div className="flex items-center gap-3">
+                       <button 
+                         onClick={() => playTrack(track, album.tracks!)}
+                         className="font-bold text-lg truncate hover:text-primary transition-colors text-left tracking-tight"
+                       >
+                         {track.title}
+                       </button>
+                       {track.losslessPath && (
+                          <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase">Hi-Res</span>
+                       )}
+                     </div>
+                     {(track.artist_name || track.artistName) && 
+                      (track.artist_name || track.artistName) !== (album.album_artist || album.albumArtist || album.artistName || album.artist_name) && (
+                       <span className="text-xs opacity-50 truncate -mt-1 font-medium">{track.artist_name || track.artistName}</span>
+                     )}
+                   </div>
+                 </div>
 
                 <div className="hidden md:block opacity-60 font-mono text-sm tabular-nums">
                    {formatDuration(track.duration)}

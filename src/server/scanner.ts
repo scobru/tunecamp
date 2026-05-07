@@ -182,7 +182,7 @@ export class Scanner implements ScannerService {
         }
     }
 
-    public async getOrCreateLibraryAlbum(dir: string, musicDir: string, forcedCoverPath?: string, ownerId?: number | null): Promise<number | null> {
+    public async getOrCreateLibraryAlbum(dir: string, musicDir: string, forcedCoverPath?: string, ownerId?: number | null, albumArtist?: string | null): Promise<number | null> {
         const relativeDir = this.normalizePath(dir, musicDir);
         const isRoot = relativeDir === "." || relativeDir === "";
 
@@ -244,6 +244,7 @@ export class Scanner implements ScannerService {
             title: folderName,
             slug: slug,
             artist_id: null,
+            album_artist: albumArtist || null,
             owner_id: ownerId || this.primaryAdminId,
             date: null,
             cover_path: coverPath,
@@ -500,6 +501,7 @@ export class Scanner implements ScannerService {
             }
             const common = metadata?.common || {};
             const format = metadata?.format || {};
+            const albumArtist = common.albumartist;
 
             // 2. Resolve Artist (Priority: override > hint > tag > unknown)
             if (!artistId) {
@@ -520,6 +522,7 @@ export class Scanner implements ScannerService {
                         title: albumName,
                         slug: albumSlug,
                         artist_id: artistId,
+                        album_artist: albumArtist || null,
                         owner_id: ownerId || this.primaryAdminId,
                         date: metadataHints.year ? `${metadataHints.year}-01-01` : null,
                         year: metadataHints.year || null,
@@ -556,7 +559,7 @@ export class Scanner implements ScannerService {
 
             // Fallback to folder-based album
             if (albumId === null && dir.startsWith(musicDir)) {
-                albumId = await this.getOrCreateLibraryAlbum(dir, musicDir, suggestedCoverPath, ownerId);
+                albumId = await this.getOrCreateLibraryAlbum(dir, musicDir, suggestedCoverPath, ownerId, albumArtist);
             }
 
             // 4. Handle Existing Track by Path or Metadata

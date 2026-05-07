@@ -84,6 +84,7 @@ export interface Album {
     published_at: string | null;
     use_nft?: boolean | number;
     walletAddress?: string;
+    album_artist?: string | null;
     created_at: string;
 }
 
@@ -92,6 +93,8 @@ export interface Track {
     title: string;
     album_id: number | null;
     album_title?: string;
+    album_artist?: string | null;
+    albumArtist?: string | null;
     album_download?: string;
     album_visibility?: string;
     artist_id: number | null;
@@ -150,6 +153,7 @@ export interface Release {
     published_to_ap: boolean;
     license?: string | null;
     use_nft?: number;
+    album_artist?: string | null;
     created_at: string;
 }
 

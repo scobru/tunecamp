@@ -68,6 +68,7 @@ interface LocalRelease {
   currency?: "ETH" | "USD" | "USDC";
   download?: string;
   license?: string;
+  album_artist?: string;
 }
 
 export default function AdminReleaseEditor() {
@@ -104,6 +105,7 @@ export default function AdminReleaseEditor() {
     download: "none",
     license: "copyright",
     use_nft: true,
+    album_artist: "",
   });
 
   // Tracks State
@@ -193,6 +195,7 @@ export default function AdminReleaseEditor() {
         genre: data.genre || "",
         license: data.license || "copyright",
         use_nft: data.use_nft !== undefined ? !!data.use_nft : true,
+        album_artist: data.album_artist || data.albumArtist || "",
       });
 
       if (data.slug || releaseId) {
@@ -283,7 +286,9 @@ export default function AdminReleaseEditor() {
           price: t.price, 
           priceUsdc: t.priceUsdc,
           currency: t.currency || "ETH" 
-        }))
+        })),
+        album_artist: metadata.album_artist,
+        albumArtist: metadata.album_artist, // Send both for compatibility
       } as any;
 
       let releaseId = id ? parseInt(id) : null;
@@ -752,6 +757,20 @@ export default function AdminReleaseEditor() {
                        {artists.find(a => a.id.toString() === metadata.artist_id?.toString())?.name || "Loading..."}
                     </div>
                   )}
+                </div>
+
+                <div className="form-control">
+                  <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Album Artist (compilation override)</label>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full text-sm"
+                    placeholder="Various Artists, etc."
+                    value={metadata.album_artist || ""}
+                    onChange={(e) => setMetadata((prev) => ({ ...prev, album_artist: e.target.value }))}
+                  />
+                  <label className="label">
+                    <span className="label-text-alt opacity-40">Leave empty to use primary artist name</span>
+                  </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
