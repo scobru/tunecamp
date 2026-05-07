@@ -173,13 +173,14 @@ Output ONLY valid JSON in this format:
         }
     }
 
-    async parseMetadataFromText(text: string): Promise<{ artist?: string; album?: string; year?: number; genre?: string } | null> {
+    async parseMetadataFromText(text: string): Promise<{ artist?: string; album?: string; year?: number; genre?: string; bandcampUrl?: string } | null> {
         const apiKey = this.getApiKey();
         if (!apiKey) return null;
 
         const prompt = `Extract music metadata from the following text. Look for Artist, Album, Year, and Genre.
-        Return ONLY a JSON object with keys "artist", "album", "year" (number), "genre".
-        If a field is missing, omit it. Be precise.
+        Additionally, if you can identify the specific album, provide its official Bandcamp URL if it exists.
+        Return ONLY a JSON object with keys "artist", "album", "year" (number), "genre", "bandcampUrl".
+        If a field is missing or unknown, omit it. Be precise.
         Text: "${text}"`;
 
         try {

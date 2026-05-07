@@ -7,6 +7,7 @@ import { ScannerService } from '../scanner.js';
 import { DatabaseService } from '../database.js';
 import type { ServerConfig } from '../config.js';
 import type { OpenRouterService } from './openrouter.service.js';
+import { extractBandcampMetadata } from '../utils/bandcamp.js';
 
 export class TelegramBotService {
     private bot?: Telegraf;
@@ -540,6 +541,27 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                         if (aiMetadata) {
                             console.log(`[TelegramBot] AI successfully parsed metadata:`, aiMetadata);
                             metadataHints = { ...metadataHints, ...aiMetadata };
+
+                            // If AI found a Bandcamp URL, let's try to fetch RICH metadata from it!
+                            if (aiMetadata.bandcampUrl) {
+                                console.log(`[TelegramBot] Bandcamp URL found: ${aiMetadata.bandcampUrl}. Fetching rich metadata...`);
+                                try {
+                                    const bcMetadata = await extractBandcampMetadata(aiMetadata.bandcampUrl);
+                                    if (bcMetadata) {
+                                        console.log(`[TelegramBot] Rich metadata extracted from Bandcamp:`, bcMetadata.title);
+                                        // Bandcamp data is very reliable, let it override/complement AI hints
+                                        metadataHints.artist = bcMetadata.artist || metadataHints.artist;
+                                        metadataHints.album = bcMetadata.title || metadataHints.album;
+                                        metadataHints.year = bcMetadata.year || metadataHints.year;
+                                        // We also have cover URL now!
+                                        if (bcMetadata.cover) {
+                                            metadataHints.suggestedCoverUrl = bcMetadata.cover;
+                                        }
+                                    }
+                                } catch (bcErr) {
+                                    console.error(`[TelegramBot] Failed to enrich from Bandcamp URL:`, bcErr);
+                                }
+                            }
                         }
                     }
 
