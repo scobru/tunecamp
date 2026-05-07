@@ -446,6 +446,10 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
         await this.start();
     }
 
+    async isActive(): Promise<boolean> {
+        return this.isRunning;
+    }
+
     private isAuthorized(ctx: any): boolean {
         const chatId = ctx.chat?.id?.toString();
         const chatType = ctx.chat?.type; // 'private', 'group', 'supergroup', 'channel'
