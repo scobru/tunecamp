@@ -1,7 +1,0 @@
-🎯 **What:** Optimized database queries in the audio deduplication migration script (`src/tools/migrate-dedupe.ts`) by lifting prepared statements out of the `executeDbUpdates` transaction loop, and replacing repeated `SELECT COUNT(*)` queries inside the dry-run simulation with chunked queries using the `IN (...)` clause.
-
-💡 **Why:** By extracting `db.prepare()` out of the iteration, we avoid continually recompiling the `UPDATE` SQL statements for each action, lowering overhead. Replacing the N+1 `SELECT` queries inside the dry-run loop with batched `IN` queries (chunked at 900 paths to respect SQLite limits) significantly improves the performance of large dry-run migrations.
-
-✅ **Verification:** Verified the fix by running the full test suite (`npm test`) to ensure no regressions were introduced elsewhere. Run the TypeScript build step (`npm run build`) to type-check changes. Verified the logic changes match common query optimizations patterns for SQLite.
-
-✨ **Result:** The deduplication migration script will now run significantly faster when processing large libraries, especially during dry-runs, and places less load on the `better-sqlite3` instance.

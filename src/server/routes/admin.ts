@@ -209,6 +209,13 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Only root admin can change site settings" });
             }
 
+            const { 
+                siteName, siteDescription, publicUrl, artistName, coverImage, mode, 
+                zenPeers, web3_checkout_address, web3_nft_address,
+                coinbase_cdp_api_key_name, coinbase_cdp_api_key_secret,
+                telegram_bot_token, telegram_allowed_channels,
+                adminFeePercentage, adminTreasuryAddress,
+                soulseek_username, soulseek_password,
                 onramp_provider, moonpay_api_key,
                 stripe_secret_key, stripe_webhook_secret,
                 paypal_client_id, paypal_client_secret, paypal_environment,

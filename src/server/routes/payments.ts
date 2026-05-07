@@ -50,7 +50,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
         let event;
 
         try {
-            event = stripe.webhooks.constructEvent(req.body, sig, config.stripeWebhookSecret);
+            event = stripe.webhooks.constructEvent(req.body, sig, wSecret);
         } catch (err: any) {
             console.error(`Webhook signature verification failed: ${err.message}`);
             return res.status(400).send(`Webhook Error: ${err.message}`);
