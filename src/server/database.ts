@@ -1721,6 +1721,19 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
             return db.prepare(query).all() as Track[];
         },
+        getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description'): Album[] {
+            let query = "";
+            if (filter === 'genre') {
+                query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.genre IS NULL OR a.genre = '' OR a.genre = 'Library'";
+            } else if (filter === 'year') {
+                query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.year IS NULL OR a.year = 0";
+            } else if (filter === 'cover') {
+                query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.cover_path IS NULL OR a.cover_path = ''";
+            } else if (filter === 'description') {
+                query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.description IS NULL OR a.description = ''";
+            }
+            return (db.prepare(query).all() as any[]).map(r => (albumRepository as any).mapAlbum(r));
+        },
         getArtistsMissingMetadata(filter: 'photo'): Artist[] {
             if (filter === 'photo') {
                 return db.prepare("SELECT * FROM artists WHERE photo_path IS NULL OR photo_path = ''").all() as Artist[];

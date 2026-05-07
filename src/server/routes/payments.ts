@@ -176,6 +176,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             let amount = 0;
             if (type === 'track') {
                 const track = database.getTrack(parseInt(itemId, 10));
+                console.log(`[Stripe Debug] Track found for ID ${itemId}:`, track ? { id: track.id, title: track.title, price: track.price, price_usdc: track.price_usdc, price_usdt: track.price_usdt, currency: track.currency } : 'NULL');
                 if (!track) return res.status(404).json({ error: `Track ${itemId} not found` });
                 name = track.title;
                 
@@ -193,6 +194,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 }
             } else {
                 const album = database.getAlbum(parseInt(itemId, 10));
+                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
                 if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
                 
@@ -209,7 +211,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 }
             }
 
-            console.log(`[Stripe] Item: ${name}, Base Price: ${amount}`);
+            console.log(`[Stripe Debug] Final Item: ${name}, Calculated Amount: ${amount}`);
 
             if (amount <= 0) {
                 // If price is 0, Stripe won't allow a checkout session.

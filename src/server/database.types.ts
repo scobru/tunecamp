@@ -499,6 +499,7 @@ export interface DatabaseService {
     getTopArtists(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): ArtistWithPlayCount[];
     getPrimaryAdminId(): number | null;
     getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album'): Track[];
+    getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description'): Album[];
     getArtistsMissingMetadata(filter: 'photo'): Artist[];
     getListeningStats(): ListeningStats;
     // Search

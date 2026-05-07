@@ -3,12 +3,14 @@ import API from "../../services/api";
 import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User } from "lucide-react";
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
+import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
 
 export const AdminMaintenancePanel = () => {
-    const [mode, setMode] = useState<'tracks' | 'artists'>('tracks');
-    const [filter, setFilter] = useState<'genre' | 'year' | 'cover' | 'album'>('genre');
+    const [mode, setMode] = useState<'tracks' | 'artists' | 'albums'>('tracks');
+    const [filter, setFilter] = useState<'genre' | 'year' | 'cover' | 'album' | 'description'>('genre');
     const [tracks, setTracks] = useState<any[]>([]);
     const [artists, setArtists] = useState<any[]>([]);
+    const [albums, setAlbums] = useState<any[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -17,12 +19,15 @@ export const AdminMaintenancePanel = () => {
 
     const [pickerTrack, setPickerTrack] = useState<any | null>(null);
     const [pickerArtist, setPickerArtist] = useState<any | null>(null);
+    const [pickerAlbum, setPickerAlbum] = useState<any | null>(null);
 
     useEffect(() => {
         if (mode === 'tracks') {
             loadTracks();
-        } else {
+        } else if (mode === 'artists') {
             loadArtists();
+        } else {
+            loadAlbums();
         }
     }, [filter, mode]);
 
@@ -54,6 +59,20 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const loadAlbums = async () => {
+        setIsLoading(true);
+        try {
+            const data = await API.getAlbumsMissingMetadata(filter as any);
+            setAlbums(data);
+            setSelectedIds([]);
+            setResults(null);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const toggleSelect = (id: number) => {
         setSelectedIds(prev => 
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -61,7 +80,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const toggleSelectAll = () => {
-        const list = mode === 'tracks' ? tracks : artists;
+        const list = mode === 'tracks' ? tracks : mode === 'artists' ? artists : albums;
         if (selectedIds.length === list.length) {
             setSelectedIds([]);
         } else {
@@ -108,6 +127,7 @@ export const AdminMaintenancePanel = () => {
             await API.consolidateDatabase();
             alert("Database consolidated successfully!");
             if (mode === 'artists') loadArtists();
+            else if (mode === 'albums') loadAlbums();
             else loadTracks();
         } catch (e: any) {
             alert("Consolidation failed: " + e.message);
@@ -133,9 +153,21 @@ export const AdminMaintenancePanel = () => {
                         </button>
                         <button 
                             className={`tab tab-sm ${mode === 'artists' ? 'tab-active' : ''}`}
-                            onClick={() => setMode('artists')}
+                            onClick={() => {
+                                setMode('artists');
+                                setFilter('cover' as any); // Default for artists
+                            }}
                         >
                             Artists
+                        </button>
+                        <button 
+                            className={`tab tab-sm ${mode === 'albums' ? 'tab-active' : ''}`}
+                            onClick={() => {
+                                setMode('albums');
+                                setFilter('cover');
+                            }}
+                        >
+                            Albums
                         </button>
                     </div>
                 </div>
@@ -154,9 +186,22 @@ export const AdminMaintenancePanel = () => {
                         </select>
                     )}
                     
+                    {mode === 'albums' && (
+                        <select 
+                            className="select select-bordered select-sm"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value as any)}
+                        >
+                            <option value="cover">Missing Cover</option>
+                            <option value="genre">Missing Genre</option>
+                            <option value="year">Missing Year</option>
+                            <option value="description">Missing Description</option>
+                        </select>
+                    )}
+                    
                     <button 
                         className="btn btn-sm btn-ghost"
-                        onClick={mode === 'tracks' ? loadTracks : loadArtists}
+                        onClick={mode === 'tracks' ? loadTracks : mode === 'artists' ? loadArtists : loadAlbums}
                         disabled={isLoading}
                     >
                         {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
@@ -228,6 +273,16 @@ export const AdminMaintenancePanel = () => {
                         </button>
                     </div>
                 </div>
+            ) : mode === 'albums' ? (
+                <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
+                    <Disc className="text-primary" />
+                    <div>
+                        <h3 className="font-bold">Album Metadata Cleanup</h3>
+                        <div className="text-xs opacity-70">
+                            Scan your library for albums with missing covers or info. Match them with global databases to fix artwork and genres.
+                        </div>
+                    </div>
+                </div>
             ) : (
                 <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
                     <User className="text-primary" />
@@ -238,7 +293,7 @@ export const AdminMaintenancePanel = () => {
                         </div>
                     </div>
                 </div>
-            )}
+            ) }
 
             <div className="overflow-x-auto bg-base-200 rounded-box border border-base-content/5">
                 <table className="table table-zebra table-sm">
@@ -257,6 +312,21 @@ export const AdminMaintenancePanel = () => {
                                 <th>Artist</th>
                                 <th>Album</th>
                                 <th>Current</th>
+                                <th className="text-right">Actions</th>
+                            </tr>
+                        ) : mode === 'albums' ? (
+                            <tr>
+                                <th>
+                                    <input 
+                                        type="checkbox" 
+                                        className="checkbox checkbox-xs" 
+                                        checked={albums.length > 0 && selectedIds.length === albums.length}
+                                        onChange={toggleSelectAll}
+                                    />
+                                </th>
+                                <th>Album</th>
+                                <th>Artist</th>
+                                <th>Status</th>
                                 <th className="text-right">Actions</th>
                             </tr>
                         ) : (
@@ -284,15 +354,15 @@ export const AdminMaintenancePanel = () => {
                                     <p className="mt-2 opacity-50">Scanning {mode}...</p>
                                 </td>
                             </tr>
-                        ) : (mode === 'tracks' ? tracks : artists).length === 0 ? (
+                        ) : (mode === 'tracks' ? tracks : mode === 'artists' ? artists : albums).length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="text-center py-12 opacity-50">
                                     <AlertCircle className="mx-auto mb-2" size={32} />
-                                    No {mode} found {mode === 'tracks' ? `with missing ${filter}` : 'missing photos'}.
+                                    No {mode} found {mode === 'tracks' ? `with missing ${filter}` : mode === 'albums' ? `with missing ${filter}` : 'missing photos'}.
                                 </td>
                             </tr>
                         ) : (
-                            (mode === 'tracks' ? tracks : artists).map((item: any) => (
+                            (mode === 'tracks' ? tracks : mode === 'artists' ? artists : albums).map((item: any) => (
                                 <tr key={item.id} className="hover:bg-base-100 group">
                                     <td>
                                         <input 
@@ -313,6 +383,16 @@ export const AdminMaintenancePanel = () => {
                                                 </div>
                                             </td>
                                         </>
+                                    ) : mode === 'albums' ? (
+                                        <>
+                                            <td className="font-medium">{item.title}</td>
+                                            <td>{item.artist_name || 'Unknown Artist'}</td>
+                                            <td>
+                                                <div className="badge badge-outline badge-xs opacity-50 italic">
+                                                    {filter === 'genre' ? (item.genre || 'empty') : filter === 'year' ? (item.year || '0') : filter === 'description' ? (item.description ? 'present' : 'empty') : 'missing cover'}
+                                                </div>
+                                            </td>
+                                        </>
                                     ) : (
                                         <>
                                             <td className="font-medium">{item.name}</td>
@@ -327,9 +407,13 @@ export const AdminMaintenancePanel = () => {
                                     <td className="text-right">
                                         <button 
                                             className="btn btn-xs btn-ghost opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => mode === 'tracks' ? setPickerTrack(item) : setPickerArtist(item)}
+                                            onClick={() => {
+                                                if (mode === 'tracks') setPickerTrack(item);
+                                                else if (mode === 'artists') setPickerArtist(item);
+                                                else setPickerAlbum(item);
+                                            }}
                                         >
-                                            <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : 'Enrich'}
+                                            <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : mode === 'albums' ? 'Match' : 'Enrich'}
                                         </button>
                                     </td>
                                 </tr>
@@ -351,6 +435,13 @@ export const AdminMaintenancePanel = () => {
                 isOpen={!!pickerArtist}
                 onClose={() => setPickerArtist(null)}
                 onApplied={loadArtists}
+            />
+
+            <AlbumMetadataPickerModal
+                album={pickerAlbum}
+                isOpen={!!pickerAlbum}
+                onClose={() => setPickerAlbum(null)}
+                onApplied={loadAlbums}
             />
         </div>
     );

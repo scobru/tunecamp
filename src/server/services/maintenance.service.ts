@@ -64,6 +64,13 @@ export class MaintenanceService {
     }
 
     /**
+     * Gets albums missing specific metadata fields.
+     */
+    getAlbumsWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description') {
+        return this.db.getAlbumsMissingMetadata(filter);
+    }
+
+    /**
      * Gets all potential metadata candidates for a track.
      */
     async getMetadataCandidates(trackId: number): Promise<any[]> {
@@ -72,6 +79,17 @@ export class MaintenanceService {
 
         const query = `${track.artist_name} - ${track.title}`;
         return await metadataService.searchRecording(query);
+    }
+
+    /**
+     * Gets all potential metadata candidates for an album.
+     */
+    async getAlbumMetadataCandidates(albumId: number): Promise<any[]> {
+        const album = this.db.getAlbum(albumId);
+        if (!album) throw new Error("Album not found");
+
+        const query = `${album.artist_name} - ${album.title}`;
+        return await metadataService.searchRelease(query);
     }
 
     /**
@@ -122,6 +140,20 @@ export class MaintenanceService {
         }
         
         await this.libraryService.updateTrack(trackId, updateData);
+    }
+
+    /**
+     * Applies specific metadata to an album.
+     */
+    async applyMetadataToAlbum(albumId: number, metadata: any): Promise<void> {
+        const updateData: any = {};
+        if (metadata.genre) updateData.genre = metadata.genre;
+        if (metadata.year) updateData.year = metadata.year;
+        if (metadata.date) updateData.date = metadata.date;
+        if (metadata.coverUrl) updateData.cover_path = metadata.coverUrl;
+        if (metadata.description) updateData.description = metadata.description;
+
+        await this.libraryService.updateAlbum(albumId, updateData);
     }
 
     /**

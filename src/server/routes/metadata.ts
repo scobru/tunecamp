@@ -154,6 +154,17 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
+     * GET /api/metadata/maintenance/albums/missing
+     * List albums with missing metadata
+     */
+    router.get("/maintenance/albums/missing", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const filter = (req.query.filter as 'genre' | 'year' | 'cover' | 'description') || 'genre';
+        const albums = maintenance.getAlbumsWithMissingMetadata(filter);
+        res.json(albums);
+    });
+
+    /**
      * POST /api/metadata/maintenance/autofill
      * Autofill metadata for selected tracks
      */
@@ -202,6 +213,20 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
+     * GET /api/metadata/maintenance/albums/candidates/:albumId
+     */
+    router.get("/maintenance/albums/candidates/:albumId", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const albumId = parseInt(req.params.albumId);
+        try {
+            const candidates = await maintenance.getAlbumMetadataCandidates(albumId);
+            res.json(candidates);
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    /**
      * POST /api/metadata/maintenance/apply-track
      * Apply specific metadata to a track
      */
@@ -212,6 +237,22 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
 
         try {
             await maintenance.applyMetadataToTrack(trackId, metadata);
+            res.json({ success: true });
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    /**
+     * POST /api/metadata/maintenance/albums/apply
+     */
+    router.post("/maintenance/albums/apply", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const { albumId, metadata } = req.body;
+        if (!albumId || !metadata) return res.status(400).json({ error: "albumId and metadata required" });
+
+        try {
+            await maintenance.applyMetadataToAlbum(albumId, metadata);
             res.json({ success: true });
         } catch (e: any) {
             res.status(500).json({ error: e.message });
