@@ -1215,6 +1215,18 @@ export function createAdminRoutes(
             model: database.getSetting("openrouter_model") || config.openrouterModel || "openrouter/free"
         };
 
+        // 7. Stripe
+        results.stripe = { 
+            configured: !!config.stripeSecretKey,
+            webhookConfigured: !!config.stripeWebhookSecret
+        };
+
+        // 8. PayPal
+        results.paypal = { 
+            configured: !!config.paypalClientId && !!config.paypalClientSecret,
+            environment: config.paypalEnvironment || "sandbox"
+        };
+
         res.json(results);
     });
 

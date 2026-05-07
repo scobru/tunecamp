@@ -10,7 +10,9 @@ import {
   MessageSquare,
   Search,
   Cpu,
-  Download
+  Download,
+  CreditCard,
+  CircleDollarSign
 } from "lucide-react";
 
 interface HealthStatus {
@@ -20,6 +22,8 @@ interface HealthStatus {
   discogs: { configured: boolean };
   telegram: { active: boolean };
   openrouter: { configured: boolean; model: string };
+  stripe: { configured: boolean; webhookConfigured: boolean };
+  paypal: { configured: boolean; environment: string };
 }
 
 export const APIStatusPanel = () => {
@@ -107,6 +111,22 @@ export const APIStatusPanel = () => {
       active: status?.discogs.configured,
       details: status?.discogs.configured ? "Token configured" : "Token missing",
       description: "Vinyl-focused metadata and marketplace data."
+    },
+    {
+      id: "stripe",
+      name: "Stripe",
+      icon: <CreditCard className="text-[#635BFF]" />,
+      active: status?.stripe?.configured,
+      details: status?.stripe?.configured ? (status.stripe.webhookConfigured ? "Ready (Live Webhooks)" : "Keys Set (No Webhook)") : "Not Configured",
+      description: "Credit card processing and checkout sessions."
+    },
+    {
+      id: "paypal",
+      name: "PayPal",
+      icon: <CircleDollarSign className="text-[#0070ba]" />,
+      active: status?.paypal?.configured,
+      details: status?.paypal?.configured ? `Connected (${status.paypal.environment})` : "Not Configured",
+      description: "PayPal Express Checkout and global orders."
     }
   ];
 

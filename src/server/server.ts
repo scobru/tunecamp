@@ -222,6 +222,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     }));
 
     app.use(integrateFederation(federation, (req: express.Request) => undefined)); // Context data if needed
+    app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
 
     // Parse JSON (must be AFTER Fedify to avoid conflicting with body stream reading)
     app.use(express.json({
@@ -330,7 +331,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/users", createUsersRoutes(zendbService, database, authService, apService));
     app.use("/api/comments", createCommentsRoutes(zendbService));
     app.use("/api/unlock", createUnlockRoutes(database, authMiddleware));
-    app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
     app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(lifecycleService));
     app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(lifecycleService));
     app.use("/api/ap", createActivityPubRoutes(apService, database, authMiddleware));

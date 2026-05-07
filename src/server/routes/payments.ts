@@ -1,9 +1,18 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import { ethers } from "ethers";
 import fs from "fs-extra";
 import path from "path";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import Stripe from "stripe";
+import { 
+    Client, 
+    Environment, 
+    LogLevel, 
+    OrdersController, 
+    CheckoutPaymentIntent,
+    ApiError 
+} from "@paypal/paypal-server-sdk";
 import type { DatabaseService } from "../database.js";
 import { getEthUsdRate } from "../price.js";
 import type { ServerConfig } from "../config.js";
@@ -26,6 +35,55 @@ const CHECKOUT_ABI = [
 
 export function createPaymentsRoutes(database: DatabaseService, musicDir: string, config: ServerConfig): Router {
     const router = Router();
+
+    // 1. Stripe Webhook (needs raw body, NO JSON PARSER)
+    // This route MUST be mounted before the global express.json() in server.ts
+    router.post("/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
+        if (!config.stripeSecretKey || !config.stripeWebhookSecret) {
+            return res.status(501).json({ error: "Stripe not configured" });
+        }
+        const stripe = new Stripe(config.stripeSecretKey);
+        const sig = req.headers['stripe-signature'] as string;
+        let event;
+
+        try {
+            event = stripe.webhooks.constructEvent(req.body, sig, config.stripeWebhookSecret);
+        } catch (err: any) {
+            console.error(`Webhook signature verification failed: ${err.message}`);
+            return res.status(400).send(`Webhook Error: ${err.message}`);
+        }
+
+        if (event.type === 'checkout.session.completed') {
+            const session = event.data.object as Stripe.Checkout.Session;
+            const metadata = session.metadata;
+            if (metadata && metadata.itemId && metadata.type) {
+                const itemId = parseInt(metadata.itemId, 10);
+                const itemType = metadata.type; // 'track' or 'album'
+                
+                // Generate unlock code
+                const code = Math.random().toString(36).substring(2, 12).toUpperCase();
+                let releaseId: number | undefined;
+                
+                if (itemType === 'track') {
+                    const track = database.getTrack(itemId);
+                    releaseId = track?.album_id || undefined;
+                } else {
+                    releaseId = itemId;
+                }
+                
+                if (releaseId) {
+                    database.createUnlockCode(code, releaseId);
+                    console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
+                    // Note: In a production app, we would also email this code to session.customer_details.email
+                }
+            }
+        }
+
+        res.json({ received: true });
+    });
+
+    // All other routes below need JSON parsing
+    router.use(express.json());
 
     /**
      * POST /api/payments/onramp-session
@@ -114,6 +172,197 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             provider: database.getSetting("onramp_provider") || "coinbase",
             moonpayApiKey: database.getSetting("moonpay_api_key")
         });
+    });
+
+    /**
+     * POST /api/payments/stripe/create-session
+     */
+    router.post("/stripe/create-session", async (req, res) => {
+        try {
+            const { itemId, type, successUrl, cancelUrl, email } = req.body;
+            if (!itemId || !type || !successUrl || !cancelUrl) {
+                return res.status(400).json({ error: "Missing required fields" });
+            }
+
+            if (!config.stripeSecretKey) {
+                return res.status(501).json({ error: "Stripe not configured" });
+            }
+
+            const stripe = new Stripe(config.stripeSecretKey);
+            
+            let name = "";
+            let amount = 0;
+            if (type === 'track') {
+                const track = database.getTrack(parseInt(itemId, 10));
+                if (!track) return res.status(404).json({ error: "Track not found" });
+                name = track.title;
+                amount = track.price || 0;
+                if (track.currency === 'ETH') {
+                    const rate = await getEthUsdRate();
+                    amount = amount * rate;
+                }
+            } else {
+                const album = database.getAlbum(parseInt(itemId, 10));
+                if (!album) return res.status(404).json({ error: "Album not found" });
+                name = album.title;
+                amount = album.price || 0;
+                if (album.currency === 'ETH') {
+                    const rate = await getEthUsdRate();
+                    amount = amount * rate;
+                }
+            }
+
+            if (amount <= 0) {
+                return res.status(400).json({ error: "Item price must be greater than zero for card payments" });
+            }
+
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: name,
+                        },
+                        unit_amount: Math.round(amount * 100), // Stripe uses cents
+                    },
+                    quantity: 1,
+                }],
+                mode: 'payment',
+                success_url: successUrl,
+                cancel_url: cancelUrl,
+                customer_email: email,
+                metadata: {
+                    itemId: itemId.toString(),
+                    type: type
+                }
+            });
+
+            res.json({ id: session.id, url: session.url });
+        } catch (error: any) {
+            console.error("Stripe session error:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/payments/paypal/create-order
+     */
+    router.post("/paypal/create-order", async (req, res) => {
+        try {
+            const { itemId, type } = req.body;
+            if (!config.paypalClientId || !config.paypalClientSecret) {
+                return res.status(501).json({ error: "PayPal not configured" });
+            }
+
+            const client = new Client({
+                clientCredentialsAuthCredentials: {
+                    oAuthClientId: config.paypalClientId,
+                    oAuthClientSecret: config.paypalClientSecret
+                },
+                environment: config.paypalEnvironment === 'production' ? Environment.Production : Environment.Sandbox,
+                logging: { logLevel: LogLevel.Info }
+            });
+
+            const ordersController = new OrdersController(client);
+            
+            let name = "";
+            let amount = 0;
+            if (type === 'track') {
+                const track = database.getTrack(parseInt(itemId, 10));
+                if (!track) return res.status(404).json({ error: "Track not found" });
+                name = track.title;
+                amount = track.price || 0;
+                if (track.currency === 'ETH') {
+                    const rate = await getEthUsdRate();
+                    amount = amount * rate;
+                }
+            } else {
+                const album = database.getAlbum(parseInt(itemId, 10));
+                if (!album) return res.status(404).json({ error: "Album not found" });
+                name = album.title;
+                amount = album.price || 0;
+                if (album.currency === 'ETH') {
+                    const rate = await getEthUsdRate();
+                    amount = amount * rate;
+                }
+            }
+
+            if (amount <= 0) {
+                return res.status(400).json({ error: "Item price must be greater than zero for PayPal" });
+            }
+
+            const response = await ordersController.createOrder({
+                body: {
+                    intent: CheckoutPaymentIntent.Capture,
+                    purchaseUnits: [{
+                        amount: {
+                            currencyCode: 'USD',
+                            value: amount.toFixed(2)
+                        },
+                        description: name,
+                        referenceId: `${type}_${itemId}_${Date.now()}`
+                    }]
+                }
+            });
+
+            res.json({ id: response.result.id });
+        } catch (error: any) {
+            console.error("PayPal order error:", error);
+            res.status(500).json({ error: error.message || "PayPal initialization failed" });
+        }
+    });
+
+    /**
+     * POST /api/payments/paypal/capture-order
+     */
+    router.post("/paypal/capture-order", async (req, res) => {
+        try {
+            const { orderId, itemId, type } = req.body;
+            if (!orderId || !itemId || !type) {
+                return res.status(400).json({ error: "Missing required fields" });
+            }
+
+            if (!config.paypalClientId || !config.paypalClientSecret) {
+                return res.status(501).json({ error: "PayPal not configured" });
+            }
+
+            const client = new Client({
+                clientCredentialsAuthCredentials: {
+                    oAuthClientId: config.paypalClientId,
+                    oAuthClientSecret: config.paypalClientSecret
+                },
+                environment: config.paypalEnvironment === 'production' ? Environment.Production : Environment.Sandbox
+            });
+
+            const ordersController = new OrdersController(client);
+            const response = await ordersController.captureOrder({ id: orderId });
+
+            if (response.result.status === 'COMPLETED') {
+                // Generate unlock code
+                const code = Math.random().toString(36).substring(2, 12).toUpperCase();
+                let releaseId: number | undefined;
+                
+                if (type === 'track') {
+                    const track = database.getTrack(parseInt(itemId, 10));
+                    releaseId = track?.album_id || undefined;
+                } else {
+                    releaseId = parseInt(itemId, 10);
+                }
+                
+                if (releaseId) {
+                    database.createUnlockCode(code, releaseId);
+                    console.log(`✅ PayPal Payment Success: Generated code ${code} for ${type} ${itemId}`);
+                }
+
+                return res.json({ success: true, code });
+            }
+
+            res.status(400).json({ error: "Payment not completed", status: response.result.status });
+        } catch (error: any) {
+            console.error("PayPal capture error:", error);
+            res.status(500).json({ error: error.message || "PayPal capture failed" });
+        }
     });
 
     /**

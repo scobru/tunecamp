@@ -44,6 +44,8 @@ export const CheckoutModal = () => {
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"ETH" | "USDC">("ETH");
   const [stableBalance, setStableBalance] = useState<string>("0");
+  const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("crypto");
+  const [isPaypalLoading, setIsPaypalLoading] = useState(false);
 
   const {
     wallet,
@@ -100,6 +102,15 @@ export const CheckoutModal = () => {
       }
     };
     window.addEventListener("open-checkout-modal", handleOpen);
+
+    // Handle Stripe/PayPal return success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("stripe_success") === "true" || urlParams.get("paypal_success") === "true") {
+       // Ideally we'd show the success state here. 
+       // For now, let's just clear the params and maybe the user can check their downloads.
+       // In a full implementation, we'd verify the session/order and show the Download button.
+    }
+
     return () => window.removeEventListener("open-checkout-modal", handleOpen);
   }, []);
 
@@ -120,6 +131,61 @@ export const CheckoutModal = () => {
       "_blank",
     );
     handleClose();
+  };
+
+  const handleStripeCheckout = async () => {
+    if (!track) return;
+    setIsProcessing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/payments/stripe/create-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemId: track.id,
+          type: "track",
+          successUrl: window.location.origin + "/#/purchases?stripe_success=true",
+          cancelUrl: window.location.href,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || "Failed to create Stripe session");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePayPalCheckout = async () => {
+    if (!track) return;
+    setIsProcessing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/payments/paypal/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itemId: track.id,
+          type: "track"
+        }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        // For PayPal, we use a simple popup or redirect. 
+        // In a real app, use the PayPal JS SDK for a better experience.
+        const paypalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${data.id}`;
+        window.location.href = paypalUrl;
+      } else {
+        throw new Error(data.error || "Failed to create PayPal order");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setIsProcessing(false);
+    }
   };
 
   const handlePurchase = async () => {
@@ -402,10 +468,25 @@ export const CheckoutModal = () => {
               </div>
 
                <h3 className="text-2xl font-bold mb-2">Unlock Track</h3>
-              <p className="text-base-content/70 mb-8 max-w-sm">
+              <p className="text-base-content/70 mb-6 max-w-sm">
                 Support <strong className="text-base-content">{track.artist}</strong>{" "}
-                directly. This transaction runs on Base Mainnet.
+                directly. Choose your preferred payment method.
               </p>
+
+              <div className="flex bg-base-200/50 p-1 rounded-2xl w-full mb-6 border border-base-content/5">
+                <button 
+                  className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
+                  onClick={() => setPaymentType('crypto')}
+                >
+                  Crypto
+                </button>
+                <button 
+                  className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
+                  onClick={() => setPaymentType('fiat')}
+                >
+                  Card / PayPal
+                </button>
+              </div>
 
               <div className="w-full bg-black/40 rounded-2xl p-5 mb-2 border border-base-content/5">
                 <div className="flex justify-between items-center mb-4">
@@ -434,12 +515,15 @@ export const CheckoutModal = () => {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mb-6 text-sm opacity-70 w-full px-1">
-                 <span>Paying with:</span>
-                <span className="font-semibold text-prominent">
-                  {activeWalletLabel}
-                </span>
-              </div>
+              {paymentType === 'crypto' ? (
+                <>
+                  <div className="flex justify-between items-center mb-6 text-sm opacity-70 w-full px-1 mt-4">
+                    <span>Paying with:</span>
+                    <span className="font-semibold text-prominent">
+                      {activeWalletLabel}
+                    </span>
+                  </div>
+
 
               {showUsdc && (
                 <div className="flex bg-base-300 rounded-lg p-1 w-full mb-6 relative z-20">
@@ -505,30 +589,33 @@ export const CheckoutModal = () => {
                 </p>
               )}
 
-              <div className="modal-action w-full mt-6 space-x-3">
-                <button
-                  className="btn btn-ghost rounded-xl flex-1 border border-base-content/10 hover:bg-base-content/5"
-                  onClick={handleClose}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  className="btn btn-primary rounded-xl flex-1 shadow-lg shadow-primary/20"
-                  onClick={handlePurchase}
-                  disabled={!isReady || isProcessing || (paymentMethod === "ETH" && !hasEnoughBalance)}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="animate-spin" size={18} />{" "}
-                      Processing...
-                    </>
-                  ) : (
-                    paymentMethod === "ETH" ? `Pay ${displayPriceEth} ETH` : `Pay ${currentStablePrice} ${paymentMethod}`
-                  )}
-                </button>
-              </div>
+                </div>
+              ) : (
+                <div className="w-full space-y-3 mt-6">
+                  <button
+                    className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20"
+                    onClick={handleStripeCheckout}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin" size={20} /> : "💳 Pay with Credit Card"}
+                  </button>
+                  <button
+                    className="btn btn-outline btn-block rounded-xl h-14 gap-3 border-[#0070ba] text-[#0070ba] hover:bg-[#0070ba] hover:text-white"
+                    onClick={handlePayPalCheckout}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin" size={20} /> : "🅿️ Pay with PayPal"}
+                  </button>
+                  
+                  <button
+                    className="btn btn-ghost btn-block rounded-xl mt-4"
+                    onClick={handleClose}
+                    disabled={isProcessing}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
