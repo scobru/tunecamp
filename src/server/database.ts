@@ -537,13 +537,6 @@ export function createDatabase(dbPath: string): DatabaseService {
     // Performance Test Requirement: Explicit index creation call (MUST be after table creation)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC)`);
 
-    const trackRepository = new TrackRepository(db);
-    const albumRepository = new AlbumRepository(db);
-    const artistRepository = new ArtistRepository(db);
-    const socialRepository = new SocialRepository(db);
-    const remoteActorRepository = new RemoteActorRepository(db);
-    const remoteContentRepository = new RemoteContentRepository(db);
-
     // Migration: Add status column to albums and releases table
     try {
         const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
@@ -597,6 +590,15 @@ export function createDatabase(dbPath: string): DatabaseService {
     } catch (e) {
         console.error("Migration error (torrents owner_id):", e);
     }
+
+    const trackRepository = new TrackRepository(db);
+    const albumRepository = new AlbumRepository(db);
+    const artistRepository = new ArtistRepository(db);
+    const socialRepository = new SocialRepository(db);
+    const remoteActorRepository = new RemoteActorRepository(db);
+    const remoteContentRepository = new RemoteContentRepository(db);
+
+
     
     // Migration: Add visibility column to artists table
     try {
