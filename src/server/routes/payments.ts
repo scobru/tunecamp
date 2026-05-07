@@ -179,9 +179,11 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 if (!track) return res.status(404).json({ error: `Track ${itemId} not found` });
                 name = track.title;
                 
-                // Pricing Logic: Prefer price_usdc if currency is USD/USDC, otherwise use price and convert if ETH
-                if (track.currency === 'USD' || track.currency === 'USDC') {
+                // Pricing Logic: Prefer stablecoin fields based on currency
+                if (track.currency === 'USDC' || track.currency === 'USD') {
                     amount = Number(track.price_usdc || track.price || 0);
+                } else if (track.currency === 'USDT') {
+                    amount = Number(track.price_usdt || track.price || 0);
                 } else {
                     amount = Number(track.price || 0);
                     if (track.currency === 'ETH' || !track.currency) {
@@ -194,8 +196,10 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
                 
-                if (album.currency === 'USD' || album.currency === 'USDC') {
+                if (album.currency === 'USDC' || album.currency === 'USD') {
                     amount = Number(album.price_usdc || album.price || 0);
+                } else if (album.currency === 'USDT') {
+                    amount = Number(album.price_usdt || album.price || 0);
                 } else {
                     amount = Number(album.price || 0);
                     if (album.currency === 'ETH' || !album.currency) {

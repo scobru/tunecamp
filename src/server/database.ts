@@ -581,6 +581,25 @@ export function createDatabase(dbPath: string): DatabaseService {
         console.error("Migration error (album_artist column):", e);
     }
 
+    // Migration: Add price_usdt column to albums and releases table
+    try {
+        const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
+        const hasPriceUsdtAlbums = Array.isArray(tableInfoAlbums) && tableInfoAlbums.some(col => col.name === "price_usdt");
+        if (!hasPriceUsdtAlbums) {
+            console.log("📦 Migrating database: Adding price_usdt column to albums table...");
+            db.exec("ALTER TABLE albums ADD COLUMN price_usdt REAL DEFAULT 0");
+        }
+
+        const tableInfoReleases = db.pragma("table_info(releases)") as any[];
+        const hasPriceUsdtReleases = Array.isArray(tableInfoReleases) && tableInfoReleases.some(col => col.name === "price_usdt");
+        if (!hasPriceUsdtReleases) {
+            console.log("📦 Migrating database: Adding price_usdt column to releases table...");
+            db.exec("ALTER TABLE releases ADD COLUMN price_usdt REAL DEFAULT 0");
+        }
+    } catch (e) {
+        console.error("Migration error (price_usdt column):", e);
+    }
+
     try {
         const tableInfo = db.pragma("table_info(torrents)") as any[];
         const hasOwnerId = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "owner_id");

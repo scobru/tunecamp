@@ -67,6 +67,7 @@ export class TrackRepository extends BaseRepository {
             currency: row.currency || 'ETH',
             price: row.price || 0,
             price_usdc: row.price_usdc || 0,
+            price_usdt: row.price_usdt || 0,
         } as Track;
     }
 
@@ -275,7 +276,8 @@ export class TrackRepository extends BaseRepository {
             if (track.title) { rtFields.push("title = ?"); rtValues.push(track.title); }
             if (track.duration) { rtFields.push("duration = ?"); rtValues.push(track.duration); }
             if (track.file_path) { rtFields.push("file_path = ?"); rtValues.push(track.file_path); }
-            if (track.price) { rtFields.push("price = ?"); rtValues.push(track.price); }
+            if (track.price_usdc) { rtFields.push("price_usdc = ?"); rtValues.push(track.price_usdc); }
+            if (track.price_usdt) { rtFields.push("price_usdt = ?"); rtValues.push(track.price_usdt); }
             if (track.currency) { rtFields.push("currency = ?"); rtValues.push(track.currency); }
             
             if (rtFields.length > 0) {

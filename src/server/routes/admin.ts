@@ -592,12 +592,19 @@ export function createAdminRoutes(
                 return res.status(404).json({ error: "Release or album not found" });
             }
 
-            // Permission Check
+            // Permission Check: Root Admin/Admin can edit anything. 
+            // Others (Super Users) can edit if they own the item OR if it has no owner (legacy/system).
             const ownerId = release ? release.owner_id : album?.owner_id;
             const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
-            if (req.userId !== undefined && !isPrivileged && ownerId !== req.userId) {
+            const canManagePrivate = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
+            
+            if (req.userId !== undefined && !isPrivileged && ownerId !== null && ownerId !== req.userId) {
                 console.warn(`⛔ [Debug] Access Denied for user ${req.username} on item ${id}. Owner: ${ownerId}, Request UserId: ${req.userId}`);
                 return res.status(403).json({ error: "Access denied" });
+            }
+
+            if (!isPrivileged && !canManagePrivate && ownerId !== req.userId) {
+                return res.status(403).json({ error: "Access denied: Insufficient permissions" });
             }
 
             const updates: any = {};
@@ -608,6 +615,8 @@ export function createAdminRoutes(
             if (body.description !== undefined) updates.description = body.description;
             if (body.type) updates.type = body.type;
             if (body.year) updates.year = body.year;
+            if (body.album_artist !== undefined) updates.album_artist = body.album_artist;
+            if (body.albumArtist !== undefined) updates.album_artist = body.albumArtist;
             if (body.license !== undefined) updates.license = body.license;
             if (body.visibility) {
                 const oldVisibility = release ? release.visibility : album?.visibility;

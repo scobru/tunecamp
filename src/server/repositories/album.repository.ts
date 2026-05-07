@@ -33,6 +33,7 @@ export class AlbumRepository extends BaseRepository {
             is_release: !!row.is_release,
             published_to_gundb: !!row.published_to_gundb,
             published_to_ap: !!row.published_to_ap,
+            price_usdt: row.price_usdt || 0,
         } as Album;
     }
 
