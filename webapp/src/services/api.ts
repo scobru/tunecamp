@@ -344,7 +344,7 @@ export const API = {
     renameBrowserPath: (oldPath: string, newPath: string) => handleResponse(api.put("/browser", { oldPath, newPath })),
     syncActivityPub: () => handleResponse(api.post('/ap/sync')),
     getAPIHealth: () => handleResponse(api.get<any>('/admin/system/health')),
-    getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
+    getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' | 'description' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
     getAlbumsMissingMetadata: (filter: 'genre' | 'year' | 'cover' | 'description' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/albums/missing?filter=${filter}`)),
     getMetadataCandidates: (trackId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/candidates/${trackId}`)),
     getAlbumMetadataCandidates: (albumId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/albums/candidates/${albumId}`)),

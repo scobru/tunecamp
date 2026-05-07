@@ -148,7 +148,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      */
     router.get("/maintenance/missing", async (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
-        const filter = (req.query.filter as 'genre' | 'year' | 'cover') || 'genre';
+        const filter = (req.query.filter as 'genre' | 'year' | 'cover' | 'description') || 'genre';
         const tracks = maintenance.getTracksWithMissingMetadata(filter);
         res.json(tracks);
     });
