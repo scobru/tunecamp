@@ -85,6 +85,6 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         telegramBotToken: process.env.TUNECAMP_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || overrides?.telegramBotToken,
         telegramMasterId: process.env.TUNECAMP_TELEGRAM_MASTER_ID || process.env.TELEGRAM_MASTER_ID || overrides?.telegramMasterId,
         openrouterApiKey: process.env.OPENROUTER_API_KEY || overrides?.openrouterApiKey,
-        openrouterModel: process.env.OPENROUTER_MODEL || overrides?.openrouterModel || "openai/gpt-4o-mini",
+        openrouterModel: process.env.OPENROUTER_MODEL || overrides?.openrouterModel || "openrouter/free",
     };
 }

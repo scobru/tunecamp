@@ -143,4 +143,11 @@ export class SoulseekService {
             throw error;
         }
     }
+
+    async checkStatus(): Promise<{ connected: boolean; username: string | null }> {
+        return {
+            connected: !!this.downloader && !!this.currentUsername,
+            username: this.currentUsername
+        };
+    }
 }

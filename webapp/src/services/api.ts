@@ -343,6 +343,7 @@ export const API = {
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`/browser?path=${encodeURIComponent(path)}`)),
     renameBrowserPath: (oldPath: string, newPath: string) => handleResponse(api.put("/browser", { oldPath, newPath })),
     syncActivityPub: () => handleResponse(api.post('/ap/sync')),
+    getAPIHealth: () => handleResponse(api.get<any>('/admin/system/health')),
     getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' = 'genre') => handleResponse(api.get<any[]>(`/metadata/maintenance/missing?filter=${filter}`)),
     getMetadataCandidates: (trackId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/candidates/${trackId}`)),
     applyTrackMetadata: (trackId: number, metadata: any) => handleResponse(api.post<{ success: boolean }>(`/metadata/maintenance/apply-track`, { trackId, metadata })),

@@ -14,6 +14,7 @@ import { AdminUsersList } from "../components/admin/AdminUsersList";
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminMaintenancePanel } from "../components/admin/AdminMaintenancePanel";
 import { CurationQueue } from "../components/admin/CurationQueue";
+import { APIStatusPanel } from "../components/admin/APIStatusPanel";
 
 import { BackupPanel } from "../components/admin/BackupPanel";
 
@@ -32,6 +33,7 @@ export const Admin = () => {
     | "system"
     | "backup"
     | "maintenance"
+    | "status"
   >(isRootAdmin ? "users" : "releases");
   const [stats, setStats] = useState<any>(null);
 
@@ -181,6 +183,13 @@ export const Admin = () => {
             >
               Maintenance
             </a>
+            <a
+              role="tab"
+              className={`tab ${activeTab === "status" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("status")}
+            >
+              Status
+            </a>
           </>
         )}
       </div>
@@ -292,6 +301,7 @@ export const Admin = () => {
         {activeTab === "settings" && isAdmin && <AdminSettingsPanel />}
         {activeTab === "backup" && isAdmin && <BackupPanel />}
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
+        {activeTab === "status" && isAdmin && <APIStatusPanel />}
       </div>
 
       <AdminUserModal

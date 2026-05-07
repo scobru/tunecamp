@@ -3,9 +3,23 @@ name: gemini-best-practices
 description: Universal best-practice rules for Gemini (Antigravity). Locks framework choices, layering boundaries, file locations, workflow patterns, and communication style. Drop into ./GEMINI.md or ~/.gemini/antigravity/ for global use.
 ---
 
-# Gemini Best Practices
+# TuneCamp AI Development & Best Practices
 
-Apply these rules whenever you write, edit, or review code in any project.
+Apply these rules whenever you write, edit, or review code in TuneCamp.
+
+---
+
+## AI Mandates & Efficiency
+
+### 1. Model Selection & Costs
+- Use **OpenRouter Free Plan**, NOT paid models. Reason: Minimal cost project.
+- Prefer **google/gemini-flash-1.5-exp:free** or **meta-llama/llama-3-8b-instruct:free**.
+- When implementing AI features, always check for `:free` models on OpenRouter.
+
+### 2. Token & Request Efficiency
+- **Batch Requests:** Condense multiple information needs into a single prompt (e.g., fetch bio, genres, and links in one call).
+- **Aggressive Caching:** Always check the database for existing metadata before calling AI. Cache "null" results with a TTL to avoid redundant failed lookups.
+- **Rate Limit Handling:** Implement delays or queues for batch operations to respect free tier limits (usually 10-20 RPM).
 
 ---
 

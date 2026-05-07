@@ -21,7 +21,7 @@ export class OpenRouterService {
     }
 
     private getModel(): string {
-        return this.database.getSetting("openrouter_model") || this.config.openrouterModel || "openai/gpt-4o-mini";
+        return this.database.getSetting("openrouter_model") || this.config.openrouterModel || "openrouter/free";
     }
 
     async enrichMetadata(trackTitle: string, artistName: string): Promise<AIEnrichedMetadata | null> {

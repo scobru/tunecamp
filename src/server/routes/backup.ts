@@ -148,6 +148,14 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
             }
 
             console.log("✅ [Restore] Database restore complete.");
+
+            // 6. Restore JWT Secret
+            const secretSource = await findItem(extractPath, ".jwt-secret", "file");
+            if (secretSource) {
+                console.log("🔒 [Restore] Restoring JWT secret...");
+                const dbDir = path.dirname(config.dbPath);
+                await fs.copy(secretSource, path.join(dbDir, '.jwt-secret'), { overwrite: true });
+            }
         } else {
             console.log("✅ [Restore] Audio-only restore complete.");
         }
@@ -208,7 +216,14 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
             // 3. Config file (For reference only - restore logic primarily uses DB)
             archive.append(JSON.stringify(config, null, 2), { name: "config_dump.json" });
 
-            // 4. Keys (Artists and System)
+            // 4. JWT Secret (Critical for session continuity)
+            const dbDir = path.dirname(config.dbPath);
+            const secretPath = path.join(dbDir, '.jwt-secret');
+            if (fs.existsSync(secretPath)) {
+                archive.file(secretPath, { name: ".jwt-secret" });
+            }
+
+            // 5. Keys (Artists and System)
             try {
                 // Artists Keys
                 const artists = database.getArtists();

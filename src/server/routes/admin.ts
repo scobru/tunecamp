@@ -1150,6 +1150,68 @@ export function createAdminRoutes(
     });
 
     /**
+     * GET /api/admin/system/health
+     * Check status of external APIs
+     */
+    router.get("/system/health", async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin access required" });
+
+        const results: any = {};
+
+        // 1. Soulseek
+        try {
+            results.soulseek = await soulseekService.checkStatus();
+        } catch (e) {
+            results.soulseek = { connected: false, error: "Service error" };
+        }
+
+        // 2. iTunes
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const itunesRes = await fetch("https://itunes.apple.com/search?term=jack+jackson&limit=1", { signal: controller.signal });
+            clearTimeout(timeout);
+            results.itunes = { online: itunesRes.ok };
+        } catch (e) {
+            results.itunes = { online: false };
+        }
+
+        // 3. MusicBrainz
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const mbRes = await fetch("https://musicbrainz.org/ws/2/release/?query=test&fmt=json", { 
+                headers: { "User-Agent": "TuneCamp/1.0.0 ( contact@tunecamp.app )" },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            results.musicbrainz = { online: mbRes.ok };
+        } catch (e) {
+            results.musicbrainz = { online: false };
+        }
+
+        // 4. Discogs (Check if token is present)
+        results.discogs = { configured: !!database.getSetting("soulseek_password") || !!process.env.DISCOGS_TOKEN };
+
+        // 5. Telegram
+        try {
+            const isBotActive = await telegramBotService.isActive();
+            results.telegram = { active: isBotActive };
+        } catch (e) {
+            results.telegram = { active: false };
+        }
+
+        // 6. OpenRouter
+        const orKey = database.getSetting("openrouter_api_key") || config.openrouterApiKey;
+        results.openrouter = { 
+            configured: !!orKey,
+            model: database.getSetting("openrouter_model") || config.openrouterModel || "openrouter/free"
+        };
+
+        res.json(results);
+    });
+
+    /**
      * GET /api/admin/network/ap/peers
      * List followed ActivityPub actors
      */
