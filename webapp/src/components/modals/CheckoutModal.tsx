@@ -4,7 +4,7 @@ import { ZenAuth } from "../../services/zen";
 import { Wallet, Loader2, CheckCircle2, Download } from "lucide-react";
 import { ethers } from "ethers";
 import { TokenRole, DEPLOYMENTS } from "shogun-contracts-sdk";
-import { openCoinbaseOnramp } from "../../utils/onramp";
+import { openOnramp } from "../../utils/onramp";
 
 
 
@@ -477,10 +477,10 @@ export const CheckoutModal = () => {
                     Insufficient ETH balance in {activeWalletLabel}.
                   </p>
                   <button
-                    onClick={() => openCoinbaseOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "ETH", track.currency === "USD" ? track.price : undefined)}
+                    onClick={() => openOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "ETH", track.currency === "USD" ? track.price : undefined)}
                     className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-base-content/10 hover:bg-primary/20"
                   >
-                    💳 Fund with Credit Card / Coinbase
+                    💳 Fund with Credit Card / Onramp
                   </button>
                 </div>
               )}
@@ -491,10 +491,10 @@ export const CheckoutModal = () => {
                     Insufficient {paymentMethod} balance in {activeWalletLabel}. You have {stableBalance} {paymentMethod}.
                   </p>
                   <button
-                    onClick={() => openCoinbaseOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "USDC", currentStablePrice)}
+                    onClick={() => openOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "USDC", currentStablePrice)}
                     className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-base-content/10 hover:bg-[#2775CA]/20"
                   >
-                    💳 Buy USDC via Coinbase
+                    💳 Buy USDC via Onramp
                   </button>
                 </div>
               )}

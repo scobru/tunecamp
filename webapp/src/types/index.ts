@@ -211,6 +211,10 @@ export interface SiteSettings {
     soulseek_password?: string;
     openrouter_api_key?: string;
     openrouter_model?: string;
+    onramp_provider?: 'coinbase' | 'moonpay';
+    moonpay_api_key?: string;
+    coinbase_cdp_api_key_name?: string;
+    coinbase_cdp_api_key_secret?: string;
 }
 
 export interface Post {

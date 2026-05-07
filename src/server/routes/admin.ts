@@ -215,7 +215,8 @@ export function createAdminRoutes(
                 coinbase_cdp_api_key_name, coinbase_cdp_api_key_secret,
                 telegram_bot_token, telegram_allowed_channels,
                 adminFeePercentage, adminTreasuryAddress,
-                soulseek_username, soulseek_password
+                soulseek_username, soulseek_password,
+                onramp_provider, moonpay_api_key
             } = req.body;
             let settingsChanged = false;
 

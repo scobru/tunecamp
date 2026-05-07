@@ -106,11 +106,13 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
 
     /**
      * GET /api/payments/onramp-config
-     * Check if Coinbase Onramp is configured.
+     * Check if Onramp is configured and which provider to use.
      */
     router.get("/onramp-config", (req, res) => {
         res.json({
-            configured: !!(config.coinbaseCdpApiKeyName && config.coinbaseCdpApiKeySecret)
+            configured: !!((config.coinbaseCdpApiKeyName && config.coinbaseCdpApiKeySecret) || database.getSetting("coinbase_cdp_api_key_name")),
+            provider: database.getSetting("onramp_provider") || "coinbase",
+            moonpayApiKey: database.getSetting("moonpay_api_key")
         });
     });
 
