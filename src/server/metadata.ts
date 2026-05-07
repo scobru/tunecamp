@@ -15,6 +15,7 @@ export interface MetadataMatch {
     genre?: string;
     coverUrl?: string;
     albumTitle?: string;
+    description?: string;
     source: "musicbrainz" | "discogs" | "theaudiodb" | "itunes";
 }
 

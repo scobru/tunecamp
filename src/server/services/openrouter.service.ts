@@ -214,4 +214,51 @@ Output ONLY valid JSON in this format:
             return null;
         }
     }
+
+    async identifyAlbum(albumTitle: string, artistName: string, trackTitles: string[]): Promise<AIEnrichedMetadata | null> {
+        const apiKey = this.getApiKey();
+        if (!apiKey) return null;
+
+        const prompt = `I am looking for information about the music album "${albumTitle}" by "${artistName}".
+        The album contains the following tracks: ${trackTitles.join(", ")}.
+        
+        Provide accurate metadata in JSON format:
+        "genre" (main genre),
+        "year" (original release year),
+        "description" (short 1-2 sentence description of the album's style and impact).
+        
+        If you are unsure, provide your best guess based on common knowledge.
+        Output ONLY valid JSON.`;
+
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://tunecamp.app",
+                    "X-Title": "TuneCamp"
+                },
+                body: JSON.stringify({
+                    model: this.getModel(),
+                    messages: [
+                        { role: "system", content: "You are a specialized music historian and metadata expert." },
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json() as any;
+            const content = data.choices[0]?.message?.content;
+            if (!content) return null;
+
+            return JSON.parse(content);
+        } catch (error) {
+            console.error("[OpenRouter] Error identifying album:", error);
+            return null;
+        }
+    }
 }

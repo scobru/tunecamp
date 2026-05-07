@@ -588,4 +588,11 @@ export class LibraryService {
             console.error(`[LibraryService] Failed to write tags for ${track.id}:`, err);
         }
     }
+
+    /**
+     * Updates an album's metadata in the database.
+     */
+    async updateAlbum(albumId: number, data: any): Promise<void> {
+        this.db.updateAlbum(albumId, data);
+    }
 }
