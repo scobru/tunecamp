@@ -209,14 +209,10 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Only root admin can change site settings" });
             }
 
-            const { 
-                siteName, siteDescription, publicUrl, artistName, coverImage, mode, 
-                zenPeers, web3_checkout_address, web3_nft_address,
-                coinbase_cdp_api_key_name, coinbase_cdp_api_key_secret,
-                telegram_bot_token, telegram_allowed_channels,
-                adminFeePercentage, adminTreasuryAddress,
-                soulseek_username, soulseek_password,
-                onramp_provider, moonpay_api_key
+                onramp_provider, moonpay_api_key,
+                stripe_secret_key, stripe_webhook_secret,
+                paypal_client_id, paypal_client_secret, paypal_environment,
+                discogs_token
             } = req.body;
             let settingsChanged = false;
 
@@ -288,6 +284,24 @@ export function createAdminRoutes(
             }
             if (moonpay_api_key !== undefined) {
                 database.setSetting("moonpay_api_key", moonpay_api_key);
+            }
+            if (stripe_secret_key !== undefined) {
+                database.setSetting("stripe_secret_key", stripe_secret_key);
+            }
+            if (stripe_webhook_secret !== undefined) {
+                database.setSetting("stripe_webhook_secret", stripe_webhook_secret);
+            }
+            if (paypal_client_id !== undefined) {
+                database.setSetting("paypal_client_id", paypal_client_id);
+            }
+            if (paypal_client_secret !== undefined) {
+                database.setSetting("paypal_client_secret", paypal_client_secret);
+            }
+            if (paypal_environment !== undefined) {
+                database.setSetting("paypal_environment", paypal_environment);
+            }
+            if (discogs_token !== undefined) {
+                database.setSetting("discogs_token", discogs_token);
             }
 
             // Restart telegram bot if settings changed
@@ -1198,7 +1212,8 @@ export function createAdminRoutes(
         }
 
         // 4. Discogs (Check if token is present)
-        results.discogs = { configured: !!process.env.DISCOGS_TOKEN };
+        const discogsToken = database.getSetting("discogs_token") || process.env.DISCOGS_TOKEN;
+        results.discogs = { configured: !!discogsToken };
 
         // 5. Telegram
         try {
@@ -1216,15 +1231,19 @@ export function createAdminRoutes(
         };
 
         // 7. Stripe
+        const stripeKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
+        const stripeWebhook = database.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
         results.stripe = { 
-            configured: !!config.stripeSecretKey,
-            webhookConfigured: !!config.stripeWebhookSecret
+            configured: !!stripeKey,
+            webhookConfigured: !!stripeWebhook
         };
-
+        
         // 8. PayPal
+        const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
+        const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
         results.paypal = { 
-            configured: !!config.paypalClientId && !!config.paypalClientSecret,
-            environment: config.paypalEnvironment || "sandbox"
+            configured: !!ppId && !!ppSecret,
+            environment: database.getSetting("paypal_environment") || config.paypalEnvironment || "sandbox"
         };
         
         // 9. MoonPay

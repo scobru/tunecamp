@@ -215,6 +215,12 @@ export interface SiteSettings {
     moonpay_api_key?: string;
     coinbase_cdp_api_key_name?: string;
     coinbase_cdp_api_key_secret?: string;
+    stripe_secret_key?: string;
+    stripe_webhook_secret?: string;
+    paypal_client_id?: string;
+    paypal_client_secret?: string;
+    paypal_environment?: 'sandbox' | 'production';
+    discogs_token?: string;
 }
 
 export interface Post {

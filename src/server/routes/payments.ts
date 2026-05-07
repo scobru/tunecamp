@@ -39,10 +39,13 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
     // 1. Stripe Webhook (needs raw body, NO JSON PARSER)
     // This route MUST be mounted before the global express.json() in server.ts
     router.post("/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
-        if (!config.stripeSecretKey || !config.stripeWebhookSecret) {
+        const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
+        const wSecret = database.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
+
+        if (!sKey || !wSecret) {
             return res.status(501).json({ error: "Stripe not configured" });
         }
-        const stripe = new Stripe(config.stripeSecretKey);
+        const stripe = new Stripe(sKey);
         const sig = req.headers['stripe-signature'] as string;
         let event;
 
@@ -184,11 +187,12 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(400).json({ error: "Missing required fields" });
             }
 
-            if (!config.stripeSecretKey) {
+            const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
+            if (!sKey) {
                 return res.status(501).json({ error: "Stripe not configured" });
             }
 
-            const stripe = new Stripe(config.stripeSecretKey);
+            const stripe = new Stripe(sKey);
             
             let name = "";
             let amount = 0;
@@ -251,16 +255,20 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
     router.post("/paypal/create-order", async (req, res) => {
         try {
             const { itemId, type } = req.body;
-            if (!config.paypalClientId || !config.paypalClientSecret) {
+            const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
+            const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
+            const ppEnv = database.getSetting("paypal_environment") || config.paypalEnvironment;
+
+            if (!ppId || !ppSecret) {
                 return res.status(501).json({ error: "PayPal not configured" });
             }
 
             const client = new Client({
                 clientCredentialsAuthCredentials: {
-                    oAuthClientId: config.paypalClientId,
-                    oAuthClientSecret: config.paypalClientSecret
+                    oAuthClientId: ppId,
+                    oAuthClientSecret: ppSecret
                 },
-                environment: config.paypalEnvironment === 'production' ? Environment.Production : Environment.Sandbox,
+                environment: ppEnv === 'production' ? Environment.Production : Environment.Sandbox,
                 logging: { logLevel: LogLevel.Info }
             });
 
@@ -323,16 +331,20 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(400).json({ error: "Missing required fields" });
             }
 
-            if (!config.paypalClientId || !config.paypalClientSecret) {
+            const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
+            const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
+            const ppEnv = database.getSetting("paypal_environment") || config.paypalEnvironment;
+
+            if (!ppId || !ppSecret) {
                 return res.status(501).json({ error: "PayPal not configured" });
             }
 
             const client = new Client({
                 clientCredentialsAuthCredentials: {
-                    oAuthClientId: config.paypalClientId,
-                    oAuthClientSecret: config.paypalClientSecret
+                    oAuthClientId: ppId,
+                    oAuthClientSecret: ppSecret
                 },
-                environment: config.paypalEnvironment === 'production' ? Environment.Production : Environment.Sandbox
+                environment: ppEnv === 'production' ? Environment.Production : Environment.Sandbox
             });
 
             const ordersController = new OrdersController(client);

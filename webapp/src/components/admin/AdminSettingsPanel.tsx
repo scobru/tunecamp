@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Activity } from "lucide-react";
+import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Activity, CreditCard, Search } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory } from "shogun-contracts-sdk";
@@ -603,6 +603,96 @@ export const AdminSettingsPanel = () => {
           </div>
         </div>
 
+        {/* Stripe Configuration */}
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2 text-indigo-400">
+            <CreditCard size={18} />
+            <h4 className="font-bold uppercase text-xs tracking-wider">Stripe Payments (Credit Cards)</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">Stripe Secret Key</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.stripe_secret_key || ""}
+                onChange={(e) => setSettings({ ...settings, stripe_secret_key: e.target.value })}
+                placeholder="sk_live_..."
+              />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">Stripe Webhook Secret</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.stripe_webhook_secret || ""}
+                onChange={(e) => setSettings({ ...settings, stripe_webhook_secret: e.target.value })}
+                placeholder="whsec_..."
+              />
+            </div>
+          </div>
+          
+          <div className="bg-indigo-500/5 border border-indigo-500/20 p-4 rounded-xl text-xs opacity-70">
+            <p>Enable fiat payments via Stripe. You'll need to set up a webhook in your Stripe dashboard pointing to <code>{settings.publicUrl || "https://your-domain.com"}/api/payments/stripe/webhook</code>.</p>
+          </div>
+        </div>
+
+        {/* PayPal Configuration */}
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2 text-blue-300">
+            <CreditCard size={18} />
+            <h4 className="font-bold uppercase text-xs tracking-wider">PayPal Integration</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">PayPal Client ID</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.paypal_client_id || ""}
+                onChange={(e) => setSettings({ ...settings, paypal_client_id: e.target.value })}
+                placeholder="AY..."
+              />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">PayPal Client Secret</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.paypal_client_secret || ""}
+                onChange={(e) => setSettings({ ...settings, paypal_client_secret: e.target.value })}
+                placeholder="E..."
+              />
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">PayPal Environment</span>
+              </label>
+              <select 
+                className="select select-bordered bg-base-300/50"
+                value={settings.paypal_environment || "sandbox"}
+                onChange={(e) => setSettings({ ...settings, paypal_environment: e.target.value as any })}
+              >
+                <option value="sandbox">Sandbox (Testing)</option>
+                <option value="production">Production (Live)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Soulseek Configuration */}
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-primary">
@@ -640,6 +730,32 @@ export const AdminSettingsPanel = () => {
           
           <div className="bg-primary/5 border border-primary/20 p-4 rounded-xl text-xs opacity-70">
             <p>These credentials allow the server to connect to the Soulseek network for music discovery. Configuration is global for this server instance.</p>
+          </div>
+        </div>
+
+        {/* Discogs Configuration */}
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2 text-orange-400">
+            <Search size={18} />
+            <h4 className="font-bold uppercase text-xs tracking-wider">Discogs Integration</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">Discogs Personal Access Token</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.discogs_token || ""}
+                onChange={(e) => setSettings({ ...settings, discogs_token: e.target.value })}
+                placeholder="Your token from Discogs settings..."
+              />
+              <label className="label">
+                <span className="label-text-alt opacity-40 text-[10px]">Used to fetch high-quality metadata, tracklists and cover art.</span>
+              </label>
+            </div>
           </div>
         </div>
 
