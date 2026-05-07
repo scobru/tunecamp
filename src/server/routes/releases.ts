@@ -381,13 +381,30 @@ export function createReleaseRouter(
                 ? (release.published_at || new Date().toISOString()) 
                 : (body.visibility ? null : release.published_at);
 
-            database.updateRelease(id, {
-                ...body,
+            const updates: any = {
                 status,
                 published_at: publishedAt,
                 artist_id: body.artistId || body.artist_id || release.artist_id,
                 album_artist: body.albumArtist || body.album_artist || release.album_artist,
-            });
+            };
+
+            const validColumns = [
+                'title', 'slug', 'owner_id', 'date', 'cover_path', 'genre', 
+                'description', 'type', 'year', 'download', 'price', 'price_usdc', 
+                'price_usdt', 'currency', 'external_links', 'visibility', 
+                'published_to_gundb', 'published_to_ap', 'license', 'use_nft'
+            ];
+
+            for (const col of validColumns) {
+                if (body[col] !== undefined) updates[col] = body[col];
+            }
+            
+            // Map camelCase from frontend if needed
+            if (body.priceUsdc !== undefined) updates.price_usdc = body.priceUsdc;
+            if (body.publishedToGunDB !== undefined) updates.published_to_gundb = body.publishedToGunDB;
+            if (body.publishedToAP !== undefined) updates.published_to_ap = body.publishedToAP;
+
+            database.updateRelease(id, updates);
 
             // Background Sync
             publishingService.syncRelease(id).catch(e => console.error("Failed to sync updated release:", e));

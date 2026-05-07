@@ -272,23 +272,19 @@ export default function AdminReleaseEditor() {
 
       const dataToSave = {
         ...metadata,
-        artistId: metadata.artist_id, // Map frontend snake_case to API camelCase
-        // Map frontend state to API expected keys
-        publishedToGunDB: metadata.published_to_gundb,
-        publishedToAP: metadata.published_to_ap,
+        album_artist: metadata.album_artist,
+        price_usdc: metadata.priceUsdc,
         genres: metadata.genre
           ? metadata.genre.split(",").map((s: string) => s.trim())
           : [],
-        track_ids, // Send full list of IDs to sync associations
+        track_ids,
         tracks_data: tracks.map((t) => ({ 
           id: t.id, 
           title: t.title, 
           price: t.price, 
-          priceUsdc: t.priceUsdc,
+          price_usdc: t.priceUsdc,
           currency: t.currency || "ETH" 
         })),
-        album_artist: metadata.album_artist,
-        albumArtist: metadata.album_artist, // Send both for compatibility
       } as any;
 
       let releaseId = id ? parseInt(id) : null;
