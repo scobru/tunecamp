@@ -86,7 +86,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Deep Clean: Find child tables with corrupted Foreign Keys (referencing _old or _new)
         // These tables need to be rebuilt so they point to the correct main tables again.
-        const corruptedTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%\\_old' ESCAPE '\\' AND name NOT LIKE '%\\_new' ESCAPE '\\' AND (sql LIKE '%_old%' OR sql LIKE '%_new%')").all() as { name: string }[];
+        const corruptedTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%\\_old' ESCAPE '\\' AND name NOT LIKE '%\\_new' ESCAPE '\\' AND name NOT LIKE '%\\_corrupt' ESCAPE '\\' AND (sql LIKE '%_old%' OR sql LIKE '%_new%')").all() as { name: string }[];
         
         for (const ct of corruptedTables) {
             console.log(`📦 [Database] Found corrupted schema for table ${ct.name}. Preparing for rebuild...`);
@@ -359,7 +359,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       deleted_at TEXT
     );
 
-    // Zen (P2P) users cache (SEA identities)
+    -- Zen (P2P) users cache (SEA identities)
     CREATE TABLE IF NOT EXISTS gun_users (
       pub TEXT PRIMARY KEY,
       epub TEXT,
@@ -520,7 +520,7 @@ export function createDatabase(dbPath: string): DatabaseService {
     if (corruptedTablesToRestore.length > 0) {
         db.transaction(() => {
             for (const ct of corruptedTablesToRestore) {
-                const originalName = ct.name.replace('_corrupt', '');
+                const originalName = ct.name.replace(/(_corrupt)+$/, '');
                 console.log(`📦 [Database] Restoring data for rebuilt table ${originalName}...`);
                 try {
                     db.exec(`INSERT INTO "${originalName}" SELECT * FROM "${ct.name}"`);
