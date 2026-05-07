@@ -42,59 +42,50 @@ export function createReleaseRouter(
     musicDir: string
 ): Router {
     const router = Router();
-
-    router.get("/", async (req: any, res) => {
+    // 1. GET ALL RELEASES (Formal + Library for Privileged Users)
+    router.get("/", (req: any, res) => {
         try {
-            let releases: any[];
+            let releases: any[] = [];
+            
             if (req.isAdmin || req.isSuperUser) {
-                releases = database.getReleases();
-            } else if (req.userId !== undefined) {
-                // Show public releases OR those owned by the user
+                // For Admins and Super Users, return ALL formal releases AND ALL library albums
+                const formalReleases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
+                const libraryAlbums = database.getAlbums(false).map(a => ({ ...a, is_formal_release: false }));
+                releases = [...formalReleases, ...libraryAlbums];
+            } else if (req.userId) {
+                // For logged-in users, merge their owned items (formal + library) with public releases
                 const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
-                const ownedLibraryAlbums = database.getAlbumsByOwner(req.userId, false)
-                    .filter(a => a.status !== 'draft' && a.status !== null && a.status !== undefined)
-                    .map(a => ({ ...a, is_formal_release: false }));
+                const ownedLibraryAlbums = database.getAlbumsByOwner(req.userId, false).map(a => ({ ...a, is_formal_release: false }));
                 const publicReleases = database.getReleases(true).map(r => ({ ...r, is_formal_release: true }));
-                
-                // Merge and deduplicate by ID
-                const seenIds = new Set();
-                releases = [];
-                
-                // Prioritize owned formal releases
-                for (const r of ownedFormalReleases) {
-                    if (!seenIds.has(r.id)) {
-                        releases.push(r);
-                        seenIds.add(r.id);
-                    }
-                }
 
-                // Add owned library albums (drafts/pending)
-                for (const a of ownedLibraryAlbums) {
-                    if (!seenIds.has(a.id)) {
-                        releases.push(a);
-                        seenIds.add(a.id);
-                    }
-                }
-                
-                // Add public releases
-                for (const r of publicReleases) {
-                    if (!seenIds.has(r.id)) {
-                        releases.push(r);
-                        seenIds.add(r.id);
-                    }
-                }
-
-                // Sort by date desc (handle null dates safely)
-                releases.sort((a, b) => {
-                    const dateA = a.date || a.published_at || a.created_at || 0;
-                    const dateB = b.date || b.published_at || b.created_at || 0;
-                    const timeA = typeof dateA === 'number' ? dateA : new Date(dateA).getTime();
-                    const timeB = typeof dateB === 'number' ? dateB : new Date(dateB).getTime();
-                    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+                // Merge and deduplicate by ID (prioritizing formal releases/owned status)
+                const releaseMap = new Map();
+                [...publicReleases, ...ownedLibraryAlbums, ...ownedFormalReleases].forEach(r => {
+                    const key = `${r.is_formal_release ? 'f' : 'l'}-${r.id}`;
+                    releaseMap.set(key, r);
                 });
+                releases = Array.from(releaseMap.values());
             } else {
-                releases = database.getReleases(true);
+                // For anonymous users, only show public formal releases
+                releases = database.getReleases(true).map(r => ({ ...r, is_formal_release: true }));
             }
+
+            // Unify sorting logic for all views: Sort by date DESC
+            releases.sort((a: any, b: any) => {
+                const dateA = a.date || a.published_at || a.created_at || '';
+                const dateB = b.date || b.published_at || b.created_at || '';
+                
+                // If both are strings, use localeCompare
+                if (typeof dateA === 'string' && typeof dateB === 'string') {
+                    return dateB.localeCompare(dateA);
+                }
+                
+                // Fallback to timestamp comparison
+                const timeA = new Date(dateA || 0).getTime();
+                const timeB = new Date(dateB || 0).getTime();
+                return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+            });
+
             res.json(releases);
         } catch (error) {
             console.error("Error getting releases:", error);
