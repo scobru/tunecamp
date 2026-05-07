@@ -24,6 +24,7 @@ interface HealthStatus {
   openrouter: { configured: boolean; model: string };
   stripe: { configured: boolean; webhookConfigured: boolean };
   paypal: { configured: boolean; environment: string };
+  moonpay: { configured: boolean };
 }
 
 export const APIStatusPanel = () => {
@@ -127,6 +128,14 @@ export const APIStatusPanel = () => {
       active: status?.paypal?.configured,
       details: status?.paypal?.configured ? `Connected (${status.paypal.environment})` : "Not Configured",
       description: "PayPal Express Checkout and global orders."
+    },
+    {
+      id: "moonpay",
+      name: "MoonPay",
+      icon: <CreditCard className="text-[#a042ff]" />,
+      active: status?.moonpay?.configured,
+      details: status?.moonpay?.configured ? "API Key configured" : "API Key missing",
+      description: "Credit card to crypto on-ramp provider."
     }
   ];
 

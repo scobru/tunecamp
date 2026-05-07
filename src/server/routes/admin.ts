@@ -1198,7 +1198,7 @@ export function createAdminRoutes(
         }
 
         // 4. Discogs (Check if token is present)
-        results.discogs = { configured: !!database.getSetting("soulseek_password") || !!process.env.DISCOGS_TOKEN };
+        results.discogs = { configured: !!process.env.DISCOGS_TOKEN };
 
         // 5. Telegram
         try {
@@ -1225,6 +1225,11 @@ export function createAdminRoutes(
         results.paypal = { 
             configured: !!config.paypalClientId && !!config.paypalClientSecret,
             environment: config.paypalEnvironment || "sandbox"
+        };
+        
+        // 9. MoonPay
+        results.moonpay = {
+            configured: !!database.getSetting("moonpay_api_key")
         };
 
         res.json(results);

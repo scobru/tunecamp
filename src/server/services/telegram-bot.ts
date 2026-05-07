@@ -458,8 +458,8 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                 }
             });
 
-            await this.bot.launch();
             this.isRunning = true;
+            await this.bot.launch();
             console.log('✅ Telegram Bot started');
             
             // Handle graceful stop
