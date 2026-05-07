@@ -28,6 +28,9 @@ interface CreateReleaseBody {
     externalLinks?: any[];
     publishedToGunDB?: boolean;
     publishedToAP?: boolean;
+    album_artist?: string;
+    albumArtist?: string;
+    status?: string;
 }
 
 interface UpdateReleaseBody extends Partial<CreateReleaseBody> {
@@ -316,6 +319,7 @@ export function createReleaseRouter(
                     published_to_ap: body.publishedToAP !== undefined ? body.publishedToAP : (body.visibility === 'public' || body.visibility === 'unlisted'),
                     status: (isPrivileged && (body.visibility === 'public' || body.visibility === 'unlisted')) ? 'released' : 
                             ((body.visibility === 'public' || body.visibility === 'unlisted') ? 'pending' : 'draft'),
+                    album_artist: body.albumArtist || body.album_artist || null,
                 });
 
                 if (validatedTrackIds.length > 0) {
@@ -332,6 +336,94 @@ export function createReleaseRouter(
         } catch (error) {
             console.error("Error creating release:", error);
             res.status(500).json({ error: "Failed to create release" });
+        }
+    });
+
+    /**
+     * PUT /api/releases/:id
+     * Update release details (Admin or Owner)
+     */
+    router.put("/:id", async (req: any, res) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const body = req.body;
+            const release = database.getRelease(id);
+            
+            if (!release) {
+                return res.status(404).json({ error: "Release not found" });
+            }
+
+            const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+            const isOwner = release.owner_id === req.userId;
+
+            if (!isPrivileged && !isOwner) {
+                return res.status(403).json({ error: "Access denied: You can only update your own releases" });
+            }
+
+            // Sync tracks if provided
+            if (body.track_ids) {
+                database.syncReleaseTracks(id, body.track_ids);
+            }
+
+            // Calculate status if visibility changes or if not provided
+            let status = body.status || release.status;
+            if (body.visibility && body.visibility !== release.visibility) {
+                const isPublic = body.visibility === 'public' || body.visibility === 'unlisted';
+                if (isPublic && status !== 'released') {
+                    status = isPrivileged ? 'released' : 'pending';
+                } else if (!isPublic) {
+                    status = 'draft';
+                }
+            }
+
+            // Handle date
+            const publishedAt = (body.visibility === 'public' || body.visibility === 'unlisted') 
+                ? (release.published_at || new Date().toISOString()) 
+                : (body.visibility ? null : release.published_at);
+
+            database.updateRelease(id, {
+                ...body,
+                status,
+                published_at: publishedAt,
+                artist_id: body.artistId || body.artist_id || release.artist_id,
+                album_artist: body.albumArtist || body.album_artist || release.album_artist,
+            });
+
+            // Background Sync
+            publishingService.syncRelease(id).catch(e => console.error("Failed to sync updated release:", e));
+
+            res.json({ success: true, status });
+        } catch (error) {
+            console.error("Error updating release:", error);
+            res.status(500).json({ error: "Failed to update release" });
+        }
+    });
+
+    /**
+     * DELETE /api/releases/:id
+     * Delete release (Admin or Owner)
+     */
+    router.delete("/:id", async (req: any, res) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const release = database.getRelease(id);
+            
+            if (!release) {
+                return res.status(404).json({ error: "Release not found" });
+            }
+
+            const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+            const isOwner = release.owner_id === req.userId;
+
+            if (!isPrivileged && !isOwner) {
+                return res.status(403).json({ error: "Access denied: You can only delete your own releases" });
+            }
+
+            database.deleteRelease(id);
+            res.json({ success: true, message: "Release deleted" });
+        } catch (error) {
+            console.error("Error deleting release:", error);
+            res.status(500).json({ error: "Failed to delete release" });
         }
     });
 

@@ -366,15 +366,15 @@ export class AlbumRepository extends BaseRepository {
         while (attempt < 100) {
             try {
                 const result = this.db.prepare(`
-                    INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).run(
                     release.title, finalSlug, release.artist_id, release.owner_id,
                     release.date, release.cover_path, release.genre, release.description, release.type, release.year,
                     release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', release.external_links,
                     release.visibility || 'private', release.published_at, 
                     release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
-                    release.license, release.album_artist || null
+                    release.license, release.album_artist || null, release.status || 'draft'
                 );
                 return result.lastInsertRowid as number;
             } catch (e: any) {

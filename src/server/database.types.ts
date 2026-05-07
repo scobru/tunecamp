@@ -364,7 +364,7 @@ export interface DatabaseService {
     getReleases(publicOnly?: boolean): Release[];
     getRelease(id: number): Release | undefined;
     getReleaseBySlug(slug: string): Release | undefined;
-    getReleasesByArtist(artistId: number, publicOnly?: boolean): Release[];
+    getReleasesByArtist(artistId: number, publicOnly?: boolean, artistName?: string): Release[];
     getReleasesByOwner(ownerId: number, publicOnly?: boolean): Release[];
     createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateRelease(id: number, release: Partial<Release>): void;
