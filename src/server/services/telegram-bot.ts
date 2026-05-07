@@ -159,6 +159,7 @@ This bot automatically ingests music files shared in this channel and allows you
 • /artists - List artists in your library
 • /albums - List recent library albums
 • /releases - List recent published releases
+• /playlists - Browse and play your playlists
 • /radio - Start random radio mode
 • /debug_db - Admin: Debug database paths and stats
 • /rescan - Consolidate library and repair paths
@@ -260,42 +261,9 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                     let missingCount = 0;
 
                     for (const track of resultsToSend) {
-                        let fullPath = track.file_path;
-                        if (fullPath && !path.isAbsolute(fullPath)) {
-                            fullPath = path.join(this.musicDir, fullPath);
-                        }
-
-                        if (!fullPath || !fs.existsSync(fullPath)) {
-                            console.warn(`[TelegramBot] File not found for search result: ${fullPath}`);
-                            missingCount++;
-                            continue;
-                        }
-
-                        try {
-                            const extra: any = {
-                                title: track.title,
-                                performer: track.artist_name || 'Unknown Artist',
-                                caption: `🎵 ${track.title} - ${track.artist_name || 'Unknown'}`
-                            };
-
-                            // Try to find a cover
-                            if (track.album_cover && fs.existsSync(track.album_cover)) {
-                                extra.thumb = { source: track.album_cover };
-                            } else if (track.album_id) {
-                                const album = this.database.getAlbum(track.album_id);
-                                if (album?.cover_path) {
-                                    const fullCoverPath = path.isAbsolute(album.cover_path) ? album.cover_path : path.join(this.musicDir, album.cover_path);
-                                    if (fs.existsSync(fullCoverPath)) {
-                                        extra.thumb = { source: fullCoverPath };
-                                    }
-                                }
-                            }
-
-                            await ctx.replyWithAudio({ source: fullPath }, extra);
-                            sentCount++;
-                        } catch (err: any) {
-                            console.error(`[TelegramBot] Failed to send audio: ${err.message}`);
-                        }
+                        const success = await this.sendTrack(ctx, track);
+                        if (success) sentCount++;
+                        else missingCount++;
                     }
 
                     if (sentCount === 0 && missingCount > 0) {
@@ -303,6 +271,19 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                     }
                 },
                 'play': (ctx) => commands['search'](ctx),
+                'playlists': async (ctx) => {
+                    const playlists = this.database.getPlaylists();
+                    if (playlists.length === 0) return this.safeReply(ctx, "No playlists found.");
+                    
+                    const buttons = playlists.map(p => ([{
+                        text: `📂 ${p.name}`,
+                        callback_data: `pl_view_${p.id}`
+                    }]));
+
+                    await ctx.reply("📚 Your Playlists:", {
+                        reply_markup: { inline_keyboard: buttons }
+                    });
+                },
                 'rescan': async (ctx) => {
                     if (!this.isAuthorized(ctx)) {
                         return this.safeReply(ctx, "⚠️ Unauthorized. Only admins can trigger a rescan.");
@@ -415,6 +396,65 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                     await this.sendRandomTrack(ctx);
                 } catch (err) {
                     console.error('[TelegramBot] Radio action error:', err);
+                }
+            });
+
+            // Playlist View Action
+            this.bot.action(/^pl_view_(\d+)$/, async (ctx) => {
+                try {
+                    await ctx.answerCbQuery();
+                    const playlistId = parseInt(ctx.match[1]);
+                    const tracks = this.database.getPlaylistTracks(playlistId);
+                    
+                    if (tracks.length === 0) return ctx.editMessageText("This playlist is empty.");
+
+                    const buttons = tracks.slice(0, 10).map(t => ([{
+                        text: `🎵 ${t.artist_name || 'Unknown'} - ${t.title}`,
+                        callback_data: `pl_play_${t.id}`
+                    }]));
+
+                    if (tracks.length > 10) {
+                        buttons.push([{ text: `... and ${tracks.length - 10} more (view in app)`, callback_data: 'noop' }]);
+                    }
+
+                    buttons.push([{ text: '🔙 Back to Playlists', callback_data: 'pl_list' }]);
+
+                    await ctx.editMessageText(`📂 Playlist Tracks (Total: ${tracks.length}):`, {
+                        reply_markup: { inline_keyboard: buttons }
+                    });
+                } catch (err) {
+                    console.error('[TelegramBot] Playlist view error:', err);
+                }
+            });
+
+            // Playlist Back Action
+            this.bot.action('pl_list', async (ctx) => {
+                try {
+                    await ctx.answerCbQuery();
+                    const playlists = this.database.getPlaylists();
+                    const buttons = playlists.map(p => ([{
+                        text: `📂 ${p.name}`,
+                        callback_data: `pl_view_${p.id}`
+                    }]));
+                    await ctx.editMessageText("📚 Your Playlists:", {
+                        reply_markup: { inline_keyboard: buttons }
+                    });
+                } catch (err) {
+                    console.error('[TelegramBot] Playlist list error:', err);
+                }
+            });
+
+            // Play Track Action (from Playlist or Search)
+            this.bot.action(/^pl_play_(\d+)$/, async (ctx) => {
+                try {
+                    await ctx.answerCbQuery("Sending track...");
+                    const trackId = parseInt(ctx.match[1]);
+                    const track = this.database.getTrack(trackId);
+                    if (track) {
+                        await this.sendTrack(ctx, track);
+                    }
+                } catch (err) {
+                    console.error('[TelegramBot] Play action error:', err);
                 }
             });
 
@@ -631,6 +671,45 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
         } catch (err) {
             console.error('[TelegramBot] Error handling audio:', err);
             await this.safeReply(ctx, '❌ Error processing audio file. Please check server logs.');
+        }
+    }
+
+    private async sendTrack(ctx: any, track: any) {
+        let fullPath = track.file_path;
+        if (fullPath && !path.isAbsolute(fullPath)) {
+            fullPath = path.join(this.musicDir, fullPath);
+        }
+
+        if (!fullPath || !fs.existsSync(fullPath)) {
+            console.warn(`[TelegramBot] File not found for track ${track.id}: ${fullPath}`);
+            return false;
+        }
+
+        try {
+            const extra: any = {
+                title: track.title,
+                performer: track.artist_name || 'Unknown Artist',
+                caption: `🎵 ${track.title} - ${track.artist_name || 'Unknown'}`
+            };
+
+            // Try to find a cover
+            if (track.album_cover && fs.existsSync(track.album_cover)) {
+                extra.thumb = { source: track.album_cover };
+            } else if (track.album_id) {
+                const album = this.database.getAlbum(track.album_id);
+                if (album?.cover_path) {
+                    const fullCoverPath = path.isAbsolute(album.cover_path) ? album.cover_path : path.join(this.musicDir, album.cover_path);
+                    if (fs.existsSync(fullCoverPath)) {
+                        extra.thumb = { source: fullCoverPath };
+                    }
+                }
+            }
+
+            await ctx.replyWithAudio({ source: fullPath }, extra);
+            return true;
+        } catch (err: any) {
+            console.error(`[TelegramBot] Failed to send audio for track ${track.id}:`, err.message);
+            return false;
         }
     }
 
