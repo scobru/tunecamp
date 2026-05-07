@@ -172,4 +172,45 @@ Output ONLY valid JSON in this format:
             return null;
         }
     }
+
+    async parseMetadataFromText(text: string): Promise<{ artist?: string; album?: string; year?: number; genre?: string } | null> {
+        const apiKey = this.getApiKey();
+        if (!apiKey) return null;
+
+        const prompt = `Extract music metadata from the following text. Look for Artist, Album, Year, and Genre.
+        Return ONLY a JSON object with keys "artist", "album", "year" (number), "genre".
+        If a field is missing, omit it. Be precise.
+        Text: "${text}"`;
+
+        try {
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://tunecamp.app",
+                    "X-Title": "TuneCamp"
+                },
+                body: JSON.stringify({
+                    model: this.getModel(),
+                    messages: [
+                        { role: "system", content: "You are a specialized music metadata extractor. Extract data precisely from messy text." },
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) return null;
+
+            const data: any = await response.json();
+            const content = data.choices?.[0]?.message?.content;
+            if (!content) return null;
+
+            return JSON.parse(content);
+        } catch (error) {
+            console.error("[OpenRouter] Error parsing metadata from text:", error);
+            return null;
+        }
+    }
 }

@@ -6,6 +6,7 @@ import axios from 'axios';
 import { ScannerService } from '../scanner.js';
 import { DatabaseService } from '../database.js';
 import type { ServerConfig } from '../config.js';
+import type { OpenRouterService } from './openrouter.service.js';
 
 export class TelegramBotService {
     private bot?: Telegraf;
@@ -17,7 +18,8 @@ export class TelegramBotService {
     constructor(
         private database: DatabaseService,
         private scanner: ScannerService,
-        private config: ServerConfig
+        private config: ServerConfig,
+        private ai?: OpenRouterService
     ) {}
 
     private get musicDir(): string {
@@ -530,13 +532,26 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                 if (titleMatch) metadataHints.title = titleMatch[1].trim();
                 if (genreMatch) metadataHints.genre = genreMatch[1].trim();
 
+                // If no hashtags found, try AI parsing or line-based fallback
                 if (!metadataHints.artist && !metadataHints.album) {
-                    const lines = caption.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#'));
-                    if (lines.length >= 1) metadataHints.artist = lines[0];
-                    if (lines.length >= 2) metadataHints.album = lines[1];
+                    if (this.ai) {
+                        console.log(`[TelegramBot] No hashtags found. Attempting AI parsing for: "${caption.substring(0, 100)}..."`);
+                        const aiMetadata = await this.ai.parseMetadataFromText(caption);
+                        if (aiMetadata) {
+                            console.log(`[TelegramBot] AI successfully parsed metadata:`, aiMetadata);
+                            metadataHints = { ...metadataHints, ...aiMetadata };
+                        }
+                    }
+
+                    // Secondary fallback: simple line-based parsing if AI failed or is unavailable
+                    if (!metadataHints.artist) {
+                        const lines = caption.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#'));
+                        if (lines.length >= 1) metadataHints.artist = lines[0];
+                        if (lines.length >= 2) metadataHints.album = lines[1];
+                    }
                 }
 
-                console.log(`[TelegramBot] Extracted metadata hints from caption:`, metadataHints);
+                console.log(`[TelegramBot] Final metadata hints from caption:`, metadataHints);
             }
 
             if (context?.photoId) {
