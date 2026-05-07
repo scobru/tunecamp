@@ -8,7 +8,7 @@
 
 ## Why This Exists
 
-Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model—GunDB for instance discovery and identity, direct HTTP for content sharing—giving artists ownership of their distribution without sacrificing reach.
+Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model—Zen for instance discovery and identity, direct HTTP for content sharing—giving artists ownership of their distribution without sacrificing reach.
 
 ## Quick Start
 
@@ -40,9 +40,9 @@ docker-compose up -d --build
 - 🔍 **Full-text Search**: Search across artists, albums, and tracks with fuzzy matching.
 
 ### Decentralization & Federation
-- 🔐 **GunDB Identity**: Cryptographic keypairs (SEA) for signing, identity roaming across instances, and decentralized comments/stats.
+- 🔐 **Zen Identity**: Cryptographic keypairs (SEA) for signing, identity roaming across instances, and decentralized comments/stats.
 - 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma). Artists are ActivityPub actors with followers, posts, and release broadcasts.
-- 🌐 **Community Network**: Discover other Tunecamp instances via GunDB signaling, then fetch catalogs directly via HTTP REST for always-fresh content.
+- 🌐 **Community Network**: Discover other Tunecamp instances via Zen signaling, then fetch catalogs directly via HTTP REST for always-fresh content.
 - 🔗 **HTTP Federation**: Instances expose a public `/api/catalog` endpoint, enabling direct instance-to-instance content discovery without intermediary replication.
 
 ### Streaming & Clients
@@ -54,7 +54,7 @@ docker-compose up -d --build
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
 - 🏭 **Factory Contract**: Self-hosters deploy their own NFT + Checkout contract instances via EIP-1167 minimal proxies.
 - 🔑 **Unlock Codes**: Generate and distribute access codes for gated releases.
-- 👛 **Wallet Integration**: Client-side wallet derived from GunDB credentials (no private key leaves the browser).
+- 👛 **Wallet Integration**: Client-side wallet derived from Zen credentials (no private key leaves the browser).
 
 ### Administration
 - 🛡️ **Role-Based Access (RBAC)**: Root Admin, Admin, and Artist/User roles with granular permissions. See [ROLES.md](ROLES.md).
@@ -191,12 +191,12 @@ Tunecamp uses a **hybrid federation model**:
 
 | Layer | Protocol | Purpose |
 |:------|:---------|:--------|
-| **Discovery** | GunDB | Instance URL signaling — announces presence to the network |
-| **Identity** | GunDB SEA | Cryptographic keypairs, wallet derivation, comments, play/like stats |
+| **Discovery** | Zen | Instance URL signaling — announces presence to the network |
+| **Identity** | Zen SEA | Cryptographic keypairs, wallet derivation, comments, play/like stats |
 | **Content** | HTTP REST | Direct catalog fetching between instances (`/api/catalog`) |
 | **Social** | ActivityPub | Artist federation, followers, release broadcasts, posts |
 
-Instances register their URL on GunDB. The Network page then fetches catalogs directly from each discovered instance via HTTP, ensuring content is always fresh and eliminating stale CRDT data. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale.
+Instances register their URL on the Zen network. The Network page then fetches catalogs directly from each discovered instance via HTTP, ensuring content is always fresh and eliminating stale CRDT data. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale.
 
 See the [Federation Guide →](./docs/FEDERATION.md)
 

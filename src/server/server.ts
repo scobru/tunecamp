@@ -659,7 +659,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
             }
 
             // --- Decentralized Mesh: Auto-Follow other instances ---
-            // We wait a bit for GunDB to connect to peers before scanning
+            // We wait a bit for Zen protocol to connect to peers before scanning
             setTimeout(async () => {
                 try {
                     await publishingService.syncCommunityFollows();

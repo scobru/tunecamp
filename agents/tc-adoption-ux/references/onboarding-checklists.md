@@ -6,7 +6,7 @@
 - [ ] **Admin Security**: Change default `tunecamp` password.
 - [ ] **Storage Config**: Configure `musicDir` and verify permissions.
 - [ ] **Federation Check**: 
-    - [ ] GunDB peers connected.
+    - [ ] Zen peers connected.
     - [ ] ActivityPub actors generated and keys valid.
     - [ ] Subsonic API enabled for mobile client testing.
 

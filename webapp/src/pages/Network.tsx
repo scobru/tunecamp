@@ -42,7 +42,7 @@ const getFederationBadge = (federation?: string) => {
     case "local": return { label: "LOCAL", class: "badge-primary" };
     case "activitypub": return { label: "AP", class: "badge-accent" };
     case "http": return { label: "HTTP", class: "badge-info" };
-    case "gundb": return { label: "P2P", class: "badge-secondary" };
+    case "gundb": return { label: "ZEN", class: "badge-secondary" };
     default: return { label: "NET", class: "badge-ghost" };
   }
 };
@@ -329,7 +329,7 @@ export const Network = () => {
           if (t.federation === "activitypub" || t.federation === "local" || t.federation === "http") {
             return !!t.audioUrl || !!t.slug;
           }
-          // Legacy GunDB tracks (if any remain)
+          // Legacy the Zen network tracks (if any remain)
           if (t.track) {
             const url = t.siteUrl;
             return url && url.trim() !== "/" && url.trim() !== "";
@@ -396,7 +396,7 @@ export const Network = () => {
       return;
     }
 
-    // Legacy GunDB tracks (if any remain from old data)
+    // Legacy the Zen network tracks (if any remain from old data)
     if (!networkTrack.track || !networkTrack.siteUrl) return;
     if (currentTrack?.id === networkTrack.track.id) return;
 
@@ -558,7 +558,7 @@ export const Network = () => {
           </div>
         ) : (
           <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-            No remote tracks discovered yet. Other instances will appear once they register via GunDB or ActivityPub.
+            No remote tracks discovered yet. Other instances will appear once they register via the Zen network or ActivityPub.
           </div>
         )}
       </section>

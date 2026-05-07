@@ -61,7 +61,7 @@ export const About = () => {
             </div>
             <h2 className="card-title text-xl">Security & Privacy</h2>
             <p className="opacity-70">
-              Decentralized data with GunDB, secure JWT-based authentication,
+              Decentralized data with Zen protocol, secure JWT-based authentication,
               and "pay-what-you-want" unlock codes.
             </p>
           </div>

@@ -824,7 +824,7 @@ export default function AdminReleaseEditor() {
                         checked={metadata.published_to_gundb !== false}
                         onChange={(e) => setMetadata((prev) => ({ ...prev, published_to_gundb: e.target.checked }))}
                       />
-                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Push to GunDB (P2P)</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Push to Zen (P2P)</span>
                     </label>
                     <label className="flex items-center gap-3 p-2 cursor-pointer hover:bg-base-200 rounded-lg transition-colors">
                       <input

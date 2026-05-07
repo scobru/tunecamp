@@ -14,7 +14,7 @@ TuneCamp utilizza **SQLite** come motore di database relazionale per la gestione
 ### Utenti e Social
 
 - **`admin`**: Tabella per gli amministratori locali del server.
-- **`gun_users`**: Integrazione con GunDB per l'identità decentralizzata.
+- **`gun_users`**: Integrazione con Zen per l'identità decentralizzata.
 - **`followers`**: Relazioni "segui" tra utenti locali e remoti.
 - **`posts`** / **`ap_notes`**: Messaggi e attività nel Fediverso.
 - **`likes`** / **`starred_items`**: Preferenze degli utenti.

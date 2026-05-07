@@ -9,7 +9,7 @@ export interface PurchaseRecord {
 }
 
 /**
- * Hook to load and track the current GunDB user's purchases.
+ * Hook to load and track the current Zen user's purchases.
  * Returns a map of trackId -> PurchaseRecord and helper methods.
  */
 export function usePurchases() {

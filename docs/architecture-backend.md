@@ -7,7 +7,7 @@ Il backend di TuneCamp è un'applicazione Node.js costruita con Express, progett
 - **Framework**: Express.js (TypeScript)
 - **Database**: SQLite3 (`better-sqlite3`)
 - **Protocollo Sociale**: ActivityPub (tramite Fedify)
-- **Rete P2P**: Zen.js (integrazione IPFS/GunDB)
+- **Rete P2P**: Zen.js (integrazione P2P)
 - **Multimedia**: FFmpeg per transcodifica e metadati
 
 ## Componenti Principali

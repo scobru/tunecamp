@@ -18,6 +18,7 @@ if (ffmpegPath) {
 import type { AuthService } from "../auth.js";
 import type { PublishingService } from "../publishing.js";
 import { metadataService } from "../metadata.js";
+import { VisibilityGuardian, Capability } from "../common/visibility.js";
 
 export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, libraryService: LibraryService, musicDir: string, authService?: AuthService): Router {
     const router = Router();

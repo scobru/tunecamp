@@ -77,7 +77,7 @@ The frontend will proxy API requests to the backend (default port `1970`).
 
 ## Project Structure
 
-- `src/server/`: Backend logic (ActivityPub, GunDB, Subsonic API, Database).
+- `src/server/`: Backend logic (ActivityPub, Zen protocol, Subsonic API, Database).
 - `webapp/`: Frontend React application.
 - `docs/`: Supplemental architecture and API documentation.
 - `contracts/`: Web3 smart contracts (Solidity).

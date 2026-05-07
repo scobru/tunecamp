@@ -359,6 +359,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       deleted_at TEXT
     );
 
+    // Zen (P2P) users cache (SEA identities)
     CREATE TABLE IF NOT EXISTS gun_users (
       pub TEXT PRIMARY KEY,
       epub TEXT,

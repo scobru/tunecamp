@@ -215,7 +215,7 @@ export const Admin = () => {
                     <RefreshCw /> Cleanup
                   </h2>
                   <p className="opacity-70 text-sm">
-                    Check reachability of all registered sites on GunDB and
+                    Check reachability of all registered sites on Zen network and
                     remove dead entries.
                   </p>
                   <div className="card-actions justify-end mt-4">

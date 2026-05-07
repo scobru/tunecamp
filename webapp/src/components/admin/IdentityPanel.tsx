@@ -237,16 +237,16 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_epriv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["zen_epriv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
                       >
                         {identity.epriv}
                       </div>
                       <button
                         className="absolute top-2 right-2 btn btn-xs btn-circle btn-ghost hover:bg-base-300"
-                        onClick={() => togglePrivateKey("gundb_epriv")}
+                        onClick={() => togglePrivateKey("zen_epriv")}
                         type="button"
                       >
-                        {showPrivateKeys["gundb_epriv"] ? (
+                        {showPrivateKeys["zen_epriv"] ? (
                           <EyeOff size={14} />
                         ) : (
                           <Eye size={14} />
@@ -510,4 +510,6 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
     </div>
   );
 };
+
+
 

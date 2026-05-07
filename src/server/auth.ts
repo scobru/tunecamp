@@ -60,7 +60,7 @@ export interface AuthService {
     isFirstRun(): boolean;
     /** Returns true if the username belongs to the root admin (id=1, first created). */
     isRootAdmin(username: string): boolean;
-    /** Returns the GunDB pair for a user if they have one. */
+    /** Returns the Zen pair for a user if they have one. */
     getUserPair(username: string): any | null;
     /** Updates or sets the ZEN pair for a user. */
     updateZenPair(username: string, pair: any): void;

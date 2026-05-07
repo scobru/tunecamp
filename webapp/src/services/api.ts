@@ -161,7 +161,7 @@ export const API = {
     getLyrics: (trackId: string) => handleResponse(api.get<{ lyrics: string | { text: string }[] }>(`/tracks/${trackId}/lyrics`)),
     recordPlay: (trackId: string | number) => {
         // Only record play for database tracks (numeric IDs)
-        // prevents 404 for raw files in browser section or external GunDB tracks (UUIDs)
+        // prevents 404 for raw files in browser section or external Zen tracks (UUIDs)
         if (typeof trackId === 'string' && !/^\d+$/.test(trackId)) {
             return Promise.resolve({ success: false, ignored: true });
         }

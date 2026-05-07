@@ -20,7 +20,7 @@ export function createUsersRoutes(
 
     /**
      * POST /api/users/register
-     * Full registration: GunDB user + DB user + Artist profile + AP actor
+     * Full registration: Zen user + DB user + Artist profile + AP actor
      */
     router.post("/register", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
         try {
@@ -147,7 +147,7 @@ export function createUsersRoutes(
 
     /**
      * POST /api/users/sync
-     * Sync GunDB user data (pub, epub, alias, avatar) to local SQLite
+     * Sync Zen user data (pub, epub, alias, avatar) to local SQLite
      */
     router.post("/sync", async (req, res) => {
         try {

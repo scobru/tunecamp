@@ -24,7 +24,7 @@ async function deriveZenWallet(priv: string, account = 0): Promise<string> {
 }
 
 /**
- * Derives an Ethereum wallet from the user's GunDB ZEN pair.
+ * Derives an Ethereum wallet from the user's Zen ZEN pair.
  *
  * @param pair The full ZEN pair (must have `priv` field).
  * @param account Optional account index for multiple wallets (default: 0).

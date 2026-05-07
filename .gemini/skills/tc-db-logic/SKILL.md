@@ -28,7 +28,7 @@ You are a specialized agent for the **Database Logic** and **Persistence Layer**
 
 - `src/server/database.ts`: Database initialization and core connection.
 - `src/server/database.types.ts`: TypeScript definitions for database entities.
-- `src/server/zendb.ts`: Integration between SQLite and the Zen/GunDB layer.
+- `src/server/zendb.ts`: Integration between SQLite and the Zen layer.
 - `src/server/repositories/`:
     *   `artist.repository.ts`, `album.repository.ts`, `track.repository.ts` (Catalog).
     *   `social.repository.ts` (Likes, Comments, Follows).

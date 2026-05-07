@@ -1,18 +1,18 @@
 # Federation & Decentralization in Tunecamp
 
-Tunecamp leverages two primary technologies to enable a decentralized music ecosystem: **ActivityPub** for social federation and **GunDB** for decentralized data storage and discovery. It also provides full **Subsonic API** compatibility for mobile and desktop clients.
+Tunecamp leverages two primary technologies to enable a decentralized music ecosystem: **ActivityPub** for social federation and **Zen** for decentralized data storage and discovery. It also provides full **Subsonic API** compatibility for mobile and desktop clients.
 
-## GunDB: Decentralized Social & Discovery
+## Zen Protocol: Decentralized Social & Discovery
 
-GunDB is used for features that require real-time, decentralized synchronization without a central authority.
+The Zen protocol (built on the Zen decentralized graph) is used for features that require real-time, decentralized synchronization without a central authority.
 
 ### Key Roles
 
 - **Community Registry**: Servers can register themselves in a global decentralized directory.
-- **Music Discovery**: The "Network" page scans GunDB peers to discover other Tunecamp instances and their public tracks.
-- **Social Features**: Comments, track play/download stats, and user playlists are stored in GunDB.
+- **Music Discovery**: The "Network" page scans Zen peers to discover other Tunecamp instances and their public tracks.
+- **Social Features**: Comments, track play/download stats, and user playlists are stored in Zen.
 - **Identity (SEA)**: Each server and user has a cryptographic keypair (SEA) for signing data, verifying social interactions, and authenticating across instances.
-- **Cross-Instance Roaming**: Users can log in to any sibling instance using their GunDB identity. The instance verifies their cryptographic proof and lazily creates a local profile.
+- **Cross-Instance Roaming**: Users can log in to any sibling instance using their Zen identity. The instance verifies their cryptographic proof and lazily creates a local profile.
 
 ### Secure Graph Strategy
 
@@ -24,15 +24,15 @@ Tunecamp uses a "Secure Graph" approach:
 
 ### Decentralized Identity & Auth Flow
 
-Tunecamp implements a **GunDB-first authentication** flow:
+Tunecamp implements a **Zen-first authentication** flow:
 
-1.  **Registration**: A GunDB SEA keypair is generated on the client. The backend verifies the cryptographic signature of the username before creating the local account, linking the public key.
-2.  **Login**: The client authenticates against GunDB peers first. It then generates a proof-of-possession (signature) sent to the backend.
-3.  **Roaming**: If a user hits a new Tunecamp instance where they don't have an account, they provide their GunDB proof. The backend verifies this against the peer network and lazily creates a local SQLite entry and Artist profile, allowing "session roaming."
+1.  **Registration**: A Zen SEA keypair is generated on the client. The backend verifies the cryptographic signature of the username before creating the local account, linking the public key.
+2.  **Login**: The client authenticates against Zen peers first. It then generates a proof-of-possession (signature) sent to the backend.
+3.  **Roaming**: If a user hits a new Tunecamp instance where they don't have an account, they provide their Zen proof. The backend verifies this against the peer network and lazily creates a local SQLite entry and Artist profile, allowing "session roaming."
 
 ### Configuration
 
-Set GunDB relay peers using:
+Set Zen relay peers using:
 
 - `TUNECAMP_GUN_PEERS` (Backend)
 - `VITE_GUN_PEERS` (Frontend)
@@ -89,9 +89,9 @@ Tunecamp exposes a full **Subsonic REST API** at `/rest` (API version 1.16.1), e
 | Hex-encoded | `p=enc:hex`                   | Password hex-encoded    |
 | Token+Salt  | `t=md5(password+salt)&s=salt` | Secure token-based auth |
 
-### Scrobbling & GunDB
+### Scrobbling & Zen
 
-When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the play in the local database **and** increments the play count in GunDB for public/unlisted releases, enabling decentralized play statistics.
+When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the play in the local database **and** increments the play count in Zen for public/unlisted releases, enabling decentralized play statistics.
 
 ---
 
@@ -103,6 +103,7 @@ When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the
 | Likes / Favorites    | ActivityPub  | External (Mastodon, etc)  |
 | Release Notification | ActivityPub  | External (Mastodon, etc)  |
 | Funkwhale Federation | ActivityPub  | External (Funkwhale)      |
-| User Identity / Roaming | GunDB        | Internal (Tunecamp Nodes) |
+| User Identity / Roaming | Zen        | Internal (Tunecamp Nodes) |
 | Mobile Streaming     | Subsonic API | External (Any client)     |
 | Starred / Favorites  | Subsonic API | Local (per user)          |
+ Favorites  | Subsonic API | Local (per user)          |

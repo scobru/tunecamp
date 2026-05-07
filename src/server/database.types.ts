@@ -570,7 +570,7 @@ export interface DatabaseService {
     deleteBookmark(username: string, trackId: string): void;
     getBookmark(username: string, trackId: string): any | undefined;
 
-    // GunDB Cache
+    // Zen Cache
     getGunCache(key: string): GunCacheEntry | undefined;
     setGunCache(key: string, value: string, type: string, ttlSeconds: number): void;
     clearExpiredGunCache(): void;
