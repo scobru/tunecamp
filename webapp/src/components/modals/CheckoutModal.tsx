@@ -476,7 +476,7 @@ export const CheckoutModal = () => {
                   className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
                   onClick={() => setPaymentType('fiat')}
                 >
-                  Card / PayPal
+                  Card
                 </button>
               </div>
 
@@ -607,19 +607,17 @@ export const CheckoutModal = () => {
               </>
               ) : (
                 <div className="w-full space-y-3 mt-6">
+                  {error && (
+                    <p className="text-error text-sm mb-4 bg-error/10 p-3 rounded-xl border border-error/20 w-full text-left">
+                      {error}
+                    </p>
+                  )}
                   <button
                     className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20"
                     onClick={handleStripeCheckout}
                     disabled={isProcessing}
                   >
                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : "💳 Pay with Credit Card"}
-                  </button>
-                  <button
-                    className="btn btn-outline btn-block rounded-xl h-14 gap-3 border-[#0070ba] text-[#0070ba] hover:bg-[#0070ba] hover:text-white"
-                    onClick={handlePayPalCheckout}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? <Loader2 className="animate-spin" size={20} /> : "🅿️ Pay with PayPal"}
                   </button>
                   
                   <button

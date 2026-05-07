@@ -334,6 +334,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       release_id INTEGER REFERENCES albums(id),
+      track_id INTEGER REFERENCES tracks(id),
       is_used INTEGER DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       redeemed_at TEXT
@@ -1717,10 +1718,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             return { totalPlays, totalListeningTime: Math.round(time.total), uniqueTracks: unique, playsToday: stats.playsToday, playsThisWeek: stats.playsThisWeek, playsThisMonth: stats.playsThisMonth };
         },
         // Unlock Codes
-        createUnlockCode(code: string, releaseId?: number): void { db.prepare("INSERT INTO unlock_codes (code, release_id) VALUES (?, ?)").run(code, releaseId || null); },
-        validateUnlockCode(code: string): { valid: boolean; releaseId?: number; isUsed: boolean } {
+        createUnlockCode(code: string, releaseId?: number, trackId?: number): void { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id) VALUES (?, ?, ?)").run(code, releaseId || null, trackId || null); },
+        validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean } {
             const row = db.prepare("SELECT * FROM unlock_codes WHERE code = ?").get(code) as any;
-            return row ? { valid: true, releaseId: row.release_id, isUsed: !!row.is_used } : { valid: false, isUsed: false };
+            return row ? { valid: true, releaseId: row.release_id, trackId: row.track_id, isUsed: !!row.is_used } : { valid: false, isUsed: false };
         },
         redeemUnlockCode(code: string): void { db.prepare("UPDATE unlock_codes SET is_used = 1, redeemed_at = CURRENT_TIMESTAMP WHERE code = ?").run(code); },
         listUnlockCodes(releaseId?: number): any[] { return releaseId ? db.prepare("SELECT * FROM unlock_codes WHERE release_id = ? ORDER BY created_at DESC").all(releaseId) : db.prepare("SELECT * FROM unlock_codes ORDER BY created_at DESC").all(); },
@@ -1835,6 +1836,21 @@ export function createDatabase(dbPath: string): DatabaseService {
                     WHERE id NOT IN (SELECT DISTINCT artist_id FROM albums WHERE artist_id IS NOT NULL)
                       AND id NOT IN (SELECT DISTINCT artist_id FROM releases WHERE artist_id IS NOT NULL)
                       AND id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)
+                `).run();
+                
+                if (deletedAlbums.changes > 0 || deletedReleases.changes > 0 || deletedArtists.changes > 0) {
+                    console.log(`🧹 [Database] Consolidated: deleted ${deletedAlbums.changes} empty albums, ${deletedReleases.changes} releases, and ${deletedArtists.changes} artists.`);
+                }
+            })();
+        }
+    };
+
+    // Run consolidation on startup
+    service.consolidateDatabase();
+
+    return service;
+}
+ERE artist_id IS NOT NULL)
                 `).run();
                 
                 if (deletedAlbums.changes > 0 || deletedReleases.changes > 0 || deletedArtists.changes > 0) {

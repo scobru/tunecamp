@@ -66,16 +66,18 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 // Generate unlock code
                 const code = Math.random().toString(36).substring(2, 12).toUpperCase();
                 let releaseId: number | undefined;
+                let trackId: number | undefined;
                 
                 if (itemType === 'track') {
                     const track = database.getTrack(itemId);
                     releaseId = track?.album_id || undefined;
+                    trackId = itemId;
                 } else {
                     releaseId = itemId;
                 }
                 
-                if (releaseId) {
-                    database.createUnlockCode(code, releaseId);
+                if (releaseId || trackId) {
+                    database.createUnlockCode(code, releaseId, trackId);
                     console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
                     // Note: In a production app, we would also email this code to session.customer_details.email
                 }
@@ -90,18 +92,17 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
 
     /**
      * POST /api/payments/onramp-session
-     * Create a Coinbase Onramp session using CDP API.
+     * Create a Stripe Crypto Onramp session.
      */
     router.post("/onramp-session", async (req, res) => {
         try {
-            const { address, asset, amount } = req.body;
+            const { address } = req.body;
 
-            const keyName = config.coinbaseCdpApiKeyName || database.getSetting("coinbase_cdp_api_key_name");
-            const keySecret = config.coinbaseCdpApiKeySecret || database.getSetting("coinbase_cdp_api_key_secret");
+            const sKey = database.getSetting("stripe_onramp_secret_key") || config.stripeOnrampSecretKey;
 
-            if (!keyName || !keySecret) {
+            if (!sKey) {
                 return res.status(501).json({ 
-                    error: "Coinbase CDP is not configured on this server.",
+                    error: "Stripe Onramp is not configured on this server.",
                     configured: false 
                 });
             }
@@ -110,58 +111,29 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(400).json({ error: "Destination address is required" });
             }
 
-            const requestMethod = "POST";
-            const requestHost = "api.cdp.coinbase.com";
-            const requestPath = "/platform/v2/onramp/sessions";
-
-            const payload = {
-                iss: "coinbase-cloud",
-                nbf: Math.floor(Date.now() / 1000),
-                exp: Math.floor(Date.now() / 1000) + 120,
-                sub: keyName,
-                uri: `${requestMethod} ${requestHost} ${requestPath}`,
-            };
-
-            const token = jwt.sign(payload, keySecret, {
-                algorithm: "ES256",
-                header: {
-                    kid: keyName,
-                    nonce: crypto.randomBytes(16).toString("hex"),
+            const stripe = new Stripe(sKey);
+            
+            // Create a Crypto Onramp Session
+            // Note: Stripe requires specific parameters for onramp sessions
+            const onrampSession = await (stripe as any).crypto.onrampSessions.create({
+                transaction_details: {
+                    destination_currencies: ["usdc"],
+                    destination_networks: ["base"],
+                    wallet_addresses: {
+                        base: address
+                    }
                 },
-            } as any);
-
-            const body: any = {
-                destinationAddress: address,
-                destinationNetwork: "base",
-                purchaseCurrency: asset || "ETH",
-            };
-
-            if (amount) {
-                body.paymentAmount = amount;
-                body.paymentCurrency = "USD";
-            }
-
-            const response = await fetch(`https://${requestHost}${requestPath}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`,
-                },
-                body: JSON.stringify(body),
+                customer_ip_address: req.ip || "0.0.0.0"
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("Coinbase Onramp API error:", errorData);
-                return res.status(response.status).json({ error: "Failed to create Coinbase Onramp session", details: errorData });
-            }
+            res.json({ 
+                client_secret: onrampSession.client_secret,
+                id: onrampSession.id
+            });
 
-            const data = await response.json();
-            res.json(data);
-
-        } catch (error) {
-            console.error("Onramp session error:", error);
-            res.status(500).json({ error: "Internal server error" });
+        } catch (error: any) {
+            console.error("Stripe Onramp session error:", error);
+            res.status(500).json({ error: error.message || "Failed to create Stripe Onramp session" });
         }
     });
 
@@ -170,10 +142,14 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
      * Check if Onramp is configured and which provider to use.
      */
     router.get("/onramp-config", (req, res) => {
+        const hasStripe = !!(database.getSetting("stripe_onramp_secret_key") || config.stripeOnrampSecretKey);
+        const hasMoonpay = !!(database.getSetting("moonpay_api_key") || config.moonpayApiKey);
+        
         res.json({
-            configured: !!((config.coinbaseCdpApiKeyName && config.coinbaseCdpApiKeySecret) || database.getSetting("coinbase_cdp_api_key_name")),
-            provider: database.getSetting("onramp_provider") || "coinbase",
-            moonpayApiKey: database.getSetting("moonpay_api_key")
+            configured: hasStripe || hasMoonpay,
+            provider: database.getSetting("onramp_provider") || (hasStripe ? "stripe" : (hasMoonpay ? "moonpay" : "none")),
+            moonpayApiKey: database.getSetting("moonpay_api_key") || config.moonpayApiKey,
+            stripePublishableKey: database.getSetting("stripe_publishable_key") || process.env.STRIPE_PUBLISHABLE_KEY
         });
     });
 
@@ -183,13 +159,15 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
     router.post("/stripe/create-session", async (req, res) => {
         try {
             const { itemId, type, successUrl, cancelUrl, email } = req.body;
+            console.log(`[Stripe] Creating session for ${type} ${itemId}`);
+
             if (!itemId || !type || !successUrl || !cancelUrl) {
-                return res.status(400).json({ error: "Missing required fields" });
+                return res.status(400).json({ error: "Missing required fields: itemId, type, successUrl, and cancelUrl are required." });
             }
 
             const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
             if (!sKey) {
-                return res.status(501).json({ error: "Stripe not configured" });
+                return res.status(501).json({ error: "Stripe not configured on this server." });
             }
 
             const stripe = new Stripe(sKey);
@@ -198,7 +176,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             let amount = 0;
             if (type === 'track') {
                 const track = database.getTrack(parseInt(itemId, 10));
-                if (!track) return res.status(404).json({ error: "Track not found" });
+                if (!track) return res.status(404).json({ error: `Track ${itemId} not found` });
                 name = track.title;
                 amount = track.price || 0;
                 if (track.currency === 'ETH') {
@@ -207,7 +185,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 }
             } else {
                 const album = database.getAlbum(parseInt(itemId, 10));
-                if (!album) return res.status(404).json({ error: "Album not found" });
+                if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
                 amount = album.price || 0;
                 if (album.currency === 'ETH') {
@@ -216,8 +194,12 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 }
             }
 
+            console.log(`[Stripe] Item: ${name}, Base Price: ${amount}`);
+
             if (amount <= 0) {
-                return res.status(400).json({ error: "Item price must be greater than zero for card payments" });
+                // If price is 0, Stripe won't allow a checkout session.
+                // We should handle this as a free download or error out.
+                return res.status(400).json({ error: "Item price must be greater than zero for card payments. This item might be free or price is not set." });
             }
 
             const session = await stripe.checkout.sessions.create({
@@ -246,134 +228,6 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
         } catch (error: any) {
             console.error("Stripe session error:", error);
             res.status(500).json({ error: error.message });
-        }
-    });
-
-    /**
-     * POST /api/payments/paypal/create-order
-     */
-    router.post("/paypal/create-order", async (req, res) => {
-        try {
-            const { itemId, type } = req.body;
-            const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
-            const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
-            const ppEnv = database.getSetting("paypal_environment") || config.paypalEnvironment;
-
-            if (!ppId || !ppSecret) {
-                return res.status(501).json({ error: "PayPal not configured" });
-            }
-
-            const client = new Client({
-                clientCredentialsAuthCredentials: {
-                    oAuthClientId: ppId,
-                    oAuthClientSecret: ppSecret
-                },
-                environment: ppEnv === 'production' ? Environment.Production : Environment.Sandbox,
-                logging: { logLevel: LogLevel.Info }
-            });
-
-            const ordersController = new OrdersController(client);
-            
-            let name = "";
-            let amount = 0;
-            if (type === 'track') {
-                const track = database.getTrack(parseInt(itemId, 10));
-                if (!track) return res.status(404).json({ error: "Track not found" });
-                name = track.title;
-                amount = track.price || 0;
-                if (track.currency === 'ETH') {
-                    const rate = await getEthUsdRate();
-                    amount = amount * rate;
-                }
-            } else {
-                const album = database.getAlbum(parseInt(itemId, 10));
-                if (!album) return res.status(404).json({ error: "Album not found" });
-                name = album.title;
-                amount = album.price || 0;
-                if (album.currency === 'ETH') {
-                    const rate = await getEthUsdRate();
-                    amount = amount * rate;
-                }
-            }
-
-            if (amount <= 0) {
-                return res.status(400).json({ error: "Item price must be greater than zero for PayPal" });
-            }
-
-            const response = await ordersController.createOrder({
-                body: {
-                    intent: CheckoutPaymentIntent.Capture,
-                    purchaseUnits: [{
-                        amount: {
-                            currencyCode: 'USD',
-                            value: amount.toFixed(2)
-                        },
-                        description: name,
-                        referenceId: `${type}_${itemId}_${Date.now()}`
-                    }]
-                }
-            });
-
-            res.json({ id: response.result.id });
-        } catch (error: any) {
-            console.error("PayPal order error:", error);
-            res.status(500).json({ error: error.message || "PayPal initialization failed" });
-        }
-    });
-
-    /**
-     * POST /api/payments/paypal/capture-order
-     */
-    router.post("/paypal/capture-order", async (req, res) => {
-        try {
-            const { orderId, itemId, type } = req.body;
-            if (!orderId || !itemId || !type) {
-                return res.status(400).json({ error: "Missing required fields" });
-            }
-
-            const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
-            const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
-            const ppEnv = database.getSetting("paypal_environment") || config.paypalEnvironment;
-
-            if (!ppId || !ppSecret) {
-                return res.status(501).json({ error: "PayPal not configured" });
-            }
-
-            const client = new Client({
-                clientCredentialsAuthCredentials: {
-                    oAuthClientId: ppId,
-                    oAuthClientSecret: ppSecret
-                },
-                environment: ppEnv === 'production' ? Environment.Production : Environment.Sandbox
-            });
-
-            const ordersController = new OrdersController(client);
-            const response = await ordersController.captureOrder({ id: orderId });
-
-            if (response.result.status === 'COMPLETED') {
-                // Generate unlock code
-                const code = Math.random().toString(36).substring(2, 12).toUpperCase();
-                let releaseId: number | undefined;
-                
-                if (type === 'track') {
-                    const track = database.getTrack(parseInt(itemId, 10));
-                    releaseId = track?.album_id || undefined;
-                } else {
-                    releaseId = parseInt(itemId, 10);
-                }
-                
-                if (releaseId) {
-                    database.createUnlockCode(code, releaseId);
-                    console.log(`✅ PayPal Payment Success: Generated code ${code} for ${type} ${itemId}`);
-                }
-
-                return res.json({ success: true, code });
-            }
-
-            res.status(400).json({ error: "Payment not completed", status: response.result.status });
-        } catch (error: any) {
-            console.error("PayPal capture error:", error);
-            res.status(500).json({ error: error.message || "PayPal capture failed" });
         }
     });
 
@@ -547,9 +401,11 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
 
             // 4. Success: Generate unlock code
             const code = Math.random().toString(36).substring(2, 12).toUpperCase();
-            if (track.album_id) {
-                database.createUnlockCode(code, track.album_id);
-            }
+            const tid = parseInt(trackId, 10);
+            const albumId = track.album_id;
+            
+            // Check if this was an album purchase or track purchase
+            database.createUnlockCode(code, albumId || undefined, tid);
 
             console.log(`✅ Verified ${verificationResult.method} payment for track ${trackId}. Code: ${code}`);
 
@@ -613,9 +469,12 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(404).json({ error: "Track not found" });
             }
 
-            // Verify code is for the correct album
-            if (validation.releaseId && track.album_id && validation.releaseId !== track.album_id) {
-                return res.status(403).json({ error: "Unlock code is for a different release" });
+            // Verify code is for the correct album or track
+            const matchesTrack = validation.trackId === trackId;
+            const matchesAlbum = validation.releaseId && track.album_id && validation.releaseId === track.album_id;
+
+            if (!matchesTrack && !matchesAlbum) {
+                return res.status(403).json({ error: "Unlock code is not valid for this track or its album" });
             }
 
             if (!track.file_path) {

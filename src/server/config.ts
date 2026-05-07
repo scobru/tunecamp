@@ -16,8 +16,8 @@ export interface ServerConfig {
     adminUser?: string;
     adminPass?: string;
     downloadDir?: string;
-    coinbaseCdpApiKeyName?: string;
-    coinbaseCdpApiKeySecret?: string;
+    stripeOnrampSecretKey?: string;
+    moonpayApiKey?: string;
     telegramBotToken?: string;
     telegramMasterId?: string;
     openrouterApiKey?: string;
@@ -85,8 +85,8 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         adminUser: process.env.TUNECAMP_ADMIN_USER || overrides?.adminUser || "admin",
         adminPass: process.env.TUNECAMP_ADMIN_PASS || overrides?.adminPass || "admin",
         downloadDir: process.env.TUNECAMP_DOWNLOAD_DIR || overrides?.downloadDir || defaultDownloadDir,
-        coinbaseCdpApiKeyName: process.env.COINBASE_CDP_API_KEY_NAME || overrides?.coinbaseCdpApiKeyName,
-        coinbaseCdpApiKeySecret: process.env.COINBASE_CDP_API_KEY_SECRET?.replace(/\\n/g, '\n') || overrides?.coinbaseCdpApiKeySecret,
+        stripeOnrampSecretKey: process.env.STRIPE_ONRAMP_SECRET_KEY || process.env.STRIPE_SECRET_KEY || overrides?.stripeOnrampSecretKey,
+        moonpayApiKey: process.env.MOONPAY_API_KEY || overrides?.moonpayApiKey,
         telegramBotToken: process.env.TUNECAMP_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || overrides?.telegramBotToken,
         telegramMasterId: process.env.TUNECAMP_TELEGRAM_MASTER_ID || process.env.TELEGRAM_MASTER_ID || overrides?.telegramMasterId,
         openrouterApiKey: process.env.OPENROUTER_API_KEY || overrides?.openrouterApiKey,

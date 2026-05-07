@@ -509,8 +509,8 @@ export interface DatabaseService {
     getAllSettings(): { [key: string]: string };
 
     // Unlock Codes
-    createUnlockCode(code: string, releaseId?: number): void;
-    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; isUsed: boolean };
+    createUnlockCode(code: string, releaseId?: number, trackId?: number): void;
+    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean };
     redeemUnlockCode(code: string): void;
     listUnlockCodes(releaseId?: number): any[];
 

@@ -41,6 +41,16 @@ services:
       # OpenRouter AI Integration
       - OPENROUTER_API_KEY=
       - OPENROUTER_MODEL=openai/gpt-4o-mini
+      # Payments: Stripe
+      - STRIPE_SECRET_KEY=
+      - STRIPE_WEBHOOK_SECRET=
+      - STRIPE_ONRAMP_SECRET_KEY=
+      # Payments: PayPal
+      - PAYPAL_CLIENT_ID=
+      - PAYPAL_CLIENT_SECRET=
+      - PAYPAL_ENVIRONMENT=sandbox
+      # Payments: MoonPay
+      - MOONPAY_API_KEY=
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 
