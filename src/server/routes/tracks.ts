@@ -18,7 +18,7 @@ if (ffmpegPath) {
 import type { AuthService } from "../auth.js";
 import type { PublishingService } from "../publishing.js";
 import { metadataService } from "../metadata.js";
-import { VisibilityGuardian, Capability } from "../common/visibility.js";
+import { VisibilityGuardian, Capability, UserRole } from "../common/visibility.js";
 
 export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, libraryService: LibraryService, musicDir: string, authService?: AuthService): Router {
     const router = Router();
@@ -180,7 +180,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const track = database.getTrack(id);
         if (!track) throw new NotFoundError("Track not found");
 
-        const canSeePrivate = VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
         if (!canSeePrivate && track.album_id) {
             const album = database.getAlbum(track.album_id);
             if (album && album.visibility === 'private' && track.owner_id !== req.userId) {
@@ -415,7 +415,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!track) throw new NotFoundError("Track not found");
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-        const canSeePrivate = VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
         if (!canSeePrivate && !isOwner) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
@@ -490,7 +490,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!track) throw new NotFoundError("Track not found");
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-        const canSeePrivate = VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
         if (!canSeePrivate && !isOwner) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
