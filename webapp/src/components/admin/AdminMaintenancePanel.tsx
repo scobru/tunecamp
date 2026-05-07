@@ -106,6 +106,29 @@ export const AdminMaintenancePanel = () => {
                         {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
                         Scan
                     </button>
+
+                    <div className="divider divider-horizontal mx-0"></div>
+
+                    <button 
+                        className="btn btn-sm btn-outline btn-error"
+                        onClick={async () => {
+                            if (!confirm("Are you sure you want to deep clean the database? This will permanently remove artists and albums with 0 tracks.")) return;
+                            setIsProcessing(true);
+                            try {
+                                const res = await API.consolidateDatabase();
+                                alert(res.message);
+                                loadTracks();
+                            } catch (e: any) {
+                                alert("Consolidation failed: " + e.message);
+                            } finally {
+                                setIsProcessing(false);
+                            }
+                        }}
+                        disabled={isProcessing}
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
+                        Consolidate DB
+                    </button>
                 </div>
             </div>
 
