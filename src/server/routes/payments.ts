@@ -301,7 +301,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(400).json({ error: "Price must be greater than zero" });
             }
 
-            const { body } = await ordersController.ordersCreate({
+            const { result } = await ordersController.createOrder({
                 body: {
                     intent: CheckoutPaymentIntent.Capture,
                     purchaseUnits: [
@@ -317,7 +317,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 },
             });
 
-            res.json(JSON.parse(body as string));
+            res.json(result);
         } catch (error) {
             console.error("PayPal Order Error:", error);
             res.status(500).json({ error: "Failed to create PayPal order" });
@@ -347,15 +347,13 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             });
 
             const ordersController = new OrdersController(paypalClient);
-            const { body } = await ordersController.ordersCapture({
+            const { result } = await ordersController.captureOrder({
                 id: orderId,
             });
 
-            const captureData = JSON.parse(body as string);
-
-            if (captureData.status === "COMPLETED") {
-                const purchaseUnit = captureData.purchase_units[0];
-                const metadata = JSON.parse(purchaseUnit.custom_id);
+            if (result.status === "COMPLETED") {
+                const purchaseUnit = result.purchaseUnits![0];
+                const metadata = JSON.parse(purchaseUnit.customId!);
                 const { itemId, type } = metadata;
 
                 const code = Math.random().toString(36).substring(2, 12).toUpperCase();
