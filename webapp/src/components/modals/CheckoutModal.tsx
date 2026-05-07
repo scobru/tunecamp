@@ -45,16 +45,13 @@ export const CheckoutModal = () => {
   const [paymentMethod, setPaymentMethod] = useState<"ETH" | "USDC">("ETH");
   const [stableBalance, setStableBalance] = useState<string>("0");
   const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("crypto");
-  const [isPaypalLoading, setIsPaypalLoading] = useState(false);
 
   const {
     wallet,
     balanceEth,
-    isWalletReady,
     externalWallet,
     externalAddress,
     externalBalanceEth,
-    isExternalConnected,
     useExternalWallet,
   } = useWalletStore();
 
@@ -188,14 +185,10 @@ export const CheckoutModal = () => {
     }
   };
 
-  const handlePurchase = async () => {
-    const activeSigner = useExternalWallet ? externalWallet! : wallet!;
-    if (!activeSigner) {
-      setError("Active wallet not ready.");
-      return;
-    }
-    if (!track) return;
     
+  const handleCryptoCheckout = async () => {
+    if (!activeSigner || !track) return;
+
     setIsProcessing(true);
     setError(null);
 
@@ -404,7 +397,6 @@ export const CheckoutModal = () => {
     ? parseFloat(activeBalance || "0") >= parseFloat(displayPriceEth)
     : parseFloat(stableBalance || "0") >= currentStablePrice;
     
-  const isReady = useExternalWallet ? isExternalConnected : isWalletReady;
   const activeWalletLabel = useExternalWallet ? "MetaMask" : "Local Wallet";
   const activeSigner = useExternalWallet ? externalWallet : wallet;
 
@@ -589,7 +581,30 @@ export const CheckoutModal = () => {
                 </p>
               )}
 
-                </div>
+              <button
+                className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20 mt-4"
+                onClick={handleCryptoCheckout}
+                disabled={isProcessing || !hasEnoughBalance}
+              >
+                {isProcessing ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <>
+                    <Wallet size={20} />
+                    {hasEnoughBalance ? "Unlock Track" : "Insufficient Balance"}
+                  </>
+                )}
+              </button>
+
+              <button
+                className="btn btn-ghost btn-block rounded-xl mt-2"
+                onClick={handleClose}
+                disabled={isProcessing}
+              >
+                Cancel
+              </button>
+
+              </>
               ) : (
                 <div className="w-full space-y-3 mt-6">
                   <button
