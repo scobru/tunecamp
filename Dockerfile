@@ -19,6 +19,7 @@ ARG TELEGRAM_BOT_TOKEN
 ARG TELEGRAM_MASTER_ID
 ARG OPENROUTER_API_KEY
 ARG OPENROUTER_MODEL
+ARG MOONPAY_API_KEY
 
 
 # CapRover passes this on deploy; using it invalidates cache per commit
