@@ -283,6 +283,12 @@ export function createAdminRoutes(
             if (soulseek_password !== undefined) {
                 database.setSetting("soulseek_password", soulseek_password);
             }
+            if (onramp_provider !== undefined) {
+                database.setSetting("onramp_provider", onramp_provider);
+            }
+            if (moonpay_api_key !== undefined) {
+                database.setSetting("moonpay_api_key", moonpay_api_key);
+            }
 
             // Restart telegram bot if settings changed
             if (telegram_bot_token !== undefined || telegram_allowed_channels !== undefined) {
