@@ -54,7 +54,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
         }
 
         if (event.type === 'checkout.session.completed') {
-            const session = event.data.object as Stripe.Checkout.Session;
+            const session = event.data.object as any;
             const metadata = session.metadata;
             if (metadata && metadata.itemId && metadata.type) {
                 const itemId = parseInt(metadata.itemId, 10);
