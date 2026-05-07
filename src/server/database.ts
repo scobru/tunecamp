@@ -980,7 +980,7 @@ export function createDatabase(dbPath: string): DatabaseService {
     // Optimized: Performance Test Requirement: Explicit index creation call (MUST be after table creation)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC)`);
 
-    return {
+    const service: DatabaseService = {
         db,
         getReleaseTrackIds(releaseId: number): number[] {
             const rows = db.prepare("SELECT track_id FROM release_tracks WHERE release_id = ?").all(releaseId) as { track_id: number }[];
@@ -1795,6 +1795,28 @@ export function createDatabase(dbPath: string): DatabaseService {
         getSoulseekDownloads(uid?: number): any[] { return uid ? db.prepare("SELECT * FROM soulseek_downloads WHERE user_id = ? ORDER BY added_at DESC").all(uid) : db.prepare("SELECT * FROM soulseek_downloads ORDER BY added_at DESC").all(); },
         getSoulseekDownload(id: number): any { return db.prepare("SELECT * FROM soulseek_downloads WHERE id = ?").get(id); },
         deleteSoulseekDownload(id: number): void { db.prepare("DELETE FROM soulseek_downloads WHERE id = ?").run(id); },
-        clearFailedSoulseekDownloads(uid: number): void { db.prepare("DELETE FROM soulseek_downloads WHERE user_id = ? AND status = 'failed'").run(uid); }
+        clearFailedSoulseekDownloads(uid: number): void { db.prepare("DELETE FROM soulseek_downloads WHERE user_id = ? AND status = 'failed'").run(uid); },
+        consolidateDatabase(): void {
+            console.log("🧹 [Database] Consolidating database: cleaning up dead records...");
+            db.transaction(() => {
+                const deletedAlbums = db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL)").run();
+                const deletedReleases = db.prepare("DELETE FROM releases WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL)").run();
+                const deletedArtists = db.prepare(`
+                    DELETE FROM artists 
+                    WHERE id NOT IN (SELECT DISTINCT artist_id FROM albums WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT DISTINCT artist_id FROM releases WHERE artist_id IS NOT NULL)
+                      AND id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)
+                `).run();
+                
+                if (deletedAlbums.changes > 0 || deletedReleases.changes > 0 || deletedArtists.changes > 0) {
+                    console.log(`🧹 [Database] Consolidated: deleted ${deletedAlbums.changes} empty albums, ${deletedReleases.changes} releases, and ${deletedArtists.changes} artists.`);
+                }
+            })();
+        }
     };
+
+    // Run consolidation on startup
+    service.consolidateDatabase();
+
+    return service;
 }

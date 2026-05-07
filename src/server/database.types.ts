@@ -588,4 +588,5 @@ export interface DatabaseService {
     // ActivityPub Authorization
     isArtistLinkedToUser(artistId: number): boolean;
     isArtistLinkedToUserBySlug(slug: string): boolean;
+    consolidateDatabase(): void;
 }
