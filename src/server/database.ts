@@ -1850,18 +1850,3 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     return service;
 }
-ERE artist_id IS NOT NULL)
-                `).run();
-                
-                if (deletedAlbums.changes > 0 || deletedReleases.changes > 0 || deletedArtists.changes > 0) {
-                    console.log(`🧹 [Database] Consolidated: deleted ${deletedAlbums.changes} empty albums, ${deletedReleases.changes} releases, and ${deletedArtists.changes} artists.`);
-                }
-            })();
-        }
-    };
-
-    // Run consolidation on startup
-    service.consolidateDatabase();
-
-    return service;
-}
