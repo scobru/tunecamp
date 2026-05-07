@@ -198,6 +198,37 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
+     * POST /api/metadata/maintenance/albums/autofill
+     */
+    router.post("/maintenance/albums/autofill", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const { albumIds, fields, force } = req.body;
+        if (!Array.isArray(albumIds)) return res.status(400).json({ error: "albumIds array required" });
+
+        const results = await maintenance.autofillAlbumsMetadata(albumIds, {
+            fields: fields || ['genre', 'year', 'cover'],
+            force: !!force
+        });
+
+        res.json(results);
+    });
+
+    /**
+     * POST /api/metadata/maintenance/albums/ai-autofill
+     */
+    router.post("/maintenance/albums/ai-autofill", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        const { albumIds, force } = req.body;
+        if (!Array.isArray(albumIds)) return res.status(400).json({ error: "albumIds array required" });
+
+        const results = await maintenance.aiAutofillAlbumsMetadata(albumIds, {
+            force: !!force
+        });
+
+        res.json(results);
+    });
+
+    /**
      * GET /api/metadata/maintenance/candidates/:trackId
      * Get metadata candidates for manual selection
      */

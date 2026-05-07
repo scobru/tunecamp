@@ -271,4 +271,126 @@ export class MaintenanceService {
             metadata.links ? metadata.links : undefined
         );
     }
+
+    /**
+     * Attempts to automatically fill missing metadata for a list of albums.
+     */
+    async autofillAlbumsMetadata(albumIds: number[], options: { force?: boolean, fields: ('genre' | 'year' | 'cover' | 'description')[] }): Promise<any> {
+        const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
+        const albums = this.db.getAlbumsByIds(albumIds);
+
+        for (const album of albums) {
+            try {
+                const query = `${album.artist_name} - ${album.title}`;
+                console.log(`[Maintenance] Attempting album autofill for: ${query}`);
+
+                const matches = await metadataService.searchRelease(query);
+                
+                const bestMatch = matches.find(m => 
+                    m.title.toLowerCase() === album.title.toLowerCase() && 
+                    m.artist.toLowerCase() === album.artist_name?.toLowerCase()
+                ) || matches[0];
+
+                if (!bestMatch) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const updateData: any = {};
+                let updated = false;
+
+                if (options.fields.includes('genre') && bestMatch.genre) {
+                    if (options.force || !album.genre || album.genre === 'Library') {
+                        updateData.genre = bestMatch.genre;
+                        updated = true;
+                    }
+                }
+
+                if (options.fields.includes('year') && bestMatch.year) {
+                    if (options.force || !album.year || album.year === 0) {
+                        updateData.year = bestMatch.year;
+                        updated = true;
+                    }
+                }
+
+                if (options.fields.includes('cover') && bestMatch.coverUrl) {
+                    if (options.force || !album.cover_path) {
+                        updateData.cover_path = bestMatch.coverUrl;
+                        updated = true;
+                    }
+                }
+
+                if (options.fields.includes('description') && bestMatch.description) {
+                    if (options.force || !album.description) {
+                        updateData.description = bestMatch.description;
+                        updated = true;
+                    }
+                }
+
+                if (updated) {
+                    await this.libraryService.updateAlbum(album.id, updateData);
+                    results.success++;
+                } else {
+                    results.skipped++;
+                }
+
+            } catch (err: any) {
+                results.failed++;
+                results.errors.push(`Album ${album.id}: ${err.message}`);
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * AI Magic Autofill for albums.
+     */
+    async aiAutofillAlbumsMetadata(albumIds: number[], options: { force?: boolean }): Promise<any> {
+        const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
+        const albums = this.db.getAlbumsByIds(albumIds);
+
+        for (const album of albums) {
+            try {
+                console.log(`[Maintenance] AI Magic for album: ${album.title}`);
+                const tracks = this.db.getTracksByAlbum(album.id);
+                const trackTitles = tracks.map(t => t.title);
+
+                const metadata = await this.openRouter.identifyAlbum(album.title, album.artist_name || 'Unknown', trackTitles);
+                
+                if (!metadata) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const updateData: any = {};
+                let updated = false;
+
+                if (metadata.genre && (options.force || !album.genre || album.genre === 'Library')) {
+                    updateData.genre = metadata.genre;
+                    updated = true;
+                }
+                if (metadata.year && (options.force || !album.year || album.year === 0)) {
+                    updateData.year = metadata.year;
+                    updated = true;
+                }
+                if (metadata.description && (options.force || !album.description)) {
+                    updateData.description = metadata.description;
+                    updated = true;
+                }
+
+                if (updated) {
+                    await this.libraryService.updateAlbum(album.id, updateData);
+                    results.success++;
+                } else {
+                    results.skipped++;
+                }
+            } catch (err: any) {
+                results.failed++;
+                results.errors.push(`Album ${album.id}: ${err.message}`);
+            }
+        }
+
+        return results;
+    }
 }

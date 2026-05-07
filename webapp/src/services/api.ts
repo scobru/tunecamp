@@ -359,6 +359,12 @@ export const API = {
     aiAutofillMetadata: (trackIds: (string | number)[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/ai-autofill', { trackIds, force })),
 
+    autofillAlbumMetadata: (albumIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'description')[], force?: boolean) =>
+        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/albums/autofill', { albumIds, fields, force })),
+
+    aiAutofillAlbumMetadata: (albumIds: (string | number)[], force?: boolean) =>
+        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/albums/ai-autofill', { albumIds, force })),
+
     getRelatedTracks: (trackId: string | number, limit = 5) =>
         handleResponse(api.get<Track[]>(`/catalog/tracks/${trackId}/related?limit=${limit}`)),
 

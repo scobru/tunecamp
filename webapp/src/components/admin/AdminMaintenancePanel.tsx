@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc } from "lucide-react";
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
 import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
@@ -115,6 +115,38 @@ export const AdminMaintenancePanel = () => {
             loadTracks(); // Refresh list
         } catch (e: any) {
             alert("AI Autofill failed: " + e.message);
+        } finally {
+            setIsAIProcessing(false);
+        }
+    };
+
+    const handleAlbumAutofill = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        if (!confirm(`Are you sure you want to attempt autofill for ${ids.length} albums?`)) return;
+
+        setIsProcessing(true);
+        try {
+            const res = await API.autofillAlbumMetadata(ids, ['genre', 'year', 'cover', 'description']);
+            setResults(res);
+            loadAlbums(); // Refresh list
+        } catch (e: any) {
+            alert("Album Autofill failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleAIAlbumAutofill = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        if (!confirm(`Are you sure you want to attempt AI Magic Autofill for ${ids.length} albums? This will use your OpenRouter credits.`)) return;
+
+        setIsAIProcessing(true);
+        try {
+            const res = await API.aiAutofillAlbumMetadata(ids);
+            setResults(res);
+            loadAlbums(); // Refresh list
+        } catch (e: any) {
+            alert("AI Album Autofill failed: " + e.message);
         } finally {
             setIsAIProcessing(false);
         }
@@ -274,12 +306,54 @@ export const AdminMaintenancePanel = () => {
                     </div>
                 </div>
             ) : mode === 'albums' ? (
-                <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
-                    <Disc className="text-primary" />
-                    <div>
-                        <h3 className="font-bold">Album Metadata Cleanup</h3>
-                        <div className="text-xs opacity-70">
-                            Scan your library for albums with missing covers or info. Match them with global databases to fix artwork and genres.
+                <div className="flex flex-col gap-4">
+                    <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
+                        <Disc className="text-primary" />
+                        <div>
+                            <h3 className="font-bold">Album Metadata Cleanup</h3>
+                            <div className="text-xs opacity-70">
+                                Scan your library for albums with missing covers or info. Match them with global databases to fix artwork and genres.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
+                            <button 
+                                className="btn btn-sm btn-primary"
+                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                                onClick={() => handleAlbumAutofill(selectedIds)}
+                            >
+                                {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
+                                Autofill Selected ({selectedIds.length})
+                            </button>
+                            
+                            <button 
+                                className="btn btn-sm btn-outline"
+                                disabled={albums.length === 0 || isProcessing || isAIProcessing}
+                                onClick={() => handleAlbumAutofill(albums.map(t => t.id))}
+                            >
+                                All
+                            </button>
+                        </div>
+
+                        <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
+                            <button 
+                                className="btn btn-sm btn-secondary"
+                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                                onClick={() => handleAIAlbumAutofill(selectedIds)}
+                            >
+                                {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
+                                AI Magic Autofill ({selectedIds.length})
+                            </button>
+                            
+                            <button 
+                                className="btn btn-sm btn-outline btn-secondary"
+                                disabled={albums.length === 0 || isProcessing || isAIProcessing}
+                                onClick={() => handleAIAlbumAutofill(albums.map(t => t.id))}
+                            >
+                                All
+                            </button>
                         </div>
                     </div>
                 </div>
