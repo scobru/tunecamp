@@ -11,9 +11,28 @@ export async function openOnramp(address: string, asset: string = "ETH", amount?
     const provider = configData.provider || "coinbase";
 
     if (provider === "moonpay") {
-      const apiKey = configData.moonpayApiKey || "pk_live_R09fW7vR16035v8P9b9Z9v9"; // Fallback to a default or leave empty
-      const currency = asset.toLowerCase();
-      const moonpayUrl = `https://buy.moonpay.com/?apiKey=${apiKey}&currencyCode=${currency}&walletAddress=${address}${amount ? `&baseCurrencyAmount=${amount}` : ""}&network=base`;
+      const apiKey = configData.moonpayApiKey || "pk_live_R09fW7vR16035v8P9b9Z9v9";
+      
+      // MoonPay uses specific codes for assets on different networks
+      const assetCode = asset.toLowerCase() === 'usdc' ? 'usdc_base' : 'eth_base';
+      
+      const params = new URLSearchParams({
+        apiKey,
+        currencyCode: assetCode,
+        walletAddress: address,
+        network: 'base',
+        colorCode: '#9b6dff', // TuneCamp Primary Violet
+        theme: 'dark',
+        redirectURL: window.location.href
+      });
+
+      if (amount) {
+        params.append('baseCurrencyAmount', amount.toString());
+        params.append('baseCurrencyCode', 'usd');
+        params.append('lockAmount', 'true');
+      }
+
+      const moonpayUrl = `https://buy.moonpay.com/?${params.toString()}`;
       window.open(moonpayUrl, "_blank", "noopener,noreferrer");
       return;
     }
