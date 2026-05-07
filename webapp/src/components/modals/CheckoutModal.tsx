@@ -619,6 +619,18 @@ export const CheckoutModal = () => {
                   >
                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : "💳 Pay with Credit Card"}
                   </button>
+
+                  <button
+                    className="btn btn-outline btn-block rounded-xl h-14 gap-3 border-[#0070ba]/30 hover:bg-[#0070ba]/10 text-[#0070ba]"
+                    onClick={handlePayPalCheckout}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? <Loader2 className="animate-spin" size={20} /> : (
+                      <>
+                        <span className="font-black italic text-lg">PayPal</span>
+                      </>
+                    )}
+                  </button>
                   
                   <button
                     className="btn btn-ghost btn-block rounded-xl mt-4"
