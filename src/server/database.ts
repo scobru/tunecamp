@@ -1076,11 +1076,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.prepare("DELETE FROM storage_accounts WHERE id = ?").run(id);
         },
 
-        getPrimaryAdminId(): number | undefined {
-            const row = db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
-            return row?.id;
-        },
-
         getReleaseTrackIds(releaseId: number): number[] {
             const rows = db.prepare("SELECT track_id FROM release_tracks WHERE release_id = ?").all(releaseId) as { track_id: number }[];
             return rows.map(r => r.track_id).filter(id => id !== null) as number[];

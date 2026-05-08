@@ -46,4 +46,24 @@ Chronological log of completed tasks and significant architectural decisions.
     - Added `.jwt-secret` to the backup ZIP (if it exists).
     - Updated `performRestore` to identify and restore the `.jwt-secret` file.
     - Added retry logic to DB replacement to handle file locking issues.
-- **Functionality**: Restoring a backup now preserves user sessions (JWT) and is more robust against operating system file locks.
+- Functionality: Restoring a backup now preserves user sessions (JWT) and is more robust against operating system file locks.
+
+
+---
+
+## 2026-05-08
+
+### 1. Google Drive Integration (Full Stack)
+**Summary**: Completed the integration of Google Drive as an external storage provider for streaming and importing tracks.
+- **Backend Changes**:
+  - `src/server/services/google-drive.service.ts`: Implemented OAuth2 flow, token management, file browsing, and streaming.
+  - `src/server/routes/storage.ts`: Created endpoints for OAuth, account management, file listing, and importing.
+  - `src/server/routes/tracks.ts`: Added native support for `gdrive://` protocol in streaming and downloads.
+  - `src/server/database.ts`: Added `storage_accounts` table and related methods.
+- **Frontend Changes**:
+  - `webapp/src/components/admin/StoragePanel.tsx`: New UI for connecting accounts and browsing/importing files.
+  - `webapp/src/pages/Admin.tsx`: Integrated Storage tab into the dashboard.
+  - `webapp/src/services/api.ts`: Added storage-related API methods.
+- **Documentation**:
+  - Updated `.env.example` with required Google Cloud credentials.
+

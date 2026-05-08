@@ -342,3 +342,22 @@ export interface NetworkStatus {
     };
 }
 
+export interface StorageAccount {
+    id: number;
+    user_id: number;
+    provider: string;
+    account_email: string | null;
+    access_token: string;
+    refresh_token: string | null;
+    expiry_date: number | null;
+    created_at: string;
+}
+
+export interface GoogleDriveFile {
+    id: string;
+    name: string;
+    mimeType: string;
+    size?: string;
+    parents?: string[];
+}
+

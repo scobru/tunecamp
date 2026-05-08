@@ -1,7 +1,8 @@
 import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
-    Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus
+    Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
+    StorageAccount, GoogleDriveFile
 } from '../types';
 
 const API_URL = '/api';
@@ -461,6 +462,13 @@ export const API = {
     deleteSoulseekDownload: (id: number) => handleResponse(api.delete(`/search/content/soulseek/status/${id}`)),
     clearFailedSoulseekDownloads: () => handleResponse(api.delete('/search/content/soulseek/status/failed')),
     updateSoulseekCredentials: (creds: { username: string, password?: string }) => handleResponse(api.post('/search/content/soulseek/credentials', creds)),
+
+    // --- Storage ---
+    getGDriveAuthUrl: () => handleResponse(api.get<{ url: string }>('/storage/gdrive/auth')),
+    getGDriveAccounts: () => handleResponse(api.get<StorageAccount[]>('/storage/gdrive/accounts')),
+    getGDriveFiles: (folderId?: string) => handleResponse(api.get<GoogleDriveFile[]>(`/storage/gdrive/files${folderId ? `?folderId=${folderId}` : ''}`)),
+    importGDriveFile: (fileId: string, artistId?: number, albumId?: number) => handleResponse(api.post<{ success: boolean, trackId: number }>('/storage/gdrive/import', { fileId, artistId, albumId })),
+    deleteGDriveAccount: (id: number) => handleResponse(api.delete(`/storage/gdrive/accounts/${id}`)),
 };
 
 export default API;

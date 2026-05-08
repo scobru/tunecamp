@@ -17,6 +17,7 @@ import { CurationQueue } from "../components/admin/CurationQueue";
 import { APIStatusPanel } from "../components/admin/APIStatusPanel";
 
 import { BackupPanel } from "../components/admin/BackupPanel";
+import { StoragePanel } from "../components/admin/StoragePanel";
 
 export const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
@@ -32,6 +33,7 @@ export const Admin = () => {
     | "settings"
     | "system"
     | "backup"
+    | "storage"
     | "maintenance"
     | "status"
   >(isRootAdmin ? "users" : "releases");
@@ -178,6 +180,13 @@ export const Admin = () => {
             </a>
             <a
               role="tab"
+              className={`tab ${activeTab === "storage" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("storage")}
+            >
+              Storage
+            </a>
+            <a
+              role="tab"
               className={`tab ${activeTab === "maintenance" ? "tab-active" : ""}`}
               onClick={() => setActiveTab("maintenance")}
             >
@@ -300,6 +309,7 @@ export const Admin = () => {
 
         {activeTab === "settings" && isAdmin && <AdminSettingsPanel />}
         {activeTab === "backup" && isAdmin && <BackupPanel />}
+        {activeTab === "storage" && isAdmin && <StoragePanel />}
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
         {activeTab === "status" && isAdmin && <APIStatusPanel />}
       </div>

@@ -128,6 +128,15 @@ export class GoogleDriveService {
         return files;
     }
 
+    async getFile(userId: number, fileId: string): Promise<GoogleDriveFile> {
+        const token = await this.getValidToken(userId);
+        const response = await axios.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { fields: "id, name, mimeType, size, parents" }
+        });
+        return response.data;
+    }
+
     async getFileStream(userId: number, fileId: string, range?: string): Promise<{ stream: Readable; status: number; headers: any }> {
         const token = await this.getValidToken(userId);
         
