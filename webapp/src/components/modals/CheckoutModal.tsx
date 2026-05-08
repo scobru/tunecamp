@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useWalletStore } from "../../stores/useWalletStore";
+import { useConfigStore } from "../../stores/useConfigStore";
 import { ZenAuth } from "../../services/zen";
 import { Wallet, Loader2, CheckCircle2, Download } from "lucide-react";
 import { ethers } from "ethers";
@@ -45,6 +46,9 @@ export const CheckoutModal = () => {
   const [paymentMethod, setPaymentMethod] = useState<"ETH" | "USDC">("ETH");
   const [stableBalance, setStableBalance] = useState<string>("0");
   const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("crypto");
+
+  const { isConfigured } = useConfigStore();
+  const hasStripe = isConfigured("stripe");
 
   const {
     wallet,
@@ -440,20 +444,22 @@ export const CheckoutModal = () => {
                 directly. Choose your preferred payment method.
               </p>
 
-              <div className="flex bg-base-200/50 p-1 rounded-2xl w-full mb-6 border border-base-content/5">
-                <button 
-                  className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
-                  onClick={() => setPaymentType('crypto')}
-                >
-                  Crypto
-                </button>
-                <button 
-                  className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
-                  onClick={() => setPaymentType('fiat')}
-                >
-                  Card
-                </button>
-              </div>
+              {hasStripe && (
+                <div className="flex bg-base-200/50 p-1 rounded-2xl w-full mb-6 border border-base-content/5">
+                  <button 
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
+                    onClick={() => setPaymentType('crypto')}
+                  >
+                    Crypto
+                  </button>
+                  <button 
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
+                    onClick={() => setPaymentType('fiat')}
+                  >
+                    Card
+                  </button>
+                </div>
+              )}
 
               <div className="w-full bg-black/40 rounded-2xl p-5 mb-2 border border-base-content/5">
                 <div className="flex justify-between items-center mb-4">

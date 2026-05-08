@@ -14,10 +14,15 @@ TuneCamp supports a hybrid payment system combining traditional Fiat (via Stripe
   4. Upon successful payment, Stripe sends a webhook to `/api/payments/stripe/webhook`.
   5. Backend generates an **Unlock Code** and stores it in the database.
 
-### Stripe Crypto Onramp
+### Crypto Onramp (Stripe & MoonPay)
 - **Purpose**: Enables users to buy USDC directly on the Base network to use for Web3 purchases.
-- **Route**: `POST /api/payments/onramp-session`
-- **Mechanism**: Backend creates a session with Stripe's Onramp API, targeting the user's wallet address on the `base` network.
+- **Providers**: TuneCamp supports both **Stripe Onramp** and **MoonPay**.
+- **Route**: `GET /api/payments/onramp-config`
+- **Mechanism**:
+  - The server checks which providers are configured via API keys.
+  - For **Stripe**, it creates a session via `POST /api/payments/onramp-session`.
+  - For **MoonPay**, it provides the API key to the frontend to initialize the MoonPay SDK or widget.
+  - The preferred provider can be toggled in the Admin Settings (`onramp_provider`).
 
 ### Web3 On-chain Verification
 - **Purpose**: Unlocks content based on direct blockchain transactions.
@@ -34,11 +39,14 @@ When a payment is verified (either via Stripe Webhook or On-chain Verify), the s
 - **Storage**: `database.createUnlockCode(code, releaseId, trackId)`
 - **Download**: Users can download the track via `GET /api/payments/download/:trackId?code=XXXXX`.
 
-## 3. Revenue Splits
+## 3. Revenue Splits & Fees
 
-TuneCamp implements a fee split mechanism:
-- **Artist Revenue**: Sent directly to the artist's wallet address.
-- **Platform Fee**: A percentage (default defined by `adminFeePercentage` in settings) is sent to the `adminTreasuryAddress`.
+TuneCamp implements a universal fee split mechanism that applies to **all payment methods**, ensuring the platform remains sustainable regardless of how the user pays.
+
+- **Platform Policy**: By default, the platform takes a percentage of every sale (e.g., 15%).
+- **Web3 Payments (On-chain)**: The split is enforced directly by the `TuneCampCheckout` smart contract. Funds are distributed instantly: the artist's share goes to their wallet, and the platform's share goes to the `adminTreasuryAddress`.
+- **Stripe Payments (Fiat)**: The user pays the full amount via credit card. The platform receives the funds in its Stripe account. The split is then managed via the platform's financial logic (e.g., Stripe Connect payouts or internal accounting), with the artist's share being credited to their balance or paid out periodically.
+- **Direct Verification**: Even for direct txHash verification, the backend checks if the appropriate "Label Fee" has been sent to the treasury before generating an unlock code.
 
 ## 4. Configuration
 
@@ -47,3 +55,4 @@ Required Environment Variables:
 - `STRIPE_WEBHOOK_SECRET`: Secret for verifying webhook signatures.
 - `TUNECAMP_RPC_URL`: RPC endpoint for Base Network (e.g., Alchemy or Base public RPC).
 - `TUNECAMP_OWNER_ADDRESS`: Default address for platform fees.
+- `MOONPAY_API_KEY`: API Key for MoonPay Onramp integration.

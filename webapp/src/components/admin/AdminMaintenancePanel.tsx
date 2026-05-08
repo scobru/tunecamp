@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc } from "lucide-react";
+import { useConfigStore } from "../../stores/useConfigStore";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu } from "lucide-react";
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
 import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
@@ -20,6 +21,9 @@ export const AdminMaintenancePanel = () => {
     const [pickerTrack, setPickerTrack] = useState<any | null>(null);
     const [pickerArtist, setPickerArtist] = useState<any | null>(null);
     const [pickerAlbum, setPickerAlbum] = useState<any | null>(null);
+
+    const { isConfigured } = useConfigStore();
+    const hasAI = isConfigured("openrouter");
 
     useEffect(() => {
         if (mode === 'tracks') {
@@ -265,6 +269,13 @@ export const AdminMaintenancePanel = () => {
                 </div>
             )}
 
+            {!hasAI && (
+                <div className="alert alert-warning shadow-sm border border-warning/20 text-sm py-2">
+                    <Cpu size={16} className="text-warning" />
+                    <span>AI Features are disabled. Configure an <strong>OpenRouter API Key</strong> in Settings to enable Magic Autofill.</span>
+                </div>
+            )}
+
             {mode === 'tracks' ? (
                 <div className="flex flex-wrap gap-2 items-center">
                     <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
@@ -289,7 +300,7 @@ export const AdminMaintenancePanel = () => {
                     <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
                         <button 
                             className="btn btn-sm btn-secondary"
-                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing || !hasAI}
                             onClick={() => handleAIAutofill(selectedIds)}
                         >
                             {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
@@ -298,7 +309,7 @@ export const AdminMaintenancePanel = () => {
                         
                         <button 
                             className="btn btn-sm btn-outline btn-secondary"
-                            disabled={tracks.length === 0 || isProcessing || isAIProcessing}
+                            disabled={tracks.length === 0 || isProcessing || isAIProcessing || !hasAI}
                             onClick={() => handleAIAutofill(tracks.map(t => t.id))}
                         >
                             All
@@ -340,7 +351,7 @@ export const AdminMaintenancePanel = () => {
                         <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
                             <button 
                                 className="btn btn-sm btn-secondary"
-                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing || !hasAI}
                                 onClick={() => handleAIAlbumAutofill(selectedIds)}
                             >
                                 {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
@@ -349,7 +360,7 @@ export const AdminMaintenancePanel = () => {
                             
                             <button 
                                 className="btn btn-sm btn-outline btn-secondary"
-                                disabled={albums.length === 0 || isProcessing || isAIProcessing}
+                                disabled={albums.length === 0 || isProcessing || isAIProcessing || !hasAI}
                                 onClick={() => handleAIAlbumAutofill(albums.map(t => t.id))}
                             >
                                 All

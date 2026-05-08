@@ -50,8 +50,13 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
                 return res.status(400).json({ error: 'magnetUri is required' });
             }
 
+            // Execute in background to avoid Nginx timeouts on slow magnet resolution
             torrentService.addTorrent(magnetUri, ownerId);
-            res.json({ message: 'Torrent added successfully' });
+            
+            res.json({ 
+                message: 'Torrent add request submitted', 
+                status: 'background_processing' 
+            });
         } catch (err: any) {
             console.error("❌ Torrent add error:", err);
             res.status(500).json({ error: err.message });

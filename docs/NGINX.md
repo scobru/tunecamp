@@ -68,3 +68,26 @@ Tunecamp is already configured to trust proxies (via `app.set('trust proxy', tru
 
 ### 3. Zen WebSockets
 If you notice that comments or play stats are not syncing in real-time, double-check that the `Upgrade` and `Connection` headers are correctly set in your `location /` block. These are vital for the Zen peer-to-peer network to function.
+
+## CapRover Specific Instructions
+
+If you are deploying Tunecamp via **CapRover**, follow these steps to ensure WebSockets and large uploads work correctly:
+
+1.  Go to the **Apps** tab and select your Tunecamp app.
+2.  Click on **Edit Default Nginx Config**.
+3.  Ensure the following lines are present inside the `location /` block:
+    ```nginx
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_http_version 1.1;
+    ```
+4.  Increase the **Client Max Body Size** to allow uploading high-quality music:
+    ```nginx
+    client_max_body_size 512M;
+    ```
+5.  Increase timeouts for the **Torrent Engine**:
+    ```nginx
+    proxy_read_timeout 600s;
+    proxy_send_timeout 600s;
+    ```
+6.  Save and Restart the app.

@@ -21,6 +21,7 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 ### Guida per lo Sviluppatore
 
 - [**Guida allo Sviluppo**](./development-guide.md): Prerequisiti, installazione, esecuzione e test.
+- [**Configurazione API**](./api-setup-guide.md): Guida passo-passo per Stripe, Google Drive, AI e altro.
 - [**CONTRIBUTING.md**](../CONTRIBUTING.md): Linee guida per la contribuzione al codice.
 
 ---
@@ -31,6 +32,10 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Integrazioni AI](./ai-integrations.md): Automazione metadati e raccomandazioni via OpenRouter.
 - [Google Drive Integration](./google-drive.md): Streaming e importazione dal cloud.
 - [Sistema Torrent](./torrents.md): Integrazione WebTorrent per il download di musica.
+- [Soulseek Integration](./soulseek.md): Ricerca e download P2P.
+- [Social & Community](./social-features.md): Post, commenti e interazioni fan.
+- [Smart Contracts](./smart-contracts.md): Guida tecnica ai contratti Solidity su Base.
+- [Backup & Migrazione](./backup-migration.md): Come salvaguardare e spostare la tua istanza.
 - [Linda Messaging](./linda-bot.md): Bridge decentralizzato per messaggistica Zen.
 - [Federazione](./federation.md): Dettagli sul protocollo ActivityPub in TuneCamp.
 - [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.

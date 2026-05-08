@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { lazy, Suspense, useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
+import { useConfigStore } from "./stores/useConfigStore";
 import { SetupWizardModal } from "./components/modals/SetupWizardModal";
 
 // Lazy-load all page components to reduce initial bundle size
@@ -71,9 +72,11 @@ function EditorGuard({ children }: { children: React.ReactNode }) {
 
 function App() {
   const { init, checkAuth } = useAuthStore();
+  const { fetchStatus } = useConfigStore();
 
   useEffect(() => {
     init();
+    fetchStatus();
 
     const handleUnauthorized = () => {
       checkAuth(); // Re-check auth on 401
