@@ -423,6 +423,8 @@ export const API = {
         }));
     },
 
+    backupToGDrive: () => handleResponse(api.post<{ success: boolean, fileId: string, fileName: string }>('/admin/backup/gdrive')),
+
     // --- Identity ---
     getIdentity: () => handleResponse(api.get<{ pub: string, priv: string, epub: string, epriv: string, alias: string }>('/admin/system/identity')),
     getSiteApIdentity: () => handleResponse(api.get<{ publicKey: string, privateKey: string }>('/admin/system/ap-identity')),

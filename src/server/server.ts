@@ -240,7 +240,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
         console.log("🔄 Restarting server...");
         process.exit(0); // Docker/PM2 should handle restart
-    }));
+    }, gdriveService));
 
     app.use(integrateFederation(federation, (req: express.Request) => undefined)); // Context data if needed
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));

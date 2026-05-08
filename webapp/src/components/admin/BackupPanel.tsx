@@ -1,10 +1,25 @@
-import { useState } from 'react';
-import { Download, Upload, AlertTriangle, FileAudio } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Download, Upload, AlertTriangle, FileAudio, Cloud } from 'lucide-react';
 import API from '../../services/api';
 
 export const BackupPanel = () => {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [gdriveLoading, setGdriveLoading] = useState(false);
+    const [hasGDrive, setHasGDrive] = useState(false);
+
+    useEffect(() => {
+        checkGDrive();
+    }, []);
+
+    const checkGDrive = async () => {
+        try {
+            const accounts = await API.getGDriveAccounts();
+            setHasGDrive(accounts.length > 0);
+        } catch (e) {
+            console.error("Failed to check GDrive accounts:", e);
+        }
+    };
 
     const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -36,6 +51,24 @@ export const BackupPanel = () => {
         }
     };
 
+    const handleGDriveBackup = async () => {
+        if (!hasGDrive) {
+            alert("Please connect a Google Drive account in the 'Storage' tab first.");
+            return;
+        }
+
+        setGdriveLoading(true);
+        try {
+            const res = await API.backupToGDrive();
+            alert(`Backup successful! File "${res.fileName}" saved to your Google Drive.`);
+        } catch (error: any) {
+            console.error(error);
+            alert("Google Drive backup failed: " + (error.message || "Unknown error"));
+        } finally {
+            setGdriveLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-8">
             <div>
@@ -63,6 +96,27 @@ export const BackupPanel = () => {
                                 Includes: Database, Music Files, Configuration, Keys.
                             </div>
                             
+                            <div className="divider my-0"></div>
+
+                            <button 
+                                className="btn btn-accent gap-2"
+                                onClick={handleGDriveBackup}
+                                disabled={gdriveLoading}
+                            >
+                                {gdriveLoading ? (
+                                    <span className="loading loading-spinner loading-xs"></span>
+                                ) : (
+                                    <Cloud size={18} />
+                                )}
+                                Save to Google Drive
+                            </button>
+                            <div className="text-xs opacity-50 px-1">
+                                {hasGDrive 
+                                    ? "Uploads a full backup directly to your connected Drive account."
+                                    : "Connect a GDrive account in 'Storage' to enable cloud backups."
+                                }
+                            </div>
+
                             <div className="divider my-0"></div>
 
                             <a 

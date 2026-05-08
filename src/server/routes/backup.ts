@@ -5,11 +5,20 @@ import path from "path";
 import multer from "multer";
 import type { DatabaseService } from "../database.js";
 import type { ServerConfig } from "../config.js";
+import type { GoogleDriveService } from "../services/google-drive.service.js";
 
 // Ensure uploads directory exists
 fs.ensureDirSync("uploads");
 
 const upload = multer({ dest: "uploads/" });
+
+interface AuthenticatedRequest extends express.Request {
+    user?: {
+        id: number;
+        [key: string]: any;
+    };
+    isRootAdmin?: boolean;
+}
 
 /**
  * Clean up old temporary files in the uploads directory
@@ -175,22 +184,70 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
     }
 }
 
-export function createBackupRoutes(database: DatabaseService, config: ServerConfig, restartFn: () => void): Router {
+function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbBackupPath: string): archiver.Archiver {
+    const archive = archiver("zip", { zlib: { level: 9 } });
+
+    // Add DB Snapshot
+    archive.file(dbBackupPath, { name: "tunecamp.db" });
+
+    // 2. Music Directory
+    archive.directory(config.musicDir, "music");
+
+    // 3. Config file (For reference only - restore logic primarily uses DB)
+    archive.append(JSON.stringify(config, null, 2), { name: "config_dump.json" });
+
+    // 4. JWT Secret (Critical for session continuity)
+    const dbDir = path.dirname(config.dbPath);
+    const secretPath = path.join(dbDir, '.jwt-secret');
+    if (fs.existsSync(secretPath)) {
+        archive.file(secretPath, { name: ".jwt-secret" });
+    }
+
+    // 5. Keys (Artists and System)
+    try {
+        // Artists Keys
+        const artists = database.getArtists();
+        const artistsKeys: any = {};
+        artists.forEach(a => {
+            if (a.public_key && a.private_key) {
+                artistsKeys[a.slug] = {
+                    id: a.id,
+                    name: a.name,
+                    slug: a.slug,
+                    publicKey: a.public_key,
+                    privateKey: a.private_key
+                };
+            }
+        });
+        archive.append(JSON.stringify(artistsKeys, null, 2), { name: "keys/artists_keys.json" });
+
+        // System Identity (Zen)
+        const systemKeys = database.getSetting("zenPair") || database.getSetting("gunPair");
+        if (systemKeys) {
+            archive.append(systemKeys, { name: "keys/system_identity.json" });
+        }
+    } catch (e) {
+        console.warn("Failed to backup keys:", e);
+        archive.append(JSON.stringify({ error: String(e) }), { name: "keys/error.log" });
+    }
+
+    return archive;
+}
+
+export function createBackupRoutes(database: DatabaseService, config: ServerConfig, restartFn: () => void, gdriveService?: GoogleDriveService): Router {
     const router = Router();
 
     /**
      * GET /api/admin/backup/full
      * Download full backup (Database + Music + Config)
      */
-    router.get("/full", async (req: any, res) => {
+    router.get("/full", async (req: AuthenticatedRequest, res) => {
         try {
             if (!req.isRootAdmin) {
                 return res.status(403).send("Unauthorized: Backups restricted to Root Admin");
             }
 
             // 1. Prepare Database Snapshot FIRST
-            // We use SQLite's VACUUM INTO to create a safe snapshot without locking for too long.
-            // Performing this before starting the response allows us to report errors properly.
             const dbBackupPath = path.join(config.dbPath + ".backup");
             try {
                 if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
@@ -200,57 +257,12 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
                 return res.status(500).send("Database backup failed: Unable to create snapshot.");
             }
 
-            const archive = archiver("zip", { zlib: { level: 9 } });
+            const archive = assembleFullBackup(database, config, dbBackupPath);
 
             res.setHeader("Content-Type", "application/zip");
             res.setHeader("Content-Disposition", `attachment; filename="tunecamp_backup_${new Date().toISOString().split('T')[0]}.zip"`);
 
             archive.pipe(res);
-
-            // Add DB Snapshot
-            archive.file(dbBackupPath, { name: "tunecamp.db" });
-
-            // 2. Music Directory
-            archive.directory(config.musicDir, "music");
-
-            // 3. Config file (For reference only - restore logic primarily uses DB)
-            archive.append(JSON.stringify(config, null, 2), { name: "config_dump.json" });
-
-            // 4. JWT Secret (Critical for session continuity)
-            const dbDir = path.dirname(config.dbPath);
-            const secretPath = path.join(dbDir, '.jwt-secret');
-            if (fs.existsSync(secretPath)) {
-                archive.file(secretPath, { name: ".jwt-secret" });
-            }
-
-            // 5. Keys (Artists and System)
-            try {
-                // Artists Keys
-                const artists = database.getArtists();
-                const artistsKeys: any = {};
-                artists.forEach(a => {
-                    if (a.public_key && a.private_key) {
-                        artistsKeys[a.slug] = {
-                            id: a.id,
-                            name: a.name,
-                            slug: a.slug,
-                            publicKey: a.public_key,
-                            privateKey: a.private_key
-                        };
-                    }
-                });
-                archive.append(JSON.stringify(artistsKeys, null, 2), { name: "keys/artists_keys.json" });
-
-                // System Identity (Zen)
-                const systemKeys = database.getSetting("zenPair") || database.getSetting("gunPair");
-                if (systemKeys) {
-                    archive.append(systemKeys, { name: "keys/system_identity.json" });
-                }
-            } catch (e) {
-                console.warn("Failed to backup keys:", e);
-                archive.append(JSON.stringify({ error: String(e) }), { name: "keys/error.log" });
-            }
-
             await archive.finalize();
 
             // Cleanup backup file after stream ends (approximate)
@@ -265,10 +277,66 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
     });
 
     /**
+     * POST /api/admin/backup/gdrive
+     * Create backup and upload to Google Drive
+     */
+    router.post("/gdrive", async (req: AuthenticatedRequest, res) => {
+        try {
+            if (!req.isRootAdmin) {
+                return res.status(403).send("Unauthorized: Backups restricted to Root Admin");
+            }
+
+            if (!gdriveService) {
+                return res.status(503).send("Google Drive service not configured");
+            }
+
+            const userId = req.user?.id;
+            if (!userId) return res.status(401).send("User not authenticated");
+
+            // 1. Prepare Database Snapshot
+            const dbBackupPath = path.join(config.dbPath + ".backup");
+            try {
+                if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
+                database.db.prepare(`VACUUM INTO ?`).run(dbBackupPath);
+            } catch (e) {
+                console.error("❌ [Backup] Database snapshot failed:", e);
+                return res.status(500).send("Database backup failed: Unable to create snapshot.");
+            }
+
+            const fileName = `tunecamp_backup_${new Date().toISOString().split('T')[0]}.zip`;
+            const archive = assembleFullBackup(database, config, dbBackupPath);
+
+            console.log(`📤 [Backup] Uploading ${fileName} to Google Drive...`);
+            
+            // We can finalize and upload
+            // archive is a readable stream
+            try {
+                const uploadPromise = gdriveService.uploadFile(userId, fileName, "application/zip", archive);
+                archive.finalize();
+                
+                const file = await uploadPromise;
+                
+                // Cleanup
+                if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
+                
+                res.json({ success: true, fileId: file.id, fileName: file.name });
+            } catch (uploadError: any) {
+                console.error("❌ [Backup] GDrive Upload failed:", uploadError.response?.data || uploadError.message);
+                if (fs.existsSync(dbBackupPath)) fs.unlinkSync(dbBackupPath);
+                throw uploadError;
+            }
+
+        } catch (error: any) {
+            console.error("Google Drive Backup failed:", error);
+            res.status(500).send("Backup to Google Drive failed: " + error.message);
+        }
+    });
+
+    /**
      * GET /api/admin/backup/audio
      * Download audio only
      */
-    router.get("/audio", async (req: any, res) => {
+    router.get("/audio", async (req: AuthenticatedRequest, res) => {
         try {
             if (!req.isRootAdmin) {
                 return res.status(403).send("Unauthorized: Backups restricted to Root Admin");
@@ -293,7 +361,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
      * POST /api/admin/backup/restore
      * Upload and restore backup (Legacy/Single File)
      */
-    router.post("/restore", upload.single("backup") as any, (req: any, res) => {
+    router.post("/restore", upload.single("backup") as any, (req: AuthenticatedRequest, res) => {
         if (!req.isRootAdmin) {
             return res.status(403).send("Unauthorized: Restore restricted to Root Admin");
         }
@@ -314,7 +382,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
      * POST /api/admin/backup/chunk
      * Receive a file chunk
      */
-    router.post("/chunk", upload.single("chunk") as any, async (req: any, res) => {
+    router.post("/chunk", upload.single("chunk") as any, async (req: AuthenticatedRequest, res) => {
         try {
             if (!req.isRootAdmin) return res.status(403).send("Unauthorized");
 
@@ -359,7 +427,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
      * POST /api/admin/backup/restore-chunked
      * Finalize chunked upload and trigger restore
      */
-    router.post("/restore-chunked", express.json(), async (req: any, res) => {
+    router.post("/restore-chunked", express.json(), async (req: AuthenticatedRequest, res) => {
         try {
             if (!req.isRootAdmin) return res.status(403).send("Unauthorized");
 

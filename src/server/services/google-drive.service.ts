@@ -1,6 +1,7 @@
 import axios from "axios";
 import { type DatabaseService, type StorageAccount } from "../database.types.js";
 import { type Readable } from "stream";
+import FormData from "form-data";
 
 export interface GoogleDriveFile {
     id: string;
@@ -27,6 +28,7 @@ export class GoogleDriveService {
     getAuthUrl(): string {
         const scopes = [
             "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.file",
             "https://www.googleapis.com/auth/userinfo.email"
         ];
         return `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -36,6 +38,28 @@ export class GoogleDriveService {
             `&scope=${encodeURIComponent(scopes.join(" "))}` +
             `&access_type=offline` +
             `&prompt=consent`;
+    }
+
+    async uploadFile(userId: number, name: string, mimeType: string, content: Readable | Buffer): Promise<GoogleDriveFile> {
+        const token = await this.getValidToken(userId);
+        
+        const metadata = {
+            name,
+            mimeType,
+        };
+
+        const formData = new FormData();
+        formData.append("metadata", JSON.stringify(metadata), { contentType: "application/json" });
+        formData.append("file", content, { filename: name, contentType: mimeType });
+
+        const response = await axios.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", formData, {
+            headers: {
+                ...formData.getHeaders(),
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        return response.data;
     }
 
     async exchangeCode(code: string, userId: number): Promise<number> {
