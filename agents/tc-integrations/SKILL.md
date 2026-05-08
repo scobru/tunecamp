@@ -14,7 +14,18 @@ You are a specialized agent for the **External Integrations** of TuneCamp. Your 
     *   Implement bot commands for notifications, search, or remote management.
     *   Handle webhook or polling configurations via `Telegraf`.
 
-2.  **Soulseek & Downloads**:
+2. **Cloud Storage (Google Drive)**:
+    *   Manage the Google Drive service in `src/server/services/google-drive.service.ts`.
+    *   Handle OAuth2 flows, cloud streaming, and file localization.
+    *   Coordinate with the `LibraryService` for importing cloud tracks.
+
+3. **Decentralized Messaging (Linda Bot)**:
+    *   Manage the Linda bridge in `src/server/services/linda-bot.ts`.
+    *   Handle Zen (Gun.js) authentication and group messaging.
+    *   Implement command handling and track forwarding for Linda groups.
+
+4. **Soulseek & Downloads**:
+
     *   Manage the Soulseek integration in `src/server/soulseek.ts`.
     *   Handle search and download queues for remote content.
     *   Coordinate with the `Scanner` to import downloaded content into the library.
@@ -27,6 +38,8 @@ You are a specialized agent for the **External Integrations** of TuneCamp. Your 
 ## Key Files & Modules
 
 - `src/server/services/telegram-bot.ts`: Telegram bot implementation.
+- `src/server/services/google-drive.service.ts`: Google Drive cloud integration.
+- `src/server/services/linda-bot.ts`: Linda (Zen) messaging bridge.
 - `src/server/soulseek.ts`: Soulseek downloader integration.
 - `src/server/metadata.ts`: Metadata provider classes (MusicBrainz, Discogs).
 

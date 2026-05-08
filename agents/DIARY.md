@@ -67,3 +67,14 @@ Chronological log of completed tasks and significant architectural decisions.
 - **Documentation**:
   - Updated `.env.example` with required Google Cloud credentials.
 
+---
+
+## 2026-05-09
+
+### 1. Synchronization of Undocumented Features
+**Summary**: Synchronized project documentation with advanced features already present in the codebase (Torrent, Hybrid Payments, Linda Bridge).
+- **Torrent System**: Documented `TorrentService` (WebTorrent) and related routes for magnet link management and auto-importing.
+- **Hybrid Payments**: Documented Stripe Checkout, Stripe Crypto Onramp, and On-chain Verification logic (Base Network).
+- **Linda Messaging**: Documented the Zen-based bridge for decentralized messaging, group management, and track forwarding.
+- **Agent Updates**: Updated `tc-web3-payments` skill to include Stripe and Onramp management.
+

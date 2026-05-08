@@ -15,12 +15,19 @@ You are a specialized agent for the **Web3 and Monetization** layer of TuneCamp.
     *   Maintain `TuneCampCheckout` for handling ETH/USDC purchases.
     *   Manage `TuneCampNFT` (ERC-1155) for music releases.
 
-2.  **Base Network Integration**:
+2. **Base Network Integration**:
     *   Interact with the Base Network RPC (`TUNECAMP_RPC_URL`).
     *   Handle gas optimization and transaction monitoring.
     *   Manage wallet addresses for artist and platform (treasury) revenue.
 
-3.  **Monetization Logic**:
+3. **Hybrid Payments (Fiat & Crypto)**:
+    *   **Stripe Checkout**: Manage fiat-to-unlock-code flows.
+    *   **Stripe Crypto Onramp**: Facilitate USDC acquisition on Base for users.
+    *   **On-chain Verification**: Verify direct ETH/USDC transactions and contract calls.
+    *   Manage Stripe Webhooks and signature verification.
+
+4. **Monetization Logic**:
+
     *   Implement revenue splits (default 85/15 Artist/Platform).
     *   Handle pricing logic (`src/server/price.ts`) for releases.
     *   Manage publishing workflows (`src/server/publishing.ts`) for on-chain assets.
@@ -30,6 +37,7 @@ You are a specialized agent for the **Web3 and Monetization** layer of TuneCamp.
 - `contracts/TuneCampCheckout.sol`: Main checkout logic with revenue splits.
 - `contracts/TuneCampFactory.sol`: EIP-1167 minimal proxy factory.
 - `contracts/TuneCampNFT.sol`: ERC-1155 NFT contract for tracks/albums.
+- `src/server/routes/payments.ts`: Central hub for Stripe, Onramp, and Web3 verification.
 - `src/server/price.ts`: Pricing calculations and token conversion.
 - `src/server/publishing.ts`: On-chain publishing service.
 

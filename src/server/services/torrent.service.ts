@@ -24,7 +24,10 @@ export class TorrentService {
         fs.ensureDirSync(this.torrentDir);
 
         // Resume active torrents from DB on startup
-        setTimeout(() => this.resumeTorrents(), 5000); // Wait a bit for other services
+        setTimeout(() => {
+            this.resumeTorrents()
+                .catch(err => console.error("❌ Torrent resume error:", err));
+        }, 10000); // Wait 10 seconds for other services to be ready
 
         // Periodic status update to DB
         this.startStatusUpdates();
@@ -35,34 +38,45 @@ export class TorrentService {
     private async resumeTorrents() {
         try {
             const torrents = this.db.getTorrents();
-            let resumedCount = 0;
-            for (const t of torrents) {
-                if (t.status === 'downloading' || t.status === 'metadata') {
+            const activeToResume = torrents.filter(t => t.status === 'downloading' || t.status === 'metadata');
+            
+            if (activeToResume.length === 0) return;
+            
+            console.log(`📡 Resuming ${activeToResume.length} active torrents...`);
+            
+            for (const t of activeToResume) {
+                try {
                     this.addTorrent(t.magnet_uri, t.owner_id || 0);
-                    resumedCount++;
+                    // Gradual resume to avoid CPU spikes during startup
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } catch (err) {
+                    console.error(`❌ Failed to resume torrent ${t.info_hash}:`, err);
                 }
             }
-            if (resumedCount > 0) {
-                console.log(`🧲 Resumed ${resumedCount} torrent downloads.`);
-            }
         } catch (err) {
-            console.error("❌ Failed to resume torrents:", err);
+            console.error("❌ Error during torrent resume:", err);
         }
     }
 
     private startStatusUpdates() {
         this.updateInterval = setInterval(() => {
-            for (const torrent of this.client.torrents) {
-                this.db.updateTorrentProgress(
-                    torrent.infoHash,
-                    torrent.progress,
-                    torrent.done ? 'completed' : 'downloading',
-                    torrent.downloadSpeed,
-                    torrent.uploadSpeed,
-                    torrent.numPeers,
-                    torrent.length,
-                    torrent.path
-                );
+            try {
+                if (!this.client || !this.client.torrents) return;
+                
+                for (const torrent of this.client.torrents) {
+                    this.db.updateTorrentProgress(
+                        torrent.infoHash,
+                        torrent.progress,
+                        torrent.done ? 'completed' : 'downloading',
+                        torrent.downloadSpeed,
+                        torrent.uploadSpeed,
+                        torrent.numPeers,
+                        torrent.length,
+                        torrent.path
+                    );
+                }
+            } catch (err) {
+                console.error("❌ Error during periodic torrent status update:", err);
             }
         }, 5000);
     }
@@ -158,27 +172,34 @@ export class TorrentService {
     }
 
     public getStatus(): TorrentStatus[] {
-        return this.client.torrents.map(t => ({
-            infoHash: t.infoHash,
-            name: t.name,
-            progress: t.progress,
-            downloadSpeed: t.downloadSpeed,
-            uploadSpeed: t.uploadSpeed,
-            numPeers: t.numPeers,
-            received: t.downloaded,
-            uploaded: t.uploaded,
-            size: t.length,
-            path: t.path,
-            timeRemaining: t.timeRemaining,
-            done: t.done,
-            files: t.files.map(f => ({
-                name: f.name,
-                path: f.path,
-                progress: f.progress,
-                length: f.length,
-                downloaded: f.downloaded
-            }))
-        }));
+        if (!this.client || !this.client.torrents) return [];
+        
+        try {
+            return this.client.torrents.map(t => ({
+                infoHash: t.infoHash,
+                name: t.name,
+                progress: t.progress,
+                downloadSpeed: t.downloadSpeed,
+                uploadSpeed: t.uploadSpeed,
+                numPeers: t.numPeers,
+                received: t.downloaded,
+                uploaded: t.uploaded,
+                size: t.length,
+                path: t.path,
+                timeRemaining: t.timeRemaining,
+                done: t.done,
+                files: t.files ? t.files.map(f => ({
+                    name: f.name,
+                    path: f.path,
+                    progress: f.progress,
+                    length: f.length,
+                    downloaded: f.downloaded
+                })) : []
+            }));
+        } catch (err) {
+            console.error("❌ Error getting torrent status:", err);
+            return [];
+        }
     }
 
     public async removeTorrent(infoHash: string, deleteFiles: boolean = false) {

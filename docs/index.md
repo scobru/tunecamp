@@ -27,11 +27,16 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 
 ### Documentazione Aggiuntiva (Specifica)
 
+- [Pagamenti & Monetizzazione](./payments.md): Stripe Checkout, Onramp e verifica on-chain.
+- [Integrazioni AI](./ai-integrations.md): Automazione metadati e raccomandazioni via OpenRouter.
+- [Google Drive Integration](./google-drive.md): Streaming e importazione dal cloud.
+- [Sistema Torrent](./torrents.md): Integrazione WebTorrent per il download di musica.
+- [Linda Messaging](./linda-bot.md): Bridge decentralizzato per messaggistica Zen.
 - [Federazione](./federation.md): Dettagli sul protocollo ActivityPub in TuneCamp.
 - [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.
 - [Nginx](./nginx.md): Esempi di configurazione per reverse proxy.
 
 ---
 
-*Ultimo aggiornamento: 3 Maggio 2026*
+*Ultimo aggiornamento: 9 Maggio 2026*
 *Generato tramite il workflow `bmad-document-project`*

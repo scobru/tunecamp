@@ -17,11 +17,17 @@ Send audio files, documents, or photos to the bot.
 *   **Quiet Mode**: By default, the bot stays silent during ingestion to avoid Telegram's API rate limits. Successful uploads are confirmed at the end.
 *   **Debug Mode**: Use `/debug on` to see detailed processing logs (useful for troubleshooting metadata extraction).
 
-### 2. Metadata Hints
-The bot can parse captions for metadata hints. If you send a file with a caption like `Artist - Song (Year)`, the bot will use this to improve its extraction if the file's internal tags are missing or corrupted.
+### 2. Metadata Hints & AI Parsing
+The bot is highly intelligent in how it handles track metadata:
+*   **Hashtags**: Use specific hashtags in the caption to force metadata: `#artist Name`, `#album Title`, `#year 2024`, `#title Song`, `#genre Electronic`.
+*   **AI Extraction**: If no hashtags are found but a caption is present, the bot uses **AI (via OpenRouter)** to automatically parse the artist, album, and title from natural language text.
+*   **Bandcamp Integration**: If the bot detects a Bandcamp URL in the caption, it will automatically scrape the page to extract high-quality metadata, including the release year and correct artist/album mapping.
 
-### 3. Remote Search
-Search your library directly from Telegram using commands (if enabled).
+### 3. Remote Search & Streaming
+Search your library directly from Telegram using commands:
+*   `/search <query>`: Find tracks in the library.
+*   `/play <query>`: Get a streaming link for a specific track.
+*   **Linda Bridge**: If the Linda bridge is active, Telegram uploads can be automatically forwarded to Linda groups.
 
 ## Administration
 
