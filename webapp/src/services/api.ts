@@ -472,6 +472,11 @@ export const API = {
     importGDriveFile: (fileId: string, artistId?: number, albumId?: number) => handleResponse(api.post<{ success: boolean, trackId: number }>('/storage/gdrive/import', { fileId, artistId, albumId })),
     localizeGDriveTrack: (trackId: string | number) => handleResponse(api.post<{ success: boolean, track: Track }>(`/storage/gdrive/localize/${trackId}`)),
     deleteGDriveAccount: (id: number) => handleResponse(api.delete(`/storage/gdrive/accounts/${id}`)),
+    
+    // --- Torrents ---
+    getTorrents: () => handleResponse(api.get<any[]>('/admin/torrents')),
+    addTorrent: (magnetUri: string) => handleResponse(api.post('/admin/torrents/add', { magnetUri })),
+    deleteTorrent: (infoHash: string, deleteFiles = false) => handleResponse(api.delete(`/admin/torrents/${infoHash}${deleteFiles ? '?deleteFiles=true' : ''}`)),
 };
 
 export default API;

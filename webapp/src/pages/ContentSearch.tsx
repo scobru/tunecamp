@@ -6,10 +6,12 @@ import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle } from 'luci
 
 export const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'soulseek' | 'downloads'>('soulseek');
+    const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'downloads'>('soulseek');
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [downloads, setDownloads] = useState<any[]>([]);
+    const [torrents, setTorrents] = useState<any[]>([]);
+    const [magnetUri, setMagnetUri] = useState('');
     const [searchError, setSearchError] = useState<string | null>(null);
     const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
     const navigate = useNavigate();
@@ -22,8 +24,6 @@ export const ContentSearch: React.FC = () => {
         }
     }, [authLoading, isAuthenticated, user, navigate]);
 
-
-
     const fetchDownloads = async () => {
         try {
             const data = await API.getSoulseekStatus();
@@ -33,10 +33,23 @@ export const ContentSearch: React.FC = () => {
         }
     };
 
+    const fetchTorrents = async () => {
+        try {
+            const data = await API.getTorrents();
+            setTorrents(data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'downloads') {
             fetchDownloads();
             const interval = setInterval(fetchDownloads, 5000);
+            return () => clearInterval(interval);
+        } else if (activeTab === 'torrents') {
+            fetchTorrents();
+            const interval = setInterval(fetchTorrents, 5000);
             return () => clearInterval(interval);
         }
     }, [activeTab]);
@@ -57,6 +70,33 @@ export const ContentSearch: React.FC = () => {
             setSearchError("Search service is currently limited. Use manual links below.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAddTorrent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!magnetUri) return;
+
+        setLoading(true);
+        try {
+            await API.addTorrent(magnetUri);
+            setMagnetUri('');
+            fetchTorrents();
+        } catch (err: any) {
+            console.error(`Failed to add torrent: ${err.message}`);
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteTorrent = async (infoHash: string) => {
+        if (!confirm('Are you sure you want to remove this torrent?')) return;
+        try {
+            await API.deleteTorrent(infoHash);
+            fetchTorrents();
+        } catch (err: any) {
+            console.error(`Failed to delete torrent: ${err.message}`);
         }
     };
 
@@ -100,6 +140,13 @@ export const ContentSearch: React.FC = () => {
         }
     };
 
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
@@ -120,12 +167,17 @@ export const ContentSearch: React.FC = () => {
 
 
             <div className="tabs tabs-boxed mb-6 p-1 bg-base-300">
-
                 <button 
                     className={`tab flex-1 transition-all ${activeTab === 'soulseek' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
                     onClick={() => setActiveTab('soulseek')}
                 >
                     <Activity className="mr-2" size={16} /> Soulseek
+                </button>
+                <button 
+                    className={`tab flex-1 transition-all ${activeTab === 'torrents' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
+                    onClick={() => setActiveTab('torrents')}
+                >
+                    <RefreshCw className="mr-2" size={16} /> WebTorrent
                 </button>
                 <button 
                     className={`tab flex-1 transition-all ${activeTab === 'downloads' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
@@ -135,7 +187,7 @@ export const ContentSearch: React.FC = () => {
                 </button>
             </div>
 
-            {activeTab !== 'downloads' ? (
+            {activeTab === 'soulseek' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Search Column */}
                     <div className="lg:col-span-2">
@@ -201,20 +253,111 @@ export const ContentSearch: React.FC = () => {
 
                     {/* Side Actions Column */}
                     <div className="space-y-6">
-                        {/* Note about Soulseek */}
-                        {activeTab === 'soulseek' && (
-                            <div className="card bg-primary/5 border border-primary/20 p-5">
-                                <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
-                                    <Activity size={16} /> Soulseek Protocol
-                                </h3>
-                                <p className="text-xs opacity-70 leading-relaxed">
-                                    Soulseek is a peer-to-peer network specifically for music. It is often more reliable than torrents for finding rare albums and lossless tracks.
-                                </p>
-                            </div>
-                        )}
+                        <div className="card bg-primary/5 border border-primary/20 p-5">
+                            <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
+                                <Activity size={16} /> Soulseek Protocol
+                            </h3>
+                            <p className="text-xs opacity-70 leading-relaxed">
+                                Soulseek is a peer-to-peer network specifically for music. It is often more reliable than torrents for finding rare albums and lossless tracks.
+                            </p>
+                        </div>
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {activeTab === 'torrents' && (
+                <div className="space-y-6">
+                    <div className="card bg-base-200 border border-base-300 shadow-sm p-6">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <RefreshCw size={20} className="text-primary" /> Add New Torrent
+                        </h2>
+                        <form onSubmit={handleAddTorrent} className="flex gap-2">
+                            <input 
+                                type="text" 
+                                placeholder="Paste magnet link here..."
+                                className="input input-bordered flex-1"
+                                value={magnetUri}
+                                onChange={e => setMagnetUri(e.target.value)}
+                            />
+                            <button type="submit" className="btn btn-primary gap-2" disabled={loading || !magnetUri}>
+                                {loading ? <span className="loading loading-spinner loading-xs"></span> : <Download size={18} />}
+                                Add Torrent
+                            </button>
+                        </form>
+                        <p className="text-xs opacity-50 mt-2">
+                            Supports magnet links and info hashes. Files will be automatically imported into the library once completed.
+                        </p>
+                    </div>
+
+                    <div className="overflow-x-auto bg-base-200/50 rounded-2xl border border-base-300 shadow-sm">
+                        <table className="table table-zebra w-full">
+                            <thead>
+                                <tr className="bg-base-300/50 text-base-content/60">
+                                    <th className="rounded-tl-2xl">Name</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Speed</th>
+                                    <th>Peers</th>
+                                    <th className="text-right rounded-tr-2xl">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm">
+                                {torrents.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="text-center py-20 opacity-40 font-medium">No active torrents.</td>
+                                    </tr>
+                                )}
+                                {torrents.map((t: any) => (
+                                    <tr key={t.info_hash} className="hover:bg-base-300/30 transition-colors">
+                                        <td className="max-w-md">
+                                            <div className="truncate font-semibold text-base-content" title={t.name}>
+                                                {t.name || t.info_hash}
+                                            </div>
+                                            <div className="text-[10px] opacity-30 truncate">{t.info_hash}</div>
+                                        </td>
+                                        <td>
+                                            <span className={`badge badge-sm px-3 h-6 font-bold uppercase tracking-tighter ${
+                                                t.status === 'completed' ? 'badge-success text-success-content' : 
+                                                t.status === 'failed' ? 'badge-error text-error-content' : 
+                                                'badge-info text-info-content'
+                                            }`}>
+                                                {t.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="flex items-center gap-3">
+                                                <progress 
+                                                    className={`progress w-24 ${t.status === 'completed' ? 'progress-success' : 'progress-primary'}`} 
+                                                    value={t.progress * 100} 
+                                                    max="100"
+                                                ></progress>
+                                                <span className="text-[10px] font-mono opacity-50">{(t.progress * 100).toFixed(1)}%</span>
+                                            </div>
+                                        </td>
+                                        <td className="text-[10px] font-mono opacity-60">
+                                            {t.downloadSpeed ? `${formatBytes(t.downloadSpeed)}/s` : '-'}
+                                        </td>
+                                        <td className="text-[10px] font-bold opacity-60">
+                                            {t.numPeers || 0}
+                                        </td>
+                                        <td className="text-right">
+                                            <button 
+                                                onClick={() => handleDeleteTorrent(t.info_hash)}
+                                                className="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                                                title="Remove Torrent"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'downloads' && (
                 <div className="overflow-x-auto bg-base-200/50 rounded-2xl border border-base-300 shadow-sm">
                     <table className="table table-zebra w-full">
                         <thead>

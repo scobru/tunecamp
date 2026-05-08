@@ -441,6 +441,13 @@ export function createDatabase(dbPath: string): DatabaseService {
       name TEXT,
       magnet_uri TEXT NOT NULL,
       owner_id INTEGER REFERENCES admin(id) ON DELETE SET NULL,
+      status TEXT DEFAULT 'metadata',
+      progress REAL DEFAULT 0,
+      download_speed REAL DEFAULT 0,
+      upload_speed REAL DEFAULT 0,
+      num_peers INTEGER DEFAULT 0,
+      size INTEGER DEFAULT 0,
+      path TEXT,
       added_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -815,6 +822,24 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
     } catch (e) {
         console.error("Migration error (unify owner_id v2):", e);
+    }
+    
+    // Migration: Update torrents table with status and progress
+    try {
+        const tableInfo = db.pragma("table_info(torrents)") as any[];
+        const hasStatus = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "status");
+        if (!hasStatus) {
+            console.log("📦 Migrating database: Adding status, progress, speed, and size to torrents table...");
+            db.exec("ALTER TABLE torrents ADD COLUMN status TEXT DEFAULT 'metadata'");
+            db.exec("ALTER TABLE torrents ADD COLUMN progress REAL DEFAULT 0");
+            db.exec("ALTER TABLE torrents ADD COLUMN download_speed REAL DEFAULT 0");
+            db.exec("ALTER TABLE torrents ADD COLUMN upload_speed REAL DEFAULT 0");
+            db.exec("ALTER TABLE torrents ADD COLUMN num_peers INTEGER DEFAULT 0");
+            db.exec("ALTER TABLE torrents ADD COLUMN size INTEGER DEFAULT 0");
+            db.exec("ALTER TABLE torrents ADD COLUMN path TEXT");
+        }
+    } catch (e) {
+        console.error("Migration error (torrents status):", e);
     }
 
     // Migration: Add telegram bot settings to admin table
@@ -1896,9 +1921,16 @@ export function createDatabase(dbPath: string): DatabaseService {
         getTrackOwners(id: number): number[] { return db.prepare("SELECT owner_id FROM track_ownership WHERE track_id = ?").all(id).map((r: any) => r.owner_id); },
         getAlbumOwners(id: number): number[] { return db.prepare("SELECT owner_id FROM album_ownership WHERE album_id = ?").all(id).map((r: any) => r.owner_id); },
         // Torrents
-        getTorrents(): any[] { return db.prepare("SELECT * FROM torrents ORDER BY added_at DESC").all(); },
-        getTorrent(h: string): any { return db.prepare("SELECT * FROM torrents WHERE info_hash = ?").get(h); },
-        createTorrent(t: any): void { db.prepare("INSERT OR REPLACE INTO torrents (info_hash, name, magnet_uri, owner_id) VALUES (?, ?, ?, ?)").run(t.info_hash, t.name, t.magnet_uri, t.owner_id || null); },
+        getTorrents(): Torrent[] { return db.prepare("SELECT * FROM torrents ORDER BY added_at DESC").all() as Torrent[]; },
+        getTorrent(h: string): Torrent | undefined { return db.prepare("SELECT * FROM torrents WHERE info_hash = ?").get(h) as Torrent | undefined; },
+        createTorrent(t: any): void { 
+            db.prepare("INSERT OR REPLACE INTO torrents (info_hash, name, magnet_uri, owner_id, status, progress, download_speed, upload_speed, num_peers, size, path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+              .run(t.info_hash, t.name, t.magnet_uri, t.owner_id || null, t.status || 'metadata', t.progress || 0, t.download_speed || 0, t.upload_speed || 0, t.num_peers || 0, t.size || 0, t.path || null); 
+        },
+        updateTorrentProgress(infoHash: string, progress: number, status: Torrent['status'], downloadSpeed: number, uploadSpeed: number, numPeers: number, size: number, path: string | null): void {
+            db.prepare("UPDATE torrents SET progress = ?, status = ?, download_speed = ?, upload_speed = ?, num_peers = ?, size = ?, path = ? WHERE info_hash = ?")
+              .run(progress, status, downloadSpeed, uploadSpeed, numPeers, size, path, infoHash);
+        },
         deleteTorrent(h: string): void { db.prepare("DELETE FROM torrents WHERE info_hash = ?").run(h); },
         transaction<T>(fn: () => T): () => T {
             return db.transaction(fn);

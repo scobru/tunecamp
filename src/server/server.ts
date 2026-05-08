@@ -89,6 +89,8 @@ import { createSearchRoutes } from "./routes/search.js";
 import { GoogleDriveService } from "./services/google-drive.service.js";
 import { createStorageRouter } from "./routes/storage.js";
 import { runStartupMaintenance } from "./maintenance.js";
+import { TorrentService } from "./services/torrent.service.js";
+import { createTorrentRoutes } from "./routes/torrent.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { latchDomain, kprs } from "./zen-network.js";
 import { getZen } from "./zen.js";
@@ -212,6 +214,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const slskUser = database.getSetting("soulseek_username");
     const slskPass = database.getSetting("soulseek_password");
     soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
+    
+    // Initialize Torrent Service
+    const torrentService = new TorrentService(database, scanner, config.musicDir);
 
     // Initialize Telegram Bot
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
@@ -241,6 +246,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         console.log("🔄 Restarting server...");
         process.exit(0); // Docker/PM2 should handle restart
     }, gdriveService));
+    app.use("/api/admin/torrents", createTorrentRoutes(database, torrentService, authService));
 
     app.use(integrateFederation(federation, (req: express.Request) => undefined)); // Context data if needed
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));

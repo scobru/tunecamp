@@ -278,6 +278,13 @@ export interface Torrent {
     name: string;
     magnet_uri: string;
     owner_id: number | null;
+    status: 'metadata' | 'downloading' | 'completed' | 'failed' | 'paused';
+    progress: number;
+    download_speed: number;
+    upload_speed: number;
+    num_peers: number;
+    size: number;
+    path: string | null;
     added_at: string;
 }
 
@@ -291,7 +298,7 @@ export interface TorrentStatus {
     received: number;
     uploaded: number;
     size: number;
-    path: string;
+    path: string | null;
     timeRemaining: number;
     done: boolean;
     files: Array<{
@@ -364,6 +371,7 @@ export interface DatabaseService {
     getTorrents(): Torrent[];
     getTorrent(infoHash: string): Torrent | undefined;
     createTorrent(torrent: Omit<Torrent, "added_at">): void;
+    updateTorrentProgress(infoHash: string, progress: number, status: Torrent['status'], downloadSpeed: number, uploadSpeed: number, numPeers: number, size: number, path: string | null): void;
     deleteTorrent(infoHash: string): void;
 
     // Artists
