@@ -14,6 +14,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [showBatchEdit, setShowBatchEdit] = useState(false);
+  const [localizing, setLocalizing] = useState<string | number | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "title", direction: "asc" });
 
   const loadTracks = () => API.getTracks({ mine }).then(setTracks).catch(console.error);
@@ -78,6 +79,22 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
     } catch (e) {
       console.error(e);
       alert("Failed to delete track");
+    }
+  };
+
+  const handleLocalize = async (id: string | number, name: string) => {
+    if (!confirm(`Do you want to download "${name}" from Google Drive and save it on the server? This will replace the Google Drive link with a local file.`)) return;
+    
+    setLocalizing(id);
+    try {
+      await API.localizeGDriveTrack(id);
+      loadTracks();
+      alert(`Track "${name}" successfully localized to server!`);
+    } catch (e: any) {
+      console.error(e);
+      alert("Localization failed: " + e.message);
+    } finally {
+      setLocalizing(null);
     }
   };
 
@@ -245,6 +262,16 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 >
                   Download
                 </a>
+                {t.path?.startsWith('gdrive://') && (
+                  <button
+                    className="btn btn-xs btn-ghost text-warning"
+                    onClick={() => handleLocalize(t.id, t.title)}
+                    disabled={localizing === t.id}
+                    title="Download from GDrive and save to server"
+                  >
+                    {localizing === t.id ? "..." : "Localize"}
+                  </button>
+                )}
                 <button
                   className="btn btn-xs btn-ghost text-primary"
                   onClick={() =>

@@ -2,8 +2,9 @@ import { Router } from "express";
 import { type GoogleDriveService } from "../services/google-drive.service.js";
 import { type DatabaseService } from "../database.types.js";
 import { type AuthenticatedRequest } from "../middleware/auth.js";
+import { type LibraryService } from "../services/library.service.js";
 
-export function createStorageRouter(database: DatabaseService, gdriveService: GoogleDriveService, authMiddleware: any) {
+export function createStorageRouter(database: DatabaseService, gdriveService: GoogleDriveService, authMiddleware: any, libraryService: LibraryService) {
     const router = Router();
 
     router.get("/gdrive/auth", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
@@ -33,6 +34,19 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
         } catch (error: any) {
             console.error("GDrive OAuth Error:", error.response?.data || error.message);
             res.status(500).send("Authentication failed: " + (error.response?.data?.error_description || error.message));
+        }
+    });
+
+    router.post("/gdrive/localize/:id", authMiddleware.requireAdmin, async (req: AuthenticatedRequest, res) => {
+        try {
+            const trackId = parseInt(req.params.id);
+            if (isNaN(trackId)) return res.status(400).send("Invalid track ID");
+
+            const updatedTrack = await libraryService.localizeTrack(trackId, gdriveService);
+            res.json({ success: true, track: updatedTrack });
+        } catch (error: any) {
+            console.error("GDrive Localization Error:", error.message);
+            res.status(500).json({ error: error.message });
         }
     });
 

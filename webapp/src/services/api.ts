@@ -468,6 +468,7 @@ export const API = {
     getGDriveAccounts: () => handleResponse(api.get<StorageAccount[]>('/storage/gdrive/accounts')),
     getGDriveFiles: (folderId?: string) => handleResponse(api.get<GoogleDriveFile[]>(`/storage/gdrive/files${folderId ? `?folderId=${folderId}` : ''}`)),
     importGDriveFile: (fileId: string, artistId?: number, albumId?: number) => handleResponse(api.post<{ success: boolean, trackId: number }>('/storage/gdrive/import', { fileId, artistId, albumId })),
+    localizeGDriveTrack: (trackId: string | number) => handleResponse(api.post<{ success: boolean, track: Track }>(`/storage/gdrive/localize/${trackId}`)),
     deleteGDriveAccount: (id: number) => handleResponse(api.delete(`/storage/gdrive/accounts/${id}`)),
 };
 

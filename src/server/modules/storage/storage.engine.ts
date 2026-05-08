@@ -11,6 +11,7 @@ export interface StorageEngine {
     ensureDir(path: string): Promise<void>;
     readdir(path: string, options?: any): Promise<any[]>;
     stat(path: string): Promise<Stats>;
+    writeFileStream(path: string, stream: any): Promise<void>;
 }
 
 export class LocalDiskStorage implements StorageEngine {
@@ -48,5 +49,15 @@ export class LocalDiskStorage implements StorageEngine {
 
     async stat(path: string): Promise<Stats> {
         return fs.stat(path);
+    }
+
+    async writeFileStream(path: string, stream: any): Promise<void> {
+        const writeStream = fs.createWriteStream(path);
+        return new Promise((resolve, reject) => {
+            stream.pipe(writeStream);
+            stream.on('error', reject);
+            writeStream.on('finish', resolve);
+            writeStream.on('error', reject);
+        });
     }
 }

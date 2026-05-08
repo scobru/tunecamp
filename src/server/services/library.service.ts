@@ -260,6 +260,53 @@ export class LibraryService {
     }
 
     /**
+     * Localizes a track from a cloud provider (e.g. Google Drive) to the local server storage.
+     */
+    async localizeTrack(trackId: number, gdriveService: any): Promise<Track> {
+        const track = this.db.getTrack(trackId);
+        if (!track) throw new Error("Track not found");
+        if (!track.file_path || !track.file_path.startsWith("gdrive://")) {
+            throw new Error("Track is not a cloud-linked track");
+        }
+
+        const fileId = track.file_path.substring(9);
+        const ownerId = track.owner_id || this.db.getPrimaryAdminId() || 1;
+
+        console.log(`[LibraryService] Localizing track ${trackId} from GDrive (${fileId})...`);
+
+        // 1. Get stream from GDrive
+        const { stream, headers } = await gdriveService.getFileStream(ownerId, fileId);
+        
+        // 2. Determine local path
+        const ext = headers['content-type'] === 'audio/flac' ? '.flac' : 
+                    headers['content-type'] === 'audio/mpeg' ? '.mp3' : 
+                    headers['content-type'] === 'audio/wav' ? '.wav' : '.mp3';
+        
+        const sanitizedTitle = (track.title || "Untitled").replace(/[^a-z0-9_\-]/gi, '_');
+        const sanitizedArtist = (track.artist_name || "Unknown").replace(/[^a-z0-9_\-]/gi, '_');
+        const relativePath = path.posix.join("cloud_imports", `${sanitizedArtist} - ${sanitizedTitle}${ext}`);
+        const fullPath = path.join(this.musicDir, relativePath);
+
+        // Ensure directory exists
+        await this.storage.ensureDir(path.dirname(fullPath));
+
+        // 3. Save to disk
+        await this.storage.writeFileStream(fullPath, stream);
+
+        // 4. Update Database
+        this.db.updateTrackPath(trackId, relativePath, track.album_id);
+        
+        // 5. Update metadata from file (optional but good)
+        const updatedTrack = this.db.getTrack(trackId);
+        if (updatedTrack) {
+            console.log(`[LibraryService] Track ${trackId} localized to: ${relativePath}`);
+            return updatedTrack;
+        }
+        
+        throw new Error("Failed to retrieve updated track");
+    }
+
+    /**
      * Deletes a track from the database and optionally removes the physical file.
      */
     async deleteTrack(trackId: number, deleteFile: boolean = false): Promise<void> {

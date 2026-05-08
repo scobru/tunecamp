@@ -341,7 +341,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
 
     if (gdriveService) {
-        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware));
+        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware, libraryService));
     }
 
     app.use("/api/import", authMiddleware.requireUser, createImportRoutes());
