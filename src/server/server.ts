@@ -226,7 +226,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     if (config.gdriveClientId && config.gdriveClientSecret) {
         console.log("🔗 Google Drive integration enabled");
         const dbPublicUrl = database.getSetting("publicUrl");
-        const publicUrl = dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`;
+        const publicUrl = (dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
         const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
         gdriveService = new GoogleDriveService(database, {
             clientId: config.gdriveClientId,
@@ -362,7 +362,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     // Funkwhale-compatible federation libraries endpoint
     app.get("/api/v1/federation/libraries", async (_req, res) => {
-        const publicUrl = database.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;
+        const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
         const stats = await database.getStats();
         res.json({
             count: 1,
@@ -560,7 +560,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         try {
             let html = getCachedHtml();
             const dbPublicUrl = database.getSetting("publicUrl");
-            const publicUrl = dbPublicUrl || config.publicUrl || `${req.protocol}://${req.get('host')}`;
+            const publicUrl = (dbPublicUrl || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
 
             const ogTags = `
     <meta property="og:title" content="${title.replace(/"/g, '&quot;')}" />
@@ -655,7 +655,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
         // Register server on Zen community if publicUrl is set (either in config or db)
         const dbPublicUrl = database.getSetting("publicUrl");
-        const publicUrl = dbPublicUrl || config.publicUrl;
+        const publicUrl = (dbPublicUrl || config.publicUrl || "").trim().replace(/\/$/, "");
 
         if (publicUrl) {
             const artists = database.getArtists();
