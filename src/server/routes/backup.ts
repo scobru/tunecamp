@@ -13,10 +13,7 @@ fs.ensureDirSync("uploads");
 const upload = multer({ dest: "uploads/" });
 
 interface AuthenticatedRequest extends express.Request {
-    user?: {
-        id: number;
-        [key: string]: any;
-    };
+    userId?: number;
     isRootAdmin?: boolean;
 }
 
@@ -290,7 +287,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
                 return res.status(503).send("Google Drive service not configured");
             }
 
-            const userId = req.user?.id;
+            const userId = req.userId;
             if (!userId) return res.status(401).send("User not authenticated");
 
             // 1. Prepare Database Snapshot
