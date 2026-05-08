@@ -6,7 +6,6 @@ import { SetupWizardModal } from "./components/modals/SetupWizardModal";
 
 // Lazy-load all page components to reduce initial bundle size
 const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
-const Albums = lazy(() => import("./pages/Albums").then(m => ({ default: m.Albums })));
 const Releases = lazy(() => import("./pages/Releases").then(m => ({ default: m.Releases })));
 const Library = lazy(() => import("./pages/Library").then(m => ({ default: m.Library })));
 const AlbumDetails = lazy(() => import("./pages/AlbumDetails").then(m => ({ default: m.AlbumDetails })));

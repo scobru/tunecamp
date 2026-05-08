@@ -216,6 +216,9 @@ export interface SiteSettings {
     stripe_secret_key?: string;
     stripe_webhook_secret?: string;
     discogs_token?: string;
+    linda_bot_enabled?: boolean;
+    linda_invite_link?: string;
+    linda_bot_pubkey?: string;
 }
 
 export interface Post {

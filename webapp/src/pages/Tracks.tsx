@@ -9,6 +9,7 @@ import {
   Download,
   Share2,
   ListMusic,
+  Activity,
 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -238,6 +239,15 @@ export const Tracks = () => {
                           <ListMusic size={16} /> Add to Playlist
                         </a>
                       </li>
+                      {isAdminAuthenticated && (
+                        <li>
+                          <a onClick={() => {
+                             // Handle other admin actions here if needed
+                          }}>
+                             <Activity size={16} className="text-secondary" /> Maintenance
+                          </a>
+                        </li>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -251,6 +261,7 @@ export const Tracks = () => {
           </div>
         )}
       </div>
+
     </div>
   );
 };

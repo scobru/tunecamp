@@ -82,6 +82,7 @@ import { securityHeaders } from "./middleware/security.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { SoulseekService } from "./soulseek.js";
 import { TelegramBotService } from "./services/telegram-bot.js";
+import { LindaBotService } from "./services/linda-bot.js";
 import { MaintenanceService } from "./services/maintenance.service.js";
 import { OpenRouterService } from "./services/openrouter.service.js";
 import { createSearchRoutes } from "./routes/search.js";
@@ -214,6 +215,10 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
     telegramBotService.start().catch(err => console.error("Telegram Bot failed to start:", err));
 
+    // Initialize Linda Bot
+    const lindaBotService = new LindaBotService(database, scanner, config, openRouterService);
+    lindaBotService.start().catch(err => console.error("Linda Bot failed to start:", err));
+
     // Upload routes - MOVED BEFORE FEDIFY/BODY PARSERS to avoid stream consumption issues
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(database, scanner, config.musicDir, publishingService, storage, authService));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
@@ -311,7 +316,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     });
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
-    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(database, scanner, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService));
+    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(database, scanner, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService));
     // Backup routes moved earlier
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));

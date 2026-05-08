@@ -24,7 +24,8 @@ export function createAdminRoutes(
     publishingService: PublishingService,
     apService: ActivityPubService,
     telegramBotService: any,
-    soulseekService: SoulseekService
+    soulseekService: SoulseekService,
+    lindaBotService: any
 ): Router {
     const router = Router();
     const authMiddleware = createAuthMiddleware(authService);
@@ -217,7 +218,8 @@ export function createAdminRoutes(
                 soulseek_username, soulseek_password,
                 onramp_provider, moonpay_api_key,
                 stripe_secret_key, stripe_webhook_secret,
-                discogs_token
+                discogs_token,
+                linda_bot_enabled
             } = req.body;
             let settingsChanged = false;
 
@@ -296,9 +298,19 @@ export function createAdminRoutes(
                 database.setSetting("discogs_token", discogs_token);
             }
 
+            if (linda_bot_enabled !== undefined) {
+                database.setSetting("linda_bot_enabled", linda_bot_enabled ? "true" : "false");
+                settingsChanged = true;
+            }
+
             // Restart telegram bot if settings changed
             if (telegram_bot_token !== undefined || telegram_allowed_channels !== undefined) {
                 telegramBotService.restart().catch((err: any) => console.error("Failed to restart Telegram bot:", err));
+            }
+
+            // Restart Linda bot if settings changed (e.g. zenPeers, enabled state)
+            if (zenPeers !== undefined || linda_bot_enabled !== undefined) {
+                lindaBotService.start().catch((err: any) => console.error("Failed to restart Linda bot:", err));
             }
 
             // Reconnect Soulseek if credentials changed
@@ -1319,6 +1331,7 @@ export function createAdminRoutes(
             res.status(500).json({ error: error.message || "Failed to sync remote actors" });
         }
     });
+
 
 
     return router;

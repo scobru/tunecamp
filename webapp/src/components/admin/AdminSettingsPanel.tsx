@@ -573,6 +573,64 @@ export const AdminSettingsPanel = () => {
           </div>
         </div>
 
+        {/* Linda Bridge Settings */}
+        <div className="bg-purple-500/10 p-6 rounded-2xl border border-purple-500/20 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2 text-purple-400">
+            <Shield size={18} />
+            <h4 className="font-bold uppercase text-xs tracking-wider">Linda Decentralized Bridge</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="form-control">
+              <label className="label cursor-pointer justify-start gap-4">
+                <span className="label-text font-medium">Enable Linda Bot</span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-secondary toggle-sm"
+                  checked={settings.linda_bot_enabled || false}
+                  onChange={(e) => setSettings({ ...settings, linda_bot_enabled: e.target.checked })}
+                />
+              </label>
+              <p className="text-[10px] opacity-40 px-1 mt-1">Start the Linda listener for autonomous command processing.</p>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">Linda Group Invite Link</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered bg-base-300/50 font-mono text-xs"
+                value={settings.linda_invite_link || ""}
+                onChange={(e) => setSettings({ ...settings, linda_invite_link: e.target.value })}
+                placeholder="eyJZyI6..."
+              />
+              <label className="label">
+                <span className="label-text-alt opacity-40 text-[10px]">The invite link to the Linda group where the bot should join and listen.</span>
+              </label>
+            </div>
+
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium text-sm">Bot Public Key (Read Only)</span>
+              </label>
+              <input
+                type="text"
+                readOnly
+                className="input input-bordered bg-base-300/50 font-mono text-xs opacity-70"
+                value={settings.linda_bot_pubkey || "Logging in..."}
+              />
+              <label className="label">
+                <span className="label-text-alt opacity-40 text-[10px]">The stable public key of your Tunecamp Bot. Use this to verify the bot in the group.</span>
+              </label>
+            </div>
+          </div>
+          
+          <div className="bg-purple-500/5 border border-purple-500/20 p-4 rounded-xl text-xs opacity-70">
+            <p>The Linda bridge allows your server to act as a first-class citizen in the Zen decentralized graph. Users can search and play music from your node directly from the Linda app.</p>
+          </div>
+        </div>
+
         {/* Stripe Configuration */}
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-indigo-400">

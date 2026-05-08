@@ -549,6 +549,7 @@ export const AlbumDetails = () => {
           albumId={String(album.id)}
         />
       </div>
+
     </div>
   );
 };

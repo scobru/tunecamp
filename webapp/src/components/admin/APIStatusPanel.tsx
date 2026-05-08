@@ -11,8 +11,7 @@ import {
   Search,
   Cpu,
   Download,
-  CreditCard,
-  CircleDollarSign
+  CreditCard
 } from "lucide-react";
 
 interface HealthStatus {

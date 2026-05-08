@@ -6,8 +6,7 @@ import {
   Pause, 
   SkipBack, 
   SkipForward, 
-  Disc,
-  Maximize2
+  Disc
 } from "lucide-react";
 import { Waveform } from "./Waveform";
 import clsx from "clsx";
