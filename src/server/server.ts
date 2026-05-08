@@ -233,7 +233,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
             clientSecret: config.gdriveClientSecret,
             redirectUri
         });
-        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware));
     }
 
     // Upload routes - MOVED BEFORE FEDIFY/BODY PARSERS to avoid stream consumption issues
@@ -340,6 +339,10 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, libraryService, config.musicDir));
     app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, libraryService, config.musicDir, authService, gdriveService));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
+
+    if (gdriveService) {
+        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware));
+    }
 
     app.use("/api/import", authMiddleware.requireUser, createImportRoutes());
 
