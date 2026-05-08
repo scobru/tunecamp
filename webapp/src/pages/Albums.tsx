@@ -6,15 +6,20 @@ import type { Album } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
 import clsx from 'clsx';
 
-export const Albums = () => {
+export const Albums = ({ initialTab = 'releases' }: { initialTab?: 'releases' | 'library' }) => {
     const { isAuthenticated, role, user } = useAuthStore();
     const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
     const isArtist = !!user?.artistId;
-    const [activeTab, setActiveTab] = useState<'releases' | 'library'>('releases');
+    const [activeTab, setActiveTab] = useState<'releases' | 'library'>(initialTab);
     const [releases, setReleases] = useState<any[]>([]);
     const [library, setLibrary] = useState<Album[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
+
+    // Sync activeTab with initialTab if it changes (e.g. on navigation)
+    useEffect(() => {
+        setActiveTab(initialTab);
+    }, [initialTab]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -62,11 +67,18 @@ export const Albums = () => {
         <div className="space-y-6 animate-fade-in">
              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <Disc size={32} className="text-primary"/> Catalog
+                    {activeTab === 'releases' ? (
+                        <><Disc size={32} className="text-primary"/> Formal Releases</>
+                    ) : (
+                        <><Library size={32} className="text-primary"/> File Library</>
+                    )}
                 </h1>
                 
                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1 border border-base-content/5 w-full sm:w-auto">
+                    {/* Hide tabs if we are in a specific view, or show them if the user wants flexibility */}
+                    {/* For now, let's keep them but maybe simplify? The user said "keep release only for releases" */}
+                    {/* So maybe we hide the tab switcher entirely and rely on the sidebar? */}
+                    <div role="tablist" className="tabs tabs-boxed bg-base-200/50 p-1 border border-base-content/5 w-full sm:w-auto hidden">
                         <button
                             role="tab"
                             className={clsx("tab tab-sm md:tab-md transition-all gap-2", activeTab === 'releases' && "tab-active !bg-primary !text-primary-content")}
@@ -82,7 +94,7 @@ export const Albums = () => {
                             className={clsx("tab tab-sm md:tab-md transition-all gap-2", activeTab === 'library' && "tab-active !bg-primary !text-primary-content")}
                             onClick={() => setActiveTab('library')}
                         >
-                            <Library size={16}/> File Library
+                            <Library size={16}/> Archive
                             <div className={clsx("badge badge-xs", activeTab === 'library' ? "badge-ghost" : "badge-outline opacity-50")}>
                                 {library.length}
                             </div>

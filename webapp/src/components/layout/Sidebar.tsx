@@ -19,6 +19,7 @@ import {
   Heart,
   Upload,
   MessageSquare,
+  Library
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -99,9 +100,18 @@ export const Sidebar = () => {
         </div>
  
         <div>
-          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Library</h3>
+          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Catalog</h3>
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/albums" icon={Disc} label="Releases" />
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Library</h3>
+          <ul className="menu menu-sm p-0 gap-1">
+            {(isAdmin || isSuperUser || user?.isRootAdmin) && (
+              <NavItem to="/library" icon={Library} label="Library" />
+            )}
             <NavItem to="/artists" icon={User} label="Artists" />
             <NavItem to="/tracks" icon={Music} label="Tracks" />
             <NavItem to="/playlists" icon={ListMusic} label="Playlists" />

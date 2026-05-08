@@ -21,6 +21,7 @@ export interface PlayerState {
     // UI State
     isQueueOpen: boolean;
     isLyricsOpen: boolean;
+    isCanvasOpen: boolean;
     dominantColor: string | null;
 
     // Actions
@@ -39,6 +40,7 @@ export interface PlayerState {
     toggleRadio: () => void;
     toggleQueue: () => void;
     toggleLyrics: () => void;
+    toggleCanvas: () => void;
     setDominantColor: (color: string | null) => void;
 }
 
@@ -57,6 +59,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     isRadioMode: false,
     isQueueOpen: false,
     isLyricsOpen: false,
+    isCanvasOpen: false,
     dominantColor: null,
 
     playTrack: (track, context) => {
@@ -245,8 +248,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         return { isRadioMode };
     }),
 
-    toggleQueue: () => set((state) => ({ isQueueOpen: !state.isQueueOpen, isLyricsOpen: false })),
-    toggleLyrics: () => set((state) => ({ isLyricsOpen: !state.isLyricsOpen, isQueueOpen: false })),
+    toggleQueue: () => set((state) => ({ isQueueOpen: !state.isQueueOpen, isLyricsOpen: false, isCanvasOpen: false })),
+    toggleLyrics: () => set((state) => ({ isLyricsOpen: !state.isLyricsOpen, isQueueOpen: false, isCanvasOpen: false })),
+    toggleCanvas: () => set((state) => ({ isCanvasOpen: !state.isCanvasOpen, isQueueOpen: false, isLyricsOpen: false })),
     setDominantColor: (color) => set({ dominantColor: color }),
 }));
 

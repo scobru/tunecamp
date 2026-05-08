@@ -15,6 +15,7 @@ import {
   Music,
   Radio,
   Download,
+  Maximize2
 } from "lucide-react";
 import clsx from "clsx";
 import * as ColorThiefReactModule from "color-thief-react";
@@ -70,6 +71,7 @@ export const PlayerBar = () => {
     toggleRadio,
     toggleLyrics,
     toggleQueue,
+    toggleCanvas,
     progress,
     currentTime,
     duration,
@@ -403,10 +405,17 @@ export const PlayerBar = () => {
             </button>
             <button
               aria-label="Toggle queue"
-              className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100"
+              className={clsx("btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100")}
               onClick={toggleQueue}
             >
               <ListMusic size={18} />
+            </button>
+            <button
+              aria-label="Toggle Canvas View"
+              className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-primary"
+              onClick={toggleCanvas}
+            >
+              <Maximize2 size={18} />
             </button>
           </div>
         </div>

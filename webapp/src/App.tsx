@@ -93,7 +93,8 @@ function App() {
             <Route path="/about" element={<About />} />
 
             {/* Library */}
-            <Route path="/albums" element={<Albums />} />
+            <Route path="/albums" element={<Albums initialTab="releases" />} />
+            <Route path="/library" element={<Albums initialTab="library" />} />
             <Route path="/albums/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/releases/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/artists" element={<Artists />} />

@@ -4,6 +4,26 @@ import request from "supertest";
 import { createUnlockRoutes } from "./unlock.js";
 import type { DatabaseService } from "../database.js";
 import { StringUtils } from "../../utils/stringUtils.js";
+import { VisibilityGuardian, Capability, UserRole } from "../common/visibility.js";
+
+// Mock VisibilityGuardian
+const mockCan = jest.fn();
+jest.mock("../common/visibility.js", () => ({
+    VisibilityGuardian: {
+        can: (context: any, capability: any) => mockCan(context, capability)
+    },
+    Capability: {
+        MANAGE_PRIVATE_LIBRARY: "MANAGE_PRIVATE_LIBRARY"
+    },
+    UserRole: {
+        ADMIN: "admin",
+        SUPER_USER: "super_user",
+        NORMAL_USER: "user"
+    }
+}));
+// Expose mockCan for test control
+(VisibilityGuardian as any).can = mockCan;
+
 
 // Mock DatabaseService
 const mockDatabase = {
@@ -12,6 +32,7 @@ const mockDatabase = {
     listUnlockCodes: jest.fn(),
     createUnlockCode: jest.fn(),
     getAlbum: jest.fn(),
+    getRelease: jest.fn(),
 } as unknown as DatabaseService;
 
 describe("Unlock Routes", () => {
@@ -20,12 +41,15 @@ describe("Unlock Routes", () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        mockCan.mockReturnValue(true); // Default to true, tests will override if needed
         app = express();
         app.use(express.json());
 
         // Mock authentication middleware
         app.use((req: any, res, next) => {
             req.isAdmin = isAdmin;
+            req.userId = 1;
+            req.context = { role: isAdmin ? UserRole.ADMIN : UserRole.SUPER_USER };
             next();
         });
 
@@ -42,6 +66,7 @@ describe("Unlock Routes", () => {
 
         test("should return 401 if not an admin", async () => {
             isAdmin = false;
+            mockCan.mockReturnValue(false);
             const response = await request(app)
                 .post("/api/unlock/admin/create")
                 .send({ count: 5 });
@@ -174,6 +199,7 @@ describe("Unlock Routes", () => {
 
         test("should return 401 if not an admin", async () => {
             isAdmin = false;
+            mockCan.mockReturnValue(false);
             const response = await request(app)
                 .get("/api/unlock/admin/list");
 
@@ -205,6 +231,42 @@ describe("Unlock Routes", () => {
             expect(response.status).toBe(200);
             expect(response.body).toEqual(mockCodes);
             expect(mockDatabase.listUnlockCodes).toHaveBeenCalledWith(releaseId);
+        });
+
+        test("should allow SUPER_USER to list codes for their own release", async () => {
+            isAdmin = false;
+            const releaseId = 123;
+            const mockCodes = [{ id: 1, code: "C1", release_id: releaseId }];
+            const mockRelease = { id: releaseId, owner_id: 1 }; // userId is 1 in mock
+            
+            (VisibilityGuardian.can as jest.Mock).mockReturnValue(true); // Super user has manage capability
+            (mockDatabase.getRelease as jest.Mock).mockReturnValue(mockRelease);
+            (mockDatabase.listUnlockCodes as jest.Mock).mockReturnValue(mockCodes);
+
+            const response = await request(app)
+                .get("/api/unlock/admin/list")
+                .query({ releaseId });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(mockCodes);
+            expect(mockDatabase.getRelease).toHaveBeenCalledWith(releaseId);
+            expect(mockDatabase.listUnlockCodes).toHaveBeenCalledWith(releaseId);
+        });
+
+        test("should return 403 if SUPER_USER does not own the release", async () => {
+            isAdmin = false;
+            const releaseId = 123;
+            const mockRelease = { id: releaseId, owner_id: 999 }; // Different owner
+            
+            (VisibilityGuardian.can as jest.Mock).mockReturnValue(true);
+            (mockDatabase.getRelease as jest.Mock).mockReturnValue(mockRelease);
+
+            const response = await request(app)
+                .get("/api/unlock/admin/list")
+                .query({ releaseId });
+
+            expect(response.status).toBe(403);
+            expect(response.body.error).toContain("Access denied");
         });
     });
 });

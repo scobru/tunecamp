@@ -4,6 +4,7 @@ import API from "../../services/api";
 import type { SiteSettings } from "../../types";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "../player/PlayerBar";
+import { PlayerCanvas } from "../player/PlayerCanvas";
 import { AuthModal } from "../modals/AuthModal";
 import { PlaylistModal } from "../modals/PlaylistModal";
 import { UnlockModal } from "../modals/UnlockModal";
@@ -103,6 +104,7 @@ export const MainLayout = () => {
       </div>
 
       <PlayerBar />
+      <PlayerCanvas />
 
       {/* Global Modals */}
       <CommandPalette />

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { DatabaseService } from "../database.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../middleware/auth.js";
+import { VisibilityGuardian, Capability } from "../common/visibility.js";
 import { StringUtils } from "../../utils/stringUtils.js";
 
 export function createUnlockRoutes(database: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
@@ -54,9 +55,23 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
      * List codes
      */
     router.get("/admin/list", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(401).json({ error: "Unauthorized" });
+        if (!VisibilityGuardian.can(req.context!, Capability.MANAGE_PRIVATE_LIBRARY)) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
 
         const releaseId = req.query.releaseId ? parseInt(req.query.releaseId as string) : undefined;
+        
+        // Non-admins (Super Users) must provide a releaseId and own it
+        if (!req.isAdmin) {
+            if (!releaseId) {
+                return res.status(400).json({ error: "releaseId required for non-admin users" });
+            }
+            const release = database.getRelease(releaseId);
+            if (!release || release.owner_id !== req.userId) {
+                return res.status(403).json({ error: "Access denied: You don't own this release" });
+            }
+        }
+
         const codes = database.listUnlockCodes(releaseId);
         res.json(codes);
     });
@@ -66,9 +81,22 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
      * Generate new codes
      */
     router.post("/admin/create", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(401).json({ error: "Unauthorized" });
+        if (!VisibilityGuardian.can(req.context!, Capability.MANAGE_PRIVATE_LIBRARY)) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
 
         const { count, releaseId } = req.body;
+
+        // Non-admins (Super Users) must own the release
+        if (!req.isAdmin) {
+            if (!releaseId) {
+                return res.status(400).json({ error: "releaseId required for non-admin users" });
+            }
+            const release = database.getRelease(releaseId);
+            if (!release || release.owner_id !== req.userId) {
+                return res.status(403).json({ error: "Access denied: You don't own this release" });
+            }
+        }
         const numCodes = count || 1;
         const created = [];
 
