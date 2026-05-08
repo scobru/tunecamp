@@ -21,6 +21,7 @@ import clsx from "clsx";
 import * as ColorThiefReactModule from "color-thief-react";
 import { LyricsPanel } from "./LyricsPanel";
 import { QueuePanel } from "./QueuePanel";
+import { PlayerCanvas } from "./PlayerCanvas";
 import { formatDuration } from "../../utils/format";
 
 // Robust interop for color-thief-react which has inconsistent exports across versions/builds
@@ -423,6 +424,7 @@ export const PlayerBar = () => {
 
       <LyricsPanel />
       <QueuePanel />
+      <PlayerCanvas />
     </>
   );
 };

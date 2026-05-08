@@ -100,9 +100,9 @@ export const CheckoutModal = () => {
     };
     window.addEventListener("open-checkout-modal", handleOpen);
 
-    // Handle Stripe/PayPal return success
+    // Handle Stripe return success
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("stripe_success") === "true" || urlParams.get("paypal_success") === "true") {
+    if (urlParams.get("stripe_success") === "true") {
        // Ideally we'd show the success state here. 
        // For now, let's just clear the params and maybe the user can check their downloads.
        // In a full implementation, we'd verify the session/order and show the Download button.
@@ -158,34 +158,7 @@ export const CheckoutModal = () => {
     }
   };
 
-  const handlePayPalCheckout = async () => {
-    if (!track) return;
-    setIsProcessing(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/payments/paypal/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          itemId: track.id,
-          type: "track",
-          albumId: (track as any).albumId
-        }),
-      });
-      const data = await res.json();
-      if (data.id) {
-        // For PayPal, we use a simple popup or redirect. 
-        // In a real app, use the PayPal JS SDK for a better experience.
-        const paypalUrl = `https://www.sandbox.paypal.com/checkoutnow?token=${data.id}`;
-        window.location.href = paypalUrl;
-      } else {
-        throw new Error(data.error || "Failed to create PayPal order");
-      }
-    } catch (err: any) {
-      setError(err.message);
-      setIsProcessing(false);
-    }
-  };
+
 
     
   const handleCryptoCheckout = async () => {
@@ -622,17 +595,7 @@ export const CheckoutModal = () => {
                     {isProcessing ? <Loader2 className="animate-spin" size={20} /> : "💳 Pay with Credit Card"}
                   </button>
 
-                  <button
-                    className="btn btn-outline btn-block rounded-xl h-14 gap-3 border-[#0070ba]/30 hover:bg-[#0070ba]/10 text-[#0070ba]"
-                    onClick={handlePayPalCheckout}
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? <Loader2 className="animate-spin" size={20} /> : (
-                      <>
-                        <span className="font-black italic text-lg">PayPal</span>
-                      </>
-                    )}
-                  </button>
+
                   
                   <button
                     className="btn btn-ghost btn-block rounded-xl mt-4"

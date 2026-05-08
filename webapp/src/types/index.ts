@@ -211,15 +211,10 @@ export interface SiteSettings {
     soulseek_password?: string;
     openrouter_api_key?: string;
     openrouter_model?: string;
-    onramp_provider?: 'coinbase' | 'moonpay';
+    onramp_provider?: 'moonpay';
     moonpay_api_key?: string;
-    coinbase_cdp_api_key_name?: string;
-    coinbase_cdp_api_key_secret?: string;
     stripe_secret_key?: string;
     stripe_webhook_secret?: string;
-    paypal_client_id?: string;
-    paypal_client_secret?: string;
-    paypal_environment?: 'sandbox' | 'production';
     discogs_token?: string;
 }
 

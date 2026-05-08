@@ -24,9 +24,7 @@ export interface ServerConfig {
     openrouterModel?: string;
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;
-    paypalClientId?: string;
-    paypalClientSecret?: string;
-    paypalEnvironment?: 'sandbox' | 'production';
+    stripeWebhookSecret?: string;
 }
 
 /**
@@ -93,8 +91,5 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         openrouterModel: process.env.OPENROUTER_MODEL || overrides?.openrouterModel || "openrouter/free",
         stripeSecretKey: process.env.STRIPE_SECRET_KEY || overrides?.stripeSecretKey,
         stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || overrides?.stripeWebhookSecret,
-        paypalClientId: process.env.PAYPAL_CLIENT_ID || overrides?.paypalClientId,
-        paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET || overrides?.paypalClientSecret,
-        paypalEnvironment: (process.env.PAYPAL_ENVIRONMENT as 'sandbox' | 'production') || overrides?.paypalEnvironment || 'sandbox',
     };
 }

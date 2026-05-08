@@ -107,9 +107,9 @@ export const Sidebar = () => {
         </div>
 
         <div>
-          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Library</h3>
+          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Collection</h3>
           <ul className="menu menu-sm p-0 gap-1">
-            {(isAdmin || isSuperUser || user?.isRootAdmin) && (
+            {(isAdmin || isSuperUser || user?.isRootAdmin || !!user?.artistId) && (
               <NavItem to="/library" icon={Library} label="Library" />
             )}
             <NavItem to="/artists" icon={User} label="Artists" />

@@ -409,10 +409,9 @@ export const AdminSettingsPanel = () => {
               </label>
               <select 
                 className="select select-bordered bg-base-300/50"
-                value={settings.onramp_provider || "coinbase"}
+                value={settings.onramp_provider || "moonpay"}
                 onChange={(e) => setSettings({ ...settings, onramp_provider: e.target.value as any })}
               >
-                <option value="coinbase">Coinbase Pay (CDP)</option>
                 <option value="moonpay">MoonPay</option>
               </select>
               <label className="label">
@@ -420,7 +419,6 @@ export const AdminSettingsPanel = () => {
               </label>
             </div>
 
-            {settings.onramp_provider === 'moonpay' ? (
               <div className="form-control">
                 <label className="label">
                   <span className="label-text font-medium text-sm">MoonPay API Key (Live)</span>
@@ -433,34 +431,6 @@ export const AdminSettingsPanel = () => {
                   placeholder="pk_live_..."
                 />
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="form-control">
-                    <label className="label">
-                        <span className="label-text font-medium text-sm">CDP Key Name</span>
-                    </label>
-                    <input
-                        type="text"
-                        className="input input-bordered bg-base-300/50 font-mono text-xs"
-                        value={settings.coinbase_cdp_api_key_name || ""}
-                        onChange={(e) => setSettings({ ...settings, coinbase_cdp_api_key_name: e.target.value })}
-                        placeholder="organizations/..."
-                    />
-                </div>
-                <div className="form-control">
-                    <label className="label">
-                        <span className="label-text font-medium text-sm">CDP Key Secret</span>
-                    </label>
-                    <input
-                        type="password"
-                        className="input input-bordered bg-base-300/50 font-mono text-xs"
-                        value={settings.coinbase_cdp_api_key_secret || ""}
-                        onChange={(e) => setSettings({ ...settings, coinbase_cdp_api_key_secret: e.target.value })}
-                        placeholder="-----BEGIN EC PRIVATE KEY-----"
-                    />
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="pt-4 border-t border-base-content/5">
@@ -643,55 +613,7 @@ export const AdminSettingsPanel = () => {
           </div>
         </div>
 
-        {/* PayPal Configuration */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
-          <div className="flex items-center gap-2 mb-2 text-blue-300">
-            <CreditCard size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">PayPal Integration</h4>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-sm">PayPal Client ID</span>
-              </label>
-              <input
-                type="text"
-                className="input input-bordered bg-base-300/50 font-mono text-xs"
-                value={settings.paypal_client_id || ""}
-                onChange={(e) => setSettings({ ...settings, paypal_client_id: e.target.value })}
-                placeholder="AY..."
-              />
-            </div>
-
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-sm">PayPal Client Secret</span>
-              </label>
-              <input
-                type="password"
-                className="input input-bordered bg-base-300/50 font-mono text-xs"
-                value={settings.paypal_client_secret || ""}
-                onChange={(e) => setSettings({ ...settings, paypal_client_secret: e.target.value })}
-                placeholder="E..."
-              />
-            </div>
-
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-sm">PayPal Environment</span>
-              </label>
-              <select 
-                className="select select-bordered bg-base-300/50"
-                value={settings.paypal_environment || "sandbox"}
-                onChange={(e) => setSettings({ ...settings, paypal_environment: e.target.value as any })}
-              >
-                <option value="sandbox">Sandbox (Testing)</option>
-                <option value="production">Production (Live)</option>
-              </select>
-            </div>
-          </div>
-        </div>
 
         {/* Soulseek Configuration */}
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">

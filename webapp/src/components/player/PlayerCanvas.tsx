@@ -116,13 +116,13 @@ export const PlayerCanvas = () => {
                 </div>
 
                 {/* Large Waveform */}
-                <div className="w-full h-32 md:h-48 group cursor-pointer relative">
+                <div className="w-full h-48 md:h-64 group cursor-pointer relative">
                     <Waveform 
                         data={currentTrack.waveform} 
                         progress={progress / 100}
-                        height={160}
+                        height={240}
                         colorPlayed={dominantColor || '#1db954'}
-                        colorRemaining="rgba(255, 255, 255, 0.1)"
+                        colorRemaining="rgba(255, 255, 255, 0.05)"
                     />
                 </div>
 
