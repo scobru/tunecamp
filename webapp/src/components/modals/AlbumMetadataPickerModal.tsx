@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { X, Wand2, Check, Loader2, Disc } from "lucide-react";
+import { X, Check, Loader2, Disc } from "lucide-react";
 
 interface MetadataMatch {
     id: string;
