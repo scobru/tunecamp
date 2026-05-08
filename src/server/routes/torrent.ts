@@ -7,6 +7,9 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
     const router = express.Router();
     const authMiddleware = createAuthMiddleware(authService);
 
+    // Require JSON body parsing
+    router.use(express.json());
+
     // Require admin or super user for torrent management
     router.use(authMiddleware.requireAdmin);
 
@@ -39,17 +42,18 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
 
     // POST /api/admin/torrents/add - Add a new magnet link
     router.post('/add', async (req, res) => {
-        const { magnetUri } = req.body;
-        const ownerId = (req as any).user?.id || 0;
-
-        if (!magnetUri) {
-            return res.status(400).json({ error: 'magnetUri is required' });
-        }
-
         try {
+            const { magnetUri } = req.body || {};
+            const ownerId = (req as any).user?.id || 0;
+
+            if (!magnetUri) {
+                return res.status(400).json({ error: 'magnetUri is required' });
+            }
+
             torrentService.addTorrent(magnetUri, ownerId);
             res.json({ message: 'Torrent added successfully' });
         } catch (err: any) {
+            console.error("❌ Torrent add error:", err);
             res.status(500).json({ error: err.message });
         }
     });
