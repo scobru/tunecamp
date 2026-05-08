@@ -12,6 +12,7 @@ import { validatePassword } from "../validators.js";
 import type { PublishingService } from "../publishing.js";
 import type { ActivityPubService } from "../activitypub.js";
 import type { SoulseekService } from "../soulseek.js";
+import type { GoogleDriveService } from "../services/google-drive.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../common/visibility.js";
 
 export function createAdminRoutes(
@@ -25,7 +26,8 @@ export function createAdminRoutes(
     apService: ActivityPubService,
     telegramBotService: any,
     soulseekService: SoulseekService,
-    lindaBotService: any
+    lindaBotService: any,
+    gdriveService?: GoogleDriveService
 ): Router {
     const router = Router();
     const authMiddleware = createAuthMiddleware(authService);
@@ -219,12 +221,17 @@ export function createAdminRoutes(
                 onramp_provider, moonpay_api_key,
                 stripe_secret_key, stripe_webhook_secret,
                 discogs_token,
-                linda_bot_enabled
+                linda_bot_enabled,
+                siteLogo
             } = req.body;
             let settingsChanged = false;
 
             if (siteName !== undefined) {
                 database.setSetting("siteName", siteName);
+                settingsChanged = true;
+            }
+            if (siteLogo !== undefined) {
+                database.setSetting("siteLogo", siteLogo);
                 settingsChanged = true;
             }
             if (mode !== undefined) {
@@ -1262,6 +1269,12 @@ export function createAdminRoutes(
         // 9. MoonPay
         results.moonpay = {
             configured: !!database.getSetting("moonpay_api_key")
+        };
+        
+        // 10. Google Drive
+        results.gdrive = {
+            configured: !!(config.gdriveClientId && config.gdriveClientSecret),
+            active: !!gdriveService
         };
 
         res.json(results);

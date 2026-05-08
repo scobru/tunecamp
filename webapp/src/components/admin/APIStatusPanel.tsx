@@ -22,7 +22,9 @@ interface HealthStatus {
   telegram: { active: boolean };
   openrouter: { configured: boolean; model: string };
   stripe: { configured: boolean; webhookConfigured: boolean };
+  paypal: { configured: boolean; environment: string };
   moonpay: { configured: boolean };
+  gdrive: { configured: boolean; active: boolean };
 }
 
 export const APIStatusPanel = () => {
@@ -119,7 +121,14 @@ export const APIStatusPanel = () => {
       details: status?.stripe?.configured ? (status.stripe.webhookConfigured ? "Ready (Live Webhooks)" : "Keys Set (No Webhook)") : "Not Configured",
       description: "Credit card processing and checkout sessions."
     },
-
+    {
+      id: "paypal",
+      name: "PayPal",
+      icon: <CreditCard className="text-[#003087]" />,
+      active: status?.paypal?.configured,
+      details: status?.paypal?.configured ? `Active (${status.paypal.environment})` : "Not Configured",
+      description: "Alternative fiat payment gateway."
+    },
     {
       id: "moonpay",
       name: "MoonPay",
@@ -127,6 +136,14 @@ export const APIStatusPanel = () => {
       active: status?.moonpay?.configured,
       details: status?.moonpay?.configured ? "API Key configured" : "API Key missing",
       description: "Credit card to crypto on-ramp provider."
+    },
+    {
+      id: "gdrive",
+      name: "Google Drive",
+      icon: <Globe className="text-blue-500" />,
+      active: status?.gdrive?.configured,
+      details: status?.gdrive?.configured ? (status.gdrive.active ? "Integration active" : "Service disabled") : "Client ID/Secret missing",
+      description: "Cloud storage for track localization and backup."
     }
   ];
 

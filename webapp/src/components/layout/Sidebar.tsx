@@ -29,6 +29,7 @@ export const Sidebar = () => {
   const location = useLocation();
   const { user, isAuthenticated, role, logout } = useAuthStore();
   const [siteName, setSiteName] = useState("TuneCamp");
+  const [siteLogo, setSiteLogo] = useState<string | null>(null);
  
   const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
   const isSuperUser = role === 'super_user';
@@ -38,6 +39,7 @@ export const Sidebar = () => {
     API.getSiteSettings()
       .then((s) => {
         if (s.siteName) setSiteName(s.siteName);
+        if (s.siteLogo) setSiteLogo(s.siteLogo);
       })
       .catch(console.error);
   }, []);
@@ -82,8 +84,14 @@ export const Sidebar = () => {
     <div className="menu p-4 w-64 min-h-full bg-base-200/30 backdrop-blur-xl text-base-content border-r border-base-content/5 flex flex-col gap-6 pb-28">
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
-          <Music className="text-primary-content w-6 h-6" />
+        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-primary/20 bg-base-300">
+          {siteLogo ? (
+            <img src={siteLogo} alt={siteName} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+              <Music className="text-primary-content w-6 h-6" />
+            </div>
+          )}
         </div>
         <span className="text-xl font-black tracking-tighter uppercase">{siteName}</span>
       </div>

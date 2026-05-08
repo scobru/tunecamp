@@ -11,6 +11,7 @@ export const AdminSettingsPanel = () => {
   const [message, setMessage] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const { wallet, externalWallet, useExternalWallet, isExternalConnected, isWalletReady } = useWalletStore();
   const { TuneCampCheckout } = (window as any).TuneCampSDK || {}; // Fallback if not directly importable or through sdk class
   const activeSigner = useExternalWallet ? externalWallet : wallet;
@@ -171,10 +172,14 @@ export const AdminSettingsPanel = () => {
       if (coverFile) {
         await API.uploadSiteCover(coverFile);
       }
+      if (logoFile) {
+        await API.uploadSiteLogo(logoFile);
+      }
 
       setMessage("Settings saved successfully.");
       setBgFile(null);
       setCoverFile(null);
+      setLogoFile(null);
       // Refresh settings to get new bg url if needed
       API.getAdminSettings().then(setSettings);
     } catch (e) {
@@ -358,13 +363,36 @@ export const AdminSettingsPanel = () => {
                   <span className="label-text-alt opacity-50 text-[10px]">This image represents your node in the global network list.</span>
                 </label>
               </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Custom Logo Upload</span>
+                </label>
+                <input
+                  type="file"
+                  className="file-input file-input-bordered file-input-sm bg-base-300/50 w-full"
+                  accept="image/*"
+                  onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null) }
+                />
+                <label className="label">
+                  <span className="label-text-alt opacity-50 text-[10px]">This logo will appear in the top-left corner of the sidebar.</span>
+                </label>
+              </div>
               
-              {settings.backgroundImage && (
-                <div className="mt-2 text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5">
-                  <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.backgroundImage})` }}></div>
-                  <span className="truncate">Current Background: {settings.backgroundImage}</span>
-                </div>
-              )}
+              <div className="flex flex-col gap-2 mt-2">
+                {settings.backgroundImage && (
+                  <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5">
+                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.backgroundImage})` }}></div>
+                    <span className="truncate">Background: {settings.backgroundImage}</span>
+                  </div>
+                )}
+                {settings.siteLogo && (
+                  <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5">
+                    <div className="w-8 h-8 rounded bg-contain bg-center bg-no-repeat shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.siteLogo})` }}></div>
+                    <span className="truncate">Site Logo: {settings.siteLogo}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

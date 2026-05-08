@@ -332,6 +332,11 @@ export const API = {
         formData.append('file', file);
         return handleResponse(api.post('/admin/upload/site-cover', formData));
     },
+    uploadSiteLogo: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return handleResponse(api.post('/admin/upload/site-logo', formData));
+    },
 
     // --- Admin: System ---
     getListeningStats: () => handleResponse(api.get<any>('/stats/library/overview')),

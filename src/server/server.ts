@@ -338,7 +338,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     });
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
-    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(database, scanner, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService));
+    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(database, scanner, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, gdriveService));
     // Backup routes moved earlier
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
@@ -477,6 +477,25 @@ export async function startServer(config: ServerConfig): Promise<void> {
                 return res.status(404).json({ error: "No background image" });
             }
             const filePath = path.join(assetsDir, bgFile);
+            res.sendFile(path.resolve(filePath));
+        } catch {
+            res.status(404).json({ error: "Not found" });
+        }
+    });
+
+    // Serve uploaded site logo (public)
+    app.get("/api/settings/logo", async (_req, res) => {
+        try {
+            const assetsDir = path.join(config.musicDir, "assets");
+            if (!(await fs.pathExists(assetsDir))) {
+                return res.status(404).json({ error: "No logo image" });
+            }
+            const files = await fs.readdir(assetsDir);
+            const logoFile = files.find((f) => f.startsWith("site-logo."));
+            if (!logoFile) {
+                return res.status(404).json({ error: "No logo image" });
+            }
+            const filePath = path.join(assetsDir, logoFile);
             res.sendFile(path.resolve(filePath));
         } catch {
             res.status(404).json({ error: "Not found" });

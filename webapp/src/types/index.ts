@@ -194,6 +194,7 @@ export interface AuthStatus {
 export interface SiteSettings {
     siteName: string;
     siteDescription?: string;
+    siteLogo?: string;
     coverImage?: string;
     publicUrl?: string;
     allowPublicRegistration?: boolean;
