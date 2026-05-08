@@ -17,10 +17,11 @@ if (ffmpegPath) {
 
 import type { AuthService } from "../auth.js";
 import type { PublishingService } from "../publishing.js";
+import { GoogleDriveService } from "../services/google-drive.service.js";
 import { metadataService } from "../metadata.js";
 import { VisibilityGuardian, Capability, UserRole } from "../common/visibility.js";
 
-export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, libraryService: LibraryService, musicDir: string, authService?: AuthService): Router {
+export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, libraryService: LibraryService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService): Router {
     const router = Router();
 
     /**
@@ -424,6 +425,24 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
+
+        // Google Drive support
+        if (track.file_path.startsWith("gdrive://")) {
+            if (!gdriveService) throw new Error("Google Drive service not available");
+            const fileId = track.file_path.substring(9);
+            const ownerId = track.owner_id || database.getPrimaryAdminId() || 1;
+            const { stream, status, headers } = await gdriveService.getFileStream(ownerId, fileId, req.headers.range);
+            
+            const filteredHeaders: any = {};
+            ['content-type', 'content-length', 'content-range', 'accept-ranges'].forEach(h => {
+                if (headers[h]) filteredHeaders[h] = headers[h];
+            });
+
+            res.writeHead(status, filteredHeaders);
+            stream.pipe(res);
+            return;
+        }
+
         let trackPath = path.join(musicDir, track.file_path);
         let usingLosslessFallback = false;
 
@@ -499,6 +518,27 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
+
+        // Google Drive support
+        if (track.file_path.startsWith("gdrive://")) {
+            if (!gdriveService) throw new Error("Google Drive service not available");
+            const fileId = track.file_path.substring(9);
+            const ownerId = track.owner_id || database.getPrimaryAdminId() || 1;
+            const { stream, headers } = await gdriveService.getFileStream(ownerId, fileId);
+            
+            const ext = headers['content-type'] === 'audio/flac' ? '.flac' : 
+                        headers['content-type'] === 'audio/mpeg' ? '.mp3' : 
+                        headers['content-type'] === 'audio/wav' ? '.wav' : '.mp3';
+            
+            const filename = `${track.artist_name || 'Unknown'} - ${track.title || 'Untitled'}${ext}`;
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+            res.setHeader('Content-Type', headers['content-type'] || 'application/octet-stream');
+            if (headers['content-length']) res.setHeader('Content-Length', headers['content-length']);
+            
+            stream.pipe(res);
+            return;
+        }
+
         let trackPath = path.join(musicDir, track.file_path);
 
         if (!await fs.pathExists(trackPath)) {

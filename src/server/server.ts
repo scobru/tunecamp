@@ -86,6 +86,8 @@ import { LindaBotService } from "./services/linda-bot.js";
 import { MaintenanceService } from "./services/maintenance.service.js";
 import { OpenRouterService } from "./services/openrouter.service.js";
 import { createSearchRoutes } from "./routes/search.js";
+import { GoogleDriveService } from "./services/google-drive.service.js";
+import { createStorageRouter } from "./routes/storage.js";
 import { runStartupMaintenance } from "./maintenance.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { latchDomain, kprs } from "./zen-network.js";
@@ -219,6 +221,21 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const lindaBotService = new LindaBotService(database, scanner, config, openRouterService);
     lindaBotService.start().catch(err => console.error("Linda Bot failed to start:", err));
 
+    // Initialize Google Drive Service
+    let gdriveService: GoogleDriveService | undefined;
+    if (config.gdriveClientId && config.gdriveClientSecret) {
+        console.log("🔗 Google Drive integration enabled");
+        const dbPublicUrl = database.getSetting("publicUrl");
+        const publicUrl = dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`;
+        const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
+        gdriveService = new GoogleDriveService(database, {
+            clientId: config.gdriveClientId,
+            clientSecret: config.gdriveClientSecret,
+            redirectUri
+        });
+        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware));
+    }
+
     // Upload routes - MOVED BEFORE FEDIFY/BODY PARSERS to avoid stream consumption issues
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(database, scanner, config.musicDir, publishingService, storage, authService));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
@@ -321,7 +338,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, libraryService, config.musicDir));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, libraryService, config.musicDir, authService));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, libraryService, config.musicDir, authService, gdriveService));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
 
     app.use("/api/import", authMiddleware.requireUser, createImportRoutes());

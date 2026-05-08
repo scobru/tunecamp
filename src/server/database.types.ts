@@ -337,8 +337,29 @@ export interface AlbumDTO extends Album {
     rating: number;
 }
 
+export interface StorageAccount {
+    id: number;
+    user_id: number;
+    provider: string;
+    account_email: string | null;
+    access_token: string;
+    refresh_token: string | null;
+    expiry_date: number | null;
+    created_at: string;
+}
+
 export interface DatabaseService {
     db: DatabaseType;
+
+    // Storage Accounts
+    getStorageAccounts(userId?: number): StorageAccount[];
+    getStorageAccount(id: number): StorageAccount | undefined;
+    getStorageAccountByProvider(userId: number, provider: string): StorageAccount | undefined;
+    createStorageAccount(account: Omit<StorageAccount, "id" | "created_at">): number;
+    updateStorageAccount(id: number, account: Partial<StorageAccount>): void;
+    deleteStorageAccount(id: number): void;
+    getPrimaryAdminId(): number | null;
+
     // Torrents
     getTorrents(): Torrent[];
     getTorrent(infoHash: string): Torrent | undefined;

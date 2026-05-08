@@ -27,6 +27,8 @@ export interface ServerConfig {
     paypalClientId?: string;
     paypalClientSecret?: string;
     paypalEnvironment?: string;
+    gdriveClientId?: string;
+    gdriveClientSecret?: string;
 }
 
 /**
@@ -96,5 +98,7 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         paypalClientId: process.env.PAYPAL_CLIENT_ID || overrides?.paypalClientId,
         paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET || overrides?.paypalClientSecret,
         paypalEnvironment: process.env.PAYPAL_ENVIRONMENT || overrides?.paypalEnvironment || "sandbox",
+        gdriveClientId: process.env.TUNECAMP_GDRIVE_CLIENT_ID || overrides?.gdriveClientId,
+        gdriveClientSecret: process.env.TUNECAMP_GDRIVE_CLIENT_SECRET || overrides?.gdriveClientSecret,
     };
 }

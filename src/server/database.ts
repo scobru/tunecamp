@@ -12,14 +12,14 @@ export type {
     OAuthClient, OAuthLink, Artist, Follower, LikeEntry, Album, Track, TrackDTO, AlbumDTO, Release,
     ReleaseTrack, Playlist, PlayHistoryEntry, Post, ApNote, RemoteActor,
     RemoteContent, TrackWithPlayCount, ArtistWithPlayCount, ListeningStats,
-    GunCacheEntry, Torrent, TorrentStatus, SoulseekDownload, DatabaseService
+    GunCacheEntry, Torrent, TorrentStatus, SoulseekDownload, DatabaseService, StorageAccount
 } from "./database.types.js";
 
 import type {
     Album, Artist, Track, Release, ReleaseTrack, Follower, Post, ApNote,
     Playlist, PlayHistoryEntry, RemoteActor, RemoteContent, Torrent, GunCacheEntry,
     OAuthClient, OAuthLink, TrackWithPlayCount, ArtistWithPlayCount, ListeningStats,
-    LikeEntry, SoulseekDownload, DatabaseService, TorrentStatus
+    LikeEntry, SoulseekDownload, DatabaseService, TorrentStatus, StorageAccount
 } from "./database.types.js";
 
 const _insertQueueTrackStmts = new Map<number, any>();
@@ -479,6 +479,17 @@ export function createDatabase(dbPath: string): DatabaseService {
       comment TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS storage_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER REFERENCES admin(id),
+      provider TEXT NOT NULL,
+      account_email TEXT,
+      access_token TEXT NOT NULL,
+      refresh_token TEXT,
+      expiry_date INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS album_ownership (
@@ -1025,6 +1036,51 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     const service: DatabaseService = {
         db,
+
+        // Storage Accounts
+        getStorageAccounts(userId?: number): StorageAccount[] {
+            const sql = userId ? "SELECT * FROM storage_accounts WHERE user_id = ?" : "SELECT * FROM storage_accounts";
+            return (userId ? db.prepare(sql).all(userId) : db.prepare(sql).all()) as StorageAccount[];
+        },
+
+        getStorageAccount(id: number): StorageAccount | undefined {
+            return db.prepare("SELECT * FROM storage_accounts WHERE id = ?").get(id) as StorageAccount | undefined;
+        },
+
+        getStorageAccountByProvider(userId: number, provider: string): StorageAccount | undefined {
+            return db.prepare("SELECT * FROM storage_accounts WHERE user_id = ? AND provider = ?").get(userId, provider) as StorageAccount | undefined;
+        },
+
+        createStorageAccount(account: Omit<StorageAccount, "id" | "created_at">): number {
+            const res = db.prepare(`
+                INSERT INTO storage_accounts (user_id, provider, account_email, access_token, refresh_token, expiry_date)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `).run(account.user_id, account.provider, account.account_email, account.access_token, account.refresh_token, account.expiry_date);
+            return res.lastInsertRowid as number;
+        },
+
+        updateStorageAccount(id: number, account: Partial<StorageAccount>): void {
+            const fields: string[] = [];
+            const values: any[] = [];
+            for (const [key, value] of Object.entries(account)) {
+                if (key === 'id' || key === 'created_at') continue;
+                fields.push(`${key} = ?`);
+                values.push(value);
+            }
+            if (fields.length === 0) return;
+            values.push(id);
+            db.prepare(`UPDATE storage_accounts SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+        },
+
+        deleteStorageAccount(id: number): void {
+            db.prepare("DELETE FROM storage_accounts WHERE id = ?").run(id);
+        },
+
+        getPrimaryAdminId(): number | undefined {
+            const row = db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
+            return row?.id;
+        },
+
         getReleaseTrackIds(releaseId: number): number[] {
             const rows = db.prepare("SELECT track_id FROM release_tracks WHERE release_id = ?").all(releaseId) as { track_id: number }[];
             return rows.map(r => r.track_id).filter(id => id !== null) as number[];
