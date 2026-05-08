@@ -1130,6 +1130,24 @@ export function createDatabase(dbPath: string): DatabaseService {
             return db.prepare("SELECT * FROM release_tracks WHERE id = ?").get(id) as any;
         },
 
+        getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined {
+            // Check if trackId is actually a track_id or an rt.id
+            const row = db.prepare(`
+                SELECT price, price_usdc, currency, title 
+                FROM release_tracks 
+                WHERE release_id = ? AND (track_id = ? OR id = ?)
+                LIMIT 1
+            `).get(releaseId, trackId, trackId) as any;
+            
+            if (!row) return undefined;
+            return {
+                price: row.price || 0,
+                price_usdc: row.price_usdc || 0,
+                currency: row.currency || 'ETH',
+                title: row.title
+            };
+        },
+
         getTracksByReleaseId(releaseId: number): Track[] {
             return trackRepository.getByReleaseId(releaseId);
         },

@@ -375,6 +375,7 @@ export interface DatabaseService {
     getReleaseTracks(releaseId: number): ReleaseTrack[];
     getReleaseTrackIds(releaseId: number): number[];
     getReleaseTrack(id: number): ReleaseTrack | undefined;
+    getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined;
     addTrackToRelease(releaseId: number, trackId: number, metadata?: Partial<ReleaseTrack>): number;
     updateReleaseTrack(id: number, metadata: Partial<ReleaseTrack>): void;
     updateReleaseTrackMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void;

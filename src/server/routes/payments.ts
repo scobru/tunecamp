@@ -69,8 +69,13 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 let trackId: number | undefined;
                 
                 if (itemType === 'track') {
-                    const track = database.getTrack(itemId);
-                    releaseId = track?.album_id || undefined;
+                    // Prefer albumId from metadata if present
+                    if (metadata.albumId) {
+                        releaseId = parseInt(metadata.albumId, 10);
+                    } else {
+                        const track = database.getTrack(itemId);
+                        releaseId = track?.album_id || undefined;
+                    }
                     trackId = itemId;
                 } else {
                     releaseId = itemId;
@@ -158,8 +163,8 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
      */
     router.post("/stripe/create-session", async (req, res) => {
         try {
-            const { itemId, type, successUrl, cancelUrl, email } = req.body;
-            console.log(`[Stripe] Creating session for ${type} ${itemId}`);
+            const { itemId, type, successUrl, cancelUrl, email, albumId } = req.body;
+            console.log(`[Stripe] Creating session for ${type} ${itemId} (Album: ${albumId || 'None'})`);
 
             if (!itemId || !type || !successUrl || !cancelUrl) {
                 return res.status(400).json({ error: "Missing required fields: itemId, type, successUrl, and cancelUrl are required." });
@@ -171,30 +176,47 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             }
 
             const stripe = new Stripe(sKey);
-            
+
             let name = "";
             let amount = 0;
             if (type === 'track') {
-                const track = database.getTrack(parseInt(itemId, 10));
-                console.log(`[Stripe Debug] Track found for ID ${itemId}:`, track ? { id: track.id, title: track.title, price: track.price, price_usdc: track.price_usdc, price_usdt: track.price_usdt, currency: track.currency } : 'NULL');
-                if (!track) return res.status(404).json({ error: `Track ${itemId} not found` });
-                name = track.title;
-                
+                const trackId = parseInt(itemId, 10);
+                let trackData: any = database.getTrack(trackId);
+
+                // If albumId is provided, try to get price from release_tracks first
+                if (albumId) {
+                    const releaseTrack = database.getTrackPriceFromRelease(parseInt(albumId, 10), trackId);
+                    if (releaseTrack) {
+                        console.log(`[Stripe Debug] Using price from release_tracks for track ${trackId} in album ${albumId}`);
+                        trackData = {
+                            ...trackData,
+                            price: releaseTrack.price,
+                            price_usdc: releaseTrack.price_usdc,
+                            currency: releaseTrack.currency,
+                            title: releaseTrack.title || trackData?.title
+                        };
+                    }
+                }
+
+                console.log(`[Stripe Debug] Track resolved:`, trackData ? { id: itemId, title: trackData.title, price: trackData.price, price_usdc: trackData.price_usdc, currency: trackData.currency } : 'NULL');
+
+                if (!trackData) return res.status(404).json({ error: `Track ${itemId} not found` });
+                name = trackData.title;
+
                 // Pricing Logic: Prefer stablecoin fields based on currency
-                if (track.currency === 'USDC' || track.currency === 'USD') {
-                    amount = Number(track.price_usdc || track.price || 0);
-                } else if (track.currency === 'USDT') {
-                    amount = Number(track.price_usdt || track.price || 0);
+                if (trackData.currency === 'USDC' || trackData.currency === 'USD') {
+                    amount = Number(trackData.price_usdc || trackData.price || 0);
+                } else if (trackData.currency === 'USDT') {
+                    amount = Number(trackData.price_usdt || trackData.price || 0);
                 } else {
-                    amount = Number(track.price || 0);
-                    if (track.currency === 'ETH' || !track.currency) {
+                    amount = Number(trackData.price || 0);
+                    if (trackData.currency === 'ETH' || !trackData.currency) {
                         const rate = await getEthUsdRate();
                         amount = amount * rate;
                     }
                 }
             } else {
-                const album = database.getAlbum(parseInt(itemId, 10));
-                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
+                const album = database.getAlbum(parseInt(itemId, 10));                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
                 if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
                 
@@ -237,7 +259,8 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 customer_email: email,
                 metadata: {
                     itemId: itemId.toString(),
-                    type: type
+                    type: type,
+                    albumId: albumId ? albumId.toString() : ""
                 }
             });
 
@@ -253,7 +276,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
      */
     router.post("/paypal/create-order", async (req, res) => {
         try {
-            const { itemId, type } = req.body;
+            const { itemId, type, albumId } = req.body;
             const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
             const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
             const ppEnv = database.getSetting("paypal_environment") || config.paypalEnvironment || "sandbox";
@@ -278,14 +301,31 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             let amount = 0;
             let name = "";
             if (type === 'track') {
-                const track = database.getTrack(parseInt(itemId, 10));
-                if (!track) return res.status(404).json({ error: "Track not found" });
-                name = track.title;
-                amount = (track.currency === 'USD' || track.currency === 'USDC') 
-                    ? Number(track.price_usdc || track.price || 0)
-                    : Number(track.price || 0);
+                const trackId = parseInt(itemId, 10);
+                let trackData: any = database.getTrack(trackId);
+
+                // If albumId is provided, try to get price from release_tracks first
+                if (albumId) {
+                    const releaseTrack = database.getTrackPriceFromRelease(parseInt(albumId, 10), trackId);
+                    if (releaseTrack) {
+                        console.log(`[PayPal Debug] Using price from release_tracks for track ${trackId} in album ${albumId}`);
+                        trackData = {
+                            ...trackData,
+                            price: releaseTrack.price,
+                            price_usdc: releaseTrack.price_usdc,
+                            currency: releaseTrack.currency,
+                            title: releaseTrack.title || trackData?.title
+                        };
+                    }
+                }
+
+                if (!trackData) return res.status(404).json({ error: "Track not found" });
+                name = trackData.title;
+                amount = (trackData.currency === 'USD' || trackData.currency === 'USDC') 
+                    ? Number(trackData.price_usdc || trackData.price || 0)
+                    : Number(trackData.price || 0);
                 
-                if (track.currency === 'ETH' || !track.currency) {
+                if (trackData.currency === 'ETH' || !trackData.currency) {
                     const rate = await getEthUsdRate();
                     amount = amount * rate;
                 }
@@ -317,7 +357,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                                 value: amount.toFixed(2),
                             },
                             description: `${type.toUpperCase()}: ${name}`,
-                            customId: JSON.stringify({ itemId, type })
+                            customId: JSON.stringify({ itemId, type, albumId: albumId || "" })
                         },
                     ],
                 },
@@ -360,15 +400,19 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             if (result.status === "COMPLETED") {
                 const purchaseUnit = result.purchaseUnits![0];
                 const metadata = JSON.parse(purchaseUnit.customId!);
-                const { itemId, type } = metadata;
+                const { itemId, type, albumId } = metadata;
 
                 const code = Math.random().toString(36).substring(2, 12).toUpperCase();
                 let releaseId: number | undefined;
                 let trackId: number | undefined;
 
                 if (type === 'track') {
-                    const track = database.getTrack(itemId);
-                    releaseId = track?.album_id || undefined;
+                    if (albumId) {
+                        releaseId = parseInt(albumId, 10);
+                    } else {
+                        const track = database.getTrack(itemId);
+                        releaseId = track?.album_id || undefined;
+                    }
                     trackId = itemId;
                 } else {
                     releaseId = itemId;

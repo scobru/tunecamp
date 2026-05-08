@@ -141,6 +141,7 @@ export const CheckoutModal = () => {
         body: JSON.stringify({
           itemId: track.id,
           type: "track",
+          albumId: (track as any).albumId,
           successUrl: window.location.origin + "/#/purchases?stripe_success=true",
           cancelUrl: window.location.href,
         }),
@@ -167,7 +168,8 @@ export const CheckoutModal = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemId: track.id,
-          type: "track"
+          type: "track",
+          albumId: (track as any).albumId
         }),
       });
       const data = await res.json();
