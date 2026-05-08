@@ -51,8 +51,7 @@ RUN echo "CapRover commit: ${CAPROVER_GIT_COMMIT_SHA:-none}" && \
     echo "Relay cache bust: ${RELAY_CACHE_BUST:-unset}"
 
 # Install build dependencies for native modules (better-sqlite3)
-RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat ffmpeg
-
+RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat
 
 # Copy package files and local dependencies
 COPY package*.json ./
@@ -66,7 +65,8 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 # Install all dependencies (including dev) for the entire workspace
 RUN npm ci && \
     npm install @rollup/rollup-linux-x64-musl lightningcss-linux-x64-musl @tailwindcss/oxide-linux-x64-musl && \
-    npm cache clean --force
+    npm cache clean --force && \
+    rm -rf /root/.npm/_cacache
 
 # Copy source code
 COPY . .
@@ -102,11 +102,6 @@ RUN echo "Production deploy commit: ${CAPROVER_GIT_COMMIT_SHA:-none}"
 
 # Install runtime dependencies for native modules and Puppeteer/Chrome
 RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    libc6-compat \
-    gcompat \
     chromium \
     nss \
     freetype \
@@ -114,7 +109,10 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     udev \
-    ffmpeg
+    ffmpeg \
+    curl \
+    libc6-compat \
+    gcompat
 
 # Puppeteer configuration for Alpine
 ENV PUPPETEER_SKIP_DOWNLOAD=true
@@ -125,10 +123,13 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 COPY package*.json ./
 COPY deps ./deps
 COPY webapp/package.json ./webapp/
-RUN npm ci --omit=dev && \
+
+# Install build tools, run npm ci, and cleanup in one layer
+RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+    npm ci --omit=dev && \
     npm cache clean --force && \
-    apk del python3 make g++ && \
-    rm -rf /root/.npm
+    apk del .build-deps && \
+    rm -rf /root/.npm /tmp/*
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
