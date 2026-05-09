@@ -536,6 +536,10 @@ export function createDatabase(dbPath: string): DatabaseService {
     CREATE INDEX IF NOT EXISTS idx_gun_cache_expires ON gun_cache(expires_at);
     CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));
     CREATE INDEX IF NOT EXISTS idx_albums_visibility ON albums(visibility);
+    CREATE INDEX IF NOT EXISTS idx_releases_artist ON releases(artist_id);
+    CREATE INDEX IF NOT EXISTS idx_admin_artist ON admin(artist_id);
+    CREATE INDEX IF NOT EXISTS idx_releases_visibility_status ON releases(visibility, status);
+    CREATE INDEX IF NOT EXISTS idx_torrents_added_at ON torrents(added_at);
   `);
 
     // Restore data for any rebuilt corrupted tables
@@ -1388,6 +1392,10 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         getArtist(id: number): Artist | undefined {
             return artistRepository.getById(id);
+        },
+
+        getArtistSimple(id: number): Artist | undefined {
+            return artistRepository.getByIdSimple(id);
         },
 
         getArtistsByIds(ids: number[]): Artist[] {

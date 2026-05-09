@@ -378,6 +378,7 @@ export interface DatabaseService {
     // Artists
     getArtists(): Artist[];
     getArtist(id: number): Artist | undefined;
+    getArtistSimple(id: number): Artist | undefined;
     getArtistsByIds(ids: number[]): Artist[];
     getArtistByName(name: string): Artist | undefined;
     getArtistBySlug(slug: string): Artist | undefined;

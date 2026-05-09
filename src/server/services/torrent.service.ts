@@ -180,7 +180,13 @@ export class TorrentService {
     }
 
     public getStatus(includeFiles: boolean = false): TorrentStatus[] {
-        if (!this.client || !this.client.torrents) return [];
+        if (!this.client) return [];
+        
+        // Safety check: WebTorrent client can sometimes be in a weird state
+        if (typeof this.client.torrents === 'undefined') {
+            console.warn("⚠️ [TorrentService] client.torrents is undefined!");
+            return [];
+        }
         
         const startTime = Date.now();
         try {

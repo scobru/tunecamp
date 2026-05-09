@@ -496,7 +496,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             let artist;
 
             if (/^\d+$/.test(param)) {
-                artist = database.getArtist(parseInt(param, 10));
+                artist = database.getArtistSimple(parseInt(param, 10));
             } else {
                 artist = database.getArtistBySlug(param);
             }

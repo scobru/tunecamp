@@ -4,6 +4,7 @@ import type { Artist } from "../database.types.js";
 
 export class ArtistRepository extends BaseRepository {
     private getArtistStmt: Statement;
+    private getArtistSimpleStmt: Statement;
     private getArtistBySlugStmt: Statement;
     private getArtistByNameStmt: Statement;
 
@@ -20,6 +21,7 @@ export class ArtistRepository extends BaseRepository {
         `;
 
         this.getArtistStmt = this.db.prepare(`${baseSelect} WHERE a.id = ?`);
+        this.getArtistSimpleStmt = this.db.prepare(`SELECT a.*, a.wallet_address as walletAddress FROM artists a WHERE a.id = ?`);
         this.getArtistBySlugStmt = this.db.prepare(`${baseSelect} WHERE a.slug = ?`);
         this.getArtistByNameStmt = this.db.prepare(`${baseSelect} WHERE a.name = ? COLLATE NOCASE`);
     }
@@ -34,6 +36,11 @@ export class ArtistRepository extends BaseRepository {
 
     getById(id: number): Artist | undefined {
         const row = this.getArtistStmt.get(id);
+        return this.mapArtist(row);
+    }
+
+    getByIdSimple(id: number): Artist | undefined {
+        const row = this.getArtistSimpleStmt.get(id);
         return this.mapArtist(row);
     }
 
