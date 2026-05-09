@@ -18,7 +18,7 @@ export class TorrentService {
         this.musicDir = musicDir;
         // Separate torrents from main music dir to avoid automatic scanning of incomplete files
         this.torrentDir = path.join(this.musicDir, "downloads", "torrents");
-        this.client = new WebTorrent();
+        this.client = new WebTorrent({ utp: false });
 
         this.client.on('error', (err: any) => {
             console.error("🌊 WebTorrent client error:", err);
