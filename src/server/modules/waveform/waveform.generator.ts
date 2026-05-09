@@ -3,6 +3,9 @@ import { scaleLinear } from 'd3-scale';
 import { area } from 'd3-shape';
 import fs from 'fs-extra';
 import WaveformData from 'waveform-data';
+import { getDurationFromFfmpeg } from '../../ffmpeg.js';
+import { WaveformPeakService } from '../../waveform.js';
+import path from 'path';
 
 // Simplified interface for Waveform
 export class WaveformGenerator {
@@ -18,49 +21,36 @@ export class WaveformGenerator {
     }
 
     private async generateWaveform(filename: string): Promise<WaveformData> {
-        // Read the file into a buffer
-        const buffer = await fs.readFile(filename);
+        if (!fs.existsSync(filename)) {
+            throw new Error(`File not found: ${filename}`);
+        }
 
-        return new Promise<WaveformData>((resolve, reject) => {
-            // Options for waveform-data
-            const options = {
-                audio_context: {
-                    sampleRate: 44100 // Default, might need adjustment if we don't have an AudioContext
-                },
-                samples_per_pixel: 256,
-                bits: 8
-            };
+        // 1. Get duration for proper scaling
+        const duration = await getDurationFromFfmpeg(filename) || 180; // Fallback to 3 mins
 
-            // Note: waveform-data nodejs example usually uses `ffmpeg` to decode to PCM first
-            // or expects a pre-decoded buffer.
-            // Jamserve's implementation seemingly streams headers but `waveform-data` 
-            // usually requires raw audio data or a compatible decoder.
+        // 2. Generate peaks using our FFmpeg-based service
+        // 2000 samples is plenty for both SVGs and fingerprints
+        const samples = 2000;
+        const peaks = await WaveformPeakService.generateWaveform(filename, samples, duration);
 
-            // WAIT. Jamserve's `waveform.generator.ts` uses `fs.createReadStream` passed to `new Waveform(...)`.
-            // Let's check `jamserve` implementation again carefully.
-            // It has: `const wf: Waveform = new Waveform(stream, ...); wf.run(...)`
-            // This implies `waveform-data` (or a fork?) supports streams in Node.js.
-            // Standard `waveform-data` library consumes AudioBuffer or similar.
+        // 3. Construct a WaveformData object that the rest of the app expects.
+        // waveform-data expects min/max pairs. Since we use absolute peaks, min is 0.
+        // We scale 0.0-1.0 to 0-127 (8-bit signed range for max)
+        const data = new Int8Array(samples * 2);
+        for (let i = 0; i < samples; i++) {
+            const val = Math.floor(peaks[i] * 127);
+            data[i * 2] = -val; // min
+            data[i * 2 + 1] = val; // max
+        }
 
-            // Checking `waveform-node` or similar? 
-            // Jamserve package.json says `"waveform-data": "4.5.2"`.
-
-            // Let's assume standard behavior:
-            // If `waveform-data` supports node streams directly, that's great.
-            // If not, we might need a distinct approach or check if Jamserve uses a custom adapter.
-
-            // Actually, `waveform-data` 4.x has a Node adapter. 
-            // Let's try to replicate Jamserve's exact usage.
-
-            // @ts-ignore
-            WaveformData.createFromAudio({
-                audio_rate: 44100,
-                channels: 1,
-                filename: filename
-            } as any, (err, waveform) => {
-                if (err) return reject(err);
-                resolve(waveform);
-            });
+        return WaveformData.create({
+            version: 2,
+            channels: 1,
+            sample_rate: 44100,
+            samples_per_pixel: Math.floor((duration * 44100) / samples),
+            bits: 8,
+            length: samples,
+            data: data.buffer
         });
     }
 

@@ -66,7 +66,7 @@ console.log(`🚀 [FFmpeg] Concurrency limit set to ${MAX_CONCURRENT_TASKS} (Cor
 let activeTasks = 0;
 const taskQueue: (() => void)[] = [];
 
-async function acquireTaskSlot(): Promise<void> {
+export async function acquireTaskSlot(): Promise<void> {
     if (activeTasks < MAX_CONCURRENT_TASKS) {
         activeTasks++;
         return Promise.resolve();
@@ -76,7 +76,7 @@ async function acquireTaskSlot(): Promise<void> {
     });
 }
 
-function releaseTaskSlot(): void {
+export function releaseTaskSlot(): void {
     activeTasks--;
     if (taskQueue.length > 0) {
         const nextTask = taskQueue.shift();

@@ -2,6 +2,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import fs from "fs-extra";
+import { acquireTaskSlot, releaseTaskSlot } from "./ffmpeg.js";
 
 // Set ffmpeg path
 if (ffmpegPath) {
@@ -23,8 +24,10 @@ export class WaveformPeakService {
      * @param duration Optional duration in seconds for better precision
      */
     static async generateWaveform(inputPath: string, samples: number = 100, duration?: number): Promise<number[]> {
+        await acquireTaskSlot();
         return new Promise((resolve, reject) => {
             if (!fs.existsSync(inputPath)) {
+                releaseTaskSlot();
                 return reject(new Error(`File not found: ${inputPath}`));
             }
 
@@ -107,12 +110,14 @@ export class WaveformPeakService {
             });
 
             stream.on('end', () => {
+                releaseTaskSlot();
                 // Final Pass: Normalize 16-bit values to 0.0 - 1.0 range with 4 decimal precision
                 const normalizedPeaks = peaks.map(val => parseFloat((val / 32768).toFixed(4)));
                 resolve(normalizedPeaks);
             });
 
             stream.on('error', (err) => {
+                releaseTaskSlot();
                 console.error("FFmpeg error during waveform streaming:", err);
                 try {
                     command.kill('SIGKILL');
