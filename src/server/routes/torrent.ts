@@ -87,5 +87,18 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
         }
     });
 
+    // POST /api/admin/torrents/sync/:infoHash - Manually sync a torrent to library
+    router.post('/:infoHash/sync', async (req, res) => {
+        const { infoHash } = req.params;
+
+        try {
+            const result = await torrentService.syncTorrent(infoHash);
+            res.json(result);
+        } catch (err: any) {
+            console.error(`❌ Torrent sync error (${infoHash}):`, err);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     return router;
 }

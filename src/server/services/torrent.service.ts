@@ -159,6 +159,47 @@ export class TorrentService {
         }
     }
 
+    public async syncTorrent(infoHash: string) {
+        const torrentRecord = this.db.getTorrent(infoHash);
+        if (!torrentRecord) throw new Error("Torrent not found in database");
+
+        console.log(`🔄 Manual sync requested for torrent: ${torrentRecord.name} (${infoHash})`);
+
+        // 1. Try to find active torrent in client first
+        const activeTorrent = await (this.client.get(infoHash) as any);
+        if (activeTorrent && activeTorrent.done) {
+            await this.processCompletedTorrent(activeTorrent as any, torrentRecord.owner_id || 0);
+            return { message: "Sync complete (active torrent processed)" };
+        }
+
+        // 2. Fallback: Scan directory on disk if path exists
+        if (torrentRecord.path && fs.existsSync(torrentRecord.path)) {
+            const AUDIO_EXTENSIONS = ['.mp3', '.flac', '.m4a', '.ogg', '.wav', '.aac', '.opus'];
+            
+            // We need to walk the directory since we don't have the file list from WebTorrent
+            const walk = async (dir: string) => {
+                const entries = await fs.readdir(dir, { withFileTypes: true });
+                for (const entry of entries) {
+                    const fullPath = path.join(dir, entry.name);
+                    if (entry.isDirectory()) {
+                        await walk(fullPath);
+                    } else if (entry.isFile()) {
+                        const ext = path.extname(entry.name).toLowerCase();
+                        if (AUDIO_EXTENSIONS.includes(ext)) {
+                            console.log(`🎵 Re-importing track from disk: ${entry.name}`);
+                            await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, torrentRecord.owner_id || 0, undefined, undefined, { album: torrentRecord.name });
+                        }
+                    }
+                }
+            };
+
+            await walk(torrentRecord.path);
+            return { message: "Sync complete (disk scan processed)" };
+        }
+
+        throw new Error("Cannot sync: Torrent is not active and files are missing from expected path");
+    }
+
     private async processCompletedTorrent(torrent: WebTorrent.Torrent, ownerId: number) {
         console.log(`🔄 Processing completed torrent: ${torrent.name}`);
         
@@ -171,7 +212,7 @@ export class TorrentService {
                 try {
                     console.log(`🎵 Importing track from torrent: ${file.name}`);
                     // Copy to library to keep the original for seeding
-                    await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, ownerId);
+                    await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, ownerId, undefined, undefined, { album: torrent.name });
                 } catch (err) {
                     console.error(`❌ Failed to import torrent file ${file.name}:`, err);
                 }

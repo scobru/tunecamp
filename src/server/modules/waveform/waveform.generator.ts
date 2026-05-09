@@ -50,7 +50,7 @@ export class WaveformGenerator {
             samples_per_pixel: Math.floor((duration * 44100) / samples),
             bits: 8,
             length: samples,
-            data: data.buffer
+            data: Array.from(data)
         });
     }
 
