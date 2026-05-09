@@ -105,6 +105,7 @@ export class MaintenanceService {
         if (metadata.genre) updateData.genre = metadata.genre;
         if (metadata.year) updateData.year = metadata.year;
         if (metadata.coverUrl) updateData.externalArtwork = metadata.coverUrl;
+        if (metadata.mbid || metadata.id) updateData.external_id = metadata.mbid || metadata.id;
         
         // Handle Album matching/creation
         if (metadata.albumTitle) {
@@ -157,6 +158,7 @@ export class MaintenanceService {
         if (metadata.date) updateData.date = metadata.date;
         if (metadata.coverUrl) updateData.cover_path = metadata.coverUrl;
         if (metadata.description) updateData.description = metadata.description;
+        if (metadata.mbid) updateData.external_id = metadata.mbid;
 
         await this.libraryService.updateAlbum(albumId, updateData);
     }
@@ -211,6 +213,12 @@ export class MaintenanceService {
                         updateData.externalArtwork = bestMatch.coverUrl;
                         updated = true;
                     }
+                }
+
+                // Always update external_id if found
+                if (bestMatch.id && (!track.external_id || options.force)) {
+                    updateData.external_id = bestMatch.id;
+                    updated = true;
                 }
 
                 // 5. Apply update via LibraryService (handles DB + ID3 tags)
@@ -332,6 +340,12 @@ export class MaintenanceService {
                     }
                 }
 
+                // Always update external_id if found
+                if (bestMatch.id && (!album.external_id || options.force)) {
+                    updateData.external_id = bestMatch.id;
+                    updated = true;
+                }
+
                 if (updated) {
                     await this.libraryService.updateAlbum(album.id, updateData);
                     results.success++;
@@ -381,6 +395,10 @@ export class MaintenanceService {
                 }
                 if (metadata.description && (options.force || !album.description)) {
                     updateData.description = metadata.description;
+                    updated = true;
+                }
+                if (metadata.mbid && (options.force || !album.external_id)) {
+                    updateData.external_id = metadata.mbid;
                     updated = true;
                 }
 

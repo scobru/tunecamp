@@ -49,7 +49,11 @@ export class CatalogService {
         });
 
         const recentAlbums = allAlbums.slice(0, 20).map(a => mapItem(a, 'albums'));
-        const recentReleases = allReleases.slice(0, 10).map(r => mapItem(r, 'releases'));
+        const recentReleases = allReleases.slice(0, 10).map(r => {
+            const mapped = mapItem(r, 'releases');
+            mapped.tracks = this.database.getReleaseTracks(r.id);
+            return mapped;
+        });
 
         // If not admin, adjust stats to only show public counts
         let publicStats = { ...stats };

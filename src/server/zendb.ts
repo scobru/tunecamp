@@ -77,6 +77,8 @@ export interface ZenDBService {
     cleanupGlobalNetwork(): Promise<void>;
     invalidateCache(): void;
     getPeerCount(): number;
+    // Registry Maintenance
+    cleanupRegistry(): Promise<void>;
     // Fingerprints
     getFingerprintMetadata(fingerprint: string): Promise<any | null>;
     shareFingerprint(fingerprint: string, metadata: any): Promise<void>;
@@ -1012,6 +1014,82 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         return newId;
     }
 
+    async function cleanupRegistry(): Promise<void> {
+        console.log("🧹 [ZenDB] Starting registry cleanup health-check...");
+        // Get all sites without the 7-day filter to identify even older dead sites
+        const sites = await getCommunitySites(); 
+        let pruned = 0;
+
+        for (const site of sites) {
+            if (!site.url) continue;
+            
+            // Skip checking local/private addresses
+            if (site.url.includes("localhost") || site.url.includes("127.0.0.1") || site.url.includes("192.168.")) {
+                continue;
+            }
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for remote health check
+                
+                // Try to HEAD the site first
+                const res = await fetch(site.url, { 
+                    method: 'HEAD', 
+                    signal: controller.signal 
+                }).catch(() => null);
+
+                if (!res) {
+                    // Try a GET if HEAD fails (some servers block HEAD)
+                    const getRes = await fetch(site.url, { 
+                        method: 'GET', 
+                        signal: controller.signal 
+                    }).catch(() => null);
+                    
+                    if (!getRes || getRes.status >= 500) {
+                        throw new Error("Unreachable");
+                    }
+                    
+                    if (getRes.status === 404) {
+                         console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
+                         await pruneSite(site.id);
+                         pruned++;
+                         continue;
+                    }
+                } else if (res.status === 404) {
+                    console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
+                    await pruneSite(site.id);
+                    pruned++;
+                }
+                
+                clearTimeout(timeoutId);
+            } catch (err) {
+                console.log(`❌ [ZenDB] Site ${site.url} is unreachable. Pruning from registry...`);
+                await pruneSite(site.id);
+                pruned++;
+            }
+        }
+
+        if (pruned > 0) {
+            console.log(`✅ [ZenDB] Registry cleanup complete. Pruned ${pruned} dead sites.`);
+            invalidateCache();
+        } else {
+            console.log(`✨ [ZenDB] Registry cleanup complete. No dead sites found.`);
+        }
+    }
+
+    async function pruneSite(siteId: string): Promise<void> {
+        return new Promise((resolve) => {
+            if (!zen) return resolve();
+            zen.get(REGISTRY_ROOT)
+                .get(REGISTRY_NAMESPACE)
+                .get("sites")
+                .get(siteId)
+                .put(null, (ack: any) => {
+                    resolve();
+                });
+        });
+    }
+
     return {
         init,
         registerSite,
@@ -1046,6 +1124,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         getPeerCount: () => {
             return getPeerCount();
         },
+        cleanupRegistry,
         getFingerprintMetadata,
         shareFingerprint
     };

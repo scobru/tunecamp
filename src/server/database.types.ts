@@ -85,6 +85,7 @@ export interface Album {
     use_nft?: boolean | number;
     walletAddress?: string;
     album_artist?: string | null;
+    external_id?: string | null;
     created_at: string;
 }
 
@@ -155,6 +156,7 @@ export interface Release {
     license?: string | null;
     use_nft?: number;
     album_artist?: string | null;
+    external_id?: string | null;
     created_at: string;
 }
 

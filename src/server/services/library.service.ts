@@ -480,6 +480,9 @@ export class LibraryService {
         if (genre !== undefined) this.db.updateTrackGenre(trackId, genre);
         if (year !== undefined) this.db.updateTrackYear(trackId, year ? Number(year) : null);
         if (externalArtwork !== undefined) this.db.updateTrackExternalArtwork(trackId, externalArtwork);
+        if (data.external_id !== undefined || data.externalId !== undefined) {
+            this.db.db.prepare("UPDATE tracks SET external_id = ? WHERE id = ?").run(data.external_id ?? data.externalId, trackId);
+        }
 
         const updatedTrack = this.db.getTrack(trackId);
 

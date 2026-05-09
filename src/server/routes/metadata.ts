@@ -122,7 +122,20 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
                 }
             }
 
-            // 3. Update artist if needed (basic)
+            // 3. Update metadata in DB
+            const albumUpdate: any = {};
+            if (mbid) albumUpdate.external_id = mbid;
+            if (title) albumUpdate.title = title;
+            if (date) {
+                albumUpdate.date = date;
+                albumUpdate.year = parseInt(date.substring(0, 4));
+            }
+            
+            if (Object.keys(albumUpdate).length > 0) {
+                database.updateAlbum(albumId, albumUpdate);
+            }
+
+            // 4. Update artist if needed
             if (artist) {
                 let artistRec = database.getArtistByName(artist);
                 if (!artistRec) {

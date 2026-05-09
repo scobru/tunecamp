@@ -224,6 +224,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       published_at TEXT,
       use_nft INTEGER DEFAULT 1,
       album_artist TEXT,
+      external_id TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -293,8 +294,9 @@ export function createDatabase(dbPath: string): DatabaseService {
       price_usdt REAL DEFAULT 0,
       currency TEXT DEFAULT 'ETH',
       external_links TEXT,
-      visibility TEXT DEFAULT 'private',
+      external_id TEXT,
       status TEXT DEFAULT 'draft',
+      visibility TEXT DEFAULT 'private',
       published_at TEXT,
       published_to_gundb INTEGER DEFAULT 0,
       published_to_ap INTEGER DEFAULT 0,
@@ -602,6 +604,25 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
     } catch (e) {
         console.error("Migration error (album_artist column):", e);
+    }
+
+    // Migration: Add external_id column to albums and releases table
+    try {
+        const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
+        const hasExternalIdAlbums = Array.isArray(tableInfoAlbums) && tableInfoAlbums.some(col => col.name === "external_id");
+        if (!hasExternalIdAlbums) {
+            console.log("📦 Migrating database: Adding external_id column to albums table...");
+            db.exec("ALTER TABLE albums ADD COLUMN external_id TEXT");
+        }
+
+        const tableInfoReleases = db.pragma("table_info(releases)") as any[];
+        const hasExternalIdReleases = Array.isArray(tableInfoReleases) && tableInfoReleases.some(col => col.name === "external_id");
+        if (!hasExternalIdReleases) {
+            console.log("📦 Migrating database: Adding external_id column to releases table...");
+            db.exec("ALTER TABLE releases ADD COLUMN external_id TEXT");
+        }
+    } catch (e) {
+        console.error("Migration error (external_id column):", e);
     }
 
     // Migration: Add price_usdt column to albums and releases table
@@ -1754,18 +1775,28 @@ export function createDatabase(dbPath: string): DatabaseService {
             else if (artistId) filter = `WHERE artist_id = ${artistId}`; else if (ownerId) filter = `WHERE owner_id = ${ownerId}`;
             const artists = (db.prepare(`SELECT COUNT(*) as count FROM artists ${artistId ? 'WHERE id='+artistId : ''}`).get() as any).count;
             const albums = (db.prepare(`SELECT COUNT(*) as count FROM albums ${filter}`).get() as any).count;
-            const tracks = (db.prepare(`SELECT COUNT(*) as count FROM tracks ${filter}`).get() as any).count;
-            const publicAlbums = (db.prepare(`SELECT COUNT(*) as count FROM albums ${filter ? filter+' AND' : 'WHERE'} is_release = 1 AND visibility IN ('public', 'unlisted')`).get() as any).count;
+            const tracksCount = (db.prepare(`SELECT COUNT(*) as count FROM tracks ${filter}`).get() as any).count;
+            const releaseTracksCount = (db.prepare(`SELECT COUNT(rt.id) as count FROM release_tracks rt JOIN releases r ON rt.release_id = r.id ${filter.replace(/artist_id/g, 'r.artist_id').replace(/owner_id/g, 'r.owner_id')}`).get() as any).count;
+            const tracks = tracksCount + releaseTracksCount;
+
+            const publicAlbums = (db.prepare(`SELECT COUNT(*) as count FROM releases ${filter ? filter+' AND' : 'WHERE'} visibility IN ('public', 'unlisted')`).get() as any).count;
             const totalUsers = (artistId || ownerId) ? 0 : (db.prepare("SELECT COUNT(*) as count FROM admin").get() as any)?.count || 0;
-            const storage = db.prepare(`SELECT SUM(duration) as total FROM tracks ${filter}`).get() as any;
+            
+            const storageTracks = db.prepare(`SELECT SUM(duration) as total FROM tracks ${filter}`).get() as any;
+            const storageReleaseTracks = db.prepare(`SELECT SUM(rt.duration) as total FROM release_tracks rt JOIN releases r ON rt.release_id = r.id ${filter.replace(/artist_id/g, 'r.artist_id').replace(/owner_id/g, 'r.owner_id')}`).get() as any;
+            const totalDuration = (storageTracks.total || 0) + (storageReleaseTracks.total || 0);
             const allGenres = db.prepare(`SELECT genre FROM albums ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
             const allTrackGenres = db.prepare(`SELECT genre FROM tracks ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
             const genreSet = new Set<string>(); 
             allGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
             allTrackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
-            return { artists, albums, tracks, totalTracks: tracks, publicAlbums, totalUsers, storageUsed: (storage.total || 0) * 40 * 1024, networkSites: (artistId || ownerId) ? 0 : (db.prepare("SELECT COUNT(*) as count FROM remote_actors WHERE type = 'Service'").get() as any).count, genresCount: genreSet.size, genres: Array.from(genreSet).sort() };
+            return { artists, albums, tracks, totalTracks: tracks, publicAlbums, totalUsers, storageUsed: (totalDuration || 0) * 40 * 1024, networkSites: (artistId || ownerId) ? 0 : (db.prepare("SELECT COUNT(*) as count FROM remote_actors WHERE type = 'Service'").get() as any).count, genresCount: genreSet.size, genres: Array.from(genreSet).sort() };
         },
-        getPublicTracksCount(): number { return (db.prepare("SELECT COUNT(t.id) as count FROM tracks t JOIN albums a ON t.album_id = a.id WHERE a.visibility = 'public'").get() as any).count; },
+        getPublicTracksCount(): number { 
+            const libraryPublic = (db.prepare("SELECT COUNT(t.id) as count FROM tracks t JOIN albums a ON t.album_id = a.id WHERE a.visibility = 'public'").get() as any).count;
+            const releasePublic = (db.prepare("SELECT COUNT(rt.id) as count FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE r.visibility = 'public'").get() as any).count;
+            return libraryPublic + releasePublic;
+        },
         getGenres(publicOnly = false): string[] {
             const genreSet = new Set<string>();
             const albumGenres = db.prepare(publicOnly ? "SELECT genre FROM albums WHERE is_release = 1 AND visibility IN ('public', 'unlisted') AND status = 'released' AND genre IS NOT NULL AND genre != ''" : "SELECT genre FROM albums WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];

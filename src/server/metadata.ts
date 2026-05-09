@@ -125,9 +125,35 @@ class ITunesProvider implements MetadataProvider {
 
 class MusicBrainzProvider implements MetadataProvider {
     name = "musicbrainz";
+    private static lastRequestTime = 0;
+    private static minRequestInterval = 1100; // 1.1s for safety (limit is 1/s)
+
+    private async waitIfNecessary() {
+        const now = Date.now();
+        const timeSinceLast = now - MusicBrainzProvider.lastRequestTime;
+        if (timeSinceLast < MusicBrainzProvider.minRequestInterval) {
+            const delay = MusicBrainzProvider.minRequestInterval - timeSinceLast;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        MusicBrainzProvider.lastRequestTime = Date.now();
+    }
+
+    private buildQuery(query: string, type: 'artist' | 'release' | 'recording'): string {
+        if (!query.includes(" - ")) return query;
+        const [part1, part2] = query.split(" - ").map(s => s.trim());
+        
+        if (type === 'release') {
+            return `artist:"${part1}" AND release:"${part2}"`;
+        } else if (type === 'recording') {
+            return `artist:"${part1}" AND recording:"${part2}"`;
+        }
+        return query;
+    }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {
-        const url = `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(query)}&fmt=json`;
+        await this.waitIfNecessary();
+        const mbQuery = this.buildQuery(query, 'release');
+        const url = `https://musicbrainz.org/ws/2/release/?query=${encodeURIComponent(mbQuery)}&fmt=json`;
 
         try {
             const response = await fetch(url, {
@@ -135,6 +161,11 @@ class MusicBrainzProvider implements MetadataProvider {
             });
 
             if (!response.ok) {
+                if (response.status === 429 || response.status === 503) {
+                    console.warn(`[MusicBrainz] Rate limited or overloaded (status ${response.status}). Retrying once after delay...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return this.searchRelease(query);
+                }
                 console.error(`MusicBrainz API error: ${response.status}`);
                 await drainResponse(response);
                 return [];
@@ -160,7 +191,9 @@ class MusicBrainzProvider implements MetadataProvider {
     }
 
     async searchRecording(query: string): Promise<MetadataMatch[]> {
-        const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json`;
+        await this.waitIfNecessary();
+        const mbQuery = this.buildQuery(query, 'recording');
+        const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(mbQuery)}&fmt=json`;
 
         try {
             const response = await fetch(url, {
@@ -168,6 +201,11 @@ class MusicBrainzProvider implements MetadataProvider {
             });
 
             if (!response.ok) {
+                if (response.status === 429 || response.status === 503) {
+                    console.warn(`[MusicBrainz] Rate limited or overloaded (status ${response.status}). Retrying once...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return this.searchRecording(query);
+                }
                 console.error(`MusicBrainz API error: ${response.status}`);
                 await drainResponse(response);
                 return [];

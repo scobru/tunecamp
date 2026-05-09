@@ -56,6 +56,8 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
         artist: match.artist,
         albumTitle: match.albumTitle,
         coverUrl: match.coverUrl,
+        mbid: match.id,
+        source: match.source
       };
 
       if (match.source !== "discogs") {

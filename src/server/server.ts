@@ -153,6 +153,16 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const zendbService = createZenDBService(database, server, config.zenPeers, config.publicUrl);
     await zendbService.init();
 
+    // Initial Registry Cleanup (Pruning dead sites)
+    setTimeout(() => {
+        zendbService.cleanupRegistry().catch(err => console.error("🚨 [ZenDB] Initial registry cleanup failed:", err));
+    }, 60000); // Wait 60s for Zen network to discover peers
+
+    // Periodic Registry Cleanup (every 12 hours)
+    setInterval(() => {
+        zendbService.cleanupRegistry().catch(err => console.error("🚨 [ZenDB] Scheduled registry cleanup failed:", err));
+    }, 12 * 60 * 60 * 1000);
+
     // Latch domain from first incoming request Host header if still unknown
     app.use((req, res, next) => {
         const zen = getZen();
