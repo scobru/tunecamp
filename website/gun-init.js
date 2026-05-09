@@ -7,6 +7,14 @@ const REGISTRY_PEERS = [
     "https://shogun-relay.scobrudot.dev/zen"
 ];
 
+// Add current origin as a peer if we are running on a Tunecamp instance
+if (window.location.protocol.startsWith('http')) {
+    const localPeer = `${window.location.origin}/zen`.replace('http://', 'ws://').replace('https://', 'wss://');
+    if (!REGISTRY_PEERS.includes(localPeer)) {
+        REGISTRY_PEERS.push(localPeer);
+    }
+}
+
 // Singleton instance
 let gunInstance = null;
 
@@ -19,8 +27,7 @@ function getZen() {
 
         console.log("📡 Initializing shared Zen instance...");
         gunInstance = new Zen({
-            peers: REGISTRY_PEERS,
-            localStorage: true
+            peers: REGISTRY_PEERS
         });
 
         // Connection logging

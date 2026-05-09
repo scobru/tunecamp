@@ -312,11 +312,14 @@
 
         <!-- Status Bar -->
         <div class="status-bar">
-            <div class="live">
-                <span class="live-dot"></span>
-                Live updates
+            <div class="flex items-center gap-4">
+                <div class="live">
+                    <span class="live-dot" id="statusDot" style="background: #ef4444;"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+                <div class="sites-count" id="countDisplay">0 instances</div>
             </div>
-            <div class="sites-count" id="countDisplay">Loading...</div>
+            <div class="text-[10px] opacity-40 font-mono" id="peerInfo">No peers</div>
         </div>
 
         <!-- Tabs -->
@@ -411,11 +414,50 @@
             }
         }
 
+        // --- Connection Monitoring ---
+        function initStatus() {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const peerInfo = document.getElementById('peerInfo');
+
+            zen.on('hi', (peer) => {
+                dot.style.background = '#10b981';
+                text.textContent = 'Network Live';
+                peerInfo.textContent = `Connected to ${new URL(peer.url).hostname}`;
+            });
+
+            zen.on('bye', (peer) => {
+                const peers = Object.keys(zen._.opt.peers || {}).length;
+                if (peers === 0) {
+                    dot.style.background = '#ef4444';
+                    text.textContent = 'Disconnected';
+                    peerInfo.textContent = 'No active peers';
+                }
+            });
+        }
+
         // --- Discovery Logic ---
-        // --- Discovery Logic ---
-        function initDiscovery() {
+        async function initDiscovery() {
             console.log("🔍 Starting discovery on namespace:", REGISTRY_NAMESPACE);
             const processedSites = new Set();
+
+            // 0. Bootstrap from local server if possible (Fast path)
+            try {
+                const localTracks = await fetch('/api/catalog/remote/tracks').then(res => res.json());
+                if (Array.isArray(localTracks)) {
+                    console.log(`🚀 Bootstrapped ${localTracks.length} tracks from local server`);
+                    localTracks.forEach(track => {
+                        processTrackFromApi(track, null, {
+                            url: track.siteUrl,
+                            title: track.siteTitle,
+                            artistName: track.artistName
+                        });
+                    });
+                    renderTracks();
+                }
+            } catch (e) {
+                console.log("ℹ️ Local bootstrap skipped (or not a Tunecamp instance)");
+            }
 
             zen.get(REGISTRY_ROOT)
                 .get(REGISTRY_NAMESPACE)
@@ -426,7 +468,7 @@
                     if (processedSites.has(siteId)) return;
                     
                     const siteUrl = directoryData.url ? directoryData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;
-                    if (!siteUrl || !isValidUrl(siteUrl)) return;
+                    if (!siteUrl) return;
                     
                     processedSites.add(siteId);
                     console.log("📡 Discovered site via Zen:", siteId, siteUrl);
@@ -483,20 +525,20 @@
         function processTrackFromApi(track, release, siteInfo) {
             if (!track || !track.title) return;
             
-            const audioUrl = track.streamUrl || (track.id ? `${siteInfo.url}/api/tracks/${track.id}/stream` : null);
-            if (!audioUrl || !isValidUrl(audioUrl)) return;
+            const audioUrl = track.streamUrl || track.audioUrl || (track.id ? `${siteInfo.url}/api/tracks/${track.id}/stream` : null);
+            if (!audioUrl) return;
 
             const entry = {
                 id: track.id || track.title,
                 title: track.title,
-                artistName: track.artistName || track.artist || (release ? release.artist_name : null) || siteInfo.artistName || "Unknown Artist",
+                artistName: track.artistName || track.artist || (release ? (release.artistName || release.artist_name) : null) || siteInfo.artistName || "Unknown Artist",
                 albumName: (release ? release.title : track.album) || "Unknown Album",
-                coverUrl: track.coverUrl || (release && release.cover_path ? `${siteInfo.url}/api/albums/${release.slug || release.id}/cover` : null) || siteInfo.coverImage,
+                coverUrl: track.coverUrl || track.coverImage || (release && release.coverImage ? `${siteInfo.url}${release.coverImage}` : (release && release.cover_path ? `${siteInfo.url}/api/albums/${release.slug || release.id}/cover` : null)) || siteInfo.coverImage,
                 audioUrl: audioUrl,
                 duration: track.duration || 0,
                 siteUrl: siteInfo.url,
                 siteTitle: siteInfo.title,
-                addedAt: track.addedAt || (release ? release.created_at : null) || Date.now()
+                addedAt: track.addedAt || (release ? (release.created_at || release.createdAt) : null) || Date.now()
             };
 
             const uniqueKey = `${siteInfo.url}::${entry.id}`;
@@ -508,7 +550,6 @@
 
         function isValidUrl(url) {
             if (!url) return false;
-            if (url.includes('localhost') || url.includes('127.0.0.1') || url.startsWith('file://')) return false;
             return url.startsWith('http');
         }
 
@@ -679,6 +720,7 @@
         window.switchTab = switchTab;
         window.playTrack = playTrack;
 
+        initStatus();
         initDiscovery();
     </script>
 </body>

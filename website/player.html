@@ -426,7 +426,13 @@
             <p style="margin-bottom: var(--space-lg);"><a href="index.html"
                     style="color: var(--text-muted); font-size: 0.875rem;">← Back to Tunecamp</a></p>
             <h1>🎵 Community Player</h1>
-            <p class="subtitle">Listen to music from independent artists</p>
+            <div class="flex items-center gap-4 mb-6">
+                <p class="subtitle" style="margin-bottom: 0;">Listen to music from independent artists</p>
+                <div class="flex items-center gap-2 px-3 py-1 bg-base-200/50 rounded-full border border-base-content/5 text-[10px] font-bold uppercase tracking-wider">
+                    <span id="statusDot" style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%;"></span>
+                    <span id="statusText" class="opacity-60">Connecting</span>
+                </div>
+            </div>
 
             <div class="stat-row">
                 <div class="stat-item">
@@ -534,8 +540,28 @@
         let isPlaying = false;
 
         zen = getZen();
+        initStatus();
         loadTracks();
         initPlayer();
+
+        function initStatus() {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+
+            zen.on('hi', (peer) => {
+                dot.style.background = '#10b981';
+                text.textContent = 'Live';
+                console.log("✅ Network connection established.");
+            });
+
+            zen.on('bye', (peer) => {
+                const peers = Object.keys(zen._.opt.peers || {}).length;
+                if (peers === 0) {
+                    dot.style.background = '#ef4444';
+                    text.textContent = 'Offline';
+                }
+            });
+        }
 
         function initPlayer() {
             audio.addEventListener('timeupdate', updateProgress);
@@ -559,11 +585,39 @@
             });
         }
 
-        function loadTracks() {
+        async function loadTracks() {
             const container = document.getElementById('tracksContainer');
             const tracksMap = new Map();
             const artistsSet = new Set();
             const processedSites = new Set();
+
+            // 0. Bootstrap from local server if possible
+            try {
+                const localTracks = await fetch('/api/catalog/remote/tracks').then(res => res.json());
+                if (Array.isArray(localTracks)) {
+                    localTracks.forEach(track => {
+                        const uniqueKey = `local:${track.slug || track.id}`;
+                        const trackData = {
+                            id: track.id || track.slug,
+                            title: track.title,
+                            artistName: track.artistName,
+                            releaseTitle: track.releaseTitle || "Remote Release",
+                            coverUrl: track.coverUrl,
+                            audioUrl: track.audioUrl,
+                            duration: track.duration,
+                            siteUrl: track.siteUrl,
+                            addedAt: track.addedAt || Date.now()
+                        };
+                        if (trackData.audioUrl) {
+                            tracksMap.set(uniqueKey, trackData);
+                            artistsSet.add(trackData.artistName);
+                        }
+                    });
+                    updateTracksList(tracksMap, artistsSet);
+                }
+            } catch (e) {
+                console.log("ℹ️ Local bootstrap skipped");
+            }
 
             zen.get(REGISTRY_ROOT)
                 .get(REGISTRY_NAMESPACE)
@@ -574,7 +628,7 @@
                     if (processedSites.has(siteId)) return;
                     
                     const siteUrl = siteData.url ? siteData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;
-                    if (!siteUrl || siteUrl.includes('localhost') || siteUrl.includes('127.0.0.1')) return;
+                    if (!siteUrl) return;
                     
                     processedSites.add(siteId);
                     console.log("📡 Discovered site via Zen:", siteId, siteUrl);
@@ -597,10 +651,10 @@
                                     const trackData = {
                                         id: track.id || track.title,
                                         title: track.title || "Untitled",
-                                        artistName: track.artistName || track.artist || release.artist_name || siteData.title || "Unknown Artist",
+                                        artistName: track.artistName || track.artist || release.artistName || release.artist_name || siteData.title || "Unknown Artist",
                                         releaseTitle: release.title || "Unknown Release",
-                                        coverUrl: track.coverUrl || (release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null),
-                                        audioUrl: track.streamUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
+                                        coverUrl: track.coverUrl || track.coverImage || (release.coverImage ? `${siteUrl}${release.coverImage}` : (release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null)),
+                                        audioUrl: track.streamUrl || track.audioUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
                                         duration: track.duration || 0,
                                         siteUrl: siteUrl,
                                         addedAt: track.addedAt || release.created_at || Date.now()
