@@ -447,10 +447,13 @@
                 if (Array.isArray(localTracks)) {
                     console.log(`🚀 Bootstrapped ${localTracks.length} tracks from local server`);
                     localTracks.forEach(track => {
-                        processTrackFromApi(track, null, {
-                            url: track.siteUrl,
-                            title: track.siteTitle,
-                            artistName: track.artistName
+                        processTrackFromApi(track, {
+                            title: track.albumName || track.album_name || track.releaseTitle || "Remote Release",
+                            artistName: track.artistName || track.artist_name,
+                            created_at: track.addedAt || track.published_at
+                        }, {
+                            url: track.siteUrl || track.actor_uri || '',
+                            title: track.siteTitle || 'Remote Network'
                         });
                     });
                     renderTracks();
@@ -500,20 +503,29 @@
                 
                 const catalog = await response.json();
                 
-                // Process Releases
-                if (catalog.releases && Array.isArray(catalog.releases)) {
-                    catalog.releases.forEach(release => {
-                        if (!release.tracks || !Array.isArray(release.tracks)) return;
-                        release.tracks.forEach(track => {
-                            processTrackFromApi(track, release, siteInfo);
-                        });
+                // 1. Process Releases (Standard & Compatibility)
+                const releases = catalog.releases || catalog.recentReleases || [];
+                if (Array.isArray(releases)) {
+                    releases.forEach(rel => {
+                        if (rel.tracks && Array.isArray(rel.tracks)) {
+                            rel.tracks.forEach(t => processTrackFromApi(t, rel, siteInfo));
+                        }
                     });
                 }
-                // Support flat tracks array
-                else if (catalog.tracks && Array.isArray(catalog.tracks)) {
-                    catalog.tracks.forEach(track => {
-                        processTrackFromApi(track, null, siteInfo);
+                
+                // 2. Process Albums
+                const albums = catalog.recentAlbums || catalog.albums || [];
+                if (Array.isArray(albums)) {
+                    albums.forEach(alb => {
+                        if (alb.tracks && Array.isArray(alb.tracks)) {
+                            alb.tracks.forEach(t => processTrackFromApi(t, alb, siteInfo));
+                        }
                     });
+                }
+                
+                // 3. Process Flat Tracks
+                if (catalog.tracks && Array.isArray(catalog.tracks)) {
+                    catalog.tracks.forEach(t => processTrackFromApi(t, null, siteInfo));
                 }
                 
                 renderTracks();
@@ -525,23 +537,24 @@
         function processTrackFromApi(track, release, siteInfo) {
             if (!track || !track.title) return;
             
-            const audioUrl = track.streamUrl || track.audioUrl || (track.id ? `${siteInfo.url}/api/tracks/${track.id}/stream` : null);
+            const siteUrl = siteInfo.url.replace(/\/$/, "");
+            const audioUrl = track.streamUrl || track.audioUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null);
             if (!audioUrl) return;
 
             const entry = {
                 id: track.id || track.title,
                 title: track.title,
-                artistName: track.artistName || track.artist || (release ? (release.artistName || release.artist_name) : null) || siteInfo.artistName || "Unknown Artist",
+                artistName: track.artistName || track.artist || (release ? (release.artistName || release.artist_name) : null) || siteInfo.artistName || siteInfo.title || "Unknown Artist",
                 albumName: (release ? release.title : track.album) || "Unknown Album",
-                coverUrl: track.coverUrl || track.coverImage || (release && release.coverImage ? `${siteInfo.url}${release.coverImage}` : (release && release.cover_path ? `${siteInfo.url}/api/albums/${release.slug || release.id}/cover` : null)) || siteInfo.coverImage,
+                coverUrl: track.coverUrl || track.coverImage || (release && release.coverImage ? (release.coverImage.startsWith('http') ? release.coverImage : `${siteUrl}${release.coverImage}`) : (release && release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null)) || siteInfo.coverImage,
                 audioUrl: audioUrl,
                 duration: track.duration || 0,
-                siteUrl: siteInfo.url,
+                siteUrl: siteUrl,
                 siteTitle: siteInfo.title,
-                addedAt: track.addedAt || (release ? (release.created_at || release.createdAt) : null) || Date.now()
+                addedAt: track.addedAt || (release ? (release.created_at || release.published_at) : null) || Date.now()
             };
 
-            const uniqueKey = `${siteInfo.url}::${entry.id}`;
+            const uniqueKey = `${siteUrl}::${entry.id}`;
             tracksMap.set(uniqueKey, entry);
         }
 

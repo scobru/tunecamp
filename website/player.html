@@ -598,15 +598,15 @@
                     localTracks.forEach(track => {
                         const uniqueKey = `local:${track.slug || track.id}`;
                         const trackData = {
-                            id: track.id || track.slug,
+                            id: track.id || track.slug || track.ap_id,
                             title: track.title,
-                            artistName: track.artistName,
-                            releaseTitle: track.releaseTitle || "Remote Release",
-                            coverUrl: track.coverUrl,
-                            audioUrl: track.audioUrl,
+                            artistName: track.artistName || track.artist_name || "Unknown Artist",
+                            releaseTitle: track.albumName || track.album_name || track.releaseTitle || "Remote Release",
+                            coverUrl: track.coverUrl || track.cover_url,
+                            audioUrl: track.audioUrl || track.stream_url || track.url,
                             duration: track.duration,
-                            siteUrl: track.siteUrl,
-                            addedAt: track.addedAt || Date.now()
+                            siteUrl: track.siteUrl || track.actor_uri,
+                            addedAt: track.addedAt || track.published_at || Date.now()
                         };
                         if (trackData.audioUrl) {
                             tracksMap.set(uniqueKey, trackData);
@@ -641,54 +641,53 @@
                     .then(catalog => {
                         console.log(`📦 Received catalog from ${siteId}:`, catalog);
                         
-                        // Process Releases
-                        if (catalog.releases && Array.isArray(catalog.releases)) {
-                            catalog.releases.forEach(release => {
-                                if (!release.tracks || !Array.isArray(release.tracks)) return;
-                                
-                                release.tracks.forEach(track => {
-                                    const uniqueKey = `${siteId}:${track.id || track.title}`;
-                                    const trackData = {
-                                        id: track.id || track.title,
-                                        title: track.title || "Untitled",
-                                        artistName: track.artistName || track.artist || release.artistName || release.artist_name || siteData.title || "Unknown Artist",
-                                        releaseTitle: release.title || "Unknown Release",
-                                        coverUrl: track.coverUrl || track.coverImage || (release.coverImage ? `${siteUrl}${release.coverImage}` : (release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null)),
-                                        audioUrl: track.streamUrl || track.audioUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
-                                        duration: track.duration || 0,
-                                        siteUrl: siteUrl,
-                                        addedAt: track.addedAt || release.created_at || Date.now()
-                                    };
-
-                                    if (trackData.audioUrl) {
-                                        tracksMap.set(uniqueKey, trackData);
-                                        if (trackData.artistName) artistsSet.add(trackData.artistName);
-                                    }
-                                });
-                            });
-                        }
-                        // Support flat tracks array if releases structure is missing
-                        else if (catalog.tracks && Array.isArray(catalog.tracks)) {
-                            catalog.tracks.forEach(track => {
-                                const uniqueKey = `${siteId}:${track.id || track.title}`;
-                                const trackData = {
-                                    id: track.id || track.title,
-                                    title: track.title || "Untitled",
-                                    artistName: track.artistName || track.artist || siteData.title || "Unknown Artist",
-                                    releaseTitle: track.album || "Unknown Release",
-                                    coverUrl: track.coverUrl || null,
-                                    audioUrl: track.streamUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
-                                    duration: track.duration || 0,
-                                    siteUrl: siteUrl,
-                                    addedAt: track.addedAt || Date.now()
-                                };
-
-                                if (trackData.audioUrl) {
-                                    tracksMap.set(uniqueKey, trackData);
-                                    if (trackData.artistName) artistsSet.add(trackData.artistName);
+                        const allItems = [];
+                        
+                        // 1. Process Releases (Standard & Compatibility)
+                        const releases = catalog.releases || catalog.recentReleases || [];
+                        if (Array.isArray(releases)) {
+                            releases.forEach(rel => {
+                                if (rel.tracks && Array.isArray(rel.tracks)) {
+                                    rel.tracks.forEach(t => allItems.push({ track: t, release: rel }));
                                 }
                             });
                         }
+                        
+                        // 2. Process Albums
+                        const albums = catalog.recentAlbums || catalog.albums || [];
+                        if (Array.isArray(albums)) {
+                            albums.forEach(alb => {
+                                if (alb.tracks && Array.isArray(alb.tracks)) {
+                                    alb.tracks.forEach(t => allItems.push({ track: t, release: alb }));
+                                }
+                            });
+                        }
+                        
+                        // 3. Process Flat Tracks
+                        if (catalog.tracks && Array.isArray(catalog.tracks)) {
+                            catalog.tracks.forEach(t => allItems.push({ track: t, release: null }));
+                        }
+
+                        // Process and add to map
+                        allItems.forEach(({ track, release }) => {
+                            const uniqueKey = `${siteId}:${track.id || track.title}`;
+                            const trackData = {
+                                id: track.id || track.title,
+                                title: track.title || "Untitled",
+                                artistName: track.artistName || track.artist || (release ? (release.artistName || release.artist_name) : null) || siteData.title || "Unknown Artist",
+                                releaseTitle: (release ? release.title : track.album) || "Unknown Release",
+                                coverUrl: track.coverUrl || track.coverImage || (release && release.coverImage ? (release.coverImage.startsWith('http') ? release.coverImage : `${siteUrl}${release.coverImage}`) : (release && release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null)),
+                                audioUrl: track.streamUrl || track.audioUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
+                                duration: track.duration || 0,
+                                siteUrl: siteUrl,
+                                addedAt: track.addedAt || (release ? (release.created_at || release.published_at) : null) || Date.now()
+                            };
+
+                            if (trackData.audioUrl) {
+                                tracksMap.set(uniqueKey, trackData);
+                                if (trackData.artistName) artistsSet.add(trackData.artistName);
+                            }
+                        });
                         
                         updateTracksList(tracksMap, artistsSet);
                     })

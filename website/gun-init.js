@@ -27,7 +27,8 @@ function getZen() {
 
         console.log("📡 Initializing shared Zen instance...");
         gunInstance = new Zen({
-            peers: REGISTRY_PEERS
+            peers: REGISTRY_PEERS,
+            localStorage: false
         });
 
         // Connection logging
