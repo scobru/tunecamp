@@ -254,6 +254,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       genre TEXT,
       year INTEGER,
       external_id TEXT,
+      fingerprint TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -791,6 +792,18 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
     } catch (e) {
         console.error("Migration error (tracks metadata):", e);
+    }
+
+    // Migration: Add fingerprint column to tracks table
+    try {
+        const tableInfo = db.pragma("table_info(tracks)") as any[];
+        const hasFingerprint = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "fingerprint");
+        if (!hasFingerprint) {
+            console.log("📦 Migrating database: Adding fingerprint column to tracks table...");
+            db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
+        }
+    } catch (e) {
+        console.error("Migration error (fingerprint column):", e);
     }
 
     // Unify owner_id to use User IDs (admin.id)
@@ -1651,6 +1664,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             trackRepository.update(id, { file_path: filePath, album_id: albumId });
         },
         updateTrackWaveform(id: number, waveform: string): void { trackRepository.update(id, { waveform }); },
+        updateTrackFingerprint(id: number, fingerprint: string): void { trackRepository.update(id, { fingerprint }); },
         updateTrackLosslessPath(id: number, losslessPath: string | null): void { trackRepository.update(id, { lossless_path: losslessPath }); },
         updateTrackExternalArtwork(id: number, artworkPath: string | null): void { trackRepository.update(id, { external_artwork: artworkPath }); },
         updateTrackLyrics(id: number, lyrics: string | null): void { trackRepository.update(id, { lyrics }); },

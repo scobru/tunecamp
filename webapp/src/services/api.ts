@@ -482,6 +482,11 @@ export const API = {
     getTorrents: () => handleResponse(api.get<any[]>('/admin/torrents')),
     addTorrent: (magnetUri: string) => handleResponse(api.post('/admin/torrents/add', { magnetUri })),
     deleteTorrent: (infoHash: string, deleteFiles = false) => handleResponse(api.delete(`/admin/torrents/${infoHash}${deleteFiles ? '?deleteFiles=true' : ''}`)),
+    
+    // --- Fingerprinting ---
+    fingerprintLookup: (trackId: number) => handleResponse(api.post<any>(`/metadata/maintenance/fingerprint/lookup/${trackId}`)),
+    shareFingerprint: (trackId: number) => handleResponse(api.post<{ success: boolean }>(`/metadata/maintenance/fingerprint/share/${trackId}`)),
+    scanAllFingerprints: () => handleResponse(api.post<{ message: string }>('/metadata/maintenance/fingerprint/scan-all')),
 };
 
 export default API;

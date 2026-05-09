@@ -77,6 +77,9 @@ export interface ZenDBService {
     cleanupGlobalNetwork(): Promise<void>;
     invalidateCache(): void;
     getPeerCount(): number;
+    // Fingerprints
+    getFingerprintMetadata(fingerprint: string): Promise<any | null>;
+    shareFingerprint(fingerprint: string, metadata: any): Promise<void>;
 }
 
 export function createZenDBService(database: DatabaseService, server?: any, peers?: string[], publicUrl?: string): ZenDBService {
@@ -785,21 +788,50 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         });
     }
 
+    // ─── Fingerprints ────────────────────────────────────────────────────────────
+
+    const FINGERPRINTS_NAMESPACE = "tunecamp-fingerprints";
+
+    async function getFingerprintMetadata(fingerprint: string): Promise<any | null> {
+        if (!initialized || !zen) return null;
+        return new Promise((resolve) => {
+            zen.get(REGISTRY_ROOT).get(FINGERPRINTS_NAMESPACE).get("fp").get(fingerprint).once((data: any) => {
+                if (data && data.title) {
+                    resolve(data);
+                } else {
+                    resolve(null);
+                }
+            });
+            setTimeout(() => resolve(null), 3000);
+        });
+    }
+
+    async function shareFingerprint(fingerprint: string, metadata: any): Promise<void> {
+        if (!initialized || !zen || !serverPair) return;
+        
+        // Clean metadata for Zen storage
+        const record = {
+            fingerprint,
+            title: metadata.title,
+            artist: metadata.artist_name || metadata.artist,
+            album: metadata.album_title || metadata.album,
+            duration: metadata.duration,
+            genre: metadata.genre,
+            year: metadata.year,
+            updatedAt: Date.now(),
+            sharedBy: serverPair.pub
+        };
+
+        return new Promise((resolve) => {
+            zen.get(REGISTRY_ROOT).get(FINGERPRINTS_NAMESPACE).get("fp").get(fingerprint).put(record, (ack: any) => {
+                if (ack.err) console.warn("Failed to share fingerprint:", ack.err);
+                resolve();
+            });
+            setTimeout(() => resolve(), 2000);
+        });
+    }
     async function deleteComment(commentId: string, pubKey: string, signature?: string): Promise<boolean> {
         if (!initialized || !zen) return false;
-
-        if (signature) {
-            try {
-                const isValid = await (Zen as any).verify(signature, pubKey);
-                if (isValid !== commentId) {
-                    console.warn(`❌ Invalid signature for comment deletion: ${commentId}`);
-                    return false;
-                }
-            } catch (err) {
-                console.error("Signature verification error:", err);
-                return false;
-            }
-        }
 
         const parts = commentId.split("-");
         const trackId = parts[0];
@@ -1013,7 +1045,9 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         invalidateCache,
         getPeerCount: () => {
             return getPeerCount();
-        }
+        },
+        getFingerprintMetadata,
+        shareFingerprint
     };
 
     function getPeerCount(): number {

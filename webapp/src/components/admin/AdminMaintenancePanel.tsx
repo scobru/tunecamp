@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2 } from "lucide-react";
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
 import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
@@ -156,6 +156,79 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleFingerprintLookup = async (trackId: number) => {
+        setIsProcessing(true);
+        try {
+            const metadata = await API.fingerprintLookup(trackId);
+            if (metadata) {
+                if (confirm(`✨ Community Match Found!\n\nTitle: ${metadata.title}\nArtist: ${metadata.artist}\nAlbum: ${metadata.album}\n\nApply this metadata?`)) {
+                    await API.applyTrackMetadata(trackId, {
+                        genre: metadata.genre,
+                        year: metadata.year,
+                        albumTitle: metadata.album
+                    });
+                    loadTracks();
+                }
+            }
+        } catch (e: any) {
+            alert(e.status === 404 ? "No community match found for this audio signature." : "Fingerprint lookup failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleShareFingerprint = async (trackId: number) => {
+        setIsProcessing(true);
+        try {
+            await API.shareFingerprint(trackId);
+            alert("🚀 Track shared with the community registry!");
+        } catch (e: any) {
+            alert("Sharing failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleBulkFingerprintMatch = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        setIsProcessing(true);
+        let foundCount = 0;
+        try {
+            for (const id of ids) {
+                try {
+                    const metadata = await API.fingerprintLookup(id);
+                    if (metadata) {
+                        await API.applyTrackMetadata(id, {
+                            genre: metadata.genre,
+                            year: metadata.year,
+                            albumTitle: metadata.album
+                        });
+                        foundCount++;
+                    }
+                } catch (e) {
+                    // Silently continue for bulk
+                }
+            }
+            alert(`✅ Community Match Processed!\n\nFound and applied metadata for ${foundCount} tracks.`);
+            loadTracks();
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleScanAllFingerprints = async () => {
+        if (!confirm("Start mass fingerprint scan for the entire library? This will process tracks without fingerprints in the background.")) return;
+        setIsProcessing(true);
+        try {
+            const res = await API.scanAllFingerprints();
+            alert(res.message);
+        } catch (e: any) {
+            alert("Scan failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleConsolidate = async () => {
         if (!confirm("Are you sure you want to consolidate the database? This will permanently remove empty albums, releases, and artists with no tracks.")) return;
         setIsProcessing(true);
@@ -247,6 +320,16 @@ export const AdminMaintenancePanel = () => {
                     <div className="divider divider-horizontal mx-0"></div>
 
                     <button 
+                        className="btn btn-sm btn-outline btn-primary"
+                        onClick={handleScanAllFingerprints}
+                        disabled={isProcessing}
+                        title="Generate fingerprints and identify all tracks"
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Fingerprint size={18} />}
+                        Identify All
+                    </button>
+
+                    <button 
                         className="btn btn-sm btn-outline btn-error"
                         onClick={handleConsolidate}
                         disabled={isProcessing}
@@ -313,6 +396,17 @@ export const AdminMaintenancePanel = () => {
                             onClick={() => handleAIAutofill(tracks.map(t => t.id))}
                         >
                             All
+                        </button>
+                    </div>
+
+                    <div className="flex gap-1 items-center bg-primary/10 p-1 rounded-lg border border-primary/20">
+                        <button 
+                            className="btn btn-sm btn-primary"
+                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                            onClick={() => handleBulkFingerprintMatch(selectedIds)}
+                        >
+                            <Fingerprint size={18} />
+                            Community Match ({selectedIds.length})
                         </button>
                     </div>
                 </div>
@@ -490,16 +584,32 @@ export const AdminMaintenancePanel = () => {
                                         </>
                                     )}
                                     <td className="text-right">
-                                        <button 
-                                            className="btn btn-xs btn-ghost opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => {
-                                                if (mode === 'tracks') setPickerTrack(item);
-                                                else if (mode === 'artists') setPickerArtist(item);
-                                                else setPickerAlbum(item);
-                                            }}
-                                        >
-                                            <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : mode === 'albums' ? 'Match' : 'Enrich'}
-                                        </button>
+                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                className="btn btn-xs btn-ghost text-primary"
+                                                title="Community Match"
+                                                onClick={() => handleFingerprintLookup(item.id)}
+                                            >
+                                                <Fingerprint size={12} />
+                                            </button>
+                                            <button 
+                                                className="btn btn-xs btn-ghost text-secondary"
+                                                title="Share with Community"
+                                                onClick={() => handleShareFingerprint(item.id)}
+                                            >
+                                                <Share2 size={12} />
+                                            </button>
+                                            <button 
+                                                className="btn btn-xs btn-ghost"
+                                                onClick={() => {
+                                                    if (mode === 'tracks') setPickerTrack(item);
+                                                    else if (mode === 'artists') setPickerArtist(item);
+                                                    else setPickerAlbum(item);
+                                                }}
+                                            >
+                                                <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : mode === 'albums' ? 'Match' : 'Enrich'}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

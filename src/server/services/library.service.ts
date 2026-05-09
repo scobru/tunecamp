@@ -7,13 +7,16 @@ import path from "path";
 import NodeID3 from "node-id3";
 import { writeMetadata } from "../ffmpeg.js";
 
+import { FingerprintService } from './fingerprint.service.js';
+
 export class LibraryService {
     constructor(
         private db: DatabaseService,
         private publishing: PublishingService,
         private zendb: ZenDBService,
         private storage: StorageEngine,
-        private musicDir: string
+        private musicDir: string,
+        private fingerprinting: FingerprintService
     ) {}
 
     // --- Query Operations ---
@@ -301,6 +304,13 @@ export class LibraryService {
         const updatedTrack = this.db.getTrack(trackId);
         if (updatedTrack) {
             console.log(`[LibraryService] Track ${trackId} localized to: ${relativePath}`);
+            
+            // --- AUTOMATED IDENTIFICATION ---
+            // Trigger background identification (don't block the localization response)
+            this.autoIdentify(trackId).catch(err => 
+                console.error(`[LibraryService] Auto-identification failed for track ${trackId}:`, err)
+            );
+
             return updatedTrack;
         }
         
@@ -642,5 +652,58 @@ export class LibraryService {
      */
     async updateAlbum(albumId: number, data: any): Promise<void> {
         this.db.updateAlbum(albumId, data);
+    }
+
+    /**
+     * Generates a fingerprint for a track and stores it in the database.
+     */
+    async analyzeFingerprint(trackId: number): Promise<string> {
+        const track = this.db.getTrack(trackId);
+        if (!track || !track.file_path) throw new Error("Track or file path not found");
+
+        const fullPath = path.join(this.musicDir, track.file_path);
+        if (!(await this.storage.pathExists(fullPath))) throw new Error("File not found on disk");
+
+        console.log(`[LibraryService] Analyzing fingerprint for track ${trackId}...`);
+        const { fingerprint } = await this.fingerprinting.generate(fullPath);
+        
+        this.db.updateTrackFingerprint(trackId, fingerprint);
+        return fingerprint;
+    }
+
+    /**
+     * Internal helper to automatically generate a fingerprint and try to match metadata.
+     */
+    private async autoIdentify(trackId: number): Promise<void> {
+        try {
+            // 1. Generate fingerprint if missing
+            const track = this.db.getTrack(trackId);
+            if (!track) return;
+
+            let fingerprint = track.fingerprint;
+            if (!fingerprint) {
+                fingerprint = await this.analyzeFingerprint(trackId);
+            }
+
+            // 2. Lookup in ZenDB
+            console.log(`[LibraryService] Auto-lookup for track ${trackId}...`);
+            const metadata = await this.zendb.getFingerprintMetadata(fingerprint);
+
+            if (metadata) {
+                console.log(`✨ Auto-match found for track ${trackId}: "${metadata.title}"`);
+                
+                // 3. Apply metadata only if local fields are empty/missing
+                const updates: any = {};
+                if (!track.genre && metadata.genre) updates.genre = metadata.genre;
+                if (!track.year && metadata.year) updates.year = metadata.year;
+                if (!track.album_id && metadata.album) updates.album = metadata.album;
+
+                if (Object.keys(updates).length > 0) {
+                    await this.updateTrack(trackId, updates);
+                }
+            }
+        } catch (err) {
+            console.error(`[LibraryService] autoIdentify failed for ${trackId}:`, err);
+        }
     }
 }

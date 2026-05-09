@@ -40,6 +40,7 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Federazione](./federation.md): Dettagli sul protocollo ActivityPub in TuneCamp.
 - [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.
 - [Nginx](./nginx.md): Esempi di configurazione per reverse proxy.
+- [Audio Fingerprinting](./audio-fingerprinting.md): Identificazione automatica e registro community.
 
 ---
 

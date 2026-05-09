@@ -129,6 +129,9 @@ export const About = () => {
               Experience your music through a cinematic "Canvas" view with
               large-scale waveforms and high-quality artwork displays.
             </p>
+          </div>
+        </div>
+
         <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">

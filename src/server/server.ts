@@ -85,6 +85,7 @@ import { TelegramBotService } from "./services/telegram-bot.js";
 import { LindaBotService } from "./services/linda-bot.js";
 import { MaintenanceService } from "./services/maintenance.service.js";
 import { OpenRouterService } from "./services/openrouter.service.js";
+import { FingerprintService } from "./services/fingerprint.service.js";
 import { createSearchRoutes } from "./routes/search.js";
 import { GoogleDriveService } from "./services/google-drive.service.js";
 import { createStorageRouter } from "./routes/storage.js";
@@ -202,11 +203,14 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // Initialize Lifecycle Service
     const lifecycleService = new LifecycleService(database, publishingService, apService);
 
+    // Initialize Fingerprint Service
+    const fingerprintService = new FingerprintService();
+
     // Initialize Library Service
-    const libraryService = new LibraryService(database, publishingService, zendbService, storage, config.musicDir);
+    const libraryService = new LibraryService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService);
 
     // Initialize Maintenance Service
-    const maintenanceService = new MaintenanceService(database, libraryService, openRouterService);
+    const maintenanceService = new MaintenanceService(database, libraryService, openRouterService, fingerprintService, zendbService);
 
     // Initialize Content Search Services
     const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));

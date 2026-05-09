@@ -3,11 +3,16 @@ import { metadataService } from "../metadata.js";
 import type { LibraryService } from "./library.service.js";
 import type { OpenRouterService } from "./openrouter.service.js";
 
+import type { ZenDBService } from "../zendb.js";
+import type { FingerprintService } from "./fingerprint.service.js";
+
 export class MaintenanceService {
     constructor(
         private db: DatabaseService,
         private libraryService: LibraryService,
-        private openRouter: OpenRouterService
+        private openRouter: OpenRouterService,
+        private fingerprinting: FingerprintService,
+        private zendb: ZenDBService
     ) {}
 
     /**
@@ -392,5 +397,102 @@ export class MaintenanceService {
         }
 
         return results;
+    }
+
+    /**
+     * Look up metadata for a track using its audio fingerprint via ZenDB.
+     */
+    async fingerprintLookup(trackId: number): Promise<any | null> {
+        const track = this.db.getTrack(trackId);
+        if (!track) return null;
+
+        let fingerprint = track.fingerprint;
+        if (!fingerprint) {
+            fingerprint = await this.libraryService.analyzeFingerprint(trackId);
+        }
+
+        console.log(`[Maintenance] Zen lookup for fingerprint: ${fingerprint.substring(0, 16)}...`);
+        const metadata = await this.zendb.getFingerprintMetadata(fingerprint);
+        
+        if (metadata) {
+            console.log(`✨ Found Zen metadata for fingerprint! "${metadata.title}" by ${metadata.artist}`);
+            return metadata;
+        }
+
+        return null;
+    }
+
+    /**
+     * Shares a track's metadata and fingerprint with the TuneCamp community.
+     */
+    async shareFingerprint(trackId: number): Promise<void> {
+        const track = this.db.getTrack(trackId);
+        if (!track || !track.title) return;
+
+        let fingerprint = track.fingerprint;
+        if (!fingerprint) {
+            fingerprint = await this.libraryService.analyzeFingerprint(trackId);
+        }
+
+        console.log(`[Maintenance] Sharing fingerprint to Zen: ${track.title}`);
+        await this.zendb.shareFingerprint(fingerprint, track);
+    }
+
+    /**
+     * Scans all tracks in the database that don't have a fingerprint yet
+     * and attempts to identify them via the community registry.
+     */
+    async batchIdentifyTracks(onProgress?: (processed: number, total: number) => void): Promise<any> {
+        const allTracks = this.db.getTracks();
+        const pendingTracks = allTracks.filter(t => !t.fingerprint && t.file_path);
+        
+        console.log(`[Maintenance] Starting batch identification for ${pendingTracks.length} tracks...`);
+        
+        let successCount = 0;
+        let matchCount = 0;
+        let errorCount = 0;
+
+        // Process in chunks to avoid blocking the event loop or overwhelming disk I/O
+        const CHUNK_SIZE = 5;
+        for (let i = 0; i < pendingTracks.length; i += CHUNK_SIZE) {
+            const chunk = pendingTracks.slice(i, i + CHUNK_SIZE);
+            
+            await Promise.all(chunk.map(async (track) => {
+                try {
+                    // 1. Generate fingerprint
+                    const fingerprint = await this.libraryService.analyzeFingerprint(track.id);
+                    successCount++;
+
+                    // 2. Try lookup
+                    const metadata = await this.zendb.getFingerprintMetadata(fingerprint);
+                    if (metadata) {
+                        // 3. Auto-apply missing fields
+                        const updates: any = {};
+                        if (!track.genre && metadata.genre) updates.genre = metadata.genre;
+                        if (!track.year && metadata.year) updates.year = metadata.year;
+                        if (!track.album_id && metadata.album) updates.album = metadata.album;
+
+                        if (Object.keys(updates).length > 0) {
+                            await this.libraryService.updateTrack(track.id, updates);
+                            matchCount++;
+                        }
+                    }
+                } catch (e) {
+                    console.error(`[Maintenance] Error identifying track ${track.id}:`, e);
+                    errorCount++;
+                }
+            }));
+
+            if (onProgress) {
+                onProgress(i + chunk.length, pendingTracks.length);
+            }
+        }
+
+        return {
+            total: pendingTracks.length,
+            processed: successCount,
+            matched: matchCount,
+            errors: errorCount
+        };
     }
 }

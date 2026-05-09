@@ -120,6 +120,7 @@ export interface Track {
     external_artwork: string | null;
     lyrics?: string | null;
     hash?: string | null;
+    fingerprint?: string | null;
     external_id?: string | null;
     created_at: string;
     year?: number;
@@ -475,6 +476,7 @@ export interface DatabaseService {
     updateTrackDuration(id: number, duration: number): void;
     updateTrackBitrate(id: number, bitrate: number): void;
     updateTrackWaveform(id: number, waveform: string): void;
+    updateTrackFingerprint(id: number, fingerprint: string): void;
     updateTrackLosslessPath(id: number, losslessPath: string | null): void;
     updateTrackExternalArtwork(id: number, artworkPath: string | null): void;
     updateTrackLyrics(id: number, lyrics: string | null): void;
