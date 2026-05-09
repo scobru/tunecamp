@@ -15,13 +15,17 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
 
     // GET /api/admin/torrents - List all torrents
     router.get('/', async (req, res) => {
+        const startTime = Date.now();
         try {
             const dbTorrents = database.getTorrents();
-            const activeTorrents = torrentService.getStatus();
+            const activeTorrents = torrentService.getStatus(req.query.includeFiles === 'true');
+            
+            // Optimization: Create a Map for O(1) lookup of active torrents
+            const activeMap = new Map(activeTorrents.map(at => [at.infoHash, at]));
             
             // Merge DB data with active client data
             const result = dbTorrents.map(dt => {
-                const active = activeTorrents.find(at => at.infoHash === dt.info_hash);
+                const active = activeMap.get(dt.info_hash);
                 return {
                     ...dt,
                     active: !!active,
@@ -34,11 +38,18 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
                 };
             });
 
+            const duration = Date.now() - startTime;
+            if (duration > 200) {
+                console.warn(`⚠️ [TorrentRoute] GET / took ${duration}ms (dbCount=${dbTorrents.length}, activeCount=${activeTorrents.length})`);
+            }
+
             res.json(result);
         } catch (err: any) {
+            console.error("❌ Torrent list error:", err);
             res.status(500).json({ error: err.message });
         }
     });
+
 
     // POST /api/admin/torrents/add - Add a new magnet link
     router.post('/add', async (req, res) => {

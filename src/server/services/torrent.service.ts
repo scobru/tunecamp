@@ -171,11 +171,12 @@ export class TorrentService {
         }
     }
 
-    public getStatus(): TorrentStatus[] {
+    public getStatus(includeFiles: boolean = false): TorrentStatus[] {
         if (!this.client || !this.client.torrents) return [];
         
+        const startTime = Date.now();
         try {
-            return this.client.torrents.map(t => ({
+            const status = this.client.torrents.map(t => ({
                 infoHash: t.infoHash,
                 name: t.name,
                 progress: t.progress,
@@ -188,7 +189,7 @@ export class TorrentService {
                 path: t.path,
                 timeRemaining: t.timeRemaining,
                 done: t.done,
-                files: t.files ? t.files.map(f => ({
+                files: includeFiles && t.files ? t.files.map(f => ({
                     name: f.name,
                     path: f.path,
                     progress: f.progress,
@@ -196,11 +197,19 @@ export class TorrentService {
                     downloaded: f.downloaded
                 })) : []
             }));
+
+            const duration = Date.now() - startTime;
+            if (duration > 100) {
+                console.warn(`⚠️ [TorrentService] getStatus took ${duration}ms (includeFiles=${includeFiles}, count=${this.client.torrents.length})`);
+            }
+
+            return status;
         } catch (err) {
             console.error("❌ Error getting torrent status:", err);
             return [];
         }
     }
+
 
     public async removeTorrent(infoHash: string, deleteFiles: boolean = false) {
         try {
