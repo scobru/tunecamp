@@ -20,6 +20,10 @@ export class TorrentService {
         this.torrentDir = path.join(this.musicDir, "downloads", "torrents");
         this.client = new WebTorrent();
 
+        this.client.on('error', (err: any) => {
+            console.error("🌊 WebTorrent client error:", err);
+        });
+
         // Ensure download directory exists
         fs.ensureDirSync(this.torrentDir);
 
@@ -66,13 +70,13 @@ export class TorrentService {
                 for (const torrent of this.client.torrents) {
                     this.db.updateTorrentProgress(
                         torrent.infoHash,
-                        torrent.progress,
+                        torrent.progress || 0,
                         torrent.done ? 'completed' : 'downloading',
-                        torrent.downloadSpeed,
-                        torrent.uploadSpeed,
-                        torrent.numPeers,
-                        torrent.length,
-                        torrent.path
+                        torrent.downloadSpeed || 0,
+                        torrent.uploadSpeed || 0,
+                        torrent.numPeers || 0,
+                        torrent.length || 0,
+                        torrent.path || null
                     );
                 }
             } catch (err) {
@@ -84,66 +88,70 @@ export class TorrentService {
     public addTorrent(magnetUri: string, ownerId: number) {
         try {
             this.client.add(magnetUri, { path: this.torrentDir }, (torrent) => {
-                console.log(`🧲 Torrent added: ${torrent.name} (${torrent.infoHash})`);
+                try {
+                    console.log(`🧲 Torrent added: ${torrent.name} (${torrent.infoHash})`);
 
-                // Check if it already exists in DB
-                const existing = this.db.getTorrent(torrent.infoHash);
-                if (!existing) {
-                    this.db.createTorrent({
-                        info_hash: torrent.infoHash,
-                        name: torrent.name,
-                        magnet_uri: magnetUri,
-                        owner_id: ownerId,
-                        status: 'metadata',
-                        progress: 0,
-                        download_speed: 0,
-                        upload_speed: 0,
-                        num_peers: 0,
-                        size: torrent.length,
-                        path: torrent.path
+                    // Check if it already exists in DB
+                    const existing = this.db.getTorrent(torrent.infoHash);
+                    if (!existing) {
+                        this.db.createTorrent({
+                            info_hash: torrent.infoHash,
+                            name: torrent.name,
+                            magnet_uri: magnetUri,
+                            owner_id: ownerId,
+                            status: 'metadata',
+                            progress: 0,
+                            download_speed: 0,
+                            upload_speed: 0,
+                            num_peers: 0,
+                            size: torrent.length || 0,
+                            path: torrent.path || null
+                        });
+                    }
+
+                    torrent.on('done', () => {
+                        console.log(`✅ Torrent completed: ${torrent.name}`);
+                        this.db.updateTorrentProgress(
+                            torrent.infoHash,
+                            1,
+                            'completed',
+                            0,
+                            0,
+                            0,
+                            torrent.length || 0,
+                            torrent.path || null
+                        );
+                        this.processCompletedTorrent(torrent, ownerId);
                     });
+
+                    torrent.on('error', (err) => {
+                        console.error(`❌ Torrent error (${torrent.name}):`, err);
+                        this.db.updateTorrentProgress(
+                            torrent.infoHash,
+                            torrent.progress || 0,
+                            'failed',
+                            0,
+                            0,
+                            0,
+                            torrent.length || 0,
+                            torrent.path || null
+                        );
+                    });
+                    
+                    // Immediate update
+                    this.db.updateTorrentProgress(
+                        torrent.infoHash,
+                        torrent.progress || 0,
+                        torrent.done ? 'completed' : 'downloading',
+                        torrent.downloadSpeed || 0,
+                        torrent.uploadSpeed || 0,
+                        torrent.numPeers || 0,
+                        torrent.length || 0,
+                        torrent.path || null
+                    );
+                } catch (cbErr) {
+                    console.error("🌊 Error inside client.add callback:", cbErr);
                 }
-
-                torrent.on('done', () => {
-                    console.log(`✅ Torrent completed: ${torrent.name}`);
-                    this.db.updateTorrentProgress(
-                        torrent.infoHash,
-                        1,
-                        'completed',
-                        0,
-                        0,
-                        0,
-                        torrent.length,
-                        torrent.path
-                    );
-                    this.processCompletedTorrent(torrent, ownerId);
-                });
-
-                torrent.on('error', (err) => {
-                    console.error(`❌ Torrent error (${torrent.name}):`, err);
-                    this.db.updateTorrentProgress(
-                        torrent.infoHash,
-                        torrent.progress,
-                        'failed',
-                        0,
-                        0,
-                        0,
-                        torrent.length,
-                        torrent.path
-                    );
-                });
-                
-                // Immediate update
-                this.db.updateTorrentProgress(
-                    torrent.infoHash,
-                    torrent.progress,
-                    torrent.done ? 'completed' : 'downloading',
-                    torrent.downloadSpeed,
-                    torrent.uploadSpeed,
-                    torrent.numPeers,
-                    torrent.length,
-                    torrent.path
-                );
             });
         } catch (err) {
             console.error("❌ Failed to add torrent:", err);
