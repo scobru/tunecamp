@@ -122,14 +122,6 @@ export const APIStatusPanel = () => {
       description: "Credit card processing and checkout sessions."
     },
     {
-      id: "paypal",
-      name: "PayPal",
-      icon: <CreditCard className="text-[#003087]" />,
-      active: status?.paypal?.configured,
-      details: status?.paypal?.configured ? `Active (${status.paypal.environment})` : "Not Configured",
-      description: "Alternative fiat payment gateway."
-    },
-    {
       id: "moonpay",
       name: "MoonPay",
       icon: <CreditCard className="text-[#a042ff]" />,

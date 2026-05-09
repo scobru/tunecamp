@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Music, Shield, Users, Zap, Globe, Cpu } from "lucide-react";
+import { Music, Shield, Users, Zap, Globe, Cpu, Brain, CreditCard, Cloud, Layout } from "lucide-react";
 
 export const About = () => {
   return (
@@ -80,6 +80,55 @@ export const About = () => {
           </div>
         </div>
 
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+          <div className="card-body">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
+              <Brain size={28} />
+            </div>
+            <h2 className="card-title text-xl">AI Intelligence</h2>
+            <p className="opacity-70">
+              Automated album identification and metadata enrichment powered by AI.
+              Keep your library perfectly organized with smart tools.
+            </p>
+          </div>
+        </div>
+
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+          <div className="card-body">
+            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
+              <CreditCard size={28} />
+            </div>
+            <h2 className="card-title text-xl">Monetization</h2>
+            <p className="opacity-70">
+              Direct artist-to-fan sales with integrated Stripe and PayPal support.
+              Receive payments without middleman platform fees.
+            </p>
+          </div>
+        </div>
+
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+          <div className="card-body">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
+              <Cloud size={28} />
+            </div>
+            <h2 className="card-title text-xl">Cloud Connectivity</h2>
+            <p className="opacity-70">
+              Seamlessly integrate with Google Drive. Stream from the cloud or
+              localize tracks to your private server with a single click.
+            </p>
+          </div>
+        </div>
+
+        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+          <div className="card-body">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
+              <Layout size={28} />
+            </div>
+            <h2 className="card-title text-xl">Immersive Playback</h2>
+            <p className="opacity-70">
+              Experience your music through a cinematic "Canvas" view with
+              large-scale waveforms and high-quality artwork displays.
+            </p>
         <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">

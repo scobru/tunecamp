@@ -107,6 +107,7 @@ export class LibraryService {
             path: t.file_path,
             filename: t.file_path ? path.basename(t.file_path) : undefined,
             coverUrl: t.external_artwork ? `/api/tracks/${t.id}/cover` : (t.album_id ? `/api/albums/${t.album_id}/cover` : null),
+            waveform: t.waveform || (t.file_path ? `/api/waveform/${t.id}` : null),
             starred: username ? this.db.isStarred(username, 'track', String(t.id)) : false,
             rating: username ? this.db.getItemRating(username, 'track', String(t.id)) : 0
         };

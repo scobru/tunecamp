@@ -18,11 +18,16 @@ export const Waveform = ({
     // 1. All Hooks at the top
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Memoize the SVG background image if data is an SVG string
+    // Memoize the SVG background image if data is an SVG string or a URL
     const bgImage = useMemo(() => {
-        if (typeof data === 'string' && data.includes('<svg')) {
-            const encodedSvg = encodeURIComponent(data);
-            return `url("data:image/svg+xml;utf8,${encodedSvg}")`;
+        if (typeof data === 'string') {
+            if (data.includes('<svg')) {
+                const encodedSvg = encodeURIComponent(data);
+                return `url("data:image/svg+xml;utf8,${encodedSvg}")`;
+            }
+            if (data.startsWith('/') || data.startsWith('http')) {
+                return `url("${data}")`;
+            }
         }
         return null;
     }, [data]);
@@ -31,7 +36,13 @@ export const Waveform = ({
     const waveformData = useMemo(() => {
         if (!data) return null;
         try {
-            return typeof data === 'string' && !data.includes('<svg') ? JSON.parse(data) : data;
+            if (typeof data === 'string') {
+                if (data.includes('<svg') || data.startsWith('/') || data.startsWith('http')) {
+                    return null; // Not JSON array data
+                }
+                return JSON.parse(data);
+            }
+            return data;
         } catch (e) {
             console.error("Failed to parse waveform data", e);
             return null;
@@ -85,7 +96,7 @@ export const Waveform = ({
     }, [waveformData, progress, colorPlayed, colorRemaining]);
 
     useEffect(() => {
-        if (!data || (typeof data === 'string' && data.includes('<svg'))) return;
+        if (!data || (typeof data === 'string' && (data.includes('<svg') || data.startsWith('/') || data.startsWith('http')))) return;
         draw();
     }, [data, draw]);
 
