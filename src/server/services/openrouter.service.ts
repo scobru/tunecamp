@@ -8,6 +8,7 @@ export interface AIEnrichedMetadata {
     description?: string;
     mood?: string;
     tags?: string[];
+    mbid?: string;
 }
 
 export class OpenRouterService {
@@ -225,9 +226,10 @@ Output ONLY valid JSON in this format:
         Provide accurate metadata in JSON format:
         "genre" (main genre),
         "year" (original release year),
-        "description" (short 1-2 sentence description of the album's style and impact).
+        "description" (short 1-2 sentence description of the album's style and impact),
+        "mbid" (the MusicBrainz Release ID if known).
         
-        If you are unsure, provide your best guess based on common knowledge.
+        If you are unsure about the MBID, omit it.
         Output ONLY valid JSON.`;
 
         try {
