@@ -54,7 +54,7 @@ RUN echo "CapRover commit: ${CAPROVER_GIT_COMMIT_SHA:-none}" && \
     echo "Relay cache bust: ${RELAY_CACHE_BUST:-unset}"
 
 # Install build dependencies for native modules (better-sqlite3)
-RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat
+RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat unzip
 
 # Copy package files and local dependencies
 COPY package*.json ./
@@ -167,7 +167,7 @@ ENV COINBASE_CDP_API_KEY_SECRET=""
 EXPOSE 1970
 
 # Install runtime dependencies
-RUN apk add --no-cache curl libc6-compat gcompat ffmpeg
+RUN apk add --no-cache curl libc6-compat gcompat ffmpeg unzip
 
 # Add a more lenient healthcheck to avoid restart loops during heavy maintenance/discovery
 HEALTHCHECK --interval=60s --timeout=15s --start-period=120s --retries=3 \

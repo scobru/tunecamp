@@ -66,10 +66,22 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
         const isGzip = header[0] === 0x1f && header[1] === 0x8b;
 
         if (isZip) {
-            console.log("📦 [Restore] Detected ZIP format, using adm-zip for extraction...");
-            // Use adm-zip for .zip files (backward compatibility)
-            const zip = new AdmZip(zipPath);
-            zip.extractAllTo(extractPath, true);
+            console.log("📦 [Restore] Detected ZIP format, using native unzip for extraction...");
+            // Use native unzip for .zip files (handles >2GB better than adm-zip)
+            await new Promise<void>(async (resolve, reject) => {
+                const { exec } = await import("child_process");
+                // -o overwrites, -d specifies destination
+                const cmd = `unzip -o "${path.resolve(zipPath)}" -d "${path.resolve(extractPath)}"`;
+
+                exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error: any, stdout: string, stderr: string) => {
+                    if (error) {
+                        console.error(`❌ [Restore] unzip extraction failed: ${stderr}`);
+                        reject(new Error(`Extraction failed: ${stderr || error.message}`));
+                    } else {
+                        resolve();
+                    }
+                });
+            });
         } else {
             console.log(`📦 [Restore] Detected ${isGzip ? 'Compressed' : 'TAR'} format, using native tar...`);
 
