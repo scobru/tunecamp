@@ -595,8 +595,33 @@ export class Scanner implements ScannerService {
                 if (isLossless && !existing.lossless_path) {
                     this.database.updateTrackLosslessPath(existing.id, normalizedPath);
                 }
-                this.database.updateTrackPath(existing.id, mp3Path, albumId);
-                if (existing.album_id !== albumId) this.database.updateTrackAlbum(existing.id, albumId);
+
+                // --- ALBUM ASSOCIATION PROTECTION ---
+                // Only update album if the track doesn't have one, or if we found a "stronger" one (like a formal Release)
+                // We must NEVER overwrite a manual association (usually a Release) with a folder-based Library album.
+                let finalAlbumId = albumId;
+                if (existing.album_id && existing.album_id !== albumId) {
+                    const existingAlbum = this.database.getAlbum(existing.album_id);
+                    const newAlbum = albumId ? this.database.getAlbum(albumId) : null;
+                    
+                    const isExistingFormal = existingAlbum?.is_release || false;
+                    const isNewFormal = newAlbum?.is_release || false;
+                    
+                    // Rule 1: If existing is a Release and new is just a folder, PROTECT.
+                    // Rule 2: If both are same type, PROTECT existing (assume manual intent).
+                    if (isExistingFormal && !isNewFormal) {
+                        console.log(`🛡️ [Scanner] Protecting existing release association for track ${existing.id} (Current: ${existing.album_id}, Found Folder: ${albumId})`);
+                        finalAlbumId = existing.album_id; 
+                    } else if (existing.album_id && !isNewFormal) {
+                        // General protection for any existing association if the new one isn't a "Formal Release"
+                        finalAlbumId = existing.album_id;
+                    }
+                }
+
+                this.database.updateTrackPath(existing.id, mp3Path, finalAlbumId);
+                if (existing.album_id !== finalAlbumId) this.database.updateTrackAlbum(existing.id, finalAlbumId);
+
+
                 if (artistId && existing.artist_id !== artistId) this.database.updateTrackArtist(existing.id, artistId);
                 
                 // If duration is missing, re-fetch it
