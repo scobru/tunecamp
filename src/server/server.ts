@@ -742,7 +742,22 @@ export async function startServer(config: ServerConfig): Promise<void> {
             console.log("💡 Set TUNECAMP_PUBLIC_URL or configure Network Settings in Admin Panel to register on community");
         }
 
+        // --- LIBRARY SCANNER TRIGGER ---
+        if (process.env.SKIP_SCANNER === 'true') {
+            console.log("📦 [Scanner] Skipping initial library scan (SKIP_SCANNER=true)");
+        } else {
+            console.log(`🔍 [Scanner] Starting initial library scan: ${config.musicDir}`);
+            scanner.scanDirectory(config.musicDir).then(result => {
+                const total = result.successful.length;
+                const failed = result.failed.length;
+                console.log(`✅ [Scanner] Initial scan complete. Processed ${total} files (${failed} failed).`);
+            }).catch(err => {
+                console.error("❌ [Scanner] Initial scan failed:", err);
+            });
+        }
+
         console.log("");
+
 
         // --- MEMORY MONITORING ---
         const MEM_LIMIT = process.env.MEMORY_LIMIT_MB ? parseInt(process.env.MEMORY_LIMIT_MB) : 6000;

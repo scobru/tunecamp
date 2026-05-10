@@ -447,20 +447,28 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Only admin can trigger rescan" });
             }
             
-            console.log(`🔍 [Admin] Manual library rescan triggered by ${req.username}`);
+            console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
             const { runStartupMaintenance } = await import("../maintenance.js");
             
-            // Run it in the background to avoid timeout
-            runStartupMaintenance(database, config)
-                .then(() => console.log("✅ Manual library rescan completed"))
-                .catch(err => console.error("❌ Manual library rescan failed:", err));
+            // Run maintenance and full scan in background
+            (async () => {
+                try {
+                    await runStartupMaintenance(database, config);
+                    console.log(`🔍 [Admin] Starting manual library scan: ${musicDir}`);
+                    const result = await scanner.scanDirectory(musicDir);
+                    console.log(`✅ [Admin] Manual scan complete. Processed ${result.successful.length} files.`);
+                } catch (e) {
+                    console.error("❌ [Admin] Background rescan failed:", e);
+                }
+            })();
 
-            res.json({ message: "Library rescan triggered in background" });
+            res.json({ message: "Library maintenance and scan triggered in background" });
         } catch (error) {
             console.error("Error triggering rescan:", error);
             res.status(500).json({ error: "Failed to trigger rescan" });
         }
     });
+
 
     /**
      * POST /api/admin/system/consolidate-db

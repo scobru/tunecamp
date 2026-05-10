@@ -251,30 +251,33 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                         artistMap.set(artistName.toLowerCase(), artistId);
                     }
 
+                    const normalizedPath = file.replace(/\\/g, '/');
                     const hash = await getFastFileHash(fullPath);
 
+                    console.log(`📂 [Maintenance] Restoring orphan: ${path.basename(file)} -> Artist: ${artistName || 'Unknown'}`);
                     database.createTrack({
                         title: common.title || path.basename(file, path.extname(file)),
                         album_id: null, // Scanned later by main scanner
                         artist_id: artistId,
                         owner_id: primaryAdmin ? primaryAdmin.id : null,
-                        track_num: common.track.no || null,
-                        duration: format.duration || null,
-                        file_path: file,
+                        track_num: common.track?.no || null,
+                        duration: format.duration || 0,
+                        file_path: normalizedPath,
                         format: format.codec || path.extname(file).substring(1),
                         bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
                         sample_rate: format.sampleRate || null,
-                        price: 0,
-                        price_usdc: 0,
-                        currency: 'ETH',
-                        lossless_path: null,
+                        lossless_path: ['.wav', '.flac'].includes(path.extname(file).toLowerCase()) ? normalizedPath : null,
                         waveform: null,
                         url: null,
                         service: null,
                         external_artwork: null,
-                        hash: hash
+                        hash: hash,
+                        price: 0,
+                        price_usdc: 0,
+                        currency: 'ETH'
                     });
                     restored++;
+
                 } catch (e) {
                     console.error(`❌ [Maintenance] Failed to restore orphan: ${file}`, e);
                 }
