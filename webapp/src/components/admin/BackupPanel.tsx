@@ -144,13 +144,13 @@ export const BackupPanel = () => {
                                 <span>Warning: Restoring will overwrite all current data!</span>
                             </div>
                         </div>
-                        <p className="opacity-70 text-sm mb-4">Upload a previously generated backup (.zip file) to restore your system.</p>
+                        <p className="opacity-70 text-sm mb-4">Upload a previously generated backup (.zip or .tar.gz file) to restore your system.</p>
 
                         <div className="form-control w-full">
                             <input 
                                 type="file" 
                                 className="file-input file-input-bordered file-input-error w-full" 
-                                accept=".zip"
+                                accept=".zip,.tar.gz"
                                 onChange={handleRestore}
                                 disabled={uploading}
                             />

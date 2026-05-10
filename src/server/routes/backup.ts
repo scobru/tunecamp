@@ -1,5 +1,6 @@
 import express, { Router } from "express";
 import archiver from "archiver";
+import AdmZip from "adm-zip";
 import fs from "fs-extra";
 import path from "path";
 import multer from "multer";
@@ -47,26 +48,47 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
     const extractPath = path.join(path.dirname(zipPath), "restore_temp_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5));
 
     try {
-        // 1. Extract ZIP
+        // 1. Extract Archive
         console.log("📦 [Restore] Extracting backup...");
         await fs.ensureDir(extractPath);
 
-        // Replace adm-zip with native tar for large file support (>2GB)
-        // Node's Buffer (used by adm-zip) has a 2GB limit, causing crashes for large backups.
-        await new Promise<void>(async (resolve, reject) => {
-            const { exec } = await import("child_process");
-            // Use absolute paths and quotes to handle potential spaces
-            const cmd = `tar -xf "${path.resolve(zipPath)}" -C "${path.resolve(extractPath)}"`;
+        // Detect format via magic bytes (more reliable than extension)
+        const header = Buffer.alloc(4);
+        try {
+            const fd = await fs.open(zipPath, 'r');
+            await fs.read(fd, header, 0, 4, 0);
+            await fs.close(fd);
+        } catch (e) {
+            console.warn("⚠️ [Restore] Could not read file header for format detection:", e);
+        }
 
-            exec(cmd, (error: any, stdout: string, stderr: string) => {
-                if (error) {
-                    console.error(`❌ [Restore] tar extraction failed: ${stderr}`);
-                    reject(new Error(`Extraction failed: ${stderr || error.message}`));
-                } else {
-                    resolve();
-                }
+        const isZip = header[0] === 0x50 && header[1] === 0x4b; // PK
+        const isGzip = header[0] === 0x1f && header[1] === 0x8b;
+
+        if (isZip) {
+            console.log("📦 [Restore] Detected ZIP format, using adm-zip for extraction...");
+            // Use adm-zip for .zip files (backward compatibility)
+            const zip = new AdmZip(zipPath);
+            zip.extractAllTo(extractPath, true);
+        } else {
+            console.log(`📦 [Restore] Detected ${isGzip ? 'Compressed' : 'TAR'} format, using native tar...`);
+
+            // Use native tar for .tar.gz (better for large files >2GB)
+            await new Promise<void>(async (resolve, reject) => {
+                const { exec } = await import("child_process");
+                // Use absolute paths and quotes to handle potential spaces
+                const cmd = `tar -xf "${path.resolve(zipPath)}" -C "${path.resolve(extractPath)}"`;
+
+                exec(cmd, (error: any, stdout: string, stderr: string) => {
+                    if (error) {
+                        console.error(`❌ [Restore] tar extraction failed: ${stderr}`);
+                        reject(new Error(`Extraction failed: ${stderr || error.message}`));
+                    } else {
+                        resolve();
+                    }
+                });
             });
-        });
+        }
 
 
         // Helper to find items recursively (BFS)
@@ -189,7 +211,7 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
 }
 
 function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbBackupPath: string): archiver.Archiver {
-    const archive = archiver("zip", { zlib: { level: 9 } });
+    const archive = archiver("tar", { gzip: true });
 
     // Add DB Snapshot
     archive.file(dbBackupPath, { name: "tunecamp.db" });
@@ -263,8 +285,8 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
 
             const archive = assembleFullBackup(database, config, dbBackupPath);
 
-            res.setHeader("Content-Type", "application/zip");
-            res.setHeader("Content-Disposition", `attachment; filename="tunecamp_backup_${new Date().toISOString().split('T')[0]}.zip"`);
+            res.setHeader("Content-Type", "application/gzip");
+            res.setHeader("Content-Disposition", `attachment; filename="tunecamp_backup_${new Date().toISOString().split('T')[0]}.tar.gz"`);
 
             archive.pipe(res);
             await archive.finalize();
@@ -307,7 +329,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
                 return res.status(500).send("Database backup failed: Unable to create snapshot.");
             }
 
-            const fileName = `tunecamp_backup_${new Date().toISOString().split('T')[0]}.zip`;
+            const fileName = `tunecamp_backup_${new Date().toISOString().split('T')[0]}.tar.gz`;
             const archive = assembleFullBackup(database, config, dbBackupPath);
 
             console.log(`📤 [Backup] Uploading ${fileName} to Google Drive...`);
@@ -315,7 +337,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
             // We can finalize and upload
             // archive is a readable stream
             try {
-                const uploadPromise = gdriveService.uploadFile(userId, fileName, "application/zip", archive);
+                const uploadPromise = gdriveService.uploadFile(userId, fileName, "application/gzip", archive);
                 archive.finalize();
                 
                 const file = await uploadPromise;
@@ -441,7 +463,7 @@ export function createBackupRoutes(database: DatabaseService, config: ServerConf
             // Sanitize
             uploadId = uploadId.replace(/[^a-zA-Z0-9-_]/g, '');
 
-            const finalZipPath = path.join("uploads", `backup_${uploadId}.zip`);
+            const finalZipPath = path.join("uploads", `backup_${uploadId}.tar.gz`);
             const uploadDir = "uploads";
 
             // Periodic cleanup of old chunks
