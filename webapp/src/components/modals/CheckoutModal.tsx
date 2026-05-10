@@ -47,8 +47,7 @@ export const CheckoutModal = () => {
   const [stableBalance, setStableBalance] = useState<string>("0");
   const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("crypto");
 
-  const { isConfigured } = useConfigStore();
-  const hasStripe = isConfigured("stripe");
+  const hasStripe = useConfigStore(state => state.isConfigured("stripe"));
 
   const {
     wallet,

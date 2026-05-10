@@ -22,8 +22,15 @@ export const AdminMaintenancePanel = () => {
     const [pickerArtist, setPickerArtist] = useState<any | null>(null);
     const [pickerAlbum, setPickerAlbum] = useState<any | null>(null);
 
-    const { isConfigured } = useConfigStore();
-    const hasAI = isConfigured("openrouter");
+    const hasAI = useConfigStore(state =\u003e state.isConfigured(\"openrouter\"));
+    const fetchStatus = useConfigStore(state =\u003e state.fetchStatus);
+    const status = useConfigStore(state =\u003e state.status);
+
+    useEffect(() =\u003e {
+        if (!status) {
+            fetchStatus();
+        }
+    }, [status, fetchStatus]);
 
     useEffect(() => {
         if (mode === 'tracks') {

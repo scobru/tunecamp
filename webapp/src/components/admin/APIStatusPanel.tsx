@@ -13,6 +13,7 @@ import {
   Download,
   CreditCard
 } from "lucide-react";
+import { useConfigStore } from "../../stores/useConfigStore";
 
 interface HealthStatus {
   soulseek: { connected: boolean; username: string | null; error?: string };
@@ -28,25 +29,19 @@ interface HealthStatus {
 }
 
 export const APIStatusPanel = () => {
-  const [status, setStatus] = useState<HealthStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { status, fetchStatus, isLoading } = useConfigStore();
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchStatus = async () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    try {
-      const data = await API.getAPIHealth();
-      setStatus(data);
-    } catch (e) {
-      console.error("Failed to fetch API health:", e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    await fetchStatus();
+    setRefreshing(false);
   };
 
   useEffect(() => {
-    fetchStatus();
+    if (!status) {
+      fetchStatus();
+    }
   }, []);
 
   const StatusIcon = ({ active, loading }: { active?: boolean; loading?: boolean }) => {
@@ -55,7 +50,7 @@ export const APIStatusPanel = () => {
     return <XCircle className="text-error" size={20} />;
   };
 
-  if (loading) {
+  if (isLoading && !status) {
     return (
       <div className="flex flex-col items-center justify-center p-12 space-y-4 opacity-50">
         <RefreshCw className="animate-spin text-primary" size={32} />
@@ -150,7 +145,7 @@ export const APIStatusPanel = () => {
         </div>
         <button 
           className={`btn btn-circle btn-ghost ${refreshing ? 'loading' : ''}`}
-          onClick={fetchStatus}
+          onClick={handleRefresh}
           disabled={refreshing}
         >
           {!refreshing && <RefreshCw size={20} />}
