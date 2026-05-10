@@ -137,6 +137,105 @@ export function createDatabase(dbPath: string): DatabaseService {
         return matrix[b.length][a.length];
     });
 
+    // Schema Maintenance Phase: Ensure missing columns exist in existing tables
+    // This handles old backups that might be missing newer columns.
+    (() => {
+        const migrations = [
+            {
+                table: 'albums', columns: [
+                    { name: 'status', type: 'TEXT DEFAULT "draft"' },
+                    { name: 'is_release', type: 'INTEGER DEFAULT 0' },
+                    { name: 'published_to_gundb', type: 'INTEGER DEFAULT 0' },
+                    { name: 'published_to_ap', type: 'INTEGER DEFAULT 0' },
+                    { name: 'published_at', type: 'TEXT' },
+                    { name: 'use_nft', type: 'INTEGER DEFAULT 1' },
+                    { name: 'album_artist', type: 'TEXT' },
+                    { name: 'external_id', type: 'TEXT' },
+                    { name: 'price_usdc', type: 'REAL DEFAULT 0' },
+                    { name: 'price_usdt', type: 'REAL DEFAULT 0' },
+                    { name: 'currency', type: 'TEXT DEFAULT "ETH"' },
+                    { name: 'visibility', type: 'TEXT DEFAULT "private"' }
+                ]
+            },
+            {
+                table: 'releases', columns: [
+                    { name: 'status', type: 'TEXT DEFAULT "draft"' },
+                    { name: 'visibility', type: 'TEXT DEFAULT "private"' },
+                    { name: 'published_at', type: 'TEXT' },
+                    { name: 'published_to_gundb', type: 'INTEGER DEFAULT 0' },
+                    { name: 'published_to_ap', type: 'INTEGER DEFAULT 0' },
+                    { name: 'license', type: 'TEXT' },
+                    { name: 'use_nft', type: 'INTEGER DEFAULT 1' },
+                    { name: 'album_artist', type: 'TEXT' },
+                    { name: 'price_usdc', type: 'REAL DEFAULT 0' },
+                    { name: 'price_usdt', type: 'REAL DEFAULT 0' },
+                    { name: 'currency', type: 'TEXT DEFAULT "ETH"' }
+                ]
+            },
+            {
+                table: 'tracks', columns: [
+                    { name: 'lossless_path', type: 'TEXT' },
+                    { name: 'fingerprint', type: 'TEXT' },
+                    { name: 'price_usdc', type: 'REAL DEFAULT 0' },
+                    { name: 'price_usdt', type: 'REAL DEFAULT 0' },
+                    { name: 'currency', type: 'TEXT DEFAULT "ETH"' }
+                ]
+            },
+            {
+                table: 'release_tracks', columns: [
+                    { name: 'price_usdc', type: 'REAL DEFAULT 0' },
+                    { name: 'price_usdt', type: 'REAL DEFAULT 0' },
+                    { name: 'currency', type: 'TEXT DEFAULT "ETH"' }
+                ]
+            },
+            {
+                table: 'torrents', columns: [
+                    { name: 'status', type: 'TEXT DEFAULT "metadata"' }
+                ]
+            },
+            {
+                table: 'soulseek_downloads', columns: [
+                    { name: 'status', type: 'TEXT' }
+                ]
+            },
+            {
+                table: 'admin', columns: [
+                    { name: 'gun_pub', type: 'TEXT' },
+                    { name: 'gun_priv', type: 'TEXT' },
+                    { name: 'gun_auth_mode', type: 'TEXT NOT NULL DEFAULT "local"' },
+                    { name: 'is_active', type: 'INTEGER DEFAULT 1' },
+                    { name: 'telegram_bot_token', type: 'TEXT' },
+                    { name: 'telegram_allowed_channels', type: 'TEXT' },
+                    { name: 'storage_quota', type: 'INTEGER NOT NULL DEFAULT 0' },
+                    { name: 'storage_used', type: 'INTEGER NOT NULL DEFAULT 0' }
+                ]
+            },
+            {
+                table: 'artists', columns: [
+                    { name: 'visibility', type: 'TEXT DEFAULT "public"' },
+                    { name: 'wallet_address', type: 'TEXT' }
+                ]
+            }
+        ];
+
+        for (const m of migrations) {
+            try {
+                const tableInfo = db.prepare(`PRAGMA table_info("${m.table}")`).all() as any[];
+                if (tableInfo.length === 0) continue;
+
+                const existingColumns = tableInfo.map(c => c.name);
+                for (const col of m.columns) {
+                    if (!existingColumns.includes(col.name)) {
+                        console.log(`📦 [Database] Adding missing column ${col.name} to table ${m.table}...`);
+                        db.exec(`ALTER TABLE "${m.table}" ADD COLUMN ${col.name} ${col.type}`);
+                    }
+                }
+            } catch (err) {
+                console.warn(`⚠️ [Database] Failed to check/upgrade table ${m.table}:`, err);
+            }
+        }
+    })();
+
     // Create tables and indices
     db.exec(`
     CREATE TABLE IF NOT EXISTS admin (
