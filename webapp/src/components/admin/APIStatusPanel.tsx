@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import API from "../../services/api";
 import { 
   Activity, 
   CheckCircle2, 
@@ -14,19 +13,6 @@ import {
   CreditCard
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
-
-interface HealthStatus {
-  soulseek: { connected: boolean; username: string | null; error?: string };
-  itunes: { online: boolean };
-  musicbrainz: { online: boolean };
-  discogs: { configured: boolean };
-  telegram: { active: boolean };
-  openrouter: { configured: boolean; model: string };
-  stripe: { configured: boolean; webhookConfigured: boolean };
-  paypal: { configured: boolean; environment: string };
-  moonpay: { configured: boolean };
-  gdrive: { configured: boolean; active: boolean };
-}
 
 export const APIStatusPanel = () => {
   const { status, fetchStatus, isLoading } = useConfigStore();
