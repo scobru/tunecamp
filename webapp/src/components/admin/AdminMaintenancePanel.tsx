@@ -22,11 +22,11 @@ export const AdminMaintenancePanel = () => {
     const [pickerArtist, setPickerArtist] = useState<any | null>(null);
     const [pickerAlbum, setPickerAlbum] = useState<any | null>(null);
 
-    const hasAI = useConfigStore(state =\u003e state.isConfigured(\"openrouter\"));
-    const fetchStatus = useConfigStore(state =\u003e state.fetchStatus);
-    const status = useConfigStore(state =\u003e state.status);
+    const hasAI = useConfigStore(state => state.isConfigured("openrouter"));
+    const fetchStatus = useConfigStore(state => state.fetchStatus);
+    const status = useConfigStore(state => state.status);
 
-    useEffect(() =\u003e {
+    useEffect(() => {
         if (!status) {
             fetchStatus();
         }
