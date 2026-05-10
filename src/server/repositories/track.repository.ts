@@ -73,7 +73,33 @@ export class TrackRepository extends BaseRepository {
 
     getById(id: number): Track | undefined {
         const row = this.getTrackStmt.get(id);
-        return row ? this.mapTrack(row) : undefined;
+        if (row) return this.mapTrack(row);
+
+        // Fallback: Check release_tracks for release-only tracks
+        const releaseTrackRow = this.db.prepare(`
+            SELECT 
+                rt.id,
+                rt.title,
+                rt.artist_name,
+                rt.track_num,
+                rt.duration,
+                rt.file_path,
+                rt.price,
+                rt.price_usdc,
+                rt.currency,
+                r.title as album_title,
+                r.album_artist,
+                r.id as album_id,
+                ar.name as artist_name,
+                ar.id as artist_id
+            FROM release_tracks rt
+            JOIN releases r ON rt.release_id = r.id
+            LEFT JOIN artists ar ON r.artist_id = ar.id
+            WHERE rt.id = ? OR rt.track_id = ?
+            LIMIT 1
+        `).get(id, id);
+
+        return releaseTrackRow ? this.mapTrack(releaseTrackRow) : undefined;
     }
 
     getByIds(ids: number[]): Track[] {
@@ -149,8 +175,10 @@ export class TrackRepository extends BaseRepository {
             AND (
                 (a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released')
                 OR EXISTS (SELECT 1 FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE rt.track_id = t.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
+                OR (t.album_id IS NULL)
             )
         `;
+
 
         const sql = publicOnly 
             ? `${baseSelect} WHERE ${condition} ${publicCondition} ORDER BY a.title, t.track_num`

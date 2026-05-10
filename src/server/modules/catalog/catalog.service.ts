@@ -48,7 +48,11 @@ export class CatalogService {
             coverImage: `/api/${type}/${item.id}/cover`
         });
 
-        const recentAlbums = allAlbums.slice(0, 20).map(a => mapItem(a, 'albums'));
+        const recentAlbums = allAlbums.slice(0, 20).map(a => {
+            const mapped = mapItem(a, 'albums');
+            mapped.tracks = this.database.getTracksByAlbum(a.id);
+            return mapped;
+        });
         const recentReleases = allReleases.slice(0, 10).map(r => {
             const mapped = mapItem(r, 'releases');
             mapped.tracks = this.database.getReleaseTracks(r.id);
@@ -126,7 +130,15 @@ export class CatalogService {
     }
 
     getRemoteTracks() {
-        return this.database.getRemoteTracks();
+        const tracks = this.database.getRemoteTracks();
+        return tracks.map(t => ({
+            ...t,
+            artistName: t.artist_name,
+            albumName: t.album_name,
+            audioUrl: t.stream_url || t.url,
+            coverUrl: t.cover_url,
+            addedAt: t.published_at || t.received_at
+        }));
     }
 
     getRemotePosts() {

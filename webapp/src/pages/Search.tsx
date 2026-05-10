@@ -10,6 +10,7 @@ export const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
     const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[] } | null>(null);
+    const [networkTracks, setNetworkTracks] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const { playTrack } = usePlayerStore();
     const [externalMode, setExternalMode] = useState(false);
@@ -18,11 +19,23 @@ export const Search = () => {
         if (!q.trim()) return;
         setLoading(true);
         try {
-            // Check if we should use metadata search (external) or local catalog
+            // 1. Local/Metadata Search
             const data = externalMode 
                 ? await API.searchMetadata(q) 
                 : await API.search(q);
             setResults(data);
+
+            // 2. Network Search (Federated)
+            if (!externalMode && q.length > 2) {
+                const netTracks = await API.getNetworkTracks();
+                const matches = netTracks.filter((t: any) => 
+                    t.title.toLowerCase().includes(q.toLowerCase()) || 
+                    t.artistName.toLowerCase().includes(q.toLowerCase())
+                );
+                setNetworkTracks(matches);
+            } else {
+                setNetworkTracks([]);
+            }
         } catch (e) {
             console.error(e);
         } finally {
