@@ -478,18 +478,30 @@ export class Scanner implements ScannerService {
             try {
                 hash = await getFastFileHash(currentFilePath);
                 const existingByHash = this.database.getTrackByHash(hash);
-                if (existingByHash && ownerId) {
-                    this.database.addTrackOwner(existingByHash.id, ownerId);
-                    if (existingByHash.owner_id === null) {
-                        this.database.db.prepare("UPDATE tracks SET owner_id = ? WHERE id = ?").run(ownerId, existingByHash.id);
+                if (existingByHash) {
+                    if (ownerId) {
+                        this.database.addTrackOwner(existingByHash.id, ownerId);
+                        if (existingByHash.owner_id === null) {
+                            this.database.db.prepare("UPDATE tracks SET owner_id = ? WHERE id = ?").run(ownerId, existingByHash.id);
+                        }
                     }
-                    if (existingByHash.album_id) {
+                    if (existingByHash.album_id && ownerId) {
                         this.database.addAlbumOwner(existingByHash.album_id, ownerId);
                     }
-                    if (currentFilePath.includes(path.sep + 'tmp' + path.sep) || currentFilePath.includes('/tmp/')) {
-                        await this.storage.remove(currentFilePath);
+
+                    // If it's a move (path changed), we update the path and continue processing
+                    // to ensure metadata/album associations are refreshed for the new location.
+                    if (existingByHash.file_path !== normalizedPath) {
+                        console.log(`🚚 [Scanner] Track ${existingByHash.id} moved: ${existingByHash.file_path} -> ${normalizedPath}`);
+                        this.database.updateTrackPath(existingByHash.id, normalizedPath, existingByHash.album_id);
+                        if (!existing) existing = existingByHash;
+                    } else {
+                        // Same path and hash, safe to return early
+                        if (currentFilePath.includes(path.sep + 'tmp' + path.sep) || currentFilePath.includes('/tmp/')) {
+                            await this.storage.remove(currentFilePath);
+                        }
+                        return { originalPath: filePath, success: true, message: "Hash matched, path identical.", trackId: existingByHash.id };
                     }
-                    return { originalPath: filePath, success: true, message: "Duplicate hash matched.", trackId: existingByHash.id };
                 }
             } catch (e) {}
 
@@ -792,11 +804,6 @@ export class Scanner implements ScannerService {
         const releaseConfigs = yamlFiles.filter(f => f.endsWith("release.yaml"));
         for (const f of releaseConfigs) await this.processReleaseConfig(f, dir);
         
-        const audioDirs = new Set(audioFiles.map(f => path.dirname(f)));
-        for (const ad of audioDirs) {
-            if (!releaseConfigs.some(rc => path.dirname(rc) === ad)) await this.getOrCreateLibraryAlbum(ad, dir);
-        }
-
         const successful = [], failed = [];
         for (let i = 0; i < audioFiles.length; i += 50) {
             const batch = audioFiles.slice(i, i + 50);
