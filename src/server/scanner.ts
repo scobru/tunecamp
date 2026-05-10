@@ -510,16 +510,29 @@ export class Scanner implements ScannerService {
                 artistId = existArt ? existArt.id : this.database.createArtist(artName);
             }
 
-            // 3. Resolve Album (Priority: override > hint > folder)
-            if (!albumId && metadataHints?.album) {
-                const albumName = metadataHints.album;
-                // Use a slug that includes artistId to avoid collisions across different artists with same album name
-                const albumSlug = slugify("hint-" + artistId + "-" + albumName);
+            // 3. Resolve Album (Priority: existing > override > hint > tag > folder)
+            
+            // 3.1 Use existing track's album if available (and if it's not a generic folder album)
+            if (!albumId && existing && existing.album_id) {
+                const currentAlbum = this.database.getAlbum(existing.album_id);
+                if (currentAlbum && (currentAlbum.is_release || !currentAlbum.slug.startsWith("lib-"))) {
+                    albumId = existing.album_id;
+                } else {
+                    // It's a generic folder album. We'll try to find a better one via tags or hints.
+                    console.log(`📂 [Scanner] Track ${existing.id} currently in folder-based album "${currentAlbum?.title}". Checking for better metadata...`);
+                }
+            }
+
+
+            // 3.2 Use hint or override if provided
+            const albumNameHint = metadataHints?.album;
+            if (!albumId && albumNameHint) {
+                const albumSlug = slugify("hint-" + artistId + "-" + albumNameHint);
                 let album = this.database.getAlbumBySlug(albumSlug);
                 
                 if (!album) {
                     albumId = this.database.createAlbum({
-                        title: albumName,
+                        title: albumNameHint,
                         slug: albumSlug,
                         artist_id: artistId,
                         album_artist: albumArtist || null,
@@ -528,7 +541,7 @@ export class Scanner implements ScannerService {
                         year: metadataHints.year || null,
                         cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
                         genre: metadataHints.genre || "Imported",
-                        description: `Imported via Telegram`,
+                        description: `Imported via metadata hint`,
                         type: 'album',
                         download: null,
                         price: 0,
@@ -546,21 +559,52 @@ export class Scanner implements ScannerService {
                     });
                 } else {
                     albumId = album.id;
-                    // Update cover if hint provided a new one and album has none
-                    if (suggestedCoverPath && !album.cover_path) {
-                        this.database.updateAlbumCover(albumId, this.normalizePath(suggestedCoverPath, musicDir));
-                    }
-                    // Update artist if it was missing or different (though slug includes artistId now)
-                    if (artistId && album.artist_id !== artistId) {
-                        this.database.updateAlbumArtist(albumId, artistId);
-                    }
                 }
             }
 
-            // Fallback to folder-based album
+            // 3.3 Resolve from Metadata Tags (ID3)
+            if (!albumId && common.album) {
+                const albumName = common.album;
+                const albumSlug = slugify("tag-" + artistId + "-" + albumName);
+                let album = this.database.getAlbumBySlug(albumSlug);
+                
+                if (!album) {
+                    albumId = this.database.createAlbum({
+                        title: albumName,
+                        slug: albumSlug,
+                        artist_id: artistId,
+                        album_artist: albumArtist || common.artist || null,
+                        owner_id: ownerId || this.primaryAdminId,
+                        date: common.year ? `${common.year}-01-01` : (common.date ? common.date : null),
+                        year: common.year || (common.date ? new Date(common.date).getFullYear() : null),
+                        cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
+                        genre: common.genre ? common.genre.join(", ") : "Library",
+                        description: `Imported from tags`,
+                        type: 'album',
+                        download: null,
+                        price: 0,
+                        price_usdc: 0,
+                        currency: 'ETH',
+                        external_links: null,
+                        is_public: true,
+                        visibility: 'public',
+                        is_release: false,
+                        published_at: new Date().toISOString(),
+                        published_to_gundb: false,
+                        published_to_ap: false,
+                        license: null,
+                        status: 'draft',
+                    });
+                } else {
+                    albumId = album.id;
+                }
+            }
+
+            // 3.4 Fallback to folder-based album (Last Resort)
             if (albumId === null && dir.startsWith(musicDir)) {
                 albumId = await this.getOrCreateLibraryAlbum(dir, musicDir, suggestedCoverPath, ownerId, albumArtist);
             }
+
 
             // 4. Handle Existing Track by Path or Metadata
             if (!existing) {
