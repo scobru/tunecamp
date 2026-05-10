@@ -51,16 +51,23 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
         console.log("📦 [Restore] Extracting backup...");
         await fs.ensureDir(extractPath);
 
-        const AdmZip = (await import("adm-zip")).default;
-        const zip = new AdmZip(zipPath);
+        // Replace adm-zip with native tar for large file support (>2GB)
+        // Node's Buffer (used by adm-zip) has a 2GB limit, causing crashes for large backups.
+        await new Promise<void>(async (resolve, reject) => {
+            const { exec } = await import("child_process");
+            // Use absolute paths and quotes to handle potential spaces
+            const cmd = `tar -xf "${path.resolve(zipPath)}" -C "${path.resolve(extractPath)}"`;
 
-        // Use async extraction to avoid blocking event loop
-        await new Promise<void>((resolve, reject) => {
-            zip.extractAllToAsync(extractPath, true, false, (error) => {
-                if (error) reject(error);
-                else resolve();
+            exec(cmd, (error: any, stdout: string, stderr: string) => {
+                if (error) {
+                    console.error(`❌ [Restore] tar extraction failed: ${stderr}`);
+                    reject(new Error(`Extraction failed: ${stderr || error.message}`));
+                } else {
+                    resolve();
+                }
             });
         });
+
 
         // Helper to find items recursively (BFS)
         const findItem = async (root: string, name: string, type: 'file' | 'dir'): Promise<string | null> => {
