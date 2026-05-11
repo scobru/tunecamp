@@ -17,7 +17,7 @@ La maggior parte degli endpoint richiede l'autenticazione tramite **JWT (JSON We
 - `GET /api/auth/me`: Restituisce le informazioni dell'utente corrente.
 
 ### Catalogo Musicale (`/api/catalog`, `/api/tracks`, `/api/albums`)
-- `GET /api/albums`: Elenco di tutti gli album locali.
+- `GET /api/albums`: Elenco di tutti gli album locali. Restituisce campi come `status` (`draft` | `published`) e `is_release` (boolean) per distinguere tra contenuti della libreria e release ufficiali.
 - `GET /api/albums/:id`: Dettagli di un album specifico, inclusa la lista tracce.
 - `GET /api/artists`: Elenco di tutti gli artisti.
 - `GET /api/tracks/:id`: Metadati di una traccia specifica.

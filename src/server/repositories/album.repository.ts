@@ -9,16 +9,8 @@ export class AlbumRepository extends BaseRepository {
 
     getByTitle(title: string, artistId?: number): Album | undefined {
         const sql = artistId
-            ? `SELECT a.*, 
-               COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-               COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug 
-               FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title = ? AND a.artist_id = ?`
-            : `SELECT a.*, 
-               COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-               COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug 
-               FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title = ?`;
+            ? `SELECT * FROM v_albums WHERE title = ? AND artist_id = ?`
+            : `SELECT * FROM v_albums WHERE title = ?`;
         const params = artistId ? [title, artistId] : [title];
         const row = this.db.prepare(sql).get(...params);
         return this.mapAlbum(row);
@@ -34,30 +26,24 @@ export class AlbumRepository extends BaseRepository {
             published_to_gundb: !!row.published_to_gundb,
             published_to_ap: !!row.published_to_ap,
             price_usdt: row.price_usdt || 0,
+            // Standardize field names from view
+            artistName: row.artist_name,
+            artistSlug: row.artist_slug,
+            walletAddress: row.artist_wallet_address
         } as Album;
     }
 
     getById(id: number): Album | undefined {
         let row = this.db.prepare(`
-            SELECT a.*, 
-            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-            ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress, own.username as owner_name 
-            FROM albums a
-            LEFT JOIN artists ar ON a.artist_id = ar.id
+            SELECT a.*, own.username as owner_name 
+            FROM v_albums a
             LEFT JOIN admin own ON a.owner_id = own.id
             WHERE a.id = ?
         `).get(id) as any;
         
         if (!row) {
             row = this.db.prepare(`
-                SELECT r.*, 
-                COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                ar.slug as artist_slug, ar.wallet_address as walletAddress 
-                FROM releases r
-                LEFT JOIN artists ar ON r.artist_id = ar.id
-                WHERE r.id = ?
+                SELECT * FROM v_releases WHERE id = ?
             `).get(id) as any;
             if (row) row.is_release = 1;
         }
@@ -67,24 +53,12 @@ export class AlbumRepository extends BaseRepository {
 
     getBySlug(slug: string): Album | undefined {
         let row = this.db.prepare(`
-            SELECT a.*, 
-            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-            ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
-            FROM albums a 
-            LEFT JOIN artists ar ON a.artist_id = ar.id 
-            WHERE a.slug = ?
+            SELECT * FROM v_albums WHERE slug = ?
         `).get(slug) as any;
 
         if (!row) {
             row = this.db.prepare(`
-                SELECT r.*, 
-                COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                ar.slug as artist_slug, ar.wallet_address as walletAddress 
-                FROM releases r
-                LEFT JOIN artists ar ON r.artist_id = ar.id
-                WHERE r.slug = ?
+                SELECT * FROM v_releases WHERE slug = ?
             `).get(slug) as any;
             if (row) row.is_release = 1;
         }
@@ -93,14 +67,9 @@ export class AlbumRepository extends BaseRepository {
 
     getLibraryAlbums(publicOnly = false, limit?: number, offset?: number): Album[] {
         let sql = `
-            SELECT a.*, 
-            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-            ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress 
-            FROM albums a 
-            LEFT JOIN artists ar ON a.artist_id = ar.id 
-            WHERE a.is_release = 0 ${publicOnly ? "AND a.visibility = 'public' AND a.status = 'released'" : ""}
-            ORDER BY a.title
+            SELECT * FROM v_albums 
+            WHERE is_release = 0 ${publicOnly ? "AND visibility IN ('public', 'unlisted') AND status = 'released'" : ""}
+            ORDER BY title
         `;
         
         if (limit !== undefined) {
@@ -118,15 +87,11 @@ export class AlbumRepository extends BaseRepository {
         const sql = `
             SELECT
                 a.*, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress,
                 COUNT(t.id) as songCount,
                 SUM(IFNULL(t.duration, 0)) as duration
-            FROM albums a
-            LEFT JOIN artists ar ON a.artist_id = ar.id
+            FROM v_albums a
             LEFT JOIN tracks t ON t.album_id = a.id
-            WHERE a.is_release = 0 ${publicOnly ? "AND a.visibility = 'public' AND a.status = 'released'" : ""}
+            WHERE a.is_release = 0 ${publicOnly ? "AND a.visibility IN ('public', 'unlisted') AND a.status = 'released'" : ""}
             GROUP BY a.id
             ORDER BY a.date DESC
         `;
@@ -142,12 +107,7 @@ export class AlbumRepository extends BaseRepository {
             const chunk = ids.slice(i, i + CHUNK_SIZE);
             const placeholders = chunk.map(() => "?").join(",");
             const rows = this.db.prepare(`
-                SELECT a.*, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                ar.slug as artistSlug, ar.slug as artist_slug, ar.wallet_address as walletAddress FROM albums a
-                LEFT JOIN artists ar ON a.artist_id = ar.id
-                WHERE a.id IN (${placeholders})
+                SELECT * FROM v_albums WHERE id IN (${placeholders})
             `).all(...chunk);
             results.push(...rows.map(row => this.mapAlbum(row)) as Album[]);
 
@@ -157,12 +117,7 @@ export class AlbumRepository extends BaseRepository {
             if (missingIds.length > 0) {
                 const missingPlaceholders = missingIds.map(() => "?").join(",");
                 const releaseRows = this.db.prepare(`
-                    SELECT r.*, 
-                COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                    ar.slug as artist_slug, ar.wallet_address as walletAddress FROM releases r
-                    LEFT JOIN artists ar ON r.artist_id = ar.id
-                    WHERE r.id IN (${missingPlaceholders})
+                    SELECT * FROM v_releases WHERE id IN (${missingPlaceholders})
                 `).all(...missingIds);
                 releaseRows.forEach((r: any) => r.is_release = 1);
                 results.push(...releaseRows.map(row => this.mapAlbum(row)) as Album[]);
@@ -173,36 +128,22 @@ export class AlbumRepository extends BaseRepository {
 
     getReleases(publicOnly = false): Release[] {
         const sql = publicOnly
-            ? `SELECT r.*, 
-               COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-               COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
-               LEFT JOIN artists ar ON r.artist_id = ar.id
-                WHERE r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
-            : `SELECT r.*, 
-               COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-               COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
-               LEFT JOIN artists ar ON r.artist_id = ar.id
-               ORDER BY r.date DESC`;
+            ? `SELECT * FROM v_releases WHERE visibility IN ('public', 'unlisted') AND status = 'released' ORDER BY date DESC`
+            : `SELECT * FROM v_releases ORDER BY date DESC`;
         const rows = this.db.prepare(sql).all();
         return rows.map((row: any) => ({ ...row, is_release: 1 })) as any[];
     }
 
     getByArtist(artistId: number, publicOnly = false, artistName?: string): Album[] {
         const condition = artistName 
-            ? `(a.artist_id = ? OR ar.name = ? OR a.title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND (t.artist_id = ? OR t.artist_name = ?)))`
-            : `(a.artist_id = ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = a.id AND t.artist_id = ?))`;
+            ? `(artist_id = ? OR artist_name = ? OR title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = v_albums.id AND (t.artist_id = ? OR t.artist_name = ?)))`
+            : `(artist_id = ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = v_albums.id AND t.artist_id = ?))`;
 
-        const sql = `SELECT a.*, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
-               LEFT JOIN artists ar ON a.artist_id = ar.id 
+        const sql = `SELECT * FROM v_albums 
                WHERE ${condition}
-               AND a.is_release = 0 
-               ${publicOnly ? "AND a.visibility = 'public' AND a.status = 'released'" : ""}
-               ORDER BY a.date DESC`;
+               AND is_release = 0 
+               ${publicOnly ? "AND visibility IN ('public', 'unlisted') AND status = 'released'" : ""}
+               ORDER BY date DESC`;
         
         const params: (number | string)[] = [artistId];
         if (artistName) {
@@ -220,14 +161,13 @@ export class AlbumRepository extends BaseRepository {
 
     getReleasesByArtist(artistId: number, publicOnly = false, artistName?: string): Release[] {
         const condition = artistName
-            ? `(r.artist_id = ? OR ar.name = ? OR EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.release_id = r.id AND rt.artist_name = ?))`
-            : `(r.artist_id = ?)`;
+            ? `(artist_id = ? OR artist_name = ? OR EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.release_id = v_releases.id AND rt.artist_name = ?))`
+            : `(artist_id = ?)`;
 
-        const sql = `SELECT r.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.slug as artist_slug FROM releases r
-               LEFT JOIN artists ar ON r.artist_id = ar.id
+        const sql = `SELECT * FROM v_releases
                WHERE ${condition}
-               ${publicOnly ? "AND r.visibility = 'public' AND r.status = 'released'" : ""}
-               ORDER BY r.date DESC`;
+               ${publicOnly ? "AND visibility IN ('public', 'unlisted') AND status = 'released'" : ""}
+               ORDER BY date DESC`;
         
         const params: (number | string)[] = [artistId];
         if (artistName) {
@@ -241,30 +181,34 @@ export class AlbumRepository extends BaseRepository {
 
     getByOwner(ownerId: number, publicOnly = false): Album[] {
         const sql = publicOnly
-            ? `SELECT a.*, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artistSlug, ar.slug as artist_slug FROM albums a 
+            ? `SELECT a.* FROM v_albums a
                JOIN album_ownership ao ON a.id = ao.album_id
-               LEFT JOIN artists ar ON a.artist_id = ar.id 
-               WHERE ao.owner_id = ? AND a.is_release = 0 AND a.visibility = 'public' AND a.status = 'released' ORDER BY a.date DESC`
-            : `SELECT a.*, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-               ar.slug as artist_slug FROM albums a 
+               WHERE ao.owner_id = ? AND a.is_release = 0 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released' ORDER BY a.date DESC`
+            : `SELECT a.* FROM v_albums a
                JOIN album_ownership ao ON a.id = ao.album_id
-               LEFT JOIN artists ar ON a.artist_id = ar.id 
                WHERE ao.owner_id = ? AND a.is_release = 0 ORDER BY a.date DESC`;
         const rows = this.db.prepare(sql).all(ownerId);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 
+    getReleasesByOwner(ownerId: number, publicOnly = false): Release[] {
+        const sql = publicOnly
+            ? `SELECT * FROM v_releases 
+               WHERE owner_id = ? AND visibility IN ('public', 'unlisted') AND status = 'released' 
+               ORDER BY date DESC`
+            : `SELECT * FROM v_releases 
+               WHERE owner_id = ? 
+               ORDER BY date DESC`;
+        const rows = this.db.prepare(sql).all(ownerId);
+        return rows as any[];
+    }
+
     getCovers(artistId: number): string[] {
         const rows = this.db.prepare(`
             SELECT cover_path FROM (
-                SELECT cover_path, date, 1 as is_release FROM releases WHERE artist_id = ? AND cover_path IS NOT NULL
+                SELECT cover_path, date, 1 as is_release FROM v_releases WHERE artist_id = ? AND cover_path IS NOT NULL
                 UNION ALL 
-                SELECT cover_path, date, 0 as is_release FROM albums WHERE artist_id = ? AND is_release = 0 AND cover_path IS NOT NULL
+                SELECT cover_path, date, 0 as is_release FROM v_albums WHERE artist_id = ? AND is_release = 0 AND cover_path IS NOT NULL
             ) ORDER BY is_release DESC, date DESC
         `).all(artistId, artistId) as any[];
         return rows.map(r => r.cover_path);
@@ -277,10 +221,8 @@ export class AlbumRepository extends BaseRepository {
     search(query: string, limit: number, publicOnly = false): Album[] {
         const likeQuery = `%${query}%`;
         const sql = publicOnly
-            ? `SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.wallet_address as walletAddress FROM albums a 
-       LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released' AND (a.title LIKE ? OR ar.name LIKE ?) LIMIT ?`
-            : `SELECT a.*, ar.name as artistName, ar.name as artist_name, ar.slug as artist_slug, ar.wallet_address as walletAddress FROM albums a 
-       LEFT JOIN artists ar ON a.artist_id = ar.id WHERE (a.title LIKE ? OR ar.name LIKE ?) LIMIT ?`;
+            ? `SELECT * FROM v_albums WHERE is_release = 1 AND visibility IN ('public', 'unlisted') AND status = 'released' AND (title LIKE ? OR artist_name LIKE ?) LIMIT ?`
+            : `SELECT * FROM v_albums WHERE (title LIKE ? OR artist_name LIKE ?) LIMIT ?`;
         const rows = this.db.prepare(sql).all(likeQuery, likeQuery, limit);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
@@ -301,6 +243,36 @@ export class AlbumRepository extends BaseRepository {
             }
         }
         throw new Error("Could not create unique slug for album");
+    }
+
+    createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number {
+        const slug = release.slug || release.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "release";
+        let finalSlug = slug;
+        let attempt = 0;
+        while (attempt < 100) {
+            try {
+                const result = this.db.prepare(`
+                    INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run(
+                    release.title, finalSlug, release.artist_id, release.owner_id,
+                    release.date, release.cover_path, release.genre, release.description, release.type, release.year,
+                    release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', release.external_links,
+                    release.visibility || 'private', release.published_at, 
+                    release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
+                    release.license, release.album_artist || null, release.status || 'draft'
+                );
+                return result.lastInsertRowid as number;
+            } catch (e: any) {
+                if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
+                    attempt++;
+                    finalSlug = `${slug}-${attempt}`;
+                } else {
+                    throw e;
+                }
+            }
+        }
+        throw new Error("Could not create unique slug for release");
     }
 
     update(id: number, album: Partial<Album>): void {
@@ -358,36 +330,6 @@ export class AlbumRepository extends BaseRepository {
             this.db.prepare("DELETE FROM albums WHERE id = ?").run(id);
             this.db.prepare("DELETE FROM releases WHERE id = ?").run(id);
         })();
-    }
-
-    createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number {
-        const slug = release.slug || release.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "release";
-        let finalSlug = slug;
-        let attempt = 0;
-        while (attempt < 100) {
-            try {
-                const result = this.db.prepare(`
-                    INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `).run(
-                    release.title, finalSlug, release.artist_id, release.owner_id,
-                    release.date, release.cover_path, release.genre, release.description, release.type, release.year,
-                    release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', release.external_links,
-                    release.visibility || 'private', release.published_at, 
-                    release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
-                    release.license, release.album_artist || null, release.status || 'draft'
-                );
-                return result.lastInsertRowid as number;
-            } catch (e: any) {
-                if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
-                    attempt++;
-                    finalSlug = `${slug}-${attempt}`;
-                } else {
-                    throw e;
-                }
-            }
-        }
-        throw new Error("Could not create unique slug for release");
     }
 
     updateReleaseStatus(id: number, status: string): void {

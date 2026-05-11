@@ -64,6 +64,7 @@ export const Sidebar = () => {
     <li>
       <Link
         to={to}
+        aria-current={isActive(to) ? "page" : undefined}
         className={clsx(
           "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 group",
           isActive(to)

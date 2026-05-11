@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
-import { Link } from 'react-router-dom';
 import { Library as LibraryIcon, LayoutGrid, List, AlignJustify } from 'lucide-react';
+import { ReleaseCard } from '../components/ui/ReleaseCard';
 import type { Album } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
 import clsx from 'clsx';
@@ -91,56 +91,9 @@ export const Library = () => {
                         ? "grid-cols-1 md:grid-cols-2 gap-4"
                         : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2"
              )}>
-                {albums.map(item => {
-                    if (!item) return null;
-                    const linkTo = `/albums/${item.slug || item.id}`;
-                    const coverUrl = API.getAlbumCoverUrl(item.id);
-
-                    return (
-                        <Link to={linkTo} key={item.id} className={clsx(
-                            "group transition-all duration-300 shadow-xl border border-base-content/5 overflow-hidden",
-                            viewMode === 'grid' && "card bg-base-200 hover:bg-base-300 hover:-translate-y-1",
-                            viewMode === 'list' && "flex items-center gap-4 bg-base-200 p-4 rounded-xl hover:bg-base-300",
-                            viewMode === 'minimal' && "flex items-center gap-3 bg-base-200/40 p-2 px-3 rounded-lg hover:bg-base-200"
-                        )}>
-                            <figure className={clsx(
-                                "relative overflow-hidden transition-all duration-500 shrink-0",
-                                viewMode === 'grid' && "aspect-square rounded-t-2xl",
-                                viewMode === 'list' && "w-12 h-12 rounded-lg shadow-lg",
-                                viewMode === 'minimal' && "w-0 h-0 opacity-0 absolute pointer-events-none"
-                            )}>
-                                <img
-                                    src={coverUrl}
-                                    alt={item.title}
-                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                    onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        if (target.nextElementSibling) {
-                                            (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                        }
-                                    }}
-                                />
-                            </figure>
-
-                            <div className={clsx(
-                                viewMode === 'grid' ? "card-body p-4" : "flex-1 min-w-0"
-                            )}>
-                                <div className="flex items-start justify-between gap-2">
-                                    <h3 className={clsx(
-                                        "font-bold truncate group-hover:text-primary transition-colors",
-                                        viewMode === 'grid' ? "text-lg" : viewMode === 'list' ? "text-base" : "text-sm"
-                                    )} title={item.title}>
-                                        {item.title}
-                                    </h3>
-                                </div>
-                                <p className={clsx("opacity-60 truncate", viewMode === 'minimal' ? "text-[10px] -mt-0.5" : "text-sm")}>
-                                    {item.artistName || (item as any).artist_name}
-                                </p>
-                            </div>
-                        </Link>
-                    );
-                })}
+                {albums.map(item => (
+                    <ReleaseCard key={item.id} item={item} viewMode={viewMode} type="library" />
+                ))}
              </div>
              
              {albums.length === 0 && (

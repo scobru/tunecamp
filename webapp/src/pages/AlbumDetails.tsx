@@ -233,13 +233,14 @@ export const AlbumDetails = () => {
   return (
     <div className="space-y-12 animate-fade-in pb-20">
       {/* Header / Hero */}
-      <div className="relative group rounded-[2.5rem] overflow-hidden border border-base-content/5 bg-base-200/20">
+      <div className="relative group rounded-3xl overflow-hidden border border-base-content/5 bg-base-200/20">
         {/* Background Ambient Blur */}
         <div className="absolute inset-0 z-0">
           {album?.coverImage && (
             <img
               src={isRelease ? API.getReleaseCoverUrl(album.id, coverVersion) : API.getAlbumCoverUrl(album.id, coverVersion)}
               className="w-full h-full object-cover opacity-10 blur-[100px] scale-150"
+              aria-hidden="true"
             />
           )}
         </div>
@@ -249,19 +250,19 @@ export const AlbumDetails = () => {
               <img
                 src={isRelease ? API.getReleaseCoverUrl(album.id, coverVersion) : API.getAlbumCoverUrl(album.id, coverVersion)}
                 alt={album.title}
-                className="w-56 h-56 md:w-72 md:h-72 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-base-content/10"
+                className="w-56 h-56 md:w-72 md:h-72 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-base-content/10"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = "https://placehold.co/500x500?text=No+Cover";
                 }}
               />
               
               {!isRelease && isOwnerOrAdmin && (
-                <label className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover/cover:opacity-100 transition-opacity cursor-pointer rounded-[2rem] border-2 border-dashed border-white/20 hover:border-primary/50">
+                <label className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover/cover:opacity-100 transition-opacity cursor-pointer rounded-2xl border-2 border-dashed border-white/20 hover:border-primary/50">
                   {uploading ? (
-                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" aria-hidden="true" />
                   ) : (
                     <>
-                      <Camera className="w-8 h-8 text-white mb-2" />
+                      <Camera className="w-8 h-8 text-white mb-2" aria-hidden="true" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-white">Upload Cover</span>
                     </>
                   )}
@@ -273,11 +274,11 @@ export const AlbumDetails = () => {
           <div className="flex-1 space-y-6 text-center md:text-left">
             <div className="space-y-2">
               <div className="flex items-center justify-center md:justify-start gap-3">
-                 <span className="text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-content px-2 py-0.5 rounded-md">
+                 <span className="badge badge-primary font-black uppercase tracking-[0.2em] text-[10px]">
                     {album.type}
                  </span>
                  {hasLossless && (
-                   <span className="text-[10px] font-black uppercase tracking-[0.3em] border border-white/20 px-2 py-0.5 rounded-md opacity-40">
+                   <span className="badge badge-outline font-black uppercase tracking-[0.2em] text-[10px] opacity-40">
                       Hi-Res
                    </span>
                  )}
@@ -405,7 +406,7 @@ export const AlbumDetails = () => {
            </div>
         </div>
 
-        <div className="list bg-base-200/10 rounded-[2.5rem] border border-base-content/5 overflow-visible">
+        <div className="list bg-base-200/10 rounded-3xl border border-base-content/5 overflow-visible">
           {album.tracks?.map((track: any, i: number) => {
             if (!track) return null;
             const unlocked = isTrackUnlocked(track);
@@ -428,7 +429,7 @@ export const AlbumDetails = () => {
                          {track.title}
                        </button>
                        {track.losslessPath && (
-                          <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase">Hi-Res</span>
+                          <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase" aria-label="High Resolution Audio">Hi-Res</span>
                        )}
                      </div>
                      {(track.artist_name || track.artistName) && 
@@ -446,20 +447,22 @@ export const AlbumDetails = () => {
                   <button 
                     onClick={() => playTrack(track, album.tracks!)}
                     className="btn btn-ghost btn-sm btn-circle text-primary"
+                    aria-label={`Play ${track.title}`}
                   >
-                    <Play size={18} fill="currentColor" />
+                    <Play size={18} fill="currentColor" aria-hidden="true" />
                   </button>
                   
                   <button 
                     onClick={() => handleLikeTrack(track)}
                     className={clsx("btn btn-ghost btn-sm btn-circle", likedTrackIds.has(String(track.id)) && "text-primary")}
+                    aria-label={likedTrackIds.has(String(track.id)) ? `Unlike ${track.title}` : `Like ${track.title}`}
                   >
-                    <Heart size={18} fill={likedTrackIds.has(String(track.id)) ? "currentColor" : "none"} />
+                    <Heart size={18} fill={likedTrackIds.has(String(track.id)) ? "currentColor" : "none"} aria-hidden="true" />
                   </button>
 
                   <div className="dropdown dropdown-end">
-                    <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle">
-                       <MoreHorizontal size={18} />
+                    <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle" aria-label="More options">
+                       <MoreHorizontal size={18} aria-hidden="true" />
                     </div>
                     <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
                        {(unlocked || album.download === "free" || isRelease) && (
@@ -473,11 +476,11 @@ export const AlbumDetails = () => {
                                 const code = await verifyAndGetCode(track.id);
                                 if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
                              }}>
-                               <CheckCircle2 size={16} /> Download
+                               <CheckCircle2 size={16} aria-hidden="true" /> Download
                              </a>
                            ) : album.download === "free" ? (
                              <a href={`/api/albums/${album.slug || album.id}/download?format=${downloadFormat}`} target="_blank">
-                                <Download size={16} /> Free Download
+                                <Download size={16} aria-hidden="true" /> Free Download
                              </a>
                            ) : isRelease && (
                              <a onClick={() => {
@@ -493,7 +496,7 @@ export const AlbumDetails = () => {
                                  } 
                                }));
                              }}>
-                               <Wallet size={16} className="text-secondary" /> Purchase Track
+                               <Wallet size={16} className="text-secondary" aria-hidden="true" /> Purchase Track
                              </a>
                            )}
                          </li>
@@ -501,13 +504,13 @@ export const AlbumDetails = () => {
 
                        <li>
                          <a onClick={() => handleShareTrack(track)}>
-                            <Share2 size={16} /> Share Track
+                            <Share2 size={16} aria-hidden="true" /> Share Track
                          </a>
                        </li>
                        {isAdmin && (
                          <li className="border-t border-base-content/5 mt-1 pt-1 opacity-50 hover:opacity-100">
                            <a onClick={() => document.dispatchEvent(new CustomEvent("open-admin-track-modal", { detail: track }))}>
-                             <Music size={16} /> Edit Metadata
+                             <Music size={16} aria-hidden="true" /> Edit Metadata
                            </a>
                          </li>
                        )}

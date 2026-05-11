@@ -3,8 +3,8 @@ import { scaleLinear } from 'd3-scale';
 import { area } from 'd3-shape';
 import fs from 'fs-extra';
 import WaveformData from 'waveform-data';
-import { getDurationFromFfmpeg } from '../../ffmpeg.js';
-import { WaveformPeakService } from '../../waveform.js';
+import { getDurationFromFfmpeg } from '../media/ffmpeg.js';
+import { WaveformPeakService } from './waveform-peak.service.js';
 import path from 'path';
 
 // Simplified interface for Waveform

@@ -1,8 +1,7 @@
 import crypto from "crypto";
-import fetch from "node-fetch";
+import { drainResponse, fetchSafe } from "../../utils.js";
 import type { Federation } from "@fedify/fedify";
 import type { Artist } from "../../database.types.js";
-import { drainResponse } from "../../utils.js";
 
 export interface TransportIdentity {
     slug: string;
@@ -102,7 +101,7 @@ export class ActivityPubTransport {
             }
         }
 
-        return fetch(uri, { method: method.toUpperCase(), headers, body: body ? bodyStr : undefined });
+        return fetchSafe(uri, { method: method.toUpperCase(), headers, body: body ? bodyStr : undefined });
     }
 
     private signRequest(actor: Artist | TransportIdentity, url: URL, method: string, date: string, digest?: string): string {

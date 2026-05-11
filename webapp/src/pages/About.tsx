@@ -100,7 +100,7 @@ export const About = () => {
             </div>
             <h2 className="card-title text-xl">Monetization</h2>
             <p className="opacity-70">
-              Direct artist-to-fan sales with integrated Stripe and PayPal support.
+              Direct artist-to-fan sales with integrated Stripe support.
               Receive payments without middleman platform fees.
             </p>
           </div>

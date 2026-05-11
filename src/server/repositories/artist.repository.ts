@@ -81,4 +81,57 @@ export class ArtistRepository extends BaseRepository {
         const rows = this.db.prepare(sql).all(...ids);
         return rows.map(row => this.mapArtist(row)) as Artist[];
     }
+
+    create(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'public'): number {
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
+        const linksJson = links ? JSON.stringify(links) : null;
+        const postParamsJson = postParams ? JSON.stringify(postParams) : null;
+        let finalSlug = slug;
+        let attempt = 0;
+        while (attempt < 100) {
+            try {
+                const result = this.db
+                    .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params, wallet_address, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+                    .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson, walletAddress || null, visibility);
+                return result.lastInsertRowid as number;
+            } catch (e: any) {
+                if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
+                    attempt++;
+                    finalSlug = `${slug}-${attempt}`;
+                } else {
+                    throw e;
+                }
+            }
+        }
+        throw new Error("Could not create unique slug for artist");
+    }
+
+    update(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void {
+        const linksJson = links ? JSON.stringify(links) : undefined;
+        const postParamsJson = postParams ? JSON.stringify(postParams) : undefined;
+        this.db.prepare(`
+            UPDATE artists SET 
+                name = COALESCE(?, name),
+                bio = COALESCE(?, bio),
+                photo_path = COALESCE(?, photo_path),
+                links = COALESCE(?, links),
+                post_params = COALESCE(?, post_params),
+                wallet_address = COALESCE(?, wallet_address),
+                visibility = COALESCE(?, visibility)
+            WHERE id = ?
+        `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, visibility ?? null, id);
+    }
+
+    updateKeys(id: number, publicKey: string, privateKey: string): void {
+        this.db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKey, privateKey, id);
+    }
+
+    delete(id: number): void {
+        this.db.transaction(() => {
+            this.db.prepare("UPDATE albums SET artist_id = NULL WHERE artist_id = ?").run(id);
+            this.db.prepare("UPDATE tracks SET artist_id = NULL WHERE artist_id = ?").run(id);
+            this.db.prepare("DELETE FROM followers WHERE artist_id = ?").run(id);
+            this.db.prepare("DELETE FROM artists WHERE id = ?").run(id);
+        })();
+    }
 }

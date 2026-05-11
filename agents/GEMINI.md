@@ -30,7 +30,7 @@ When the project specifies a library or framework, also state the alternative it
 Format: **"Use [LIBRARY], NOT [POPULAR_DEFAULT]. Reason: [WHY]."**
 
 Examples to follow:
-- Use **httpx**, NOT requests. Reason: async-first.
+- Use **undici/fetch**, NOT axios. Reason: native support and performance.
 - Use **Vitest**, NOT Jest. Reason: faster ESM support.
 - Use **TanStack Query**, NOT Redux for server state. Reason: server state is not client state.
 - Use **zod**, NOT yup for schema validation. Reason: zod has better TypeScript inference.

@@ -98,6 +98,7 @@ function App() {
 
             {/* Catalog & Library */}
             <Route path="/albums" element={<Releases />} />
+            <Route path="/releases" element={<Releases />} />
             <Route path="/library" element={<Library />} />
             <Route path="/albums/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/releases/:idOrSlug" element={<AlbumDetails />} />

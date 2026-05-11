@@ -82,6 +82,7 @@ export const API = {
     getSiteSettings: () => handleResponse(api.get<SiteSettings>('/catalog/settings')),
     getGenres: () => handleResponse(api.get<string[]>('/catalog/genres')),
     search: (query: string) => handleResponse(api.get<any>(`/catalog/search?q=${encodeURIComponent(query)}`)),
+    globalSearch: (query: string) => handleResponse(api.get<any>(`/search/global?q=${encodeURIComponent(query)}`)),
     searchMetadata: (query: string) => handleResponse(api.get<any>(`/metadata/search?q=${encodeURIComponent(query)}`)),
     searchArtistMetadata: (query: string) => handleResponse(api.get<any[]>(`/metadata/artist-search?q=${encodeURIComponent(query)}`)),
     getRandomTracks: (limit = 1) => handleResponse(api.get<any[]>(`/catalog/random?limit=${limit}`)),
@@ -489,6 +490,10 @@ export const API = {
     fingerprintLookup: (trackId: number) => handleResponse(api.post<any>(`/metadata/maintenance/fingerprint/lookup/${trackId}`)),
     shareFingerprint: (trackId: number) => handleResponse(api.post<{ success: boolean }>(`/metadata/maintenance/fingerprint/share/${trackId}`)),
     scanAllFingerprints: () => handleResponse(api.post<{ message: string }>('/metadata/maintenance/fingerprint/scan-all')),
+    
+    // --- Admin: Plugins ---
+    getPlugins: () => handleResponse(api.get<any[]>('/admin/system/plugins')),
+    togglePlugin: (pluginId: string, enabled: boolean) => handleResponse(api.put(`/admin/system/plugins/${pluginId}/toggle`, { enabled })),
 };
 
 export default API;

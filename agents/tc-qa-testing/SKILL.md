@@ -1,4 +1,4 @@
----
+    ---
 name: tc-qa-testing
 description: Expert in TuneCamp's Quality Assurance, automated testing, and performance auditing. Use for writing Jest tests, integration testing, E2E validation, and load testing.
 ---

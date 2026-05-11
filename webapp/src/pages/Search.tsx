@@ -12,23 +12,18 @@ export const Search = () => {
     const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[] } | null>(null);
     const [loading, setLoading] = useState(false);
     const { playTrack } = usePlayerStore();
-    const [externalMode, setExternalMode] = useState(false);
 
     const handleSearch = async (q: string) => {
         if (!q.trim()) return;
         setLoading(true);
         try {
-            // 1. Local/Metadata Search
-            const data = externalMode 
-                ? await API.searchMetadata(q) 
-                : await API.search(q);
-            setResults(data);
-
-            // 2. Network Search (Federated)
-            if (!externalMode && q.length > 2) {
-                // Network search results are currently not displayed in the UI, 
-                // so we skip populating them to avoid unused variable errors.
-            }
+            const data = await API.globalSearch(q);
+            setResults({
+                tracks: data.local.tracks || [],
+                albums: data.local.albums || [],
+                artists: data.local.artists || [],
+                external: data.external || []
+            } as any);
         } catch (e) {
             console.error(e);
         } finally {
@@ -38,7 +33,7 @@ export const Search = () => {
 
     useEffect(() => {
         if (query) handleSearch(query);
-    }, [query, externalMode]);
+    }, [query]);
 
     const updateQuery = (q: string) => {
         setSearchParams({ q });
@@ -62,16 +57,6 @@ export const Search = () => {
                         onChange={e => updateQuery(e.target.value)}
                         autoFocus
                     />
-                    <div className="join">
-                        <button 
-                            className={`btn join-item ${!externalMode ? 'btn-primary' : 'btn-outline'}`}
-                            onClick={() => setExternalMode(false)}
-                        >Internal</button>
-                        <button 
-                            className={`btn join-item ${externalMode ? 'btn-primary' : 'btn-outline'}`}
-                            onClick={() => setExternalMode(true)}
-                        >External (Metadata)</button>
-                    </div>
                 </div>
             </div>
 
@@ -143,10 +128,12 @@ export const Search = () => {
                         </section>
                     )}
 
-                    {/* Tracks */}
+                    {/* Local Tracks */}
                     {results.tracks?.length > 0 && (
                         <section>
-                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Music size={20}/> Tracks</h2>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-primary">
+                                <Music size={20}/> Your Library
+                            </h2>
                             <div className="flex flex-col gap-1">
                                 {results.tracks.map((track) => (
                                     <div key={track.id} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
@@ -176,8 +163,68 @@ export const Search = () => {
                             </div>
                         </section>
                     )}
+
+                    {/* External Results (Streaming) */}
+                    {(results as any).external?.length > 0 && (
+                        <section>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-secondary">
+                                <Globe size={20}/> Discover (YouTube & Bandcamp)
+                            </h2>
+                            <div className="flex flex-col gap-1">
+                                {(results as any).external.map((item: any) => (
+                                    <div key={item.id} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
+                                        <button
+                                            onClick={() => {
+                                                // Create a virtual track object for the player
+                                                const virtualTrack: any = {
+                                                    id: `ext:${item.source}:${item.id}`,
+                                                    title: item.title,
+                                                    artistName: item.artist,
+                                                    albumName: item.albumTitle || 'External Release',
+                                                    duration: 0, 
+                                                    coverImage: item.coverUrl,
+                                                    isExternal: true,
+                                                    source: item.source
+                                                };
+                                                const externalTracksList = (results as any).external.map((it: any) => ({
+                                                     id: `ext:${it.source}:${it.id}`,
+                                                     title: it.title,
+                                                     artistName: it.artist,
+                                                     duration: 0,
+                                                     isExternal: true,
+                                                     source: it.source
+                                                }));
+                                                playTrack(virtualTrack, externalTracksList);
+                                            }}
+                                            className="relative w-10 h-10 shrink-0"
+                                        >
+                                             {item.coverUrl ? (
+                                                 <img src={item.coverUrl} alt="" className="w-full h-full rounded object-cover" />
+                                             ) : (
+                                                 <div className="w-full h-full bg-neutral rounded flex items-center justify-center">
+                                                     <Music size={16} />
+                                                 </div>
+                                             )}
+                                             <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                 <Music size={16} />
+                                             </div>
+                                        </button>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold truncate">{item.title}</div>
+                                            <div className="text-xs opacity-60 truncate">
+                                                {item.artist} • <span className="uppercase font-semibold text-primary">{item.source}</span>
+                                            </div>
+                                        </div>
+                                        <button className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100">
+                                            Add to Playlist
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
                     
-                    {!results.artists?.length && !results.albums?.length && !results.tracks?.length && (
+                    {!results.artists?.length && !results.albums?.length && !results.tracks?.length && !(results as any).external?.length && (
                         <div className="text-center opacity-50">No results found for "{query}"</div>
                     )}
                 </div>

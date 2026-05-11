@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { useShallow } from "zustand/react/shallow";
 import API from "../../services/api";
 import {
   Play,
@@ -15,7 +16,8 @@ import {
   Music,
   Radio,
   Download,
-  Maximize2
+  Maximize2,
+  MoreVertical
 } from "lucide-react";
 import clsx from "clsx";
 import * as ColorThiefReactModule from "color-thief-react";
@@ -55,6 +57,16 @@ const PlayerBackground = ({ coverUrl }: { coverUrl: string }) => {
 
 export const PlayerBar = () => {
   const {
+    currentTime,
+    progress,
+    duration,
+  } = usePlayerStore(useShallow(state => ({
+    progress: state.progress,
+    currentTime: state.currentTime,
+    duration: state.duration,
+  })));
+
+  const {
     currentTrack,
     isPlaying,
     volume,
@@ -73,10 +85,26 @@ export const PlayerBar = () => {
     toggleLyrics,
     toggleQueue,
     toggleCanvas,
-    progress,
-    currentTime,
-    duration,
-  } = usePlayerStore();
+  } = usePlayerStore(useShallow(state => ({
+    currentTrack: state.currentTrack,
+    isPlaying: state.isPlaying,
+    volume: state.volume,
+    togglePlay: state.togglePlay,
+    next: state.next,
+    prev: state.prev,
+    setIsPlaying: state.setIsPlaying,
+    setProgress: state.setProgress,
+    setVolume: state.setVolume,
+    isShuffled: state.isShuffled,
+    repeatMode: state.repeatMode,
+    isRadioMode: state.isRadioMode,
+    toggleShuffle: state.toggleShuffle,
+    toggleRepeat: state.toggleRepeat,
+    toggleRadio: state.toggleRadio,
+    toggleLyrics: state.toggleLyrics,
+    toggleQueue: state.toggleQueue,
+    toggleCanvas: state.toggleCanvas,
+  })));
 
   const audioRef = useRef<HTMLAudioElement>(null);
   
@@ -242,6 +270,10 @@ export const PlayerBar = () => {
       </div>
     );
 
+  const isAdminOrOwner = (useAuthStore.getState().user?.isAdmin || 
+    (currentTrack.owner_id && String(currentTrack.owner_id) === String(useAuthStore.getState().user?.id)) ||
+    (currentTrack.artistId && String(currentTrack.artistId) === String(useAuthStore.getState().user?.artistId)));
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-base-content/5 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
@@ -256,92 +288,92 @@ export const PlayerBar = () => {
         />
 
         {/* Track Info */}
-        <div className="flex items-center gap-4 w-1/4 min-w-0">
+        <div className="flex items-center gap-4 w-1/2 lg:w-1/4 min-w-0">
           <div className="relative shrink-0">
             {coverUrl ? (
               <img
                 src={coverUrl}
                 alt="Cover"
-                className="w-12 h-12 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-2xl object-cover ring-1 ring-white/10"
+                className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-2xl object-cover ring-1 ring-white/10"
               />
             ) : (
-              <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-2xl flex items-center justify-center ring-1 ring-white/10">
-                <Music className="opacity-20" size={24} />
+              <div className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-2xl flex items-center justify-center ring-1 ring-white/10">
+                <Music className="opacity-20" size={20} />
               </div>
             )}
           </div>
 
           <div className="min-w-0">
-            <h3 className="font-black text-sm lg:text-base truncate tracking-tight">{currentTrack.title}</h3>
-            <p className="text-xs lg:text-sm font-medium opacity-60 text-primary truncate uppercase tracking-widest">{currentTrack.artistName}</p>
+            <h3 className="font-black text-xs lg:text-base truncate tracking-tight">{currentTrack.title}</h3>
+            <p className="text-[10px] lg:text-sm font-medium opacity-60 text-primary truncate uppercase tracking-widest">{currentTrack.artistName}</p>
           </div>
         </div>
 
         {/* Controls & Waveform */}
         <div className="flex flex-col items-center flex-1 max-w-xl gap-1">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 lg:gap-6">
             <button
               aria-label="Toggle shuffle"
-              className={clsx("btn btn-ghost btn-xs btn-circle transition-all", isShuffled ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
+              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all", isShuffled ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
               onClick={toggleShuffle}
             >
-              <Shuffle size={14} />
+              <Shuffle size={14} aria-hidden="true" />
             </button>
 
             <button
               aria-label="Toggle radio mode"
-              className={clsx("btn btn-ghost btn-xs btn-circle transition-all", isRadioMode ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
+              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all", isRadioMode ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
               onClick={toggleRadio}
             >
-              <Radio size={14} />
+              <Radio size={14} aria-hidden="true" />
             </button>
 
             <button
               aria-label="Previous track"
-              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100 hover:bg-base-300"
+              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100"
               onClick={prev}
             >
-              <SkipBack size={20} fill="currentColor" />
+              <SkipBack className="w-[18px] h-[18px] lg:w-5 lg:h-5" fill="currentColor" aria-hidden="true" />
             </button>
 
             <button
               aria-label={isPlaying ? "Pause" : "Play"}
-              className="btn btn-circle btn-primary btn-lg shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              className="btn btn-circle btn-primary btn-md lg:btn-lg shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
               onClick={togglePlay}
             >
               {isPlaying ? (
-                <Pause size={28} fill="currentColor" />
+                <Pause className="w-5 h-5 lg:w-7 lg:h-7" fill="currentColor" aria-hidden="true" />
               ) : (
-                <Play size={28} fill="currentColor" className="ml-1" />
+                <Play className="w-5 h-5 lg:w-7 lg:h-7 ml-1" fill="currentColor" aria-hidden="true" />
               )}
             </button>
 
             <button
               aria-label="Next track"
-              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100 hover:bg-base-300"
+              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100"
               onClick={next}
             >
-              <SkipForward size={20} fill="currentColor" />
+              <SkipForward className="w-[18px] h-[18px] lg:w-5 lg:h-5" fill="currentColor" aria-hidden="true" />
             </button>
 
             <button
               aria-label={`Repeat mode: ${repeatMode}`}
-              className={clsx("btn btn-ghost btn-xs btn-circle relative transition-all", repeatMode !== "none" ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
+              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle relative transition-all", repeatMode !== "none" ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
               onClick={toggleRepeat}
             >
-              <Repeat size={14} />
+              <Repeat size={14} aria-hidden="true" />
               {repeatMode === "one" && (
                 <span className="absolute -top-1 -right-1 text-[8px] font-black bg-primary text-primary-content rounded-full w-3 h-3 flex items-center justify-center">1</span>
               )}
             </button>
           </div>
 
-          <div className="w-full flex items-center gap-4 text-[10px] font-black tracking-widest opacity-40 h-6">
-            <span className="w-10 text-right tabular-nums">
+          <div className="w-full flex items-center gap-4 text-[9px] lg:text-[10px] font-black tracking-widest opacity-40 h-6">
+            <span className="w-8 lg:w-10 text-right tabular-nums">
               {formatDuration(currentTime)}
             </span>
 
-            <div className="flex-1 relative h-1.5 group">
+            <div className="flex-1 relative h-1 lg:h-1.5 group">
                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-full bg-base-content/5 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary/40 rounded-full transition-all duration-200"
@@ -350,6 +382,9 @@ export const PlayerBar = () => {
                </div>
                <input
                 aria-label="Seek track"
+                aria-valuenow={Math.round(progress)}
+                aria-valuemin={0}
+                aria-valuemax={100}
                 type="range"
                 className="range range-xs range-primary absolute inset-0 opacity-0 cursor-pointer z-10"
                 min="0"
@@ -360,14 +395,14 @@ export const PlayerBar = () => {
               />
             </div>
 
-            <span className="w-10 tabular-nums">
+            <span className="w-8 lg:w-10 tabular-nums">
               {formatDuration(duration)}
             </span>
           </div>
         </div>
 
         {/* Volume & Extras */}
-        <div className="flex items-center gap-6 w-1/4 justify-end">
+        <div className="flex items-center gap-2 lg:gap-6 w-auto lg:w-1/4 justify-end">
           <div className="hidden lg:flex items-center gap-3">
             <Volume2
               size={16}
@@ -375,6 +410,9 @@ export const PlayerBar = () => {
             />
             <input
               aria-label="Volume"
+              aria-valuenow={Math.round(volume * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
               type="range"
               className="range range-xs w-20 range-primary opacity-60 hover:opacity-100 transition-opacity"
               min="0"
@@ -384,22 +422,24 @@ export const PlayerBar = () => {
               onChange={(e) => setVolume(parseFloat(e.target.value))}
             />
           </div>
-          <div className="flex gap-1 h-10 items-center border-l border-base-content/5 pl-4 ml-2">
-            {(useAuthStore.getState().user?.isAdmin || 
-              (currentTrack.owner_id && String(currentTrack.owner_id) === String(useAuthStore.getState().user?.id)) ||
-              (currentTrack.artistId && String(currentTrack.artistId) === String(useAuthStore.getState().user?.artistId))) && (
-              <a
-                href={API.getTrackDownloadUrl(currentTrack.id)}
-                target="_blank"
-                className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-success"
-                title="Download original file"
-              >
-                <Download size={18} />
-              </a>
-            )}
+          <div className="flex gap-1 h-10 items-center border-l border-base-content/5 pl-2 lg:pl-4 ml-1 lg:ml-2">
+            <div className="dropdown dropdown-top dropdown-end lg:hidden">
+              <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100">
+                <MoreVertical size={18} />
+              </div>
+              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-48 border border-base-content/10 mb-4">
+                <li><a onClick={toggleShuffle}><Shuffle size={16} className={clsx(isShuffled && "text-primary")}/> Shuffle</a></li>
+                <li><a onClick={toggleRepeat}><Repeat size={16} className={clsx(repeatMode !== 'none' && "text-primary")}/> Repeat: {repeatMode}</a></li>
+                <li><a onClick={toggleRadio}><Radio size={16} className={clsx(isRadioMode && "text-primary")}/> Radio Mode</a></li>
+                {isAdminOrOwner && (
+                  <li><a href={API.getTrackDownloadUrl(currentTrack.id)} target="_blank"><Download size={16}/> Download</a></li>
+                )}
+              </ul>
+            </div>
+
             <button
               aria-label="Toggle lyrics"
-              className={clsx("btn btn-ghost btn-sm btn-square", isShuffled ? "text-primary" : "opacity-40")}
+              className={clsx("hidden md:flex btn btn-ghost btn-sm btn-square", isShuffled ? "text-primary" : "opacity-40")}
               onClick={toggleLyrics}
             >
               <Mic2 size={18} />
@@ -413,7 +453,7 @@ export const PlayerBar = () => {
             </button>
             <button
               aria-label="Toggle Canvas View"
-              className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-primary"
+              className="hidden lg:flex btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-primary"
               onClick={toggleCanvas}
             >
               <Maximize2 size={18} />

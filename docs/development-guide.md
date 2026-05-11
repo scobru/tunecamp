@@ -43,9 +43,9 @@ L'interfaccia utente sarà disponibile su `http://localhost:5173`.
 
 ## Test
 
-Il progetto utilizza **Jest** per i test unitari e di integrazione.
+Il progetto utilizza **Jest** per i test esistenti, ma la direzione strategica (mandato AI) prevede la transizione a **Vitest** per i nuovi moduli.
 ```bash
-# Esegui tutti i test
+# Esegui tutti i test (Jest)
 npm test
 
 # Esegui test specifici
@@ -58,6 +58,8 @@ Sono disponibili diversi script per compiti comuni:
 - `backup.ts`: Crea un backup del database e dei dati.
 - `generate-codes.ts`: Genera codici di sblocco per le release.
 - `relink-tracks.ts`: Aggiorna i percorsi dei file audio se la libreria viene spostata.
+- `migrate-dedupe.js`: Rimuove tracce duplicate nel database (`npm run migrate:dedupe`).
+- `migrate-visibility.js`: Aggiorna la visibilità di massa per album e tracce (`npm run migrate:visibility`).
 
 ## Convenzioni di Codifica
 

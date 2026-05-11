@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
-import { usePlayerStore } from "../stores/usePlayerStore";
-import { Play, Library, Disc } from "lucide-react";
+import { Library } from "lucide-react";
+import { ReleaseCard } from "../components/ui/ReleaseCard";
 import clsx from "clsx";
 
 export const Home = () => {
@@ -126,28 +126,28 @@ export const Home = () => {
 
       {/* Stats Section - Minimalist */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-2">
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
+        <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Total Library</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-primary">{stats.albums || 0}</span>
              <span className="text-xs opacity-40 font-bold uppercase">Albums</span>
            </div>
         </div>
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
+        <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Audio Files</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-secondary">{stats.tracks || 0}</span>
              <span className="text-xs opacity-40 font-bold uppercase">Tracks</span>
            </div>
         </div>
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
+        <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Diverse Styles</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-accent">{stats.genresCount || 0}</span>
              <span className="text-xs opacity-40 font-bold uppercase">Genres</span>
            </div>
         </div>
-        <div className="flex flex-col gap-1 p-4 rounded-2xl bg-base-200/30 border border-base-content/5">
+        <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Storage</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-neutral-content">{stats.totalSize || "0 GB"}</span>
@@ -180,78 +180,15 @@ export const Home = () => {
             <h2 className="text-3xl font-black tracking-tighter uppercase mb-1">Recent Releases</h2>
             <p className="text-sm opacity-40 font-medium">The latest published highlights</p>
           </div>
-          <Link to="/albums" className="btn btn-link btn-sm no-underline opacity-40 hover:opacity-100 uppercase tracking-widest font-black text-[10px]">
+          <Link to="/releases" className="btn btn-link btn-sm no-underline opacity-40 hover:opacity-100 uppercase tracking-widest font-black text-[10px]">
             View All →
           </Link>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-8">
-          {recentAlbums.map((album: any) => {
-            if (!album) return null;
-            return (
-              <div
-                key={album.id}
-                className="group cursor-pointer space-y-4"
-                onClick={() =>
-                  navigate(`/releases/${album.slug || album.id}`)
-                }
-              >
-                <div className="aspect-square relative rounded-[1.5rem] overflow-hidden shadow-2xl bg-base-300 ring-1 ring-white/5 transition-all duration-500 group-hover:scale-[1.02] group-hover:ring-primary/20">
-                  <img
-                    src={album.coverImage || API.getReleaseCoverUrl(album.id)}
-                    alt={album.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    onError={(e) => {
-                       const target = e.target as HTMLImageElement;
-                       target.style.display = 'none';
-                       if (target.nextElementSibling) {
-                          (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                       }
-                    }}
-                  />
-                  <div className="hidden absolute inset-0 items-center justify-center opacity-30">
-                     <Disc size={48} />
-                  </div>
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-                    <button
-                      className="btn btn-circle btn-lg btn-primary shadow-2xl scale-90 hover:scale-100 transition-all duration-300"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        try {
-                          const fullAlbum = await API.getRelease(album.id);
-                          if (fullAlbum?.tracks?.length) {
-                             usePlayerStore.getState().playQueue(fullAlbum.tracks, 0);
-                          }
-                        } catch (error) {
-                          console.error("Failed to play album", error);
-                        }
-                      }}
-                    >
-                      <Play fill="currentColor" size={32} />
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="px-1">
-                  <h3 className="font-bold text-lg truncate tracking-tight group-hover:text-primary transition-colors">
-                    {album.title}
-                  </h3>
-                  <p className="text-sm font-medium opacity-40 uppercase tracking-widest truncate">
-                    {album.artistName || album.artist_name}
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-[10px] font-black opacity-30 border border-base-content/10 px-1.5 py-0.5 rounded uppercase">
-                      {album.year}
-                    </span>
-                    <span className="text-[10px] font-black opacity-30 border border-base-content/10 px-1.5 py-0.5 rounded uppercase">
-                      {album.type}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {recentAlbums.map((album: any) => (
+            <ReleaseCard key={album.id} item={album} type="release" />
+          ))}
         </div>
       </div>
 
@@ -269,41 +206,12 @@ export const Home = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 lg:gap-6 opacity-80">
             {libraryAlbums.map((album) => (
-              <div
-                key={album.id}
-                className="group cursor-pointer space-y-2"
-                onClick={() =>
-                  navigate(`/albums/${album.slug || album.id}`)
-                }
-              >
-                <div className="aspect-square relative rounded-xl overflow-hidden bg-base-300 ring-1 ring-white/5 transition-all group-hover:ring-secondary/40">
-                  <img
-                    src={album.coverImage || API.getAlbumCoverUrl(album.id)}
-                    alt={album.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-opacity group-hover:opacity-80"
-                    onError={(e) => {
-                       const target = e.target as HTMLImageElement;
-                       target.style.display = 'none';
-                       if (target.nextElementSibling) {
-                          (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                       }
-                    }}
-                  />
-                  <div className="hidden absolute inset-0 items-center justify-center opacity-30">
-                     <Disc size={32} />
-                  </div>
-                </div>
-                <div className="px-1 text-center">
-                  <h3 className="font-bold text-sm truncate">{album.title}</h3>
-                  <p className="text-[10px] opacity-40 uppercase tracking-tight truncate">
-                    {album.artistName || album.artist_name}
-                  </p>
-                </div>
-              </div>
+              <ReleaseCard key={album.id} item={album} type="library" />
             ))}
           </div>
         </div>
       )}
+
     </section>
   );
 };

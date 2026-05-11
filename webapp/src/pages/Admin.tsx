@@ -14,8 +14,7 @@ import { AdminUsersList } from "../components/admin/AdminUsersList";
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminMaintenancePanel } from "../components/admin/AdminMaintenancePanel";
 import { CurationQueue } from "../components/admin/CurationQueue";
-import { APIStatusPanel } from "../components/admin/APIStatusPanel";
-
+import { IntegrationsPanel } from "../components/admin/IntegrationsPanel";
 import { BackupPanel } from "../components/admin/BackupPanel";
 import { StoragePanel } from "../components/admin/StoragePanel";
 
@@ -35,7 +34,7 @@ export const Admin = () => {
     | "backup"
     | "storage"
     | "maintenance"
-    | "status"
+    | "integrations"
   >(isRootAdmin ? "users" : "releases");
   const [stats, setStats] = useState<any>(null);
 
@@ -194,10 +193,10 @@ export const Admin = () => {
             </a>
             <a
               role="tab"
-              className={`tab ${activeTab === "status" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("status")}
+              className={`tab ${activeTab === "integrations" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("integrations")}
             >
-              Status
+              Integrations
             </a>
           </>
         )}
@@ -311,7 +310,7 @@ export const Admin = () => {
         {activeTab === "backup" && isAdmin && <BackupPanel />}
         {activeTab === "storage" && isAdmin && <StoragePanel />}
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
-        {activeTab === "status" && isAdmin && <APIStatusPanel />}
+        {activeTab === "integrations" && isAdmin && <IntegrationsPanel />}
       </div>
 
       <AdminUserModal

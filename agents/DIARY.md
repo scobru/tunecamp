@@ -1,3 +1,13 @@
+# TuneCamp Development Diary
+
+### 2026-05-11: Modular Federation Architecture & Global Search
+- **TuneCamp Plugin SDK**: Created a formal SDK in `src/sdk/` defining standard interfaces for `MetadataProvider`, `StreamingProvider`, and `FederationProvider`. This enables external developers to extend TuneCamp functionality without touching core logic.
+- **ActivityPub Integration**: Finalized the `ActivityPubFederationProvider` adapter, integrating the ActivityPub protocol into the main `FederationService` registry.
+- **Global Search (Hybrid)**: Implemented `/api/search/global` which provides unified search results across local library (with RBAC via `VisibilityGuardian`) and external metadata providers (Bandcamp, etc.).
+- **External Streaming Discovery**: Enabled the ability to stream tracks directly from search results using virtual IDs (`ext:provider:id`). The backend now handles these IDs via redirect in the stream route.
+- **Unified Search UI**: Updated the frontend `Search.tsx` to display both "Your Library" and "Discover" sections, providing a seamless transition between local and remote content.
+- **Build Success**: Verified that the entire TypeScript codebase compiles successfully after these architectural shifts.
+
 # TuneCamp Task Diary
 
 Chronological log of completed tasks and significant architectural decisions.
@@ -87,10 +97,11 @@ Chronological log of completed tasks and significant architectural decisions.
 - **Linda Messaging**: Documented the Zen-based bridge for decentralized messaging, group management, and track forwarding.
 - **Agent Updates**: Updated `tc-web3-payments` skill to include Stripe and Onramp management.
 
-### 2. Final Documentation Blitz & Cleanup
-**Summary**: Completed the 100% synchronization of codebase and documentation.
-- **New Technical Docs**: Created `docs/soulseek.md`, `docs/backup-migration.md`, `docs/social-features.md`, and `docs/smart-contracts.md`.
-- **API Reference**: Overhauled `docs/api-contracts.md` to include all new endpoints (Payments, GDrive, Torrents, etc.).
-- **Cleanup**: Updated `TODO.md` to reflect all completed phases and audited `ROLES.md`.
-- **Result**: The project now has a complete, professional-grade documentation set covering all ibrid Web3/Fiat features.
+### 3. Documentation Audit Refinement & Mandate Alignment
+**Summary**: Refined project documentation to strictly align with architectural mandates and recent migration tools.
+- **Mandate Updates**: Corrected `agents/GEMINI.md` to prefer `undici/fetch` (Node-native) over `httpx` and explicitly stated the transition to `Vitest` for new tests.
+- **Guide Updates**: Added `migrate:dedupe` and `migrate:visibility` scripts to `docs/development-guide.md`.
+- **Architecture**: Synchronized `docs/architecture-backend.md` with the "Manual Release" mandate (Scanner creates drafts only).
+- **Deprecation**: Rimossi riferimenti a **PayPal** in tutta la documentazione e nel frontend (deprecato).
+- **Index**: Updated documentation timestamp to 2026-05-11.
 

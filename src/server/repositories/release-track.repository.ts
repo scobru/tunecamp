@@ -1,0 +1,150 @@
+import type { Database as DatabaseType } from "better-sqlite3";
+import { BaseRepository } from "./base.repository.js";
+import type { ReleaseTrack, Track } from "../database.types.js";
+
+export class ReleaseTrackRepository extends BaseRepository {
+    constructor(db: DatabaseType) {
+        super(db);
+    }
+
+    getByReleaseId(releaseId: number): ReleaseTrack[] {
+        return this.db.prepare("SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_num").all(releaseId) as any[];
+    }
+
+    getById(id: number): ReleaseTrack | undefined {
+        return this.db.prepare("SELECT * FROM release_tracks WHERE id = ?").get(id) as any;
+    }
+
+    getPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined {
+        // Check if trackId is actually a track_id or an rt.id
+        const row = this.db.prepare(`
+            SELECT price, price_usdc, currency, title 
+            FROM release_tracks 
+            WHERE release_id = ? AND (track_id = ? OR id = ?)
+            LIMIT 1
+        `).get(releaseId, trackId, trackId) as any;
+        
+        if (!row) return undefined;
+        return {
+            price: row.price || 0,
+            price_usdc: row.price_usdc || 0,
+            currency: row.currency || 'ETH',
+            title: row.title
+        };
+    }
+
+    add(releaseId: number, track: Partial<ReleaseTrack>): number {
+        const title = track.title || "Unknown Track";
+        const artistName = track.artist_name || null;
+        const duration = track.duration || 0;
+        const filePath = track.file_path || null;
+        const price = track.price || 0;
+        const priceUsdc = track.price_usdc || 0;
+        const priceUsdt = track.price_usdt || 0;
+        const currency = track.currency || 'ETH';
+        const trackId = track.track_id || null;
+
+        let trackNum = track.track_num;
+        if (trackNum === undefined || trackNum === null) {
+            const maxNum = this.db.prepare("SELECT MAX(track_num) as max FROM release_tracks WHERE release_id = ?").get(releaseId) as { max: number | null };
+            trackNum = (maxNum.max || 0) + 1;
+        }
+
+        const result = this.db.prepare(`
+            INSERT INTO release_tracks (release_id, track_id, title, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(releaseId, trackId, title, artistName, trackNum, duration, filePath, price, priceUsdc, priceUsdt, currency);
+
+        return result.lastInsertRowid as number;
+    }
+
+    update(id: number, metadata: Partial<ReleaseTrack>): void {
+        const fields: string[] = [];
+        const values: any[] = [];
+        for (const [key, value] of Object.entries(metadata)) {
+            if (['id', 'release_id', 'created_at'].includes(key)) continue;
+            fields.push(`${key} = ?`);
+            values.push(value);
+        }
+        if (fields.length === 0) return;
+        values.push(id);
+        this.db.prepare(`UPDATE release_tracks SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    }
+
+    updateMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void {
+        const fields: string[] = [];
+        const values: any[] = [];
+        for (const [key, value] of Object.entries(metadata)) {
+            if (['id', 'release_id', 'created_at'].includes(key)) continue;
+            fields.push(`${key} = ?`);
+            values.push(value);
+        }
+        if (fields.length === 0) return;
+        values.push(releaseId, trackId);
+        this.db.prepare(`UPDATE release_tracks SET ${fields.join(', ')} WHERE release_id = ? AND track_id = ?`).run(...values);
+    }
+
+    remove(releaseId: number, trackId: number): void {
+        this.db.prepare("DELETE FROM release_tracks WHERE release_id = ? AND track_id = ?").run(releaseId, trackId);
+    }
+
+    removeBatch(releaseId: number, trackIds: number[]): void {
+        if (trackIds.length === 0) return;
+        const CHUNK_SIZE = 900;
+        for (let i = 0; i < trackIds.length; i += CHUNK_SIZE) {
+            const chunk = trackIds.slice(i, i + CHUNK_SIZE);
+            const placeholders = chunk.map(() => "?").join(",");
+            this.db.prepare(`DELETE FROM release_tracks WHERE release_id = ? AND track_id IN (${placeholders})`).run(releaseId, ...chunk);
+        }
+    }
+
+    delete(id: number): void {
+        this.db.prepare("DELETE FROM release_tracks WHERE id = ?").run(id);
+    }
+
+    deleteByRelease(releaseId: number): void {
+        this.db.prepare("DELETE FROM release_tracks WHERE release_id = ?").run(releaseId);
+    }
+
+    updateOrder(releaseId: number, trackIds: number[]): void {
+        this.db.transaction(() => {
+            const stmt = this.db.prepare("UPDATE release_tracks SET track_num = ? WHERE release_id = ? AND track_id = ?");
+            trackIds.forEach((trackId, index) => {
+                stmt.run(index + 1, releaseId, trackId);
+            });
+        })();
+    }
+
+    sync(releaseId: number, trackIds: number[]): void {
+        this.db.transaction(() => {
+            // 1. Delete all existing tracks for this release
+            this.deleteByRelease(releaseId);
+            
+            // 2. Validate and filter track IDs to avoid gaps in numbering
+            const validTrackIds = trackIds.filter(id => {
+                if (!id) return false;
+                const exists = this.db.prepare("SELECT 1 FROM tracks WHERE id = ?").get(id);
+                return !!exists;
+            });
+
+            // 3. Add them back in order
+            const stmt = this.db.prepare(`
+                INSERT INTO release_tracks (
+                    release_id, track_id, title, artist_name, track_num, 
+                    duration, file_path, price, price_usdc, price_usdt, currency
+                )
+                SELECT ?, t.id, t.title, t.artist_name, ?, 
+                       t.duration, t.file_path, t.price, t.price_usdc, t.price_usdt, t.currency
+                FROM tracks t WHERE t.id = ?
+            `);
+            
+            validTrackIds.forEach((trackId, index) => {
+                stmt.run(releaseId, index + 1, trackId);
+            });
+        })();
+    }
+
+    cleanUpGhostTracks(releaseId: number): void {
+        this.db.prepare("DELETE FROM release_tracks WHERE release_id = ? AND track_id IS NULL").run(releaseId);
+    }
+}

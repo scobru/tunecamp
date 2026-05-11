@@ -12,51 +12,39 @@ export class TrackRepository extends BaseRepository {
     constructor(db: DatabaseType) {
         super(db);
         
-        const baseSelect = `
-            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
-            ar_t.id as artist_id,
-            COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name, 
-            COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
-            COALESCE(t.owner_id, a.owner_id) as owner_id,
-            own.username as owner_name
-           FROM tracks t
-           LEFT JOIN albums a ON t.album_id = a.id
-           LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
-           LEFT JOIN artists ar_a ON a.artist_id = ar_a.id
-           LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id
-        `;
+        const baseSelect = `SELECT * FROM v_tracks`;
 
-        this.getTrackStmt = this.db.prepare(`${baseSelect} WHERE t.id = ?`);
+        this.getTrackStmt = this.db.prepare(`${baseSelect} WHERE id = ?`);
         
         this.getAllTracksStmt = this.db.prepare(`
             ${baseSelect}
-            ORDER BY artist_name, a.title, t.track_num
+            ORDER BY artist_name, album_title, track_num
         `);
 
         this.getAllPublicTracksStmt = this.db.prepare(`
             ${baseSelect}
-            WHERE (a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released')
-               OR EXISTS (SELECT 1 FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE rt.track_id = t.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
-            ORDER BY artist_name, a.title, t.track_num
+            WHERE (album_status = 'released' AND album_visibility IN ('public', 'unlisted'))
+               OR EXISTS (SELECT 1 FROM release_tracks rt JOIN v_releases r ON rt.release_id = r.id WHERE rt.track_id = v_tracks.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
+            ORDER BY artist_name, album_title, track_num
         `);
 
         this.getTracksByAlbumStmt = this.db.prepare(`
             ${baseSelect}
-            WHERE t.album_id = ? ORDER BY t.track_num
+            WHERE album_id = ? ORDER BY track_num
         `);
 
         this.getPublicTracksByAlbumStmt = this.db.prepare(`
             ${baseSelect}
-            WHERE t.album_id = ? AND (
-                (a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released')
-                OR EXISTS (SELECT 1 FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE rt.track_id = t.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
+            WHERE album_id = ? AND (
+                (album_status = 'released' AND album_visibility IN ('public', 'unlisted'))
+                OR EXISTS (SELECT 1 FROM release_tracks rt JOIN v_releases r ON rt.release_id = r.id WHERE rt.track_id = v_tracks.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
             )
-            ORDER BY t.track_num
+            ORDER BY track_num
         `);
     }
 
     getByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined {
-        const row = this.db.prepare("SELECT * FROM tracks WHERE LOWER(title) = LOWER(?) AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL)) AND (album_id = ? OR (album_id IS NULL AND ? IS NULL))").get(title, artistId, artistId, albumId, albumId);
+        const row = this.db.prepare("SELECT * FROM v_tracks WHERE LOWER(title) = LOWER(?) AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL)) AND (album_id = ? OR (album_id IS NULL AND ? IS NULL))").get(title, artistId, artistId, albumId, albumId);
         return this.mapTrack(row);
     }
 
@@ -68,6 +56,10 @@ export class TrackRepository extends BaseRepository {
             price: row.price || 0,
             price_usdc: row.price_usdc || 0,
             price_usdt: row.price_usdt || 0,
+            // Standardize field names from view
+            artistSlug: row.artist_slug,
+            walletAddress: row.artist_wallet_address,
+            owner_id: row.effective_owner_id
         } as Track;
     }
 
@@ -90,11 +82,10 @@ export class TrackRepository extends BaseRepository {
                 r.title as album_title,
                 r.album_artist,
                 r.id as album_id,
-                ar.name as artist_name,
-                ar.id as artist_id
+                r.artist_name as artist_name,
+                r.artist_id as artist_id
             FROM release_tracks rt
-            JOIN releases r ON rt.release_id = r.id
-            LEFT JOIN artists ar ON r.artist_id = ar.id
+            JOIN v_releases r ON rt.release_id = r.id
             WHERE rt.id = ? OR rt.track_id = ?
             LIMIT 1
         `).get(id, id);
@@ -111,18 +102,8 @@ export class TrackRepository extends BaseRepository {
             const chunk = ids.slice(i, i + CHUNK_SIZE);
             const placeholders = chunk.map(() => "?").join(",");
             const rows = this.db.prepare(`
-                SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price,
-                COALESCE(ar_t.id, ar_a.id) as artist_id,
-                COALESCE(ar_t.name, ar_a.name, t.artist_name) as artist_name,
-                COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
-                COALESCE(t.owner_id, a.owner_id) as owner_id,
-                own.username as owner_name
-               FROM tracks t
-               LEFT JOIN albums a ON t.album_id = a.id
-               LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
-               LEFT JOIN artists ar_a ON a.artist_id = ar_a.id
-               LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id
-               WHERE t.id IN (${placeholders})
+                SELECT * FROM v_tracks
+                WHERE id IN (${placeholders})
             `).all(...chunk);
             results.push(...rows.map(row => this.mapTrack(row)));
         }
@@ -153,42 +134,26 @@ export class TrackRepository extends BaseRepository {
     }
 
     getByArtist(artistId: number, publicOnly = false, artistName?: string): Track[] {
-        const baseSelect = `
-            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
-            COALESCE(ar_t.id, ar_a.id) as artist_id,
-            COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name, 
-            COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
-            COALESCE(t.owner_id, a.owner_id) as owner_id,
-            own.username as owner_name
-            FROM tracks t
-            LEFT JOIN albums a ON t.album_id = a.id
-            LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
-            LEFT JOIN artists ar_a ON a.artist_id = ar_a.id
-            LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id
-        `;
-
         const condition = artistName 
-            ? `(t.artist_id = ? OR ar_t.name = ? OR t.artist_name = ? OR t.artist_name LIKE ? OR (t.artist_id IS NULL AND (a.artist_id = ? OR ar_a.name = ?)))`
-            : `(t.artist_id = ? OR (t.artist_id IS NULL AND a.artist_id = ?))`;
+            ? `(artist_id = ? OR artist_name = ? OR (artist_id IS NULL AND (artist_id = ? OR artist_name = ?)))`
+            : `(artist_id = ? OR (artist_id IS NULL AND artist_id = ?))`;
 
         const publicCondition = `
             AND (
-                (a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released')
-                OR EXISTS (SELECT 1 FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE rt.track_id = t.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
-                OR (t.album_id IS NULL)
+                (album_status = 'released' AND album_visibility IN ('public', 'unlisted'))
+                OR EXISTS (SELECT 1 FROM release_tracks rt JOIN v_releases r ON rt.release_id = r.id WHERE rt.track_id = v_tracks.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
+                OR (album_id IS NULL)
             )
         `;
 
 
         const sql = publicOnly 
-            ? `${baseSelect} WHERE ${condition} ${publicCondition} ORDER BY a.title, t.track_num`
-            : `${baseSelect} WHERE ${condition} ORDER BY a.title, t.track_num`;
+            ? `SELECT * FROM v_tracks WHERE ${condition} ${publicCondition} ORDER BY album_title, track_num`
+            : `SELECT * FROM v_tracks WHERE ${condition} ORDER BY album_title, track_num`;
         
         const params: (number | string)[] = [artistId];
         if (artistName) {
             params.push(artistName);
-            params.push(artistName);
-            params.push(`%${artistName}%`);
             params.push(artistId);
             params.push(artistName);
         } else {
@@ -200,69 +165,30 @@ export class TrackRepository extends BaseRepository {
     }
 
     getByOwner(ownerId: number, publicOnly = false): Track[] {
-        const baseSelect = `
-            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price, 
-            COALESCE(ar_t.id, ar_a.id) as artist_id, 
-            COALESCE(ar_t.name, ar_a.name) as artist_name, 
-            COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress, 
-            COALESCE(t.owner_id, a.owner_id) as owner_id, 
-            own.username as owner_name
-            FROM tracks t 
-            LEFT JOIN albums a ON t.album_id = a.id 
-            LEFT JOIN artists ar_t ON t.artist_id = ar_t.id 
-            LEFT JOIN artists ar_a ON a.artist_id = ar_a.id 
-            LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id
-        `;
-
         const condition = `
-            (t.owner_id = ? 
-             OR (t.owner_id IS NULL AND a.owner_id = ?) 
-             OR EXISTS (SELECT 1 FROM track_ownership to_ WHERE to_.track_id = t.id AND to_.owner_id = ?) 
-             OR EXISTS (SELECT 1 FROM album_ownership ao_ WHERE ao_.album_id = a.id AND ao_.owner_id = ?))
+            (owner_id = ? 
+             OR (owner_id IS NULL AND effective_owner_id = ?) 
+             OR EXISTS (SELECT 1 FROM track_ownership to_ WHERE to_.track_id = v_tracks.id AND to_.owner_id = ?) 
+             OR EXISTS (SELECT 1 FROM album_ownership ao_ WHERE ao_.album_id = album_id AND ao_.owner_id = ?))
         `;
 
-        const publicCondition = `AND (a.is_public = 1 OR t.album_id IS NULL)`;
+        const publicCondition = `AND (album_visibility IN ('public', 'unlisted') OR album_id IS NULL)`;
 
         const sql = publicOnly
-            ? `${baseSelect} WHERE ${condition} ${publicCondition} ORDER BY a.title, t.track_num`
-            : `${baseSelect} WHERE ${condition} ORDER BY a.title, t.track_num`;
+            ? `SELECT * FROM v_tracks WHERE ${condition} ${publicCondition} ORDER BY album_title, track_num`
+            : `SELECT * FROM v_tracks WHERE ${condition} ORDER BY album_title, track_num`;
 
         const rows = this.db.prepare(sql).all(ownerId, ownerId, ownerId, ownerId);
         return rows.map(row => this.mapTrack(row));
     }
 
     getRandom(limit: number): Track[] {
-        const baseSelect = `
-            SELECT t.*, a.title as album_title, a.album_artist, a.download as album_download, a.visibility as album_visibility, a.price as album_price,
-            COALESCE(ar_t.id, ar_a.id) as artist_id,
-            COALESCE(ar_t.name, ar_a.name, t.artist_name) as artist_name,
-            COALESCE(ar_t.wallet_address, ar_a.wallet_address) as walletAddress,
-            COALESCE(t.owner_id, a.owner_id) as owner_id,
-            COALESCE(own.username, ar_t.name, ar_a.name, t.artist_name) as owner_name
-            FROM tracks t
-            LEFT JOIN albums a ON t.album_id = a.id
-            LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
-            LEFT JOIN artists ar_a ON a.artist_id = ar_a.id
-            LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id
-        `;
-        const rows = this.db.prepare(`${baseSelect} ORDER BY RANDOM() LIMIT ?`).all(limit);
+        const rows = this.db.prepare(`SELECT * FROM v_tracks ORDER BY RANDOM() LIMIT ?`).all(limit);
         return rows.map(row => this.mapTrack(row));
     }
 
     getByPath(filePath: string): Track | undefined {
-        const row = this.db.prepare(`
-            SELECT t.*, a.title as album_title, a.album_artist, 
-            COALESCE(ar_t.id, ar_a.id) as artist_id, 
-            COALESCE(ar_t.name, ar_a.name) as artist_name, 
-            COALESCE(t.owner_id, a.owner_id) as owner_id, 
-            own.username as owner_name
-            FROM tracks t 
-            LEFT JOIN albums a ON t.album_id = a.id 
-            LEFT JOIN artists ar_t ON t.artist_id = ar_t.id 
-            LEFT JOIN artists ar_a ON a.artist_id = ar_a.id 
-            LEFT JOIN admin own ON COALESCE(t.owner_id, a.owner_id) = own.id 
-            WHERE t.file_path = ?
-        `).get(filePath);
+        const row = this.db.prepare(`SELECT * FROM v_tracks WHERE file_path = ?`).get(filePath);
         return row ? this.mapTrack(row) : undefined;
     }
 

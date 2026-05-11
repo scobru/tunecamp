@@ -3,6 +3,7 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import { TrackRepository } from "./repositories/track.repository.js";
 import { AlbumRepository } from "./repositories/album.repository.js";
 import { ArtistRepository } from "./repositories/artist.repository.js";
+import { ReleaseTrackRepository } from "./repositories/release-track.repository.js";
 import { SocialRepository } from "./repositories/social.repository.js";
 import { RemoteActorRepository } from "./repositories/remote-actor.repository.js";
 import { RemoteContentRepository } from "./repositories/remote-content.repository.js";
@@ -211,7 +212,13 @@ export function createDatabase(dbPath: string): DatabaseService {
                 ]
             },
             {
+                table: 'unlock_codes', columns: [
+                    { name: 'tx_hash', type: 'TEXT' }
+                ]
+            },
+            {
                 table: 'artists', columns: [
+
                     { name: 'visibility', type: 'TEXT DEFAULT "public"' },
                     { name: 'wallet_address', type: 'TEXT' }
                 ]
@@ -430,6 +437,13 @@ export function createDatabase(dbPath: string): DatabaseService {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS system_plugins (
+      id TEXT PRIMARY KEY,
+      enabled INTEGER DEFAULT 1,
+      config TEXT,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS unlock_codes (
@@ -661,6 +675,99 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Performance Test Requirement: Explicit index creation call (MUST be after table creation)
     db.exec(`CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC)`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_releases_date ON releases(date DESC)`);
+
+    // Schema Enrichment: Views for metadata consistency and simplified reporting
+    db.exec(`
+    CREATE VIEW IF NOT EXISTS v_artists AS
+    SELECT 
+        id, name, slug, bio, photo_path, links, post_params, public_key, private_key, wallet_address, visibility, created_at
+    FROM artists;
+
+    CREATE VIEW IF NOT EXISTS v_albums AS
+    SELECT 
+        a.*,
+        COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
+        ar.slug as artist_slug,
+        ar.wallet_address as artist_wallet_address
+    FROM albums a
+    LEFT JOIN artists ar ON a.artist_id = ar.id;
+
+    CREATE VIEW IF NOT EXISTS v_releases AS
+    SELECT 
+        r.*,
+        COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
+        ar.slug as artist_slug,
+        ar.wallet_address as artist_wallet_address
+    FROM releases r
+    LEFT JOIN artists ar ON r.artist_id = ar.id;
+
+    CREATE VIEW IF NOT EXISTS v_tracks AS
+    SELECT 
+        t.*,
+        a.title as album_title,
+        a.album_artist as album_artist_tag,
+        a.visibility as album_visibility,
+        a.status as album_status,
+        COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name,
+        COALESCE(ar_t.slug, ar_a.slug) as artist_slug,
+        COALESCE(ar_t.wallet_address, ar_a.wallet_address) as artist_wallet_address,
+        COALESCE(t.owner_id, a.owner_id) as effective_owner_id
+    FROM tracks t
+    LEFT JOIN albums a ON t.album_id = a.id
+    LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
+    LEFT JOIN artists ar_a ON a.artist_id = ar_a.id;
+    `);
+
+    // Integrity Triggers (Protection since FKs were relaxed for some tables)
+    db.exec(`
+    CREATE TRIGGER IF NOT EXISTS tr_cleanup_release_tracks_on_release_delete
+    AFTER DELETE ON releases
+    FOR EACH ROW
+    BEGIN
+        DELETE FROM release_tracks WHERE release_id = OLD.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS tr_cleanup_release_tracks_on_track_delete
+    AFTER DELETE ON tracks
+    FOR EACH ROW
+    BEGIN
+        DELETE FROM release_tracks WHERE track_id = OLD.id;
+    END;
+
+    -- Status Sync Triggers: Ensure public visibility implies released status
+    CREATE TRIGGER IF NOT EXISTS tr_albums_status_sync
+    AFTER UPDATE OF visibility ON albums
+    FOR EACH ROW
+    WHEN NEW.visibility IN ('public', 'unlisted') AND OLD.status = 'draft'
+    BEGIN
+        UPDATE albums SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS tr_releases_status_sync
+    AFTER UPDATE OF visibility ON releases
+    FOR EACH ROW
+    WHEN NEW.visibility IN ('public', 'unlisted') AND OLD.status = 'draft'
+    BEGIN
+        UPDATE releases SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS tr_albums_status_init
+    AFTER INSERT ON albums
+    FOR EACH ROW
+    WHEN NEW.visibility IN ('public', 'unlisted') AND NEW.status = 'draft'
+    BEGIN
+        UPDATE albums SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS tr_releases_status_init
+    AFTER INSERT ON releases
+    FOR EACH ROW
+    WHEN NEW.visibility IN ('public', 'unlisted') AND NEW.status = 'draft'
+    BEGIN
+        UPDATE releases SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+    END;
+    `);
 
     // Migration: Add status column to albums and releases table
     try {
@@ -769,6 +876,7 @@ export function createDatabase(dbPath: string): DatabaseService {
     const trackRepository = new TrackRepository(db);
     const albumRepository = new AlbumRepository(db);
     const artistRepository = new ArtistRepository(db);
+    const releaseTrackRepository = new ReleaseTrackRepository(db);
     const socialRepository = new SocialRepository(db);
     const remoteActorRepository = new RemoteActorRepository(db);
     const remoteContentRepository = new RemoteContentRepository(db);
@@ -1273,50 +1381,11 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
 
         getReleasesByOwner(ownerId: number, publicOnly = false): Release[] {
-            const sql = publicOnly
-                ? `SELECT r.*, 
-                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                   ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
-                   LEFT JOIN artists ar ON r.artist_id = ar.id
-                   WHERE r.owner_id = ? AND r.visibility = 'public' AND r.status = 'released' ORDER BY r.date DESC`
-                : `SELECT r.*, 
-                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artistName, 
-                   COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name, 
-                   ar.slug as artistSlug, ar.slug as artist_slug FROM releases r
-                   LEFT JOIN artists ar ON r.artist_id = ar.id
-                   WHERE r.owner_id = ? ORDER BY r.date DESC`;
-            return db.prepare(sql).all(ownerId) as any[];
+            return albumRepository.getReleasesByOwner(ownerId, publicOnly);
         },
 
         createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number {
-            const slug = release.slug || release.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "release";
-            let finalSlug = slug;
-            let attempt = 0;
-            while (attempt < 100) {
-                try {
-                    const result = db.prepare(`
-                        INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, status, album_artist)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `).run(
-                        release.title, finalSlug, release.artist_id, release.owner_id,
-                        release.date, release.cover_path, release.genre, release.description, release.type, release.year,
-                        release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', release.external_links,
-                        release.visibility || 'private', release.published_at, 
-                        release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
-                        release.license, release.status || 'draft', release.album_artist || null
-                    );
-                    return result.lastInsertRowid as number;
-                } catch (e: any) {
-                    if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
-                        attempt++;
-                        finalSlug = `${slug}-${attempt}`;
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-            throw new Error("Could not create unique slug for release");
+            return albumRepository.createRelease(release);
         },
 
         getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined {
@@ -1346,38 +1415,19 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Release Tracks
         getReleaseTracks(releaseId: number): ReleaseTrack[] {
-            return db.prepare("SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_num").all(releaseId) as any[];
+            return releaseTrackRepository.getByReleaseId(releaseId);
         },
 
         getTracksSummaryByReleaseId(releaseId: number): Track[] {
             return trackRepository.getByReleaseId(releaseId);
         },
 
-        iterateTracks(whereClause: string = "1=1", params: any[] = []): IterableIterator<Track> {
-            const stmt = db.prepare(`SELECT * FROM tracks WHERE ${whereClause}`);
-            return stmt.iterate(...params) as IterableIterator<Track>;
-        },
-
         getReleaseTrack(id: number): ReleaseTrack | undefined {
-            return db.prepare("SELECT * FROM release_tracks WHERE id = ?").get(id) as any;
+            return releaseTrackRepository.getById(id);
         },
 
         getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined {
-            // Check if trackId is actually a track_id or an rt.id
-            const row = db.prepare(`
-                SELECT price, price_usdc, currency, title 
-                FROM release_tracks 
-                WHERE release_id = ? AND (track_id = ? OR id = ?)
-                LIMIT 1
-            `).get(releaseId, trackId, trackId) as any;
-            
-            if (!row) return undefined;
-            return {
-                price: row.price || 0,
-                price_usdc: row.price_usdc || 0,
-                currency: row.currency || 'ETH',
-                title: row.title
-            };
+            return releaseTrackRepository.getPriceFromRelease(releaseId, trackId);
         },
 
         getTracksByReleaseId(releaseId: number): Track[] {
@@ -1385,116 +1435,40 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
 
         addTrackToRelease(releaseId: number, trackId: number, metadata?: Partial<ReleaseTrack>): number {
-            const libraryTrack = trackId ? this.getTrack(trackId) : null;
-            const effectiveTrackId = libraryTrack ? trackId : null;
-            const title = metadata?.title || libraryTrack?.title || "Unknown Track";
-            const artistName = metadata?.artist_name || libraryTrack?.artist_name || null;
-            const duration = metadata?.duration || libraryTrack?.duration || 0;
-            const filePath = metadata?.file_path || libraryTrack?.file_path || null;
-            const price = metadata?.price || 0;
-            const priceUsdc = metadata?.price_usdc || 0;
-            const priceUsdt = metadata?.price_usdt || 0;
-            const currency = metadata?.currency || 'ETH';
-
-            let trackNum = metadata?.track_num;
-            if (trackNum === undefined) {
-                const maxNum = db.prepare("SELECT MAX(track_num) as max FROM release_tracks WHERE release_id = ?").get(releaseId) as { max: number | null };
-                trackNum = (maxNum.max || 0) + 1;
-            }
-
-            const result = db.prepare(`
-                INSERT INTO release_tracks (release_id, track_id, title, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(releaseId, effectiveTrackId, title, artistName, trackNum, duration, filePath, price, priceUsdc, priceUsdt, currency);
-
-            return result.lastInsertRowid as number;
+            return releaseTrackRepository.add(releaseId, { ...metadata, track_id: trackId });
         },
 
         updateReleaseTrack(id: number, metadata: Partial<ReleaseTrack>): void {
-            const fields: string[] = [];
-            const values: any[] = [];
-            for (const [key, value] of Object.entries(metadata)) {
-                if (key === 'id' || key === 'release_id' || key === 'created_at') continue;
-                fields.push(`${key} = ?`);
-                values.push(value);
-            }
-            if (fields.length === 0) return;
-            values.push(id);
-            db.prepare(`UPDATE release_tracks SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+            releaseTrackRepository.update(id, metadata);
         },
 
         updateReleaseTrackMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void {
-            const fields: string[] = [];
-            const values: any[] = [];
-            for (const [key, value] of Object.entries(metadata)) {
-                if (key === 'id' || key === 'release_id' || key === 'created_at') continue;
-                fields.push(`${key} = ?`);
-                values.push(value);
-            }
-            if (fields.length === 0) return;
-            values.push(releaseId, trackId);
-            db.prepare(`UPDATE release_tracks SET ${fields.join(', ')} WHERE release_id = ? AND track_id = ?`).run(...values);
+            releaseTrackRepository.updateMetadata(releaseId, trackId, metadata);
         },
 
         removeTrackFromRelease(releaseId: number, trackId: number): void {
-            db.prepare("DELETE FROM release_tracks WHERE release_id = ? AND track_id = ?").run(releaseId, trackId);
+            releaseTrackRepository.remove(releaseId, trackId);
         },
 
         removeTracksFromRelease(releaseId: number, trackIds: number[]): void {
-            if (trackIds.length === 0) return;
-            const CHUNK_SIZE = 900;
-            for (let i = 0; i < trackIds.length; i += CHUNK_SIZE) {
-                const chunk = trackIds.slice(i, i + CHUNK_SIZE);
-                const placeholders = chunk.map(() => "?").join(",");
-                db.prepare(`DELETE FROM release_tracks WHERE release_id = ? AND track_id IN (${placeholders})`).run(releaseId, ...chunk);
-            }
+            releaseTrackRepository.removeBatch(releaseId, trackIds);
         },
 
         deleteReleaseTrack(id: number): void {
-            db.prepare("DELETE FROM release_tracks WHERE id = ?").run(id);
+            releaseTrackRepository.delete(id);
         },
 
         updateReleaseTracksOrder(releaseId: number, trackIds: number[]): void {
-            db.transaction(() => {
-                const stmt = db.prepare("UPDATE release_tracks SET track_num = ? WHERE release_id = ? AND track_id = ?");
-                trackIds.forEach((trackId, index) => {
-                    stmt.run(index + 1, releaseId, trackId);
-                });
-            })();
+            releaseTrackRepository.updateOrder(releaseId, trackIds);
         },
 
         syncReleaseTracks(releaseId: number, trackIds: number[]): void {
-            db.transaction(() => {
-                // 1. Delete all existing tracks for this release
-                db.prepare("DELETE FROM release_tracks WHERE release_id = ?").run(releaseId);
-                
-                // 2. Validate and filter track IDs to avoid gaps in numbering
-                const validTrackIds = trackIds.filter(id => {
-                    if (!id) return false;
-                    const exists = db.prepare("SELECT 1 FROM tracks WHERE id = ?").get(id);
-                    return !!exists;
-                });
-
-                // 3. Add them back in order
-                const stmt = db.prepare(`
-                    INSERT INTO release_tracks (
-                        release_id, track_id, title, artist_name, track_num, 
-                        duration, file_path, price, price_usdc, price_usdt, currency
-                    )
-                    SELECT ?, t.id, t.title, t.artist_name, ?, 
-                           t.duration, t.file_path, t.price, t.price_usdc, t.price_usdt, t.currency
-                    FROM tracks t WHERE t.id = ?
-                `);
-                
-                validTrackIds.forEach((trackId, index) => {
-                    stmt.run(releaseId, index + 1, trackId);
-                });
-            })();
+            releaseTrackRepository.sync(releaseId, trackIds);
         },
 
 
         cleanUpGhostTracks(releaseId: number): void {
-            db.prepare("DELETE FROM release_tracks WHERE release_id = ? AND track_id IS NULL").run(releaseId);
+            releaseTrackRepository.cleanUpGhostTracks(releaseId);
         },
 
         // OAuth
@@ -1550,56 +1524,20 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
 
         createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'public'): number {
-            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
-            const linksJson = links ? JSON.stringify(links) : null;
-            const postParamsJson = postParams ? JSON.stringify(postParams) : null;
-            let finalSlug = slug;
-            let attempt = 0;
-            while (attempt < 100) {
-                try {
-                    const result = db
-                        .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params, wallet_address, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                        .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson, walletAddress || null, visibility);
-                    return result.lastInsertRowid as number;
-                } catch (e: any) {
-                    if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
-                        attempt++;
-                        finalSlug = `${slug}-${attempt}`;
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-            throw new Error("Could not create unique slug for artist");
+            return artistRepository.create(name, bio, photoPath, links, postParams, walletAddress, visibility);
         },
 
         updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void {
-            const linksJson = links ? JSON.stringify(links) : undefined;
-            const postParamsJson = postParams ? JSON.stringify(postParams) : undefined;
-            db.prepare(`
-                UPDATE artists SET 
-                    name = COALESCE(?, name),
-                    bio = COALESCE(?, bio),
-                    photo_path = COALESCE(?, photo_path),
-                    links = COALESCE(?, links),
-                    post_params = COALESCE(?, post_params),
-                    wallet_address = COALESCE(?, wallet_address),
-                    visibility = COALESCE(?, visibility)
-                WHERE id = ?
-            `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, visibility ?? null, id);
+            artistRepository.update(id, name, bio, photoPath, links, postParams, walletAddress, visibility);
         },
 
         updateArtistKeys(id: number, publicKey: string, privateKey: string): void {
-            db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKey, privateKey, id);
+            artistRepository.updateKeys(id, publicKey, privateKey);
         },
 
         deleteArtist(id: number): void {
-            db.prepare("UPDATE albums SET artist_id = NULL WHERE artist_id = ?").run(id);
-            db.prepare("UPDATE tracks SET artist_id = NULL WHERE artist_id = ?").run(id);
-            db.prepare("DELETE FROM followers WHERE artist_id = ?").run(id);
-            db.prepare("DELETE FROM artists WHERE id = ?").run(id);
+            artistRepository.delete(id);
         },
-
         isArtistLinkedToUser(id: number): boolean {
             const row = db.prepare("SELECT 1 FROM admin WHERE artist_id = ?").get(id);
             return !!row;
@@ -1836,6 +1774,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             const rows = db.prepare(sql).all(...params) as any[];
             return rows.map(r => (trackRepository as any).mapTrack(r));
         },
+        iterateTracks(whereClause?: string, params: any[] = []): IterableIterator<Track> {
+            const sql = whereClause ? `SELECT * FROM tracks WHERE ${whereClause}` : "SELECT * FROM tracks";
+            const stmt = db.prepare(sql);
+            const iterator = stmt.iterate(...params);
+            const mapTrack = (trackRepository as any).mapTrack.bind(trackRepository);
+            
+            return (function* () {
+                for (const row of iterator) {
+                    yield mapTrack(row);
+                }
+            })() as IterableIterator<Track>;
+        },
         deleteTrack(id: number, ownerId?: number): void {
             trackRepository.delete(id, ownerId);
         },
@@ -2028,12 +1978,13 @@ export function createDatabase(dbPath: string): DatabaseService {
             return { totalPlays, totalListeningTime: Math.round(time.total), uniqueTracks: unique, playsToday: stats.playsToday, playsThisWeek: stats.playsThisWeek, playsThisMonth: stats.playsThisMonth };
         },
         // Unlock Codes
-        createUnlockCode(code: string, releaseId?: number, trackId?: number): void { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id) VALUES (?, ?, ?)").run(code, releaseId || null, trackId || null); },
+        createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string): void { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id, tx_hash) VALUES (?, ?, ?, ?)").run(code, releaseId || null, trackId || null, txHash || null); },
         validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean } {
             const row = db.prepare("SELECT * FROM unlock_codes WHERE code = ?").get(code) as any;
             return row ? { valid: true, releaseId: row.release_id, trackId: row.track_id, isUsed: !!row.is_used } : { valid: false, isUsed: false };
         },
         redeemUnlockCode(code: string): void { db.prepare("UPDATE unlock_codes SET is_used = 1, redeemed_at = CURRENT_TIMESTAMP WHERE code = ?").run(code); },
+        getUnlockCodeByTxHash(txHash: string): any | undefined { return db.prepare("SELECT * FROM unlock_codes WHERE tx_hash = ?").get(txHash); },
         listUnlockCodes(releaseId?: number): any[] { return releaseId ? db.prepare("SELECT * FROM unlock_codes WHERE release_id = ? ORDER BY created_at DESC").all(releaseId) : db.prepare("SELECT * FROM unlock_codes ORDER BY created_at DESC").all(); },
         // AP Notes
         createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number {
@@ -2159,6 +2110,20 @@ export function createDatabase(dbPath: string): DatabaseService {
                     console.log(`🧹 [Database] Consolidated: deleted ${deletedAlbums.changes} empty albums, ${deletedReleases.changes} releases, and ${deletedArtists.changes} artists.`);
                 }
             })();
+        },
+        // Plugins
+        getPluginState(id: string): { enabled: boolean; config: string | null } | undefined {
+            const row = db.prepare("SELECT enabled, config FROM system_plugins WHERE id = ?").get(id) as any;
+            return row ? { enabled: !!row.enabled, config: row.config } : undefined;
+        },
+        setPluginEnabled(id: string, enabled: boolean): void {
+            db.prepare("INSERT INTO system_plugins (id, enabled) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, updated_at = CURRENT_TIMESTAMP").run(id, enabled ? 1 : 0);
+        },
+        setPluginConfig(id: string, config: string): void {
+            db.prepare("INSERT INTO system_plugins (id, config) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET config = excluded.config, updated_at = CURRENT_TIMESTAMP").run(id, config);
+        },
+        getAllPluginsState(): any[] {
+            return db.prepare("SELECT * FROM system_plugins").all();
         }
     };
 

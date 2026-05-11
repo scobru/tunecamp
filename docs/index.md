@@ -44,5 +44,5 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 
 ---
 
-*Ultimo aggiornamento: 9 Maggio 2026*
+*Ultimo aggiornamento: 11 Maggio 2026*
 *Generato tramite il workflow `bmad-document-project`*

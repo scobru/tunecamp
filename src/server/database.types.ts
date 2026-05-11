@@ -547,9 +547,10 @@ export interface DatabaseService {
     getAllSettings(): { [key: string]: string };
 
     // Unlock Codes
-    createUnlockCode(code: string, releaseId?: number, trackId?: number): void;
+    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string): void;
     validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean };
     redeemUnlockCode(code: string): void;
+    getUnlockCodeByTxHash(txHash: string): any | undefined;
     listUnlockCodes(releaseId?: number): any[];
 
     // ActivityPub Notes
@@ -632,4 +633,10 @@ export interface DatabaseService {
     isArtistLinkedToUser(artistId: number): boolean;
     isArtistLinkedToUserBySlug(slug: string): boolean;
     consolidateDatabase(): void;
+
+    // Plugins
+    getPluginState(id: string): { enabled: boolean; config: string | null } | undefined;
+    setPluginEnabled(id: string, enabled: boolean): void;
+    setPluginConfig(id: string, config: string): void;
+    getAllPluginsState(): any[];
 }

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import type { AuthService, TokenPayload } from "../auth.js";
+import type { AuthService, TokenPayload } from "../modules/auth/auth.service.js";
 import { VisibilityGuardian, Capability, UserRole, ViewerContext } from "../common/visibility.js";
 
 export interface AuthenticatedRequest extends Request {

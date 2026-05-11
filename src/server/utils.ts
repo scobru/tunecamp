@@ -1,4 +1,5 @@
 import fetch, { Response, RequestInit } from 'node-fetch';
+import { isSafeUrl } from '../utils/networkUtils.js';
 
 /**
  * Ensures the response body is always consumed to prevent memory leaks in node-fetch.
@@ -18,8 +19,14 @@ export async function drainResponse(res: Response): Promise<void> {
 /**
  * SAFELY executes a fetch request.
  * If the response is not consumed by the caller, they MUST call drainResponse(res).
+ * Implements SSRF protection.
  */
 export async function fetchSafe(url: string, init?: RequestInit): Promise<Response> {
+    const isSafe = await isSafeUrl(url);
+    if (!isSafe) {
+        console.warn(`[Security] Blocked potential SSRF request to: ${url}`);
+        throw new Error(`SSRF Blocked: Invalid or private destination.`);
+    }
     return fetch(url, init);
 }
 
@@ -29,6 +36,12 @@ export async function fetchSafe(url: string, init?: RequestInit): Promise<Respon
 export async function fetchJsonSafe<T>(url: string, init?: RequestInit): Promise<T | null> {
     let res: Response | null = null;
     try {
+        const isSafe = await isSafeUrl(url);
+        if (!isSafe) {
+            console.warn(`[Security] Blocked potential SSRF request to: ${url}`);
+            return null;
+        }
+
         res = await fetch(url, init);
         if (!res.ok) {
             await drainResponse(res);
