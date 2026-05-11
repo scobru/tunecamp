@@ -224,6 +224,8 @@ export const API = {
         handleResponse(api.delete(`/admin/releases/${id}${keepFiles ? '?keepFiles=true' : ''}`)),
     deleteAlbum: (id: string, keepFiles = false) =>
         handleResponse(api.delete(`/admin/releases/${id}${keepFiles ? '?keepFiles=true' : ''}`)),
+    deleteReleasesBatch: (ids: number[], keepFiles = false) =>
+        handleResponse(api.delete('/admin/releases/batch', { data: { ids, keepFiles } })),
 
     toggleReleaseVisibility: (id: string, visibility: boolean | 'public' | 'private' | 'unlisted') =>
         handleResponse(api.put(`/admin/releases/${id}/visibility`, typeof visibility === 'boolean' ? { isPublic: visibility } : { visibility })),

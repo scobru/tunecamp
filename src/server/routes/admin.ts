@@ -831,6 +831,66 @@ export function createAdminRoutes(
     });
 
     /**
+     * DELETE /api/admin/releases/batch
+     * Delete multiple albums or formal releases
+     */
+    router.delete("/releases/batch", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const { ids, keepFiles } = req.body;
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({ error: "Invalid or empty IDs list" });
+            }
+
+            if (!req.isAdmin && !req.isActive) {
+                return res.status(403).json({ error: "Access denied: Account must be activated by admin to delete releases" });
+            }
+
+            const releaseIds: number[] = [];
+            const albumIds: number[] = [];
+
+            for (const id of ids) {
+                const release = database.getRelease(id);
+                const album = database.getAlbum(id);
+
+                if (!release && !album) continue;
+
+                // Permission Check
+                if (release && !req.isRootAdmin) {
+                    return res.status(403).json({ error: `Only Root Admin can delete formal release ${id}` });
+                }
+
+                const ownerId = release ? release.owner_id : album?.owner_id;
+                if (req.userId !== undefined && !req.isRootAdmin && ownerId !== req.userId) {
+                    return res.status(403).json({ error: `Access denied for item ${id}` });
+                }
+
+                if (release) {
+                    releaseIds.push(id);
+                    // Handle unpublishing for formal releases
+                    try {
+                        await (publishingService as any).unpublishReleaseFromAP(release);
+                        await zendbService.unpublishRelease(id);
+                    } catch (e) {
+                        console.error(`Failed to unpublish formal release ${id}:`, e);
+                    }
+                } else if (album) {
+                    albumIds.push(id);
+                }
+            }
+
+            const allIds = [...releaseIds, ...albumIds];
+            if (allIds.length > 0) {
+                database.deleteAlbumsBatch(allIds, !!keepFiles);
+            }
+
+            res.json({ message: "Releases deleted successfully", count: allIds.length });
+        } catch (error) {
+            console.error("Batch delete error:", error);
+            res.status(500).json({ error: "Failed to delete releases" });
+        }
+    });
+
+    /**
      * DELETE /api/admin/releases/:id
      * Delete an album or formal release
      */

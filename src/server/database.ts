@@ -1336,6 +1336,13 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteRelease(id: number): void {
             albumRepository.delete(id);
         },
+        deleteReleasesBatch(ids: number[]): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    albumRepository.delete(id);
+                }
+            })();
+        },
 
         // Release Tracks
         getReleaseTracks(releaseId: number): ReleaseTrack[] {
@@ -1724,6 +1731,13 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
         deleteAlbum(id: number, keepTracks = false): void {
             albumRepository.delete(id, keepTracks);
+        },
+        deleteAlbumsBatch(ids: number[], keepTracks = false): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    albumRepository.delete(id, keepTracks);
+                }
+            })();
         },
         // Tracks
         getTracks(albumId?: number, publicOnly = false): Track[] {
