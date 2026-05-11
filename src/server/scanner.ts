@@ -414,6 +414,7 @@ export class Scanner implements ScannerService {
                     price_usdc: 0,
                     currency: 'ETH',
                     external_links: linksJson,
+                    is_public: false,
                     visibility: 'private',
                     published_at: null,
                     published_to_gundb: false,
