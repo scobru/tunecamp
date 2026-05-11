@@ -705,6 +705,18 @@ export function createDatabase(dbPath: string): DatabaseService {
         console.error("Migration error (album_artist column):", e);
     }
 
+    // Migration: Add genre column to albums table (older backups may not have it)
+    try {
+        const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
+        const hasGenreAlbums = Array.isArray(tableInfoAlbums) && tableInfoAlbums.some(col => col.name === "genre");
+        if (!hasGenreAlbums) {
+            console.log("📦 Migrating database: Adding genre column to albums table...");
+            db.exec("ALTER TABLE albums ADD COLUMN genre TEXT");
+        }
+    } catch (e) {
+        console.error("Migration error (albums genre column):", e);
+    }
+
     // Migration: Add external_id column to albums and releases table
     try {
         const tableInfoAlbums = db.pragma("table_info(albums)") as any[];
@@ -1884,11 +1896,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             const storageTracks = db.prepare(`SELECT SUM(duration) as total FROM tracks ${filter}`).get() as any;
             const storageReleaseTracks = db.prepare(`SELECT SUM(rt.duration) as total FROM release_tracks rt JOIN releases r ON rt.release_id = r.id ${filter.replace(/artist_id/g, 'r.artist_id').replace(/owner_id/g, 'r.owner_id')}`).get() as any;
             const totalDuration = (storageTracks.total || 0) + (storageReleaseTracks.total || 0);
-            const allGenres = db.prepare(`SELECT genre FROM albums ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
-            const allTrackGenres = db.prepare(`SELECT genre FROM tracks ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
-            const genreSet = new Set<string>(); 
-            allGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
-            allTrackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            const genreSet = new Set<string>();
+            try {
+                const allGenres = db.prepare(`SELECT genre FROM albums ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
+                allGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            } catch (_e) { /* genre column may not exist in old backups */ }
+            try {
+                const allTrackGenres = db.prepare(`SELECT genre FROM tracks ${filter ? filter + ' AND' : 'WHERE'} genre IS NOT NULL AND genre != ''`).all() as { genre: string }[];
+                allTrackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            } catch (_e) { /* genre column may not exist in old backups */ }
             return { artists, albums, tracks, totalTracks: tracks, publicAlbums, totalUsers, storageUsed: (totalDuration || 0) * 40 * 1024, networkSites: (artistId || ownerId) ? 0 : (db.prepare("SELECT COUNT(*) as count FROM remote_actors WHERE type = 'Service'").get() as any).count, genresCount: genreSet.size, genres: Array.from(genreSet).sort() };
         },
         getPublicTracksCount(): number { 
@@ -1898,12 +1914,14 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
         getGenres(publicOnly = false): string[] {
             const genreSet = new Set<string>();
-            const albumGenres = db.prepare(publicOnly ? "SELECT genre FROM albums WHERE is_release = 1 AND visibility IN ('public', 'unlisted') AND status = 'released' AND genre IS NOT NULL AND genre != ''" : "SELECT genre FROM albums WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];
-            albumGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
-            
-            const trackGenres = db.prepare(publicOnly ? "SELECT t.genre FROM tracks t JOIN albums a ON t.album_id = a.id WHERE a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released' AND t.genre IS NOT NULL AND t.genre != ''" : "SELECT genre FROM tracks WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];
-            trackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
-            
+            try {
+                const albumGenres = db.prepare(publicOnly ? "SELECT genre FROM albums WHERE is_release = 1 AND visibility IN ('public', 'unlisted') AND status = 'released' AND genre IS NOT NULL AND genre != ''" : "SELECT genre FROM albums WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];
+                albumGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            } catch (_e) { /* genre column may not exist in old backups */ }
+            try {
+                const trackGenres = db.prepare(publicOnly ? "SELECT t.genre FROM tracks t JOIN albums a ON t.album_id = a.id WHERE a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released' AND t.genre IS NOT NULL AND t.genre != ''" : "SELECT genre FROM tracks WHERE genre IS NOT NULL AND genre != ''").all() as { genre: string }[];
+                trackGenres.forEach(r => r.genre?.split(',').forEach(g => genreSet.add(g.trim().toLowerCase())));
+            } catch (_e) { /* genre column may not exist in old backups */ }
             return Array.from(genreSet).sort();
         },
         getTracksByGenre(genre: string, publicOnly = false): Track[] {
