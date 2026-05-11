@@ -42,6 +42,7 @@ describe('Orphan Release Fix Verification', () => {
             slug: 'orphaned-release',
             artist_id: null,
             date: '2023-01-01',
+            is_public: true,
             visibility: 'public',
             published_to_gundb: true,
             published_to_ap: true,
