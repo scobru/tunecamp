@@ -403,6 +403,7 @@ export interface DatabaseService {
     updateRelease(id: number, release: Partial<Release>): void;
     getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined;
     deleteRelease(id: number): void;
+    deleteReleasesBatch(ids: number[]): void;
     
     // Release Tracks
     getReleaseTracks(releaseId: number): ReleaseTrack[];
@@ -450,6 +451,7 @@ export interface DatabaseService {
     updateAlbumLinks(id: number, links: string | null): void;
     promoteToRelease(id: number): void; // Mark library album as release
     deleteAlbum(id: number, keepTracks?: boolean): void;
+    deleteAlbumsBatch(ids: number[], keepTracks?: boolean): void;
     searchAlbums(query: string, limit: number, publicOnly?: boolean): Album[];
     // Tracks
     getTracks(albumId?: number, publicOnly?: boolean): Track[];

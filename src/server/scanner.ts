@@ -192,7 +192,7 @@ export class Scanner implements ScannerService {
         // We use the slug from the directory name to look up the release
         if (relativeDir.startsWith("releases/")) {
             const pathParts = relativeDir.split("/");
-            if (pathParts.length >= 2) {
+            if (pathParts.length === 2 && pathParts[0] === "releases") {
                 const releaseSlug = pathParts[1];
                 const formalRelease = this.database.getReleaseBySlug(releaseSlug);
                 if (formalRelease) {
@@ -200,6 +200,8 @@ export class Scanner implements ScannerService {
                     this.folderToAlbumMap.set(dir, formalRelease.id);
                     return formalRelease.id;
                 }
+            } else {
+                console.log(`📂 [Scanner] Subdirectory of release detected, not associating automatically: ${relativeDir}`);
             }
         }
 
@@ -435,13 +437,14 @@ export class Scanner implements ScannerService {
 
     public async processAudioFile(
         filePath: string, 
-        musicDir: string, 
+        musicDirRaw: string, 
         overrideArtistId?: number, 
         ownerId?: number, 
         overrideAlbumId?: number, 
         suggestedCoverPath?: string,
         metadataHints?: { artist?: string, album?: string, year?: number, title?: string, genre?: string }
     ): Promise<{ originalPath: string, success: boolean, message: string, convertedPath?: string, trackId?: number, queuedConversion?: boolean } | null> {
+        const musicDir = musicDirRaw.replace(/\\/g, "/");
         let currentFilePath = filePath.replace(/^@@[a-z0-9]+\\?/, "").replace(/\\/g, "/").replace(/\/+/g, "/");
         if (!path.isAbsolute(currentFilePath) && !await this.storage.pathExists(currentFilePath)) {
             const resolved = path.join(musicDir, currentFilePath);
