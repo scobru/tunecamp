@@ -367,8 +367,8 @@ export class Scanner implements ScannerService {
             }
 
             const slug = slugify(config.title);
-            let existingRelease = this.database.getReleaseBySlug(slug);
-            let releaseId: number;
+            let existingAlbum = this.database.getAlbumBySlug(slug);
+            let albumId: number;
 
             let linksJson: string | null = null;
             if (config.links) {
@@ -383,20 +383,20 @@ export class Scanner implements ScannerService {
                 linksJson = JSON.stringify(links);
             }
 
-            if (existingRelease) {
-                releaseId = existingRelease.id;
-                this.database.updateRelease(releaseId, {
-                    artist_id: artistId || existingRelease.artist_id,
-                    cover_path: coverPath || existingRelease.cover_path,
-                    genre: config.genres?.join(", ") || existingRelease.genre,
-                    description: config.description || existingRelease.description,
-                    download: config.download || existingRelease.download,
-                    external_links: linksJson || existingRelease.external_links,
-                    type: config.type || existingRelease.type,
-                    year: config.year || existingRelease.year
+            if (existingAlbum) {
+                albumId = existingAlbum.id;
+                this.database.updateAlbum(albumId, {
+                    artist_id: artistId || existingAlbum.artist_id,
+                    cover_path: coverPath || existingAlbum.cover_path,
+                    genre: config.genres?.join(", ") || existingAlbum.genre,
+                    description: config.description || existingAlbum.description,
+                    download: config.download || existingAlbum.download,
+                    external_links: linksJson || existingAlbum.external_links,
+                    type: config.type || existingAlbum.type,
+                    year: config.year || existingAlbum.year
                 });
             } else {
-                releaseId = this.database.createRelease({
+                albumId = this.database.createAlbum({
                     title: config.title,
                     slug: slug,
                     artist_id: artistId,
@@ -418,28 +418,19 @@ export class Scanner implements ScannerService {
                     published_to_ap: false,
                     license: null,
                     status: 'draft',
+                    is_release: false
                 });
             }
 
-            this.folderToAlbumMap.set(dir, releaseId);
+            this.folderToAlbumMap.set(dir, albumId);
 
-            if (config.metadata?.tracks) {
-                for (const tc of config.metadata.tracks) {
-                    if (tc.url) {
-                        this.database.addTrackToRelease(releaseId, 0, {
-                            title: tc.title || "External Track",
-                            artist_name: config.artist || null,
-                            track_num: tc.trackNum || tc.track || null,
-                            duration: tc.duration || null,
-                            file_path: tc.url,
-                            price: 0,
-                            price_usdc: 0,
-                            currency: 'ETH'
-                        });
-                    }
-                }
-            }
-        } catch (e) {}
+            // Note: We skip processing config.metadata.tracks here for library albums
+            // because library albums don't use the release_tracks table.
+            // Tracks found in the folder will be scanned and associated with this albumId
+            // by the processAudioFile method later in the scan process.
+        } catch (e) {
+            console.error(`❌ [Scanner] Error processing release config at ${filePath}:`, e);
+        }
     }
 
     public async processAudioFile(

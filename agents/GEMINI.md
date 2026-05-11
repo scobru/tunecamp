@@ -194,6 +194,16 @@ These rules apply even when no project GEMINI.md exists:
 
 ---
 
+## 11. Project Specific Constraints
+
+### 1. Manual Release Management
+- The library scanner MUST NOT automatically create formal releases (in the `releases` table).
+- All scanned content MUST be created as library albums (in the `albums` table) with `status: 'draft'` and `is_release: false`.
+- Releases must be created MANUALLY via the Admin UI or explicitly promoted from library albums by an authorized user.
+- Reason: User preference for granular control over the public catalog. (Corrected on 2026-05-11).
+
+---
+
 ## 10. Task Diary
 
 **Maintain a permanent log of all completed tasks and significant architectural decisions.**

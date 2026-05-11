@@ -69,7 +69,16 @@ Chronological log of completed tasks and significant architectural decisions.
 
 ---
 
-## 2026-05-09
+## 2026-05-11
+
+### 1. Scanner Refactoring for Manual Release Management
+**Summary**: Refactored the library scanner to prevent automatic creation of formal releases, giving users manual control over the public catalog.
+- **Files Modified**: `src/server/scanner.ts`, `agents/GEMINI.md`.
+- **Backend Changes**:
+    - Modified `Scanner.processReleaseConfig` to create/update library albums (in `albums` table) instead of formal releases (in `releases` table).
+    - Set default status to `'draft'` and `is_release: false` for all scanned content.
+    - Updated `GEMINI.md` with a new mandate ensuring manual release management.
+- **Details**: This change ensures that rescanning the library does not clutter the "Admin Releases" section with automatically generated drafts. Metadata from `release.yaml` is still preserved in the library album, which can be manually promoted to a release via the UI.
 
 ### 1. Synchronization of Undocumented Features
 **Summary**: Synchronized project documentation with advanced features already present in the codebase (Torrent, Hybrid Payments, Linda Bridge).
