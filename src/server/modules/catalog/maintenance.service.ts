@@ -64,15 +64,15 @@ export class MaintenanceService {
     /**
      * Gets tracks missing specific metadata fields.
      */
-    getTracksWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description') {
+    getTracksWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist') {
         return this.db.getTracksMissingMetadata(filter);
     }
 
     /**
      * Gets albums missing specific metadata fields.
      */
-    getAlbumsWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description') {
-        return this.db.getAlbumsMissingMetadata(filter);
+    getAlbumsWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist') {
+        return this.db.getAlbumsWithMissingMetadata(filter);
     }
 
     /**

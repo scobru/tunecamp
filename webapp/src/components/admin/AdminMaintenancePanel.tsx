@@ -8,7 +8,7 @@ import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
 
 export const AdminMaintenancePanel = () => {
     const [mode, setMode] = useState<'tracks' | 'artists' | 'albums'>('tracks');
-    const [filter, setFilter] = useState<'genre' | 'year' | 'cover' | 'album' | 'description'>('genre');
+    const [filter, setFilter] = useState<'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist'>('genre');
     const [tracks, setTracks] = useState<any[]>([]);
     const [artists, setArtists] = useState<any[]>([]);
     const [albums, setAlbums] = useState<any[]>([]);
@@ -295,6 +295,7 @@ export const AdminMaintenancePanel = () => {
                             value={filter}
                             onChange={(e) => setFilter(e.target.value as any)}
                         >
+                            <option value="artist">Missing Artist</option>
                             <option value="album">Missing Album</option>
                             <option value="genre">Missing Genre</option>
                             <option value="year">Missing Year</option>
@@ -308,6 +309,7 @@ export const AdminMaintenancePanel = () => {
                             value={filter}
                             onChange={(e) => setFilter(e.target.value as any)}
                         >
+                            <option value="artist">Missing Artist</option>
                             <option value="cover">Missing Cover</option>
                             <option value="genre">Missing Genre</option>
                             <option value="year">Missing Year</option>

@@ -1936,7 +1936,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const admin = db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;
             return admin ? admin.id : null;
         },
-        getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description'): Track[] {
+        getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist'): Track[] {
             let query = "";
             if (filter === 'genre') {
                 query = "SELECT t.*, al.title as album_title, ar.name as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.genre IS NULL OR t.genre = '' OR t.genre = 'Library'";
@@ -1946,10 +1946,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 query = "SELECT t.*, al.title as album_title, ar.name as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar ON t.artist_id = ar.id WHERE (t.external_artwork IS NULL OR t.external_artwork = '') AND (al.cover_path IS NULL OR al.cover_path = '')";
             } else if (filter === 'album') {
                 query = "SELECT t.*, NULL as album_title, ar.name as artist_name FROM tracks t LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.album_id IS NULL";
+            } else if (filter === 'artist') {
+                query = "SELECT t.*, al.title as album_title, NULL as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id WHERE t.artist_id IS NULL";
             }
             return db.prepare(query).all() as Track[];
         },
-        getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description'): Album[] {
+        getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[] {
             let query = "";
             if (filter === 'genre') {
                 query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.genre IS NULL OR a.genre = '' OR a.genre = 'Library'";
@@ -1959,6 +1961,8 @@ export function createDatabase(dbPath: string): DatabaseService {
                 query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.cover_path IS NULL OR a.cover_path = ''";
             } else if (filter === 'description') {
                 query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.description IS NULL OR a.description = ''";
+            } else if (filter === 'artist') {
+                query = "SELECT a.*, NULL as artist_name FROM albums a WHERE a.artist_id IS NULL";
             }
             return (db.prepare(query).all() as any[]).map(r => (albumRepository as any).mapAlbum(r));
         },
