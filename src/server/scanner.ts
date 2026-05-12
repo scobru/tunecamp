@@ -429,8 +429,8 @@ export class Scanner {
                 }
                 catch (e) { }
             }
-            const common = metadata?.common || {};
-            const format = metadata?.format || {};
+            const common = (metadata?.common || {}) as any;
+            const format = (metadata?.format || {}) as any;
             const albumArtist = common.albumartist;
             // 2. Resolve Artist (Priority: override > hint > tag > unknown)
             if (!artistId) {
@@ -634,8 +634,8 @@ export class Scanner {
         if (!(await this.storage.pathExists(dir)))
             return { successful: [], failed: [] };
         await this.mapFoldersToExistingAlbums();
-        const audioFiles = [], yamlFiles = [];
-        const walkDir = async (currentDir) => {
+        const audioFiles: string[] = [], yamlFiles: string[] = [];
+        const walkDir = async (currentDir: string) => {
             const entries = await this.storage.readdir(currentDir, { withFileTypes: true });
             for (const entry of entries) {
                 const full = path.join(currentDir, entry.name);
@@ -706,13 +706,13 @@ export class Scanner {
         }
         catch (e) { }
     }
-    async deduplicateTracks(tracks) {
-        const groups = new Map();
+    async deduplicateTracks(tracks: Track[]) {
+        const groups = new Map<string, Track[]>();
         for (const t of tracks) {
             const k = `${t.album_id}|${t.artist_id}|${t.title.toLowerCase().trim()}`;
             if (!groups.has(k))
                 groups.set(k, []);
-            groups.get(k).push(t);
+            groups.get(k)!.push(t);
         }
         const toRem = new Set();
         for (const g of groups.values()) {
