@@ -72,7 +72,7 @@ export class MaintenanceService {
      * Gets albums missing specific metadata fields.
      */
     getAlbumsWithMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist') {
-        return this.db.getAlbumsWithMissingMetadata(filter);
+        return this.db.getAlbumsMissingMetadata(filter);
     }
 
     /**
