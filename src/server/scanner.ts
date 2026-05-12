@@ -129,7 +129,7 @@ export class Scanner {
         const relativeDir = this.normalizePath(dir, musicDir);
         const isRoot = relativeDir === "." || relativeDir === "";
         if (this.folderToAlbumMap.has(dir))
-            return this.folderToAlbumMap.get(dir);
+            return this.folderToAlbumMap.get(dir) as number;
         // Check if this is a formal release directory (music/releases/slug)
         // We use the slug from the directory name to look up the release
         if (relativeDir.startsWith("releases/")) {
@@ -324,7 +324,7 @@ export class Scanner {
                 linksJson = JSON.stringify(links);
             }
             if (existingRelease) {
-                releaseId = existingRelease.id!;
+                releaseId = existingRelease.id as number;
                 this.database.updateRelease(releaseId, {
                     artist_id: artistId || existingRelease.artist_id,
                     cover_path: coverPath || existingRelease.cover_path,

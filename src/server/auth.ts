@@ -155,7 +155,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
         },
         async verifyToken(token: string) {
             try {
-                const decoded = jwt.verify(token, jwtSecret);
+                const decoded = jwt.verify(token, jwtSecret) as any;
                 const role = decoded.role || UserRole.NORMAL_USER;
                 const isRoot = decoded.isRootAdmin ?? (role === UserRole.ROOT_ADMIN || decoded.userId === 1);
                 // SECURITY CHECK: Verify token version against database
@@ -329,7 +329,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
                             existingArtist = { id: Number(result.lastInsertRowid) };
                             break;
                         }
-                        catch (e) {
+                        catch (e: any) {
                             if (e.message && e.message.includes('UNIQUE constraint failed: artists.slug')) {
                                 attempt++;
                                 finalSlug = `${slug}-${attempt}`;
@@ -362,7 +362,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
             };
         },
         async verifySubsonicToken(username: string, token: string, salt: string) {
-            const user = db.prepare("SELECT subsonic_password FROM admin WHERE username = ?").get(username);
+            const user = db.prepare("SELECT subsonic_password FROM admin WHERE username = ?").get(username) as any;
             if (!user || !token)
                 return false;
             // Method 1: Use stored encrypted password (preferred, standard Subsonic auth)
@@ -477,7 +477,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 ORDER BY a.username
             `).all();
-            return rows.map(r => ({
+            return rows.map((r: any) => ({
                 ...r,
                 role: r.role || 'admin',
                 is_root: r.id === 1
