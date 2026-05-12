@@ -3,11 +3,11 @@ import { Telegraf } from 'telegraf';
 import path from 'path';
 import fs from 'fs-extra';
 import axios from 'axios';
-import { ScannerService } from '../modules/catalog/scanner.js';
-import { DatabaseService } from '../database.js';
-import type { ServerConfig } from '../config.js';
-import type { OpenRouterService } from './openrouter.service.js';
-import { extractBandcampMetadata } from '../utils/bandcamp.js';
+import { ScannerService } from '../catalog/scanner.js';
+import { DatabaseService } from '../../database.js';
+import type { ServerConfig } from '../../config.js';
+import type { OpenRouterService } from '../ai/openrouter.service.js';
+import { extractBandcampMetadata } from '../../utils/bandcamp.js';
 
 export class TelegramBotService {
     private bot?: Telegraf;
