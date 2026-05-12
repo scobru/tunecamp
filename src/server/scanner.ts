@@ -272,16 +272,16 @@ export class Scanner {
             const config = parse(content);
             if (!config.title)
                 return;
-            let artistId = null;
+            let artistId: number | null = null;
             if (config.artist) {
                 const existingArtist = this.database.getArtistByName(config.artist);
-                artistId = existingArtist ? existingArtist.id : this.database.createArtist(config.artist);
+                artistId = existingArtist ? existingArtist.id! : this.database.createArtist(config.artist);
             }
             else {
                 let current = dir;
                 while (current.length >= path.dirname(current).length) {
                     if (this.folderToArtistMap.has(current)) {
-                        artistId = this.folderToArtistMap.get(current);
+                        artistId = this.folderToArtistMap.get(current) as number;
                         break;
                     }
                     const parent = path.dirname(current);

@@ -15,10 +15,9 @@ if (typeof global !== 'undefined' && !global.crypto) {
 }
 const SALT_ROUNDS = 10;
 const JWT_EXPIRES_IN = "7d";
-export var AuthProvider;
-(function (AuthProvider) {
-    AuthProvider["MASTODON"] = "mastodon";
-})(AuthProvider || (AuthProvider = {}));
+export enum AuthProvider {
+    MASTODON = "mastodon"
+}
 export function createAuthService(db: any, jwtSecret: string, adminUser = "admin", adminPass = "admin") {
     // Ensure admin table exists with new schema
     try {
@@ -48,14 +47,14 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
         }
         else {
             // Check if columns exist (migration)
-            const columns = db.prepare("PRAGMA table_info(admin)").all();
-            const hasUsername = columns.some(c => c.name === 'username');
-            const hasArtistId = columns.some(c => c.name === 'artist_id');
-            const hasRole = columns.some(c => c.name === 'role');
-            const hasGunPub = columns.some(c => c.name === 'gun_pub');
-            const hasSubsonic = columns.some(c => c.name === 'subsonic_token');
-            const hasIsActive = columns.some(c => c.name === 'is_active');
-            const hasTokenVersion = columns.some(c => c.name === 'token_version');
+            const columns = db.prepare("PRAGMA table_info(admin)").all() as any[];
+            const hasUsername = columns.some((c: any) => c.name === 'username');
+            const hasArtistId = columns.some((c: any) => c.name === 'artist_id');
+            const hasRole = columns.some((c: any) => c.name === 'role');
+            const hasGunPub = columns.some((c: any) => c.name === 'gun_pub');
+            const hasSubsonic = columns.some((c: any) => c.name === 'subsonic_token');
+            const hasIsActive = columns.some((c: any) => c.name === 'is_active');
+            const hasTokenVersion = columns.some((c: any) => c.name === 'token_version');
             if (!hasTokenVersion) {
                 console.log("📦 Migrating admin table: Adding token_version column...");
                 try {
