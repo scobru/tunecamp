@@ -59,6 +59,7 @@ export class BandcampStreamingProvider implements StreamingProvider {
         }
     }
 
+    /**
      * Searches Bandcamp for tracks matching the query.
      */
     async search(query: string): Promise<any[]> {
