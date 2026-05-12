@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Music, Disc, User, Globe } from 'lucide-react';
+import { Search as SearchIcon, Music, Disc, User, Globe, Play } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { formatDuration } from '../utils/format';
+import clsx from 'clsx';
 import type { Track, Album, Artist } from '../types';
 
 export const Search = () => {
@@ -22,7 +23,8 @@ export const Search = () => {
                 tracks: data.local.tracks || [],
                 albums: data.local.albums || [],
                 artists: data.local.artists || [],
-                external: data.external || []
+                external: data.external || [],
+                streaming: data.streaming || []
             } as any);
         } catch (e) {
             console.error(e);
@@ -164,60 +166,72 @@ export const Search = () => {
                         </section>
                     )}
 
-                    {/* External Results (Streaming) */}
-                    {(results as any).external?.length > 0 && (
+                    {/* External & Streaming Results */}
+                    {((results as any).external?.length > 0 || (results as any).streaming?.length > 0) && (
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-secondary">
                                 <Globe size={20}/> Discover (YouTube & Bandcamp)
                             </h2>
                             <div className="flex flex-col gap-1">
-                                {(results as any).external.map((item: any) => (
-                                    <div key={item.id} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
+                                {[
+                                    ...((results as any).streaming || []),
+                                    ...((results as any).external || [])
+                                ].map((item: any) => (
+                                    <div key={`${item.source}:${item.id}`} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
                                         <button
                                             onClick={() => {
-                                                // Create a virtual track object for the player
                                                 const virtualTrack: any = {
                                                     id: `ext:${item.source}:${item.id}`,
                                                     title: item.title,
                                                     artistName: item.artist,
                                                     albumName: item.albumTitle || 'External Release',
-                                                    duration: 0, 
-                                                    coverImage: item.coverUrl,
+                                                    duration: item.duration || 0, 
+                                                    coverImage: item.coverUrl || item.thumbnail,
                                                     isExternal: true,
                                                     source: item.source
                                                 };
-                                                const externalTracksList = (results as any).external.map((it: any) => ({
-                                                     id: `ext:${it.source}:${it.id}`,
-                                                     title: it.title,
-                                                     artistName: it.artist,
-                                                     duration: 0,
-                                                     isExternal: true,
-                                                     source: it.source
-                                                }));
-                                                playTrack(virtualTrack, externalTracksList);
+                                                playTrack(virtualTrack, []);
                                             }}
                                             className="relative w-10 h-10 shrink-0"
                                         >
-                                             {item.coverUrl ? (
-                                                 <img src={item.coverUrl} alt="" className="w-full h-full rounded object-cover" />
+                                             {(item.coverUrl || item.thumbnail) ? (
+                                                 <img src={item.coverUrl || item.thumbnail} alt="" className="w-full h-full rounded object-cover" />
                                              ) : (
                                                  <div className="w-full h-full bg-neutral rounded flex items-center justify-center">
                                                      <Music size={16} />
                                                  </div>
                                              )}
                                              <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                 <Music size={16} />
+                                                 <Play size={16} fill="currentColor" />
                                              </div>
                                         </button>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-bold truncate">{item.title}</div>
                                             <div className="text-xs opacity-60 truncate">
-                                                {item.artist} • <span className="uppercase font-semibold text-primary">{item.source}</span>
+                                                {item.artist} • <span className={clsx(
+                                                    "uppercase font-bold",
+                                                    item.source === 'youtube' ? 'text-error' : 
+                                                    item.source === 'bandcamp' ? 'text-info' : 'text-primary opacity-50'
+                                                )}>{item.source}</span>
+                                                {item.isStreaming && <span className="ml-2 badge badge-ghost badge-xs">Streaming</span>}
                                             </div>
                                         </div>
-                                        <button className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100">
-                                            Add to Playlist
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            {item.url && (
+                                                <a 
+                                                    href={item.url} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 flex items-center gap-1"
+                                                    title="Open source link"
+                                                >
+                                                    <Globe size={12}/> Link
+                                                </a>
+                                            )}
+                                            <button className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100">
+                                                Add to Playlist
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

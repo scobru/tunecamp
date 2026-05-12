@@ -58,4 +58,55 @@ export class BandcampStreamingProvider implements StreamingProvider {
             return null;
         }
     }
+
+     * Searches Bandcamp for tracks matching the query.
+     */
+    async search(query: string): Promise<any[]> {
+        try {
+            // Bandcamp search URL for tracks
+            const url = `https://bandcamp.com/search?q=${encodeURIComponent(query)}&item_type=t`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            });
+            const html = await response.text();
+
+            // Very basic scraping of search results
+            // This is brittle but works for a fallback
+            const results: any[] = [];
+            
+            // Regex to find track items: <li class="searchresult item track">...
+            const itemRegex = /<li class="searchresult item track">([\s\S]*?)<\/li>/g;
+            let match;
+            
+            while ((match = itemRegex.exec(html)) !== null) {
+                const itemHtml = match[1];
+                
+                const urlMatch = itemHtml.match(/<div class="heading">\s*<a href="([^"]+)"/);
+                const titleMatch = itemHtml.match(/<div class="heading">\s*<a[^>]*>\s*([\s\S]*?)\s*<\/a>/);
+                const artistMatch = itemHtml.match(/<div class="subhead">\s*by\s*([\s\S]*?)\s*<\/div>/);
+                const thumbMatch = itemHtml.match(/<div class="art">\s*<img src="([^"]+)"/);
+
+                if (urlMatch && titleMatch) {
+                    results.push({
+                        id: urlMatch[1], // Use URL as ID for Bandcamp
+                        title: titleMatch[1].trim().replace(/&amp;/g, '&'),
+                        artist: artistMatch ? artistMatch[1].trim().replace(/&amp;/g, '&') : "Unknown",
+                        url: urlMatch[1],
+                        thumbnail: thumbMatch ? thumbMatch[1] : undefined,
+                        source: "bandcamp",
+                        type: "recording"
+                    });
+                }
+                
+                if (results.length >= 5) break; // Limit results
+            }
+
+            return results;
+        } catch (error) {
+            console.error(`[BandcampProvider] ❌ Search failed for: ${query}`, error);
+            return [];
+        }
+    }
 }
