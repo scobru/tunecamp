@@ -10,6 +10,11 @@ import type { DatabaseService } from "../../database.types.js";
 export class StreamingService {
     private registry = new ProviderRegistry<StreamingProvider>();
 
+    constructor() {
+        this.registry.register(new YouTubeStreamingProvider());
+        this.registry.register(new BandcampStreamingProvider());
+    }
+
     async resolve(trackTitle: string, artistName: string, albumTitle?: string): Promise<string | null> {
         for (const provider of this.registry.getEnabled()) {
             try {

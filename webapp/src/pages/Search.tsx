@@ -180,9 +180,11 @@ export const Search = () => {
                                     <div key={`${item.source}:${item.id}`} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
                                         <button
                                             onClick={() => {
-                                                const virtualTrack: any = {
-                                                    id: `ext:${item.source}:${item.id}`,
-                                                    streamUrl: `/api/tracks/ext:${item.source}:${item.id}/stream`,
+                                                 const isStreaming = !!item.isStreaming;
+                                                 const trackId = isStreaming ? `ext:${item.source}:${item.id}` : `ext:search:${item.artist} - ${item.title}`;
+                                                 const virtualTrack: any = {
+                                                     id: trackId,
+                                                     streamUrl: `/api/tracks/${trackId}/stream`,
                                                     title: item.title,
                                                     artistName: item.artist,
                                                     albumName: item.albumTitle || 'External Release',

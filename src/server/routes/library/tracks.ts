@@ -19,10 +19,11 @@ import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
 import { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
-import { streamingService } from "../../modules/streaming/streaming.service.js";
+import { getStreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
+import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 
-export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService): Router {
+export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService): Router {
     const router = Router();
 
     /**
@@ -408,6 +409,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
     }));
 
+    const activeStreamingService = streamingService || getStreamingService();
+    
     /**
      * GET /api/tracks/:id/stream
      */
@@ -422,7 +425,15 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             const originalId = parts.slice(2).join(":");
 
             console.log(`🌐 [Streaming] Requesting external stream: ${providerId} / ${originalId}`);
-            const url = await streamingService.resolveById(providerId, originalId);
+            
+            let url: string | null = null;
+            if (providerId === 'search') {
+                const [artist, title] = originalId.split(" - ");
+                url = await activeStreamingService.resolve(title || originalId, artist || "");
+            } else {
+                url = await activeStreamingService.resolveById(providerId, originalId);
+            }
+            
             if (!url) throw new NotFoundError("External stream not found");
 
             // Redirect to the proxy route so CORS/SSL are handled centrally
@@ -475,10 +486,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             } else {
                 // --- STREAMING PROVIDER FALLBACK ---
                 // Local file missing: ask StreamingService if any registered provider can serve it.
-                if (streamingService.getRegistry().getAll().length > 0) {
+                if (activeStreamingService.getRegistry().getAll().length > 0) {
                     const title = track.title || "";
                     const artist = track.artist_name || "";
-                    const streamUrl = await streamingService.resolve(title, artist).catch(() => null);
+                    const streamUrl = await activeStreamingService.resolve(title, artist).catch(() => null);
                     if (streamUrl) {
                         console.log(`📡 [Stream] Local file missing, falling back to streaming provider for: ${artist} - ${title}`);
                         // Redirect to the existing proxy route so CORS/SSL are handled centrally

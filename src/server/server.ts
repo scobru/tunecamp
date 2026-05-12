@@ -318,7 +318,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, catalogService, config.musicDir));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, config.musicDir, authService, gdriveService));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, config.musicDir, authService, gdriveService, streamingService));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
 
     if (gdriveService) {
