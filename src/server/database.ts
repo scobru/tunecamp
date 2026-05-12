@@ -1947,7 +1947,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             } else if (filter === 'album') {
                 query = "SELECT t.*, NULL as album_title, ar.name as artist_name FROM tracks t LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.album_id IS NULL";
             } else if (filter === 'artist') {
-                query = "SELECT t.*, al.title as album_title, NULL as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id WHERE t.artist_id IS NULL";
+                query = "SELECT t.*, al.title as album_title, ar.name as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.artist_id IS NULL OR ar.name = 'Unknown Artist' OR ar.name = '' OR t.artist_name = 'Unknown Artist' OR t.artist_name = ''";
             }
             return db.prepare(query).all() as Track[];
         },
@@ -1962,7 +1962,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             } else if (filter === 'description') {
                 query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.description IS NULL OR a.description = ''";
             } else if (filter === 'artist') {
-                query = "SELECT a.*, NULL as artist_name FROM albums a WHERE a.artist_id IS NULL";
+                query = "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.artist_id IS NULL OR ar.name = 'Unknown Artist' OR ar.name = '' OR a.album_artist = 'Unknown Artist' OR a.album_artist = ''";
             }
             return (db.prepare(query).all() as any[]).map(r => (albumRepository as any).mapAlbum(r));
         },

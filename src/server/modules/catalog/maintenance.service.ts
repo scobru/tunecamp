@@ -106,6 +106,7 @@ export class MaintenanceService {
         if (metadata.year) updateData.year = metadata.year;
         if (metadata.coverUrl) updateData.externalArtwork = metadata.coverUrl;
         if (metadata.mbid || metadata.id) updateData.external_id = metadata.mbid || metadata.id;
+        if (metadata.artist) updateData.artist = metadata.artist;
         
         // Handle Album matching/creation
         if (metadata.albumTitle) {
@@ -158,6 +159,7 @@ export class MaintenanceService {
         if (metadata.date) updateData.date = metadata.date;
         if (metadata.coverUrl) updateData.cover_path = metadata.coverUrl;
         if (metadata.description) updateData.description = metadata.description;
+        if (metadata.artist) updateData.artist = metadata.artist;
         if (metadata.mbid) updateData.external_id = metadata.mbid;
 
         await this.catalogService.updateAlbum(albumId, updateData);
@@ -166,7 +168,7 @@ export class MaintenanceService {
     /**
      * Attempts to automatically fill missing metadata for a list of tracks.
      */
-    async autofillMetadata(trackIds: number[], options: { force?: boolean, fields: ('genre' | 'year' | 'cover')[] }): Promise<any> {
+    async autofillMetadata(trackIds: number[], options: { force?: boolean, fields: ('genre' | 'year' | 'cover' | 'artist' | 'album')[] }): Promise<any> {
         const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
         const tracks = this.db.getTracksByIds(trackIds);
 
@@ -211,6 +213,20 @@ export class MaintenanceService {
                 if (options.fields.includes('cover') && bestMatch.coverUrl) {
                     if (options.force || !track.external_artwork) {
                         updateData.externalArtwork = bestMatch.coverUrl;
+                        updated = true;
+                    }
+                }
+
+                if (options.fields.includes('artist') && bestMatch.artist) {
+                    if (options.force || !track.artist_id || track.artist_name === 'Unknown Artist' || track.artist_name === '') {
+                        updateData.artist = bestMatch.artist;
+                        updated = true;
+                    }
+                }
+
+                if (options.fields.includes('album') && bestMatch.album) {
+                    if (options.force || !track.album_id) {
+                        updateData.album = bestMatch.album;
                         updated = true;
                     }
                 }
@@ -288,7 +304,7 @@ export class MaintenanceService {
     /**
      * Attempts to automatically fill missing metadata for a list of albums.
      */
-    async autofillAlbumsMetadata(albumIds: number[], options: { force?: boolean, fields: ('genre' | 'year' | 'cover' | 'description')[] }): Promise<any> {
+    async autofillAlbumMetadata(albumIds: number[], options: { force?: boolean, fields: ('genre' | 'year' | 'cover' | 'description' | 'artist')[] }): Promise<any> {
         const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
         const albums = this.db.getAlbumsByIds(albumIds);
 
@@ -336,6 +352,13 @@ export class MaintenanceService {
                 if (options.fields.includes('description') && bestMatch.description) {
                     if (options.force || !album.description) {
                         updateData.description = bestMatch.description;
+                        updated = true;
+                    }
+                }
+
+                if (options.fields.includes('artist') && bestMatch.artist) {
+                    if (options.force || !album.artist_id || album.artist_name === 'Unknown Artist' || album.artist_name === '') {
+                        updateData.artist = bestMatch.artist;
                         updated = true;
                     }
                 }

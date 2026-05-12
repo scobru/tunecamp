@@ -557,7 +557,24 @@ export class CatalogService {
     }
 
     async updateAlbum(id: number, data: any): Promise<void> {
-        this.database.updateAlbum(id, data);
+        const album = this.database.getAlbum(id) || this.database.getRelease(id);
+        if (!album) throw new Error("Album not found");
+
+        const { artist, artistId, ...rest } = data;
+        let finalArtistId = artistId !== undefined ? artistId : undefined;
+
+        if (typeof artist === 'string' && artist.trim() !== "") {
+            const artistName = artist.trim();
+            const existingArtist = this.database.getArtistByName(artistName);
+            finalArtistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
+        }
+
+        const updateData = { ...rest };
+        if (finalArtistId !== undefined) {
+            updateData.artist_id = finalArtistId;
+        }
+
+        this.database.updateAlbum(id, updateData);
         await this.publishing.syncRelease(id).catch(e => console.error(`[CatalogService] Sync failed for album update:`, e));
     }
 

@@ -367,14 +367,14 @@ export const API = {
     getArtistsMissingPhotos: () => handleResponse(api.get<any[]>(`/metadata/maintenance/artists/missing`)),
     getArtistMetadataCandidates: (artistId: number) => handleResponse(api.get<any[]>(`/metadata/maintenance/artists/candidates/${artistId}`)),
     applyArtistMetadata: (artistId: number, metadata: any) => handleResponse(api.post<{ success: boolean, photoPath?: string }>(`/metadata/maintenance/artists/apply`, { artistId, metadata })),
-    autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'album')[], force?: boolean) =>
-        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/autofill', { trackIds, fields, force })),
+    autofillMetadata: (trackIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'album' | 'artist')[], force?: boolean) =>
+        handleResponse<{ success: number, failed: number, skipped: number, errors: string[] }>(api.post('/metadata/maintenance/autofill', { trackIds, fields, force })),
 
     aiAutofillMetadata: (trackIds: (string | number)[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/ai-autofill', { trackIds, force })),
 
-    autofillAlbumMetadata: (albumIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'description')[], force?: boolean) =>
-        handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/albums/autofill', { albumIds, fields, force })),
+    autofillAlbumMetadata: (albumIds: (string | number)[], fields?: ('genre' | 'year' | 'cover' | 'description' | 'artist')[], force?: boolean) =>
+        handleResponse<{ success: number, failed: number, skipped: number, errors: string[] }>(api.post('/metadata/maintenance/albums/autofill', { albumIds, fields, force })),
 
     aiAutofillAlbumMetadata: (albumIds: (string | number)[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('/metadata/maintenance/albums/ai-autofill', { albumIds, force })),

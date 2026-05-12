@@ -105,7 +105,7 @@ export const AdminMaintenancePanel = () => {
 
         setIsProcessing(true);
         try {
-            const res = await API.autofillMetadata(ids, ['genre', 'year', 'cover']);
+            const res = await API.autofillMetadata(ids, ['genre', 'year', 'cover', 'artist', 'album']);
             setResults(res);
             loadTracks(); // Refresh list
         } catch (e: any) {
@@ -137,7 +137,7 @@ export const AdminMaintenancePanel = () => {
 
         setIsProcessing(true);
         try {
-            const res = await API.autofillAlbumMetadata(ids, ['genre', 'year', 'cover', 'description']);
+            const res = await API.autofillAlbumMetadata(ids, ['genre', 'year', 'cover', 'description', 'artist']);
             setResults(res);
             loadAlbums(); // Refresh list
         } catch (e: any) {
@@ -563,7 +563,9 @@ export const AdminMaintenancePanel = () => {
                                     {mode === 'tracks' ? (
                                         <>
                                             <td className="font-medium">{item.title}</td>
-                                            <td>{item.artist_name}</td>
+                                            <td className={!item.artist_name || item.artist_name === 'Unknown Artist' ? 'text-error/70 italic' : ''}>
+                                                {item.artist_name || 'Unknown Artist'}
+                                            </td>
                                             <td className="opacity-70">{item.album_title}</td>
                                             <td>
                                                 <div className="badge badge-outline badge-xs opacity-50 italic">
