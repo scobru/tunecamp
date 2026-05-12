@@ -182,6 +182,7 @@ export const Search = () => {
                                             onClick={() => {
                                                 const virtualTrack: any = {
                                                     id: `ext:${item.source}:${item.id}`,
+                                                    streamUrl: `/api/tracks/ext:${item.source}:${item.id}/stream`,
                                                     title: item.title,
                                                     artistName: item.artist,
                                                     albumName: item.albumTitle || 'External Release',

@@ -425,8 +425,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             const url = await streamingService.resolveById(providerId, originalId);
             if (!url) throw new NotFoundError("External stream not found");
 
-            // Redirect to the external stream URL
-            return res.redirect(url);
+            // Redirect to the proxy route so CORS/SSL are handled centrally
+            return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(url)}`);
         }
 
         const id = parseInt(idParam, 10);

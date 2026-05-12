@@ -123,9 +123,14 @@ export const API = {
 
     // --- Streaming & Interactions ---
     getStreamUrl: (idOrUrl: string | number, format?: string) => {
-        let url = (typeof idOrUrl === 'number' || /^\d+$/.test(String(idOrUrl)))
-            ? `${API_URL}/tracks/${idOrUrl}/stream`
-            : idOrUrl;
+        const idStr = String(idOrUrl);
+        let url: string;
+        
+        if (typeof idOrUrl === 'number' || /^\d+$/.test(idStr) || idStr.startsWith('ext:')) {
+            url = `${API_URL}/tracks/${idStr}/stream`;
+        } else {
+            url = idStr;
+        }
 
         // If it's an absolute URL, check if it's our own origin
         let isLocal = true;
