@@ -9,7 +9,7 @@ import os from "os";
 let finalFfmpegPath = ffmpegPath;
 let finalFfprobePath = ffprobePath?.path || null;
 // Validation function
-const isValidPath = (p) => p && fs.existsSync(p);
+const isValidPath = (p: string | undefined | null) => p && fs.existsSync(p);
 if (!isValidPath(finalFfmpegPath)) {
     // Fallback for Alpine/Docker system path
     const fallbacks = [

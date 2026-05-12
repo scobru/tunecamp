@@ -61,7 +61,7 @@ async function parseFileWithRetry(filePath: string, retries = 3, delay = 500) {
         try {
             return await parseFile(filePath, { skipCovers: true });
         }
-        catch (err) {
+        catch (err: any) {
             lastError = err;
             const isRangeError = err instanceof RangeError || err?.code === 'ERR_OUT_OF_RANGE';
             if (isRangeError || err?.code === 'EBUSY' || err?.code === 'ENOENT') {
@@ -79,7 +79,7 @@ const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opu
 export class Scanner {
     database: DatabaseService;
     storage: any;
-    watcher: chokidar.FSWatcher | null = null;
+    watcher: any | null = null;
     isScanning = false;
     pendingScan: Promise<any> | null = null;
     processQueue = new ProcessingQueue();
@@ -137,10 +137,10 @@ export class Scanner {
             if (pathParts.length >= 2) {
                 const releaseSlug = pathParts[1];
                 const formalRelease = this.database.getReleaseBySlug(releaseSlug);
-                if (formalRelease) {
+                if (formalRelease && formalRelease.id !== undefined) {
                     console.log(`📂 [Scanner] Recognized formal release directory: ${relativeDir} -> Release ${formalRelease.id}`);
-                    this.folderToAlbumMap.set(dir, formalRelease.id);
-                    return formalRelease.id;
+                    this.folderToAlbumMap.set(dir, formalRelease.id!);
+                    return formalRelease.id!;
                 }
             }
         }
@@ -324,7 +324,7 @@ export class Scanner {
                 linksJson = JSON.stringify(links);
             }
             if (existingRelease) {
-                releaseId = existingRelease.id;
+                releaseId = existingRelease.id!;
                 this.database.updateRelease(releaseId, {
                     artist_id: artistId || existingRelease.artist_id,
                     cover_path: coverPath || existingRelease.cover_path,
@@ -361,7 +361,7 @@ export class Scanner {
                     status: 'draft',
                 });
             }
-            this.folderToAlbumMap.set(dir, releaseId);
+            this.folderToAlbumMap.set(dir, releaseId!);
             if (config.metadata?.tracks) {
                 for (const tc of config.metadata.tracks) {
                     if (tc.url) {
@@ -539,7 +539,7 @@ export class Scanner {
                     }
                 }
                 if (!existing.waveform) {
-                    processQueueWaveform(currentFilePath, existing.id, existing.duration, this.processQueue, this.database);
+                    processQueueWaveform(currentFilePath, existing.id, existing.duration || undefined, this.processQueue, this.database);
                 }
                 return { originalPath: filePath, success: true, message: "Track updated.", trackId: existing.id };
             }

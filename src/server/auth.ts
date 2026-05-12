@@ -573,7 +573,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
                 const text = await response.text();
                 throw new Error(`Failed to register app on ${baseUrl}: ${text}`);
             }
-            const data = await response.json();
+            const data = await response.json() as any;
             // 3. Save to DB
             db.prepare("INSERT INTO oauth_clients (instance_url, client_id, client_secret, redirect_uri) VALUES (?, ?, ?, ?)").run(baseUrl, data.client_id, data.client_secret, redirectUri);
             return {
@@ -607,7 +607,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
             if (!tokenResp.ok) {
                 throw new Error(`Failed to exchange code: ${await tokenResp.text()}`);
             }
-            const tokenData = await tokenResp.json();
+            const tokenData = await tokenResp.json() as any;
             const accessToken = tokenData.access_token;
             // 2. Verify Credentials (get user profile)
             const verifyResp = await fetch(`${url.origin}/api/v1/accounts/verify_credentials`, {
@@ -616,7 +616,7 @@ export function createAuthService(db: any, jwtSecret: string, adminUser = "admin
             if (!verifyResp.ok) {
                 throw new Error(`Failed to verify credentials: ${await verifyResp.text()}`);
             }
-            const userData = await verifyResp.json();
+            const userData = await verifyResp.json() as any;
             // Normalize acct (some instances don't include domain for local users)
             let acct = userData.acct;
             if (!acct.includes("@")) {
