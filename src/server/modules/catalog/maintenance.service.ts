@@ -224,9 +224,9 @@ export class MaintenanceService {
                     }
                 }
 
-                if (options.fields.includes('album') && bestMatch.album) {
+                if (options.fields.includes('album') && bestMatch.albumTitle) {
                     if (options.force || !track.album_id) {
-                        updateData.album = bestMatch.album;
+                        updateData.album = bestMatch.albumTitle;
                         updated = true;
                     }
                 }

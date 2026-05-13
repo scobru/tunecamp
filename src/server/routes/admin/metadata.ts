@@ -218,7 +218,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         const { albumIds, fields, force } = req.body;
         if (!Array.isArray(albumIds)) return res.status(400).json({ error: "albumIds array required" });
 
-        const results = await maintenance.autofillAlbumsMetadata(albumIds, {
+        const results = await maintenance.autofillAlbumMetadata(albumIds, {
             fields: fields || ['genre', 'year', 'cover'],
             force: !!force
         });
