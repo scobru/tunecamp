@@ -83,8 +83,10 @@ export class AutoTaggerService {
                     this.status.failedCount++;
                 }
 
-                // Low priority: yield to other tasks and avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, result.status === 'no_match' ? 100 : 500));
+                // Increased delay with jitter to avoid bot detection
+                const baseDelay = result.status === 'no_match' ? 1000 : 2500;
+                const jitter = Math.random() * 2000;
+                await new Promise(resolve => setTimeout(resolve, baseDelay + jitter));
             } catch (err) {
                 console.error(`[AutoTagger] Error auditing track ${track.id}:`, err);
                 this.status.failedCount++;

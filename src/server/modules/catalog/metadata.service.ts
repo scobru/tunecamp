@@ -21,8 +21,32 @@ export interface LyricsResult {
     source: string;
 }
 
+class MetadataCache {
+    private cache = new Map<string, { data: any, timestamp: number }>();
+    private readonly TTL = 60 * 60 * 1000; // 1 hour
+    private readonly MAX_SIZE = 1000;
+
+    get(key: string) {
+        const entry = this.cache.get(key);
+        if (entry && Date.now() - entry.timestamp < this.TTL) {
+            return entry.data;
+        }
+        this.cache.delete(key);
+        return null;
+    }
+
+    set(key: string, data: any) {
+        if (this.cache.size >= this.MAX_SIZE) {
+            const oldest = this.cache.keys().next().value;
+            if (oldest !== undefined) this.cache.delete(oldest);
+        }
+        this.cache.set(key, { data, timestamp: Date.now() });
+    }
+}
+
 export class MetadataService {
     private registry = new ProviderRegistry<MetadataProvider>();
+    private searchCache = new MetadataCache();
 
     constructor() {
         // Register default providers
@@ -40,13 +64,48 @@ export class MetadataService {
     }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {
+        const cached = this.searchCache.get(`release:${query}`);
+        if (cached) return cached;
+
         const results = await Promise.all(this.registry.getEnabled().map(p => p.searchRelease(query)));
-        return results.flat();
+        const flatResults = results.flat();
+        this.searchCache.set(`release:${query}`, flatResults);
+        return flatResults;
     }
 
     async searchRecording(query: string): Promise<MetadataMatch[]> {
-        const results = await Promise.all(this.registry.getEnabled().map(p => p.searchRecording(query)));
-        return results.flat();
+        const cached = this.searchCache.get(`recording:${query}`);
+        if (cached) return cached;
+
+        const enabled = this.registry.getEnabled();
+        const results: MetadataMatch[] = [];
+
+        // Prioritize providers and run sequentially to stop early on high confidence
+        // and reduce concurrent load on external APIs
+        const prioritizedIds = ["itunes", "musicbrainz", "discogs", "spotify", "youtube"];
+        const providers = [...enabled].sort((a, b) => {
+            const idxA = prioritizedIds.indexOf(a.id);
+            const idxB = prioritizedIds.indexOf(b.id);
+            return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        });
+
+        for (const provider of providers) {
+            try {
+                const matches = await provider.searchRecording(query);
+                if (matches.length > 0) {
+                    results.push(...matches);
+                    // If we have strong matches from a top-tier provider, we can stop early
+                    if (prioritizedIds.slice(0, 3).includes(provider.id) && matches.length > 2) {
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.warn(`[MetadataService] Provider ${provider.id} failed for query "${query}":`, e);
+            }
+        }
+
+        this.searchCache.set(`recording:${query}`, results);
+        return results;
     }
 
     async searchArtist(query: string): Promise<ArtistMetadata[]> {

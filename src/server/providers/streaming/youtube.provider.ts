@@ -41,6 +41,10 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     /** ytdl agent — created once, supports optional cookies */
     private agent: ytdl.Agent;
 
+    /** Circuit breaker state */
+    private consecutiveBotBlocks = 0;
+    private circuitBreakerUntil = 0;
+
     constructor() {
         const cookiesPath = process.env.YOUTUBE_COOKIES_PATH;
         if (cookiesPath) {
@@ -68,7 +72,15 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     }
 
     async searchRecording(query: string): Promise<MetadataResult[]> {
+        if (Date.now() < this.circuitBreakerUntil) {
+            console.warn(`[YouTubeProvider] 🔌 Circuit breaker active, skipping search for: ${query}`);
+            return [];
+        }
+
         try {
+            // Add jitter to metadata search
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
+            
             console.log(`[YouTubeMetadata] 🔍 Searching via yt-search: ${query}`);
             const results = await ytSearch(query);
             const videos = results.videos.slice(0, 5);
@@ -196,6 +208,11 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     }
 
     private async _resolveStreamUrl(urlOrId: string): Promise<string | null> {
+        if (Date.now() < this.circuitBreakerUntil) {
+            console.warn(`[YouTubeProvider] 🔌 Circuit breaker active, skipping resolution for: ${urlOrId}`);
+            return null;
+        }
+
         const clients: ("ANDROID" | "TV" | "IOS" | "WEB" | "WEB_EMBEDDED" | "ANDROID_MUSIC" | "MWEB")[] = 
             ["ANDROID", "TV", "IOS", "ANDROID_MUSIC", "MWEB", "WEB_EMBEDDED", "WEB"];
         
@@ -217,6 +234,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 const format = chooseBestAudioFormat(info.formats);
                 if (format?.url) {
                     console.log(`[YouTubeProvider] ✅ Success! Resolved via ${client}`);
+                    this.consecutiveBotBlocks = 0; // Reset on success
                     return format.url;
                 }
             } catch (error: any) {
@@ -225,6 +243,13 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 console.warn(`[YouTubeProvider] ⚠️ ${client} client failed: ${error.message}${isBot ? " (Bot Detection)" : ""}`);
                 if (!isBot) break; 
             }
+        }
+
+        // Record bot block if all local clients failed with bot detection
+        this.consecutiveBotBlocks++;
+        if (this.consecutiveBotBlocks > 5) {
+            this.circuitBreakerUntil = Date.now() + 15 * 60 * 1000; // 15 min cooldown
+            console.error(`[YouTubeProvider] 🚨 5+ bot blocks detected. Circuit breaker triggered for 15 minutes.`);
         }
 
         // --- Invidious Fallback ---

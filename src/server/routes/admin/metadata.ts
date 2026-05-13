@@ -466,6 +466,23 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
+     * POST /api/metadata/maintenance/fingerprint/scan-all
+     * Scans all tracks that don't have a fingerprint and identifies them.
+     */
+    router.post("/maintenance/fingerprint/scan-all", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        try {
+            // Runs in background to avoid client timeout
+            maintenance.batchIdentifyTracks().catch(e => {
+                console.error("[MetadataRoutes] Batch identification failed:", e);
+            });
+            res.json({ message: "Batch fingerprint identification started in background" });
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    /**
      * POST /api/metadata/maintenance/audit-all
      * Starts the background library audit/repair process
      */
