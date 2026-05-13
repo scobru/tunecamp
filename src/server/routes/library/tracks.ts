@@ -513,7 +513,43 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             } else throw new ForbiddenError("Access denied");
         }
 
-        if (!track.file_path) throw new NotFoundError("Track file not found");
+        // Handle DB tracks that are actually external links
+        const extId = track.external_id || track.url;
+        if (extId && extId.startsWith("ext:")) {
+            const parts = extId.split(":");
+            if (parts.length >= 3) {
+                const providerId = parts[1];
+                const originalId = parts.slice(2).join(":");
+                console.log(`🌐 [Streaming] Requesting external stream from DB track ${id}: ${providerId} / ${originalId}`);
+                
+                let streamUrl: string | null = null;
+                if (providerId === 'search') {
+                    const [artist, title] = originalId.split(" - ");
+                    streamUrl = await activeStreamingService.resolve(title || originalId, artist || "");
+                } else {
+                    streamUrl = await activeStreamingService.resolveById(providerId, originalId);
+                }
+                
+                if (!streamUrl) throw new NotFoundError("External stream not found");
+                return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`);
+            }
+        }
+
+        if (!track.file_path) {
+            // --- STREAMING PROVIDER FALLBACK ---
+            // Local file missing: ask StreamingService if any registered provider can serve it.
+            if (activeStreamingService.getRegistry().getAll().length > 0) {
+                const title = track.title || "";
+                const artist = track.artist_name || "";
+                const streamUrl = await activeStreamingService.resolve(title, artist).catch(() => null);
+                if (streamUrl) {
+                    console.log(`📡 [Stream] Local file missing, falling back to streaming provider for: ${artist} - ${title}`);
+                    // Redirect to the existing proxy route so CORS/SSL are handled centrally
+                    return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`);
+                }
+            }
+            throw new NotFoundError("Track file not found");
+        }
 
         // Google Drive support
         if (track.file_path.startsWith("gdrive://")) {
