@@ -1,4 +1,5 @@
-import ytdl from "@nuclearplayer/ytdl-core";
+import ytdl from "@distube/ytdl-core";
+import ytSearch from "yt-search";
 import { readFileSync } from "fs";
 import play from "play-dl";
 import type { StreamingProvider, StreamCandidate, MetadataProvider, MetadataResult } from "../../core/provider.js";
@@ -26,16 +27,16 @@ function chooseBestAudioFormat(formats: ytdl.videoFormat[]): ytdl.videoFormat | 
 }
 
 /**
- * YouTubeStreamingProvider — uses @nuclearplayer/ytdl-core for stream resolution
- * and play-dl for text-based search (ytdl-core has no search API).
+ * YouTubeStreamingProvider — uses @distube/ytdl-core for stream resolution
+ * and yt-search for text-based search (play-dl is unstable).
  *
  * Implements both StreamingProvider and MetadataProvider for alignment.
  */
 export class YouTubeStreamingProvider implements StreamingProvider, MetadataProvider {
     readonly id = "youtube";
     readonly name = "YouTube";
-    readonly version = "2.1.0";
-    readonly description = "YouTube streaming & metadata via @nuclearplayer/ytdl-core + play-dl fallback";
+    readonly version = "2.2.0";
+    readonly description = "YouTube streaming & metadata via @distube/ytdl-core + yt-search + play-dl fallback";
 
     /** ytdl agent — created once, supports optional cookies */
     private agent: ytdl.Agent;
@@ -68,31 +69,52 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
     async searchRecording(query: string): Promise<MetadataResult[]> {
         try {
-            const results = await play.search(query, {
-                limit: 5,
-                source: { youtube: "video" }
-            });
+            console.log(`[YouTubeMetadata] 🔍 Searching via yt-search: ${query}`);
+            const results = await ytSearch(query);
+            const videos = results.videos.slice(0, 5);
 
-            return results.map(v => ({
-                id: v.id!,
-                title: v.title!,
-                artist: v.channel?.name ?? "Unknown",
-                date: v.uploadedAt ?? "",
-                coverUrl: v.thumbnails[0]?.url,
+            return videos.map((v: any) => ({
+                id: v.videoId,
+                title: v.title,
+                artist: v.author?.name ?? "Unknown",
+                date: v.timestamp ?? "",
+                coverUrl: v.thumbnail,
                 source: "youtube"
             }));
         } catch (error) {
-            console.error(`[YouTubeMetadata] Search failed:`, error);
-            return [];
+            console.error(`[YouTubeMetadata] yt-search failed, falling back to play-dl:`, error);
+            try {
+                const results = await play.search(query, {
+                    limit: 5,
+                    source: { youtube: "video" }
+                });
+
+                return results.map(v => ({
+                    id: v.id!,
+                    title: v.title!,
+                    artist: v.channel?.name ?? "Unknown",
+                    date: v.uploadedAt ?? "",
+                    coverUrl: v.thumbnails[0]?.url,
+                    source: "youtube"
+                }));
+            } catch (pError) {
+                console.error(`[YouTubeMetadata] All search methods failed:`, pError);
+                return [];
+            }
         }
     }
 
     async getCoverUrl(id: string): Promise<string | null> {
         try {
-            const info = await play.video_info(id.includes("http") ? id : `https://www.youtube.com/watch?v=${id}`);
-            return info.video_details.thumbnails[0]?.url ?? null;
+            const info = await ytdl.getBasicInfo(id, { agent: this.agent });
+            return info.videoDetails.thumbnails[0]?.url ?? null;
         } catch {
-            return null;
+            try {
+                const info = await play.video_info(id.includes("http") ? id : `https://www.youtube.com/watch?v=${id}`);
+                return info.video_details.thumbnails[0]?.url ?? null;
+            } catch {
+                return null;
+            }
         }
     }
 
@@ -103,21 +125,26 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             const query = artist ? `${artist} - ${title}` : title;
             console.log(`[YouTubeProvider] 🔍 Searching: ${query}`);
 
-            const results = await play.search(query, {
-                limit: 1,
-                source: { youtube: "video" }
-            });
-
-            if (results.length === 0) {
+            const results = await ytSearch(query);
+            if (results.videos.length === 0) {
                 console.log(`[YouTubeProvider] ❌ No results for: ${query}`);
                 return null;
             }
 
-            const videoUrl = results[0].url;
-            console.log(`[YouTubeProvider] ✨ Found: ${results[0].title} → ${videoUrl}`);
-            return this._resolveStreamUrl(videoUrl);
+            const video = results.videos[0];
+            console.log(`[YouTubeProvider] ✨ Found: ${video.title} → ${video.url}`);
+            return this._resolveStreamUrl(video.videoId);
         } catch (error) {
-            console.error(`[YouTubeProvider] ❌ getStreamUrl failed for "${title}":`, error);
+            console.error(`[YouTubeProvider] ❌ getStreamUrl failed for "${title}", trying fallback search...`);
+            try {
+                const query = artist ? `${artist} - ${title}` : title;
+                const results = await play.search(query, { limit: 1, source: { youtube: "video" } });
+                if (results.length > 0) {
+                    return this._resolveStreamUrl(results[0].id!);
+                }
+            } catch (fError) {
+                console.error(`[YouTubeProvider] ❌ All search fallbacks failed for "${title}"`);
+            }
             return null;
         }
     }
@@ -132,60 +159,83 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
     async search(query: string): Promise<StreamCandidate[]> {
         try {
-            const results = await play.search(query, {
-                limit: 10,
-                source: { youtube: "video" }
-            });
-
-            return results
-                .filter(v => v.id && v.title)
-                .map(v => ({
-                    id: v.id!,
-                    title: v.title!,
-                    artist: v.channel?.name ?? "Unknown",
-                    provider: "youtube",
-                    thumbnail: v.thumbnails[0]?.url,
-                    duration: v.durationInSec,
-                    meta: { url: v.url }
-                }));
+            const results = await ytSearch(query);
+            return results.videos.slice(0, 10).map((v: any) => ({
+                id: v.videoId,
+                title: v.title,
+                artist: v.author?.name ?? "Unknown",
+                provider: "youtube",
+                thumbnail: v.thumbnail,
+                duration: v.seconds,
+                meta: { url: v.url }
+            }));
         } catch (error) {
-            console.error(`[YouTubeProvider] ❌ Search failed for: ${query}`, error);
-            return [];
+            console.error(`[YouTubeProvider] ❌ Search failed for: ${query}, falling back to play-dl`, error);
+            try {
+                const results = await play.search(query, {
+                    limit: 10,
+                    source: { youtube: "video" }
+                });
+
+                return results
+                    .filter(v => v.id && v.title)
+                    .map(v => ({
+                        id: v.id!,
+                        title: v.title!,
+                        artist: v.channel?.name ?? "Unknown",
+                        provider: "youtube",
+                        thumbnail: v.thumbnails[0]?.url,
+                        duration: v.durationInSec,
+                        meta: { url: v.url }
+                    }));
+            } catch (pError) {
+                console.error(`[YouTubeProvider] ❌ All search providers failed:`, pError);
+                return [];
+            }
         }
     }
 
     private async _resolveStreamUrl(urlOrId: string): Promise<string | null> {
-        try {
-            const info = await ytdl.getInfo(urlOrId, {
-                agent: this.agent,
-                playerClients: ["WEB", "WEB_EMBEDDED", "IOS", "ANDROID", "TV"],
-            });
+        const clients: ("ANDROID" | "TV" | "IOS" | "WEB" | "WEB_EMBEDDED")[] = ["ANDROID", "TV", "IOS", "WEB_EMBEDDED", "WEB"];
+        
+        let lastError: any = null;
 
-            const format = chooseBestAudioFormat(info.formats);
-            if (!format?.url) {
-                console.warn(`[YouTubeProvider] ⚠️ No audio format found for ${urlOrId}`);
-                return null;
-            }
-
-            return format.url;
-        } catch (error: any) {
-            console.error(`[YouTubeProvider] ❌ ytdl-core failed for ${urlOrId}: ${error.message}`);
-            
+        for (const client of clients) {
             try {
-                console.log(`[YouTubeProvider] 🔄 Attempting play-dl fallback for ${urlOrId}...`);
-                const info = await play.video_info(urlOrId.includes("http") ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`);
-                const format = info.format.find(f => (f.mimeType?.includes("audio") || f.audioQuality) && f.url);
-                
+                console.log(`[YouTubeProvider] ⚡ Resolving ${urlOrId} via ${client} client...`);
+                const info = await ytdl.getInfo(urlOrId, {
+                    agent: this.agent,
+                    playerClients: [client],
+                });
+
+                const format = chooseBestAudioFormat(info.formats);
                 if (format?.url) {
-                    console.log(`[YouTubeProvider] ✨ Success! Resolved via play-dl fallback.`);
+                    console.log(`[YouTubeProvider] ✅ Success! Resolved via ${client}`);
                     return format.url;
                 }
-                console.warn(`[YouTubeProvider] ⚠️ play-dl fallback found no audio format.`);
-            } catch (pError: any) {
-                console.error(`[YouTubeProvider] ❌ play-dl fallback also failed: ${pError.message}`);
+            } catch (error: any) {
+                lastError = error;
+                const isBot = error.message?.includes("bot") || error.message?.includes("Sign in");
+                console.warn(`[YouTubeProvider] ⚠️ ${client} client failed: ${error.message}${isBot ? " (Bot Detection)" : ""}`);
+                if (!isBot) break; // If it's not a bot error, maybe the ID is just invalid, no point in rotating
             }
-            
-            throw error;
         }
+
+        // Final fallback to play-dl
+        try {
+            console.log(`[YouTubeProvider] 🔄 Final attempt via play-dl fallback for ${urlOrId}...`);
+            const info = await play.video_info(urlOrId.includes("http") ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`);
+            const format = info.format.find(f => (f.mimeType?.includes("audio") || f.audioQuality) && f.url);
+            
+            if (format?.url) {
+                console.log(`[YouTubeProvider] ✨ Success! Resolved via play-dl fallback.`);
+                return format.url;
+            }
+        } catch (pError: any) {
+            console.error(`[YouTubeProvider] ❌ All resolution methods failed for ${urlOrId}`);
+        }
+
+        if (lastError) throw lastError;
+        return null;
     }
 }

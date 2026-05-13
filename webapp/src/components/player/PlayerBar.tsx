@@ -130,7 +130,8 @@ export const PlayerBar = () => {
     let newSrc = API.getStreamUrl(currentTrack.streamUrl || currentTrack.id, forceMp3 ? 'mp3' : undefined);
     
     // Remote absolute URL - check if needs proxy
-    if (newSrc.includes('://')) {
+    // We check if it starts with http to avoid double-proxying local /api paths that contain '://' (like ext: IDs)
+    if (newSrc.startsWith('http')) {
         try {
             const streamUrlObj = new URL(newSrc);
             const isLocalOrigin = streamUrlObj.origin === window.location.origin;
@@ -138,7 +139,8 @@ export const PlayerBar = () => {
                 newSrc = `/api/proxy/stream?url=${encodeURIComponent(newSrc)}`;
             }
         } catch (e) {
-            newSrc = `/api/proxy/stream?url=${encodeURIComponent(newSrc)}`;
+            // If it's a broken absolute URL, try proxying anyway or leave as is
+            console.warn("[Player] Invalid absolute stream URL:", newSrc);
         }
     }
 

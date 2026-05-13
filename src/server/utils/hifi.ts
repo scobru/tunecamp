@@ -4,6 +4,8 @@ const HIFI_INSTANCES = [
   'https://api.monochrome.tf',
   'https://monochrome-api.samidy.com',
   'https://hifi.geeked.wtf',
+  'https://lossless.wtf',
+  'https://if-it-runs-ship-it.lol',
   'https://wolf.qqdl.site',
   'https://maus.qqdl.site',
   'https://vogel.qqdl.site',
@@ -64,7 +66,9 @@ export class HiFiClient {
     Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
 
     try {
-      const response = await fetch(url.toString());
+      const response = await fetch(url.toString(), {
+        signal: AbortSignal.timeout(5000) // Don't wait too long for dead instances
+      });
       if (response.ok) {
         return response.json() as Promise<T>;
       }
