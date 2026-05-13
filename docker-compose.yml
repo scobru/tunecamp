@@ -51,6 +51,14 @@ services:
       - PAYPAL_ENVIRONMENT=sandbox
       # Payments: MoonPay
       - MOONPAY_API_KEY=
+      # Spotify Integration
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID:-}
+      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET:-}
+      # YouTube Bot Detection Bypass
+      - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
+      # Scrobbling
+      - LASTFM_API_KEY=${LASTFM_API_KEY:-}
+      - LISTENBRAINZ_TOKEN=${LISTENBRAINZ_TOKEN:-}
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 

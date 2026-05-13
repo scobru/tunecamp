@@ -38,6 +38,8 @@ docker-compose up -d --build
 - 🖥️ **Streaming Server**: Personal streaming server with a modern, responsive web interface.
 - 🎨 **Customizable**: Theming, background images, cover images, site branding, and per-artist profiles.
 - 🔍 **Full-text Search**: Search across artists, albums, and tracks with fuzzy matching.
+- 🔊 **Smart Streaming**: Multi-provider fallback (YouTube, Bandcamp, SoundCloud, HiFi) with advanced bot-detection bypass for YouTube.
+- 📡 **HiFi Support**: Integration with community-hosted HiFi API instances for high-quality audio.
 
 ### Decentralization & Federation
 - 🔐 **Zen Identity**: Cryptographic keypairs (SEA) for signing, identity roaming across instances, and decentralized comments/stats.
@@ -158,6 +160,11 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x833589...02913` |
 | `TUNECAMP_DOWNLOAD_DIR` | Directory for soulseek downloads | `/data/downloads` |
 | `DISCOGS_TOKEN` | Discogs API token for metadata matching | — |
+| `SPOTIFY_CLIENT_ID` | Spotify API client ID for metadata/playlist import | — |
+| `SPOTIFY_CLIENT_SECRET` | Spotify API client secret | — |
+| `YOUTUBE_COOKIES_PATH` | Path to JSON cookies file for YouTube bot bypass | — |
+| `LASTFM_API_KEY` | Last.fm API key for scrobbling | — |
+| `LISTENBRAINZ_TOKEN` | ListenBrainz token for scrobbling | — |
 
 ## API & Integrations
 

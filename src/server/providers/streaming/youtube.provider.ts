@@ -227,6 +227,37 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             }
         }
 
+        // --- Invidious Fallback ---
+        console.log(`[YouTubeProvider] 🔄 Local resolution failed. Attempting Invidious fallback for ${urlOrId}...`);
+        const invidiousInstances = [
+            "https://invidious.lunar.icu",
+            "https://inv.vern.cc",
+            "https://invidious.projectsegfau.lt",
+            "https://yewtu.be",
+            "https://iv.ggtyler.dev"
+        ];
+
+        const videoId = urlOrId.includes("v=") ? urlOrId.split("v=")[1].split("&")[0] : urlOrId;
+
+        for (const instance of invidiousInstances) {
+            try {
+                const res = await fetch(`${instance}/api/v1/videos/${videoId}?fields=adaptiveFormats`);
+                if (res.ok) {
+                    const data: any = await res.json();
+                    const audioFormat = data.adaptiveFormats
+                        .filter((f: any) => f.type.startsWith("audio/"))
+                        .sort((a: any, b: any) => parseInt(b.bitrate) - parseInt(a.bitrate))[0];
+                    
+                    if (audioFormat?.url) {
+                        console.log(`[YouTubeProvider] ✨ Success! Resolved via Invidious instance: ${instance}`);
+                        return audioFormat.url;
+                    }
+                }
+            } catch (e) {
+                // Instance might be down, try next
+            }
+        }
+
         // Final fallback to play-dl
         try {
             console.log(`[YouTubeProvider] 🔄 Final attempt via play-dl fallback for ${urlOrId}...`);

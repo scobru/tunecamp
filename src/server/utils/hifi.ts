@@ -6,12 +6,12 @@ const HIFI_INSTANCES = [
   'https://hifi.geeked.wtf',
   'https://lossless.wtf',
   'https://if-it-runs-ship-it.lol',
+  'https://tidal.kinoplus.online',
   'https://wolf.qqdl.site',
   'https://maus.qqdl.site',
   'https://vogel.qqdl.site',
   'https://katze.qqdl.site',
   'https://hund.qqdl.site',
-  'https://tidal.kinoplus.online',
 ];
 
 const TIDAL_IMAGE_BASE = 'https://resources.tidal.com/images';
@@ -70,6 +70,10 @@ export class HiFiClient {
         signal: AbortSignal.timeout(5000) // Don't wait too long for dead instances
       });
       if (response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error(`Invalid content type: ${contentType}`);
+        }
         return await response.json() as Promise<T>;
       }
       
