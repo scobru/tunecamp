@@ -1,5 +1,5 @@
 import { createDatabase } from '../../../database.js';
-import { createAuthService } from '../../../auth.js';
+import { createAuthService } from '../../../modules/auth/auth.service.js';
 import { createSubsonicRouter } from '../subsonic.js';
 import { jest } from '@jest/globals';
 import request from 'supertest';

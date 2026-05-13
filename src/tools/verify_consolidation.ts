@@ -1,5 +1,5 @@
 import { createDatabase } from "../server/database.js";
-import { Scanner } from "../server/scanner.js";
+import { Scanner } from "../server/modules/catalog/scanner.js";
 import path from "path";
 import fs from "fs-extra";
 

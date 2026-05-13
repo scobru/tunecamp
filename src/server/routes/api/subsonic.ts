@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { resolveSafePath } from '../../../utils/fileUtils.js';
 import { getPlaceholderSVG } from '../../../utils/audioUtils.js';
-import { transcode } from '../../ffmpeg.js';
+import { transcode } from '../../modules/media/ffmpeg.js';
 import type { DatabaseService, Track } from '../../database';
 import type { AuthService } from '../../modules/auth/auth.service.js';
 

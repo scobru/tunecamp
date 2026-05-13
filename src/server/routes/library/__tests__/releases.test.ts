@@ -5,7 +5,7 @@ import { jest } from '@jest/globals';
 import type { DatabaseService } from '../../../database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.service.js';
 import type { PublishingService } from '../../../publishing.js';
-import type { AuthService } from '../../../auth.js';
+import type { AuthService } from '../../../modules/auth/auth.service.js';
 
 // Mock dependencies
 const mockDatabase = {

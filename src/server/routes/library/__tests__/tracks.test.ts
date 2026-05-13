@@ -52,7 +52,7 @@ jest.unstable_mockModule('node-id3', () => ({
 }));
 
 // Mock ../ffmpeg.js
-jest.unstable_mockModule('../../../ffmpeg.js', () => ({
+jest.unstable_mockModule('../../../modules/media/ffmpeg.js', () => ({
     writeMetadata: jest.fn()
 }));
 

@@ -97,11 +97,21 @@ Chronological log of completed tasks and significant architectural decisions.
 - **Linda Messaging**: Documented the Zen-based bridge for decentralized messaging, group management, and track forwarding.
 - **Agent Updates**: Updated `tc-web3-payments` skill to include Stripe and Onramp management.
 
-### 3. Documentation Audit Refinement & Mandate Alignment
-**Summary**: Refined project documentation to strictly align with architectural mandates and recent migration tools.
-- **Mandate Updates**: Corrected `agents/GEMINI.md` to prefer `undici/fetch` (Node-native) over `httpx` and explicitly stated the transition to `Vitest` for new tests.
-- **Guide Updates**: Added `migrate:dedupe` and `migrate:visibility` scripts to `docs/development-guide.md`.
-- **Architecture**: Synchronized `docs/architecture-backend.md` with the "Manual Release" mandate (Scanner creates drafts only).
-- **Deprecation**: Rimossi riferimenti a **PayPal** in tutta la documentazione e nel frontend (deprecato).
-- **Index**: Updated documentation timestamp to 2026-05-11.
+---
+
+## 2026-05-13
+
+### 1. Architectural Cleanup & Legacy File Removal
+**Summary**: Finalized the transition to the modular architecture by removing redundant legacy files from the root `src/server/` directory and synchronizing all imports.
+- **Files Removed**:
+    - `src/server/auth.ts` (Replaced by `modules/auth/auth.service.ts`)
+    - `src/server/scanner.ts` (Replaced by `modules/catalog/scanner.ts`)
+    - `src/server/zen.ts` (Replaced by `modules/network/zen.ts`)
+    - `src/server/waveform.ts` (Replaced by `modules/waveform/waveform-peak.service.ts`)
+    - `src/server/ffmpeg.ts` (Replaced by `modules/media/ffmpeg.ts`)
+- **Impact**:
+    - Updated `src/tools/verify_consolidation.ts` to use the modular scanner.
+    - Fixed broken imports in multiple test files (`subsonic.test.ts`, `tracks.test.ts`, etc.) that were still pointing to the legacy root files.
+    - Verified build success with `npm run build`.
+- **Result**: The codebase is now cleaner, with a clear separation between modular services and the server entry point.
 
