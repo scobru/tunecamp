@@ -594,6 +594,8 @@ export function createAdminRoutes(
             const ytProvider = streamingService?.getProvider?.('youtube') || streamingService?.registry?.get?.('youtube');
             if (ytProvider && typeof ytProvider === 'object') {
                 (ytProvider as any).cookiesPath = cookiesPath;
+                (ytProvider as any).consecutiveBotBlocks = 0;
+                (ytProvider as any).circuitBreakerUntil = 0;
                 console.log(`[Admin] YouTube cookies path updated dynamically for provider`);
             }
 
