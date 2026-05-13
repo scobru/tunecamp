@@ -183,12 +183,18 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             
             const options: any = {
                 getUrl: true,
-                format: 'bestaudio/best',
+                format: 'ba/b', // Use ba/b to ensure fallback to best mixed format if audio-only is missing
                 noWarnings: true,
                 noCheckCertificate: true,
-                extractorArgs: 'youtube:player_client=android,web' // Bypass trick for sign-in walls
             };
-            if (this.cookiesPath) options.cookies = this.cookiesPath;
+            
+            if (this.cookiesPath) {
+                options.cookies = this.cookiesPath;
+                // If cookies are provided, use the default clients. The android client skips formats without PO token.
+            } else {
+                // Bypass trick for sign-in walls when no cookies are provided
+                options.extractorArgs = 'youtube:player_client=android,web';
+            }
 
             const url = await youtubedl(targetUrl, options);
             if (url && typeof url === 'string') {

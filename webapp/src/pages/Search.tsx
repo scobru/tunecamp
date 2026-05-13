@@ -32,7 +32,7 @@ export const Search = () => {
                 API.getStarredArtists()
             ]);
             setPlaylists(pData);
-            setStarredTracks(new Set(sTracks));
+            setStarredTracks(new Set(sTracks.map((t: any) => String(t.id || t))));
             setStarredAlbums(new Set(sAlbums.map(String)));
             setStarredArtists(new Set(sArtists.map(String)));
         } catch (e) {
@@ -420,12 +420,15 @@ export const Search = () => {
                                 {[
                                     ...((results as any).streaming || []),
                                     ...((results as any).external || [])
-                                ].map((item: any) => (
-                                    <div key={`${item.source}:${item.id}`} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
+                                ].map((rawItem: any) => {
+                                    const isStreaming = !!rawItem.isStreaming;
+                                    const trackId = isStreaming ? `ext:${rawItem.source}:${rawItem.id}` : `ext:search:${rawItem.artist} - ${rawItem.title}`;
+                                    const item = { ...rawItem, id: trackId, originalId: rawItem.id };
+                                    
+                                    return (
+                                        <div key={`${item.source}:${item.originalId}`} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
                                         <button
                                             onClick={() => {
-                                                 const isStreaming = !!item.isStreaming;
-                                                 const trackId = isStreaming ? `ext:${item.source}:${item.id}` : `ext:search:${item.artist} - ${item.title}`;
                                                  const virtualTrack: any = {
                                                      id: trackId,
                                                      streamUrl: `/api/tracks/${trackId}/stream`,
@@ -534,7 +537,8 @@ export const Search = () => {
                                             </div>
                                         </div>
                                     </div>
-                                ))}
+                                );
+                            })}
                             </div>
                         </section>
                     )}
