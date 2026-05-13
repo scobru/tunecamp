@@ -26,7 +26,7 @@ import type {
 const _insertQueueTrackStmts = new Map<number, any>();
 
 export function createDatabase(dbPath: string): DatabaseService {
-    const db = new Database(dbPath, { verbose: console.log });
+    const db = new Database(dbPath);
     
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");

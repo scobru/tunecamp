@@ -198,7 +198,16 @@ export const Search = () => {
                                             className="relative w-10 h-10 shrink-0"
                                         >
                                              {(item.coverUrl || item.thumbnail) ? (
-                                                 <img src={item.coverUrl || item.thumbnail} alt="" className="w-full h-full rounded object-cover" />
+                                                 <img 
+                                                    src={item.coverUrl || item.thumbnail} 
+                                                    alt="" 
+                                                    className="w-full h-full rounded object-cover" 
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik05IDE4VjVsMTItMi43VjE0Ij48L3BhdGg+PGNpcmNsZSBjeD0iNiIgY3k9IjE4IiByPSIzIj48L2NpcmNsZT48Y2lyY2xlIGN4PSIxOCIgY3k9IjE2IiByPSIzIj48L2NpcmNsZT48L3N2Zz4='; // Music icon placeholder
+                                                        target.className = "w-full h-full rounded object-cover opacity-30 p-2 bg-neutral";
+                                                    }}
+                                                 />
                                              ) : (
                                                  <div className="w-full h-full bg-neutral rounded flex items-center justify-center">
                                                      <Music size={16} />

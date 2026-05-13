@@ -205,7 +205,12 @@ export function createSearchRoutes(
                 const acc = await accPromise;
                 try {
                     const results = await provider.searchRecording(query);
-                    return [...acc, ...results.map(r => ({ ...r, isExternal: true, providerId: provider.id }))];
+                    return [...acc, ...results.map(r => ({ 
+                        ...r, 
+                        isExternal: true, 
+                        providerId: provider.id,
+                        source: provider.id
+                    }))];
                 } catch (e) {
                     return acc;
                 }
@@ -213,7 +218,12 @@ export function createSearchRoutes(
 
             // 3. Search Streaming Providers (YouTube, SoundCloud, Bandcamp)
             const candidates = await streamingService.search(query);
-            const streamingResults = candidates.map(r => ({ ...r, isStreaming: true, providerId: r.provider }));
+            const streamingResults = candidates.map(r => ({ 
+                ...r, 
+                isStreaming: true, 
+                providerId: r.provider,
+                source: r.provider // Frontend expects 'source' for ID construction
+            }));
 
             res.json({
                 local: localResults,
