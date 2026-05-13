@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { drainResponse } from "../../utils.js";
+import { drainResponse } from "../../common/network.js";
 import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase } from "../../core/provider.js";
 import { BandcampMetadataProvider } from "../../providers/metadata/bandcamp.metadata.js";
 import { SoundCloudMetadataProvider } from "../../providers/metadata/soundcloud.metadata.js";
@@ -12,7 +12,7 @@ import { TheAudioDBProvider } from "../../providers/metadata/theaudiodb.provider
 import { SpotifyProvider } from "../../providers/metadata/spotify.provider.js";
 import { HiFiProvider } from "../../providers/streaming/hifi.provider.js";
 import { DeezerProvider } from "../../providers/playlists/deezer.playlist.js";
-import type { DatabaseService } from "../../database.types.js";
+import type { DatabaseService } from "../../core/database.types.js";
 
 export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
 

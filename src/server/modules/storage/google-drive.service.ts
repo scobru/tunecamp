@@ -1,5 +1,5 @@
 import axios from "axios";
-import { type DatabaseService, type StorageAccount } from "../../database.types.js";
+import { type DatabaseService, type StorageAccount } from "../../core/database.types.js";
 import { type Readable } from "stream";
 import FormData from "form-data";
 

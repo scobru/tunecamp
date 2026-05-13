@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import { createDatabase } from './database.js';
+import { createDatabase } from '../core/database.js';
 
 describe('Ownership Foreign Key Verification', () => {
     let db: any;

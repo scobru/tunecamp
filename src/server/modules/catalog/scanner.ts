@@ -3,7 +3,7 @@ import chokidar, { type FSWatcher } from "chokidar";
 import { parseFile } from "music-metadata";
 import { parse } from "yaml";
 
-import type { DatabaseService, Artist, Album, Track } from "../../database.js";
+import type { DatabaseService, Artist, Album, Track } from "../../core/database.js";
 import { WaveformPeakService } from "../waveform/waveform-peak.service.js";
 import { slugify } from "../../../utils/audioUtils.js";
 import { convertWavToMp3, getDurationFromFfmpeg } from "../media/ffmpeg.js";

@@ -4,8 +4,8 @@ import AdmZip from "adm-zip";
 import fs from "fs-extra";
 import path from "path";
 import multer from "multer";
-import type { DatabaseService } from "../../database.js";
-import type { ServerConfig } from "../../config.js";
+import type { DatabaseService } from "../../core/database.js";
+import type { ServerConfig } from "../../core/config.js";
 import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 
 // Ensure uploads directory exists

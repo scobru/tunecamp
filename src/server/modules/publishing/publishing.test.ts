@@ -1,9 +1,9 @@
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { PublishingService } from './publishing.service.js';
-import { createDatabase } from '../../database.js';
+import { createDatabase } from '../../core/database.js';
 import type { ZenDBService } from '../network/zendb.service.js';
 import type { ActivityPubService } from '../activitypub/activitypub.service.js';
-import type { ServerConfig } from '../../config.js';
+import type { ServerConfig } from '../../core/config.js';
 
 const TEST_DB_PATH = ':memory:';
 

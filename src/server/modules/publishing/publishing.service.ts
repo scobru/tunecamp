@@ -1,9 +1,9 @@
 import { stringify } from "yaml";
 import path from "path";
-import type { DatabaseService, Post, Release } from "../../database.js";
+import type { DatabaseService, Post, Release } from "../../core/database.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
-import type { ServerConfig } from "../../config.js";
+import type { ServerConfig } from "../../core/config.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
 
 export class PublishingService {
@@ -68,8 +68,9 @@ export class PublishingService {
      * Broadcasts a deletion of a release via ActivityPub.
      */
     async unpublishReleaseFromAP(release: Release): Promise<void> {
-        console.log(`🗑️ Broadcasting deletion of release "${release.title}" via ActivityPub...`);
         try {
+            // Only broadcast if it was actually marked as published or we are ensuring it's gone
+            console.log(`🗑️ Broadcasting deletion of release "${release.title}" via ActivityPub...`);
             await this.ap.broadcastDelete(release as any);
         } catch (e) {
             console.error("❌ Failed to broadcast release deletion via ActivityPub:", e);
@@ -107,8 +108,11 @@ export class PublishingService {
             try {
                 if (isPublic && release.published_to_ap) {
                     await this.publishReleaseToAP(release);
-                } else {
+                } else if (release.published_to_ap) {
+                    // Only unpublish if it was previously marked as published
                     await this.unpublishReleaseFromAP(release);
+                    // Update the flag in DB to reflect it's no longer published
+                    (this.db as any).db.prepare("UPDATE albums SET published_to_ap = 0 WHERE id = ?").run(release.id);
                 }
             } catch (e) {
                 console.error(`❌ ActivityPub sync failed for release ${releaseId}:`, e);

@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { drainResponse } from './utils.js';
+import { drainResponse } from '../../common/network.js';
 
 interface PriceCache {
     rate: number;

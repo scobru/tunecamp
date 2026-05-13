@@ -1,14 +1,14 @@
 import path from "path";
 import fs from "fs-extra";
-import { metadataService } from "./modules/catalog/metadata.service.js";
-import { streamingService } from "./modules/streaming/streaming.service.js";
-import { getScannerService } from "./modules/catalog/scanner.service.js";
-import { getDownloadService } from "./modules/catalog/download.service.js";
-import { storageService } from "./modules/storage/storage.service.js";
-import { federationService } from "./modules/activitypub/federation.service.js";
-import { aiService } from "./modules/ai/ai.service.js";
+import { metadataService } from "../modules/catalog/metadata.service.js";
+import { streamingService } from "../modules/streaming/streaming.service.js";
+import { getScannerService } from "../modules/catalog/scanner.service.js";
+import { getDownloadService } from "../modules/catalog/download.service.js";
+import { storageService } from "../modules/storage/storage.service.js";
+import { federationService } from "../modules/activitypub/federation.service.js";
+import { aiService } from "../modules/ai/ai.service.js";
 
-import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, FederationProvider, AIProvider } from "./core/provider.js";
+import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, FederationProvider, AIProvider } from "./provider.js";
 
 const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
 

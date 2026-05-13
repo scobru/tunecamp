@@ -2,7 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import { createActivityPubRoutes } from '../activitypub.js';
-import type { DatabaseService } from '../../../database.js';
+import type { DatabaseService } from '../../../core/database.js';
 import type { ActivityPubService } from '../../../modules/activitypub/activitypub.service.js';
 
 const mockDb = {

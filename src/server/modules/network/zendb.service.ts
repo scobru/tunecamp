@@ -1,9 +1,9 @@
 import { getZen, Zen } from "./zen.js";
 import fetch from "node-fetch";
-import { drainResponse } from "../../utils.js";
+import { drainResponse } from "../../common/network.js";
 import { discoverNetworkIdentity, getHardwarePeerId, setupPeerExchange } from "./zen-network.js";
 
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import { normalizeUrl, slugify } from "../../../utils/audioUtils.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import fs from "fs-extra";

@@ -1,6 +1,6 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
-import type { RemoteActor } from "../database.types.js";
+import type { RemoteActor } from "../core/database.types.js";
 
 export class RemoteActorRepository extends BaseRepository {
     constructor(db: DatabaseType) {

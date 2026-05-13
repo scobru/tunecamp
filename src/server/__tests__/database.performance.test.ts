@@ -35,7 +35,7 @@ describe('Database Performance Improvements', () => {
 
     beforeAll(async () => {
         // Dynamic import after mocking
-        const module = await import('./database.js');
+        const module = await import('../core/database.js');
         createDatabase = module.createDatabase;
     });
 

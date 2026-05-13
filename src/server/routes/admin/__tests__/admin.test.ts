@@ -2,9 +2,9 @@ import { createAdminRoutes } from '../admin.js';
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import type { DatabaseService } from '../../../database.js';
+import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.service.js';
-import type { ServerConfig } from '../../../config.js';
+import type { ServerConfig } from '../../../core/config.js';
 import type { ZenDBService } from '../../../modules/network/zendb.service.js';
 import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
 

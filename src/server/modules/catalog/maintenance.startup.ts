@@ -3,9 +3,9 @@ import path from 'path';
 import crypto from 'crypto';
 import * as mm from 'music-metadata';
 import { glob } from 'glob';
-import type { DatabaseService } from './database.js';
-import type { ServerConfig } from './config.js';
-import { StringUtils } from '../utils/stringUtils.js';
+import type { DatabaseService } from '../../core/database.js';
+import type { ServerConfig } from '../../core/config.js';
+import { StringUtils } from '../../../utils/stringUtils.js';
 
 /**
  * 🛠️ TuneCamp Startup Maintenance

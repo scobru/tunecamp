@@ -5,7 +5,7 @@ import path from 'path';
 import sqlite3 from 'better-sqlite3';
 import * as mm from 'music-metadata';
 import crypto from 'crypto';
-import { loadConfig } from '../server/config.js';
+import { loadConfig } from '../server/core/config.js';
 import { glob } from 'glob';
 
 /**

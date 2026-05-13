@@ -1,6 +1,6 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
-import type { Album, Release } from "../database.types.js";
+import type { Album, Release } from "../core/database.types.js";
 
 export class AlbumRepository extends BaseRepository {
     constructor(db: DatabaseType) {

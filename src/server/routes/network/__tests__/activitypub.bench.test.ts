@@ -1,5 +1,5 @@
 
-import { createDatabase } from "../../../database.js";
+import { createDatabase } from "../../../core/database.js";
 import fs from "fs";
 import path from "path";
 

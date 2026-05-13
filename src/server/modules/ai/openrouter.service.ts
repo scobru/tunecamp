@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
-import type { DatabaseService, Track } from "../../database.js";
-import type { ServerConfig } from "../../config.js";
+import type { DatabaseService, Track } from "../../core/database.js";
+import type { ServerConfig } from "../../core/config.js";
 
 
 export interface AIEnrichedMetadata {

@@ -4,7 +4,7 @@ import request from 'supertest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import type { DatabaseService } from '../../../database.js';
+import type { DatabaseService } from '../../../core/database.js';
 import type { CatalogService } from '../../../modules/catalog/catalog.service.js';
 
 // Mock music-metadata

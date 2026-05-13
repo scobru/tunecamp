@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { SoulseekService } from "../../modules/integrations/soulseek.js";
 import type { ScannerService } from "../../modules/catalog/scanner.service.js";

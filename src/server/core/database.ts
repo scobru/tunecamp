@@ -1,12 +1,12 @@
 import Database from "better-sqlite3";
 import type { Database as DatabaseType } from "better-sqlite3";
-import { TrackRepository } from "./repositories/track.repository.js";
-import { AlbumRepository } from "./repositories/album.repository.js";
-import { ArtistRepository } from "./repositories/artist.repository.js";
-import { ReleaseTrackRepository } from "./repositories/release-track.repository.js";
-import { SocialRepository } from "./repositories/social.repository.js";
-import { RemoteActorRepository } from "./repositories/remote-actor.repository.js";
-import { RemoteContentRepository } from "./repositories/remote-content.repository.js";
+import { TrackRepository } from "../repositories/track.repository.js";
+import { AlbumRepository } from "../repositories/album.repository.js";
+import { ArtistRepository } from "../repositories/artist.repository.js";
+import { ReleaseTrackRepository } from "../repositories/release-track.repository.js";
+import { SocialRepository } from "../repositories/social.repository.js";
+import { RemoteActorRepository } from "../repositories/remote-actor.repository.js";
+import { RemoteContentRepository } from "../repositories/remote-content.repository.js";
 
 // All types are defined in database.types.ts and re-exported here for backward compatibility
 export type {
@@ -1952,7 +1952,11 @@ export function createDatabase(dbPath: string): DatabaseService {
                 query = "SELECT t.*, NULL as album_title, ar.name as artist_name FROM tracks t LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.album_id IS NULL";
             } else if (filter === 'artist') {
                 query = "SELECT t.*, al.title as album_title, ar.name as artist_name FROM tracks t LEFT JOIN albums al ON t.album_id = al.id LEFT JOIN artists ar ON t.artist_id = ar.id WHERE t.artist_id IS NULL OR ar.name = 'Unknown Artist' OR ar.name = '' OR t.artist_name = 'Unknown Artist' OR t.artist_name = ''";
+            } else if (filter === 'description') {
+                return [];
             }
+
+            if (!query) return [];
             return db.prepare(query).all() as Track[];
         },
         getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[] {

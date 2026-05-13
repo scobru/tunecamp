@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { validatePassword } from './validators.js';
+import { validatePassword } from '../common/validators.js';
 
 describe('Validators', () => {
     describe('validatePassword', () => {

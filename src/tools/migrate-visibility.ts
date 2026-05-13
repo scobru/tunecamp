@@ -8,7 +8,7 @@
  */
 
 import sqlite3 from 'better-sqlite3';
-import { loadConfig } from '../server/config.js';
+import { loadConfig } from '../server/core/config.js';
 import path from 'path';
 import fs from 'fs';
 

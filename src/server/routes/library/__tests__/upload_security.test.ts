@@ -5,7 +5,7 @@ import { jest } from '@jest/globals';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import type { DatabaseService } from '../../../database.js';
+import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.js';
 
 // Mock dependencies

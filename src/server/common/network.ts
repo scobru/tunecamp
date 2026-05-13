@@ -1,5 +1,5 @@
 import fetch, { Response, RequestInit } from 'node-fetch';
-import { isSafeUrl } from '../utils/networkUtils.js';
+import { isSafeUrl } from '../../utils/networkUtils.js';
 
 /**
  * Ensures the response body is always consumed to prevent memory leaks in node-fetch.

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
-import { validatePassword } from "../../validators.js";
+import { validatePassword } from "../../common/validators.js";
 import { UserRole } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 

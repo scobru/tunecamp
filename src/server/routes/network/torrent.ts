@@ -1,7 +1,7 @@
 import express from 'express';
 import { TorrentService } from '../../modules/integrations/torrent.service.js';
 import { createAuthMiddleware } from '../../middleware/auth.js';
-import { DatabaseService } from '../../database.types.js';
+import { DatabaseService } from '../../core/database.types.js';
 
 import type { AuthService } from "../../modules/auth/auth.service.js";
 

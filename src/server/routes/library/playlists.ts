@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 

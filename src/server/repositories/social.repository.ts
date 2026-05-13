@@ -1,6 +1,6 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
-import type { Follower, TrackWithPlayCount, ArtistWithPlayCount, PlayHistoryEntry } from "../database.types.js";
+import type { Follower, TrackWithPlayCount, ArtistWithPlayCount, PlayHistoryEntry } from "../core/database.types.js";
 
 export class SocialRepository extends BaseRepository {
     constructor(db: DatabaseType) {

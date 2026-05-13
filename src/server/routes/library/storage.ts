@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { type GoogleDriveService } from "../../modules/storage/google-drive.service.js";
-import { type DatabaseService } from "../../database.types.js";
+import { type DatabaseService } from "../../core/database.types.js";
 import { type AuthenticatedRequest } from "../../middleware/auth.js";
 import { type CatalogService } from "../../modules/catalog/catalog.service.js";
 

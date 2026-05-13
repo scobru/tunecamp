@@ -1,4 +1,4 @@
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { StorageEngine } from "../../modules/storage/storage.engine.js";
 import type { ScannerProvider } from "../../core/provider.js";
 import type { Scanner, ScanResult } from "../../modules/catalog/scanner.js";

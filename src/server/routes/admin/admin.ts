@@ -2,13 +2,13 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { Router } from "express";
 import path from "path";
 import fs from "fs-extra";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
-import type { ServerConfig } from "../../config.js";
+import type { ServerConfig } from "../../core/config.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
-import { validatePassword } from "../../validators.js";
+import { validatePassword } from "../../common/validators.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import type { SoulseekService } from "../../modules/integrations/soulseek.js";
@@ -453,7 +453,7 @@ export function createAdminRoutes(
             }
             
             console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
-            const { runStartupMaintenance } = await import("../../maintenance.js");
+            const { runStartupMaintenance } = await import("../../modules/catalog/maintenance.startup.js");
             
             // Run maintenance and full scan in background
             (async () => {

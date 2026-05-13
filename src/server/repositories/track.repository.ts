@@ -1,6 +1,6 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
-import type { Track } from "../database.types.js";
+import type { Track } from "../core/database.types.js";
 
 export class TrackRepository extends BaseRepository {
     private getTrackStmt: Statement;

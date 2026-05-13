@@ -2,7 +2,7 @@ import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.
 import type { ScannerProvider } from "../../core/provider.js";
 import { LocalScannerProvider } from "../../providers/scanner/local-fs.provider.js";
 import type { Scanner } from "./scanner.js";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 
 /**
  * ScannerService manages a registry of ScannerProviders and coordinates

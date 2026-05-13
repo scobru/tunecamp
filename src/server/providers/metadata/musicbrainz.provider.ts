@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import { TuneCampProvider, MetadataProvider, MetadataMatch } from "../../core/provider.js";
 import { USER_AGENT } from "../../modules/catalog/metadata.service.js";
-import { drainResponse } from "../../utils.js";
+import { drainResponse } from "../../common/network.js";
 
 export class MusicBrainzProvider implements TuneCampProvider, MetadataProvider {
     id = "musicbrainz";

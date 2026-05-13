@@ -1,4 +1,4 @@
-import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../database.js";
+import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
@@ -464,11 +464,14 @@ export class CatalogService {
         throw new Error("Failed to localize track");
     }
 
-    async analyzeFingerprint(trackId: number): Promise<string> {
+    async analyzeFingerprint(trackId: number): Promise<string | null> {
         const track = this.database.getTrack(trackId);
-        if (!track || !track.file_path) throw new Error("Track not found");
+        if (!track || !track.file_path) return null;
         const fullPath = path.join(this.musicDir, track.file_path);
-        if (!(await this.storage.pathExists(fullPath))) throw new Error("File not found");
+        if (!(await this.storage.pathExists(fullPath))) {
+            console.warn(`[CatalogService] Cannot analyze fingerprint: File not found at ${fullPath}`);
+            return null;
+        }
         const { fingerprint } = await this.fingerprinting.generate(fullPath);
         this.database.updateTrackFingerprint(trackId, fingerprint);
         return fingerprint;
@@ -480,6 +483,7 @@ export class CatalogService {
             if (!track) return;
             let fingerprint = track.fingerprint;
             if (!fingerprint) fingerprint = await this.analyzeFingerprint(trackId);
+            if (!fingerprint) return;
             const metadata = await this.zendb.getFingerprintMetadata(fingerprint);
             if (metadata) {
                 const updates: any = {};

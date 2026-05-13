@@ -1,7 +1,7 @@
 import crypto from "crypto";
-import { drainResponse, fetchSafe } from "../../utils.js";
+import { drainResponse, fetchSafe } from "../../common/network.js";
 import type { Federation } from "@fedify/fedify";
-import type { Artist } from "../../database.types.js";
+import type { Artist } from "../../core/database.types.js";
 
 export interface TransportIdentity {
     slug: string;

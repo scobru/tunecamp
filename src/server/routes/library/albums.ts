@@ -1,7 +1,7 @@
 import { Router } from "express";
 import fs from "fs-extra";
 import path from "path";
-import type { DatabaseService, Album, Track } from "../../database.js";
+import type { DatabaseService, Album, Track } from "../../core/database.js";
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";

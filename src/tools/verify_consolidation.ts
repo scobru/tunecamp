@@ -1,4 +1,4 @@
-import { createDatabase } from "../server/database.js";
+import { createDatabase } from "../server/core/database.js";
 import { Scanner } from "../server/modules/catalog/scanner.js";
 import path from "path";
 import fs from "fs-extra";

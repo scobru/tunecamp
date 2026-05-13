@@ -7,7 +7,7 @@
 
 import fs from 'fs-extra';
 import path from 'path';
-import { loadConfig } from '../server/config.js';
+import { loadConfig } from '../server/core/config.js';
 
 async function main() {
   const args = process.argv.slice(2);

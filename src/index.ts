@@ -5,7 +5,7 @@
  * Consistently loads configuration and starts the streaming server.
  */
 
-import { loadConfig } from './server/config.js';
+import { loadConfig } from './server/core/config.js';
 import { startServer } from './server/server.js';
 
 process.on('uncaughtException', (err: any) => {

@@ -1,6 +1,6 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
-import type { Artist } from "../database.types.js";
+import type { Artist } from "../core/database.types.js";
 
 export class ArtistRepository extends BaseRepository {
     private getArtistStmt: Statement;

@@ -36,8 +36,8 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('🌊 SEVERE: Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-import type { ServerConfig } from "./config.js";
-import { createDatabase } from "./database.js";
+import type { ServerConfig } from "./core/config.js";
+import { createDatabase } from "./core/database.js";
 import { createAuthService } from "./modules/auth/auth.service.js";
 import { createAuthMiddleware } from "./middleware/auth.js";
 import { createAuthRoutes } from "./routes/auth/auth.js";
@@ -63,7 +63,7 @@ import { LastFmProvider } from "./providers/scrobble/lastfm.provider.js";
 import { ListenBrainzProvider } from "./providers/scrobble/listenbrainz.provider.js";
 import { metadataService } from "./modules/catalog/metadata.service.js";
 import { initDownloadService } from "./modules/catalog/download.service.js";
-import { loadPlugins } from "./plugin-loader.js";
+import { loadPlugins } from "./core/plugin-loader.js";
 import { storageService, initStorageService } from "./modules/storage/storage.service.js";
 import { federationService, initFederationService } from "./modules/activitypub/federation.service.js";
 import { aiService, initAIService } from "./modules/ai/ai.service.js";
@@ -97,7 +97,7 @@ import { FingerprintService } from "./modules/media/fingerprint.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
-import { runStartupMaintenance } from "./maintenance.js";
+import { runStartupMaintenance } from "./modules/catalog/maintenance.startup.js";
 import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { errorHandler } from "./middleware/error-handling.js";

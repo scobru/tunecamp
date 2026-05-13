@@ -1,5 +1,5 @@
 
-import type { DatabaseService, Album, Release } from "../../database.js";
+import type { DatabaseService, Album, Release } from "../../core/database.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import { VisibilityGuardian, Capability, ViewerContext } from "../../common/visibility.js";

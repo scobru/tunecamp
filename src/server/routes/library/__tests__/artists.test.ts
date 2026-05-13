@@ -2,7 +2,7 @@ import { createArtistsRoutes } from '../artists.js';
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import type { DatabaseService } from '../../../database.js';
+import type { DatabaseService } from '../../../core/database.js';
 
 describe('Artists Routes', () => {
     let app: express.Express;

@@ -1,7 +1,7 @@
 import { Scanner } from "../catalog/scanner.js";
-import { DatabaseService } from "../../database.js";
+import { DatabaseService } from "../../core/database.js";
 import { getZen, Zen } from "../network/zen.js";
-import type { ServerConfig } from "../../config.js";
+import type { ServerConfig } from "../../core/config.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
 import path from "path";
 import fs from "fs-extra";

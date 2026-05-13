@@ -11,7 +11,8 @@ import type { Track, Album, Artist, Playlist } from '../types';
 export const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
-    const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[] } | null>(null);
+    const [inputValue, setInputValue] = useState(query);
+    const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[], external?: any[], streaming?: any[] } | null>(null);
     const [loading, setLoading] = useState(false);
     const { playTrack } = usePlayerStore();
     const { user } = useAuthStore();
@@ -63,11 +64,23 @@ export const Search = () => {
     };
 
     useEffect(() => {
-        if (query) handleSearch(query);
+        if (query) {
+            setInputValue(query);
+            handleSearch(query);
+        }
     }, [query]);
 
-    const updateQuery = (q: string) => {
-        setSearchParams({ q });
+    const onSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (inputValue.trim()) {
+            setSearchParams({ q: inputValue });
+        }
+    };
+
+    const clearSearch = () => {
+        setInputValue('');
+        setSearchParams({});
+        setResults(null);
     };
 
     const handleToggleStar = async (item: any) => {
@@ -147,7 +160,6 @@ export const Search = () => {
         try {
             let trackId = item.id;
             
-            // If external, we need to create/get the track record first
             if (String(trackId).startsWith('ext:')) {
                 const metadata = {
                     title: item.title,
@@ -155,13 +167,9 @@ export const Search = () => {
                     coverUrl: item.coverUrl || item.thumbnail,
                     duration: item.duration
                 };
-                // Use starTrack as a way to ensure the track exists (hacky but works with current backend changes)
-                // Or better: call a dedicated "link" endpoint if we had one. 
-                // Given our backend change in starTrack, it returns { trackId }
                 const res = await API.starTrack(trackId, metadata);
                 trackId = res.trackId;
                 
-                // Add to starred state since we called starTrack
                 const next = new Set(starredTracks);
                 next.add(item.id);
                 setStarredTracks(next);
@@ -169,7 +177,6 @@ export const Search = () => {
 
             await API.addTrackToPlaylist(playlistId, String(trackId));
             setActivePlaylistMenu(null);
-            // Show a temporary success state maybe?
         } catch (e) {
             console.error("Error adding to playlist:", e);
         }
@@ -183,21 +190,38 @@ export const Search = () => {
                     <SearchIcon size={32} className="text-primary"/> 
                     Search
                 </h1>
-                <div className="flex gap-2">
-                    <input 
-                        type="text" 
-                        placeholder="Search for songs, artists, albums..." 
-                        aria-label="Search"
-                        className="input input-bordered w-full text-lg"
-                        value={query}
-                        onChange={e => updateQuery(e.target.value)}
-                        autoFocus
-                    />
-                </div>
+                <form onSubmit={onSearchSubmit} className="flex gap-2">
+                    <div className="relative flex-full w-full">
+                        <input 
+                            type="text" 
+                            placeholder="Search for songs, artists, albums..." 
+                            aria-label="Search"
+                            className="input input-bordered w-full text-lg pr-12"
+                            value={inputValue}
+                            onChange={e => setInputValue(e.target.value)}
+                            autoFocus
+                        />
+                        {inputValue && (
+                            <button 
+                                type="button"
+                                onClick={clearSearch}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                            >
+                                <Plus size={20} className="rotate-45" />
+                            </button>
+                        )}
+                    </div>
+                    <button type="submit" className="btn btn-primary px-8">
+                        Search
+                    </button>
+                </form>
             </div>
 
             {loading ? (
-                <div className="text-center opacity-50 py-12">Searching...</div>
+                <div className="text-center opacity-50 py-12 flex flex-col items-center gap-4">
+                    <div className="loading loading-spinner loading-lg text-primary"></div>
+                    <p className="text-lg">Searching local and external providers...</p>
+                </div>
             ) : results ? (
                 <div className="space-y-8">
                     {/* Artists */}

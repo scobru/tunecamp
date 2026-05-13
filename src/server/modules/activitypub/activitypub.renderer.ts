@@ -1,4 +1,4 @@
-import type { Artist, Album, Track, Post } from "../../database.types.js";
+import type { Artist, Album, Track, Post } from "../../core/database.types.js";
 
 export class ActivityPubRenderer {
     constructor(private baseUrl: string) {}

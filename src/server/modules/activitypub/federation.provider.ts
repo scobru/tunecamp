@@ -1,5 +1,5 @@
 
-import type { Artist, RemoteActor, Follower, Release, Track, Post, ApNote } from "../../database.types.js";
+import type { Artist, RemoteActor, Follower, Release, Track, Post, ApNote } from "../../core/database.types.js";
 
 /**
  * FederationProvider Interface

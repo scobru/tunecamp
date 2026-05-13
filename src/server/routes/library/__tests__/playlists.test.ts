@@ -2,7 +2,7 @@ import { createPlaylistsRoutes } from '../playlists.js';
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import type { DatabaseService } from '../../../database.js';
+import type { DatabaseService } from '../../../core/database.js';
 
 describe('Playlists Routes', () => {
     let app: express.Express;

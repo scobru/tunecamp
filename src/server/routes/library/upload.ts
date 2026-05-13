@@ -4,7 +4,7 @@ import crypto from "crypto";
 import path from "path";
 import os from "os";
 import axios from "axios";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { ScannerService } from "../../modules/catalog/scanner.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { createDatabase } from './database.js';
+import { createDatabase } from '../core/database.js';
 import { Scanner } from './modules/catalog/scanner.js';
 import path from 'path';
 import fs from 'fs-extra';

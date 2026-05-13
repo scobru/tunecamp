@@ -1,4 +1,4 @@
-import type { DatabaseService, Track } from "../../database.js";
+import type { DatabaseService, Track } from "../../core/database.js";
 import { metadataService } from "./metadata.service.js";
 import type { CatalogService } from "./catalog.service.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
@@ -454,6 +454,8 @@ export class MaintenanceService {
             fingerprint = await this.catalogService.analyzeFingerprint(trackId);
         }
 
+        if (!fingerprint) return null;
+
         console.log(`[Maintenance] Zen lookup for fingerprint: ${fingerprint.substring(0, 16)}...`);
         const metadata = await this.zendb.getFingerprintMetadata(fingerprint);
         
@@ -476,6 +478,8 @@ export class MaintenanceService {
         if (!fingerprint) {
             fingerprint = await this.catalogService.analyzeFingerprint(trackId);
         }
+
+        if (!fingerprint) return;
 
         console.log(`[Maintenance] Sharing fingerprint to Zen: ${track.title}`);
         await this.zendb.shareFingerprint(fingerprint, track);
@@ -504,6 +508,10 @@ export class MaintenanceService {
                 try {
                     // 1. Generate fingerprint
                     const fingerprint = await this.catalogService.analyzeFingerprint(track.id);
+                    if (!fingerprint) {
+                        errorCount++;
+                        return;
+                    }
                     successCount++;
 
                     // 2. Try lookup

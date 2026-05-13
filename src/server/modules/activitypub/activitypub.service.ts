@@ -1,12 +1,12 @@
 import crypto from "crypto";
 import { promisify } from "util";
 import fetch from "node-fetch";
-import { drainResponse, fetchJsonSafe } from "../../utils.js";
+import { drainResponse, fetchJsonSafe } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import type { Federation } from "@fedify/fedify";
 import { Follow, Announce } from "@fedify/fedify";
-import type { DatabaseService, Artist, Album, Track, Post } from "../../database.js";
-import type { ServerConfig } from "../../config.js";
+import type { DatabaseService, Artist, Album, Track, Post } from "../../core/database.js";
+import type { ServerConfig } from "../../core/config.js";
 import type { FederationProvider } from "./federation.provider.js";
 
 import { ActivityPubRenderer } from "./activitypub.renderer.js";

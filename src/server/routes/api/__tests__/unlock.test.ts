@@ -2,7 +2,7 @@ import { jest } from "@jest/globals";
 import express from "express";
 import request from "supertest";
 import { createUnlockRoutes } from "../unlock.js";
-import type { DatabaseService } from "../../../database.js";
+import type { DatabaseService } from "../../../core/database.js";
 import { StringUtils } from "../../../../utils/stringUtils.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../../common/visibility.js";
 

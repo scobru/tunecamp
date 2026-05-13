@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 
 export function createLibraryStatsRoutes(database: DatabaseService): Router {
     const router = Router();

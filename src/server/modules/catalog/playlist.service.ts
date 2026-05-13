@@ -3,7 +3,7 @@ import type { PlaylistProvider, PlaylistTrack } from "../../core/provider.js";
 import { YouTubePlaylistProvider } from "../../providers/playlists/youtube.playlist.js";
 import { SpotifyProvider } from "../../providers/metadata/spotify.provider.js";
 import { DeezerProvider } from "../../providers/playlists/deezer.playlist.js";
-import type { DatabaseService } from "../../database.types.js";
+import type { DatabaseService } from "../../core/database.types.js";
 
 /**
  * PlaylistService manages PlaylistProviders and handles external playlist imports.

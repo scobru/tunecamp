@@ -6,7 +6,7 @@ import fs from 'fs-extra';
 import { resolveSafePath } from '../../../utils/fileUtils.js';
 import { getPlaceholderSVG } from '../../../utils/audioUtils.js';
 import { transcode } from '../../modules/media/ffmpeg.js';
-import type { DatabaseService, Track } from '../../database';
+import type { DatabaseService, Track } from '../../core/database.js';
 import type { AuthService } from '../../modules/auth/auth.service.js';
 
 import type { ZenDBService } from '../../modules/network/zendb.service.js';
@@ -177,9 +177,9 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
     const formatTracksBulk = (tracks: Track[], username: string) => {
         if (tracks.length === 0) return [];
         const starredItems = db.getStarredItems(username, 'track');
-        const starredSet = new Set(starredItems.map((s: any) => s.item_id));
+        const starredSet = new Set<string>(starredItems.map((s: any) => s.item_id));
         const ratingsMap = db.getItemRatings(username, 'track');
-        return tracks.map(t => formatTrack(t, username, starredSet, ratingsMap));
+        return tracks.map((t: Track) => formatTrack(t, username, starredSet, ratingsMap));
     };
 
     const formatAlbum = (album: any, username: string) => {
@@ -302,7 +302,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
             countMap.set(row.artist_id, row.count);
         }
 
-        artists.forEach(artist => {
+        artists.forEach((artist: any) => {
             let char = artist.name.charAt(0).toUpperCase();
             if (!/[A-Z]/.test(char)) char = '#';
             if (!indexes[char]) indexes[char] = [];
@@ -315,7 +315,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
         });
 
         const sortedKeys = Object.keys(indexes).sort();
-        const indexNodes = sortedKeys.map(key => ({
+        const indexNodes = sortedKeys.map((key: string) => ({
             '@name': key,
             artist: indexes[key]
         }));
@@ -341,7 +341,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
             if (!artist) return sendError(res, req, 70, 'Artist not found');
 
             const libraryAlbums = db.getAlbumsByArtist(artistId, false);
-            const albumIds = libraryAlbums.map(album => album.id);
+            const albumIds = libraryAlbums.map((album: any) => album.id);
             const albumStats = new Map<number, { songCount: number; duration: number }>();
 
             if (albumIds.length > 0) {
@@ -356,7 +356,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
                 }
             }
 
-            const allAlbums = libraryAlbums.map(album => {
+            const allAlbums = libraryAlbums.map((album: any) => {
                 const stats = albumStats.get(album.id) || { songCount: 0, duration: 0 };
                 return {
                     ...album,
@@ -370,7 +370,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
                     '@id': id,
                     '@name': artist.name,
                     '@parent': '1',
-                    child: allAlbums.map(album => formatAlbum(album, username))
+                    child: allAlbums.map((album: any) => formatAlbum(album, username))
                 }
             });
         }
@@ -583,7 +583,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
 
         const paginated = albums.slice(offset, offset + size);
         const wrapperKey = isV2 ? 'albumList2' : 'albumList';
-        sendResponse(res, req, { [wrapperKey]: { album: paginated.map(a => formatAlbum(a, username)) } });
+        sendResponse(res, req, { [wrapperKey]: { album: paginated.map((a: any) => formatAlbum(a, username)) } });
     });
 
     router.all('/getRandomSongs.view', (req, res) => {
@@ -599,10 +599,10 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
         if (!query) return sendError(res, req, 10, 'Missing query');
 
         const results = db.search(query, false);
-        const artist = results.artists.map(a => formatArtist(a, username));
-        const album = results.albums.map(a => {
+        const artist = results.artists.map((a: any) => formatArtist(a, username));
+        const album = results.albums.map((a: any) => {
             const tracks = db.getTracks(a.id);
-            return formatAlbum({ ...a, songCount: tracks.length, duration: tracks.reduce((acc, t) => acc + (t.duration || 0), 0) }, username);
+            return formatAlbum({ ...a, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) }, username);
         });
         const song = formatTracksBulk(results.tracks, username);
 
@@ -797,20 +797,20 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
         const albums = db.getAlbums(false);
         const genreMap = new Map<string, { count: number, songCount: number }>();
 
-        const albumIds = albums.map(a => a.id);
+        const albumIds = albums.map((a: any) => a.id);
         const allTracks = db.getTracksByAlbumIds(albumIds);
 
         const trackCounts = new Map<number, number>();
-        allTracks.forEach(t => {
+        allTracks.forEach((t: Track) => {
             if (t.album_id) {
                 trackCounts.set(t.album_id, (trackCounts.get(t.album_id) || 0) + 1);
             }
         });
 
-        albums.forEach(album => {
+        albums.forEach((album: any) => {
             if (!album.genre) return;
             const songCount = trackCounts.get(album.id) || 0;
-            album.genre.split(',').forEach(g => {
+            album.genre.split(',').forEach((g: string) => {
                 const name = g.trim();
                 const data = genreMap.get(name) || { count: 0, songCount: 0 };
                 data.count++;
@@ -819,7 +819,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
             });
         });
 
-        const genres = Array.from(genreMap.entries()).sort().map(([name, data]) => ({
+        const genres = Array.from(genreMap.entries()).sort().map(([name, data]: [string, any]) => ({
             '@value': name,
             '@songCount': data.songCount,
             '@albumCount': data.count
@@ -834,7 +834,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
         
         const response: any = { artist: [], album: [], song: [] };
         const tracksToFormat: Track[] = [];
-        starred.forEach(item => {
+        starred.forEach((item: any) => {
             const idParts = item.item_id.split('_');
             const id = parseInt(idParts[1] || idParts[0]);
             if (item.item_type === 'artist') {
@@ -860,7 +860,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
         const playlists = db.getPlaylists();
         sendResponse(res, req, {
             playlists: {
-                playlist: playlists.map(p => ({
+                playlist: playlists.map((p: any) => ({
                     '@id': `pl_${p.id}`, '@name': p.name, '@owner': p.username, '@public': p.isPublic ? 'true' : 'false',
                     '@created': p.created_at, '@songCount': db.getPlaylistTracks(p.id).length
                 }))

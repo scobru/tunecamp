@@ -3,9 +3,9 @@ import fs from "fs-extra";
 import path from "path";
 import fetch from "node-fetch";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
-import { drainResponse } from "../../utils.js";
+import { drainResponse } from "../../common/network.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
 

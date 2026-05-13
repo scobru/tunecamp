@@ -39,7 +39,7 @@ const mockDbService = {
     updateTrackWaveform: jest.fn(),
 };
 
-jest.mock('../../../database.js', () => ({
+jest.mock('../../../core/database.js', () => ({
     createDatabase: jest.fn(() => mockDbService),
 }));
 

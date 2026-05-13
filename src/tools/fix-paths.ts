@@ -3,7 +3,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import sqlite3 from 'better-sqlite3';
-import { loadConfig } from '../server/config.js';
+import { loadConfig } from '../server/core/config.js';
 import { StringUtils } from '../utils/stringUtils.js';
 
 interface TrackRow {

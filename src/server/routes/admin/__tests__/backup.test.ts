@@ -3,8 +3,8 @@ import request from 'supertest';
 import fs from 'fs-extra';
 import path from 'path';
 import { createBackupRoutes } from '../backup.js';
-import type { DatabaseService } from '../../../database.js';
-import type { ServerConfig } from '../../../config.js';
+import type { DatabaseService } from '../../../core/database.js';
+import type { ServerConfig } from '../../../core/config.js';
 import { jest } from '@jest/globals';
 
 // Mocks

@@ -4,7 +4,7 @@ import path from "path";
 import { parseFile } from "music-metadata";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";

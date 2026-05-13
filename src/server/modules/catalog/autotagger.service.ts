@@ -1,4 +1,4 @@
-import type { DatabaseService, Track } from "../../database.js";
+import type { DatabaseService, Track } from "../../core/database.js";
 import { metadataService } from "./metadata.service.js";
 import type { CatalogService } from "./catalog.service.ts";
 import type { OpenRouterService } from "../ai/openrouter.service.ts";

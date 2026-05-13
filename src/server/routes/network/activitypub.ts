@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { DatabaseService, Track } from "../../database.js";
+import type { DatabaseService, Track } from "../../core/database.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 

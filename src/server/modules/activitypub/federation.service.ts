@@ -3,7 +3,7 @@ import type { FederationProvider } from "../../core/provider.js";
 import { ZenFederationProvider } from "../../providers/federation/zen.provider.js";
 import { ActivityPubFederationProvider } from "../../providers/federation/activitypub.provider.js";
 import type { ActivityPubService } from "./activitypub.service.js";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 
 /**
  * FederationService manages a registry of FederationProviders.

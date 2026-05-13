@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { validateUsername } from "../../../utils/audioUtils.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
-import { validatePassword } from "../../validators.js";
+import { validatePassword } from "../../common/validators.js";
 import { UserRole } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";

@@ -2,7 +2,7 @@ import { Router } from "express";
 import path from "path";
 import fs from "fs-extra";
 import { stringify } from "yaml";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";

@@ -1,6 +1,6 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
-import type { ReleaseTrack, Track } from "../database.types.js";
+import type { ReleaseTrack, Track } from "../core/database.types.js";
 
 export class ReleaseTrackRepository extends BaseRepository {
     constructor(db: DatabaseType) {

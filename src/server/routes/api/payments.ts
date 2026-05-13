@@ -5,9 +5,9 @@ import path from "path";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import Stripe from "stripe";
-import type { DatabaseService } from "../../database.js";
-import { getEthUsdRate } from "../../price.js";
-import type { ServerConfig } from "../../config.js";
+import type { DatabaseService } from "../../core/database.js";
+import { getEthUsdRate } from "../../modules/catalog/price.js";
+import type { ServerConfig } from "../../core/config.js";
 
 // Setup Base RPC
 const provider = new ethers.JsonRpcProvider(process.env.TUNECAMP_RPC_URL || "https://mainnet.base.org");

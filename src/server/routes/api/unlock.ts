@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 import { VisibilityGuardian, Capability } from "../../common/visibility.js";
 import { StringUtils } from "../../../utils/stringUtils.js";

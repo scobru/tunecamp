@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import type { ScrobbleProvider } from "../../core/provider.js";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 
 const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
 const LASTFM_API_KEY = Buffer.from('MmI3NWRjYjI5MWUyYjBjOWEyYzk5NGFjYTUyMmFjMTQ=', 'base64').toString();

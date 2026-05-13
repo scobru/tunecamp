@@ -1,8 +1,8 @@
 import crypto from "crypto";
 import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create } from "@fedify/fedify";
 import { BetterSqliteKvStore } from "./fedify-kv.js";
-import type { DatabaseService } from "../../database.js";
-import type { ServerConfig } from "../../config.js";
+import type { DatabaseService } from "../../core/database.js";
+import type { ServerConfig } from "../../core/config.js";
 import { Temporal } from "@js-temporal/polyfill";
 
 export function createFedify(dbService: DatabaseService, config: ServerConfig) {

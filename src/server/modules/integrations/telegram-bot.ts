@@ -4,8 +4,8 @@ import path from 'path';
 import fs from 'fs-extra';
 import axios from 'axios';
 import { ScannerService } from '../catalog/scanner.js';
-import { DatabaseService } from '../../database.js';
-import type { ServerConfig } from '../../config.js';
+import { DatabaseService } from '../../core/database.js';
+import type { ServerConfig } from '../../core/config.js';
 import type { OpenRouterService } from '../ai/openrouter.service.js';
 import { extractBandcampMetadata } from '../../utils/bandcamp.js';
 
@@ -102,7 +102,6 @@ export class TelegramBotService {
                 if (ctx.message || ctx.channelPost || ctx.callbackQuery) {
                     if (!this.checkRateLimit(ctx)) return;
                 }
-                console.log(`[TelegramBot] Update received: ${ctx.updateType}`);
                 return next();
             });
 
@@ -636,7 +635,17 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                 }
             }
 
-            const fileLink = await ctx.telegram.getFileLink(audio.file_id);
+            let fileLink;
+            try {
+                fileLink = await ctx.telegram.getFileLink(audio.file_id);
+            } catch (getFileErr: any) {
+                if (getFileErr.message?.includes('file is too big') || getFileErr.response?.error_code === 400) {
+                    console.warn(`[TelegramBot] Telegram refused to provide link for ${audio.file_name || 'file'}: File too big.`);
+                    return await this.safeReply(ctx, `⚠️ Telegram Bot API cannot download files larger than 20MB. Please upload via the web interface.`);
+                }
+                throw getFileErr;
+            }
+
             const fileName = audio.file_name || `${audio.file_unique_id}.mp3`;
             const importDir = path.join(this.musicDir, 'imports', 'telegram');
             await fs.ensureDir(importDir);
@@ -648,7 +657,12 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                 await this.safeReply(ctx, `📥 Downloading ${fileName}...`);
             }
             
-            const response = await axios({ url: fileLink.href, method: 'GET', responseType: 'stream' });
+            const response = await axios({ 
+                url: fileLink.href, 
+                method: 'GET', 
+                responseType: 'stream',
+                timeout: 60000 // 60s timeout for download start
+            });
             const writer = fs.createWriteStream(filePath);
             response.data.pipe(writer);
 

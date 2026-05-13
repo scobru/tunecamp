@@ -5,7 +5,7 @@ import { BandcampStreamingProvider } from "../../providers/streaming/bandcamp.pr
 import { SoundCloudStreamingProvider } from "../../providers/streaming/soundcloud.provider.js";
 import { KhInsiderProvider } from "../../providers/streaming/khinsider.provider.js";
 import { HiFiProvider } from "../../providers/streaming/hifi.provider.js";
-import type { DatabaseService } from "../../database.types.js";
+import type { DatabaseService } from "../../core/database.types.js";
 
 /**
  * StreamingService manages the registry of StreamingProviders.

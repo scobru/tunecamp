@@ -1,7 +1,7 @@
 import { Router } from "express";
 import fs from "fs-extra";
 import path from "path";
-import type { DatabaseService } from "../../database.js";
+import type { DatabaseService } from "../../core/database.js";
 import { resolveSafePath } from "../../../utils/fileUtils.js";
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];

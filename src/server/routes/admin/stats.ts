@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
-import type { DatabaseService } from "../../database.js";
-import type { ServerConfig } from "../../config.js";
+import type { DatabaseService } from "../../core/database.js";
+import type { ServerConfig } from "../../core/config.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 
 export function createStatsRoutes(zendbService: ZenDBService, dbService: DatabaseService, config: ServerConfig): Router {

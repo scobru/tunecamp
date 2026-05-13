@@ -13,7 +13,7 @@
  */
 
 // @ts-ignore
-import { getZen as Zen } from '../server/zen.js';
+import { getZen as Zen } from '../server/modules/network/zen.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';

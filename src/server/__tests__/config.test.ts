@@ -1,7 +1,7 @@
 import fs from 'fs';
 import crypto from 'crypto';
 import { jest } from '@jest/globals';
-import { loadConfig } from './config.js';
+import { loadConfig } from '../core/config.js';
 
 describe('ServerConfig', () => {
     const originalEnv = process.env;
