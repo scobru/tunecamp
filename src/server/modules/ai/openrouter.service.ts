@@ -119,7 +119,7 @@ ${JSON.stringify(libraryContext)}`;
             if (!response.ok) return [];
 
             const data = await response.json() as any;
-            const content = data.choices[0]?.message?.content;
+            const content = data?.choices?.[0]?.message?.content;
             if (!content) return [];
 
             const result = JSON.parse(content);

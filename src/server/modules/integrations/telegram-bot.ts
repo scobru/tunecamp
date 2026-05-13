@@ -97,6 +97,10 @@ export class TelegramBotService {
         try {
             this.bot = new Telegraf(token);
 
+            this.bot.catch((err: any, ctx) => {
+                console.error(`[TelegramBot] Unhandled error for ${ctx.updateType}:`, err);
+            });
+
             // Global middleware for logging and rate limiting
             this.bot.use(async (ctx, next) => {
                 if (ctx.message || ctx.channelPost || ctx.callbackQuery) {
@@ -458,7 +462,9 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
             });
 
             this.isRunning = true;
-            await this.bot.launch();
+            this.bot.launch().catch(err => {
+                console.error('[TelegramBot] Background launch error:', err);
+            });
             console.log('✅ Telegram Bot started');
             
             // Handle graceful stop

@@ -831,21 +831,52 @@ export class Scanner implements ScannerService {
         await this.cleanupStaleLibraryTracks(dir, knownFiles);
         // -------------------------------------------------------------------
 
-        await this.fixOrphanAlbums();
+        await this.cleanupEmptyEntities();
         this.clearCaches();
         return { successful, failed };
     }
 
-    private async fixOrphanAlbums() {
+    private async cleanupEmptyEntities() {
+        console.log("🧹 [Scanner] Cleaning up empty albums and artists...");
         try {
+            // 1. Clean up empty albums (albums with no tracks)
+            // We exclude formal releases (is_release = 1) from automatic deletion 
+            // just in case they are manually curated empty releases, though usually they aren't.
+            const emptyAlbums = this.database.db.prepare(`
+                SELECT a.id FROM albums a
+                LEFT JOIN tracks t ON a.id = t.album_id
+                WHERE t.id IS NULL AND a.is_release = 0
+            `).all() as { id: number }[];
+            
+            for (const row of emptyAlbums) {
+                console.log(`🗑️ [Scanner] Deleting empty album ${row.id}`);
+                this.database.deleteAlbum(row.id);
+            }
+
+            // 2. Clean up empty artists (artists with no tracks AND no albums)
+            const emptyArtists = this.database.db.prepare(`
+                SELECT ar.id FROM artists ar
+                LEFT JOIN albums a ON ar.id = a.artist_id
+                LEFT JOIN tracks t ON ar.id = t.artist_id
+                WHERE a.id IS NULL AND t.id IS NULL
+            `).all() as { id: number }[];
+
+            for (const row of emptyArtists) {
+                console.log(`🗑️ [Scanner] Deleting empty artist ${row.id}`);
+                this.database.deleteArtist(row.id);
+            }
+
+            // 3. Fix orphan albums (albums with no artist but all tracks share one artist)
             const orphans = this.database.db.prepare("SELECT id, title FROM albums WHERE artist_id IS NULL").all() as any[];
             for (const o of orphans) {
                 const tracks = this.database.getTracks(o.id);
-                if (tracks.length === 0) { this.database.deleteAlbum(o.id); continue; }
+                if (tracks.length === 0) continue; // Should be caught by step 1
                 const arts = [...new Set(tracks.map(t => t.artist_id).filter(id => id !== null))];
                 if (arts.length === 1) this.database.updateAlbumArtist(o.id, arts[0]!);
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error("❌ [Scanner] Error cleaning up empty entities:", e);
+        }
     }
 
     private async deduplicateLibraryTracks() {
@@ -883,16 +914,26 @@ export class Scanner implements ScannerService {
     private async cleanupStaleLibraryTracks(musicDir: string, knownFiles: Set<string>) {
         console.log("🧹 [Scanner] Running memory-efficient stale track cleanup...");
         const tracksIter = this.database.iterateTracks();
+        const toDelete: number[] = [];
+        const toUpdateLossless: number[] = [];
+
         for (const t of tracksIter) {
             if (!t.file_path) continue;
             const pKey = t.file_path.toLowerCase();
             const pExists = knownFiles.has(pKey);
             const lExists = t.lossless_path ? knownFiles.has(t.lossless_path.toLowerCase()) : false;
             if (!pExists && !lExists) {
-                this.database.deleteTrack(t.id);
+                toDelete.push(t.id);
             } else if (pExists && t.lossless_path && !lExists) {
-                this.database.updateTrackLosslessPath(t.id, null);
+                toUpdateLossless.push(t.id);
             }
+        }
+
+        for (const id of toDelete) {
+            this.database.deleteTrack(id);
+        }
+        for (const id of toUpdateLossless) {
+            this.database.updateTrackLosslessPath(id, null);
         }
     }
 
@@ -971,6 +1012,12 @@ export class Scanner implements ScannerService {
                 count++;
                 if (count % 100 === 0 && (global as any).gc) (global as any).gc();
             }
+            
+            // Clean up any albums/artists that became empty due to deleted tracks
+            if (deleted > 0) {
+                await this.cleanupEmptyEntities();
+            }
+            
             return { success, failed, skipped, deleted };
         } finally { this.isConsolidating = false; }
     }

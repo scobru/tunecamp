@@ -1,63 +1,30 @@
-import ytdl from "@distube/ytdl-core";
+import youtubedl from "youtube-dl-exec";
 import ytSearch from "yt-search";
-import { readFileSync } from "fs";
 import play from "play-dl";
 import type { StreamingProvider, StreamCandidate, MetadataProvider, MetadataResult } from "../../core/provider.js";
 
 /**
- * Pick the best audio format from ytdl format list.
- * Prefers: opus/webm (best quality) → mp4a/aac → any audio-only → any with audio
- */
-function chooseBestAudioFormat(formats: ytdl.videoFormat[]): ytdl.videoFormat | null {
-    const audioOnly = formats.filter(f => f.hasAudio && !f.hasVideo);
-
-    // 1. Prefer opus (webm container) — highest quality
-    const opus = audioOnly.find(f => f.codecs?.includes("opus") || f.container === "webm");
-    if (opus) return opus;
-
-    // 2. AAC / mp4a
-    const aac = audioOnly.find(f => f.codecs?.includes("mp4a") || f.container === "mp4");
-    if (aac) return aac;
-
-    // 3. Any audio-only
-    if (audioOnly.length > 0) return audioOnly[0];
-
-    // 4. Fallback: any format that has audio (muxed)
-    return formats.find(f => f.hasAudio) ?? null;
-}
-
-/**
- * YouTubeStreamingProvider — uses @distube/ytdl-core for stream resolution
- * and yt-search for text-based search (play-dl is unstable).
+ * YouTubeStreamingProvider — uses youtube-dl-exec (yt-dlp) for stream resolution
+ * and yt-search for text-based search.
  *
  * Implements both StreamingProvider and MetadataProvider for alignment.
  */
 export class YouTubeStreamingProvider implements StreamingProvider, MetadataProvider {
     readonly id = "youtube";
     readonly name = "YouTube";
-    readonly version = "2.2.0";
-    readonly description = "YouTube streaming & metadata via @distube/ytdl-core + yt-search + play-dl fallback";
+    readonly version = "3.0.0";
+    readonly description = "YouTube streaming & metadata via yt-dlp + yt-search";
 
-    /** ytdl agent — created once, supports optional cookies */
-    private agent: ytdl.Agent;
+    private cookiesPath?: string;
 
     /** Circuit breaker state */
     private consecutiveBotBlocks = 0;
     private circuitBreakerUntil = 0;
 
     constructor() {
-        const cookiesPath = process.env.YOUTUBE_COOKIES_PATH;
-        if (cookiesPath) {
-            try {
-                const cookies = JSON.parse(readFileSync(cookiesPath, "utf-8"));
-                this.agent = ytdl.createAgent(cookies);
-                console.log(`[YouTubeProvider] 🍪 Loaded cookies from ${cookiesPath}`);
-            } catch {
-                console.warn("[YouTubeProvider] ⚠️ Failed to load cookies, using anonymous agent");
-                this.agent = ytdl.createAgent();
-            }
-        } else {
-            this.agent = ytdl.createAgent();
+        if (process.env.YOUTUBE_COOKIES_PATH) {
+            this.cookiesPath = process.env.YOUTUBE_COOKIES_PATH;
+            console.log(`[YouTubeProvider] 🍪 Will use cookies from ${this.cookiesPath}`);
         }
     }
 
@@ -118,15 +85,10 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
     async getCoverUrl(id: string): Promise<string | null> {
         try {
-            const info = await ytdl.getBasicInfo(id, { agent: this.agent });
-            return info.videoDetails.thumbnails[0]?.url ?? null;
+            const info = await play.video_info(id.includes("http") ? id : `https://www.youtube.com/watch?v=${id}`);
+            return info.video_details.thumbnails[0]?.url ?? null;
         } catch {
-            try {
-                const info = await play.video_info(id.includes("http") ? id : `https://www.youtube.com/watch?v=${id}`);
-                return info.video_details.thumbnails[0]?.url ?? null;
-            } catch {
-                return null;
-            }
+            return null;
         }
     }
 
@@ -213,43 +175,39 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             return null;
         }
 
-        const clients: ("ANDROID" | "TV" | "IOS" | "WEB" | "WEB_EMBEDDED" | "ANDROID_MUSIC" | "MWEB")[] = 
-            ["ANDROID", "TV", "IOS", "ANDROID_MUSIC", "MWEB", "WEB_EMBEDDED", "WEB"];
-        
         let lastError: any = null;
+        const targetUrl = urlOrId.includes("http") ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`;
 
-        for (const client of clients) {
-            try {
-                console.log(`[YouTubeProvider] ⚡ Resolving ${urlOrId} via ${client} client...`);
-                const info = await ytdl.getInfo(urlOrId, {
-                    agent: this.agent,
-                    playerClients: [client],
-                    requestOptions: {
-                        headers: {
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                        }
-                    }
-                } as any);
+        try {
+            console.log(`[YouTubeProvider] ⚡ Resolving ${targetUrl} via yt-dlp...`);
+            
+            const options: any = {
+                getUrl: true,
+                format: 'bestaudio/best',
+                noWarnings: true,
+                noCallHome: true,
+                noCheckCertificate: true,
+            };
+            if (this.cookiesPath) options.cookies = this.cookiesPath;
 
-                const format = chooseBestAudioFormat(info.formats);
-                if (format?.url) {
-                    console.log(`[YouTubeProvider] ✅ Success! Resolved via ${client}`);
-                    this.consecutiveBotBlocks = 0; // Reset on success
-                    return format.url;
-                }
-            } catch (error: any) {
-                lastError = error;
-                const isBot = error.message?.includes("bot") || error.message?.includes("Sign in");
-                console.warn(`[YouTubeProvider] ⚠️ ${client} client failed: ${error.message}${isBot ? " (Bot Detection)" : ""}`);
-                if (!isBot) break; 
+            const url = await youtubedl(targetUrl, options);
+            if (url && typeof url === 'string') {
+                console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp`);
+                this.consecutiveBotBlocks = 0; // Reset on success
+                return url.trim();
             }
-        }
-
-        // Record bot block if all local clients failed with bot detection
-        this.consecutiveBotBlocks++;
-        if (this.consecutiveBotBlocks > 5) {
-            this.circuitBreakerUntil = Date.now() + 15 * 60 * 1000; // 15 min cooldown
-            console.error(`[YouTubeProvider] 🚨 5+ bot blocks detected. Circuit breaker triggered for 15 minutes.`);
+        } catch (error: any) {
+            lastError = error;
+            const isBot = error.message?.includes("Sign in") || error.message?.includes("bot") || error.message?.includes("HTTP Error 429");
+            console.warn(`[YouTubeProvider] ⚠️ yt-dlp failed: ${error.message}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
+            
+            if (isBot) {
+                this.consecutiveBotBlocks++;
+                if (this.consecutiveBotBlocks > 5) {
+                    this.circuitBreakerUntil = Date.now() + 15 * 60 * 1000; // 15 min cooldown
+                    console.error(`[YouTubeProvider] 🚨 5+ bot blocks detected. Circuit breaker triggered for 15 minutes.`);
+                }
+            }
         }
 
         // --- Invidious Fallback ---
@@ -286,7 +244,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         // Final fallback to play-dl
         try {
             console.log(`[YouTubeProvider] 🔄 Final attempt via play-dl fallback for ${urlOrId}...`);
-            const info = await play.video_info(urlOrId.includes("http") ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`);
+            const info = await play.video_info(targetUrl);
             const format = info.format.find(f => (f.mimeType?.includes("audio") || f.audioQuality) && f.url);
             
             if (format?.url) {
@@ -301,3 +259,4 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         return null;
     }
 }
+

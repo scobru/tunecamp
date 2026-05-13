@@ -45,18 +45,21 @@ export async function searchBandcamp(query: string, filter: "b" | "a" | "t" = "t
     }
 }
 
-export async function extractBandcampMetadata(url: string) {
+export async function extractBandcampMetadata(url: string | string[]) {
     try {
         if (!url) return null;
-        const parsedUrl = new URL(url);
+        const actualUrl = Array.isArray(url) ? url[0] : url;
+        if (!actualUrl || typeof actualUrl !== 'string') return null;
+
+        const parsedUrl = new URL(actualUrl);
         const hostname = parsedUrl.hostname;
         const isBandcamp = hostname === "bandcamp.com" || hostname.endsWith(".bandcamp.com");
         const isBcbits = hostname === "bcbits.com" || hostname.endsWith(".bcbits.com");
 
         if (!isBandcamp && !isBcbits) return null;
-        if (!(await isSafeUrl(url))) return null;
+        if (!(await isSafeUrl(actualUrl))) return null;
 
-        const response = await fetch(url.split("?")[0], {
+        const response = await fetch(actualUrl.split("?")[0], {
             headers: { "User-Agent": USER_AGENT }
         });
         const html = await response.text();
