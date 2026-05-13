@@ -1,6 +1,8 @@
 import youtubedl from "youtube-dl-exec";
 import ytSearch from "yt-search";
 import play from "play-dl";
+import fs from "fs";
+import path from "path";
 import type { StreamingProvider, StreamCandidate, MetadataProvider, MetadataResult } from "../../core/provider.js";
 
 /**
@@ -22,9 +24,13 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     private circuitBreakerUntil = 0;
 
     constructor() {
+        const defaultPath = path.join(process.cwd(), 'data', 'youtube_cookies.txt');
         if (process.env.YOUTUBE_COOKIES_PATH) {
             this.cookiesPath = process.env.YOUTUBE_COOKIES_PATH;
-            console.log(`[YouTubeProvider] 🍪 Will use cookies from ${this.cookiesPath}`);
+            console.log(`[YouTubeProvider] 🍪 Will use cookies from ENV: ${this.cookiesPath}`);
+        } else if (fs.existsSync(defaultPath)) {
+            this.cookiesPath = defaultPath;
+            console.log(`[YouTubeProvider] 🍪 Auto-detected cookies at ${this.cookiesPath}`);
         }
     }
 
