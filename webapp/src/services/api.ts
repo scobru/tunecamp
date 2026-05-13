@@ -54,66 +54,6 @@ const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<T> => {
     }
 };
 
-
-export const API = {
-    getToken: () => localStorage.getItem('tunecamp_token'),
-import axios from 'axios';
-import type {
-    AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
-    Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile
-} from '../types';
-
-const API_URL = '/api';
-
-const api = axios.create({
-    baseURL: API_URL,
-});
-
-// Interceptor to add token
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('tunecamp_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
-
-/** Error subclass that preserves the HTTP response status code. */
-export class ApiError extends Error {
-    status: number;
-    constructor(message: string, status: number) {
-        super(message);
-        this.name = 'ApiError';
-        this.status = status;
-    }
-}
-
-// Helper to handle response
-const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<T> => {
-    try {
-        const response = await request;
-        return response.data;
-    } catch (error: any) {
-        const status: number = error.response?.status ?? 0;
-        if (status === 401) {
-            // Only log out if it's a genuine "No token" or "Invalid token" error
-            // to avoid disconnecting users when a specific resource returns 401 incorrectly
-            const isAuthEndpoint = error.config?.url?.includes('/auth/');
-            const hasToken = !!localStorage.getItem('tunecamp_token');
-            
-            if (isAuthEndpoint || hasToken) {
-                localStorage.removeItem('tunecamp_token');
-                window.dispatchEvent(new Event('auth:unauthorized'));
-            }
-        }
-        const errorData = error.response?.data;
-        const errorMessage = errorData?.error || errorData?.message || (typeof errorData === 'string' ? errorData : null) || error.message;
-        throw new ApiError(errorMessage, status);
-    }
-};
-
-
 export const API = {
     getToken: () => localStorage.getItem('tunecamp_token'),
     setToken: (token: string | null) => {

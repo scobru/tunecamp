@@ -12,6 +12,13 @@ interface HealthStatus {
   paypal: { configured: boolean; environment: string };
   moonpay: { configured: boolean };
   gdrive: { configured: boolean; active: boolean };
+  youtube: { online: boolean };
+  spotify: { online: boolean };
+  soundcloud: { online: boolean };
+  bandcamp: { online: boolean };
+  deezer: { online: boolean };
+  lastfm: { configured: boolean; online: boolean };
+  listenbrainz: { configured: boolean; online: boolean };
 }
 
 interface ConfigStore {
