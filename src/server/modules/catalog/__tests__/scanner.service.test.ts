@@ -1,6 +1,4 @@
-
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import { ScannerService } from '../scanner.service.js';
+import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globals';
 
 // Mock dependencies
 const mockScanner = {
@@ -9,8 +7,8 @@ const mockScanner = {
     processAudioFile: jest.fn(),
 };
 
-// Mock the provider registry and related functions
-jest.mock('../../core/provider.js', () => ({
+// We must use unstable_mockModule before any other imports in ESM
+jest.unstable_mockModule('../../core/provider.js', () => ({
     ProviderRegistry: jest.fn().mockImplementation(() => ({
         register: jest.fn(),
         getEnabled: jest.fn().mockReturnValue([
@@ -28,12 +26,20 @@ jest.mock('../../core/provider.js', () => ({
 }));
 
 // Mock the LocalScannerProvider to avoid instantiation issues
-jest.mock('../../providers/scanner/local-fs.provider.js', () => ({
+jest.unstable_mockModule('../../providers/scanner/local-fs.provider.js', () => ({
     LocalScannerProvider: jest.fn()
 }));
 
+// Dynamic imports
+let ScannerService: any;
+
 describe('ScannerService', () => {
-    let scannerService: ScannerService;
+    let scannerService: any;
+
+    beforeAll(async () => {
+        const scannerModule = await import('../scanner.service.js');
+        ScannerService = scannerModule.ScannerService;
+    });
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -48,7 +54,7 @@ describe('ScannerService', () => {
     });
 
     test('scanDirectory should proxy to local scanner', async () => {
-        (mockScanner.scanDirectory as jest.MockedFunction<any>).mockResolvedValue({ added: 1 });
+        (mockScanner.scanDirectory as any).mockResolvedValue({ added: 1 });
         
         const result = await scannerService.scanDirectory('/music/folder');
         

@@ -23,7 +23,11 @@ describe('TelegramBotService', () => {
             processAudioFile: jest.fn(),
             consolidateFiles: jest.fn()
         };
-        botService = new TelegramBotService(mockDatabase, mockScanner, musicDir);
+        const configMock = {
+            musicDir: '/tmp/music',
+            telegramBotToken: 'mock-token'
+        } as any;
+        botService = new TelegramBotService(mockDatabase, mockScanner, configMock);
     });
 
     describe('isAuthorized', () => {

@@ -1,7 +1,7 @@
 
 import { jest } from '@jest/globals';
 import { LifecycleService } from "./lifecycle.service.js";
-import { UserRole } from "../common/visibility.js";
+import { UserRole } from "../../common/visibility.js";
 
 describe("LifecycleService", () => {
     let lifecycleService: LifecycleService;

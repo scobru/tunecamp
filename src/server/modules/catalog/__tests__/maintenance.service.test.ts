@@ -1,7 +1,7 @@
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globals';
 
-// Mock metadataService BEFORE any other imports that might use it
-jest.mock('../metadata.service.js', () => {
+// We must use unstable_mockModule before any other imports in ESM
+jest.unstable_mockModule('../metadata.service.js', () => {
     return {
         metadataService: {
             searchRecording: jest.fn(),
@@ -11,8 +11,9 @@ jest.mock('../metadata.service.js', () => {
     };
 });
 
-import { MaintenanceService } from '../maintenance.service.js';
-import { metadataService } from '../metadata.service.js';
+// Dynamic imports are required for mocked modules in ESM
+let MaintenanceService: any;
+let metadataService: any;
 
 // Mock dependencies
 const mockDb = {
@@ -51,7 +52,14 @@ const mockAutotagger = {
 };
 
 describe('MaintenanceService', () => {
-    let maintenanceService: MaintenanceService;
+    let maintenanceService: any;
+
+    beforeAll(async () => {
+        const maintenanceModule = await import('../maintenance.service.js');
+        const metadataModule = await import('../metadata.service.js');
+        MaintenanceService = maintenanceModule.MaintenanceService;
+        metadataService = metadataModule.metadataService;
+    });
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -79,9 +87,9 @@ describe('MaintenanceService', () => {
         };
         const track = { id: 1, artist_id: 10, owner_id: 100 };
         
-        (mockDb.getTrack as jest.Mock).mockReturnValue(track);
-        (mockDb.getAlbumByTitle as jest.Mock).mockReturnValue(null);
-        (mockDb.createAlbum as jest.Mock).mockReturnValue(50);
+        (mockDb.getTrack as any).mockReturnValue(track);
+        (mockDb.getAlbumByTitle as any).mockReturnValue(null);
+        (mockDb.createAlbum as any).mockReturnValue(50);
 
         await maintenanceService.applyMetadataToTrack(trackId, metadata);
 
@@ -96,8 +104,8 @@ describe('MaintenanceService', () => {
     test('autofillMetadata should process tracks and skip if no match', async () => {
         const trackIds = [1];
         const tracks = [{ id: 1, title: 'Song', artist_name: 'Artist' }];
-        (mockDb.getTracksByIds as jest.MockedFunction<any>).mockReturnValue(tracks);
-        (metadataService.searchRecording as jest.MockedFunction<any>).mockResolvedValue([]);
+        (mockDb.getTracksByIds as any).mockReturnValue(tracks);
+        (metadataService.searchRecording as any).mockResolvedValue([]);
 
         const result = await maintenanceService.autofillMetadata(trackIds, { fields: ['genre'] });
 
@@ -108,8 +116,8 @@ describe('MaintenanceService', () => {
     test('fingerprintLookup should return metadata from ZenDB', async () => {
         const trackId = 1;
         const track = { id: 1, fingerprint: 'f123' };
-        (mockDb.getTrack as jest.MockedFunction<any>).mockReturnValue(track);
-        (mockZendb.getFingerprintMetadata as jest.MockedFunction<any>).mockResolvedValue({ title: 'Matched' });
+        (mockDb.getTrack as any).mockReturnValue(track);
+        (mockZendb.getFingerprintMetadata as any).mockResolvedValue({ title: 'Matched' });
 
         const result = await maintenanceService.fingerprintLookup(trackId);
 
@@ -122,9 +130,9 @@ describe('MaintenanceService', () => {
             { id: 1, file_path: 'p1' },
             { id: 2, file_path: 'p2' }
         ];
-        (mockDb.getTracks as jest.MockedFunction<any>).mockReturnValue(tracks);
-        (mockCatalogService.analyzeFingerprint as jest.MockedFunction<any>).mockResolvedValue('f');
-        (mockZendb.getFingerprintMetadata as jest.MockedFunction<any>).mockResolvedValue(null);
+        (mockDb.getTracks as any).mockReturnValue(tracks);
+        (mockCatalogService.analyzeFingerprint as any).mockResolvedValue('f');
+        (mockZendb.getFingerprintMetadata as any).mockResolvedValue(null);
 
         const result = await maintenanceService.batchIdentifyTracks();
 

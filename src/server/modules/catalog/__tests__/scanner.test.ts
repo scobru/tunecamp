@@ -18,6 +18,8 @@ const mockDbService = {
         close: jest.fn(),
     },
     getTracks: jest.fn(),
+    getTrack: jest.fn(),
+    iterateTracks: jest.fn(),
     createArtist: jest.fn(),
     createAlbum: jest.fn(),
     createTrack: jest.fn(),
@@ -59,7 +61,7 @@ describe('Scanner Core Logic', () => {
         scanner = new Scanner(mockDbService as any, mockStorageEngine as any);
     });
 
-    test('deduplicateTracks should merge duplicates and update in-memory objects', async () => {
+    test('deduplicateLibraryTracks should merge duplicates', async () => {
         const tracks = [
             {
                 id: 1,
@@ -79,18 +81,17 @@ describe('Scanner Core Logic', () => {
             }
         ];
 
-        // @ts-ignore
-        const resultTracks = await scanner.deduplicateTracks(tracks);
+        (mockDbService as any).iterateTracks = jest.fn(() => tracks.values());
+        (mockDbService as any).getTrack = jest.fn((id: number) => tracks.find(t => t.id === id));
 
-        expect(resultTracks).toHaveLength(1);
-        expect(resultTracks[0].id).toBe(1);
-        expect(resultTracks[0].lossless_path).toBe('tracks/track1.wav');
+        // @ts-ignore
+        await scanner.deduplicateLibraryTracks();
 
         expect(mockDbService.updateTrackLosslessPath).toHaveBeenCalledWith(1, 'tracks/track1.wav');
         expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
     });
 
-    test('cleanupStaleTracks should remove missing files', async () => {
+    test('cleanupStaleLibraryTracks should remove missing files', async () => {
         const tracks = [
             {
                 id: 1,
@@ -106,10 +107,11 @@ describe('Scanner Core Logic', () => {
             }
         ];
 
+        (mockDbService as any).iterateTracks = jest.fn(() => tracks.values());
         const knownFiles = new Set<string>(['tracks/valid.mp3']);
 
         // @ts-ignore
-        await scanner.cleanupStaleTracks('/music', knownFiles, tracks);
+        await scanner.cleanupStaleLibraryTracks('/music', knownFiles);
 
         expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
         expect(mockDbService.deleteTrack).not.toHaveBeenCalledWith(1);

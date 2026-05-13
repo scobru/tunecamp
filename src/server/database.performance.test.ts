@@ -4,7 +4,7 @@ import { jest, describe, it, expect, beforeEach, beforeAll } from '@jest/globals
 const mockExec = jest.fn();
 const mockPrepare = jest.fn();
 const mockGet = jest.fn();
-const mockAll = jest.fn();
+const mockAll = jest.fn().mockReturnValue([]);
 const mockRun = jest.fn();
 
 // Mock return structure for prepared statements

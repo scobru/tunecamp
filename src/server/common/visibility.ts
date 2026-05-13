@@ -76,7 +76,7 @@ export class VisibilityGuardian {
         // Artists are Super Users or Admins with an associated artist_id.
         // Root Admin is omnipotent.
         if (role === UserRole.ROOT_ADMIN) return true;
-        return [UserRole.ADMIN, UserRole.SUPER_USER].includes(role);
+        return [UserRole.ADMIN, UserRole.SUPER_USER].includes(role) && !!context.artistId;
 
       case Capability.MANAGE_ALL_CONTENT:
         return [UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role);

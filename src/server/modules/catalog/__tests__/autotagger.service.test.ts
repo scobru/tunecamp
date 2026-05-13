@@ -1,7 +1,7 @@
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globals';
 
-// Mock metadataService BEFORE any other imports that might use it
-jest.mock('../metadata.service.js', () => {
+// We must use unstable_mockModule before any other imports in ESM
+jest.unstable_mockModule('../metadata.service.js', () => {
     return {
         metadataService: {
             searchRecording: jest.fn()
@@ -9,8 +9,9 @@ jest.mock('../metadata.service.js', () => {
     };
 });
 
-import { AutoTaggerService } from '../autotagger.service.js';
-import { metadataService } from '../metadata.service.js';
+// Dynamic imports for mocked modules
+let AutoTaggerService: any;
+let metadataService: any;
 
 // Mock other dependencies
 const mockDb = {
@@ -26,7 +27,14 @@ const mockOpenRouter = {
 };
 
 describe('AutoTaggerService', () => {
-    let autoTagger: AutoTaggerService;
+    let autoTagger: any;
+
+    beforeAll(async () => {
+        const autotaggerModule = await import('../autotagger.service.js');
+        const metadataModule = await import('../metadata.service.js');
+        AutoTaggerService = autotaggerModule.AutoTaggerService;
+        metadataService = metadataModule.metadataService;
+    });
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -54,7 +62,7 @@ describe('AutoTaggerService', () => {
 
     test('auditTrack should return no_match when no metadata found', async () => {
         const track = { id: 1, title: 'Unknown Song', artist_name: 'Unknown Artist' } as any;
-        (metadataService.searchRecording as jest.MockedFunction<any>).mockResolvedValue([]);
+        (metadataService.searchRecording as any).mockResolvedValue([]);
         const result = await autoTagger.auditTrack(track, { useAI: false });
 
         expect(result.status).toBe('no_match');
@@ -72,8 +80,8 @@ describe('AutoTaggerService', () => {
                 year: 1971 
             }
         ];
-        (metadataService.searchRecording as jest.MockedFunction<any>).mockResolvedValue(matches);
-        (mockCatalogService.updateTrack as jest.MockedFunction<any>).mockResolvedValue(undefined);
+        (metadataService.searchRecording as any).mockResolvedValue(matches);
+        (mockCatalogService.updateTrack as any).mockResolvedValue(undefined);
 
         const result = await autoTagger.auditTrack(track, { forceRepair: true });
 
@@ -88,8 +96,8 @@ describe('AutoTaggerService', () => {
 
     test('auditTrack should use AI when no provider match and useAI is true', async () => {
         const track = { id: 1, title: 'Obscure Song', artist_name: 'Obscure Artist' } as any;
-        (metadataService.searchRecording as jest.MockedFunction<any>).mockResolvedValue([]);
-        (mockOpenRouter.enrichMetadata as jest.MockedFunction<any>).mockResolvedValue({
+        (metadataService.searchRecording as any).mockResolvedValue([]);
+        (mockOpenRouter.enrichMetadata as any).mockResolvedValue({
             genre: 'Electronic',
             year: 2024
         });
