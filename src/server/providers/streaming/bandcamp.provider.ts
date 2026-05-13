@@ -1,28 +1,57 @@
-import fetch from "node-fetch";
+import { searchBandcamp, extractBandcampMetadata, BANDCAMP_IMAGE_BASE } from "../../utils/bandcamp.js";
 import type { StreamingProvider } from "../../core/provider.js";
 
+const SEARCH_LIMIT = 5;
+
 /**
- * BandcampStreamingProvider scrapes Bandcamp pages to find streamable audio URLs.
+ * BandcampStreamingProvider — searches via Bandcamp's JSON API and extracts
+ * MP3-128 stream URLs using the shared Bandcamp utility.
+ *
+ * Based on nuclear-plugin-bandcamp implementation patterns.
  */
 export class BandcampStreamingProvider implements StreamingProvider {
     readonly id = "bandcamp";
     readonly name = "Bandcamp";
-    readonly version = "1.0.0";
-    readonly description = "Bandcamp streaming fallback (scrapes streamable URLs from public pages)";
+    readonly version = "2.0.0";
+    readonly description = "Bandcamp streaming via official search API + data-tralbum parsing";
 
     async isAvailable(): Promise<boolean> {
         return true;
     }
 
     /**
-     * Resolves a track title and artist to a Bandcamp stream URL.
+     * Searches Bandcamp for a track title+artist, then resolves the stream URL.
      */
     async getStreamUrl(title: string, artist?: string, album?: string): Promise<string | null> {
         try {
-            // Simplified: Bandcamp search is complex, but we can look for specific patterns
-            return null; 
+            const query = artist ? `${artist} ${title}` : title;
+            console.log(`[BandcampProvider] 🔍 Searching: ${query}`);
+
+            const results = await searchBandcamp(query, "t", SEARCH_LIMIT);
+
+            if (results.length === 0) {
+                console.log(`[BandcampProvider] ❌ No results for: ${query}`);
+                return null;
+            }
+
+            // Try each result until we get a stream
+            for (const result of results) {
+                const trackUrl = result.item_url_path ?? result.item_url_root;
+                try {
+                    const meta = await extractBandcampMetadata(trackUrl);
+                    const streamUrl = meta?.tracks?.[0]?.streamUrl;
+                    if (streamUrl) {
+                        console.log(`[BandcampProvider] ✅ Resolved: ${result.name}`);
+                        return streamUrl;
+                    }
+                } catch (err) {
+                    console.warn(`[BandcampProvider] ⚠️ Failed for ${trackUrl}:`, err);
+                }
+            }
+
+            return null;
         } catch (error) {
-            console.error(`[BandcampProvider] ❌ Error resolving ${title}:`, error);
+            console.error(`[BandcampProvider] ❌ Error for "${title}":`, error);
             return null;
         }
     }
@@ -32,79 +61,25 @@ export class BandcampStreamingProvider implements StreamingProvider {
     }
 
     async getStreamById(id: string): Promise<string | null> {
-        return this.extractStreamFromUrl(id);
+        const meta = await extractBandcampMetadata(id);
+        return meta?.tracks?.[0]?.streamUrl || null;
     }
 
     /**
-     * Helper to extract the actual MP3 stream from a Bandcamp track page.
-     */
-    async extractStreamFromUrl(url: string): Promise<string | null> {
-        try {
-            const response = await fetch(url);
-            const html = await response.text();
-
-            // Bandcamp stores track data in a JS object
-            const match = html.match(/trackinfo: \[(.*?)\]/s);
-            if (match && match[1]) {
-                // This is a bit brittle but common for Bandcamp scraping
-                const fileMatch = match[1].match(/"file":\s*{"mp3-128":"(.*?)"}/);
-                if (fileMatch && fileMatch[1]) {
-                    return fileMatch[1].replace(/\\/g, ''); // Unescape slashes
-                }
-            }
-            return null;
-        } catch (e) {
-            console.error(`[BandcampProvider] Failed to extract stream from ${url}:`, e);
-            return null;
-        }
-    }
-
-    /**
-     * Searches Bandcamp for tracks matching the query.
+     * Searches Bandcamp for tracks — used by Global Search.
      */
     async search(query: string): Promise<any[]> {
         try {
-            // Bandcamp search URL for tracks
-            const url = `https://bandcamp.com/search?q=${encodeURIComponent(query)}&item_type=t`;
-            const response = await fetch(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
-            });
-            const html = await response.text();
-
-            // Very basic scraping of search results
-            // This is brittle but works for a fallback
-            const results: any[] = [];
-            
-            // Regex to find track items: <li class="searchresult item track">...
-            const itemRegex = /<li class="searchresult item track">([\s\S]*?)<\/li>/g;
-            let match;
-            
-            while ((match = itemRegex.exec(html)) !== null) {
-                const itemHtml = match[1];
-                
-                const urlMatch = itemHtml.match(/<div class="heading">\s*<a href="([^"]+)"/);
-                const titleMatch = itemHtml.match(/<div class="heading">\s*<a[^>]*>\s*([\s\S]*?)\s*<\/a>/);
-                const artistMatch = itemHtml.match(/<div class="subhead">\s*by\s*([\s\S]*?)\s*<\/div>/);
-                const thumbMatch = itemHtml.match(/<div class="art">\s*<img src="([^"]+)"/);
-
-                if (urlMatch && titleMatch) {
-                    results.push({
-                        id: urlMatch[1], // Use URL as ID for Bandcamp
-                        title: titleMatch[1].trim().replace(/&amp;/g, '&'),
-                        artist: artistMatch ? artistMatch[1].trim().replace(/&amp;/g, '&') : "Unknown",
-                        url: urlMatch[1],
-                        thumbnail: thumbMatch ? thumbMatch[1] : undefined,
-                        source: "bandcamp",
-                        type: "recording"
-                    });
-                }
-                
-                if (results.length >= 5) break; // Limit results
-            }
-
-            return results;
+            const results = await searchBandcamp(query, "t", 10);
+            return results.map(r => ({
+                id: r.item_url_path ?? r.item_url_root,
+                title: r.name,
+                artist: r.band_name ?? "Unknown",
+                url: r.item_url_path ?? r.item_url_root,
+                thumbnail: r.art_id ? `${BANDCAMP_IMAGE_BASE}/a${String(r.art_id).padStart(10, "0")}_2.jpg` : r.img,
+                source: "bandcamp",
+                type: "recording",
+            }));
         } catch (error) {
             console.error(`[BandcampProvider] ❌ Search failed for: ${query}`, error);
             return [];

@@ -33,6 +33,7 @@
     "@fedify/fedify": "^1.10.3",
     "@inquirer/prompts": "^8.2.0",
     "@js-temporal/polyfill": "^0.5.1",
+    "@nuclearplayer/ytdl-core": "^4.16.13",
     "@paypal/paypal-server-sdk": "^2.3.0",
     "@types/adm-zip": "^0.5.7",
     "@types/archiver": "^7.0.0",

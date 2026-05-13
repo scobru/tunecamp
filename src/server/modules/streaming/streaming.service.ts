@@ -2,10 +2,12 @@ import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.
 import type { StreamingProvider } from "../../core/provider.js";
 import { YouTubeStreamingProvider } from "../../providers/streaming/youtube.provider.js";
 import { BandcampStreamingProvider } from "../../providers/streaming/bandcamp.provider.js";
+import { SoundCloudStreamingProvider } from "../../providers/streaming/soundcloud.provider.js";
 import type { DatabaseService } from "../../database.types.js";
 
 /**
- * StreamingService manages a registry of StreamingProviders.
+ * StreamingService manages the registry of StreamingProviders.
+ * Providers are tried in registration order when resolving a track.
  */
 export class StreamingService {
     private registry = new ProviderRegistry<StreamingProvider>();
@@ -13,6 +15,7 @@ export class StreamingService {
     constructor() {
         this.registry.register(new YouTubeStreamingProvider());
         this.registry.register(new BandcampStreamingProvider());
+        this.registry.register(new SoundCloudStreamingProvider());
     }
 
     async resolve(trackTitle: string, artistName: string, albumTitle?: string): Promise<string | null> {
@@ -24,7 +27,7 @@ export class StreamingService {
                     return url;
                 }
             } catch (error) {
-                console.error(`[StreamingService] ❌ Provider "${provider.name}" failed to resolve "${trackTitle}":`, error);
+                console.error(`[StreamingService] ❌ Provider "${provider.name}" failed for "${trackTitle}":`, error);
             }
         }
 
@@ -50,17 +53,18 @@ export class StreamingService {
     }
 }
 
-/** App-wide singleton */
+/** App-wide singleton (used before DB init) */
 export const streamingService = new StreamingService();
 
 let _streamingService: StreamingService;
+
+/**
+ * Initializes the StreamingService with DB-persisted provider enable/disable state.
+ * Call this during server startup after DB is ready.
+ */
 export async function initStreamingService(db: DatabaseService): Promise<StreamingService> {
     _streamingService = new StreamingService();
-    _streamingService.getRegistry().register(new YouTubeStreamingProvider());
-    _streamingService.getRegistry().register(new BandcampStreamingProvider());
-    
     await syncRegistryWithDatabase(_streamingService.getRegistry(), db);
-    
     return _streamingService;
 }
 

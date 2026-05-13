@@ -1,22 +1,21 @@
-import { extractBandcampMetadata } from "../../utils/bandcamp.js";
+import { extractBandcampMetadata, searchBandcamp, BANDCAMP_IMAGE_BASE } from "../../utils/bandcamp.js";
 import type { MetadataProvider, MetadataResult } from "../../core/provider.js";
 
 /**
- * BandcampMetadataProvider uses the built-in Bandcamp utility to search for track metadata.
+ * BandcampMetadataProvider uses the Bandcamp utility to search and extract metadata.
  */
 export class BandcampMetadataProvider implements MetadataProvider {
-    readonly id = "bandcamp-metadata";
+    readonly id = "bandcamp";
     readonly name = "Bandcamp Metadata";
-    readonly version = "1.0.0";
-    readonly description = "Extracts rich metadata (artwork, tracks, years) from Bandcamp URLs";
+    readonly version = "2.0.0";
+    readonly description = "Extracts rich metadata (artwork, tracks, years) from Bandcamp URLs or search";
 
     async isAvailable(): Promise<boolean> {
         return true;
     }
 
     /**
-     * Since Bandcamp search is limited, this provider mostly works when a URL is provided,
-     * or it can be extended to search via Bandcamp's tags/search page.
+     * Searches Bandcamp for recordings (tracks).
      */
     async searchRecording(query: string): Promise<MetadataResult[]> {
         // If the query is a Bandcamp URL, extract it directly
@@ -27,7 +26,7 @@ export class BandcampMetadataProvider implements MetadataProvider {
                     id: query,
                     title: meta.title,
                     artist: meta.artist,
-                    albumTitle: meta.title, // Bandcamp often treats the page as an album
+                    albumTitle: meta.title,
                     date: meta.year ? `${meta.year}-01-01` : "",
                     year: meta.year,
                     coverUrl: meta.cover,
@@ -35,11 +34,34 @@ export class BandcampMetadataProvider implements MetadataProvider {
                 }];
             }
         }
-        return [];
+
+        // Otherwise, perform a text search
+        const results = await searchBandcamp(query, "t", 5);
+        return results.map(r => ({
+            id: r.item_url_path ?? r.item_url_root,
+            title: r.name,
+            artist: r.band_name ?? "Unknown",
+            date: "", // Text search doesn't provide date directly
+            coverUrl: r.art_id ? `${BANDCAMP_IMAGE_BASE}/a${String(r.art_id).padStart(10, "0")}_2.jpg` : r.img,
+            source: "bandcamp"
+        }));
     }
 
     async searchRelease(query: string): Promise<MetadataResult[]> {
-        return this.searchRecording(query);
+        if (query.includes("bandcamp.com")) {
+            return this.searchRecording(query);
+        }
+
+        // Search for albums
+        const results = await searchBandcamp(query, "a", 5);
+        return results.map(r => ({
+            id: r.item_url_path ?? r.item_url_root,
+            title: r.name,
+            artist: r.band_name ?? "Unknown",
+            date: "",
+            coverUrl: r.art_id ? `${BANDCAMP_IMAGE_BASE}/a${String(r.art_id).padStart(10, "0")}_2.jpg` : r.img,
+            source: "bandcamp"
+        }));
     }
 
     async getCoverUrl(id: string): Promise<string | null> {
