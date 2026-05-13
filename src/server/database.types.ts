@@ -465,7 +465,8 @@ export interface DatabaseService {
     getTrack(id: number): Track | undefined;
     getTracksByIds(ids: number[]): Track[];
     getTrackByPath(filePath: string): Track | undefined;
-    createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number;
+    getTrackByExternalId(externalId: string): Track | undefined;
+    createTrack(track: Omit<Track, "id" | "created_at" | "album_title">): number;
     updateTrackAlbum(id: number, albumId: number | null): void;
     updateTracksAlbum(trackIds: number[], albumId: number | null): void;
     updateTrackOrder(id: number, trackNum: number): void;

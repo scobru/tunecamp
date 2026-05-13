@@ -5,6 +5,7 @@ import type { OpenRouterService } from "../ai/openrouter.service.js";
 
 import type { ZenDBService } from "../network/zendb.service.js";
 import type { FingerprintService } from "../media/fingerprint.service.js";
+import type { AutoTaggerService, AutoTaggerStatus } from "./autotagger.service.js";
 
 export class MaintenanceService {
     constructor(
@@ -12,7 +13,8 @@ export class MaintenanceService {
         private catalogService: CatalogService,
         private openRouter: OpenRouterService,
         private fingerprinting: FingerprintService,
-        private zendb: ZenDBService
+        private zendb: ZenDBService,
+        private autotagger: AutoTaggerService
     ) {}
 
     /**
@@ -535,5 +537,26 @@ export class MaintenanceService {
             matched: matchCount,
             errors: errorCount
         };
+    }
+
+    /**
+     * Starts the background library audit/repair process.
+     */
+    async startLibraryAudit(options: { forceRepair?: boolean, useAI?: boolean } = {}): Promise<void> {
+        return this.autotagger.startAudit(options);
+    }
+
+    /**
+     * Gets the current status of the library audit.
+     */
+    getAuditStatus(): AutoTaggerStatus {
+        return this.autotagger.getStatus();
+    }
+
+    /**
+     * Stops the running library audit.
+     */
+    stopLibraryAudit(): void {
+        this.autotagger.stopAudit();
     }
 }

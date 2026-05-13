@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Music, Disc, User, Globe, Play } from 'lucide-react';
+import { Search as SearchIcon, Music, Disc, User, Globe, Play, Heart, Plus, Check } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
+import { useAuthStore } from '../stores/useAuthStore';
 import { formatDuration } from '../utils/format';
 import clsx from 'clsx';
 import type { Track, Album, Artist } from '../types';
@@ -13,6 +14,34 @@ export const Search = () => {
     const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[] } | null>(null);
     const [loading, setLoading] = useState(false);
     const { playTrack } = usePlayerStore();
+    const { user } = useAuthStore();
+    const [starredTracks, setStarredTracks] = useState<Set<string>>(new Set());
+    const [starredAlbums, setStarredAlbums] = useState<Set<string>>(new Set());
+    const [starredArtists, setStarredArtists] = useState<Set<string>>(new Set());
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [activePlaylistMenu, setActivePlaylistMenu] = useState<string | null>(null);
+
+    const loadData = async () => {
+        if (!user) return;
+        try {
+            const [pData, sTracks, sAlbums, sArtists] = await Promise.all([
+                API.getPlaylists(),
+                API.getStarredTracks(),
+                API.getStarredAlbums(),
+                API.getStarredArtists()
+            ]);
+            setPlaylists(pData);
+            setStarredTracks(new Set(sTracks));
+            setStarredAlbums(new Set(sAlbums.map(String)));
+            setStarredArtists(new Set(sArtists.map(String)));
+        } catch (e) {
+            console.error("Error loading search page data:", e);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+    }, [user]);
 
     const handleSearch = async (q: string) => {
         if (!q.trim()) return;
@@ -39,6 +68,111 @@ export const Search = () => {
 
     const updateQuery = (q: string) => {
         setSearchParams({ q });
+    };
+
+    const handleToggleStar = async (item: any) => {
+        if (!user) return;
+        const trackId = item.id.startsWith?.('ext:') ? item.id : String(item.id);
+        const isStarred = starredTracks.has(trackId);
+
+        try {
+            if (isStarred) {
+                await API.unstarTrack(trackId);
+                const next = new Set(starredTracks);
+                next.delete(trackId);
+                setStarredTracks(next);
+            } else {
+                const metadata = item.isExternal ? {
+                    title: item.title,
+                    artist: item.artist,
+                    coverUrl: item.coverUrl || item.thumbnail,
+                    duration: item.duration
+                } : {};
+                
+                await API.starTrack(trackId, metadata);
+                const next = new Set(starredTracks);
+                next.add(trackId);
+                setStarredTracks(next);
+            }
+        } catch (e) {
+            console.error("Error toggling track star:", e);
+        }
+    };
+
+    const handleToggleStarAlbum = async (item: any) => {
+        if (!user) return;
+        const id = String(item.id);
+        const isStarred = starredAlbums.has(id);
+
+        try {
+            if (isStarred) {
+                await API.unstarAlbum(id);
+                const next = new Set(starredAlbums);
+                next.delete(id);
+                setStarredAlbums(next);
+            } else {
+                await API.starAlbum(id);
+                const next = new Set(starredAlbums);
+                next.add(id);
+                setStarredAlbums(next);
+            }
+        } catch (e) {
+            console.error("Error toggling album star:", e);
+        }
+    };
+
+    const handleToggleStarArtist = async (item: any) => {
+        if (!user) return;
+        const id = String(item.id);
+        const isStarred = starredArtists.has(id);
+
+        try {
+            if (isStarred) {
+                await API.unstarArtist(id);
+                const next = new Set(starredArtists);
+                next.delete(id);
+                setStarredArtists(next);
+            } else {
+                await API.starArtist(id);
+                const next = new Set(starredArtists);
+                next.add(id);
+                setStarredArtists(next);
+            }
+        } catch (e) {
+            console.error("Error toggling artist star:", e);
+        }
+    };
+
+    const handleAddToPlaylist = async (item: any, playlistId: string) => {
+        try {
+            let trackId = item.id;
+            
+            // If external, we need to create/get the track record first
+            if (String(trackId).startsWith('ext:')) {
+                const metadata = {
+                    title: item.title,
+                    artist: item.artist,
+                    coverUrl: item.coverUrl || item.thumbnail,
+                    duration: item.duration
+                };
+                // Use starTrack as a way to ensure the track exists (hacky but works with current backend changes)
+                // Or better: call a dedicated "link" endpoint if we had one. 
+                // Given our backend change in starTrack, it returns { trackId }
+                const res = await API.starTrack(trackId, metadata);
+                trackId = res.trackId;
+                
+                // Add to starred state since we called starTrack
+                const next = new Set(starredTracks);
+                next.add(item.id);
+                setStarredTracks(next);
+            }
+
+            await API.addTrackToPlaylist(playlistId, String(trackId));
+            setActivePlaylistMenu(null);
+            // Show a temporary success state maybe?
+        } catch (e) {
+            console.error("Error adding to playlist:", e);
+        }
     };
 
     return (
@@ -71,22 +205,37 @@ export const Search = () => {
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><User size={20}/> Artists</h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {results.artists.map(artist => (
-                                    <Link to={`/artists/${artist.slug || artist.id}`} key={artist.id} className="group card bg-base-200 hover:bg-base-300 transition-colors">
-                                        <figure className="aspect-square relative overflow-hidden">
-                                            {artist.coverImage ? (
-                                                <img src={API.getArtistCoverUrl(artist.id)} alt={artist.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
-                                            ) : (
-                                                <div className="w-full h-full bg-neutral flex items-center justify-center text-4xl font-bold opacity-30">
-                                                    {artist.name[0]}
+                                    <div key={artist.id} className="group card bg-base-200 hover:bg-base-300 transition-colors overflow-hidden">
+                                        <Link to={`/artists/${artist.slug || artist.id}`} className="flex-1">
+                                            <figure className="aspect-square relative">
+                                                {artist.coverImage ? (
+                                                    <img src={API.getArtistCoverUrl(artist.id)} alt={artist.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
+                                                ) : (
+                                                    <div className="w-full h-full bg-neutral flex items-center justify-center text-4xl font-bold opacity-30">
+                                                        {artist.name[0]}
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <button 
+                                                        className={clsx(
+                                                            "btn btn-circle btn-ghost btn-sm",
+                                                            starredArtists.has(String(artist.id)) ? "text-primary opacity-100" : "text-white"
+                                                        )}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            handleToggleStarArtist(artist);
+                                                        }}
+                                                    >
+                                                        <Heart size={20} fill={starredArtists.has(String(artist.id)) ? "currentColor" : "none"} />
+                                                    </button>
                                                 </div>
-                                            )}
-                                        </figure>
-                                        <div className="card-body p-3">
-                                            <h3 className="font-bold truncate">{artist.name}</h3>
-                                        </div>
-                                    </Link>
-                                ))}
+                                            </figure>
+                                            <div className="card-body p-3">
+                                                <h3 className="font-bold truncate">{artist.name}</h3>
+                                            </div>
+                                        </Link>
+                                    </div>
                             </div>
                         </section>
                     )}
@@ -101,29 +250,56 @@ export const Search = () => {
                                     const linkTo = isRelease ? `/releases/${album.slug || album.id}` : `/albums/${album.slug || album.id}`;
                                     const coverUrl = album.coverImage || (isRelease ? API.getReleaseCoverUrl(album.id) : API.getAlbumCoverUrl(album.id));
                                     return (
-                                                    <Link to={linkTo} key={album.id} className="group card bg-base-200 hover:bg-base-300 transition-colors">
-                                                        <figure className="aspect-square relative overflow-hidden">
-                                                            <img 
-                                                                src={coverUrl} 
-                                                                alt={album.title} 
-                                                                className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
-                                                                onError={(e) => {
-                                                                   const target = e.target as HTMLImageElement;
-                                                                   target.style.display = 'none';
-                                                                   if (target.nextElementSibling) {
-                                                                      (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                                                                   }
+                                            <div key={album.id} className="group card bg-base-200 hover:bg-base-300 transition-colors overflow-hidden">
+                                                <Link to={linkTo} className="flex-1">
+                                                    <figure className="aspect-square relative">
+                                                        <img 
+                                                            src={coverUrl} 
+                                                            alt={album.title} 
+                                                            className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
+                                                            onError={(e) => {
+                                                               const target = e.target as HTMLImageElement;
+                                                               target.style.display = 'none';
+                                                               if (target.nextElementSibling) {
+                                                                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                                                               }
+                                                            }}
+                                                        />
+                                                        <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
+                                                            <Disc size={40} />
+                                                        </div>
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                            <button 
+                                                                className="btn btn-circle btn-primary btn-sm scale-90 group-hover:scale-100 transition-transform"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    playTrack({ ...album, album_id: album.id, album_title: album.title });
                                                                 }}
-                                                            />
-                                                            <div className="hidden absolute inset-0 bg-neutral w-full h-full items-center justify-center opacity-30">
-                                                                <Disc size={40} />
-                                                            </div>
-                                                        </figure>
-                                            <div className="card-body p-3">
-                                                <h3 className="font-bold truncate">{album.title}</h3>
-                                                <p className="text-xs opacity-60 truncate">{album.artistName || album.artist_name}</p>
+                                                            >
+                                                                <Play size={16} fill="currentColor" />
+                                                            </button>
+                                                            <button 
+                                                                className={clsx(
+                                                                    "btn btn-circle btn-ghost btn-sm",
+                                                                    starredAlbums.has(String(album.id)) ? "text-primary opacity-100" : "text-white"
+                                                                )}
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    handleToggleStarAlbum(album);
+                                                                }}
+                                                            >
+                                                                <Heart size={16} fill={starredAlbums.has(String(album.id)) ? "currentColor" : "none"} />
+                                                            </button>
+                                                        </div>
+                                                    </figure>
+                                                    <div className="card-body p-3">
+                                                        <h3 className="font-bold truncate">{album.title}</h3>
+                                                        <p className="text-xs opacity-60 truncate">{album.artistName || album.artist_name}</p>
+                                                    </div>
+                                                </Link>
                                             </div>
-                                        </Link>
                                     );
                                 })}
                             </div>
@@ -150,15 +326,57 @@ export const Search = () => {
                                                 className="w-full h-full rounded object-cover opacity-70 group-hover:opacity-100"
                                              />
                                              <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                 <Music size={16} />
+                                                 <Play size={16} fill="currentColor" />
                                              </div>
                                         </button>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-bold truncate">{track.title}</div>
                                             <div className="text-xs opacity-60 truncate">{track.artistName}</div>
                                         </div>
-                                        <div className="text-xs font-mono opacity-50">
-                                            {formatDuration(track.duration)}
+                                        <div className="flex items-center gap-2">
+                                            <div className="text-xs font-mono opacity-50 mr-2">
+                                                {formatDuration(track.duration)}
+                                            </div>
+                                            
+                                            <button 
+                                                className={clsx(
+                                                    "btn btn-ghost btn-xs transition-colors",
+                                                    starredTracks.has(String(track.id)) ? "text-primary opacity-100" : "opacity-0 group-hover:opacity-100"
+                                                )}
+                                                onClick={() => handleToggleStar(track)}
+                                                title="Add to Favourites"
+                                            >
+                                                <Heart size={14} fill={starredTracks.has(String(track.id)) ? "currentColor" : "none"} />
+                                            </button>
+
+                                            <div className="dropdown dropdown-end">
+                                                <button 
+                                                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                                                    onClick={() => setActivePlaylistMenu(String(track.id))}
+                                                >
+                                                    <Plus size={14}/>
+                                                </button>
+                                                {activePlaylistMenu === String(track.id) && (
+                                                    <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-52 mt-1 border border-base-300 animate-in fade-in zoom-in duration-100">
+                                                        <li className="menu-title text-xs uppercase opacity-50">Your Playlists</li>
+                                                        {playlists.length === 0 ? (
+                                                            <li className="disabled text-xs p-2">No playlists found</li>
+                                                        ) : (
+                                                            playlists.map(p => (
+                                                                <li key={p.id}>
+                                                                    <button 
+                                                                        className="flex justify-between items-center text-sm"
+                                                                        onClick={() => handleAddToPlaylist(track, String(p.id))}
+                                                                    >
+                                                                        {p.name}
+                                                                        <Plus size={12} className="opacity-50"/>
+                                                                    </button>
+                                                                </li>
+                                                            ))
+                                                        )}
+                                                    </ul>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -240,9 +458,50 @@ export const Search = () => {
                                                     <Globe size={12}/> Link
                                                 </a>
                                             )}
-                                            <button className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100">
-                                                Add to Playlist
+
+                                            <button 
+                                                className={clsx(
+                                                    "btn btn-ghost btn-xs transition-colors",
+                                                    starredTracks.has(item.id) ? "text-primary opacity-100" : "opacity-0 group-hover:opacity-100"
+                                                )}
+                                                onClick={() => handleToggleStar({...item, isExternal: true})}
+                                                title="Add to Favourites"
+                                            >
+                                                <Heart size={14} fill={starredTracks.has(item.id) ? "currentColor" : "none"} />
                                             </button>
+
+                                            <div className="dropdown dropdown-end">
+                                                <button 
+                                                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
+                                                    onClick={() => setActivePlaylistMenu(item.id)}
+                                                >
+                                                    <Plus size={14}/> Add
+                                                </button>
+                                                {activePlaylistMenu === item.id && (
+                                                    <ul className="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-52 mt-1 border border-base-300 animate-in fade-in zoom-in duration-100">
+                                                        <li className="menu-title text-xs uppercase opacity-50">Your Playlists</li>
+                                                        {playlists.length === 0 ? (
+                                                            <li className="disabled text-xs p-2">No playlists found</li>
+                                                        ) : (
+                                                            playlists.map(p => (
+                                                                <li key={p.id}>
+                                                                    <button 
+                                                                        className="flex justify-between items-center text-sm"
+                                                                        onClick={() => handleAddToPlaylist(item, String(p.id))}
+                                                                    >
+                                                                        {p.name}
+                                                                        <Plus size={12} className="opacity-50"/>
+                                                                    </button>
+                                                                </li>
+                                                            ))
+                                                        )}
+                                                        <div className="divider my-1"></div>
+                                                        <li>
+                                                            <Link to="/library?tab=playlists" className="text-xs opacity-50 justify-center">Manage Playlists</Link>
+                                                        </li>
+                                                    </ul>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

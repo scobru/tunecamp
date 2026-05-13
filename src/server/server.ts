@@ -89,6 +89,7 @@ import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
 import { LindaBotService } from "./modules/integrations/linda-bot.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
+import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { FingerprintService } from "./modules/media/fingerprint.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
@@ -137,10 +138,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const authService = createAuthService(database.db, config.jwtSecret, config.adminUser, config.adminPass);
     await authService.init();
     const authMiddleware = createAuthMiddleware(authService);
-
-    const scanner = new Scanner(database, storage);
-
-    const scannerService = await initScannerService(database, scanner);
     
     const { initMetadataService } = await import("./modules/catalog/metadata.service.js");
     const metadataService = await initMetadataService(database);
@@ -208,7 +205,11 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService, openRouterService);
 
-    const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, fingerprintService, zendbService);
+    const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
+    const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, fingerprintService, zendbService, autotaggerService);
+    
+    const scanner = new Scanner(database, storage, autotaggerService);
+    const scannerService = await initScannerService(database, scanner);
 
     const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));
     const slskUser = database.getSetting("soulseek_username");

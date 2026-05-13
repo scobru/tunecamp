@@ -128,6 +128,8 @@ export interface ScannerService {
     clearCaches(): void;
 }
 
+import type { AutoTaggerService } from "./autotagger.service.js";
+
 export class Scanner implements ScannerService {
     private watcher: FSWatcher | null = null;
     private isScanning = false;
@@ -149,7 +151,8 @@ export class Scanner implements ScannerService {
 
     constructor(
         private database: DatabaseService,
-        private storage: StorageEngine
+        private storage: StorageEngine,
+        private autotagger?: AutoTaggerService
     ) {
         this.lookupPrimaryAdmin();
     }
@@ -732,6 +735,15 @@ export class Scanner implements ScannerService {
             if (ext === ".wav") {
                 queuedConversion = true;
                 this.processQueue.add(() => convertWavToMp3(currentFilePath));
+            }
+
+            if (this.autotagger && (artistId === null || albumId === null || trackId)) {
+                const track = this.database.getTrack(trackId);
+                if (track && (track.artist_name === 'Unknown Artist' || !track.album_id)) {
+                    this.autotagger.auditTrack(track, { forceRepair: false, useAI: true }).catch(e => {
+                        console.error(`[Scanner] Auto-tagging failed for track ${trackId}:`, e);
+                    });
+                }
             }
 
             return { originalPath: filePath, success: true, message: "Processed.", trackId, queuedConversion };

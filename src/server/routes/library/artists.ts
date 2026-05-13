@@ -83,6 +83,21 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
     });
 
     /**
+     * GET /api/artists/starred
+     * Get user's starred artists
+     */
+    router.get("/starred", (req: AuthenticatedRequest, res) => {
+        if (!req.username) return res.status(401).json({ error: "Unauthorized" });
+        try {
+            const starredItems = database.getStarredItems(req.username, 'artist');
+            res.json(starredItems.map((i: any) => i.item_id));
+        } catch (error) {
+            console.error("Error getting starred artists:", error);
+            res.status(500).json({ error: "Failed to get starred artists" });
+        }
+    });
+
+    /**
      * POST /api/artists/:id/repair-links
      * Repair links for tracks and albums that should belong to this artist (ADMIN ONLY)
      */

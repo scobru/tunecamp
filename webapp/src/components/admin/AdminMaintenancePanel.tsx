@@ -17,6 +17,7 @@ export const AdminMaintenancePanel = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAIProcessing, setIsAIProcessing] = useState(false);
     const [results, setResults] = useState<{ success: number, failed: number, skipped: number } | null>(null);
+    const [auditStatus, setAuditStatus] = useState<any | null>(null);
 
     const [pickerTrack, setPickerTrack] = useState<any | null>(null);
     const [pickerArtist, setPickerArtist] = useState<any | null>(null);
@@ -41,6 +42,30 @@ export const AdminMaintenancePanel = () => {
             loadAlbums();
         }
     }, [filter, mode]);
+
+    useEffect(() => {
+        let interval: any;
+        if (auditStatus?.isScanning) {
+            interval = setInterval(async () => {
+                try {
+                    const status = await API.getAuditStatus();
+                    setAuditStatus(status);
+                    if (!status.isScanning) {
+                        clearInterval(interval);
+                        if (mode === 'tracks') loadTracks();
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch audit status:", e);
+                }
+            }, 2000);
+        }
+        return () => clearInterval(interval);
+    }, [auditStatus?.isScanning]);
+
+    useEffect(() => {
+        // Initial check
+        API.getAuditStatus().then(setAuditStatus).catch(() => {});
+    }, []);
 
     const loadTracks = async () => {
         setIsLoading(true);
@@ -236,19 +261,24 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
-    const handleConsolidate = async () => {
-        if (!confirm("Are you sure you want to consolidate the database? This will permanently remove empty albums, releases, and artists with no tracks.")) return;
-        setIsProcessing(true);
+    const handleStartAudit = async (forceRepair = false, useAI = false) => {
+        if (!confirm(`This will audit your entire library metadata. It might take a while. Continue?`)) return;
         try {
-            await API.consolidateDatabase();
-            alert("Database consolidated successfully!");
-            if (mode === 'artists') loadArtists();
-            else if (mode === 'albums') loadAlbums();
-            else loadTracks();
+            await API.startLibraryAudit({ forceRepair, useAI });
+            const status = await API.getAuditStatus();
+            setAuditStatus(status);
         } catch (e: any) {
-            alert("Consolidation failed: " + e.message);
-        } finally {
-            setIsProcessing(false);
+            alert("Failed to start audit: " + e.message);
+        }
+    };
+
+    const handleStopAudit = async () => {
+        try {
+            await API.stopLibraryAudit();
+            const status = await API.getAuditStatus();
+            setAuditStatus(status);
+        } catch (e: any) {
+            alert("Failed to stop audit: " + e.message);
         }
     };
 
@@ -347,6 +377,72 @@ export const AdminMaintenancePanel = () => {
                         Consolidate DB
                     </button>
                 </div>
+            </div>
+
+            <div className="bg-base-300/30 border border-base-content/10 rounded-xl p-4 space-y-4">
+                <div className="flex flex-col md:flex-row justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                        <div className="bg-primary/20 p-2 rounded-lg">
+                            <Activity className="text-primary" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold">Library Auto-Tagger & Audit</h4>
+                            <p className="text-xs opacity-60 max-w-md">
+                                Background service that reconciles all library metadata against online sources. It verifies existing tags and repairs "Unknown" entries automatically.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        {auditStatus?.isScanning ? (
+                            <button className="btn btn-sm btn-error" onClick={handleStopAudit}>
+                                Stop Audit
+                            </button>
+                        ) : (
+                            <>
+                                <button className="btn btn-sm btn-primary" onClick={() => handleStartAudit(false, false)}>
+                                    Start Audit
+                                </button>
+                                <button className="btn btn-sm btn-outline btn-secondary" onClick={() => handleStartAudit(true, hasAI)}>
+                                    <Wand2 size={14} /> Repair & AI
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {auditStatus?.isScanning && (
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs">
+                            <span className="flex items-center gap-2">
+                                <Loader2 className="animate-spin" size={12} />
+                                Processing Library... ({auditStatus.processedTracks} / {auditStatus.totalTracks})
+                            </span>
+                            <span className="opacity-60">{Math.round((auditStatus.processedTracks / auditStatus.totalTracks) * 100)}%</span>
+                        </div>
+                        <progress 
+                            className="progress progress-primary w-full h-2" 
+                            value={auditStatus.processedTracks} 
+                            max={auditStatus.totalTracks}
+                        ></progress>
+                        <div className="flex gap-4 text-[10px] uppercase font-bold tracking-wider opacity-60">
+                            <span className="text-success">Verified: {auditStatus.verifiedCount}</span>
+                            <span className="text-secondary">Repaired: {auditStatus.repairedCount}</span>
+                            <span className="text-error">Failed: {auditStatus.failedCount}</span>
+                        </div>
+                        {auditStatus.lastResult && (
+                            <div className="text-[10px] italic opacity-40 border-t border-base-content/5 pt-1">
+                                Last: {auditStatus.lastResult.artist} - {auditStatus.lastResult.title} ({auditStatus.lastResult.status})
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {!auditStatus?.isScanning && auditStatus?.processedTracks > 0 && (
+                    <div className="text-xs bg-success/10 text-success p-2 rounded-lg border border-success/20 flex items-center gap-2">
+                        <CheckCircle2 size={14} />
+                        Last audit finished: {auditStatus.repairedCount} tracks repaired, {auditStatus.verifiedCount} verified.
+                    </div>
+                )}
             </div>
 
             {results && (

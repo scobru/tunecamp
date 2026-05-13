@@ -1707,7 +1707,11 @@ export function createDatabase(dbPath: string): DatabaseService {
         getTrackByPath(filePath: string): Track | undefined {
             return trackRepository.getByPath(filePath);
         },
-        createTrack(track: Omit<Track, "id" | "created_at" | "album_title" | "artist_name">): number {
+        getTrackByExternalId(externalId: string): Track | undefined {
+            const row = db.prepare("SELECT * FROM tracks WHERE external_id = ?").get(externalId) as any;
+            return row ? (trackRepository as any).mapTrack(row) : undefined;
+        },
+        createTrack(track: Omit<Track, "id" | "created_at" | "album_title">): number {
             const trackId = trackRepository.create(track);
             const ownerId = track.owner_id;
             if (ownerId) this.addTrackOwner(trackId, ownerId);

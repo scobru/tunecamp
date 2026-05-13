@@ -37,6 +37,16 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
     }));
 
     /**
+     * GET /api/albums/starred
+     * Get user's starred albums
+     */
+    router.get("/starred", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.username) throw new ForbiddenError("Unauthorized");
+        const starredItems = database.getStarredItems(req.username, 'album');
+        res.json(starredItems.map((i: any) => i.item_id));
+    }));
+
+    /**
      * GET /api/albums/search
      */
     router.get("/search", wrapAsync(async (req: AuthenticatedRequest, res: any) => {

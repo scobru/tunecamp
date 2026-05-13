@@ -46,6 +46,17 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     }));
 
     /**
+     * GET /api/tracks/starred
+     * Get user's starred tracks
+     */
+    router.get("/starred", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.username) throw new ForbiddenError("Unauthorized");
+        const starredItems = database.getStarredItems(req.username, 'track');
+        // Return just IDs for easy lookup in frontend
+        res.json(starredItems.map((i: any) => i.item_id));
+    }));
+
+    /**
      * GET /api/tracks/pricing/batch
      * Get pricing data for all tracks owned by the current user
      */
@@ -240,10 +251,49 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      */
     router.post("/:id/star", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
-        const trackId = parseInt(req.params.id as string, 10);
+        let idParam = req.params.id as string;
+        let trackId: number;
+
+        if (idParam.startsWith("ext:")) {
+            // Check if we already have this external track linked
+            const existing = database.getTrackByExternalId(idParam);
+            if (existing) {
+                trackId = existing.id;
+            } else {
+                // Create a "Link" track record
+                const { title, artist, coverUrl, duration } = req.body;
+                if (!title) throw new BadRequestError("Title required to link external track");
+                
+                // Try to find/create artist
+                let artistId = null;
+                if (artist) {
+                    const a = database.getArtistByName(artist);
+                    artistId = a ? a.id : database.createArtist(artist);
+                }
+
+                trackId = database.createTrack({
+                    title,
+                    artist_id: artistId,
+                    artist_name: artist || null,
+                    owner_id: req.userId || null,
+                    album_id: null,
+                    track_num: 1,
+                    duration: duration || 0,
+                    external_id: idParam,
+                    external_artwork: coverUrl || null,
+                    service: idParam.split(":")[1],
+                    url: idParam, // The ext: ID acts as the identifier for streaming
+                    file_path: null, format: null, bitrate: null, sample_rate: null, lossless_path: null,
+                    price: 0, price_usdc: 0, currency: 'ETH', waveform: null, lyrics: null
+                });
+            }
+        } else {
+            trackId = parseInt(idParam, 10);
+        }
+
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
         await catalogService.starTrack(req.username, trackId);
-        res.json({ success: true, starred: true });
+        res.json({ success: true, starred: true, trackId });
     }));
 
     /**
@@ -251,7 +301,17 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      */
     router.delete("/:id/star", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
-        const trackId = parseInt(req.params.id as string, 10);
+        const idParam = req.params.id as string;
+        let trackId: number;
+
+        if (idParam.startsWith("ext:")) {
+            const existing = database.getTrackByExternalId(idParam);
+            if (!existing) return res.json({ success: true, starred: false });
+            trackId = existing.id;
+        } else {
+            trackId = parseInt(idParam, 10);
+        }
+
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
         await catalogService.unstarTrack(req.username, trackId);
         res.json({ success: true, starred: false });

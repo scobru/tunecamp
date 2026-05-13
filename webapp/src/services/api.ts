@@ -179,10 +179,13 @@ export const API = {
     starTrack: (id: string | number) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`/tracks/${id}/star`)),
     unstarTrack: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`/tracks/${id}/star`)),
     rateTrack: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`/tracks/${id}/rating`, { rating })),
+    getStarredTracks: () => handleResponse(api.get<string[]>('/tracks/starred')),
+    getStarredAlbums: () => handleResponse(api.get<string[]>('/albums/starred')),
 
     starAlbum: (id: string | number) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`/albums/${id}/star`)),
     unstarAlbum: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`/albums/${id}/star`)),
     rateAlbum: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`/albums/${id}/rating`, { rating })),
+    getStarredArtists: () => handleResponse(api.get<string[]>('/artists/starred')),
 
     starArtist: (id: string | number) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`/artists/${id}/star`)),
     unstarArtist: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`/artists/${id}/star`)),
@@ -495,6 +498,10 @@ export const API = {
     fingerprintLookup: (trackId: number) => handleResponse(api.post<any>(`/metadata/maintenance/fingerprint/lookup/${trackId}`)),
     shareFingerprint: (trackId: number) => handleResponse(api.post<{ success: boolean }>(`/metadata/maintenance/fingerprint/share/${trackId}`)),
     scanAllFingerprints: () => handleResponse(api.post<{ message: string }>('/metadata/maintenance/fingerprint/scan-all')),
+
+    startLibraryAudit: (options: { forceRepair?: boolean, useAI?: boolean }) => handleResponse(api.post('/metadata/maintenance/audit-all', options)),
+    getAuditStatus: () => handleResponse(api.get('/metadata/maintenance/audit-status')),
+    stopLibraryAudit: () => handleResponse(api.post('/metadata/maintenance/audit-stop')),
     
     // --- Admin: Plugins ---
     getPlugins: () => handleResponse(api.get<any[]>('/admin/system/plugins')),
@@ -502,4 +509,3 @@ export const API = {
 };
 
 export default API;
-

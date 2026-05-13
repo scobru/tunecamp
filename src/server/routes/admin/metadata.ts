@@ -466,24 +466,37 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
-     * POST /api/metadata/maintenance/fingerprint/scan-all
-     * Scans all tracks in the database to generate fingerprints and identify them via ZenDB
+     * POST /api/metadata/maintenance/audit-all
+     * Starts the background library audit/repair process
      */
-    router.post("/maintenance/fingerprint/scan-all", async (req: AuthenticatedRequest, res) => {
+    router.post("/maintenance/audit-all", async (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
-        try {
-            // Trigger in background but return immediately with a success message 
-            // since it can take a long time
-            maintenance.batchIdentifyTracks().then(results => {
-                console.log(`[Maintenance] Mass scan completed:`, results);
-            }).catch(e => {
-                console.error(`[Maintenance] Mass scan failed:`, e);
-            });
-            
-            res.json({ message: "Mass fingerprint scan started in background" });
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
+        const { forceRepair, useAI } = req.body;
+        
+        maintenance.startLibraryAudit({
+            forceRepair: !!forceRepair,
+            useAI: !!useAI
+        }).catch(e => console.error("[MetadataRoutes] Audit failed:", e));
+
+        res.json({ message: "Library audit started in background" });
+    });
+
+    /**
+     * GET /api/metadata/maintenance/audit-status
+     * Returns the status of the library audit
+     */
+    router.get("/maintenance/audit-status", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        res.json(maintenance.getAuditStatus());
+    });
+
+    /**
+     * POST /api/metadata/maintenance/audit-stop
+     */
+    router.post("/maintenance/audit-stop", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        maintenance.stopLibraryAudit();
+        res.json({ message: "Audit stopped" });
     });
 
     return router;
