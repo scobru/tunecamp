@@ -203,15 +203,58 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
         if (!req.isAdmin && !req.isActive) return res.status(403).json({ error: "Account not active" });
         try {
             const playlistId = parseInt(req.params.id as string, 10);
-            let { trackId } = req.body;
+            let { trackId, metadata } = req.body;
+
+            let actualTrackId: number;
 
             // Handle trackId as string or number
             if (typeof trackId === "string") {
-                trackId = parseInt(trackId, 10);
+                actualTrackId = parseInt(trackId, 10);
+                if (isNaN(actualTrackId)) {
+                    if (trackId.startsWith("ext:") || trackId.startsWith("http")) {
+                        const existing = database.getTrackByExternalId(trackId);
+                        if (existing) {
+                            actualTrackId = existing.id;
+                        } else if (metadata) {
+                            const { title, artist, coverUrl, duration } = metadata;
+                            if (!title) {
+                                return res.status(400).json({ error: "Title required in metadata to link external track" });
+                            }
+
+                            let artistId = null;
+                            if (artist) {
+                                const a = database.getArtistByName(artist);
+                                artistId = a ? a.id : database.createArtist(artist);
+                            }
+
+                            actualTrackId = database.createTrack({
+                                title,
+                                artist_id: artistId,
+                                artist_name: artist || null,
+                                owner_id: req.userId || null,
+                                album_id: null,
+                                track_num: 1,
+                                duration: duration || 0,
+                                external_id: trackId,
+                                external_artwork: coverUrl || null,
+                                service: trackId.startsWith("ext:") ? trackId.split(":")[1] : "link",
+                                url: trackId,
+                                file_path: null, format: null, bitrate: null, sample_rate: null, lossless_path: null,
+                                price: 0, price_usdc: 0, currency: 'ETH', waveform: null, lyrics: null
+                            });
+                        } else {
+                            return res.status(400).json({ error: "External track not found in library, metadata required to add." });
+                        }
+                    } else {
+                        return res.status(400).json({ error: "Invalid trackId format" });
+                    }
+                }
+            } else {
+                actualTrackId = trackId;
             }
 
-            if (!trackId || isNaN(trackId)) {
-                return res.status(400).json({ error: "trackId is required and must be a number" });
+            if (!actualTrackId || isNaN(actualTrackId)) {
+                return res.status(400).json({ error: "trackId is required" });
             }
 
             const playlist = database.getPlaylist(playlistId);
@@ -223,7 +266,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(403).json({ error: "Not your playlist" });
             }
 
-            const track = database.getTrack(trackId);
+            const track = database.getTrack(actualTrackId);
             if (!track) {
                 return res.status(404).json({ error: "Track not found" });
             }
@@ -234,12 +277,12 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 const isOwner = track.owner_id === req.userId || (track.artist_id && track.artist_id === req.artistId);
                 
                 if (album && album.visibility === 'private' && !isOwner) {
-                    console.warn(`🛑 [Playlist] User ${req.username} tried to add private track ${trackId} from album ${album.id} to playlist ${playlistId}`);
+                    console.warn(`🛑 [Playlist] User ${req.username} tried to add private track ${actualTrackId} from album ${album.id} to playlist ${playlistId}`);
                     return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
                 }
             }
 
-            database.addTrackToPlaylist(playlistId, trackId);
+            database.addTrackToPlaylist(playlistId, actualTrackId);
 
 
 

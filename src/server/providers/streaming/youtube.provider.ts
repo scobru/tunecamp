@@ -185,8 +185,8 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 getUrl: true,
                 format: 'bestaudio/best',
                 noWarnings: true,
-                noCallHome: true,
                 noCheckCertificate: true,
+                extractorArgs: 'youtube:player_client=android,web' // Bypass trick for sign-in walls
             };
             if (this.cookiesPath) options.cookies = this.cookiesPath;
 

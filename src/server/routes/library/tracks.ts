@@ -254,7 +254,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let idParam = req.params.id as string;
         let trackId: number;
 
-        if (idParam.startsWith("ext:")) {
+        if (idParam.startsWith("ext:") || idParam.startsWith("http")) {
             // Check if we already have this external track linked
             const existing = database.getTrackByExternalId(idParam);
             if (existing) {
@@ -281,7 +281,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                     duration: duration || 0,
                     external_id: idParam,
                     external_artwork: coverUrl || null,
-                    service: idParam.split(":")[1],
+                    service: idParam.startsWith("ext:") ? idParam.split(":")[1] : "link",
                     url: idParam, // The ext: ID acts as the identifier for streaming
                     file_path: null, format: null, bitrate: null, sample_rate: null, lossless_path: null,
                     price: 0, price_usdc: 0, currency: 'ETH', waveform: null, lyrics: null
@@ -304,7 +304,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const idParam = req.params.id as string;
         let trackId: number;
 
-        if (idParam.startsWith("ext:")) {
+        if (idParam.startsWith("ext:") || idParam.startsWith("http")) {
             const existing = database.getTrackByExternalId(idParam);
             if (!existing) return res.json({ success: true, starred: false });
             trackId = existing.id;

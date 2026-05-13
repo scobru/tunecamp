@@ -49,6 +49,11 @@ export function createAdminRoutes(
                 return next();
             }
             
+            // Allow integrations config for admins
+            if (req.path.startsWith('/integrations') && canManage) {
+                return next();
+            }
+
             if (!canManage) {
                 return res.status(403).json({ error: "Access denied: You do not have permission to modify administrative settings" });
             }
@@ -555,6 +560,47 @@ export function createAdminRoutes(
         } catch (error) {
             console.error("Error in global network cleanup:", error);
             res.status(500).json({ error: "Global cleanup failed" });
+        }
+    });
+
+    /**
+     * POST /api/admin/integrations/youtube/cookies
+     * Upload cookies.txt for YouTube streaming provider
+     */
+    router.post("/integrations/youtube/cookies", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can upload integrations cookies" });
+            }
+
+            const { content } = req.body;
+            if (!content || typeof content !== 'string') {
+                return res.status(400).json({ error: "Invalid cookies content" });
+            }
+
+            const cookiesPath = path.join(process.cwd(), 'data', 'youtube_cookies.txt');
+            
+            // Ensure data directory exists
+            await fs.ensureDir(path.dirname(cookiesPath));
+            
+            // Write cookies file
+            await fs.writeFile(cookiesPath, content, 'utf-8');
+            
+            // Update env var so the provider uses it immediately
+            process.env.YOUTUBE_COOKIES_PATH = cookiesPath;
+            
+            // Since the provider creates yt-dlp child processes per request, 
+            // setting the env var or updating the provider instance is enough.
+            const ytProvider = streamingService?.getProvider?.('youtube') || streamingService?.registry?.get?.('youtube');
+            if (ytProvider && typeof ytProvider === 'object') {
+                (ytProvider as any).cookiesPath = cookiesPath;
+                console.log(`[Admin] YouTube cookies path updated dynamically for provider`);
+            }
+
+            res.json({ message: "YouTube cookies uploaded and applied successfully" });
+        } catch (error: any) {
+            console.error("Error uploading youtube cookies:", error);
+            res.status(500).json({ error: error.message || "Failed to upload cookies" });
         }
     });
 

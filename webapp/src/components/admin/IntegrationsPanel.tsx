@@ -11,6 +11,7 @@ import {
   Download,
   CreditCard,
   Loader2,
+  Upload,
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import API from "../../services/api";
@@ -69,6 +70,28 @@ export const IntegrationsPanel = () => {
         alert("Action failed: " + e.message);
     } finally {
         setIsProcessing(null);
+    }
+  };
+
+  const handleYouTubeCookiesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing("youtube");
+    try {
+        const text = await file.text();
+        if (!text.includes('.youtube.com') && !text.includes('# Netscape HTTP Cookie File')) {
+            alert("This doesn't look like a valid YouTube cookies.txt file.");
+            return;
+        }
+        await API.uploadYouTubeCookies(text);
+        alert("YouTube cookies uploaded successfully!");
+    } catch (e: any) {
+        console.error("Failed to upload cookies:", e);
+        alert("Failed to upload cookies: " + e.message);
+    } finally {
+        setIsProcessing(null);
+        if (e.target) e.target.value = '';
     }
   };
 
@@ -294,13 +317,28 @@ export const IntegrationsPanel = () => {
                 </div>
 
                 <div className={clsx(
-                    "mt-4 text-[10px] font-mono p-2.5 rounded-lg border flex items-center gap-2 transition-colors",
+                    "mt-4 text-[10px] font-mono p-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors",
                     service.status === 'online' 
                         ? "bg-success/5 border-success/10 text-success" 
                         : "bg-error/5 border-error/10 text-error/80"
                 )}>
-                  {service.status === 'online' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                  <span className="truncate">{service.details}</span>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                      {service.status === 'online' ? <CheckCircle2 size={12} className="shrink-0" /> : <AlertCircle size={12} className="shrink-0" />}
+                      <span className="truncate">{service.details}</span>
+                  </div>
+                  {service.id === "youtube" && (
+                    <label className="btn btn-xs btn-outline border-current hover:bg-current hover:text-base-100 px-2 h-6 min-h-6 flex items-center gap-1 cursor-pointer">
+                        {isProcessing === "youtube" ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                        <span className="sr-only md:not-sr-only md:text-[10px]">Cookies.txt</span>
+                        <input 
+                            type="file" 
+                            accept=".txt" 
+                            className="hidden" 
+                            onChange={handleYouTubeCookiesUpload} 
+                            disabled={isProcessing === "youtube"} 
+                        />
+                    </label>
+                  )}
                 </div>
               </div>
             </div>

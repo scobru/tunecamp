@@ -107,7 +107,7 @@ export const API = {
     rejectPromotion: (id: number, reason: string) => handleResponse(api.post(`lifecycle/reject/${id}`, { reason })),
 
     getTracks: (options: { mine?: boolean } = {}) => handleResponse(api.get<Track[]>(`tracks${options.mine ? '?mine=true' : ''}`)),
-    getTrack: (id: string | number) => handleResponse(api.get<Track>(`tracks/${id}`)),
+    getTrack: (id: string | number) => handleResponse(api.get<Track>(`tracks/${encodeURIComponent(String(id))}`)),
 
     getPlaylists: () => handleResponse(api.get<Playlist[]>('playlists')),
     getPlaylist: (id: string) => handleResponse(api.get<Playlist>(`playlists/${id}`)),
@@ -115,10 +115,10 @@ export const API = {
         handleResponse(api.post<Playlist>('playlists', { name, description, isPublic })),
     updatePlaylist: (id: string, data: Partial<Playlist>) => handleResponse(api.put<Playlist>(`playlists/${id}`, data)),
     deletePlaylist: (id: string) => handleResponse(api.delete(`playlists/${id}`)),
-    addTrackToPlaylist: (playlistId: string, trackId: string) =>
-        handleResponse(api.post(`playlists/${playlistId}/tracks`, { trackId })),
+    addTrackToPlaylist: (playlistId: string, trackId: string, metadata?: any) =>
+        handleResponse(api.post(`playlists/${playlistId}/tracks`, { trackId, metadata })),
     removeTrackFromPlaylist: (playlistId: string, trackId: string) =>
-        handleResponse(api.delete(`playlists/${playlistId}/tracks/${trackId}`)),
+        handleResponse(api.delete(`playlists/${playlistId}/tracks/${encodeURIComponent(trackId)}`)),
 
     // --- Streaming & Interactions ---
     getStreamUrl: (idOrUrl: string | number, format?: string) => {
@@ -175,9 +175,9 @@ export const API = {
     },
 
     // --- Star/Rating ---
-    starTrack: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean, trackId?: number }>(`tracks/${id}/star`, metadata)),
-    unstarTrack: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`tracks/${id}/star`)),
-    rateTrack: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`tracks/${id}/rating`, { rating })),
+    starTrack: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean, trackId?: number }>(`tracks/${encodeURIComponent(String(id))}/star`, metadata)),
+    unstarTrack: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`tracks/${encodeURIComponent(String(id))}/star`)),
+    rateTrack: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`tracks/${encodeURIComponent(String(id))}/rating`, { rating })),
     getStarredTracks: () => handleResponse(api.get<string[]>('tracks/starred')),
     getStarredAlbums: () => handleResponse(api.get<string[]>('albums/starred')),
 
@@ -216,6 +216,7 @@ export const API = {
     followRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/follow', { url })),
     unfollowRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/unfollow', { url })),
     syncPeer: (url?: string) => handleResponse(api.post('admin/network/ap/sync', { url })),
+    uploadYouTubeCookies: (content: string) => handleResponse(api.post('admin/integrations/youtube/cookies', { content })),
 
     // --- Admin: Releases & Content ---
     getAdminReleases: (options: { mine?: boolean, includeLibrary?: boolean } = {}) => {
@@ -267,17 +268,17 @@ export const API = {
         handleResponse(api.post<Track>('tracks/external', { url, albumId })),
     createExternalTrack: (url: string, albumId?: number) =>
         handleResponse(api.post<Track>('tracks/external', { url, albumId })),
-    updateTrack: (id: string | number, data: Partial<Track>) => handleResponse(api.put<Track>(`tracks/${id}`, data)),
+    updateTrack: (id: string | number, data: Partial<Track>) => handleResponse(api.put<Track>(`tracks/${encodeURIComponent(String(id))}`, data)),
     updateTracksBatch: (trackIds: (string | number)[], data: any) => handleResponse(api.put('tracks/batch', { trackIds, data })),
     deleteTrack: (id: string | number, deleteFile = false) =>
-        handleResponse(api.delete(`tracks/${id}${deleteFile ? '?deleteFile=true' : ''}`)),
+        handleResponse(api.delete(`tracks/${encodeURIComponent(String(id))}${deleteFile ? '?deleteFile=true' : ''}`)),
     deleteTracksBatch: (trackIds: (string | number)[], deleteFiles = false) =>
         handleResponse(api.delete('tracks/batch', { data: { trackIds, deleteFiles } })),
-    getTrackMetadata: (id: string | number) => handleResponse(api.get<any>(`tracks/${id}/metadata`)),
+    getTrackMetadata: (id: string | number) => handleResponse(api.get<any>(`tracks/${encodeURIComponent(String(id))}/metadata`)),
 
     searchTrackMetadata: (query: string) => handleResponse(api.get<any[]>(`tracks/search-metadata?q=${encodeURIComponent(query)}`)),
     matchTrackMetadata: (id: string | number, metadata: { title: string, artist: string, albumTitle?: string, coverUrl?: string }) =>
-        handleResponse(api.post<{ message: string, track: Track }>(`tracks/${id}/match-metadata`, metadata)),
+        handleResponse(api.post<{ message: string, track: Track }>(`tracks/${encodeURIComponent(String(id))}/match-metadata`, metadata)),
 
     fetchLyricsMetadata: (artist: string, title: string) => handleResponse(api.get<{ lyrics: string, source: string }>(`metadata/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`)),
 
