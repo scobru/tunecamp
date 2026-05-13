@@ -145,12 +145,34 @@ export interface MetadataProvider extends TuneCampProvider {
 }
 
 /**
+ * A single stream candidate found by a provider.
+ * This represents a possible match that can be later resolved to a real URL.
+ */
+export interface StreamCandidate {
+    /** Unique ID within the provider (e.g. YouTube video ID) */
+    id: string;
+    /** Human readable title */
+    title: string;
+    /** Artist name */
+    artist?: string;
+    /** Provider ID (e.g. 'youtube') */
+    provider: string;
+    /** Thumbnail URL (optional) */
+    thumbnail?: string;
+    /** Duration in seconds (optional) */
+    duration?: number;
+    /** Extra metadata for the provider to use during resolution */
+    meta?: any;
+}
+
+/**
  * Provider for external audio streams (Bandcamp, YouTube, etc.)
  */
 export interface StreamingProvider extends TuneCampProvider {
     /** 
      * Resolves a track to a streamable URL.
      * Can return a direct URL or a URL that needs to be proxied.
+     * @deprecated Use search() and getStreamById() for a more granular workflow.
      */
     getStreamUrl(trackTitle: string, artistName: string, albumTitle?: string): Promise<string | null>;
     
@@ -159,6 +181,12 @@ export interface StreamingProvider extends TuneCampProvider {
     
     /** Gets a stream by a specific provider ID */
     getStreamById(id: string): Promise<string | null>;
+
+    /** Searches for candidates (recordings/videos) matching a query */
+    search?(query: string): Promise<StreamCandidate[]>;
+
+    /** (Optional) Checks if the provider is currently available/configured */
+    isAvailable?(): Promise<boolean>;
 }
 
 /**

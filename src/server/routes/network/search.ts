@@ -211,19 +211,9 @@ export function createSearchRoutes(
                 }
             }, Promise.resolve([] as any[]));
 
-            // 3. Search Streaming Providers (YouTube search fallback)
-            const streamingResults = await streamingService.getRegistry().getEnabled().reduce(async (accPromise, provider) => {
-                const acc = await accPromise;
-                try {
-                    if (typeof (provider as any).search === 'function') {
-                        const results = await (provider as any).search(query);
-                        return [...acc, ...results.map((r: any) => ({ ...r, isStreaming: true, providerId: provider.id }))];
-                    }
-                    return acc;
-                } catch (e) {
-                    return acc;
-                }
-            }, Promise.resolve([] as any[]));
+            // 3. Search Streaming Providers (YouTube, SoundCloud, Bandcamp)
+            const candidates = await streamingService.search(query);
+            const streamingResults = candidates.map(r => ({ ...r, isStreaming: true, providerId: r.provider }));
 
             res.json({
                 local: localResults,

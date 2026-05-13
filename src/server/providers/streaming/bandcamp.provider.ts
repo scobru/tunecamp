@@ -1,5 +1,5 @@
 import { searchBandcamp, extractBandcampMetadata, BANDCAMP_IMAGE_BASE } from "../../utils/bandcamp.js";
-import type { StreamingProvider } from "../../core/provider.js";
+import type { StreamingProvider, StreamCandidate } from "../../core/provider.js";
 
 const SEARCH_LIMIT = 5;
 
@@ -66,19 +66,18 @@ export class BandcampStreamingProvider implements StreamingProvider {
     }
 
     /**
-     * Searches Bandcamp for tracks — used by Global Search.
+     * Searches Bandcamp for tracks and returns candidates.
      */
-    async search(query: string): Promise<any[]> {
+    async search(query: string): Promise<StreamCandidate[]> {
         try {
             const results = await searchBandcamp(query, "t", 10);
             return results.map(r => ({
                 id: r.item_url_path ?? r.item_url_root,
                 title: r.name,
                 artist: r.band_name ?? "Unknown",
-                url: r.item_url_path ?? r.item_url_root,
+                provider: "bandcamp",
                 thumbnail: r.art_id ? `${BANDCAMP_IMAGE_BASE}/a${String(r.art_id).padStart(10, "0")}_2.jpg` : r.img,
-                source: "bandcamp",
-                type: "recording",
+                meta: { url: r.item_url_path ?? r.item_url_root }
             }));
         } catch (error) {
             console.error(`[BandcampProvider] ❌ Search failed for: ${query}`, error);

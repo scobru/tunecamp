@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import type { StreamingProvider } from "../../core/provider.js";
+import type { StreamingProvider, StreamCandidate } from "../../core/provider.js";
 
 // ─── Config (from nuclear-plugin-soundcloud) ──────────────────────────────────
 const SOUNDCLOUD_URL = "https://soundcloud.com";
@@ -248,26 +248,19 @@ export class SoundCloudStreamingProvider implements StreamingProvider {
      * Gets stream by SoundCloud track ID.
      */
     async getStreamById(id: string): Promise<string | null> {
-        try {
-            const trackId = Number(id);
-            if (Number.isNaN(trackId)) {
-                // If it's a URL, try resolving via search
-                console.warn(`[SoundCloudProvider] Non-numeric ID: ${id}`);
-                return null;
-            }
-            const track = await apiRequest<SoundcloudTrack>(`tracks/${trackId}`);
-            const stream = await resolveStream(track);
-            return stream?.url ?? null;
-        } catch (error) {
-            console.error(`[SoundCloudProvider] ❌ getStreamById error for ${id}:`, error);
+        const trackId = Number(id);
+        if (Number.isNaN(trackId)) {
             return null;
         }
+        const track = await apiRequest<SoundcloudTrack>(`tracks/${trackId}`);
+        const stream = await resolveStream(track);
+        return stream?.url ?? null;
     }
 
     /**
-     * Searches SoundCloud tracks — used by Global Search.
+     * Searches SoundCloud tracks and returns candidates.
      */
-    async search(query: string): Promise<any[]> {
+    async search(query: string): Promise<StreamCandidate[]> {
         try {
             const result = await apiRequest<SoundcloudSearchResult>("search/tracks", {
                 q: query,
@@ -278,11 +271,10 @@ export class SoundCloudStreamingProvider implements StreamingProvider {
                 id: String(track.id),
                 title: track.title,
                 artist: track.user?.username ?? "Unknown",
-                url: track.permalink_url,
+                provider: "soundcloud",
                 thumbnail: resolveArtworkUrl(track),
                 duration: Math.floor(track.full_duration / 1000),
-                source: "soundcloud",
-                type: "recording",
+                meta: { url: track.permalink_url }
             }));
         } catch (error) {
             console.error(`[SoundCloudProvider] ❌ Search failed for: ${query}`, error);
