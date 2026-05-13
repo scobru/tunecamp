@@ -70,7 +70,7 @@ export class HiFiClient {
         signal: AbortSignal.timeout(5000) // Don't wait too long for dead instances
       });
       if (response.ok) {
-        return response.json() as Promise<T>;
+        return await response.json() as Promise<T>;
       }
       
       if (response.status >= 500) {

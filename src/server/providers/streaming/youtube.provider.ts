@@ -196,7 +196,8 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     }
 
     private async _resolveStreamUrl(urlOrId: string): Promise<string | null> {
-        const clients: ("ANDROID" | "TV" | "IOS" | "WEB" | "WEB_EMBEDDED")[] = ["ANDROID", "TV", "IOS", "WEB_EMBEDDED", "WEB"];
+        const clients: ("ANDROID" | "TV" | "IOS" | "WEB" | "WEB_EMBEDDED" | "ANDROID_MUSIC" | "MWEB")[] = 
+            ["ANDROID", "TV", "IOS", "ANDROID_MUSIC", "MWEB", "WEB_EMBEDDED", "WEB"];
         
         let lastError: any = null;
 
@@ -206,7 +207,12 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 const info = await ytdl.getInfo(urlOrId, {
                     agent: this.agent,
                     playerClients: [client],
-                });
+                    requestOptions: {
+                        headers: {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                        }
+                    }
+                } as any);
 
                 const format = chooseBestAudioFormat(info.formats);
                 if (format?.url) {
@@ -217,7 +223,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 lastError = error;
                 const isBot = error.message?.includes("bot") || error.message?.includes("Sign in");
                 console.warn(`[YouTubeProvider] ⚠️ ${client} client failed: ${error.message}${isBot ? " (Bot Detection)" : ""}`);
-                if (!isBot) break; // If it's not a bot error, maybe the ID is just invalid, no point in rotating
+                if (!isBot) break; 
             }
         }
 

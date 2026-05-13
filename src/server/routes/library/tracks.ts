@@ -474,7 +474,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     /**
      * GET /api/tracks/:id/stream
      */
-    router.get("/:id/stream", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+    router.get("/:id(*)/stream", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
 
         // Handle external streaming IDs (e.g., ext:youtube:VIDEO_ID)
