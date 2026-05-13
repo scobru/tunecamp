@@ -3,6 +3,8 @@ import type { StreamingProvider, StreamCandidate } from "../../core/provider.js"
 import { YouTubeStreamingProvider } from "../../providers/streaming/youtube.provider.js";
 import { BandcampStreamingProvider } from "../../providers/streaming/bandcamp.provider.js";
 import { SoundCloudStreamingProvider } from "../../providers/streaming/soundcloud.provider.js";
+import { KhInsiderProvider } from "../../providers/streaming/khinsider.provider.js";
+import { HiFiProvider } from "../../providers/streaming/hifi.provider.js";
 import type { DatabaseService } from "../../database.types.js";
 
 /**
@@ -23,6 +25,8 @@ export class StreamingService {
         this.registry.register(new YouTubeStreamingProvider());
         this.registry.register(new BandcampStreamingProvider());
         this.registry.register(new SoundCloudStreamingProvider());
+        this.registry.register(new KhInsiderProvider());
+        this.registry.register(new HiFiProvider());
     }
 
     /**

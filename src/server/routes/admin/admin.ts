@@ -30,7 +30,9 @@ export function createAdminRoutes(
     metadataService: any,
     streamingService: any,
     federationService: any,
-    gdriveService?: GoogleDriveService
+    gdriveService?: GoogleDriveService,
+    playlistService?: any,
+    scrobbleService?: any
 ): Router {
     const router = Router();
     const authMiddleware = createAuthMiddleware(authService);
@@ -1348,6 +1350,61 @@ export function createAdminRoutes(
             active: !!gdriveService
         };
 
+        // 11. Deezer
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const deezerRes = await fetch("https://api.deezer.com/version", { signal: controller.signal });
+            clearTimeout(timeout);
+            results.deezer = { online: deezerRes.ok };
+        } catch (e) {
+            results.deezer = { online: false };
+        }
+
+        // 12. Last.fm
+        results.lastfm = {
+            configured: !!(database.getSetting("lastfm_session_key") || database.getSetting("lastfm_api_key")),
+            online: true // Assume online if no specific check, or add one
+        };
+
+        // 13. ListenBrainz
+        results.listenbrainz = {
+            configured: !!database.getSetting("listenbrainz_token"),
+            online: true
+        };
+
+        // 14. YouTube
+        try {
+            const ytRes = await fetch("https://www.youtube.com/iframe_api", { method: 'HEAD' });
+            results.youtube = { online: ytRes.ok };
+        } catch {
+            results.youtube = { online: false };
+        }
+
+        // 15. Spotify
+        try {
+            const spotifyRes = await fetch("https://open.spotify.com", { method: 'HEAD' });
+            results.spotify = { online: spotifyRes.ok };
+        } catch {
+            results.spotify = { online: false };
+        }
+
+        // 16. SoundCloud
+        try {
+            const scRes = await fetch("https://soundcloud.com", { method: 'HEAD' });
+            results.soundcloud = { online: scRes.ok };
+        } catch {
+            results.soundcloud = { online: false };
+        }
+
+        // 17. Bandcamp
+        try {
+            const bcRes = await fetch("https://bandcamp.com", { method: 'HEAD' });
+            results.bandcamp = { online: bcRes.ok };
+        } catch {
+            results.bandcamp = { online: false };
+        }
+
         res.json(results);
     });
 
@@ -1430,7 +1487,9 @@ export function createAdminRoutes(
             ...scanner.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'scanner' })),
             ...metadataService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'metadata' })),
             ...streamingService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'streaming' })),
-            ...federationService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'federation' }))
+            ...federationService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'federation' })),
+            ...playlistService?.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'playlist' })) || [],
+            ...scrobbleService?.getProviders().map((p: any) => ({ ...p, type: 'scrobble', enabled: 1 })) || []
         ];
 
         res.json(plugins);
@@ -1458,8 +1517,9 @@ export function createAdminRoutes(
                 scanner.getRegistry(),
                 metadataService.getRegistry(),
                 streamingService.getRegistry(),
-                federationService.getRegistry()
-            ];
+                federationService.getRegistry(),
+                playlistService?.getRegistry()
+            ].filter(Boolean);
 
             let found = false;
             for (const registry of registries) {

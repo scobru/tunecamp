@@ -2,10 +2,16 @@ import fetch from "node-fetch";
 import { drainResponse } from "../../utils.js";
 import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase } from "../../core/provider.js";
 import { BandcampMetadataProvider } from "../../providers/metadata/bandcamp.metadata.js";
+import { SoundCloudMetadataProvider } from "../../providers/metadata/soundcloud.metadata.js";
+import { YouTubeStreamingProvider } from "../../providers/streaming/youtube.provider.js";
+import { KhInsiderProvider } from "../../providers/streaming/khinsider.provider.js";
 import { ITunesProvider } from "../../providers/metadata/itunes.provider.js";
 import { MusicBrainzProvider } from "../../providers/metadata/musicbrainz.provider.js";
 import { DiscogsProvider } from "../../providers/metadata/discogs.provider.js";
 import { TheAudioDBProvider } from "../../providers/metadata/theaudiodb.provider.js";
+import { SpotifyProvider } from "../../providers/metadata/spotify.provider.js";
+import { HiFiProvider } from "../../providers/streaming/hifi.provider.js";
+import { DeezerProvider } from "../../providers/playlists/deezer.playlist.js";
 import type { DatabaseService } from "../../database.types.js";
 
 export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
@@ -21,10 +27,16 @@ export class MetadataService {
     constructor() {
         // Register default providers
         this.registry.register(new BandcampMetadataProvider());
+        this.registry.register(new SoundCloudMetadataProvider());
+        this.registry.register(new YouTubeStreamingProvider() as any);
+        this.registry.register(new KhInsiderProvider() as any);
         this.registry.register(new ITunesProvider() as any);
         this.registry.register(new MusicBrainzProvider() as any);
         this.registry.register(new DiscogsProvider() as any);
         this.registry.register(new TheAudioDBProvider() as any);
+        this.registry.register(new SpotifyProvider() as any);
+        this.registry.register(new HiFiProvider() as any);
+        this.registry.register(new DeezerProvider() as any);
     }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {

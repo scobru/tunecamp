@@ -153,6 +153,69 @@ export const IntegrationsPanel = () => {
       details: status?.gdrive?.configured ? (status.gdrive.active ? "Integration active" : "Service disabled") : "Client ID/Secret missing",
       description: "Cloud storage for track localization and backup.",
       pluginId: "gdrive"
+    },
+    {
+      id: "deezer",
+      name: "Deezer",
+      icon: <Globe className="text-[#EF5466]" />,
+      status: status?.deezer?.online ? 'online' : 'offline',
+      details: status?.deezer?.online ? "Service reachable" : "Service unreachable",
+      description: "External playlist import and metadata.",
+      pluginId: "deezer"
+    },
+    {
+      id: "lastfm",
+      name: "Last.fm",
+      icon: <Activity className="text-[#D51007]" />,
+      status: status?.lastfm?.configured ? 'online' : 'offline',
+      details: status?.lastfm?.configured ? "Scrobbling active" : "Not configured",
+      description: "Music scrobbling and recommendations.",
+      pluginId: "lastfm"
+    },
+    {
+      id: "listenbrainz",
+      name: "ListenBrainz",
+      icon: <Activity className="text-[#EB743B]" />,
+      status: status?.listenbrainz?.configured ? 'online' : 'offline',
+      details: status?.listenbrainz?.configured ? "Scrobbling active" : "Not configured",
+      description: "Open source music scrobbling service.",
+      pluginId: "listenbrainz"
+    },
+    {
+      id: "youtube",
+      name: "YouTube",
+      icon: <Globe className="text-[#FF0000]" />,
+      status: status?.youtube?.online ? 'online' : 'offline',
+      details: status?.youtube?.online ? "Service reachable" : "Service unreachable",
+      description: "Streaming and playlist import from YouTube.",
+      pluginId: "youtube"
+    },
+    {
+      id: "spotify",
+      name: "Spotify",
+      icon: <Globe className="text-[#1DB954]" />,
+      status: status?.spotify?.online ? 'online' : 'offline',
+      details: status?.spotify?.online ? "Service reachable" : "Service unreachable",
+      description: "Metadata and playlist import from Spotify.",
+      pluginId: "spotify"
+    },
+    {
+      id: "soundcloud",
+      name: "SoundCloud",
+      icon: <Globe className="text-[#FF3300]" />,
+      status: status?.soundcloud?.online ? 'online' : 'offline',
+      details: status?.soundcloud?.online ? "Service reachable" : "Service unreachable",
+      description: "Streaming and metadata from SoundCloud.",
+      pluginId: "soundcloud"
+    },
+    {
+      id: "bandcamp",
+      name: "Bandcamp",
+      icon: <Globe className="text-[#629AA9]" />,
+      status: status?.bandcamp?.online ? 'online' : 'offline',
+      details: status?.bandcamp?.online ? "Service reachable" : "Service unreachable",
+      description: "Streaming and metadata from Bandcamp.",
+      pluginId: "bandcamp"
     }
   ];
 

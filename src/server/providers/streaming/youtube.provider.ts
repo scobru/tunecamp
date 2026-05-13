@@ -1,10 +1,7 @@
 import ytdl from "@nuclearplayer/ytdl-core";
 import { readFileSync } from "fs";
 import play from "play-dl";
-import type { StreamingProvider, StreamCandidate } from "../../core/provider.js";
-
-
-
+import type { StreamingProvider, StreamCandidate, MetadataProvider, MetadataResult } from "../../core/provider.js";
 
 /**
  * Pick the best audio format from ytdl format list.
@@ -32,20 +29,18 @@ function chooseBestAudioFormat(formats: ytdl.videoFormat[]): ytdl.videoFormat | 
  * YouTubeStreamingProvider — uses @nuclearplayer/ytdl-core for stream resolution
  * and play-dl for text-based search (ytdl-core has no search API).
  *
- * Multi-client fallback: ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"]
- * If one client is blocked, ytdl-core automatically tries the next.
+ * Implements both StreamingProvider and MetadataProvider for alignment.
  */
-export class YouTubeStreamingProvider implements StreamingProvider {
+export class YouTubeStreamingProvider implements StreamingProvider, MetadataProvider {
     readonly id = "youtube";
     readonly name = "YouTube";
-    readonly version = "2.0.0";
-    readonly description = "YouTube streaming via @nuclearplayer/ytdl-core (multi-client) + play-dl search";
+    readonly version = "2.1.0";
+    readonly description = "YouTube streaming & metadata via @nuclearplayer/ytdl-core + play-dl fallback";
 
     /** ytdl agent — created once, supports optional cookies */
     private agent: ytdl.Agent;
 
     constructor() {
-        // Optional: load cookies from YOUTUBE_COOKIES_PATH env var (synchronous)
         const cookiesPath = process.env.YOUTUBE_COOKIES_PATH;
         if (cookiesPath) {
             try {
@@ -65,10 +60,44 @@ export class YouTubeStreamingProvider implements StreamingProvider {
         return true;
     }
 
-    /**
-     * Resolves a track title + artist to a YouTube audio stream URL.
-     * Uses play-dl to search, ytdl-core to resolve the stream.
-     */
+    // ─── MetadataProvider Implementation ────────────────────────────────────────
+
+    async searchRelease(query: string): Promise<MetadataResult[]> {
+        return this.searchRecording(query);
+    }
+
+    async searchRecording(query: string): Promise<MetadataResult[]> {
+        try {
+            const results = await play.search(query, {
+                limit: 5,
+                source: { youtube: "video" }
+            });
+
+            return results.map(v => ({
+                id: v.id!,
+                title: v.title!,
+                artist: v.channel?.name ?? "Unknown",
+                date: v.uploadedAt ?? "",
+                coverUrl: v.thumbnails[0]?.url,
+                source: "youtube"
+            }));
+        } catch (error) {
+            console.error(`[YouTubeMetadata] Search failed:`, error);
+            return [];
+        }
+    }
+
+    async getCoverUrl(id: string): Promise<string | null> {
+        try {
+            const info = await play.video_info(id.includes("http") ? id : `https://www.youtube.com/watch?v=${id}`);
+            return info.video_details.thumbnails[0]?.url ?? null;
+        } catch {
+            return null;
+        }
+    }
+
+    // ─── StreamingProvider Implementation ───────────────────────────────────────
+
     async getStreamUrl(title: string, artist?: string, album?: string): Promise<string | null> {
         try {
             const query = artist ? `${artist} - ${title}` : title;
@@ -101,9 +130,6 @@ export class YouTubeStreamingProvider implements StreamingProvider {
         return this._resolveStreamUrl(id);
     }
 
-    /**
-     * Searches YouTube using play-dl and returns candidates.
-     */
     async search(query: string): Promise<StreamCandidate[]> {
         try {
             const results = await play.search(query, {
@@ -128,14 +154,11 @@ export class YouTubeStreamingProvider implements StreamingProvider {
         }
     }
 
-    /**
-     * Core resolution: given a YouTube URL or video ID, returns the best audio stream URL.
-     */
     private async _resolveStreamUrl(urlOrId: string): Promise<string | null> {
         try {
             const info = await ytdl.getInfo(urlOrId, {
                 agent: this.agent,
-                playerClients: ["WEB_EMBEDDED", "IOS", "ANDROID", "TV"],
+                playerClients: ["WEB", "WEB_EMBEDDED", "IOS", "ANDROID", "TV"],
             });
 
             const format = chooseBestAudioFormat(info.formats);
@@ -145,9 +168,24 @@ export class YouTubeStreamingProvider implements StreamingProvider {
             }
 
             return format.url;
-        } catch (error) {
-            console.error(`[YouTubeProvider] ❌ Failed to resolve stream for ${urlOrId}:`, error);
-            throw error; // Let StreamingService handle retries
+        } catch (error: any) {
+            console.error(`[YouTubeProvider] ❌ ytdl-core failed for ${urlOrId}: ${error.message}`);
+            
+            try {
+                console.log(`[YouTubeProvider] 🔄 Attempting play-dl fallback for ${urlOrId}...`);
+                const info = await play.video_info(urlOrId.includes("http") ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`);
+                const format = info.format.find(f => (f.mimeType?.includes("audio") || f.audioQuality) && f.url);
+                
+                if (format?.url) {
+                    console.log(`[YouTubeProvider] ✨ Success! Resolved via play-dl fallback.`);
+                    return format.url;
+                }
+                console.warn(`[YouTubeProvider] ⚠️ play-dl fallback found no audio format.`);
+            } catch (pError: any) {
+                console.error(`[YouTubeProvider] ❌ play-dl fallback also failed: ${pError.message}`);
+            }
+            
+            throw error;
         }
     }
 }

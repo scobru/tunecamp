@@ -58,6 +58,9 @@ import { createCommentsRoutes } from "./routes/network/comments.js";
 import { Scanner } from "./modules/catalog/scanner.js";
 import { initScannerService } from "./modules/catalog/scanner.service.js";
 import { initStreamingService } from "./modules/streaming/streaming.service.js";
+import { getScrobbleService } from "./modules/scrobble/scrobble.service.js";
+import { LastFmProvider } from "./providers/scrobble/lastfm.provider.js";
+import { ListenBrainzProvider } from "./providers/scrobble/listenbrainz.provider.js";
 import { metadataService } from "./modules/catalog/metadata.service.js";
 import { initDownloadService } from "./modules/catalog/download.service.js";
 import { loadPlugins } from "./plugin-loader.js";
@@ -143,6 +146,13 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const metadataService = await initMetadataService(database);
 
     const streamingService = await initStreamingService(database);
+
+    const { initPlaylistService } = await import("./modules/catalog/playlist.service.js");
+    const playlistService = await initPlaylistService(database);
+
+    const scrobbleService = getScrobbleService();
+    scrobbleService.register(new LastFmProvider(database));
+    scrobbleService.register(new ListenBrainzProvider(database));
 
     const waveformService = new WaveformService(path.dirname(config.dbPath));
 
@@ -306,7 +316,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
     });
 
-    app.use("/rest", createSubsonicRouter({ db: database, auth: authService, musicDir: config.musicDir, zendbService }));
+    app.use("/rest", createSubsonicRouter({ db: database, auth: authService, musicDir: config.musicDir, zendbService, scrobbleService }));
 
     app.get("/health", (req, res) => {
         res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
@@ -314,7 +324,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
     app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(
-        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, metadataService, streamingService, federationService, gdriveService
+        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, metadataService, streamingService, federationService, gdriveService, playlistService, scrobbleService
     ));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
@@ -350,6 +360,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
             scanner:     scannerService.getRegistry().getRegistryInfo(),
             streaming:   streamingService.getRegistry().getRegistryInfo(),
             federation:  federationService.getRegistry().getRegistryInfo(),
+            playlist:    playlistService.getRegistry().getRegistryInfo(),
         });
     });
 

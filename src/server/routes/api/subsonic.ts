@@ -18,6 +18,7 @@ interface SubsonicContext {
     auth: AuthService;
     musicDir: string;
     zendbService?: ZenDBService;
+    scrobbleService?: any;
 }
 
 // In-memory cache for "Now Playing" to support Subsonic clients
@@ -25,7 +26,7 @@ const nowPlayingCache = new Map<string, { trackId: number, timestamp: number }>(
 
 export const createSubsonicRouter = (context: SubsonicContext): Router => {
     const router = Router();
-    const { db, auth } = context;
+    const { db, auth, scrobbleService } = context;
 
     // --- Helpers ---
 
@@ -623,6 +624,31 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
             if (submission) {
                 db.recordPlay(trackId, new Date().toISOString());
                 nowPlayingCache.set(username, { trackId, timestamp: Date.now() });
+
+                // Call ScrobbleService
+                if (scrobbleService) {
+                    const track = db.getTrack(trackId);
+                    if (track) {
+                        scrobbleService.scrobble({
+                            artist: track.artist_name || "Unknown Artist",
+                            title: track.title,
+                            album: track.album_title,
+                            duration: track.duration
+                        }).catch((e: any) => console.error("[Subsonic] ScrobbleService failure:", e));
+                    }
+                }
+            } else {
+                // Update Now Playing
+                if (scrobbleService) {
+                    const track = db.getTrack(trackId);
+                    if (track) {
+                        scrobbleService.updateNowPlaying({
+                            artist: track.artist_name || "Unknown Artist",
+                            title: track.title,
+                            album: track.album_title
+                        }).catch((e: any) => console.error("[Subsonic] NowPlaying update failure:", e));
+                    }
+                }
             }
         }
         sendResponse(res, req, {});

@@ -390,7 +390,7 @@ export const Search = () => {
                     {((results as any).external?.length > 0 || (results as any).streaming?.length > 0) && (
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-secondary">
-                                <Globe size={20}/> Discover (YouTube & Bandcamp)
+                                <Globe size={20}/> Discover (External & Streaming)
                             </h2>
                             <div className="flex flex-col gap-1">
                                 {[
@@ -443,7 +443,11 @@ export const Search = () => {
                                                 {item.artist} • <span className={clsx(
                                                     "uppercase font-bold",
                                                     item.source === 'youtube' ? 'text-error' : 
-                                                    item.source === 'bandcamp' ? 'text-info' : 'text-primary opacity-50'
+                                                    item.source === 'bandcamp' ? 'text-info' : 
+                                                    item.source === 'spotify' ? 'text-[#1DB954]' :
+                                                    item.source === 'soundcloud' ? 'text-[#FF3300]' :
+                                                    item.source === 'deezer' ? 'text-[#EF5466]' :
+                                                    'text-primary opacity-50'
                                                 )}>{item.source}</span>
                                                 {item.isStreaming && <span className="ml-2 badge badge-ghost badge-xs">Streaming</span>}
                                             </div>

@@ -190,6 +190,56 @@ export interface StreamingProvider extends TuneCampProvider {
 }
 
 /**
+ * A single track within an external playlist.
+ */
+export interface PlaylistTrack {
+    title: string;
+    artist: string;
+    album?: string;
+    duration?: number;
+    thumbnail?: string;
+    sourceId: string;
+    provider: string;
+    meta?: any;
+}
+
+/**
+ * A track list from an external provider (YouTube, Spotify, etc.)
+ */
+export interface ExternalPlaylist {
+    id: string;
+    title: string;
+    description?: string;
+    thumbnail?: string;
+    tracks: PlaylistTrack[];
+}
+
+/**
+ * Provider for fetching playlists from external sources (YouTube, Spotify, etc.)
+ */
+export interface PlaylistProvider extends TuneCampProvider {
+    /** Returns true if the provider can handle the given URL */
+    canHandlePlaylist(url: string): boolean;
+
+    /** Fetches the playlist details and tracks from the URL */
+    fetchPlaylistByUrl(url: string): Promise<ExternalPlaylist>;
+}
+
+/**
+ * Provider for scrobbling (playback history) to external services (Last.fm, ListenBrainz, etc.)
+ */
+export interface ScrobbleProvider extends TuneCampProvider {
+    /** Submit a track playback event */
+    scrobble(track: { artist: string; title: string; album?: string; duration?: number }): Promise<void>;
+    
+    /** Update the 'now playing' status */
+    nowPlaying?(track: { artist: string; title: string; album?: string }): Promise<void>;
+    
+    /** Whether the provider is configured and ready to scrobble */
+    isConfigured(): Promise<boolean>;
+}
+
+/**
  * A single search result from a download provider
  */
 export interface DownloadResult {
