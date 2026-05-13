@@ -22,7 +22,7 @@ export class StreamingService {
     private CACHE_TTL_MS = 5 * 60 * 60 * 1000; // 5 hours default
 
     constructor() {
-        this.registry.register(new YouTubeStreamingProvider());
+        this.registry.register(new YouTubeStreamingProvider(process.env.YOUTUBE_COOKIES_PATH));
         this.registry.register(new BandcampStreamingProvider());
         this.registry.register(new SoundCloudStreamingProvider());
         this.registry.register(new KhInsiderProvider());

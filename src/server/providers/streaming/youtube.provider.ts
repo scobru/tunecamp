@@ -176,50 +176,48 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     }
 
     private async _resolveStreamUrl(urlOrId: string): Promise<string | null> {
-        if (Date.now() < this.circuitBreakerUntil) {
-            console.warn(`[YouTubeProvider] 🔌 Circuit breaker active, skipping resolution for: ${urlOrId}`);
-            return null;
-        }
-
         let lastError: any = null;
         const targetUrl = urlOrId.includes("http") ? urlOrId : `https://www.youtube.com/watch?v=${urlOrId}`;
 
-        try {
-            console.log(`[YouTubeProvider] ⚡ Resolving ${targetUrl} via yt-dlp...`);
-            
-            const options: any = {
-                getUrl: true,
-                format: 'ba/b', // Use ba/b to ensure fallback to best mixed format if audio-only is missing
-                noWarnings: true,
-                noCheckCertificate: true,
-            };
-            
-            if (this.cookiesPath) {
-                options.cookies = this.cookiesPath;
-                // If cookies are provided, use the default clients. The android client skips formats without PO token.
-            } else {
-                // Bypass trick for sign-in walls when no cookies are provided
-                options.extractorArgs = 'youtube:player_client=android,web';
-            }
+        // Attempt yt-dlp only if circuit breaker is NOT active
+        if (Date.now() >= this.circuitBreakerUntil) {
+            try {
+                console.log(`[YouTubeProvider] ⚡ Resolving ${targetUrl} via yt-dlp...`);
+                
+                const options: any = {
+                    getUrl: true,
+                    format: 'ba/b',
+                    noWarnings: true,
+                    noCheckCertificate: true,
+                };
+                
+                if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
+                    options.cookies = this.cookiesPath;
+                } else {
+                    options.extractorArgs = 'youtube:player_client=android,web';
+                }
 
-            const url = await youtubedl(targetUrl, options);
-            if (url && typeof url === 'string') {
-                console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp`);
-                this.consecutiveBotBlocks = 0; // Reset on success
-                return url.trim();
-            }
-        } catch (error: any) {
-            lastError = error;
-            const isBot = error.message?.includes("Sign in") || error.message?.includes("bot") || error.message?.includes("HTTP Error 429");
-            console.warn(`[YouTubeProvider] ⚠️ yt-dlp failed: ${error.message}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
-            
-            if (isBot) {
-                this.consecutiveBotBlocks++;
-                if (this.consecutiveBotBlocks > 5) {
-                    this.circuitBreakerUntil = Date.now() + 15 * 60 * 1000; // 15 min cooldown
-                    console.error(`[YouTubeProvider] 🚨 5+ bot blocks detected. Circuit breaker triggered for 15 minutes.`);
+                const url = await youtubedl(targetUrl, options);
+                if (url && typeof url === 'string') {
+                    console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp`);
+                    this.consecutiveBotBlocks = 0; 
+                    return url.trim();
+                }
+            } catch (error: any) {
+                lastError = error;
+                const isBot = error.message?.includes("Sign in") || error.message?.includes("bot") || error.message?.includes("HTTP Error 429");
+                console.warn(`[YouTubeProvider] ⚠️ yt-dlp failed: ${error.message}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
+                
+                if (isBot) {
+                    this.consecutiveBotBlocks++;
+                    if (this.consecutiveBotBlocks > 5) {
+                        this.circuitBreakerUntil = Date.now() + 15 * 60 * 1000; // 15 min cooldown
+                        console.error(`[YouTubeProvider] 🚨 5+ bot blocks detected. Circuit breaker triggered for 15 minutes. Fallbacks will still be attempted.`);
+                    }
                 }
             }
+        } else {
+            console.warn(`[YouTubeProvider] 🔌 yt-dlp circuit breaker active, skipping to fallbacks for: ${urlOrId}`);
         }
 
         // --- Invidious Fallback ---

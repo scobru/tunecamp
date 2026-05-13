@@ -125,32 +125,41 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
      * GET /api/albums/:id/cover
      */
     router.get("/:id/cover", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        const param = req.params.id as string;
-        const album = /^\d+$/.test(param)
-            ? database.getAlbum(parseInt(param, 10))
-            : database.getAlbumBySlug(param);
+        try {
+            const param = req.params.id as string;
+            const album = /^\d+$/.test(param)
+                ? database.getAlbum(parseInt(param, 10))
+                : database.getAlbumBySlug(param);
 
-        if (!album) throw new NotFoundError("Album not found");
+            if (!album) throw new NotFoundError("Album not found");
 
-        if (album.cover_path) {
-            const coverPath = path.join(musicDir, album.cover_path);
-            if (await fs.pathExists(coverPath)) {
-                return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });
+            if (album.cover_path) {
+                const coverPath = path.join(musicDir, album.cover_path);
+                if (await fs.pathExists(coverPath)) {
+                    return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });
+                } else {
+                    console.warn(`[Albums] Cover file not found on disk: ${coverPath} (DB path: ${album.cover_path})`);
+                }
             }
+
+            const tracks = database.getTracksByAlbum(album.id);
+            if (tracks && tracks.length > 0) {
+                const trackWithCover = tracks.find(t => t.external_artwork);
+
+                if (trackWithCover && trackWithCover.external_artwork) {
+                    if (trackWithCover.external_artwork.startsWith("http")) return res.redirect(trackWithCover.external_artwork);
+                    const trackArtworkPath = path.join(musicDir, trackWithCover.external_artwork);
+                    if (await fs.pathExists(trackArtworkPath)) return res.sendFile(path.resolve(trackArtworkPath), { maxAge: 86400000 });
+                }
+            }
+
+            const svg = getPlaceholderSVG(album.title || "Album");
+            res.setHeader("Content-Type", "image/svg+xml").setHeader("Cache-Control", "public, max-age=3600");
+            res.send(svg);
+        } catch (error: any) {
+            console.error(`🚨 [Albums] Error in cover route for album ${req.params.id}:`, error);
+            throw error; // Rethrow so wrapAsync handles it
         }
-
-        const tracks = database.getTracksByAlbum(album.id);
-        const trackWithCover = tracks.find(t => t.external_artwork);
-
-        if (trackWithCover && trackWithCover.external_artwork) {
-            if (trackWithCover.external_artwork.startsWith("http")) return res.redirect(trackWithCover.external_artwork);
-            const trackArtworkPath = path.join(musicDir, trackWithCover.external_artwork);
-            if (await fs.pathExists(trackArtworkPath)) return res.sendFile(path.resolve(trackArtworkPath), { maxAge: 86400000 });
-        }
-
-        const svg = getPlaceholderSVG(album.title || "Album");
-        res.setHeader("Content-Type", "image/svg+xml").setHeader("Cache-Control", "public, max-age=3600");
-        res.send(svg);
     }));
 
     /**
