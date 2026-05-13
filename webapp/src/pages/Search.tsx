@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Music, Disc, User, Globe, Play, Heart, Plus, Check } from 'lucide-react';
+import { Search as SearchIcon, Music, Disc, User, Globe, Play, Heart, Plus } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { formatDuration } from '../utils/format';
 import clsx from 'clsx';
-import type { Track, Album, Artist } from '../types';
+import type { Track, Album, Artist, Playlist } from '../types';
 
 export const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -205,37 +205,39 @@ export const Search = () => {
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><User size={20}/> Artists</h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                    <div key={artist.id} className="group card bg-base-200 hover:bg-base-300 transition-colors overflow-hidden">
-                                        <Link to={`/artists/${artist.slug || artist.id}`} className="flex-1">
-                                            <figure className="aspect-square relative">
-                                                {artist.coverImage ? (
-                                                    <img src={API.getArtistCoverUrl(artist.id)} alt={artist.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
-                                                ) : (
-                                                    <div className="w-full h-full bg-neutral flex items-center justify-center text-4xl font-bold opacity-30">
-                                                        {artist.name[0]}
-                                                    </div>
-                                                )}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <button 
-                                                        className={clsx(
-                                                            "btn btn-circle btn-ghost btn-sm",
-                                                            starredArtists.has(String(artist.id)) ? "text-primary opacity-100" : "text-white"
-                                                        )}
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleToggleStarArtist(artist);
-                                                        }}
-                                                    >
-                                                        <Heart size={20} fill={starredArtists.has(String(artist.id)) ? "currentColor" : "none"} />
-                                                    </button>
-                                                </div>
-                                            </figure>
-                                            <div className="card-body p-3">
-                                                <h3 className="font-bold truncate">{artist.name}</h3>
-                                            </div>
-                                        </Link>
-                                    </div>
+                                {results.artists.map(artist => (
+                                     <div key={artist.id} className="group card bg-base-200 hover:bg-base-300 transition-colors overflow-hidden">
+                                         <Link to={`/artists/${artist.slug || artist.id}`} className="flex-1">
+                                             <figure className="aspect-square relative">
+                                                 {artist.coverImage ? (
+                                                     <img src={API.getArtistCoverUrl(artist.id)} alt={artist.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
+                                                 ) : (
+                                                     <div className="w-full h-full bg-neutral flex items-center justify-center text-4xl font-bold opacity-30">
+                                                         {artist.name ? artist.name[0] : '?'}
+                                                     </div>
+                                                 )}
+                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                     <button 
+                                                         className={clsx(
+                                                             "btn btn-circle btn-ghost btn-sm",
+                                                             starredArtists.has(String(artist.id)) ? "text-primary opacity-100" : "text-white"
+                                                         )}
+                                                         onClick={(e) => {
+                                                             e.preventDefault();
+                                                             e.stopPropagation();
+                                                             handleToggleStarArtist(artist);
+                                                         }}
+                                                     >
+                                                         <Heart size={20} fill={starredArtists.has(String(artist.id)) ? "currentColor" : "none"} />
+                                                     </button>
+                                                 </div>
+                                             </figure>
+                                             <div className="card-body p-3">
+                                                 <h3 className="font-bold truncate">{artist.name}</h3>
+                                             </div>
+                                         </Link>
+                                     </div>
+                                ))}
                             </div>
                         </section>
                     )}
@@ -274,7 +276,7 @@ export const Search = () => {
                                                                 onClick={(e) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
-                                                                    playTrack({ ...album, album_id: album.id, album_title: album.title });
+                                                                    playTrack({ ...album, albumId: album.id, albumName: album.title } as any);
                                                                 }}
                                                             >
                                                                 <Play size={16} fill="currentColor" />

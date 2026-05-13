@@ -48,7 +48,7 @@ export const AdminMaintenancePanel = () => {
         if (auditStatus?.isScanning) {
             interval = setInterval(async () => {
                 try {
-                    const status = await API.getAuditStatus();
+                    const status = await API.getAuditStatus() as any;
                     setAuditStatus(status);
                     if (!status.isScanning) {
                         clearInterval(interval);
@@ -279,6 +279,19 @@ export const AdminMaintenancePanel = () => {
             setAuditStatus(status);
         } catch (e: any) {
             alert("Failed to stop audit: " + e.message);
+        }
+    };
+
+    const handleConsolidate = async () => {
+        if (!confirm("This will optimize the database and remove orphan records. Continue?")) return;
+        setIsProcessing(true);
+        try {
+            const res = await API.consolidateDatabase();
+            alert(res.message);
+        } catch (e: any) {
+            alert("Consolidation failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
         }
     };
 

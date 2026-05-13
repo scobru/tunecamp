@@ -176,7 +176,7 @@ export const API = {
     },
 
     // --- Star/Rating ---
-    starTrack: (id: string | number) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`/tracks/${id}/star`)),
+    starTrack: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean, trackId?: number }>(`/tracks/${id}/star`, metadata)),
     unstarTrack: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`/tracks/${id}/star`)),
     rateTrack: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`/tracks/${id}/rating`, { rating })),
     getStarredTracks: () => handleResponse(api.get<string[]>('/tracks/starred')),

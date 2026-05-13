@@ -1,6 +1,6 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import { Scanner } from './modules/catalog/scanner.js';
+import { Scanner } from '../scanner.js';
 
 // Mock fs-extra to avoid file system operations
 jest.mock('fs-extra', () => ({
@@ -37,7 +37,7 @@ const mockDbService = {
     updateTrackWaveform: jest.fn(),
 };
 
-jest.mock('./database.js', () => ({
+jest.mock('../../../database.js', () => ({
     createDatabase: jest.fn(() => mockDbService),
 }));
 
@@ -51,8 +51,8 @@ const mockStorageEngine = {
     writeFile: jest.fn()
 };
 
-describe('Scanner Deduplication and Cleanup Verification', () => {
-    let scanner: any;
+describe('Scanner Core Logic', () => {
+    let scanner: Scanner;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -60,7 +60,6 @@ describe('Scanner Deduplication and Cleanup Verification', () => {
     });
 
     test('deduplicateTracks should merge duplicates and update in-memory objects', async () => {
-        // Setup mock tracks
         const tracks = [
             {
                 id: 1,
@@ -80,20 +79,18 @@ describe('Scanner Deduplication and Cleanup Verification', () => {
             }
         ];
 
-        // Call deduplicateTracks
-        const resultTracks = await (scanner as any).deduplicateTracks(tracks);
+        // @ts-ignore
+        const resultTracks = await scanner.deduplicateTracks(tracks);
 
-        // Verify result
         expect(resultTracks).toHaveLength(1);
         expect(resultTracks[0].id).toBe(1);
-        expect(resultTracks[0].lossless_path).toBe('tracks/track1.wav'); // Should be updated in memory
+        expect(resultTracks[0].lossless_path).toBe('tracks/track1.wav');
 
-        // Verify DB calls
         expect(mockDbService.updateTrackLosslessPath).toHaveBeenCalledWith(1, 'tracks/track1.wav');
         expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
     });
 
-    test('cleanupStaleTracks should remove missing files using passed tracks list', async () => {
+    test('cleanupStaleTracks should remove missing files', async () => {
         const tracks = [
             {
                 id: 1,
@@ -111,10 +108,9 @@ describe('Scanner Deduplication and Cleanup Verification', () => {
 
         const knownFiles = new Set<string>(['tracks/valid.mp3']);
 
-        // Run cleanup
-        await (scanner as any).cleanupStaleTracks('/music', knownFiles, tracks);
+        // @ts-ignore
+        await scanner.cleanupStaleTracks('/music', knownFiles, tracks);
 
-        // Verify DB calls
         expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
         expect(mockDbService.deleteTrack).not.toHaveBeenCalledWith(1);
     });
