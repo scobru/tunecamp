@@ -29,16 +29,29 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
      * Resets the provider state, clears circuit breaker, and optionally updates cookies path.
      */
     public reset(newPath?: string) {
-        const defaultPath = path.resolve(process.cwd(), 'data', 'youtube_cookies.txt');
-        this.cookiesPath = newPath || (fs.existsSync(defaultPath) ? defaultPath : undefined);
+        // Use an absolute path for the default cookies file to avoid CWD issues
+        const defaultPath = path.join(process.cwd(), 'data', 'youtube_cookies.txt');
+        const envPath = process.env.YOUTUBE_COOKIES_PATH;
+        
+        // Priority: explicit path > env var > default path
+        let finalPath = newPath || envPath || defaultPath;
+        
+        if (finalPath && fs.existsSync(finalPath)) {
+            this.cookiesPath = finalPath;
+            console.log(`[YouTubeProvider] 🍪 Cookies path set to: ${this.cookiesPath}`);
+        } else {
+            this.cookiesPath = undefined;
+            if (finalPath === defaultPath) {
+                console.log(`[YouTubeProvider] 🍪 No cookies found at default path: ${defaultPath}`);
+            } else if (finalPath) {
+                console.warn(`[YouTubeProvider] 🍪 Configured cookies path not found: ${finalPath}`);
+            } else {
+                console.log(`[YouTubeProvider] 🍪 No cookies path configured.`);
+            }
+        }
+
         this.consecutiveBotBlocks = 0;
         this.circuitBreakerUntil = 0;
-        
-        if (this.cookiesPath) {
-            console.log(`[YouTubeProvider] 🍪 Cookies path set to: ${this.cookiesPath} (Exists: ${fs.existsSync(this.cookiesPath)})`);
-        } else {
-            console.log(`[YouTubeProvider] 🍪 No cookies path configured. Using default extractor args.`);
-        }
     }
 
     async isAvailable(): Promise<boolean> {

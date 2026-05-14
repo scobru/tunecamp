@@ -589,17 +589,22 @@ export function createAdminRoutes(
             // Update env var so the provider uses it immediately
             process.env.YOUTUBE_COOKIES_PATH = cookiesPath;
             
-            // Since the provider creates yt-dlp child processes per request, 
-            // setting the env var or updating the provider instance is enough.
-            const ytProvider = streamingService?.getProvider?.('youtube') || streamingService?.registry?.get?.('youtube');
-            if (ytProvider && typeof (ytProvider as any).reset === 'function') {
-                (ytProvider as any).reset(cookiesPath);
-                console.log(`[Admin] YouTube provider reset with new cookies path`);
-            } else if (ytProvider && typeof ytProvider === 'object') {
-                (ytProvider as any).cookiesPath = cookiesPath;
-                (ytProvider as any).consecutiveBotBlocks = 0;
-                (ytProvider as any).circuitBreakerUntil = 0;
-                console.log(`[Admin] YouTube cookies path updated dynamically for provider (legacy update)`);
+            // Update streaming service instance
+            const streamingRegistry = streamingService?.getRegistry?.();
+            const ytStreamingProvider = streamingRegistry?.get?.('youtube');
+            
+            if (ytStreamingProvider && typeof (ytStreamingProvider as any).reset === 'function') {
+                (ytStreamingProvider as any).reset(cookiesPath);
+                console.log(`[Admin] YouTube streaming provider reset with new cookies path`);
+            }
+
+            // Update metadata service instance (if separate)
+            const metadataRegistry = metadataService?.getRegistry?.();
+            const ytMetadataProvider = metadataRegistry?.get?.('youtube');
+
+            if (ytMetadataProvider && ytMetadataProvider !== ytStreamingProvider && typeof (ytMetadataProvider as any).reset === 'function') {
+                (ytMetadataProvider as any).reset(cookiesPath);
+                console.log(`[Admin] YouTube metadata provider reset with new cookies path`);
             }
 
             res.json({ message: "YouTube cookies uploaded and applied successfully" });

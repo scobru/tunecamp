@@ -52,7 +52,7 @@ export class MetadataService {
         // Register default providers
         this.registry.register(new BandcampMetadataProvider());
         this.registry.register(new SoundCloudMetadataProvider());
-        this.registry.register(new YouTubeStreamingProvider() as any);
+        this.registry.register(new YouTubeStreamingProvider(process.env.YOUTUBE_COOKIES_PATH) as any);
         this.registry.register(new KhInsiderProvider() as any);
         this.registry.register(new ITunesProvider() as any);
         this.registry.register(new MusicBrainzProvider() as any);
