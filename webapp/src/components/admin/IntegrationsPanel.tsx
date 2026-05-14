@@ -11,7 +11,6 @@ import {
   Download,
   CreditCard,
   Loader2,
-  Upload,
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import API from "../../services/api";
