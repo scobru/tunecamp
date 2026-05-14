@@ -224,22 +224,30 @@ export function createSearchRoutes(
                 const metadataProviders = metadataService.getRegistry().getEnabled()
                     .filter(p => !streamingProviderIds.has(p.id)); // Avoid duplicates
 
-                externalResults = await metadataProviders.reduce(async (accPromise, provider) => {
-                    const acc = await accPromise;
+                const metadataSearchPromises = metadataProviders.map(async (provider) => {
                     try {
-                        // Limit metadata-only results to a small number unless admin
+                        // Use a local timeout for each provider to prevent one from hanging the whole search
+                        const providerResults = await Promise.race([
+                            provider.searchRecording(query),
+                            new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000))
+                        ]);
+
                         const limit = isAdmin ? 5 : 2;
-                        const results = await provider.searchRecording(query);
-                        return [...acc, ...results.slice(0, limit).map(r => ({
+                        return providerResults.slice(0, limit).map(r => ({
                             ...r,
                             isExternal: true,
                             providerId: provider.id,
                             source: provider.id
-                        }))];
+                        }));
                     } catch (e) {
-                        return acc;
+                        return [];
                     }
-                }, Promise.resolve([] as any[]));
+                });
+
+                const settles = await Promise.allSettled(metadataSearchPromises);
+                externalResults = settles
+                    .filter((s): s is PromiseFulfilledResult<any[]> => s.status === 'fulfilled')
+                    .flatMap(s => s.value);
             }
 
             res.json({
