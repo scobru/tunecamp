@@ -29,7 +29,7 @@ export async function searchKhInsider(query: string): Promise<KhInsiderAlbum[]> 
     const $ = load(html);
     
     const results: KhInsiderAlbum[] = [];
-    $('.albumList tr').each((_, el) => {
+    $('.albumList tr').each((_index: number, el: any) => {
         const link = $(el).find('a').first();
         const href = link.attr('href');
         const name = link.text().trim();
@@ -54,7 +54,7 @@ export async function parseKhInsiderAlbum(albumUrl: string): Promise<KhInsiderAl
     const name = $('#EchoTopic h2').first().text().trim();
     const tracks: KhInsiderTrack[] = [];
     
-    $('#playlist .playlistDownloadSong').each((_, el) => {
+    $('#playlist .playlistDownloadSong').each((_index: number, el: any) => {
         const link = $(el).find('a').first();
         const href = link.attr('href');
         const trackName = link.text().trim();
@@ -81,7 +81,7 @@ export async function parseKhInsiderSong(songPageUrl: string): Promise<string | 
     
     // Fallback: search for any .mp3 link that looks like a download
     let foundUrl: string | null = null;
-    $('a').each((_, el) => {
+    $('a').each((_index: number, el: any) => {
         const href = $(el).attr('href');
         if (href?.endsWith('.mp3')) {
             foundUrl = href;

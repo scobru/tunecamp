@@ -23,7 +23,7 @@
     "shogun-contracts-sdk": "^1.3.7",
     "tailwind-merge": "^3.4.0",
     "ts-pattern": "^5.9.0",
-    "zen": "https://github.com/akaoio/zen",
+    "zen": "akaoio/zen",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

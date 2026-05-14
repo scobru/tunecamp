@@ -51,11 +51,11 @@ export class VisibilityGuardian {
   /**
    * Translates a user object (e.g. from an Express request) to a ViewerContext.
    */
-  static deriveContext(user: { userId?: number | null, artistId?: number | null, role: string, isActive?: boolean }): ViewerContext {
+  static deriveContext(user: { userId?: number | null, artistId?: number | null, role?: string | UserRole, isActive?: boolean }): ViewerContext {
     return {
       userId: user.userId,
       artistId: user.artistId,
-      role: this.deriveRole(user.role, user.isActive !== false)
+      role: typeof user.role === 'string' ? this.deriveRole(user.role, user.isActive !== false) : (user.role || UserRole.GUEST)
     };
   }
 
@@ -113,7 +113,7 @@ export class VisibilityGuardian {
    * Checks if a specific item should be visible to the viewer.
    * Centralizes the logic for Public Stage vs Private Library + Approval Status.
    */
-  static isItemVisible(item: { visibility: string, status?: string, owner_id?: number | null }, context: ViewerContext): boolean {
+  static isItemVisible(item: { visibility?: string, status?: string, owner_id?: number | null }, context: ViewerContext): boolean {
     // 1. Admins see everything
     if (this.can(context, Capability.MANAGE_ALL_CONTENT)) return true;
 
@@ -121,7 +121,8 @@ export class VisibilityGuardian {
     if (context.userId && item.owner_id === context.userId) return true;
 
     // 3. Public consumption logic
-    if (item.visibility === 'public' || item.visibility === 'unlisted') {
+    const visibility = item.visibility || 'public';
+    if (visibility === 'public' || visibility === 'unlisted') {
       // ONLY 'released' content is visible to the public or other users
       return item.status === 'released';
     }

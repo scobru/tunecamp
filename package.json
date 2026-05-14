@@ -4,6 +4,7 @@
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
+  "private": true,
   "workspaces": [
     "webapp"
   ],
@@ -80,7 +81,7 @@
     "yaml": "^2.3.4",
     "youtube-dl-exec": "^3.1.6",
     "yt-search": "^2.13.1",
-    "zen": "github:akaoio/zen"
+    "zen": "akaoio/zen"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
