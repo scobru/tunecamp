@@ -39,6 +39,13 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         if (finalPath && fs.existsSync(finalPath)) {
             this.cookiesPath = finalPath;
             console.log(`[YouTubeProvider] 🍪 Cookies path set to: ${this.cookiesPath}`);
+            
+            // Check version to debug environment
+            youtubedl('--version').then(v => {
+                console.log(`[YouTubeProvider] 🛠️ System yt-dlp version: ${v}`);
+            }).catch(() => {
+                console.warn(`[YouTubeProvider] ⚠️ Could not determine yt-dlp version`);
+            });
         } else {
             this.cookiesPath = undefined;
             if (finalPath === defaultPath) {
@@ -209,8 +216,10 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     format: 'ba/b',
                     noWarnings: true,
                     noCheckCertificate: true,
-                    // Always use robust extractor args as a base
-                    extractorArgs: 'youtube:player_client=android,web'
+                    // Use a realistic User-Agent to match typical browser exports
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    // Refined extractor args for better compatibility with cookies
+                    extractorArgs: 'youtube:player_client=web,android;player_skip=web_embedded_player'
                 };
                 
                 if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {

@@ -580,11 +580,17 @@ export function createAdminRoutes(
 
             const cookiesPath = path.resolve(process.cwd(), 'data', 'youtube_cookies.txt');
             
+            console.log(`[Admin] Receiving YouTube cookies (${content.length} bytes)`);
+            if (!content.includes('Netscape HTTP Cookie File')) {
+                console.warn(`[Admin] ⚠️ Uploaded cookies might not be in Netscape format. Missing header.`);
+            }
+
             // Ensure data directory exists
             await fs.ensureDir(path.dirname(cookiesPath));
             
             // Write cookies file
             await fs.writeFile(cookiesPath, content, 'utf-8');
+            console.log(`[Admin] YouTube cookies saved to ${cookiesPath}`);
             
             // Update env var so the provider uses it immediately
             process.env.YOUTUBE_COOKIES_PATH = cookiesPath;
