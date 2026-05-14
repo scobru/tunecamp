@@ -1,5 +1,4 @@
-import { TuneCampProvider, MetadataProvider, MetadataMatch } from "../../core/provider.js";
-import { USER_AGENT } from "../../modules/catalog/metadata.service.js";
+import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT } from "../../core/provider.js";
 // @ts-ignore
 import pkg from "disconnect";
 const { Client: DiscogsClient } = pkg;

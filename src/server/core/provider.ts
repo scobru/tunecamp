@@ -1,5 +1,7 @@
 import type { Stats } from "fs";
 
+export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
+
 /**
  * Base interface for all TuneCamp providers (Metadata, Scanner, Storage, etc.)
  */

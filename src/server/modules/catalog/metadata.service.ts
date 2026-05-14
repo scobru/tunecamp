@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 import { drainResponse } from "../../common/network.js";
-import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase } from "../../core/provider.js";
+import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase, USER_AGENT } from "../../core/provider.js";
 import type { DatabaseService } from "../../core/database.js";
 import { 
     bandcampMetadataProvider, 
@@ -15,8 +15,6 @@ import {
     hifiProvider, 
     deezerProvider 
 } from "../../core/providers.js";
-
-export const USER_AGENT = "TuneCamp/1.0.0 ( contact@tunecamp.app )";
 
 export interface LyricsResult {
     lyrics: string;
