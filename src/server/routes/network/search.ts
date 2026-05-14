@@ -194,36 +194,53 @@ export function createSearchRoutes(
 
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
         const onlyPublic = !canSeePrivate;
+        const isAdmin = req.isAdmin || req.role === UserRole.ADMIN || req.role === UserRole.SUPER_USER;
+
         console.log(`🔍 [Global Search] Query: "${query}", Public Only: ${onlyPublic}, User: ${req.username || 'Guest'} (Role: ${req.role || 'none'})`);
-        
+
         try {
             // 1. Search Local Database
             const localResults = database.search(query, onlyPublic);
 
-            // 2. Search External Plugins (Metadata providers like Bandcamp)
-            const externalResults = await metadataService.getRegistry().getEnabled().reduce(async (accPromise, provider) => {
-                const acc = await accPromise;
-                try {
-                    const results = await provider.searchRecording(query);
-                    return [...acc, ...results.map(r => ({ 
-                        ...r, 
-                        isExternal: true, 
-                        providerId: provider.id,
-                        source: provider.id
-                    }))];
-                } catch (e) {
-                    return acc;
-                }
-            }, Promise.resolve([] as any[]));
-
-            // 3. Search Streaming Providers (YouTube, SoundCloud, Bandcamp)
+            // 2. Search Streaming Providers (YouTube, SoundCloud, Bandcamp)
+            // These are direct playable results and should be prioritized
             const candidates = await streamingService.search(query);
-            const streamingResults = candidates.map(r => ({ 
-                ...r, 
-                isStreaming: true, 
+            const streamingResults = candidates.map(r => ({
+                ...r,
+                isStreaming: true,
                 providerId: r.provider,
                 source: r.provider // Frontend expects 'source' for ID construction
             }));
+
+            // 3. Search External Metadata Plugins (MusicBrainz, Discogs, etc.)
+            // We only include these if:
+            // a) The user is an admin (useful for metadata matching)
+            // b) We have few streaming results (to provide more discovery options)
+            // AND we skip providers that are already in the streaming service to avoid duplicates.
+            const streamingProviderIds = new Set(streamingService.listProviders().map(p => p.id));
+
+            let externalResults: any[] = [];
+            if (isAdmin || streamingResults.length < 5) {
+                const metadataProviders = metadataService.getRegistry().getEnabled()
+                    .filter(p => !streamingProviderIds.has(p.id)); // Avoid duplicates
+
+                externalResults = await metadataProviders.reduce(async (accPromise, provider) => {
+                    const acc = await accPromise;
+                    try {
+                        // Limit metadata-only results to a small number unless admin
+                        const limit = isAdmin ? 5 : 2;
+                        const results = await provider.searchRecording(query);
+                        return [...acc, ...results.slice(0, limit).map(r => ({
+                            ...r,
+                            isExternal: true,
+                            providerId: provider.id,
+                            source: provider.id
+                        }))];
+                    } catch (e) {
+                        return acc;
+                    }
+                }, Promise.resolve([] as any[]));
+            }
 
             res.json({
                 local: localResults,
@@ -236,7 +253,6 @@ export function createSearchRoutes(
             res.status(500).json({ error: "Search failed" });
         }
     });
-
     return router;
 }
 
