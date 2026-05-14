@@ -26,20 +26,20 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             
             let filteredArtists = allArtists;
 
+            // Determine which artists have PUBLIC formal releases
+            const publicReleases = database.getReleases(true);
+            const publicArtistIds = new Set(
+                publicReleases.map(r => r.artist_id).filter(id => id !== null)
+            );
+
+            // ALSO include artists with PUBLIC library albums
+            const publicAlbums = database.getAlbums(true);
+            for (const pa of publicAlbums) {
+                if (pa.artist_id) publicArtistIds.add(pa.artist_id);
+            }
+
             if (!req.isAdmin && !req.isSuperUser) {
                 const context = VisibilityGuardian.deriveContext(req);
-
-                // Determine which artists have PUBLIC formal releases
-                const publicReleases = database.getReleases(true);
-                const publicArtistIds = new Set(
-                    publicReleases.map(r => r.artist_id).filter(id => id !== null)
-                );
-
-                // ALSO include artists with PUBLIC library albums
-                const publicAlbums = database.getAlbums(true);
-                for (const pa of publicAlbums) {
-                    if (pa.artist_id) publicArtistIds.add(pa.artist_id);
-                }
 
                 filteredArtists = allArtists.filter(a => {
                     // 1. User's own artist (always visible to them)
