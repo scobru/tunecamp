@@ -28,7 +28,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     /**
      * Resets the provider state, clears circuit breaker, and optionally updates cookies path.
      */
-    public reset(newPath?: string) {
+    public async reset(newPath?: string) {
         // Use an absolute path for the default cookies file to avoid CWD issues
         const defaultPath = path.join(process.cwd(), 'data', 'youtube_cookies.txt');
         const envPath = process.env.YOUTUBE_COOKIES_PATH;
@@ -40,6 +40,19 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             this.cookiesPath = finalPath;
             console.log(`[YouTubeProvider] 🍪 Cookies path set to: ${this.cookiesPath}`);
             
+            try {
+                // Initialize play-dl with cookies if available
+                const cookieContent = fs.readFileSync(this.cookiesPath, 'utf8');
+                await play.setToken({
+                    youtube: {
+                        cookie: cookieContent
+                    }
+                });
+                console.log(`[YouTubeProvider] 🔑 play-dl initialized with cookies`);
+            } catch (e) {
+                console.warn(`[YouTubeProvider] ⚠️ Failed to set play-dl cookies:`, e);
+            }
+
             // Check version to debug environment
             youtubedl('--version').then(v => {
                 console.log(`[YouTubeProvider] 🛠️ System yt-dlp version: ${v}`);
@@ -209,6 +222,9 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         // Attempt yt-dlp only if circuit breaker is NOT active
         if (Date.now() >= this.circuitBreakerUntil) {
             try {
+                // Add a small jitter to avoid perfect patterns
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 800));
+
                 console.log(`[YouTubeProvider] ⚡ Resolving ${targetUrl} via yt-dlp...`);
                 
                 const options: any = {
@@ -216,10 +232,12 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     format: 'ba/b',
                     noWarnings: true,
                     noCheckCertificate: true,
-                    // Use a realistic User-Agent to match typical browser exports
-                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    // Refined extractor args for better compatibility with cookies
-                    extractorArgs: 'youtube:player_client=web,android;player_skip=web_embedded_player'
+                    noPlaylist: true,
+                    // Use a realistic modern User-Agent
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    // Refined extractor args including 'ios' which is often more resilient
+                    extractorArgs: 'youtube:player_client=ios,web,android;player_skip=web_embedded_player',
+                    referer: 'https://www.youtube.com/'
                 };
                 
                 if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {

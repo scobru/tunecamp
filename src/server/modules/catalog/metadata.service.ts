@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
 import { drainResponse } from "../../common/network.js";
 import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase } from "../../core/provider.js";
+import type { DatabaseService } from "../../core/database.js";
 import { 
     bandcampMetadataProvider, 
     soundcloudMetadataProvider, 

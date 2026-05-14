@@ -600,7 +600,7 @@ export function createAdminRoutes(
             const ytStreamingProvider = streamingRegistry?.get?.('youtube');
             
             if (ytStreamingProvider && typeof (ytStreamingProvider as any).reset === 'function') {
-                (ytStreamingProvider as any).reset(cookiesPath);
+                await (ytStreamingProvider as any).reset(cookiesPath);
                 console.log(`[Admin] YouTube streaming provider reset with new cookies path`);
             }
 
@@ -609,7 +609,7 @@ export function createAdminRoutes(
             const ytMetadataProvider = metadataRegistry?.get?.('youtube');
 
             if (ytMetadataProvider && ytMetadataProvider !== ytStreamingProvider && typeof (ytMetadataProvider as any).reset === 'function') {
-                (ytMetadataProvider as any).reset(cookiesPath);
+                await (ytMetadataProvider as any).reset(cookiesPath);
                 console.log(`[Admin] YouTube metadata provider reset with new cookies path`);
             }
 
