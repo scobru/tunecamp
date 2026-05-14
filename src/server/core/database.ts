@@ -1523,7 +1523,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             return artistRepository.getBySlug(slug);
         },
 
-        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'public'): number {
+        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'private'): number {
             return artistRepository.create(name, bio, photoPath, links, postParams, walletAddress, visibility);
         },
 

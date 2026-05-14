@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import path from "path";
 import fs from "fs-extra";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
+import { VisibilityGuardian } from "../../common/visibility.js";
 
 export function createArtistsRoutes(database: DatabaseService, musicDir: string): Router {
     const router = Router();
@@ -26,21 +27,33 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             let filteredArtists = allArtists;
 
             if (!req.isAdmin && !req.isSuperUser) {
+                const context = VisibilityGuardian.deriveContext(req);
+
                 // Determine which artists have public FORMAL releases
-                const publicReleases = database.getReleases(true).filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
+                const publicReleases = database.getReleases(true);
                 const publicArtistIds = new Set(
                     publicReleases.map(r => r.artist_id).filter(id => id !== null)
                 );
 
                 // ALSO include artists with public library albums
-                const publicAlbums = database.getAlbums(true).filter(a => a.visibility === 'public' || a.visibility === 'unlisted');
+                const publicAlbums = database.getAlbums(true);
                 for (const pa of publicAlbums) {
                     if (pa.artist_id) publicArtistIds.add(pa.artist_id);
                 }
 
-                filteredArtists = allArtists.filter(a => 
-                    publicArtistIds.has(a.id) || (req.artistId && a.id === req.artistId)
-                );
+                filteredArtists = allArtists.filter(a => {
+                    // 1. If the artist itself is visible to the user (e.g. they own it)
+                    if (VisibilityGuardian.isItemVisible(a, context)) return true;
+
+                    // 2. If the artist is NOT private/unlisted, AND they have public content
+                    const isVisibleToPublic = a.visibility === 'public' || a.visibility === 'unlisted';
+                    if (isVisibleToPublic && publicArtistIds.has(a.id)) return true;
+
+                    // 3. User's own artist (fallback)
+                    if (req.artistId && a.id === req.artistId) return true;
+
+                    return false;
+                });
             }
 
             const allReleases = database.getReleases(false);

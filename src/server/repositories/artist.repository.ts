@@ -82,7 +82,7 @@ export class ArtistRepository extends BaseRepository {
         return rows.map(row => this.mapArtist(row)) as Artist[];
     }
 
-    create(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'public'): number {
+    create(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'private'): number {
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
         const linksJson = links ? JSON.stringify(links) : null;
         const postParamsJson = postParams ? JSON.stringify(postParams) : null;

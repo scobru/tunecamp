@@ -18,17 +18,26 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
     readonly description = "YouTube streaming & metadata via yt-dlp + yt-search";
 
     private cookiesPath?: string;
-
-    /** Circuit breaker state */
     private consecutiveBotBlocks = 0;
     private circuitBreakerUntil = 0;
 
     constructor(cookiesPath?: string) {
-        const defaultPath = path.join(process.cwd(), 'data', 'youtube_cookies.txt');
-        this.cookiesPath = cookiesPath || process.env.YOUTUBE_COOKIES_PATH || (fs.existsSync(defaultPath) ? defaultPath : undefined);
+        this.reset(cookiesPath || process.env.YOUTUBE_COOKIES_PATH);
+    }
+
+    /**
+     * Resets the provider state, clears circuit breaker, and optionally updates cookies path.
+     */
+    public reset(newPath?: string) {
+        const defaultPath = path.resolve(process.cwd(), 'data', 'youtube_cookies.txt');
+        this.cookiesPath = newPath || (fs.existsSync(defaultPath) ? defaultPath : undefined);
+        this.consecutiveBotBlocks = 0;
+        this.circuitBreakerUntil = 0;
         
         if (this.cookiesPath) {
-            console.log(`[YouTubeProvider] 🍪 Using cookies from: ${this.cookiesPath}`);
+            console.log(`[YouTubeProvider] 🍪 Cookies path set to: ${this.cookiesPath} (Exists: ${fs.existsSync(this.cookiesPath)})`);
+        } else {
+            console.log(`[YouTubeProvider] 🍪 No cookies path configured. Using default extractor args.`);
         }
     }
 
@@ -187,12 +196,15 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     format: 'ba/b',
                     noWarnings: true,
                     noCheckCertificate: true,
+                    // Always use robust extractor args as a base
+                    extractorArgs: 'youtube:player_client=android,web'
                 };
                 
                 if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
                     options.cookies = this.cookiesPath;
+                    console.log(`[YouTubeProvider] ⚡ Resolving via yt-dlp with cookies...`);
                 } else {
-                    options.extractorArgs = 'youtube:player_client=android,web';
+                    console.log(`[YouTubeProvider] ⚡ Resolving via yt-dlp (no cookies)...`);
                 }
 
                 const url = await youtubedl(targetUrl, options);
@@ -203,8 +215,14 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 }
             } catch (error: any) {
                 lastError = error;
-                const isBot = error.message?.includes("Sign in") || error.message?.includes("bot") || error.message?.includes("HTTP Error 429");
-                console.warn(`[YouTubeProvider] ⚠️ yt-dlp failed: ${error.message}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
+                const errorMsg = error.message || "";
+                const isBot = errorMsg.includes("Sign in") || 
+                              errorMsg.includes("bot") || 
+                              errorMsg.includes("429") || 
+                              errorMsg.includes("Unusual traffic") ||
+                              errorMsg.includes("challenge");
+
+                console.warn(`[YouTubeProvider] ⚠️ yt-dlp failed: ${errorMsg.split('\n')[0]}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
                 
                 if (isBot) {
                     this.consecutiveBotBlocks++;
@@ -263,7 +281,15 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             console.error(`[YouTubeProvider] ❌ All resolution methods failed for ${urlOrId}`);
         }
 
-        if (lastError) throw lastError;
+        if (lastError) {
+            const isBot = lastError.message?.includes("Sign in") || lastError.message?.includes("bot") || lastError.message?.includes("429");
+            // If it's a bot block, don't throw, let it return null so caller can try next provider
+            if (isBot) {
+                console.warn(`[YouTubeProvider] 🛑 Final resolution failed due to bot detection. Returning null.`);
+                return null;
+            }
+            throw lastError;
+        }
         return null;
     }
 }

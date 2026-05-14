@@ -578,7 +578,7 @@ export function createAdminRoutes(
                 return res.status(400).json({ error: "Invalid cookies content" });
             }
 
-            const cookiesPath = path.join(process.cwd(), 'data', 'youtube_cookies.txt');
+            const cookiesPath = path.resolve(process.cwd(), 'data', 'youtube_cookies.txt');
             
             // Ensure data directory exists
             await fs.ensureDir(path.dirname(cookiesPath));
@@ -592,11 +592,14 @@ export function createAdminRoutes(
             // Since the provider creates yt-dlp child processes per request, 
             // setting the env var or updating the provider instance is enough.
             const ytProvider = streamingService?.getProvider?.('youtube') || streamingService?.registry?.get?.('youtube');
-            if (ytProvider && typeof ytProvider === 'object') {
+            if (ytProvider && typeof (ytProvider as any).reset === 'function') {
+                (ytProvider as any).reset(cookiesPath);
+                console.log(`[Admin] YouTube provider reset with new cookies path`);
+            } else if (ytProvider && typeof ytProvider === 'object') {
                 (ytProvider as any).cookiesPath = cookiesPath;
                 (ytProvider as any).consecutiveBotBlocks = 0;
                 (ytProvider as any).circuitBreakerUntil = 0;
-                console.log(`[Admin] YouTube cookies path updated dynamically for provider`);
+                console.log(`[Admin] YouTube cookies path updated dynamically for provider (legacy update)`);
             }
 
             res.json({ message: "YouTube cookies uploaded and applied successfully" });

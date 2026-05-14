@@ -308,7 +308,7 @@ export class Scanner implements ScannerService {
                         artistId = existingArtist.id;
                         this.database.updateArtist(artistId, config.name, config.bio, avatarPath, config.links);
                     } else {
-                        artistId = this.database.createArtist(config.name, config.bio, avatarPath, config.links);
+                        artistId = this.database.createArtist(config.name, config.bio, avatarPath, config.links, undefined, undefined, 'private');
                     }
                     this.folderToArtistMap.set(rootDir, artistId);
                 }
@@ -340,7 +340,7 @@ export class Scanner implements ScannerService {
             let artistId: number | null = null;
             if (config.artist) {
                 const existingArtist = this.database.getArtistByName(config.artist);
-                artistId = existingArtist ? existingArtist.id : this.database.createArtist(config.artist);
+                artistId = existingArtist ? existingArtist.id : this.database.createArtist(config.artist, undefined, undefined, undefined, undefined, undefined, 'private');
             } else {
                 let current = dir;
                 while (current.length >= path.dirname(current).length) {
@@ -517,7 +517,7 @@ export class Scanner implements ScannerService {
             if (!artistId) {
                 const artName = metadataHints?.artist || common.artist || "Unknown Artist";
                 const existArt = this.database.getArtistByName(artName);
-                artistId = existArt ? existArt.id : this.database.createArtist(artName);
+                artistId = existArt ? existArt.id : this.database.createArtist(artName, undefined, undefined, undefined, undefined, undefined, 'private');
             }
 
             // 3. Resolve Album (Priority: existing > override > hint > tag > folder)
@@ -558,8 +558,8 @@ export class Scanner implements ScannerService {
                         price_usdc: 0,
                         currency: 'ETH',
                         external_links: null,
-                        is_public: true,
-                        visibility: 'public',
+                        is_public: false,
+                        visibility: 'private',
                         is_release: false,
                         published_at: new Date().toISOString(),
                         published_to_gundb: false,
@@ -596,8 +596,8 @@ export class Scanner implements ScannerService {
                         price_usdc: 0,
                         currency: 'ETH',
                         external_links: null,
-                        is_public: true,
-                        visibility: 'public',
+                        is_public: false,
+                        visibility: 'private',
                         is_release: false,
                         published_at: new Date().toISOString(),
                         published_to_gundb: false,
