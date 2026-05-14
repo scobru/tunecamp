@@ -3,16 +3,13 @@ import { drainResponse } from "../../common/network.js";
 import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase, USER_AGENT } from "../../core/provider.js";
 import type { DatabaseService } from "../../core/database.js";
 import { 
-    bandcampMetadataProvider, 
     soundcloudMetadataProvider, 
-    youtubeProvider, 
     khinsiderProvider, 
     itunesProvider, 
     musicbrainzProvider, 
     discogsProvider, 
     theaudiodbProvider, 
     spotifyProvider, 
-    hifiProvider, 
     deezerProvider 
 } from "../../core/providers.js";
 
@@ -50,16 +47,13 @@ export class MetadataService {
 
     constructor() {
         // Register shared instances
-        this.registry.register(bandcampMetadataProvider);
         this.registry.register(soundcloudMetadataProvider);
-        this.registry.register(youtubeProvider as any);
         this.registry.register(khinsiderProvider as any);
         this.registry.register(itunesProvider as any);
         this.registry.register(musicbrainzProvider as any);
         this.registry.register(discogsProvider as any);
         this.registry.register(theaudiodbProvider as any);
         this.registry.register(spotifyProvider as any);
-        this.registry.register(hifiProvider as any);
         this.registry.register(deezerProvider as any);
     }
 
@@ -82,7 +76,7 @@ export class MetadataService {
 
         // Prioritize providers and run sequentially to stop early on high confidence
         // and reduce concurrent load on external APIs
-        const prioritizedIds = ["itunes", "musicbrainz", "discogs", "spotify", "youtube"];
+        const prioritizedIds = ["itunes", "musicbrainz", "discogs", "spotify"];
         const providers = [...enabled].sort((a, b) => {
             const idxA = prioritizedIds.indexOf(a.id);
             const idxB = prioritizedIds.indexOf(b.id);

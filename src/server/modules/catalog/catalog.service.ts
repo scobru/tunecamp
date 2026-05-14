@@ -348,19 +348,33 @@ export class CatalogService {
     async deleteTrack(trackId: number, deleteFile: boolean = false): Promise<void> {
         const track = this.database.getTrack(trackId);
         if (!track) return;
-        if (deleteFile && track.file_path) {
-            const fullPath = path.join(this.musicDir, track.file_path);
-            try {
-                if (await this.storage.pathExists(fullPath)) {
-                    await this.storage.remove(fullPath);
-                    const ext = path.extname(fullPath).toLowerCase();
-                    if (ext === '.mp3') {
-                        const wavPath = fullPath.replace(/\.mp3$/i, '.wav');
-                        if (await this.storage.pathExists(wavPath)) await this.storage.remove(wavPath);
+        if (deleteFile) {
+            // 1. Delete main file
+            if (track.file_path) {
+                const fullPath = path.join(this.musicDir, track.file_path);
+                try {
+                    if (await this.storage.pathExists(fullPath)) {
+                        await this.storage.remove(fullPath);
+                        const ext = path.extname(fullPath).toLowerCase();
+                        if (ext === '.mp3') {
+                            const wavPath = fullPath.replace(/\.mp3$/i, '.wav');
+                            if (await this.storage.pathExists(wavPath)) await this.storage.remove(wavPath);
+                        }
                     }
+                } catch (err: any) {
+                    console.error(`[CatalogService] Failed to delete main file:`, err.message);
                 }
-            } catch (err: any) {
-                console.error(`[CatalogService] Failed to delete file:`, err.message);
+            }
+            // 2. Delete lossless file if different
+            if (track.lossless_path && track.lossless_path !== track.file_path) {
+                const fullLosslessPath = path.join(this.musicDir, track.lossless_path);
+                try {
+                    if (await this.storage.pathExists(fullLosslessPath)) {
+                        await this.storage.remove(fullLosslessPath);
+                    }
+                } catch (err: any) {
+                    console.error(`[CatalogService] Failed to delete lossless file:`, err.message);
+                }
             }
         }
         this.database.deleteTrack(trackId);

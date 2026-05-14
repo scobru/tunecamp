@@ -202,7 +202,7 @@ export function createSearchRoutes(
             // 1. Search Local Database
             const localResults = database.search(query, onlyPublic);
 
-            // 2. Search Streaming Providers (YouTube, SoundCloud, Bandcamp)
+            // 2. Search Streaming Providers (SoundCloud, etc.)
             // These are direct playable results and should be prioritized
             const candidates = await streamingService.search(query);
             const streamingResults = candidates.map(r => ({

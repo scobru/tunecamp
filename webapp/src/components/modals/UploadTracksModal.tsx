@@ -95,7 +95,7 @@ export const UploadTracksModal = ({
       return;
 
     try {
-      await API.deleteTrack(trackId);
+      await API.deleteTrack(trackId, true);
       setExistingTracks((prev: Track[]) =>
         prev.filter((t: Track) => t.id !== trackId),
       );

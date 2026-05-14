@@ -564,63 +564,6 @@ export function createAdminRoutes(
     });
 
     /**
-     * POST /api/admin/integrations/youtube/cookies
-     * Upload cookies.txt for YouTube streaming provider
-     */
-    router.post("/integrations/youtube/cookies", async (req: AuthenticatedRequest, res: any) => {
-        try {
-            if (!req.isAdmin) {
-                return res.status(403).json({ error: "Only admin can upload integrations cookies" });
-            }
-
-            const { content } = req.body;
-            if (!content || typeof content !== 'string') {
-                return res.status(400).json({ error: "Invalid cookies content" });
-            }
-
-            const cookiesPath = path.resolve(process.cwd(), 'data', 'youtube_cookies.txt');
-            
-            console.log(`[Admin] Receiving YouTube cookies (${content.length} bytes)`);
-            if (!content.includes('Netscape HTTP Cookie File')) {
-                console.warn(`[Admin] ⚠️ Uploaded cookies might not be in Netscape format. Missing header.`);
-            }
-
-            // Ensure data directory exists
-            await fs.ensureDir(path.dirname(cookiesPath));
-            
-            // Write cookies file
-            await fs.writeFile(cookiesPath, content, 'utf-8');
-            console.log(`[Admin] YouTube cookies saved to ${cookiesPath}`);
-            
-            // Update env var so the provider uses it immediately
-            process.env.YOUTUBE_COOKIES_PATH = cookiesPath;
-            
-            // Update streaming service instance
-            const streamingRegistry = streamingService?.getRegistry?.();
-            const ytStreamingProvider = streamingRegistry?.get?.('youtube');
-            
-            if (ytStreamingProvider && typeof (ytStreamingProvider as any).reset === 'function') {
-                await (ytStreamingProvider as any).reset(cookiesPath);
-                console.log(`[Admin] YouTube streaming provider reset with new cookies path`);
-            }
-
-            // Update metadata service instance (if separate)
-            const metadataRegistry = metadataService?.getRegistry?.();
-            const ytMetadataProvider = metadataRegistry?.get?.('youtube');
-
-            if (ytMetadataProvider && ytMetadataProvider !== ytStreamingProvider && typeof (ytMetadataProvider as any).reset === 'function') {
-                await (ytMetadataProvider as any).reset(cookiesPath);
-                console.log(`[Admin] YouTube metadata provider reset with new cookies path`);
-            }
-
-            res.json({ message: "YouTube cookies uploaded and applied successfully" });
-        } catch (error: any) {
-            console.error("Error uploading youtube cookies:", error);
-            res.status(500).json({ error: error.message || "Failed to upload cookies" });
-        }
-    });
-
-    /**
      * POST /api/admin/network/sync-community
      * Discover other Tunecamp instances via GunDB and follow them via ActivityPub (Any Admin)
      */
@@ -1435,14 +1378,6 @@ export function createAdminRoutes(
             online: true
         };
 
-        // 14. YouTube
-        try {
-            const ytRes = await fetch("https://www.youtube.com/iframe_api", { method: 'HEAD' });
-            results.youtube = { online: ytRes.ok };
-        } catch {
-            results.youtube = { online: false };
-        }
-
         // 15. Spotify
         try {
             const spotifyRes = await fetch("https://open.spotify.com", { method: 'HEAD' });
@@ -1457,14 +1392,6 @@ export function createAdminRoutes(
             results.soundcloud = { online: scRes.ok };
         } catch {
             results.soundcloud = { online: false };
-        }
-
-        // 17. Bandcamp
-        try {
-            const bcRes = await fetch("https://bandcamp.com", { method: 'HEAD' });
-            results.bandcamp = { online: bcRes.ok };
-        } catch {
-            results.bandcamp = { online: false };
         }
 
         res.json(results);

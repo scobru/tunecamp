@@ -73,28 +73,6 @@ export const IntegrationsPanel = () => {
     }
   };
 
-  const handleYouTubeCookiesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsProcessing("youtube");
-    try {
-        const text = await file.text();
-        if (!text.includes('.youtube.com') && !text.includes('# Netscape HTTP Cookie File')) {
-            alert("This doesn't look like a valid YouTube cookies.txt file.");
-            return;
-        }
-        await API.uploadYouTubeCookies(text);
-        alert("YouTube cookies uploaded successfully!");
-    } catch (e: any) {
-        console.error("Failed to upload cookies:", e);
-        alert("Failed to upload cookies: " + e.message);
-    } finally {
-        setIsProcessing(null);
-        if (e.target) e.target.value = '';
-    }
-  };
-
   const services = [
     {
       id: "soulseek",
@@ -205,15 +183,6 @@ export const IntegrationsPanel = () => {
       pluginId: "listenbrainz"
     },
     {
-      id: "youtube",
-      name: "YouTube",
-      icon: <Globe className="text-[#FF0000]" />,
-      status: status?.youtube?.online ? 'online' : 'offline',
-      details: status?.youtube?.online ? "Service reachable" : "Service unreachable",
-      description: "Streaming and playlist import from YouTube.",
-      pluginId: "youtube"
-    },
-    {
       id: "spotify",
       name: "Spotify",
       icon: <Globe className="text-[#1DB954]" />,
@@ -230,15 +199,6 @@ export const IntegrationsPanel = () => {
       details: status?.soundcloud?.online ? "Service reachable" : "Service unreachable",
       description: "Streaming and metadata from SoundCloud.",
       pluginId: "soundcloud"
-    },
-    {
-      id: "bandcamp",
-      name: "Bandcamp",
-      icon: <Globe className="text-[#629AA9]" />,
-      status: status?.bandcamp?.online ? 'online' : 'offline',
-      details: status?.bandcamp?.online ? "Service reachable" : "Service unreachable",
-      description: "Streaming and metadata from Bandcamp.",
-      pluginId: "bandcamp"
     }
   ];
 
@@ -326,19 +286,6 @@ export const IntegrationsPanel = () => {
                       {service.status === 'online' ? <CheckCircle2 size={12} className="shrink-0" /> : <AlertCircle size={12} className="shrink-0" />}
                       <span className="truncate">{service.details}</span>
                   </div>
-                  {service.id === "youtube" && (
-                    <label className="btn btn-xs btn-outline border-current hover:bg-current hover:text-base-100 px-2 h-6 min-h-6 flex items-center gap-1 cursor-pointer">
-                        {isProcessing === "youtube" ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                        <span className="sr-only md:not-sr-only md:text-[10px]">Cookies.txt</span>
-                        <input 
-                            type="file" 
-                            accept=".txt" 
-                            className="hidden" 
-                            onChange={handleYouTubeCookiesUpload} 
-                            disabled={isProcessing === "youtube"} 
-                        />
-                    </label>
-                  )}
                 </div>
               </div>
             </div>

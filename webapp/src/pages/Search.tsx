@@ -469,8 +469,6 @@ export const Search = () => {
                                             <div className="text-xs opacity-60 truncate">
                                                 {item.artist} • <span className={clsx(
                                                     "uppercase font-bold",
-                                                    item.source === 'youtube' ? 'text-error' : 
-                                                    item.source === 'bandcamp' ? 'text-info' : 
                                                     item.source === 'spotify' ? 'text-[#1DB954]' :
                                                     item.source === 'soundcloud' ? 'text-[#FF3300]' :
                                                     item.source === 'deezer' ? 'text-[#EF5466]' :

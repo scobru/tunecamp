@@ -125,10 +125,6 @@ export default function AdminReleaseEditor() {
   // Unlock Codes Modal
   const [showUnlockManager, setShowUnlockManager] = useState(false);
 
-  // Bandcamp Import
-  const [bandcampUrl, setBandcampUrl] = useState("");
-  const [isImporting, setIsImporting] = useState(false);
-
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated || (role !== 'admin' && role !== 'user' && role !== 'super_user' && role !== 'root_admin') || (!isAdmin && user && user.isActive === false)) {
@@ -461,57 +457,6 @@ export default function AdminReleaseEditor() {
     }
   };
 
-  const handleBandcampImport = async () => {
-    if (!bandcampUrl) return;
-    setIsImporting(true);
-    try {
-      const data = await API.importFromBandcamp(bandcampUrl);
-      if (data) {
-        setMetadata(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          year: data.year || prev.year,
-        }));
-
-        if (data.cover) {
-          setCoverPreview(data.cover);
-          // Fetch the image and set as coverFile so it can be uploaded
-          try {
-            const response = await fetch(data.cover);
-            const blob = await response.blob();
-            const file = new File([blob], "cover.jpg", { type: "image/jpeg" });
-            setCoverFile(file);
-          } catch(e) {
-            console.error("Failed to fetch cover image file", e);
-          }
-        }
-
-        if (data.tracks && data.tracks.length > 0) {
-          const importedTracks: LocalTrack[] = data.tracks.map((t: any, idx: number) => ({
-             id: -(idx + 1), // temp negative id
-             title: t.title,
-             duration: t.duration,
-             position: t.position || (idx + 1),
-             price: 0,
-             priceUsdc: 0,
-             currency: 'ETH',
-             file_path: null,
-             url: null,
-             service: 'local',
-             lyrics: t.lyrics || "",
-             isDirty: true
-          }));
-          setTracks(importedTracks);
-        }
-        alert("Metadata imported successfully!");
-      }
-    } catch (e: any) {
-      alert("Failed to import: " + e.message);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   const handleSyncPrices = async () => {
     if (!activeSigner || !isReady) {
       alert("Wallet not connected.");
@@ -702,28 +647,6 @@ export default function AdminReleaseEditor() {
 
               {/* Album Primary Info */}
               <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-6">
-                {(isAdmin || (isSuperUser && user?.artistId)) && (
-                  <div className="form-control">
-                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Import from Bandcamp</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        className="input input-bordered input-sm flex-1 font-mono text-xs"
-                        placeholder="https://artist.bandcamp.com/album/..."
-                        value={bandcampUrl}
-                        onChange={(e) => setBandcampUrl(e.target.value)}
-                      />
-                      <button 
-                        className="btn btn-sm btn-primary"
-                        onClick={handleBandcampImport}
-                        disabled={isImporting || !bandcampUrl}
-                      >
-                        {isImporting ? <span className="loading loading-spinner loading-xs"></span> : "Import"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 <div className="form-control">
                   <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Album Title</label>
                   <input

@@ -216,7 +216,6 @@ export const API = {
     followRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/follow', { url })),
     unfollowRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/unfollow', { url })),
     syncPeer: (url?: string) => handleResponse(api.post('admin/network/ap/sync', { url })),
-    uploadYouTubeCookies: (content: string) => handleResponse(api.post('admin/integrations/youtube/cookies', { content })),
 
     // --- Admin: Releases & Content ---
     getAdminReleases: (options: { mine?: boolean, includeLibrary?: boolean } = {}) => {
@@ -244,9 +243,6 @@ export const API = {
     addTrackToRelease: (releaseId: string, trackId: string) =>
         handleResponse(api.post(`admin/releases/${releaseId}/tracks/add`, { trackId })),
 
-    importFromBandcamp: (url: string) => 
-        handleResponse(api.post<{ title: string, artist: string, year: number, cover: string, tracks: any[] }>('import/bandcamp', { url })),
-
     // --- Comments ---
     getComments: (trackId: string) => handleResponse(api.get<any[]>(`comments/track/${trackId}`)),
     postComment: (trackId: string, data: { text: string, pubKey: string, username: string, signature: string }) => handleResponse(api.post('comments/track/' + trackId, data)),
@@ -264,8 +260,6 @@ export const API = {
     getBatchPricing: () => handleResponse(api.get<any[]>('tracks/pricing/batch')),
     createTrack: (data: { title: string, albumId?: number, artistId?: number, trackNum?: number, url?: string, service?: string, externalArtwork?: string, duration?: number }) =>
         handleResponse(api.post<Track>('tracks', data)),
-    createYouTubeTrack: (url: string, albumId?: number) =>
-        handleResponse(api.post<Track>('tracks/external', { url, albumId })),
     createExternalTrack: (url: string, albumId?: number) =>
         handleResponse(api.post<Track>('tracks/external', { url, albumId })),
     updateTrack: (id: string | number, data: Partial<Track>) => handleResponse(api.put<Track>(`tracks/${encodeURIComponent(String(id))}`, data)),

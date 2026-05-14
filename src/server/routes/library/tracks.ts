@@ -477,7 +477,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)/stream", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
 
-        // Handle external streaming IDs (e.g., ext:youtube:VIDEO_ID)
+        // Handle external streaming IDs (e.g., ext:soundcloud:TRACK_ID)
         if (idParam.startsWith("ext:")) {
             const parts = idParam.split(":");
             if (parts.length < 3) throw new BadRequestError("Invalid external ID");
