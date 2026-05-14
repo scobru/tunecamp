@@ -29,49 +29,44 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             if (!req.isAdmin && !req.isSuperUser) {
                 const context = VisibilityGuardian.deriveContext(req);
 
-                // Determine which artists have public FORMAL releases
+                // Determine which artists have PUBLIC formal releases
                 const publicReleases = database.getReleases(true);
                 const publicArtistIds = new Set(
                     publicReleases.map(r => r.artist_id).filter(id => id !== null)
                 );
 
-                // ALSO include artists with public library albums
+                // ALSO include artists with PUBLIC library albums
                 const publicAlbums = database.getAlbums(true);
                 for (const pa of publicAlbums) {
                     if (pa.artist_id) publicArtistIds.add(pa.artist_id);
                 }
 
                 filteredArtists = allArtists.filter(a => {
-                    // 1. If the artist itself is visible to the user (e.g. they own it)
-                    if (VisibilityGuardian.isItemVisible(a, context)) return true;
+                    // 1. User's own artist (always visible to them)
+                    if (req.artistId && a.id === req.artistId) return true;
 
-                    // 2. If the artist is NOT private/unlisted, AND they have public content
+                    // 2. If the artist is NOT private AND they have public content
                     const isVisibleToPublic = a.visibility === 'public' || a.visibility === 'unlisted';
                     if (isVisibleToPublic && publicArtistIds.has(a.id)) return true;
 
-                    // 3. User's own artist (fallback)
-                    if (req.artistId && a.id === req.artistId) return true;
+                    // 3. Fallback: VisibilityGuardian check (for explicit ownership/shared access)
+                    if (VisibilityGuardian.isItemVisible(a, context)) return true;
 
                     return false;
                 });
             }
 
-            const allReleases = database.getReleases(false);
-            const artistIdsWithReleases = new Set(allReleases.map(r => r.artist_id).filter(id => id !== null));
-
-            const allAlbums = database.getAlbums(false);
-            const artistIdsWithAlbums = new Set(allAlbums.map(a => a.artist_id).filter(id => id !== null));
-
             // Map to frontend expected format and EXCLUDE private_key for EVERYONE
             const mappedArtists = filteredArtists.reduce((acc, a) => {
                 const { private_key, ...safeArtist } = a;
 
-                const hasReleases = artistIdsWithReleases.has(a.id);
-                const hasAlbums = artistIdsWithAlbums.has(a.id);
+                const hasPublicReleases = publicArtistIds.has(a.id);
                 const isLibraryArtist = !!a.isLibraryArtist;
 
-                // Do not show library artists if they have no albums and no releases (unless admin)
-                if (!req.isAdmin && !req.isSuperUser && isLibraryArtist && !hasAlbums && !hasReleases) {
+                // Do not show artists to non-admins if they have no public releases or public albums
+                // (Unless it's their own artist profile)
+                const isOwnArtist = req.artistId && a.id === req.artistId;
+                if (!req.isAdmin && !req.isSuperUser && !isOwnArtist && !hasPublicReleases) {
                     return acc;
                 }
 
@@ -79,7 +74,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                     ...safeArtist,
                     walletAddress: a.wallet_address,
                     isLibraryArtist,
-                    isReleasing: hasReleases,
+                    isReleasing: hasPublicReleases,
                     // Use the canonical cover API URL so the frontend benefits from backend fallbacks
                     coverImage: `/api/artists/${a.id}/cover`,
                     starred: username ? database.isStarred(username, 'artist', String(a.id)) : false,
