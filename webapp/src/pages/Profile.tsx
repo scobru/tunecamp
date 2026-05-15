@@ -32,7 +32,7 @@ export const Profile = () => {
   const { playTrack } = usePlayerStore();
 
   const [activeTab, setActiveTab] = useState<
-    "settings" | "favorites" | "collection" | "artist"
+    "settings" | "collection" | "artist"
   >("settings");
 
   // Ensure active tab is valid if user is not an artist/admin
@@ -214,15 +214,6 @@ export const Profile = () => {
         <button
           className={clsx(
             "tab tab-lg px-8 gap-2",
-            activeTab === "favorites" && "tab-active",
-          )}
-          onClick={() => setActiveTab("favorites")}
-        >
-          <Heart size={18} /> Favorites
-        </button>
-        <button
-          className={clsx(
-            "tab tab-lg px-8 gap-2",
             activeTab === "collection" && "tab-active",
           )}
           onClick={() => setActiveTab("collection")}
@@ -363,25 +354,6 @@ export const Profile = () => {
           </div>
         )}
 
-        {activeTab === "favorites" && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-            {loadingTracks ? (
-              <div className="p-12 text-center opacity-50">
-                Loading favorites...
-              </div>
-            ) : starredTracks.length === 0 ? (
-              <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-base-content/10">
-                <Heart size={48} className="mx-auto mb-4" />
-                <p>You haven't liked any tracks yet.</p>
-              </div>
-            ) : (
-              <TrackList
-                tracks={starredTracks}
-                onPlay={(t) => playTrack(t, starredTracks)}
-              />
-            )}
-          </div>
-        )}
 
         {activeTab === "collection" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">

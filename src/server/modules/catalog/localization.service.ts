@@ -18,6 +18,13 @@ export class LocalizationService {
     ) {}
 
     /**
+     * Updates the cookies path for yt-dlp authentication.
+     */
+    public setCookiesPath(path: string): void {
+        this.cookiesPath = path;
+    }
+
+    /**
      * Localizes a track by downloading it from its external source.
      * Updates the track's file_path in the database.
      */
@@ -39,11 +46,33 @@ export class LocalizationService {
             url = `https://www.youtube.com/watch?v=${track.external_id}`;
         } else if (!url && track.service === 'soundcloud' && track.external_id) {
             url = `https://soundcloud.com/${track.external_id}`;
-        } else if (!url && track.external_id && (track.external_id.startsWith('http') || track.external_id.includes('bandcamp.com'))) {
+        } else if (!url && track.external_id) {
             url = track.external_id;
         }
 
         if (!url) throw new Error("Could not determine source URL for localization");
+
+        // Strip internal prefixes (e.g. ext:bandcamp:https://...)
+        if (url.startsWith('ext:')) {
+            const parts = url.split(':');
+            // If it's ext:provider:http... -> take the http part
+            if (parts.length >= 3 && parts[2].startsWith('//')) {
+                 // Format ext:provider://... (unlikely but possible)
+                 url = parts.slice(2).join(':');
+            } else if (parts.length >= 3 && (parts[2].startsWith('http') || parts[1] === 'youtube' || parts[1] === 'soundcloud')) {
+                // Common format: ext:provider:actual_id_or_url
+                const actual = parts.slice(2).join(':');
+                if (actual.startsWith('http')) {
+                    url = actual;
+                } else if (parts[1] === 'youtube') {
+                    url = `https://www.youtube.com/watch?v=${actual}`;
+                } else if (parts[1] === 'soundcloud') {
+                    url = `https://soundcloud.com/${actual}`;
+                }
+            } else if (parts.length >= 2 && parts[1].startsWith('http')) {
+                url = parts.slice(1).join(':');
+            }
+        }
 
         const localizedDir = path.join(this.musicDir, "localized");
         await fs.ensureDir(localizedDir);

@@ -19,3 +19,5 @@ export { Wallet } from './Wallet';
 export { Profile } from './Profile';
 export { SharePage } from './SharePage';
 export { ContentSearch } from './ContentSearch';
+export { Favorites } from './Favorites';
+

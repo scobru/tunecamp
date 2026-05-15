@@ -125,7 +125,10 @@ export const Sidebar = () => {
             <NavItem to="/tracks" icon={Music} label="Tracks" />
             <NavItem to="/playlists" icon={ListMusic} label="Playlists" />
             {isAuthenticated && (
-              <NavItem to="/my-playlists" icon={Heart} label="My Playlists" />
+              <NavItem to="/favorites" icon={Heart} label="Favorites" />
+            )}
+            {isAuthenticated && (
+              <NavItem to="/my-playlists" icon={ListMusic} label="My Playlists" />
             )}
             <NavItem to="/stats" icon={BarChart2} label="Stats" />
           </ul>

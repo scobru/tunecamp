@@ -1,5 +1,4 @@
 import { SoundCloudStreamingProvider } from "../providers/streaming/soundcloud.provider.js";
-import { KhInsiderProvider } from "../providers/streaming/khinsider.provider.js";
 import { SoundCloudMetadataProvider } from "../providers/metadata/soundcloud.metadata.js";
 import { ITunesProvider } from "../providers/metadata/itunes.provider.js";
 import { MusicBrainzProvider } from "../providers/metadata/musicbrainz.provider.js";
@@ -16,7 +15,6 @@ import { YouTubeStreamingProvider } from "../providers/streaming/youtube.provide
  */
 
 // Streaming & Metadata (Dual)
-export const khinsiderProvider = new KhInsiderProvider();
 
 // Metadata Only (or specialized)
 export const soundcloudMetadataProvider = new SoundCloudMetadataProvider();

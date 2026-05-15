@@ -18,6 +18,8 @@ import { VisibilityGuardian, Capability, UserRole } from "../../common/visibilit
 
 import multer from "multer";
 import { YouTubeCookieManager } from "../../utils/youtube-session.js";
+import { youtubeProvider } from "../../core/providers.js";
+import type { LocalizationService } from "../../modules/catalog/localization.service.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -39,7 +41,8 @@ export function createAdminRoutes(
     gdriveService?: GoogleDriveService,
     playlistService?: any,
     scrobbleService?: any,
-    maintenance?: MaintenanceService
+    maintenance?: MaintenanceService,
+    localizationService?: LocalizationService
 ): Router {
     const router = Router();
     const authMiddleware = createAuthMiddleware(authService);
@@ -512,11 +515,20 @@ export function createAdminRoutes(
             const content = await fs.readFile(req.file.path, 'utf8');
             
             await cookieManager.saveCookies(content);
+
+            // Sync active providers immediately
+            const cookiesPath = cookieManager.getCookiesPath();
+            console.log(`[Admin] 🔄 Syncing YouTube cookies with active providers: ${cookiesPath}`);
+            
+            await youtubeProvider.reset(cookiesPath);
+            if (localizationService) {
+                localizationService.setCookiesPath(cookiesPath);
+            }
             
             // Clean up temp file
             await fs.unlink(req.file.path).catch(() => {});
 
-            res.json({ message: "YouTube cookies uploaded and saved successfully" });
+            res.json({ message: "YouTube cookies uploaded and saved successfully. Providers updated." });
         } catch (error) {
             console.error("Error uploading YouTube cookies:", error);
             res.status(500).json({ error: "Failed to upload YouTube cookies" });

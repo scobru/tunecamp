@@ -32,6 +32,8 @@ const ContentSearch = lazy(() => import("./pages/ContentSearch").then(m => ({ de
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
+const Favorites = lazy(() => import("./pages/Favorites").then(m => ({ default: m.Favorites })));
+
 
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
@@ -118,6 +120,7 @@ function App() {
             <Route path="/stats" element={<Stats />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/favorites" element={<Favorites />} />
             <Route path="/my-music" element={<MyMusic />} />
             <Route path="/social" element={<Social />} />
             <Route path="/share/:id" element={<SharePage />} />

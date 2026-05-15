@@ -4,7 +4,6 @@ import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, Ar
 import type { DatabaseService } from "../../core/database.js";
 import { 
     soundcloudMetadataProvider, 
-    khinsiderProvider, 
     itunesProvider, 
     musicbrainzProvider, 
     discogsProvider, 
@@ -50,7 +49,6 @@ export class MetadataService {
     constructor() {
         // Register shared instances
         this.registry.register(soundcloudMetadataProvider);
-        this.registry.register(khinsiderProvider as any);
         this.registry.register(itunesProvider as any);
         this.registry.register(musicbrainzProvider as any);
         this.registry.register(discogsProvider as any);
