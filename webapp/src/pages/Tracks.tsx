@@ -172,7 +172,7 @@ export const Tracks = () => {
       </div>
 
       <div className="space-y-2">
-        <div className="list bg-base-200/20 rounded-[2rem] border border-base-content/5 overflow-hidden">
+        <div className="list bg-base-200/20 rounded-[2rem] border border-base-content/5 overflow-visible">
           {filteredTracks.slice(0, 100).map((track, i) => {
             if (!track || !track.title) return null;
             const isLiked = track.liked || likedTrackIds.has(String(track.id));
@@ -230,7 +230,7 @@ export const Tracks = () => {
                     <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle">
                       <MoreHorizontal size={16} />
                     </div>
-                    <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
+                    <ul tabIndex={0} className="dropdown-content z-[50] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
                       {purchased && (
                         <li>
                           <a 

@@ -494,7 +494,29 @@ export function createAdminRoutes(
      * Sync all file tags with database metadata (Root Admin only)
      */
     router.post("/system/sync-tags", async (req: AuthenticatedRequest, res: any) => {
-        // ... existing implementation ...
+        try {
+            if (!req.isRootAdmin) {
+                return res.status(403).json({ error: "Only root admin can sync tags" });
+            }
+
+            if (!maintenance) {
+                return res.status(500).json({ error: "Maintenance service not available" });
+            }
+
+            console.log(`🏷️ [Admin] Full tag sync triggered by ${req.username}`);
+
+            // Run in background to avoid Gateway Timeout for large libraries
+            maintenance.syncAllTagsFromDb().then(result => {
+                console.log(`✅ [Admin] Tag sync complete. Success: ${result.success}, Failed: ${result.failed}`);
+            }).catch(e => {
+                console.error("❌ [Admin] Background tag sync failed:", e);
+            });
+
+            res.json({ message: "Tag synchronization started in background. This may take several minutes for large libraries." });
+        } catch (error) {
+            console.error("Error triggering tag sync:", error);
+            res.status(500).json({ error: "Failed to trigger tag sync" });
+        }
     });
 
     /**

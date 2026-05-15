@@ -68,6 +68,12 @@ const mockPublishingService = {
     syncPost: jest.fn(),
 } as unknown as PublishingService;
 
+const mockMaintenanceService = {
+    syncAllTagsFromDb: jest.fn(),
+    startLibraryAudit: jest.fn(),
+    stopLibraryAudit: jest.fn(),
+} as any;
+
 
 describe('Admin Routes Vulnerability Check', () => {
     let app: express.Express;
@@ -115,7 +121,11 @@ describe('Admin Routes Vulnerability Check', () => {
             {} as any, // lindaBotService
             {} as any, // metadataService
             {} as any, // streamingService
-            {} as any  // federationService
+            {} as any, // federationService
+            undefined, // gdriveService
+            undefined, // playlistService
+            undefined, // scrobbleService
+            mockMaintenanceService
         );
         app.use('/admin', router);
     });
@@ -249,6 +259,37 @@ describe('Admin Routes Vulnerability Check', () => {
 
             expect(response.status).toBe(403);
             expect(mockAuthService.deleteAdmin).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('System Maintenance', () => {
+        beforeEach(() => {
+            (mockAuthService.isRootAdmin as jest.Mock).mockImplementation((username) => username === 'root');
+        });
+
+        test('Root admin CAN trigger sync-tags', async () => {
+            (mockMaintenanceService.syncAllTagsFromDb as any).mockResolvedValue({ success: 10, failed: 0 });
+
+            const response = await request(app)
+                .post('/admin/system/sync-tags')
+                .set('x-username', 'root')
+                .send({});
+
+            expect(response.status).toBe(200);
+            expect(response.body.message).toMatch(/Tag synchronization started in background/i);
+            
+            // Wait a bit for the background promise to be called (though it's not awaited in the route)
+            expect(mockMaintenanceService.syncAllTagsFromDb).toHaveBeenCalled();
+        });
+
+        test('Non-root admin CANNOT trigger sync-tags', async () => {
+            const response = await request(app)
+                .post('/admin/system/sync-tags')
+                .set('x-username', 'other')
+                .send({});
+
+            expect(response.status).toBe(403);
+            expect(mockMaintenanceService.syncAllTagsFromDb).not.toHaveBeenCalled();
         });
     });
 });

@@ -618,7 +618,8 @@ export class CatalogService {
     }
 
     private async writeTrackTags(track: Track): Promise<void> {
-        const fullPath = path.join(this.musicDir, track.file_path!);
+        if (!track.file_path) return;
+        const fullPath = path.join(this.musicDir, track.file_path);
         if (!(await this.storage.pathExists(fullPath))) return;
         const ext = path.extname(fullPath).toLowerCase();
         const tags = {

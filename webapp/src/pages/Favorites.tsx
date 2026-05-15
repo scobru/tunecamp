@@ -40,11 +40,15 @@ export const Favorites = () => {
       Promise.all([
         API.getTracks().catch(() => []),
         API.getAlbums().catch(() => []),
+        API.getReleases().catch(() => []),
         API.getArtists().catch(() => []),
       ])
-        .then(([allTracks, allAlbums, allArtists]) => {
+        .then(([allTracks, allAlbums, allReleases, allArtists]) => {
           setTracks(allTracks.filter((t) => t.starred));
-          setAlbums(allAlbums.filter((a) => a.starred));
+          // Merge regular albums and formal releases
+          const mergedAlbums = [...allAlbums, ...allReleases];
+          const uniqueAlbums = Array.from(new Map(mergedAlbums.map(a => [a.id, a])).values());
+          setAlbums(uniqueAlbums.filter((a) => a.starred));
           setArtists(allArtists.filter((a) => a.starred));
         })
         .finally(() => setLoading(false));
@@ -184,7 +188,7 @@ export const Favorites = () => {
                         className="absolute top-2 right-2 p-2 bg-base-100/80 backdrop-blur-md rounded-xl text-error opacity-0 group-hover/album:opacity-100 transition-opacity shadow-lg hover:bg-error hover:text-white"
                         title="Remove from favorites"
                       >
-                        <X size={16} />
+                        <Heart size={16} fill="currentColor" />
                       </button>
                     </div>
                   ))}
@@ -253,7 +257,7 @@ const ArtistCard = ({ artist, onRemove }: { artist: Artist; onRemove: () => void
       className="absolute top-0 right-0 p-2 bg-base-100/80 backdrop-blur-md rounded-full text-error opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-error hover:text-white z-10"
       title="Unfollow artist"
     >
-      <X size={14} />
+      <Heart size={14} fill="currentColor" />
     </button>
 
     <div className="space-y-1">
@@ -276,7 +280,7 @@ const TrackList = ({
   onPlay: (t: Track) => void;
   onRemove: (id: string | number) => void;
 }) => (
-  <div className="overflow-hidden bg-base-200/30 rounded-[2.5rem] border border-base-content/5 backdrop-blur-sm shadow-inner">
+  <div className="overflow-visible bg-base-200/30 rounded-[2.5rem] border border-base-content/5 backdrop-blur-sm shadow-inner">
     <table className="table w-full">
       <thead>
         <tr className="border-b border-base-content/5 opacity-40 text-[10px] uppercase font-black tracking-[0.2em]">
@@ -328,7 +332,7 @@ const TrackList = ({
                 className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Remove from favorites"
               >
-                <X size={14} />
+                <Heart size={14} fill="currentColor" />
               </button>
             </td>
           </tr>

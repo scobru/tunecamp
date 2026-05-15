@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { Link } from 'react-router-dom';
-import { User, Trash2, Edit, LayoutGrid, List, AlignJustify } from 'lucide-react';
+import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucide-react';
 import type { Artist, User as AppUser } from '../types';
 import clsx from 'clsx';
 
@@ -38,6 +38,21 @@ export const Artists = () => {
             setArtists(prev => prev.filter(a => a.id !== artist.id));
         } catch (error: any) {
             alert(error.message || 'Failed to delete artist. They might still have releases, albums, or tracks attached.');
+        }
+    };
+
+    const handleToggleStar = async (e: React.MouseEvent, artist: Artist) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        try {
+            const newStatus = !artist.starred;
+            await API.starArtist(artist.id.toString(), newStatus);
+            setArtists(prev => prev.map(a => 
+                a.id === artist.id ? { ...a, starred: newStatus } : a
+            ));
+        } catch (error) {
+            console.error('Failed to toggle star:', error);
         }
     };
 
@@ -115,6 +130,16 @@ export const Artists = () => {
                                         <Edit size={16} />
                                     </button>
                                 )}
+                                <button
+                                    onClick={(e) => handleToggleStar(e, artist)}
+                                    className={clsx(
+                                        "p-2 bg-base-300 rounded-full shadow-lg transition-colors",
+                                        artist.starred ? "text-error" : "hover:text-error"
+                                    )}
+                                    title={artist.starred ? "Remove from Favorites" : "Add to Favorites"}
+                                >
+                                    <Heart size={16} fill={artist.starred ? "currentColor" : "none"} />
+                                </button>
                                 {(artist.id.toString() !== currentUser.artistId?.toString()) && (
                                     <button
                                         onClick={(e) => handleDelete(e, artist)}

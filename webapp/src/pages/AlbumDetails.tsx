@@ -485,7 +485,7 @@ export const AlbumDetails = () => {
                     <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle" aria-label="More options">
                        <MoreHorizontal size={18} aria-hidden="true" />
                     </div>
-                    <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
+                    <ul tabIndex={0} className="dropdown-content z-[50] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
                        {(unlocked || album.download === "free" || isRelease) && (
                          <li>
                            {unlocked ? (
