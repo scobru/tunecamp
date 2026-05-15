@@ -73,16 +73,6 @@ export const IntegrationsPanel = () => {
     }
   };
 
-  const handleYouTubeAuth = async () => {
-    if (!confirm("This will open a Puppeteer browser window on the server to perform YouTube login. You must have access to the server's desktop to complete the login. Continue?")) return;
-    try {
-        const res = await API.triggerYouTubeAuth();
-        alert(res.message);
-    } catch (e: any) {
-        alert("Failed to trigger YouTube auth: " + e.message);
-    }
-  };
-
   const services = [
     {
       id: "soulseek",
