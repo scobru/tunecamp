@@ -9,7 +9,8 @@ import {
   User,
   Play,
   Clock,
-  ArrowRight
+  ArrowRight,
+  X
 } from "lucide-react";
 import { formatDuration } from "../utils/format";
 import type { Track, Album, Artist } from "../types";
@@ -30,6 +31,10 @@ export const Favorites = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    refreshData();
+  }, [isAuthenticated]);
+
+  const refreshData = () => {
     if (isAuthenticated) {
       setLoading(true);
       Promise.all([
@@ -44,7 +49,24 @@ export const Favorites = () => {
         })
         .finally(() => setLoading(false));
     }
-  }, [isAuthenticated]);
+  };
+
+  const handleUnstar = async (type: 'track' | 'album' | 'artist', id: string | number) => {
+    try {
+      if (type === 'track') {
+        await API.unstarTrack(id);
+        setTracks(prev => prev.filter(t => t.id !== id));
+      } else if (type === 'album') {
+        await API.unstarAlbum(id);
+        setAlbums(prev => prev.filter(a => a.id !== id));
+      } else if (type === 'artist') {
+        await API.unstarArtist(id);
+        setArtists(prev => prev.filter(a => a.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to unstar:", err);
+    }
+  };
 
   if (isInitializing) {
     return (
@@ -141,7 +163,11 @@ export const Favorites = () => {
               tracks.length === 0 ? (
                 <EmptyState icon={Music} message="You haven't liked any tracks yet." />
               ) : (
-                <TrackList tracks={tracks} onPlay={(t) => playTrack(t, tracks)} />
+                <TrackList 
+                  tracks={tracks} 
+                  onPlay={(t) => playTrack(t, tracks)} 
+                  onRemove={(id) => handleUnstar('track', id)}
+                />
               )
             )}
 
@@ -151,7 +177,16 @@ export const Favorites = () => {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                   {albums.map((album) => (
-                    <ReleaseCard key={album.id} item={album} viewMode="grid" type="library" />
+                    <div key={album.id} className="relative group/album">
+                      <ReleaseCard item={album} viewMode="grid" type="library" />
+                      <button 
+                        onClick={() => handleUnstar('album', album.id)}
+                        className="absolute top-2 right-2 p-2 bg-base-100/80 backdrop-blur-md rounded-xl text-error opacity-0 group-hover/album:opacity-100 transition-opacity shadow-lg hover:bg-error hover:text-white"
+                        title="Remove from favorites"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )
@@ -163,7 +198,11 @@ export const Favorites = () => {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                   {artists.map((artist) => (
-                    <ArtistCard key={artist.id} artist={artist} />
+                    <ArtistCard 
+                      key={artist.id} 
+                      artist={artist} 
+                      onRemove={() => handleUnstar('artist', artist.id)}
+                    />
                   ))}
                 </div>
               )
@@ -187,40 +226,55 @@ const EmptyState = ({ icon: Icon, message }: { icon: any; message: string }) => 
   </div>
 );
 
-const ArtistCard = ({ artist }: { artist: Artist }) => (
-  <Link
-    to={`/artists/${artist.slug || artist.id}`}
-    className="group relative text-center space-y-4"
-  >
-    <div className="aspect-square rounded-full overflow-hidden bg-neutral ring-4 ring-transparent group-hover:ring-primary/20 transition-all duration-500 shadow-2xl relative">
-      {artist.coverImage ? (
-        <img
-          src={API.getArtistCoverUrl(artist.id)}
-          alt={artist.name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-4xl font-black opacity-30">
-          {artist.name[0]}
-        </div>
-      )}
-      <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </div>
+const ArtistCard = ({ artist, onRemove }: { artist: Artist; onRemove: () => void }) => (
+  <div className="group relative text-center space-y-4">
+    <Link
+      to={`/artists/${artist.slug || artist.id}`}
+      className="block"
+    >
+      <div className="aspect-square rounded-full overflow-hidden bg-neutral ring-4 ring-transparent group-hover:ring-primary/20 transition-all duration-500 shadow-2xl relative">
+        {artist.coverImage ? (
+          <img
+            src={API.getArtistCoverUrl(artist.id)}
+            alt={artist.name}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl font-black opacity-30">
+            {artist.name[0]}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+    </Link>
+    
+    <button 
+      onClick={onRemove}
+      className="absolute top-0 right-0 p-2 bg-base-100/80 backdrop-blur-md rounded-full text-error opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-error hover:text-white z-10"
+      title="Unfollow artist"
+    >
+      <X size={14} />
+    </button>
+
     <div className="space-y-1">
-      <h3 className="font-bold truncate px-2 group-hover:text-primary transition-colors text-lg tracking-tight">
-        {artist.name}
-      </h3>
+      <Link to={`/artists/${artist.slug || artist.id}`}>
+        <h3 className="font-bold truncate px-2 group-hover:text-primary transition-colors text-lg tracking-tight">
+          {artist.name}
+        </h3>
+      </Link>
       <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Artist</p>
     </div>
-  </Link>
+  </div>
 );
 
 const TrackList = ({
   tracks,
   onPlay,
+  onRemove,
 }: {
   tracks: Track[];
   onPlay: (t: Track) => void;
+  onRemove: (id: string | number) => void;
 }) => (
   <div className="overflow-hidden bg-base-200/30 rounded-[2.5rem] border border-base-content/5 backdrop-blur-sm shadow-inner">
     <table className="table w-full">
@@ -232,6 +286,7 @@ const TrackList = ({
           <th className="text-right w-24">
             <Clock size={14} className="ml-auto" />
           </th>
+          <th className="w-12"></th>
         </tr>
       </thead>
       <tbody>
@@ -266,6 +321,15 @@ const TrackList = ({
             </td>
             <td className="text-right opacity-40 font-mono text-xs tabular-nums">
               {formatDuration(track.duration)}
+            </td>
+            <td className="text-center">
+              <button 
+                onClick={() => onRemove(track.id)}
+                className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove from favorites"
+              >
+                <X size={14} />
+              </button>
             </td>
           </tr>
         ))}

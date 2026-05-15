@@ -43,12 +43,19 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             try {
                 // Initialize play-dl with cookies if available
                 const cookieContent = fs.readFileSync(this.cookiesPath, 'utf8');
-                await play.setToken({
-                    youtube: {
-                        cookie: cookieContent
-                    }
-                });
-                console.log(`[YouTubeProvider] ­ƒöæ play-dl initialized with cookies`);
+                
+                // play-dl setToken for youtube:cookie expects the "Cookie" header string, 
+                // not the Netscape file content. We only set it if it doesn't look like Netscape.
+                if (cookieContent.includes('HTTPONLY_') || !cookieContent.includes('# Netscape HTTP Cookie File')) {
+                    await play.setToken({
+                        youtube: {
+                            cookie: cookieContent
+                        }
+                    });
+                    console.log(`[YouTubeProvider] ­ƒöæ play-dl initialized with cookies`);
+                } else {
+                    console.log(`[YouTubeProvider] ­ƒì¬ Skipping play-dl cookie sync: Netscape format detected (only supported by yt-dlp)`);
+                }
             } catch (e) {
                 console.warn(`[YouTubeProvider] ÔÜá´©Å Failed to set play-dl cookies:`, e);
             }
@@ -235,18 +242,19 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     noPlaylist: true,
                     // Use a realistic modern User-Agent
                     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                    // Refined extractor args including 'ios' which is often more resilient
-                    extractorArgs: 'youtube:player_client=ios,web,android;player_skip=web_embedded_player',
+                    // Prioritizing android and web clients. ios is often more prone to bot challenges with browser cookies.
+                    extractorArgs: 'youtube:player_client=android,web;player_skip=configs,web_embedded_player',
                     referer: 'https://www.youtube.com/'
                 };
                 
                 if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
                     options.cookies = this.cookiesPath;
-                    console.log(`[YouTubeProvider] ÔÜí Resolving via yt-dlp with cookies...`);
+                    console.log(`[YouTubeProvider] ÔÜí Resolving via yt-dlp with cookies... (client: android,web)`);
                 } else {
                     console.log(`[YouTubeProvider] ÔÜí Resolving via yt-dlp (no cookies)...`);
                 }
 
+                console.log(`[YouTubeProvider] ÔÜí yt-dlp command: yt-dlp --get-url --format "ba/b" --extractor-args "${options.extractorArgs}" ...`);
                 const url = await youtubedl(targetUrl, options);
                 if (url && typeof url === 'string') {
                     console.log(`[YouTubeProvider] Ô£à Success! Resolved via yt-dlp`);

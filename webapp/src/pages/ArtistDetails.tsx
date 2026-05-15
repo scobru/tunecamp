@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe, Trash2, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail } from 'lucide-react';
+import { Play, Disc, Globe, Trash2, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { formatDuration } from '../utils/format';
@@ -30,6 +30,7 @@ export const ArtistDetails = () => {
     const { playTrack } = usePlayerStore();
     const { isAdminAuthenticated } = useAuthStore();
     const [repairing, setRepairing] = useState(false);
+    const [starred, setStarred] = useState(false);
 
     const loadData = () => {
         if (!idOrSlug) return;
@@ -39,6 +40,7 @@ export const ArtistDetails = () => {
             API.getArtistPosts(idOrSlug)
         ]).then(([artistData, artistPosts]) => {
             setArtist(artistData);
+            setStarred(!!artistData.starred);
             if (artistData.albums) {
                 const formal = artistData.albums.filter((a: any) => a.is_formal_release || a.is_release);
                 const library = artistData.albums.filter((a: any) => !a.is_formal_release && !a.is_release);
@@ -91,6 +93,26 @@ export const ArtistDetails = () => {
             setPosts(posts.filter(p => p.id !== postId));
         } catch (err: any) {
             alert("Failed to delete post: " + err.message);
+        }
+    };
+
+    const handleToggleStar = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!artist) return;
+        
+        const oldStarred = starred;
+        setStarred(!oldStarred);
+        
+        try {
+            if (oldStarred) {
+                await API.unstarArtist(artist.id);
+            } else {
+                await API.starArtist(artist.id);
+            }
+        } catch (err) {
+            setStarred(oldStarred);
+            console.error("Failed to toggle star:", err);
         }
     };
 
@@ -190,6 +212,12 @@ export const ArtistDetails = () => {
                               </div>
                               <button className="btn btn-primary btn-circle btn-lg text-white shadow-xl hover:scale-105 transition-transform shrink-0" onClick={handlePlay}>
                                   <Play fill="currentColor" size={28}/>
+                              </button>
+                              <button 
+                                  className={`btn btn-circle btn-lg shadow-xl hover:scale-105 transition-transform shrink-0 ${starred ? 'btn-error text-white' : 'btn-outline border-base-content/20'}`} 
+                                  onClick={handleToggleStar}
+                              >
+                                  <Heart fill={starred ? "currentColor" : "none"} size={28}/>
                               </button>
                           </div>
                       </div>

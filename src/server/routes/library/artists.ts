@@ -462,6 +462,8 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                 isReleasing: publicFormalReleases.length > 0 || formalReleases.length > 0,
                 walletAddress: artist.wallet_address,
                 coverImage,
+                starred: username ? database.isStarred(username, 'artist', String(artist.id)) : false,
+                rating: username ? database.getItemRating(username, 'artist', String(artist.id)) : 0,
                 albums: albums.map(a => ({ 
                     ...a, 
                     coverImage: a.cover_path,

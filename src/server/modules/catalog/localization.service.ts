@@ -97,6 +97,9 @@ export class LocalizationService {
             noWarnings: true,
             noCheckCertificate: true,
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            // Sync with YouTubeStreamingProvider for resilience
+            extractorArgs: 'youtube:player_client=android,web;player_skip=configs,web_embedded_player',
+            referer: 'https://www.youtube.com/'
         };
 
         if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {

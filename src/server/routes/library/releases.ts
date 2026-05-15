@@ -69,8 +69,16 @@ export function createReleaseRouter(
                 releases = database.getReleases(true).map(r => ({ ...r, is_formal_release: true }));
             }
 
+            // Add starred and rating info
+            const username = req.username;
+            const mappedReleases = releases.map(r => ({
+                ...r,
+                starred: username ? database.isStarred(username, 'album', String(r.id)) : false,
+                rating: username ? database.getItemRating(username, 'album', String(r.id)) : 0
+            }));
+
             // Unify sorting logic for all views: Sort by date DESC
-            releases.sort((a: any, b: any) => {
+            mappedReleases.sort((a: any, b: any) => {
                 const dateA = a.date || a.published_at || a.created_at || '';
                 const dateB = b.date || b.published_at || b.created_at || '';
                 
@@ -85,7 +93,7 @@ export function createReleaseRouter(
                 return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
             });
 
-            res.json(releases);
+            res.json(mappedReleases);
         } catch (error) {
             console.error("Error getting releases:", error);
             res.status(500).json({ error: "Failed to get releases" });

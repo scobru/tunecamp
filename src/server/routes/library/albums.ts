@@ -16,8 +16,9 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
      * List all albums
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        let albums: Album[] = [];
         if (req.isAdmin || req.isSuperUser) {
-            res.json(database.getAlbums());
+            albums = database.getAlbums();
         } else if (req.userId) {
             // Artists and users only see their own albums + public ones
             const owned = database.getAlbumsByOwner(req.userId!, false);
@@ -25,15 +26,25 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
             
             // Merge and deduplicate
             const seen = new Set();
-            const result = [...owned, ...publicAlbums].filter(a => {
+            albums = [...owned, ...publicAlbums].filter(a => {
                 if (seen.has(a.id)) return false;
                 seen.add(a.id);
                 return true;
             });
-            res.json(result);
         } else {
             throw new ForbiddenError("Access denied");
         }
+
+        // Add starred and rating info if user is authenticated
+        const username = req.username;
+        const result = albums.map(a => ({
+            ...a,
+            coverImage: a.cover_path,
+            starred: username ? database.isStarred(username, 'album', String(a.id)) : false,
+            rating: username ? database.getItemRating(username, 'album', String(a.id)) : 0
+        }));
+
+        res.json(result);
     }));
 
     /**
