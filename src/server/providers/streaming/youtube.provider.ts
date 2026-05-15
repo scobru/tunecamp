@@ -38,42 +38,52 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         
         if (finalPath && fs.existsSync(finalPath)) {
             this.cookiesPath = finalPath;
-            console.log(`[YouTubeProvider] ­ƒì¬ Cookies path set to: ${this.cookiesPath}`);
+            console.log(`[YouTubeProvider] 🔑 Cookies path set to: ${this.cookiesPath}`);
             
             try {
                 // Initialize play-dl with cookies if available
                 const cookieContent = fs.readFileSync(this.cookiesPath, 'utf8');
                 
-                // play-dl setToken for youtube:cookie expects the "Cookie" header string, 
-                // not the Netscape file content. We only set it if it doesn't look like Netscape.
-                if (cookieContent.includes('HTTPONLY_') || !cookieContent.includes('# Netscape HTTP Cookie File')) {
+                // If it's Netscape format, convert it to a header string for play-dl
+                if (cookieContent.includes('# Netscape HTTP Cookie File')) {
+                    const headerCookie = this.netscapeToHeader(cookieContent);
+                    if (headerCookie) {
+                        await play.setToken({
+                            youtube: {
+                                cookie: headerCookie
+                            }
+                        });
+                        console.log(`[YouTubeProvider] 🔑 play-dl initialized with Netscape-converted cookies`);
+                    } else {
+                        console.warn(`[YouTubeProvider] ⚠ Failed to convert Netscape cookies for play-dl`);
+                    }
+                } else {
+                    // Assume it's already a header string or other format play-dl understands
                     await play.setToken({
                         youtube: {
                             cookie: cookieContent
                         }
                     });
-                    console.log(`[YouTubeProvider] ­ƒöæ play-dl initialized with cookies`);
-                } else {
-                    console.log(`[YouTubeProvider] ­ƒì¬ Skipping play-dl cookie sync: Netscape format detected (only supported by yt-dlp)`);
+                    console.log(`[YouTubeProvider] 🔑 play-dl initialized with raw cookies`);
                 }
             } catch (e) {
-                console.warn(`[YouTubeProvider] ÔÜá´©Å Failed to set play-dl cookies:`, e);
+                console.warn(`[YouTubeProvider] ⚠ Failed to set play-dl cookies:`, e);
             }
 
             // Check version to debug environment
             youtubedl('--version').then(v => {
-                console.log(`[YouTubeProvider] ­ƒøá´©Å System yt-dlp version: ${v}`);
+                console.log(`[YouTubeProvider] 📺 System yt-dlp version: ${v}`);
             }).catch(() => {
-                console.warn(`[YouTubeProvider] ÔÜá´©Å Could not determine yt-dlp version`);
+                console.warn(`[YouTubeProvider] ⚠ Could not determine yt-dlp version`);
             });
         } else {
             this.cookiesPath = undefined;
             if (finalPath === defaultPath) {
-                console.log(`[YouTubeProvider] ­ƒì¬ No cookies found at default path: ${defaultPath}`);
+                console.log(`[YouTubeProvider] 🔑 No cookies found at default path: ${defaultPath}`);
             } else if (finalPath) {
-                console.warn(`[YouTubeProvider] ­ƒì¬ Configured cookies path not found: ${finalPath}`);
+                console.warn(`[YouTubeProvider] 🔑 Configured cookies path not found: ${finalPath}`);
             } else {
-                console.log(`[YouTubeProvider] ­ƒì¬ No cookies path configured.`);
+                console.log(`[YouTubeProvider] 🔑 No cookies path configured.`);
             }
         }
 
@@ -81,11 +91,33 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         this.circuitBreakerUntil = 0;
     }
 
+    /**
+     * Converts Netscape cookie file content to a "Cookie" header string.
+     */
+    private netscapeToHeader(netscapeContent: string): string {
+        const lines = netscapeContent.split('\n');
+        const cookies: string[] = [];
+        
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith('#')) continue;
+            
+            const parts = trimmed.split('\t');
+            if (parts.length < 7) continue;
+            
+            const name = parts[5];
+            const value = parts[6];
+            cookies.push(`${name}=${value}`);
+        }
+        
+        return cookies.join('; ');
+    }
+
     async isAvailable(): Promise<boolean> {
         return true;
     }
 
-    // ÔöÇÔöÇÔöÇ MetadataProvider Implementation ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    // ————————— MetadataProvider Implementation ————————————————————————————————————————————————————————————————
 
     async searchRelease(query: string): Promise<MetadataResult[]> {
         return this.searchRecording(query);
@@ -93,7 +125,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
     async searchRecording(query: string): Promise<MetadataResult[]> {
         if (Date.now() < this.circuitBreakerUntil) {
-            console.warn(`[YouTubeProvider] ­ƒöî Circuit breaker active, skipping search for: ${query}`);
+            console.warn(`[YouTubeProvider] 🔒 Circuit breaker active, skipping search for: ${query}`);
             return [];
         }
 
@@ -101,7 +133,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             // Add jitter to metadata search
             await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
             
-            console.log(`[YouTubeMetadata] ­ƒöì Searching via yt-search: ${query}`);
+            console.log(`[YouTubeMetadata] 🔍 Searching via yt-search: ${query}`);
             const results = await ytSearch(query);
             const videos = results.videos.slice(0, 5);
 
@@ -145,24 +177,24 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         }
     }
 
-    // ÔöÇÔöÇÔöÇ StreamingProvider Implementation ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    // ————————— StreamingProvider Implementation ————————————————————————————————————————————————————————————————
 
     async getStreamUrl(title: string, artist?: string, album?: string): Promise<string | null> {
         try {
             const query = artist ? `${artist} - ${title}` : title;
-            console.log(`[YouTubeProvider] ­ƒöì Searching: ${query}`);
+            console.log(`[YouTubeProvider] 🔍 Searching: ${query}`);
 
             const results = await ytSearch(query);
             if (results.videos.length === 0) {
-                console.log(`[YouTubeProvider] ÔØî No results for: ${query}`);
+                console.log(`[YouTubeProvider] 🚫 No results for: ${query}`);
                 return null;
             }
 
             const video = results.videos[0];
-            console.log(`[YouTubeProvider] Ô£¿ Found: ${video.title} ÔåÆ ${video.url}`);
+            console.log(`[YouTubeProvider] ✨ Found: ${video.title} → ${video.url}`);
             return this._resolveStreamUrl(video.videoId);
         } catch (error) {
-            console.error(`[YouTubeProvider] ÔØî getStreamUrl failed for "${title}", trying fallback search...`);
+            console.error(`[YouTubeProvider] 🚫 getStreamUrl failed for "${title}", trying fallback search...`);
             try {
                 const query = artist ? `${artist} - ${title}` : title;
                 const results = await play.search(query, { limit: 1, source: { youtube: "video" } });
@@ -170,7 +202,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     return this._resolveStreamUrl(results[0].id!);
                 }
             } catch (fError) {
-                console.error(`[YouTubeProvider] ÔØî All search fallbacks failed for "${title}"`);
+                console.error(`[YouTubeProvider] 🚫 All search fallbacks failed for "${title}"`);
             }
             return null;
         }
@@ -197,7 +229,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 meta: { url: v.url }
             }));
         } catch (error) {
-            console.error(`[YouTubeProvider] ÔØî Search failed for: ${query}, falling back to play-dl`, error);
+            console.error(`[YouTubeProvider] 🚫 Search failed for: ${query}, falling back to play-dl`, error);
             try {
                 const results = await play.search(query, {
                     limit: 10,
@@ -216,7 +248,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                         meta: { url: v.url }
                     }));
             } catch (pError) {
-                console.error(`[YouTubeProvider] ÔØî All search providers failed:`, pError);
+                console.error(`[YouTubeProvider] 🚫 All search providers failed:`, pError);
                 return [];
             }
         }
@@ -232,34 +264,38 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 // Add a small jitter to avoid perfect patterns
                 await new Promise(resolve => setTimeout(resolve, Math.random() * 800));
 
-                console.log(`[YouTubeProvider] ÔÜí Resolving ${targetUrl} via yt-dlp...`);
+                console.log(`[YouTubeProvider] 📡 Resolving ${targetUrl} via yt-dlp...`);
                 
                 const options: any = {
+                    binary: 'yt-dlp',
                     getUrl: true,
                     format: 'ba/b',
                     noWarnings: true,
                     noCheckCertificate: true,
                     noPlaylist: true,
                     // Use a realistic modern User-Agent
-                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                    // Prioritizing android and web clients. ios is often more prone to bot challenges with browser cookies.
-                    extractorArgs: 'youtube:player_client=android,web;player_skip=configs,web_embedded_player',
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+                    // Prioritizing mweb and android clients. mweb is currently the most resilient to bot checks.
+                    extractorArgs: 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player',
                     referer: 'https://www.youtube.com/',
                     forceIpv4: true,
-                    geoBypass: true
+                    geoBypass: true,
+                    // Performance and resilience flags
+                    youtubeSkipDashManifest: true,
+                    youtubeSkipHlsManifest: true
                 };
                 
                 if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
                     options.cookies = this.cookiesPath;
-                    console.log(`[YouTubeProvider] ÔÜí Resolving via yt-dlp with cookies... (client: android,web)`);
+                    console.log(`[YouTubeProvider] 📡 Resolving via yt-dlp with cookies... (client: mweb,android)`);
                 } else {
-                    console.log(`[YouTubeProvider] ÔÜí Resolving via yt-dlp (no cookies)...`);
+                    console.log(`[YouTubeProvider] 📡 Resolving via yt-dlp (no cookies)...`);
                 }
 
-                console.log(`[YouTubeProvider] ÔÜí yt-dlp command: yt-dlp --get-url --format "ba/b" --extractor-args "${options.extractorArgs}" ...`);
+                console.log(`[YouTubeProvider] 📡 yt-dlp command: yt-dlp --get-url --format "ba/b" --extractor-args "${options.extractorArgs}" ...`);
                 const url = await youtubedl(targetUrl, options);
                 if (url && typeof url === 'string') {
-                    console.log(`[YouTubeProvider] Ô£à Success! Resolved via yt-dlp`);
+                    console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp`);
                     this.consecutiveBotBlocks = 0; 
                     return url.trim();
                 }
@@ -272,18 +308,18 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                               errorMsg.includes("Unusual traffic") ||
                               errorMsg.includes("challenge");
 
-                console.warn(`[YouTubeProvider] ÔÜá´©Å yt-dlp failed: ${errorMsg.split('\n')[0]}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
+                console.warn(`[YouTubeProvider] ⚠ yt-dlp failed: ${errorMsg.split('\n')[0]}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
                 
                 if (isBot) {
                     this.consecutiveBotBlocks++;
                     if (this.consecutiveBotBlocks > 5) {
                         this.circuitBreakerUntil = Date.now() + 15 * 60 * 1000; // 15 min cooldown
-                        console.error(`[YouTubeProvider] ­ƒÜ¿ 5+ bot blocks detected. Circuit breaker triggered for 15 minutes. Fallbacks will still be attempted.`);
+                        console.error(`[YouTubeProvider] 🧱 5+ bot blocks detected. Circuit breaker triggered for 15 minutes. Fallbacks will still be attempted.`);
                     }
                 }
             }
         } else {
-            console.warn(`[YouTubeProvider] ­ƒöî yt-dlp circuit breaker active, skipping to fallbacks for: ${urlOrId}`);
+            console.warn(`[YouTubeProvider] 🔒 yt-dlp circuit breaker active, skipping to fallbacks for: ${urlOrId}`);
         }
 
         // --- Invidious Fallback ---

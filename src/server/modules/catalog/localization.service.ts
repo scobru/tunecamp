@@ -88,6 +88,7 @@ export class LocalizationService {
         console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url}`);
 
         const options: any = {
+            binary: 'yt-dlp',
             extractAudio: true,
             audioFormat: 'mp3',
             output: outputTemplate,
@@ -96,10 +97,13 @@ export class LocalizationService {
             embedThumbnail: true,
             noWarnings: true,
             noCheckCertificate: true,
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            // Sync with YouTubeStreamingProvider for resilience
-            extractorArgs: 'youtube:player_client=android,web;player_skip=configs,web_embedded_player',
-            referer: 'https://www.youtube.com/'
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+            // Sync with YouTubeStreamingProvider for resilience. mweb is currently the most resilient to bot checks.
+            extractorArgs: 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player',
+            referer: 'https://www.youtube.com/',
+            // Performance and resilience flags
+            youtubeSkipDashManifest: true,
+            youtubeSkipHlsManifest: true
         };
 
         if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {

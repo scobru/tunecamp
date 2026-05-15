@@ -152,9 +152,11 @@ ENV COINBASE_CDP_API_KEY_SECRET=""
 EXPOSE 1970
 
 # Install runtime dependencies
-RUN apk add --no-cache curl libc6-compat gcompat ffmpeg unzip
+RUN apk add --no-cache curl libc6-compat gcompat ffmpeg unzip python3 py3-pip && \
+    python3 -m pip install --break-system-packages -U yt-dlp bgutil-ytdlp-pot-provider
 
-# Add a more lenient healthcheck to avoid restart loops during heavy maintenance/discovery
+# Add a more lenient healthcheck
+ to avoid restart loops during heavy maintenance/discovery
 HEALTHCHECK --interval=60s --timeout=15s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:1970/health || exit 1
 
