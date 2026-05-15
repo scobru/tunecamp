@@ -55,7 +55,7 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
      * List codes
      */
     router.get("/admin/list", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        if (!VisibilityGuardian.can(req.context!, Capability.MANAGE_PRIVATE_LIBRARY)) {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY)) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
@@ -81,7 +81,7 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
      * Generate new codes
      */
     router.post("/admin/create", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
-        if (!VisibilityGuardian.can(req.context!, Capability.MANAGE_PRIVATE_LIBRARY)) {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY)) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 

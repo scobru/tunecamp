@@ -254,7 +254,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      * Rips an external stream into local library (Admin only)
      */
     router.post("/:id/localize", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
             throw new ForbiddenError("Only admins can localize tracks");
         }
 
