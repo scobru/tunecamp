@@ -82,7 +82,7 @@ export const Sidebar = () => {
   );
  
   return (
-    <div className="menu p-4 w-64 h-full bg-base-200/30 backdrop-blur-xl text-base-content border-r border-base-content/5 flex flex-col gap-6 pb-28 overflow-y-auto scrollbar-thin">
+    <div className="w-64 min-h-full bg-base-200 text-base-content border-r border-base-content/10 flex flex-col gap-6 p-4 pb-32 overflow-y-auto">
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-4">
         <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-primary/20 bg-base-300">
