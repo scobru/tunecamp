@@ -170,7 +170,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
             let artist;
             
             if (isEditing && editId) {
-                artist = await API.updateArtist(editId, {
+                artist = await API.updateArtist(String(editId), {
                     name,
                     slug: slug || undefined,
                     bio,
@@ -394,7 +394,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 {isEditing && editId && !avatarFile && (
                                     <div className="avatar">
                                         <div className="w-16 h-16 rounded-full border border-base-content/10">
-                                            <img src={API.getArtistCoverUrl(editId, Date.now())} />
+                                            <img src={API.getArtistCoverUrl(String(editId), Date.now())} />
                                         </div>
                                     </div>
                                 )}
