@@ -102,7 +102,7 @@ export interface Release {
 }
 
 export interface Artist {
-    id: string;
+    id: string | number;
     name: string;
     slug?: string;
     description?: string;
@@ -127,9 +127,9 @@ export interface ArtistLink {
 }
 
 export interface Album {
-    id: string;
+    id: string | number;
     title: string;
-    artistId: string;
+    artistId: string | number;
     artistName?: string;
     artistSlug?: string; // camelCase (if mapped)
     artist_slug?: string; // snake_case (from DB)
@@ -137,7 +137,7 @@ export interface Album {
     coverImage?: string;
     year?: number;
     tracks?: Track[];
-    track_ids?: number[];
+    track_ids?: (string | number)[];
     type: 'album' | 'single' | 'ep';
     slug?: string;
     description?: string;
@@ -154,7 +154,7 @@ export interface Album {
 }
 
 export interface Playlist {
-    id: string;
+    id: string | number;
     name: string;
     description?: string;
     username: string;

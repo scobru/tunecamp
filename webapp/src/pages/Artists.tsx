@@ -48,9 +48,9 @@ export const Artists = () => {
         try {
             const newStatus = !artist.starred;
             if (newStatus) {
-                await API.starArtist(artist.id.toString());
+                await API.starArtist(artist.id);
             } else {
-                await API.unstarArtist(artist.id.toString());
+                await API.unstarArtist(artist.id);
             }
             setArtists(prev => prev.map(a => 
                 a.id === artist.id ? { ...a, starred: newStatus } : a

@@ -47,8 +47,8 @@ export const Favorites = () => {
           // Merge regular albums and formal releases
           const mergedAlbums = [...allAlbums, ...allReleases];
           const uniqueAlbums = Array.from(new Map(mergedAlbums.map(a => [String(a.id), a])).values());
-          setAlbums(uniqueAlbums.filter((a) => a.starred));
-          setArtists(allArtists.filter((a) => a.starred));
+          setAlbums(uniqueAlbums.filter((a) => a.starred) as (Album | Release)[]);
+          setArtists(allArtists.filter((a) => a.starred) as Artist[]);
         })
         .finally(() => setLoading(false));
     }
