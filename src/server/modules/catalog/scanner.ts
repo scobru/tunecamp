@@ -639,9 +639,11 @@ export class Scanner implements ScannerService {
             }
 
             if (existing) {
-                if (hash && !existing.hash) {
-                    this.database.db.prepare("UPDATE tracks SET hash = ? WHERE id = ?").run(hash, existing.id);
+                // Update hash if it changed (e.g. metadata was updated)
+                if (hash && existing.hash !== hash) {
+                    this.database.updateTrackHash(existing.id, hash);
                 }
+
                 if (ownerId) this.database.addTrackOwner(existing.id, ownerId);
                 
                 const isLossless = LOSSLESS_EXTENSIONS.includes(ext);
@@ -676,7 +678,26 @@ export class Scanner implements ScannerService {
                 if (existing.album_id !== finalAlbumId) this.database.updateTrackAlbum(existing.id, finalAlbumId);
 
 
-                if (artistId && existing.artist_id !== artistId) this.database.updateTrackArtist(existing.id, artistId);
+                // --- ARTIST ASSOCIATION PROTECTION ---
+                if (artistId && existing.artist_id !== artistId) {
+                    let shouldUpdateArtist = false;
+                    
+                    if (!existing.artist_id) {
+                        shouldUpdateArtist = true;
+                    } else {
+                        const existingArt = this.database.getArtist(existing.artist_id);
+                        // Only update if existing is "Unknown Artist" or if we have an explicit override (hint/config)
+                        if (!existingArt || existingArt.name === 'Unknown Artist' || overrideArtistId) {
+                            shouldUpdateArtist = true;
+                        }
+                    }
+
+                    if (shouldUpdateArtist) {
+                        this.database.updateTrackArtist(existing.id, artistId);
+                    } else {
+                        console.log(`🛡️ [Scanner] Protecting existing artist for track ${existing.id} (Current ID: ${existing.artist_id}, Tag Suggested ID: ${artistId})`);
+                    }
+                }
                 
                 // If duration is missing, re-fetch it
                 if (!existing.duration || existing.duration <= 0) {

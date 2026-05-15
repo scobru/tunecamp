@@ -472,6 +472,8 @@ export const Search = () => {
                                                     item.source === 'spotify' ? 'text-[#1DB954]' :
                                                     item.source === 'soundcloud' ? 'text-[#FF3300]' :
                                                     item.source === 'deezer' ? 'text-[#EF5466]' :
+                                                    item.source === 'bandcamp' ? 'text-[#629aa9]' :
+                                                    item.source === 'youtube' ? 'text-[#FF0000]' :
                                                     'text-primary opacity-50'
                                                 )}>{item.source}</span>
                                                 {item.isStreaming && <span className="ml-2 badge badge-ghost badge-xs">Streaming</span>}

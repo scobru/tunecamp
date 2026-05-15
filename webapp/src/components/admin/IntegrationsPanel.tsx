@@ -11,6 +11,7 @@ import {
   Download,
   CreditCard,
   Loader2,
+  Youtube,
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import API from "../../services/api";
@@ -162,6 +163,24 @@ export const IntegrationsPanel = () => {
       details: status?.deezer?.online ? "Service reachable" : "Service unreachable",
       description: "External playlist import and metadata.",
       pluginId: "deezer"
+    },
+    {
+      id: "youtube",
+      name: "YouTube",
+      icon: <Youtube className="text-[#FF0000]" />,
+      status: status?.youtube?.online ? 'online' : 'offline',
+      details: status?.youtube?.online ? "Service reachable" : "Service unreachable",
+      description: "Resilient streaming via yt-dlp with fallbacks.",
+      pluginId: "youtube"
+    },
+    {
+      id: "bandcamp",
+      name: "Bandcamp",
+      icon: <Globe className="text-[#629aa9]" />,
+      status: status?.bandcamp?.online ? 'online' : 'offline',
+      details: status?.bandcamp?.online ? "Service reachable" : "Service unreachable",
+      description: "Metadata fetching and high-quality streaming support via scraping.",
+      pluginId: "bandcamp"
     },
     {
       id: "lastfm",

@@ -260,8 +260,12 @@ export const API = {
     getBatchPricing: () => handleResponse(api.get<any[]>('tracks/pricing/batch')),
     createTrack: (data: { title: string, albumId?: number, artistId?: number, trackNum?: number, url?: string, service?: string, externalArtwork?: string, duration?: number }) =>
         handleResponse(api.post<Track>('tracks', data)),
+    createYouTubeTrack: (url: string, albumId?: number) =>
+        handleResponse(api.post<Track>('tracks', { url, service: 'youtube', albumId })),
     createExternalTrack: (url: string, albumId?: number) =>
         handleResponse(api.post<Track>('tracks/external', { url, albumId })),
+    importBandcamp: (url: string) =>
+        handleResponse(api.post<any>('import/bandcamp', { url })),
     updateTrack: (id: string | number, data: Partial<Track>) => handleResponse(api.put<Track>(`tracks/${encodeURIComponent(String(id))}`, data)),
     updateTracksBatch: (trackIds: (string | number)[], data: any) => handleResponse(api.put('tracks/batch', { trackIds, data })),
     deleteTrack: (id: string | number, deleteFile = false) =>
@@ -349,6 +353,7 @@ export const API = {
     consolidateFiles: () => handleResponse(api.post<{ message: string, success: number, failed: number, skipped: number }>('admin/system/consolidate')),
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     consolidateDatabase: () => handleResponse(api.post<{ message: string }>('admin/system/consolidate-db')),
+    syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),
     getAdminStats: (options: { mine?: boolean } = {}) => handleResponse(api.get<AdminStats>(`admin/stats${options.mine ? '?mine=true' : ''}`)),
     getBrowser: (path = '') => handleResponse(api.get<any>(`browser?path=${encodeURIComponent(path)}`)),
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`browser?path=${encodeURIComponent(path)}`)),

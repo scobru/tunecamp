@@ -295,6 +295,19 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleSyncTags = async () => {
+        if (!confirm("This will write metadata from the database into the audio files tags. This process runs in the background. Continue?")) return;
+        setIsProcessing(true);
+        try {
+            const res = await API.syncTagsToFiles();
+            alert(res.message);
+        } catch (e: any) {
+            alert("Tag sync failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -379,6 +392,16 @@ export const AdminMaintenancePanel = () => {
                     >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Fingerprint size={18} />}
                         Identify All
+                    </button>
+
+                    <button 
+                        className="btn btn-sm btn-outline btn-primary"
+                        onClick={handleSyncTags}
+                        disabled={isProcessing}
+                        title="Write database metadata to audio file tags"
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Disc size={18} />}
+                        Sync Tags
                     </button>
 
                     <button 

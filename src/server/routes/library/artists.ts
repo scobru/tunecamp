@@ -17,71 +17,46 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
         try {
             const allArtists = database.getArtists();
             const username = req.username;
+            const context = VisibilityGuardian.deriveContext(req);
 
-            // Filter logic:
-            // 1. Admins see everyone (but still need to be mapped/sanitized)
-            // 2. Non-admins see:
-            //    - Themselves (if req.artistId is set)
-            //    - Artists with at least one public release
-            
-            let filteredArtists = allArtists;
-
-            // Determine which artists have PUBLIC formal releases
+            // 1. Determine which artists have PUBLIC formal releases
             const publicReleases = database.getReleases(true);
-            const publicArtistIds = new Set(
+            const formalReleaseArtistIds = new Set(
                 publicReleases.map(r => r.artist_id).filter(id => id !== null)
             );
 
-            // ALSO include artists with PUBLIC library albums
+            // 2. Determine which artists have PUBLIC library albums
             const publicAlbums = database.getAlbums(true);
-            for (const pa of publicAlbums) {
-                if (pa.artist_id) publicArtistIds.add(pa.artist_id);
-            }
+            const publicAlbumArtistIds = new Set(
+                publicAlbums.map(a => a.artist_id).filter(id => id !== null)
+            );
 
-            if (!req.isAdmin && !req.isSuperUser) {
-                const context = VisibilityGuardian.deriveContext(req);
+            // Filter artists based on centralized visibility rules
+            const filteredArtists = allArtists.filter(a => {
+                const hasFormalRelease = formalReleaseArtistIds.has(a.id);
+                return VisibilityGuardian.canSeeArtistInList(a, context, hasFormalRelease);
+            });
 
-                filteredArtists = allArtists.filter(a => {
-                    // 1. User's own artist (always visible to them)
-                    if (req.artistId && a.id === req.artistId) return true;
-
-                    // 2. If the artist is NOT private AND they have public content
-                    const isVisibleToPublic = a.visibility === 'public' || a.visibility === 'unlisted';
-                    if (isVisibleToPublic && publicArtistIds.has(a.id)) return true;
-
-                    // 3. Fallback: VisibilityGuardian check (for explicit ownership/shared access)
-                    if (VisibilityGuardian.isItemVisible(a, context)) return true;
-
-                    return false;
-                });
-            }
-
-            // Map to frontend expected format and EXCLUDE private_key for EVERYONE
-            const mappedArtists = filteredArtists.reduce((acc, a) => {
+            // Map to frontend expected format
+            const mappedArtists = filteredArtists.map(a => {
                 const { private_key, ...safeArtist } = a;
 
-                const hasPublicReleases = publicArtistIds.has(a.id);
+                const hasFormalRelease = formalReleaseArtistIds.has(a.id);
+                const hasPublicAlbum = publicAlbumArtistIds.has(a.id);
                 const isLibraryArtist = !!a.isLibraryArtist;
 
-                // Do not show artists to non-admins if they have no public releases or public albums
-                // (Unless it's their own artist profile)
-                const isOwnArtist = req.artistId && a.id === req.artistId;
-                if (!req.isAdmin && !req.isSuperUser && !isOwnArtist && !hasPublicReleases) {
-                    return acc;
-                }
-
-                acc.push({
+                return {
                     ...safeArtist,
                     walletAddress: a.wallet_address,
                     isLibraryArtist,
-                    isReleasing: hasPublicReleases,
-                    // Use the canonical cover API URL so the frontend benefits from backend fallbacks
+                    // "isReleasing" typically refers to formal releases in this UI context
+                    isReleasing: hasFormalRelease,
+                    hasPublicContent: hasFormalRelease || hasPublicAlbum,
                     coverImage: `/api/artists/${a.id}/cover`,
                     starred: username ? database.isStarred(username, 'artist', String(a.id)) : false,
                     rating: username ? database.getItemRating(username, 'artist', String(a.id)) : 0
-                });
-                return acc;
-            }, [] as any[]);
+                };
+            });
 
             res.json(mappedArtists);
         } catch (error) {

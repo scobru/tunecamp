@@ -324,7 +324,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
     app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(
-        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, metadataService, streamingService, federationService, gdriveService, playlistService, scrobbleService
+        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, metadataService, streamingService, federationService, gdriveService, playlistService, scrobbleService, maintenanceService
     ));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));

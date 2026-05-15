@@ -51,11 +51,22 @@ export class VisibilityGuardian {
   /**
    * Translates a user object (e.g. from an Express request) to a ViewerContext.
    */
-  static deriveContext(user: { userId?: number | null, artistId?: number | null, role?: string | UserRole, isActive?: boolean }): ViewerContext {
+  static deriveContext(user: any): ViewerContext {
+    let role = user.role;
+    
+    // If role is not explicitly provided, derive it from common flags (useful for tests and simple requests)
+    if (!role) {
+      if (user.isRootAdmin) role = UserRole.ROOT_ADMIN;
+      else if (user.isAdmin) role = UserRole.ADMIN;
+      else if (user.isSuperUser) role = UserRole.SUPER_USER;
+      else if (user.username) role = UserRole.NORMAL_USER;
+      else role = UserRole.GUEST;
+    }
+
     return {
-      userId: user.userId,
-      artistId: user.artistId,
-      role: typeof user.role === 'string' ? this.deriveRole(user.role, user.isActive !== false) : (user.role || UserRole.GUEST)
+      userId: user.userId || null,
+      artistId: user.artistId || null,
+      role: typeof role === 'string' ? this.deriveRole(role, user.isActive !== false) : (role || UserRole.GUEST)
     };
   }
 
@@ -129,5 +140,22 @@ export class VisibilityGuardian {
 
     // 4. Everything else is private
     return false;
+  }
+
+  /**
+   * Specifically for the Artist list/listing.
+   * If the user is a base user (cannot view private library), 
+   * they only see artists with formal releases.
+   */
+  static canSeeArtistInList(artist: { id: number, visibility?: string }, context: ViewerContext, hasFormalRelease: boolean): boolean {
+    // 1. Admins/SuperUsers see everyone
+    if (this.can(context, Capability.VIEW_PRIVATE_LIBRARY)) return true;
+
+    // 2. Owners see their own artist profile
+    if (context.artistId && artist.id === context.artistId) return true;
+
+    // 3. Public visibility: Only if public/unlisted AND has a formal release
+    const isVisibleToPublic = artist.visibility === 'public' || artist.visibility === 'unlisted';
+    return isVisibleToPublic && hasFormalRelease;
   }
 }

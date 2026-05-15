@@ -24,7 +24,8 @@ const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
  *
  * Example plugin file (bandcamp-provider.js):
  * ```js
- * export default class BandcampProvider {
+ * export default class SoundCloudProvider { ... }
+
  *   id = "bandcamp";
  *   name = "Bandcamp";
  *   version = "1.0.0";

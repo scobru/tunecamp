@@ -8,6 +8,7 @@ import { VisibilityGuardian, Capability } from "../../common/visibility.js";
 import path from "path";
 import NodeID3 from "node-id3";
 import { writeMetadata } from "../media/ffmpeg.js";
+import { getFastFileHash } from "../../../utils/fileUtils.js";
 
 
 export class CatalogService {
@@ -303,6 +304,14 @@ export class CatalogService {
         const updatedTrack = this.database.getTrack(trackId);
         if (!options?.skipTagWrite && updatedTrack && updatedTrack.file_path) {
             await this.writeTrackTags(updatedTrack);
+            // Recalculate hash after tag write so scanner doesn't re-process it
+            const fullPath = path.join(this.musicDir, updatedTrack.file_path);
+            if (await this.storage.pathExists(fullPath)) {
+                try {
+                    const newHash = await getFastFileHash(fullPath);
+                    this.database.updateTrackHash(trackId, newHash);
+                } catch (e) {}
+            }
         }
         if (!options?.skipSync && updatedTrack && updatedTrack.album_id) {
             await this.publishing.syncRelease(updatedTrack.album_id).catch(e => console.error(`[CatalogService] Sync failed:`, e));
@@ -337,7 +346,19 @@ export class CatalogService {
         }
 
         if (updatedTracks.length > 0) {
-            await Promise.all(updatedTracks.map(t => this.writeTrackTags(t)));
+            await Promise.all(updatedTracks.map(async t => {
+                await this.writeTrackTags(t);
+                // Update hashes for the batch
+                if (t.file_path) {
+                    const fullPath = path.join(this.musicDir, t.file_path);
+                    if (await this.storage.pathExists(fullPath)) {
+                        try {
+                            const newHash = await getFastFileHash(fullPath);
+                            this.database.updateTrackHash(t.id, newHash);
+                        } catch (e) {}
+                    }
+                }
+            }));
             for (const albumId of affectedAlbums) {
                 await this.publishing.syncRelease(albumId).catch(e => console.error(`[CatalogService] Batch sync failed:`, e));
             }

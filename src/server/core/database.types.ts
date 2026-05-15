@@ -483,6 +483,7 @@ export interface DatabaseService {
     updateTrackBitrate(id: number, bitrate: number): void;
     updateTrackWaveform(id: number, waveform: string): void;
     updateTrackFingerprint(id: number, fingerprint: string): void;
+    updateTrackHash(id: number, hash: string): void;
     updateTrackLosslessPath(id: number, losslessPath: string | null): void;
     updateTrackExternalArtwork(id: number, artworkPath: string | null): void;
     updateTrackLyrics(id: number, lyrics: string | null): void;

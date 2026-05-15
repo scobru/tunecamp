@@ -7,6 +7,8 @@ import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
 import { TrackPickerModal } from "../components/modals/TrackPickerModal";
 import { UnlockCodeManager } from "../components/modals/UnlockCodeManager";
+import { AddBandcampTrackModal } from "../components/modals/AddBandcampTrackModal";
+import { AddYouTubeTrackModal } from "../components/modals/AddYouTubeTrackModal";
 import {
   Image as ImageIcon,
   Music,
@@ -21,6 +23,7 @@ import {
   Link as LinkIcon,
   AlignLeft,
   Disc,
+  Youtube,
 } from "lucide-react";
 
 interface LocalTrack {
@@ -806,6 +809,19 @@ export default function AdminReleaseEditor() {
                         }}
                       />
                     </label>
+                    <button
+                      className="btn btn-sm bg-[#629aa9] hover:bg-[#4d7b87] text-white gap-2 border-none"
+                      onClick={() => document.dispatchEvent(new Event('open-add-bandcamp-modal'))}
+                    >
+                      <Globe className="w-4 h-4" /> Add Bandcamp
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-ghost gap-2"
+                      onClick={() => window.dispatchEvent(new CustomEvent('open-add-youtube-modal'))}
+                    >
+                      <Youtube className="w-4 h-4 text-red-500" /> Add YouTube
+                    </button>
                 </div>
               </div>
 
@@ -1183,6 +1199,54 @@ export default function AdminReleaseEditor() {
           releaseId={metadata.id || ""}
           isOpen={showUnlockManager}
           onClose={() => setShowUnlockManager(false)}
+        />
+
+        <AddBandcampTrackModal
+          albumId={metadata.id}
+          onAdd={(track: any) => {
+            setTracks(prev => [...prev, {
+              id: Number(track.id),
+              title: track.title,
+              duration: track.duration,
+              position: tracks.length + 1,
+              price: 0,
+              priceUsdc: 0,
+              currency: "ETH",
+              file_path: null,
+              url: track.url || track.streamUrl,
+              service: track.service || 'bandcamp',
+              artistName: track.artistName,
+              external_artwork: track.coverImage || track.coverUrl
+            }]);
+          }}
+        />
+
+        <AddYouTubeTrackModal
+          albumId={metadata.id}
+          onComplete={() => {
+            // Re-fetch tracks for the release to sync UI
+            if (metadata.id) {
+                API.getAdminRelease(metadata.id).then(release => {
+                    if (release.tracks) {
+                        const mapped: LocalTrack[] = release.tracks.map((t: any) => ({
+                            id: Number(t.id),
+                            title: t.title,
+                            duration: t.duration,
+                            position: t.track_num || t.position || 0,
+                            price: t.price || 0,
+                            priceUsdc: t.price_usdc || t.priceUsdc || 0,
+                            currency: t.currency || "ETH",
+                            file_path: t.file_path || t.path || null,
+                            url: t.url || t.streamUrl || null,
+                            service: t.service || "local",
+                            artistName: t.artist_name || t.artistName,
+                            external_artwork: t.external_artwork || t.coverUrl
+                        }));
+                        setTracks(mapped.sort((a, b) => a.position - b.position));
+                    }
+                });
+            }
+          }}
         />
 
 

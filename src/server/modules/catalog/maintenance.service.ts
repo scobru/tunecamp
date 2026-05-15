@@ -567,4 +567,30 @@ export class MaintenanceService {
     stopLibraryAudit(): void {
         this.autotagger.stopAudit();
     }
+
+    /**
+     * Synchronizes all track tags in the filesystem with the current database metadata.
+     * This makes the database the source of truth for file tags.
+     */
+    async syncAllTagsFromDb(): Promise<{ success: number, failed: number }> {
+        const tracks = this.db.getTracks();
+        let success = 0;
+        let failed = 0;
+        console.log(`[Maintenance] Starting full tag sync for ${tracks.length} tracks...`);
+
+        for (const track of tracks) {
+            try {
+                if (track.file_path) {
+                    // Calling updateTrack with empty data triggers a tag write from current DB state
+                    await this.catalogService.updateTrack(track.id, {}, { skipSync: true });
+                    success++;
+                }
+            } catch (e) {
+                console.error(`[Maintenance] Failed to sync tags for track ${track.id}:`, e);
+                failed++;
+            }
+        }
+
+        return { success, failed };
+    }
 }

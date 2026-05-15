@@ -12,11 +12,16 @@ describe('Artists Routes', () => {
     beforeEach(() => {
         mockDatabase = {
             getArtists: jest.fn().mockReturnValue([
-                { id: 1, name: 'Artist 1', slug: 'artist-1', isLibraryArtist: false },
-                { id: 2, name: 'Artist 2', slug: 'artist-2', isLibraryArtist: true }
+                { id: 1, name: 'Artist with Release', slug: 'artist-1', visibility: 'public' },
+                { id: 2, name: 'Artist with Album', slug: 'artist-2', visibility: 'public' },
+                { id: 3, name: 'Private Artist', slug: 'artist-3', visibility: 'private' }
             ]),
-            getReleases: jest.fn().mockReturnValue([]),
-            getAlbums: jest.fn().mockReturnValue([]),
+            getReleases: jest.fn().mockImplementation((publicOnly) => {
+                return publicOnly ? [{ id: 101, artist_id: 1, title: 'Release 1' }] : [];
+            }),
+            getAlbums: jest.fn().mockImplementation((publicOnly) => {
+                return publicOnly ? [{ id: 201, artist_id: 2, title: 'Album 1' }] : [];
+            }),
             isStarred: jest.fn().mockReturnValue(false),
             getItemRating: jest.fn().mockReturnValue(0),
             getArtist: jest.fn(),
@@ -24,7 +29,7 @@ describe('Artists Routes', () => {
             getReleasesByArtist: jest.fn().mockReturnValue([]),
             getAlbumsByArtist: jest.fn().mockReturnValue([]),
             getTracksByArtist: jest.fn().mockReturnValue([]),
-            createArtist: jest.fn().mockReturnValue(3),
+            createArtist: jest.fn().mockReturnValue(4),
             getArtistByName: jest.fn().mockReturnValue(null),
             updateArtist: jest.fn(),
             deleteArtist: jest.fn()
@@ -37,6 +42,7 @@ describe('Artists Routes', () => {
         app.use((req: any, res, next) => {
             req.username = req.headers['x-username'] || 'testuser';
             req.isAdmin = req.headers['x-is-admin'] === 'true';
+            req.isSuperUser = req.headers['x-is-superuser'] === 'true';
             req.artistId = req.headers['x-artist-id'] ? parseInt(req.headers['x-artist-id'] as string) : null;
             next();
         });
@@ -51,17 +57,32 @@ describe('Artists Routes', () => {
                 .set('x-is-admin', 'true');
 
             expect(response.status).toBe(200);
-            expect(response.body).toHaveLength(2);
+            expect(response.body).toHaveLength(3);
         });
 
-        test('filters out library artists with no content for non-admin', async () => {
-            // Artist 2 is a library artist and has no releases/albums
+        test('only returns artists with formal releases for non-admin', async () => {
             const response = await request(app)
                 .get('/api/artists')
                 .set('x-is-admin', 'false');
 
             expect(response.status).toBe(200);
-            expect(response.body).toHaveLength(0); // Artist 1 also has no public releases in mock
+            // Artist 1 has a release. Artist 2 only has an album. Artist 3 is private.
+            expect(response.body).toHaveLength(1);
+            expect(response.body[0].id).toBe(1);
+        });
+
+        test('returns own artist profile even if no formal release', async () => {
+            const response = await request(app)
+                .get('/api/artists')
+                .set('x-is-admin', 'false')
+                .set('x-artist-id', '2'); // Artist 2 is requesting
+
+            expect(response.status).toBe(200);
+            // Artist 1 (public release) and Artist 2 (self)
+            expect(response.body).toHaveLength(2);
+            const ids = response.body.map((a: any) => a.id);
+            expect(ids).toContain(1);
+            expect(ids).toContain(2);
         });
     });
 

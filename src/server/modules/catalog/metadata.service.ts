@@ -10,7 +10,9 @@ import {
     discogsProvider, 
     theaudiodbProvider, 
     spotifyProvider, 
-    deezerProvider 
+    deezerProvider,
+    bandcampMetadataProvider,
+    youtubeProvider
 } from "../../core/providers.js";
 
 export interface LyricsResult {
@@ -55,6 +57,8 @@ export class MetadataService {
         this.registry.register(theaudiodbProvider as any);
         this.registry.register(spotifyProvider as any);
         this.registry.register(deezerProvider as any);
+        this.registry.register(bandcampMetadataProvider as any);
+        this.registry.register(youtubeProvider as any);
     }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {

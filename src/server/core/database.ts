@@ -1761,6 +1761,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
         updateTrackWaveform(id: number, waveform: string): void { trackRepository.update(id, { waveform }); },
         updateTrackFingerprint(id: number, fingerprint: string): void { trackRepository.update(id, { fingerprint }); },
+        updateTrackHash(id: number, hash: string): void { trackRepository.update(id, { hash }); },
         updateTrackLosslessPath(id: number, losslessPath: string | null): void { trackRepository.update(id, { lossless_path: losslessPath }); },
         updateTrackExternalArtwork(id: number, artworkPath: string | null): void { trackRepository.update(id, { external_artwork: artworkPath }); },
         updateTrackLyrics(id: number, lyrics: string | null): void { trackRepository.update(id, { lyrics }); },
@@ -1915,13 +1916,25 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
         search(query: string, publicOnly = false) {
             const lq = `%${query}%`;
-            const artists = db.prepare("SELECT * FROM artists WHERE name LIKE ?").all(lq) as Artist[];
+            
+            // For artists: if publicOnly is true, they MUST have at least one formal release to be searchable
+            const artistsSql = publicOnly ? 
+                `SELECT * FROM artists 
+                 WHERE name LIKE ? 
+                 AND visibility IN ('public', 'unlisted')
+                 AND id IN (SELECT DISTINCT artist_id FROM releases WHERE visibility IN ('public', 'unlisted'))` :
+                "SELECT * FROM artists WHERE name LIKE ?";
+            
+            const artists = db.prepare(artistsSql).all(lq) as Artist[];
+            
             const albums = db.prepare(publicOnly ? 
                 "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released' AND (a.title LIKE ? OR ar.name LIKE ? OR a.genre LIKE ?)" : 
                 "SELECT a.*, ar.name as artist_name FROM albums a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.title LIKE ? OR ar.name LIKE ? OR a.genre LIKE ?").all(lq, lq, lq) as Album[];
+            
             const tracks = db.prepare(publicOnly ? 
                 "SELECT t.*, a.title as album_title, COALESCE(ar_t.name, ar_a.name) as artist_name, COALESCE(ar_t.id, ar_a.id) as artist_id FROM tracks t LEFT JOIN albums a ON t.album_id = a.id LEFT JOIN artists ar_t ON t.artist_id = ar_t.id LEFT JOIN artists ar_a ON a.artist_id = ar_a.id WHERE a.is_release = 1 AND a.visibility IN ('public', 'unlisted') AND a.status = 'released' AND (t.title LIKE ? OR ar_t.name LIKE ? OR ar_a.name LIKE ? OR t.genre LIKE ?)" : 
                 "SELECT t.*, a.title as album_title, COALESCE(ar_t.name, ar_a.name) as artist_name, COALESCE(ar_t.id, ar_a.id) as artist_id FROM tracks t LEFT JOIN albums a ON t.album_id = a.id LEFT JOIN artists ar_t ON t.artist_id = ar_t.id LEFT JOIN artists ar_a ON a.artist_id = ar_a.id WHERE t.title LIKE ? OR ar_t.name LIKE ? OR ar_a.name LIKE ? OR t.genre LIKE ?").all(lq, lq, lq, lq) as Track[];
+            
             return { artists, albums, tracks };
         },
         // Settings

@@ -13,6 +13,7 @@ import type { PublishingService } from "../../modules/publishing/publishing.serv
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import type { SoulseekService } from "../../modules/integrations/soulseek.js";
 import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
+import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 
 export function createAdminRoutes(
@@ -32,7 +33,8 @@ export function createAdminRoutes(
     federationService: any,
     gdriveService?: GoogleDriveService,
     playlistService?: any,
-    scrobbleService?: any
+    scrobbleService?: any,
+    maintenance?: MaintenanceService
 ): Router {
     const router = Router();
     const authMiddleware = createAuthMiddleware(authService);
@@ -456,10 +458,10 @@ export function createAdminRoutes(
             if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
                 return res.status(403).json({ error: "Only admin can trigger rescan" });
             }
-            
+
             console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
             const { runStartupMaintenance } = await import("../../modules/catalog/maintenance.startup.js");
-            
+
             // Run maintenance and full scan in background
             (async () => {
                 try {
@@ -479,6 +481,39 @@ export function createAdminRoutes(
         }
     });
 
+    /**
+     * POST /api/admin/system/sync-tags
+     * Sync all file tags with database metadata (Root Admin only)
+     */
+    router.post("/system/sync-tags", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isRootAdmin) {
+                return res.status(403).json({ error: "Only root admin can sync tags to files" });
+            }
+
+            console.log(`🏷️ [Admin] Manual tag sync triggered by ${req.username}`);
+
+            // Run in background to avoid timeout
+            const m = maintenance;
+            (async () => {
+                try {
+                    if (m) {
+                        await m.syncAllTagsFromDb();
+                        console.log(`✅ [Admin] Manual tag sync complete.`);
+                    } else {
+                        console.error("❌ [Admin] Maintenance service not available for tag sync");
+                    }
+                } catch (e) {
+                    console.error("❌ [Admin] Background tag sync failed:", e);
+                }
+            })();
+
+            res.json({ message: "File tag synchronization started in background. This may take several minutes." });
+        } catch (error) {
+            console.error("Error triggering tag sync:", error);
+            res.status(500).json({ error: "Failed to trigger tag sync" });
+        }
+    });
 
     /**
      * POST /api/admin/system/consolidate-db
