@@ -293,7 +293,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 }
 
                 console.log(`[YouTubeProvider] 📡 yt-dlp command: yt-dlp --get-url --format "ba/b" --extractor-args "${options.extractorArgs}" ...`);
-                const url = await youtubedl(targetUrl, options);
+                const url: any = await youtubedl(targetUrl, options);
                 if (url && typeof url === 'string') {
                     console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp`);
                     this.consecutiveBotBlocks = 0; 
