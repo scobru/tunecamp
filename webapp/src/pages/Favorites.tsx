@@ -9,11 +9,10 @@ import {
   User,
   Play,
   Clock,
-  ArrowRight,
-  X
+  ArrowRight
 } from "lucide-react";
 import { formatDuration } from "../utils/format";
-import type { Track, Album, Artist } from "../types";
+import type { Track, Album, Artist, Release } from "../types";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
@@ -26,7 +25,7 @@ export const Favorites = () => {
     "tracks"
   );
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [albums, setAlbums] = useState<Album[]>([]);
+  const [albums, setAlbums] = useState<(Album | Release)[]>([]);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +46,7 @@ export const Favorites = () => {
           setTracks(allTracks.filter((t) => t.starred));
           // Merge regular albums and formal releases
           const mergedAlbums = [...allAlbums, ...allReleases];
-          const uniqueAlbums = Array.from(new Map(mergedAlbums.map(a => [a.id, a])).values());
+          const uniqueAlbums = Array.from(new Map(mergedAlbums.map(a => [String(a.id), a])).values());
           setAlbums(uniqueAlbums.filter((a) => a.starred));
           setArtists(allArtists.filter((a) => a.starred));
         })
