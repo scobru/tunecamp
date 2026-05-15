@@ -1,4 +1,5 @@
-import youtubedl from "youtube-dl-exec";
+import { create } from "youtube-dl-exec";
+const youtubedl = create("yt-dlp");
 import ytSearch from "yt-search";
 import play from "play-dl";
 import fs from "fs";
@@ -267,7 +268,6 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 console.log(`[YouTubeProvider] 📡 Resolving ${targetUrl} via yt-dlp...`);
                 
                 const options: any = {
-                    binary: 'yt-dlp',
                     getUrl: true,
                     format: 'ba/b',
                     noWarnings: true,
