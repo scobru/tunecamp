@@ -24,13 +24,32 @@ export class YouTubeSessionGenerator {
      */
     async launchLoginSession(): Promise<void> {
         console.log("🚀 Starting YouTube Login Session...");
-        console.log("⚠️ If running on a headless server, ensure you have an X-server or use remote debugging.");
+        
+        const wsEndpoint = process.env.PUPPETEER_WS_ENDPOINT;
+        const isHeadless = process.env.PUPPETEER_HEADLESS === 'true';
+        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
 
-        const browser = await puppeteer.launch({
-            headless: false, // Must be false for manual login
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1280,720'],
-            defaultViewport: null
-        });
+        if (!wsEndpoint && !isHeadless) {
+            console.log("⚠️ If running on a headless server, ensure you have an X-server or use remote debugging.");
+        }
+
+        let browser;
+        if (wsEndpoint) {
+            console.log(`🌐 Connecting to remote browser at: ${wsEndpoint}`);
+            browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+        } else {
+            browser = await puppeteer.launch({
+                headless: isHeadless ? 'new' as any : false,
+                executablePath: executablePath || undefined,
+                args: [
+                    '--no-sandbox', 
+                    '--disable-setuid-sandbox', 
+                    '--window-size=1280,720',
+                    '--disable-dev-shm-usage'
+                ],
+                defaultViewport: null
+            });
+        }
 
         const page = await browser.newPage();
         
