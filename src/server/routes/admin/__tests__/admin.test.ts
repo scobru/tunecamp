@@ -7,6 +7,7 @@ import type { ScannerService } from '../../../modules/catalog/scanner.service.js
 import type { ServerConfig } from '../../../core/config.js';
 import type { ZenDBService } from '../../../modules/network/zendb.service.js';
 import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
+import type { AuthService } from '../../../modules/auth/auth.service.js';
 
 // Mock dependencies
 const mockDatabase = {

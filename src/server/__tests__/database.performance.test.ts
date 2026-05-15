@@ -5,7 +5,7 @@ const mockExec = jest.fn();
 const mockPrepare = jest.fn();
 const mockGet = jest.fn();
 const mockAll = jest.fn().mockReturnValue([]);
-const mockRun = jest.fn();
+const mockRun = jest.fn().mockReturnValue({ changes: 0 });
 
 // Mock return structure for prepared statements
 const mockStmt = {

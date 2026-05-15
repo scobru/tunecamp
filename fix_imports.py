@@ -9,16 +9,21 @@ mappings = {
     "maintenance.js": "modules/catalog/maintenance.startup.js",
     "utils.js": "common/network.js",
     "validators.js": "common/validators.js",
-    "price.js": "modules/catalog/price.js"
+    "price.js": "modules/catalog/price.js",
+    "auth.js": "modules/auth/auth.service.js",
+    "scanner.js": "modules/catalog/scanner.js",
+    "publishing.js": "modules/publishing/publishing.service.js",
+    "zen.js": "modules/network/zen.js",
+    "ffmpeg.js": "modules/media/ffmpeg.js",
+    "waveform.js": "modules/waveform/waveform-peak.service.js",
+    "rateLimit.js": "middleware/rateLimit.js",
+    "error-handling.js": "middleware/error-handling.js",
+    "security.js": "middleware/security.js"
 }
 
 server_root = os.path.abspath("src/server")
 
 def get_new_import(file_path, old_import_path):
-    # old_import_path is something like "../../database.js"
-    # we want to find what it pointed to.
-    # It always pointed to a file that WAS in src/server root.
-    
     # Calculate the absolute path of the directory containing the file
     file_dir = os.path.dirname(os.path.abspath(file_path))
     
@@ -47,7 +52,9 @@ def process_file(file_path):
     
     # Match imports like: from "../../database.js" or import("../../database.js")
     # Using a regex that captures the path
-    pattern = r'([\'"])((\.\.?/)*(' + "|".join(re.escape(k) for k in mappings.keys()) + r'))\1'
+    # We look for imports that end with one of the keys in mappings
+    keys_regex = "|".join(re.escape(k) for k in mappings.keys())
+    pattern = r'([\'"])((\.\.?/)+(' + keys_regex + r'))\1'
     
     def replace_match(match):
         quote = match.group(1)

@@ -1,6 +1,6 @@
 import express from 'express';
 import request from 'supertest';
-import { errorHandler } from './middleware/error-handling.js';
+import { errorHandler } from '../middleware/error-handling.js';
 import { jest } from '@jest/globals';
 
 // Mock other dependencies of server.ts if necessary,

@@ -68,7 +68,7 @@ describe('ServerConfig', () => {
         // Wait for background promises to settle
         await new Promise(process.nextTick);
 
-        expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('.jwt-secret'), 'generated-secret');
+        expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('.jwt-secret'), 'generated-secret', expect.anything());
         expect(config.jwtSecret).toBe('generated-secret');
     });
 

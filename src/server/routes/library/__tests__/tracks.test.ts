@@ -2,7 +2,7 @@ import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import type { DatabaseService } from '../../../core/database.js';
-import type { PublishingService } from '../../../publishing.js';
+import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
 import type { CatalogService } from '../../../modules/catalog/catalog.service.js';
 
 // Mock node-fetch

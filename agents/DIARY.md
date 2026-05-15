@@ -115,3 +115,16 @@ Chronological log of completed tasks and significant architectural decisions.
     - Verified build success with `npm run build`.
 - **Result**: The codebase is now cleaner, with a clear separation between modular services and the server entry point.
 
+### 2026-05-15: Fixing Modular Refactoring Regressions & YouTube Auth
+- **Test Suite Restoration**: Fixed all regressions introduced by the modular architecture refactoring.
+    - Updated over 15 test files with corrected relative import paths (moving from root to `core/`, `modules/`, etc.).
+    - Fixed `unstable_mockModule` relative paths and mapping issues in ESM.
+    - Updated mock objects for `ScannerService`, `AuthService`, and `DatabaseService` to match current interfaces.
+    - Fixed benchmark foreign key constraint failures by seeding admin users.
+    - Resolved TypeErrors in database performance tests by ensuring mock returns match expected shapes.
+    - **Result**: All 304 tests in 47 suites are now passing.
+- **YouTube Auth Enhancements**:
+    - Supported manual cookie upload in the admin panel to bypass bot detection.
+    - Updated `Dockerfile` to include `python3`, `libc6-compat`, and `gcompat` for robust `yt-dlp` execution in production.
+    - Verified `YouTubeProvider` integration with `YouTubeCookieManager`.
+

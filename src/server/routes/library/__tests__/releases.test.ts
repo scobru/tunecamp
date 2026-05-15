@@ -4,7 +4,7 @@ import request from 'supertest';
 import { jest } from '@jest/globals';
 import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.service.js';
-import type { PublishingService } from '../../../publishing.js';
+import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
 import type { AuthService } from '../../../modules/auth/auth.service.js';
 
 // Mock dependencies

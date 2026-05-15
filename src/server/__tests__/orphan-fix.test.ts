@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { createDatabase } from '../core/database.js';
-import { Scanner } from './modules/catalog/scanner.js';
+import { Scanner } from '../modules/catalog/scanner.js';
 import path from 'path';
 import fs from 'fs-extra';
 
@@ -82,7 +82,7 @@ describe('Orphan Release Fix Verification', () => {
         expect(album.owner_id).toBeNull();
 
         // 5. Run the fixing logic
-        await (scanner as any).fixOrphanAlbums();
+        await (scanner as any).cleanupEmptyEntities();
 
         // 6. Verify it is FIXED
         album = db.getAlbum(albumId);
@@ -144,7 +144,7 @@ describe('Orphan Release Fix Verification', () => {
         let album = db.getAlbum(albumId);
         expect(album).toBeDefined();
 
-        await (scanner as any).fixOrphanAlbums();
+        await (scanner as any).cleanupEmptyEntities();
 
         album = db.getAlbum(albumId);
         expect(album).toBeUndefined(); // Should have been deleted

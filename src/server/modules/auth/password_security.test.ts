@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
-import { createAuthRoutes } from './routes/auth.js';
-import { createAdminRoutes } from './routes/admin.js';
+import { createAuthRoutes } from '../../routes/auth/auth.js';
+import { createAdminRoutes } from '../../routes/admin/admin.js';
 import { jest } from '@jest/globals';
 
 // Mock dependencies
@@ -37,12 +37,27 @@ app.use('/api/auth', createAuthRoutes(mockAuthService, { requireAdmin: (req: any
 const adminMiddleware = (req: any, res: any, next: any) => {
     req.username = 'admin'; // Mock admin user
     req.isRootAdmin = true;
-    req.role = 'admin';
-    req.context = { role: 'admin' as any, userId: 1 };
+    req.role = 'root_admin';
+    req.context = { role: 'root_admin' as any, userId: 1 };
     next();
 };
 
-app.use('/api/admin', adminMiddleware, createAdminRoutes(mockDatabase, mockScanner, '/tmp', mockGunDB, mockConfig, mockAuthService, {} as any, mockApService as any, {} as any, {} as any));
+app.use('/api/admin', adminMiddleware, createAdminRoutes(
+    mockDatabase,
+    mockScanner,
+    '/tmp',
+    mockGunDB,
+    mockConfig,
+    mockAuthService,
+    {} as any, // publishingService
+    mockApService as any, // apService
+    {} as any, // telegramBotService
+    {} as any, // soulseekService
+    {} as any, // lindaBotService
+    {} as any, // metadataService
+    {} as any, // streamingService
+    {} as any  // federationService
+));
 
 
 describe('Password Security', () => {

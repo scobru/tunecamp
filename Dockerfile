@@ -103,6 +103,7 @@ RUN echo "Production deploy commit: ${CAPROVER_GIT_COMMIT_SHA:-none}"
 RUN apk add --no-cache \
     ffmpeg \
     curl \
+    python3 \
     libc6-compat \
     gcompat
 

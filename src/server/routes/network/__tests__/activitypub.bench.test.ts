@@ -15,6 +15,8 @@ describe("ActivityPub Outbox Performance", () => {
         dbService = createDatabase(DB_PATH);
 
         // Seed data
+        // Create an admin user to satisfy FK constraints for owner_id
+        (dbService as any).db.prepare("INSERT INTO admin (username, password_hash, role) VALUES ('bench', 'hash', 'admin')").run();
         const artistId = dbService.createArtist("Test Artist");
 
         // Create 500 releases

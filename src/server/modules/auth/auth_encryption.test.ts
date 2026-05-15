@@ -1,4 +1,4 @@
-import { encryptZenPrivHelper, decryptZenPrivHelper } from './auth.js';
+import { encryptZenPrivHelper, decryptZenPrivHelper } from './auth.service.js';
 import { describe, test, expect } from '@jest/globals';
 import crypto from 'crypto';
 

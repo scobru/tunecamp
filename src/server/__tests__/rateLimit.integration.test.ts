@@ -1,6 +1,6 @@
 import express from 'express';
 import request from 'supertest';
-import { rateLimit } from './middleware/rateLimit.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { jest } from '@jest/globals';
 
 describe('Rate Limit Integration', () => {

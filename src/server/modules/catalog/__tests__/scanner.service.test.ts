@@ -5,28 +5,31 @@ const mockScanner = {
     scanDirectory: jest.fn(),
     consolidateFiles: jest.fn(),
     processAudioFile: jest.fn(),
+    clearCaches: jest.fn(),
 };
 
 // We must use unstable_mockModule before any other imports in ESM
-jest.unstable_mockModule('../../core/provider.js', () => ({
+jest.unstable_mockModule('../../../core/provider.js', () => ({
     ProviderRegistry: jest.fn().mockImplementation(() => ({
         register: jest.fn(),
         getEnabled: jest.fn().mockReturnValue([
             { 
+                id: 'local-fs',
                 name: 'local-fs', 
-                scan: jest.fn().mockResolvedValue(['file1.mp3']),
+                version: '1.0.0',
+                scan: jest.fn().mockImplementation(() => Promise.resolve(['file1.mp3'])),
                 setMusicDirectory: jest.fn()
-            }
+            } as any
         ]),
         get: jest.fn().mockReturnValue({
             scanner: mockScanner
         })
     })),
-    syncRegistryWithDatabase: jest.fn().mockResolvedValue(undefined)
+    syncRegistryWithDatabase: jest.fn().mockResolvedValue(undefined as never)
 }));
 
 // Mock the LocalScannerProvider to avoid instantiation issues
-jest.unstable_mockModule('../../providers/scanner/local-fs.provider.js', () => ({
+jest.unstable_mockModule('../../../providers/scanner/local-fs.provider.js', () => ({
     LocalScannerProvider: jest.fn()
 }));
 
