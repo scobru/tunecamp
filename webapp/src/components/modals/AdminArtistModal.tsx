@@ -23,7 +23,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const [walletAddress, setWalletAddress] = useState('');
     
     const [isEditing, setIsEditing] = useState(false);
-    const [editId, setEditId] = useState<string | null>(null);
+    const [editId, setEditId] = useState<string | number | null>(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarUrl, setAvatarUrl] = useState('');
     const [error, setError] = useState('');
@@ -44,7 +44,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 // Edit Mode
                 const artist = e.detail;
                 setIsEditing(true);
-                setEditId(artist.id);
+                setEditId(String(artist.id));
                 setName(artist.name || '');
                 setSlug(artist.slug || '');
                 setBio(artist.bio || artist.description || '');
@@ -192,13 +192,13 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
             // Upload avatar if selected (file takes precedence over URL)
             if (avatarFile && artist) {
                 try {
-                    await API.uploadArtistAvatar(artist.id, avatarFile);
+                    await API.uploadArtistAvatar(String(artist.id), avatarFile);
                 } catch (err: any) {
                     setWarning("Profile saved, but avatar file upload failed.");
                 }
             } else if (avatarUrl && artist) {
                 try {
-                    await API.uploadArtistAvatarUrl(artist.id, avatarUrl);
+                    await API.uploadArtistAvatarUrl(String(artist.id), avatarUrl);
                 } catch (err: any) {
                     console.warn("Avatar URL download failed:", err);
                     setWarning("Profile saved, but failed to download avatar from URL. You can try a different URL or upload a file.");

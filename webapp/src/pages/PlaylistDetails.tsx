@@ -50,7 +50,7 @@ export const PlaylistDetails = () => {
     )
       return;
     try {
-      await API.deletePlaylist(playlist.id);
+      await API.deletePlaylist(String(playlist.id));
       navigate("/playlists");
     } catch (e) {
       console.error(e);
@@ -62,8 +62,8 @@ export const PlaylistDetails = () => {
     if (!playlist) return;
     if (!confirm("Remove track from playlist?")) return;
     try {
-      await API.removeTrackFromPlaylist(playlist.id, trackId);
-      loadPlaylist(playlist.id);
+      await API.removeTrackFromPlaylist(String(playlist.id), trackId);
+      loadPlaylist(String(playlist.id));
     } catch (e) {
       console.error(e);
     }
@@ -77,7 +77,7 @@ export const PlaylistDetails = () => {
     );
     if (url === null) return; // user cancelled
     try {
-      await API.updatePlaylist(playlist.id, { coverPath: url });
+      await API.updatePlaylist(String(playlist.id), { coverPath: url });
       setPlaylist({ ...playlist, coverPath: url });
     } catch (e) {
       console.error(e);
@@ -148,10 +148,10 @@ export const PlaylistDetails = () => {
                 onClick={async () => {
                   if (!playlist) return;
                   try {
-                    await API.updatePlaylist(playlist.id, {
+                    await API.updatePlaylist(String(playlist.id), {
                       isPublic: !playlist.isPublic,
                     });
-                    loadPlaylist(playlist.id);
+                    loadPlaylist(String(playlist.id));
                   } catch (e) {
                     console.error(e);
                   }

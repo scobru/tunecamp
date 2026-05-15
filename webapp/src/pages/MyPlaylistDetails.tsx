@@ -101,10 +101,10 @@ export const MyPlaylistDetails = () => {
     )
       return;
     try {
-      if (/^\d+$/.test(playlist.id)) {
-        await API.deletePlaylist(playlist.id);
+      if (/^\d+$/.test(String(playlist.id))) {
+        await API.deletePlaylist(String(playlist.id));
       } else {
-        await ZenPlaylists.deletePlaylist(playlist.id);
+        await ZenPlaylists.deletePlaylist(String(playlist.id));
       }
       navigate("/my-playlists");
     } catch (e) {
@@ -117,12 +117,12 @@ export const MyPlaylistDetails = () => {
     if (!playlist) return;
     if (!confirm("Remove track from playlist?")) return;
     try {
-      if (/^\d+$/.test(playlist.id)) {
-        await API.removeTrackFromPlaylist(playlist.id, String(trackId));
+      if (/^\d+$/.test(String(playlist.id))) {
+        await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
       } else {
-        await ZenPlaylists.removeTrackFromPlaylist(playlist.id, String(trackId));
+        await ZenPlaylists.removeTrackFromPlaylist(String(playlist.id), String(trackId));
       }
-      loadPlaylist(playlist.id);
+      loadPlaylist(String(playlist.id));
     } catch (e) {
       console.error(e);
     }
@@ -131,10 +131,10 @@ export const MyPlaylistDetails = () => {
   const handleToggleVisibility = async () => {
     if (!playlist) return;
     try {
-      if (/^\d+$/.test(playlist.id)) {
-          await API.updatePlaylist(playlist.id, { isPublic: !playlist.isPublic });
+      if (/^\d+$/.test(String(playlist.id))) {
+          await API.updatePlaylist(String(playlist.id), { isPublic: !playlist.isPublic });
       } else {
-          await (ZenPlaylists as any).updatePlaylist(playlist.id, {
+          await (ZenPlaylists as any).updatePlaylist(String(playlist.id), {
             isPublic: !playlist.isPublic,
           });
       }
@@ -154,10 +154,10 @@ export const MyPlaylistDetails = () => {
     );
     if (url === null) return; // cancelled
     try {
-      if (/^\d+$/.test(playlist.id)) {
-          await API.updatePlaylist(playlist.id, { coverPath: url });
+      if (/^\d+$/.test(String(playlist.id))) {
+          await API.updatePlaylist(String(playlist.id), { coverPath: url });
       } else {
-          await (ZenPlaylists as any).updatePlaylist(playlist.id, { coverUrl: url });
+          await (ZenPlaylists as any).updatePlaylist(String(playlist.id), { coverUrl: url });
       }
       setPlaylist({ ...playlist, coverUrl: url, coverPath: url } as any);
     } catch (e) {

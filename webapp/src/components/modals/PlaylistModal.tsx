@@ -62,7 +62,7 @@ export const PlaylistModal = () => {
             
             // If target track, add it immediately
             if (targetTrackId) {
-                await addToPlaylist(newPl.id);
+                await addToPlaylist(String(newPl.id));
             }
         } catch (e) {
             console.error('Failed to create playlist:', e);
@@ -130,7 +130,7 @@ export const PlaylistModal = () => {
                                             "flex items-center gap-4 p-3 rounded-2xl transition-all text-left group",
                                             isSuccess ? "bg-success/10 text-success" : "hover:bg-base-content/5"
                                         )}
-                                        onClick={() => addToPlaylist(p.id)}
+                                        onClick={() => addToPlaylist(String(p.id))}
                                         disabled={!!successId}
                                     >
                                         <div className="w-12 h-12 rounded-xl bg-base-300 flex items-center justify-center overflow-hidden shrink-0 border border-base-content/5">

@@ -34,9 +34,9 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
             // 1. Current user's artistId if set and valid
             // 2. First artist in list if none
             if (user?.artistId && user.artistId !== '0') {
-                setArtistId(user.artistId);
+                setArtistId(String(user.artistId));
             } else if (data.length > 0) {
-                setArtistId(data[0].id);
+                setArtistId(String(data[0].id));
             }
         } catch (e) { console.error(e); }
     };
