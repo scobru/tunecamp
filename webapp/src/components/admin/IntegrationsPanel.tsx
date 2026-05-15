@@ -14,6 +14,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
+import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
 import clsx from "clsx";
 
@@ -28,10 +29,13 @@ interface PluginInfo {
 
 export const IntegrationsPanel = () => {
   const { status, fetchStatus, isLoading: isStatusLoading } = useConfigStore();
+  const { role, user } = useAuthStore();
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [isPluginsLoading, setIsPluginsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  const isRootAdmin = role === 'root_admin' || user?.isRootAdmin;
 
   const loadData = async () => {
     setRefreshing(true);
@@ -68,6 +72,21 @@ export const IntegrationsPanel = () => {
     } catch (e: any) {
         console.error("Failed to toggle plugin:", e);
         alert("Action failed: " + e.message);
+    } finally {
+        setIsProcessing(null);
+    }
+  };
+
+  const handleAuth = async (serviceId: string) => {
+    setIsProcessing(serviceId);
+    try {
+        if (serviceId === 'youtube') {
+            const res = await API.triggerYouTubeAuth();
+            alert(res.message);
+        }
+    } catch (e: any) {
+        console.error("Auth failed:", e);
+        alert("Auth failed: " + e.message);
     } finally {
         setIsProcessing(null);
     }
@@ -171,7 +190,8 @@ export const IntegrationsPanel = () => {
       status: status?.youtube?.online ? 'online' : 'offline',
       details: status?.youtube?.online ? "Service reachable" : "Service unreachable",
       description: "Resilient streaming via yt-dlp with fallbacks.",
-      pluginId: "youtube"
+      pluginId: "youtube",
+      onAuth: () => handleAuth('youtube')
     },
     {
       id: "bandcamp",
@@ -292,6 +312,17 @@ export const IntegrationsPanel = () => {
                         {plugin && <span className="text-[10px] opacity-30 font-mono">v{plugin.version}</span>}
                     </h4>
                     <p className="text-xs opacity-60 leading-relaxed h-8 line-clamp-2">{service.description}</p>
+                    
+                    {(service as any).onAuth && isRootAdmin && (
+                        <button 
+                            className="btn btn-xs btn-outline btn-primary mt-3 gap-2"
+                            onClick={(service as any).onAuth}
+                            disabled={isProcessing === service.id}
+                        >
+                            {isProcessing === service.id ? <Loader2 className="animate-spin" size={14} /> : service.icon}
+                            Authenticate
+                        </button>
+                    )}
                 </div>
 
                 <div className={clsx(
