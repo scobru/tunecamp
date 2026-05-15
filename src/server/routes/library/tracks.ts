@@ -22,8 +22,11 @@ import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { getStreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
+import { LocalizationService } from "../../modules/catalog/localization.service.js";
 
-export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService): Router {
+
+export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService, localizationService?: LocalizationService): Router {
+
     const router = Router();
 
     /**
@@ -244,6 +247,33 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const deleteFile = req.query.deleteFile === "true";
         await catalogService.deleteTrack(id, deleteFile);
         res.json({ message: "Track deleted" });
+    }));
+
+    /**
+     * POST /api/tracks/:id/localize
+     * Rips an external stream into local library (Admin only)
+     */
+    router.post("/:id/localize", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+            throw new ForbiddenError("Only admins can localize tracks");
+        }
+
+        if (!localizationService) {
+            throw new BadRequestError("Localization service is not configured");
+        }
+
+        const trackId = parseInt(req.params.id);
+        if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
+
+        console.log(`🎬 [API] Localization triggered for track ${trackId} by ${req.username}`);
+        
+        try {
+            const updatedTrack = await localizationService.localizeTrack(trackId);
+            res.json({ success: true, track: updatedTrack });
+        } catch (error: any) {
+            console.error(`❌ [API] Localization failed for track ${trackId}:`, error.message);
+            res.status(500).json({ error: error.message });
+        }
     }));
 
     /**

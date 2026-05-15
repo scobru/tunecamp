@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Trash2, Camera, Loader2, Play, Heart, Download, Unlock, ExternalLink, MoreHorizontal, CheckCircle2, Wallet, Music, Copyright } from "lucide-react";
+import { Share2, Trash2, Camera, Loader2, Play, Heart, Download, Unlock, ExternalLink, MoreHorizontal, CheckCircle2, Wallet, Music, Copyright, CloudDownload } from "lucide-react";
+
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -193,6 +194,26 @@ export const AlbumDetails = () => {
       console.error("Failed to delete album:", err);
       alert(err.message || "Failed to delete album");
       setLoading(false);
+    }
+  };
+
+  const handleLocalize = async (track: any) => {
+    if (!window.confirm(`Do you want to download and localize "${track.title}"? This will save the audio to the server's local library.`)) {
+      return;
+    }
+    
+    try {
+      alert(`Localizing "${track.title}"... This may take a minute. You will see a success message when finished.`);
+      const result = await API.localizeTrack(track.id);
+      if (result.success) {
+        alert(`Successfully localized "${track.title}"!`);
+        // Refresh album data
+        const data = await (isRelease ? API.getRelease(idOrSlug!) : API.getAlbum(idOrSlug!));
+        setAlbum(data);
+      }
+    } catch (err: any) {
+      console.error("Localization failed:", err);
+      alert(`Failed to localize track: ${err.message}`);
     }
   };
 
@@ -513,6 +534,13 @@ export const AlbumDetails = () => {
                              <Music size={16} aria-hidden="true" /> Edit Metadata
                            </a>
                          </li>
+                       )}
+                       {isAdmin && (!track.file_path || track.file_path.startsWith('http') || track.file_path.startsWith('gdrive://')) && (
+                          <li className="opacity-50 hover:opacity-100">
+                            <a onClick={() => handleLocalize(track)}>
+                               <CloudDownload size={16} aria-hidden="true" /> Localize (Rip)
+                            </a>
+                          </li>
                        )}
                     </ul>
                   </div>

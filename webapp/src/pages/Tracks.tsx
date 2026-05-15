@@ -10,7 +10,9 @@ import {
   Share2,
   ListMusic,
   Activity,
+  CloudDownload,
 } from "lucide-react";
+
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePurchases } from "../hooks/usePurchases";
@@ -105,6 +107,26 @@ export const Tracks = () => {
       });
     } catch (err) {
       console.error("Failed to toggle like:", err);
+    }
+  };
+
+  const handleLocalize = async (track: Track) => {
+    if (!window.confirm(`Do you want to download and localize "${track.title}"? This will save the audio to the server's local library.`)) {
+      return;
+    }
+    
+    try {
+      alert(`Localizing "${track.title}"... This may take a minute.`);
+      const result = await API.localizeTrack(track.id);
+      if (result.success) {
+        alert(`Successfully localized "${track.title}"!`);
+        // Refresh tracks list
+        const data = await API.getTracks();
+        setTracks(data);
+      }
+    } catch (err: any) {
+      console.error("Localization failed:", err);
+      alert(`Failed to localize track: ${err.message}`);
     }
   };
 
@@ -248,6 +270,13 @@ export const Tracks = () => {
                           </a>
                         </li>
                       )}
+                      {isAdminAuthenticated && (!track.file_path || track.file_path.startsWith('http') || track.file_path.startsWith('gdrive://')) && (
+                          <li>
+                            <a onClick={() => handleLocalize(track)}>
+                               <CloudDownload size={16} className="text-primary" /> Localize (Rip)
+                            </a>
+                          </li>
+                       )}
                     </ul>
                   </div>
                 </div>

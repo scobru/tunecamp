@@ -61,10 +61,6 @@ COPY package*.json ./
 COPY deps ./deps
 COPY webapp/package.json ./webapp/
 
-# Puppeteer configuration to skip Chrome download
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-
 # Install all dependencies (including dev) for the entire workspace
 RUN npm ci && \
     npm install @rollup/rollup-linux-x64-musl lightningcss-linux-x64-musl @tailwindcss/oxide-linux-x64-musl && \
@@ -103,24 +99,12 @@ WORKDIR /app
 # Cache buster: forces this stage to rebuild every deploy (no "Using cache" on COPY --from=builder)
 RUN echo "Production deploy commit: ${CAPROVER_GIT_COMMIT_SHA:-none}"
 
-# Install runtime dependencies for native modules and Puppeteer/Chrome
+# Install runtime dependencies for native modules
 RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    udev \
     ffmpeg \
     curl \
     libc6-compat \
     gcompat
-
-# Puppeteer configuration for Alpine
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy package files, local dependencies and install production dependencies
 COPY package*.json ./

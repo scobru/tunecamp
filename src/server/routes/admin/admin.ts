@@ -16,6 +16,11 @@ import type { GoogleDriveService } from "../../modules/storage/google-drive.serv
 import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 
+import multer from "multer";
+import { YouTubeCookieManager } from "../../utils/youtube-session.js";
+
+const upload = multer({ dest: "uploads/" });
+
 export function createAdminRoutes(
     database: DatabaseService,
     scanner: ScannerService,
@@ -490,35 +495,31 @@ export function createAdminRoutes(
     });
 
     /**
-     * POST /api/admin/system/youtube-auth
-     * Trigger Puppeteer session for YouTube authentication (Root Admin only)
+     * POST /api/admin/system/youtube-cookies
+     * Upload YouTube cookies (Root Admin only)
      */
-    router.post("/system/youtube-auth", async (req: AuthenticatedRequest, res: any) => {
+    router.post("/system/youtube-cookies", upload.single("cookies"), async (req: AuthenticatedRequest, res: any) => {
         try {
             if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only root admin can trigger YouTube authentication" });
+                return res.status(403).json({ error: "Only root admin can upload YouTube cookies" });
             }
 
-            console.log(`🎬 [Admin] YouTube Puppeteer session triggered by ${req.username}`);
+            if (!req.file) {
+                return res.status(400).json({ error: "No cookie file uploaded" });
+            }
+
+            const cookieManager = new YouTubeCookieManager();
+            const content = await fs.readFile(req.file.path, 'utf8');
             
-            // Import dynamically to avoid loading Puppeteer unless needed
-            const { YouTubeSessionGenerator } = await import("../../utils/youtube-session.js");
-            const generator = new YouTubeSessionGenerator();
+            await cookieManager.saveCookies(content);
+            
+            // Clean up temp file
+            await fs.unlink(req.file.path).catch(() => {});
 
-            // Run in background as it requires manual interaction and can take time
-            (async () => {
-                try {
-                    await generator.launchLoginSession();
-                    console.log(`✅ [Admin] YouTube session generation completed.`);
-                } catch (e) {
-                    console.error("❌ [Admin] YouTube session generation failed:", e);
-                }
-            })();
-
-            res.json({ message: "YouTube login window opened on the server. Please complete the login there." });
+            res.json({ message: "YouTube cookies uploaded and saved successfully" });
         } catch (error) {
-            console.error("Error triggering YouTube auth:", error);
-            res.status(500).json({ error: "Failed to trigger YouTube authentication" });
+            console.error("Error uploading YouTube cookies:", error);
+            res.status(500).json({ error: "Failed to upload YouTube cookies" });
         }
     });
 

@@ -77,13 +77,32 @@ export const IntegrationsPanel = () => {
     }
   };
 
+  const handleYouTubeCookieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing('youtube');
+    try {
+        const res = await API.uploadYouTubeCookies(file);
+        alert(res.message);
+        fetchStatus();
+    } catch (e: any) {
+        console.error("Upload failed:", e);
+        alert("Upload failed: " + e.message);
+    } finally {
+        setIsProcessing(null);
+    }
+  };
+
   const handleAuth = async (serviceId: string) => {
+    if (serviceId === 'youtube') {
+        document.getElementById('youtube-cookie-input')?.click();
+        return;
+    }
+    
     setIsProcessing(serviceId);
     try {
-        if (serviceId === 'youtube') {
-            const res = await API.triggerYouTubeAuth();
-            alert(res.message);
-        }
+        // Other auth logic if any
     } catch (e: any) {
         console.error("Auth failed:", e);
         alert("Auth failed: " + e.message);
@@ -251,6 +270,13 @@ export const IntegrationsPanel = () => {
 
   return (
     <div className="space-y-8">
+      <input 
+        type="file" 
+        id="youtube-cookie-input" 
+        className="hidden" 
+        accept=".txt"
+        onChange={handleYouTubeCookieUpload}
+      />
       <div className="flex justify-between items-center">
         <div>
           <h3 className="font-bold text-xl flex items-center gap-2">
@@ -320,7 +346,7 @@ export const IntegrationsPanel = () => {
                             disabled={isProcessing === service.id}
                         >
                             {isProcessing === service.id ? <Loader2 className="animate-spin" size={14} /> : service.icon}
-                            Authenticate
+                            {service.id === 'youtube' ? 'Upload Cookies' : 'Authenticate'}
                         </button>
                     )}
                 </div>

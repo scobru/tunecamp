@@ -103,6 +103,8 @@ import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { latchDomain, kprs } from "./modules/network/zen-network.js";
 import { getZen } from "./modules/network/zen.js";
+import { LocalizationService } from "./modules/catalog/localization.service.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -214,6 +216,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const fingerprintService = new FingerprintService();
 
     const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService, openRouterService);
+
+    const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
+
 
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
     const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, fingerprintService, zendbService, autotaggerService);
@@ -329,8 +334,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, catalogService, config.musicDir));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, config.musicDir, authService, gdriveService, streamingService));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, config.musicDir, authService, gdriveService, streamingService, localizationService));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
+
 
     if (gdriveService) {
         app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware, catalogService));

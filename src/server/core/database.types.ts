@@ -537,7 +537,7 @@ export interface DatabaseService {
     getTopTracks(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): TrackWithPlayCount[];
     getTopArtists(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): ArtistWithPlayCount[];
     getPrimaryAdminId(): number | null;
-    getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist'): Track[];
+    getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[];
     getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[];
     getArtistsMissingMetadata(filter: 'photo'): Artist[];
     getListeningStats(): ListeningStats;

@@ -178,6 +178,7 @@ export const API = {
     starTrack: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean, trackId?: number }>(`tracks/${encodeURIComponent(String(id))}/star`, metadata)),
     unstarTrack: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`tracks/${encodeURIComponent(String(id))}/star`)),
     rateTrack: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`tracks/${encodeURIComponent(String(id))}/rating`, { rating })),
+    localizeTrack: (id: string | number) => handleResponse(api.post<{ success: boolean, track: Track }>(`tracks/${encodeURIComponent(String(id))}/localize`)),
     getStarredTracks: () => handleResponse(api.get<string[]>('tracks/starred')),
     getStarredAlbums: () => handleResponse(api.get<string[]>('albums/starred')),
 
@@ -354,7 +355,11 @@ export const API = {
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     consolidateDatabase: () => handleResponse(api.post<{ message: string }>('admin/system/consolidate-db')),
     syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),
-    triggerYouTubeAuth: () => handleResponse(api.post<{ message: string }>('admin/system/youtube-auth')),
+    uploadYouTubeCookies: (file: File) => {
+        const formData = new FormData();
+        formData.append('cookies', file);
+        return handleResponse(api.post<{ message: string }>('admin/system/youtube-cookies', formData));
+    },
     getAdminStats: (options: { mine?: boolean } = {}) => handleResponse(api.get<AdminStats>(`admin/stats${options.mine ? '?mine=true' : ''}`)),
     getBrowser: (path = '') => handleResponse(api.get<any>(`browser?path=${encodeURIComponent(path)}`)),
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`browser?path=${encodeURIComponent(path)}`)),

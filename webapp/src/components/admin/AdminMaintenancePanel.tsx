@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2 } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, CloudDownload } from "lucide-react";
+
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
 import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
@@ -208,8 +209,44 @@ export const AdminMaintenancePanel = () => {
             setIsProcessing(false);
         }
     };
+    
+    const handleLocalize = async (id: number) => {
+        setIsProcessing(true);
+        try {
+            await API.localizeTrack(id);
+            loadTracks();
+        } catch (e: any) {
+            alert("Localization failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleBulkLocalize = async (ids: number[]) => {
+        if (ids.length === 0) return;
+        if (!confirm(`Are you sure you want to localize ${ids.length} tracks? This will download them to the server library.`)) return;
+        
+        setIsProcessing(true);
+        let success = 0;
+        let failed = 0;
+        try {
+            for (const id of ids) {
+                try {
+                    await API.localizeTrack(id);
+                    success++;
+                } catch (e) {
+                    failed++;
+                }
+            }
+            alert(`✅ Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
+            loadTracks();
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     const handleShareFingerprint = async (trackId: number) => {
+
         setIsProcessing(true);
         try {
             await API.shareFingerprint(trackId);
@@ -356,6 +393,7 @@ export const AdminMaintenancePanel = () => {
                             <option value="genre">Missing Genre</option>
                             <option value="year">Missing Year</option>
                             <option value="cover">Missing Cover</option>
+                            <option value="external">External / Streaming</option>
                         </select>
                     )}
                     
@@ -550,6 +588,17 @@ export const AdminMaintenancePanel = () => {
                             Community Match ({selectedIds.length})
                         </button>
                     </div>
+
+                    <div className="flex gap-1 items-center bg-indigo-500/10 p-1 rounded-lg border border-indigo-500/20">
+                        <button 
+                            className="btn btn-sm btn-outline btn-primary border-indigo-500/30 text-indigo-400"
+                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                            onClick={() => handleBulkLocalize(selectedIds)}
+                        >
+                            <CloudDownload size={18} />
+                            Localize Selected ({selectedIds.length})
+                        </button>
+                    </div>
                 </div>
             ) : mode === 'albums' ? (
                 <div className="flex flex-col gap-4">
@@ -742,6 +791,15 @@ export const AdminMaintenancePanel = () => {
                                             >
                                                 <Share2 size={12} />
                                             </button>
+                                            {mode === 'tracks' && (!item.file_path || item.file_path.startsWith('http') || item.file_path.startsWith('gdrive://')) && (
+                                                <button 
+                                                    className="btn btn-xs btn-ghost text-primary"
+                                                    title="Localize (Rip)"
+                                                    onClick={() => handleLocalize(item.id)}
+                                                >
+                                                    <CloudDownload size={12} />
+                                                </button>
+                                            )}
                                             <button 
                                                 className="btn btn-xs btn-ghost"
                                                 onClick={() => {

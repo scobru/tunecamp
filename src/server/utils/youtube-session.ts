@@ -1,17 +1,12 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import fs from 'fs-extra';
 import path from 'path';
 
-puppeteer.use(StealthPlugin());
-
 /**
- * YouTubeSessionGenerator
+ * YouTubeCookieManager
  * 
- * Provides a way to manually perform YouTube authentication on the server's IP
- * to obtain valid cookies and bypass bot detection.
+ * Handles the storage and validation of YouTube cookies used by yt-dlp.
  */
-export class YouTubeSessionGenerator {
+export class YouTubeCookieManager {
     private cookiesPath: string;
 
     constructor() {
@@ -19,98 +14,26 @@ export class YouTubeSessionGenerator {
     }
 
     /**
-     * Starts a visible browser (if possible) or a controlled session to perform login.
-     * Note: In a headless server environment, this might require a VNC or remote debug port.
+     * Saves raw cookie content to the standard path.
+     * @param content The cookie file content (ideally in Netscape format)
      */
-    async launchLoginSession(): Promise<void> {
-        console.log("🚀 Starting YouTube Login Session...");
-        
-        const wsEndpoint = process.env.PUPPETEER_WS_ENDPOINT;
-        const isHeadless = process.env.PUPPETEER_HEADLESS === 'true';
-        const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-
-        if (!wsEndpoint && !isHeadless) {
-            console.log("⚠️ If running on a headless server, ensure you have an X-server or use remote debugging.");
-        }
-
-        let browser;
-        if (wsEndpoint) {
-            console.log(`🌐 Connecting to remote browser at: ${wsEndpoint}`);
-            browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
-        } else {
-            browser = await puppeteer.launch({
-                headless: isHeadless ? 'new' as any : false,
-                executablePath: executablePath || undefined,
-                args: [
-                    '--no-sandbox', 
-                    '--disable-setuid-sandbox', 
-                    '--window-size=1280,720',
-                    '--disable-dev-shm-usage'
-                ],
-                defaultViewport: null
-            });
-        }
-
-        const page = await browser.newPage();
-        
-        // Go to YouTube Login
-        await page.goto('https://accounts.google.com/ServiceLogin?service=youtube', { waitUntil: 'networkidle2' });
-
-        console.log("👉 Please perform the login in the browser window.");
-        console.log("⌛ Waiting for authentication to complete (looking for SID cookie)...");
-
-        // Wait for user to be logged in (we look for a specific cookie that indicates session)
-        let isLoggedIn = false;
-        while (!isLoggedIn) {
-            const cookies = await page.cookies();
-            const hasSid = cookies.some(c => c.name === 'SID' && c.domain.includes('.google.com'));
-            const hasLoginInfo = cookies.some(c => c.name === 'LOGIN_INFO' && c.domain.includes('.youtube.com'));
-            
-            if (hasSid && hasLoginInfo) {
-                isLoggedIn = true;
-                console.log("✅ Login detected!");
-                
-                // Format cookies for yt-dlp (Netscape format)
-                const netscapeCookies = this.convertToNetscape(cookies);
-                await fs.ensureDir(path.dirname(this.cookiesPath));
-                await fs.writeFile(this.cookiesPath, netscapeCookies);
-                
-                console.log(`💾 Cookies saved to: ${this.cookiesPath}`);
-            } else {
-                // Check if browser was closed
-                if (browser.process()?.killed) {
-                    console.log("❌ Browser closed before login completed.");
-                    return;
-                }
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
-
-        console.log("🎉 Session successfully generated. You can close the browser or it will close in 10 seconds.");
-        await new Promise(resolve => setTimeout(resolve, 10000));
-        await browser.close();
+    async saveCookies(content: string): Promise<void> {
+        await fs.ensureDir(path.dirname(this.cookiesPath));
+        await fs.writeFile(this.cookiesPath, content);
+        console.log(`💾 YouTube cookies saved to: ${this.cookiesPath}`);
     }
 
     /**
-     * Converts Puppeteer cookies to Netscape format required by yt-dlp
+     * Gets the path where cookies are stored.
      */
-    private convertToNetscape(cookies: any[]): string {
-        let output = "# Netscape HTTP Cookie File\n";
-        output += "# http://curl.haxx.se/rfc/cookie_spec.html\n";
-        output += "# This is a generated file!  Do not edit.\n\n";
+    getCookiesPath(): string {
+        return this.cookiesPath;
+    }
 
-        for (const cookie of cookies) {
-            const domain = cookie.domain;
-            const flag = domain.startsWith('.') ? "TRUE" : "FALSE";
-            const path = cookie.path;
-            const secure = cookie.secure ? "TRUE" : "FALSE";
-            const expiration = cookie.expires ? Math.floor(cookie.expires) : 0;
-            const name = cookie.name;
-            const value = cookie.value;
-
-            output += `${domain}\t${flag}\t${path}\t${secure}\t${expiration}\t${name}\t${value}\n`;
-        }
-
-        return output;
+    /**
+     * Checks if cookies exist.
+     */
+    async hasCookies(): Promise<boolean> {
+        return fs.pathExists(this.cookiesPath);
     }
 }
