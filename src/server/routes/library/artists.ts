@@ -474,9 +474,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                     ...t,
                     starred: username ? database.isStarred(username, 'track', String(t.id)) : false,
                     rating: username ? database.getItemRating(username, 'track', String(t.id)) : 0
-                })),
-                starred: username ? database.isStarred(username, 'artist', String(artist.id)) : false,
-                rating: username ? database.getItemRating(username, 'artist', String(artist.id)) : 0
+                }))
             });
         } catch (error) {
             console.error("Error getting artist:", error);
