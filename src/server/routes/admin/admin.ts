@@ -486,32 +486,39 @@ export function createAdminRoutes(
      * Sync all file tags with database metadata (Root Admin only)
      */
     router.post("/system/sync-tags", async (req: AuthenticatedRequest, res: any) => {
+        // ... existing implementation ...
+    });
+
+    /**
+     * POST /api/admin/system/youtube-auth
+     * Trigger Puppeteer session for YouTube authentication (Root Admin only)
+     */
+    router.post("/system/youtube-auth", async (req: AuthenticatedRequest, res: any) => {
         try {
             if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only root admin can sync tags to files" });
+                return res.status(403).json({ error: "Only root admin can trigger YouTube authentication" });
             }
 
-            console.log(`🏷️ [Admin] Manual tag sync triggered by ${req.username}`);
+            console.log(`🎬 [Admin] YouTube Puppeteer session triggered by ${req.username}`);
+            
+            // Import dynamically to avoid loading Puppeteer unless needed
+            const { YouTubeSessionGenerator } = await import("../../utils/youtube-session.js");
+            const generator = new YouTubeSessionGenerator();
 
-            // Run in background to avoid timeout
-            const m = maintenance;
+            // Run in background as it requires manual interaction and can take time
             (async () => {
                 try {
-                    if (m) {
-                        await m.syncAllTagsFromDb();
-                        console.log(`✅ [Admin] Manual tag sync complete.`);
-                    } else {
-                        console.error("❌ [Admin] Maintenance service not available for tag sync");
-                    }
+                    await generator.launchLoginSession();
+                    console.log(`✅ [Admin] YouTube session generation completed.`);
                 } catch (e) {
-                    console.error("❌ [Admin] Background tag sync failed:", e);
+                    console.error("❌ [Admin] YouTube session generation failed:", e);
                 }
             })();
 
-            res.json({ message: "File tag synchronization started in background. This may take several minutes." });
+            res.json({ message: "YouTube login window opened on the server. Please complete the login there." });
         } catch (error) {
-            console.error("Error triggering tag sync:", error);
-            res.status(500).json({ error: "Failed to trigger tag sync" });
+            console.error("Error triggering YouTube auth:", error);
+            res.status(500).json({ error: "Failed to trigger YouTube authentication" });
         }
     });
 

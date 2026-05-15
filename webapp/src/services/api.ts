@@ -354,6 +354,7 @@ export const API = {
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     consolidateDatabase: () => handleResponse(api.post<{ message: string }>('admin/system/consolidate-db')),
     syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),
+    triggerYouTubeAuth: () => handleResponse(api.post<{ message: string }>('admin/system/youtube-auth')),
     getAdminStats: (options: { mine?: boolean } = {}) => handleResponse(api.get<AdminStats>(`admin/stats${options.mine ? '?mine=true' : ''}`)),
     getBrowser: (path = '') => handleResponse(api.get<any>(`browser?path=${encodeURIComponent(path)}`)),
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`browser?path=${encodeURIComponent(path)}`)),
