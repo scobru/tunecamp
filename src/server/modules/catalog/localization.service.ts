@@ -104,21 +104,27 @@ export class LocalizationService {
         console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url} (Provider: ${track.service || 'unknown'})`);
 
         try {
-            const format = 'mp3';
+            // Official Best Practice: Use native best audio without forced conversion to avoid quality loss.
+            // We use ba* to get the best audio-only stream. 
+            // We prefer m4a/mp4 for better compatibility if available, but keep quality as priority.
             const tempPath = path.join(localizedDir, `temp_${trackId}.%(ext)s`);
 
             const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
             const isSoundCloud = url.includes('soundcloud.com') || url.includes('sndcdn.com');
             
             const args = [
-                '-x',
-                '--audio-format', format,
-                '--audio-quality', '0',
+                '-f', 'ba/ba*',
                 '-o', tempPath,
                 '--no-playlist',
                 '--prefer-free-formats',
                 '--add-metadata',
                 '--embed-thumbnail',
+                // Official Best Practice: Impersonate a real browser to bypass TLS fingerprinting
+                '--impersonate', 'chrome',
+                // Official Best Practice: Use multiple concurrent fragments for faster downloads
+                '-N', '5',
+                // Official Best Practice: Use native filename restriction
+                '--restrict-filenames'
             ];
 
             if (isYouTube) {
@@ -142,28 +148,32 @@ export class LocalizationService {
             await execFileAsync('yt-dlp', args);
 
             // 3. Move to library and update DB
-            const sanitizedTitle = (track.title || "Untitled").replace(/[^a-z0-9_\-]/gi, '_');
-            const sanitizedArtist = (track.artist_name || "Unknown").replace(/[^a-z0-9_\-]/gi, '_');
-            const relativePath = path.posix.join("localized", `${sanitizedArtist} - ${sanitizedTitle}.${format}`);
-            const finalPath = path.join(this.musicDir, relativePath);
-
-            await fs.ensureDir(path.dirname(finalPath));
-            
             // Find the downloaded file (yt-dlp adds the extension)
             const files = await fs.readdir(localizedDir);
             // Search for files starting with temp_{trackId}
             const downloadedFile = files.find(f => f.startsWith(`temp_${trackId}.`));
-            if (downloadedFile) {
-                await fs.move(path.join(localizedDir, downloadedFile), finalPath, { overwrite: true });
+            
+            if (!downloadedFile) {
+                throw new Error("Downloaded file not found after yt-dlp execution");
             }
 
-            // Update DB with local path and mark as local service
+            const actualExt = path.extname(downloadedFile).substring(1); // e.g. 'opus', 'm4a', 'webm'
+            const sanitizedTitle = (track.title || "Untitled").replace(/[^a-z0-9_\-]/gi, '_');
+            const sanitizedArtist = (track.artist_name || "Unknown").replace(/[^a-z0-9_\-]/gi, '_');
+            const relativePath = path.posix.join("localized", `${sanitizedArtist} - ${sanitizedTitle}.${actualExt}`);
+            const finalPath = path.join(this.musicDir, relativePath);
+
+            await fs.ensureDir(path.dirname(finalPath));
+            await fs.move(path.join(localizedDir, downloadedFile), finalPath, { overwrite: true });
+
+            // Update DB with local path, detected format and mark as local service
             this.database.updateTrack(trackId, { 
                 file_path: relativePath, 
+                format: actualExt,
                 service: 'local' 
             });
             
-            console.log(`✅ [Localization] Track ${trackId} localized to ${relativePath}`);
+            console.log(`✅ [Localization] Track ${trackId} localized to ${relativePath} (Format: ${actualExt})`);
             return this.database.getTrack(trackId)!;
         } catch (error: any) {
             console.error(`❌ [Localization] Error during download:`, error.message);
