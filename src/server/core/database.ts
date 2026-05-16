@@ -863,17 +863,6 @@ export function createDatabase(dbPath: string): DatabaseService {
         console.error("Migration error (price_usdt column):", e);
     }
 
-    try {
-        const tableInfo = db.pragma("table_info(torrents)") as any[];
-        const hasOwnerId = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "owner_id");
-        if (!hasOwnerId) {
-            console.log("📦 Migrating database: Adding owner_id to torrents table...");
-            db.exec("ALTER TABLE torrents ADD COLUMN owner_id INTEGER REFERENCES admin(id) ON DELETE SET NULL");
-        }
-    } catch (e) {
-        console.error("Migration error (torrents owner_id):", e);
-    }
-
     const trackRepository = new TrackRepository(db);
     const albumRepository = new AlbumRepository(db);
     const artistRepository = new ArtistRepository(db);
@@ -1082,22 +1071,30 @@ export function createDatabase(dbPath: string): DatabaseService {
         console.error("Migration error (unify owner_id v2):", e);
     }
     
-    // Migration: Update torrents table with status and progress
+    // Migration: Update torrents table with missing columns
     try {
         const tableInfo = db.pragma("table_info(torrents)") as any[];
-        const hasStatus = Array.isArray(tableInfo) && tableInfo.some(col => col.name === "status");
-        if (!hasStatus) {
-            console.log("📦 Migrating database: Adding status, progress, speed, and size to torrents table...");
-            db.exec("ALTER TABLE torrents ADD COLUMN status TEXT DEFAULT 'metadata'");
-            db.exec("ALTER TABLE torrents ADD COLUMN progress REAL DEFAULT 0");
-            db.exec("ALTER TABLE torrents ADD COLUMN download_speed REAL DEFAULT 0");
-            db.exec("ALTER TABLE torrents ADD COLUMN upload_speed REAL DEFAULT 0");
-            db.exec("ALTER TABLE torrents ADD COLUMN num_peers INTEGER DEFAULT 0");
-            db.exec("ALTER TABLE torrents ADD COLUMN size INTEGER DEFAULT 0");
-            db.exec("ALTER TABLE torrents ADD COLUMN path TEXT");
+        const columns = Array.isArray(tableInfo) ? tableInfo.map(col => col.name) : [];
+        
+        const requiredColumns = [
+            { name: "status", def: "TEXT DEFAULT 'metadata'" },
+            { name: "progress", def: "REAL DEFAULT 0" },
+            { name: "download_speed", def: "REAL DEFAULT 0" },
+            { name: "upload_speed", def: "REAL DEFAULT 0" },
+            { name: "num_peers", def: "INTEGER DEFAULT 0" },
+            { name: "size", def: "INTEGER DEFAULT 0" },
+            { name: "path", def: "TEXT" },
+            { name: "owner_id", def: "INTEGER REFERENCES admin(id) ON DELETE SET NULL" }
+        ];
+
+        for (const col of requiredColumns) {
+            if (!columns.includes(col.name)) {
+                console.log(`📦 Migrating database: Adding ${col.name} to torrents table...`);
+                db.exec(`ALTER TABLE torrents ADD COLUMN ${col.name} ${col.def}`);
+            }
         }
     } catch (e) {
-        console.error("Migration error (torrents status):", e);
+        console.error("Migration error (torrents columns):", e);
     }
 
     // Migration: Add telegram bot settings to admin table

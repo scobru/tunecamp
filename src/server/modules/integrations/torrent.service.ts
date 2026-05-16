@@ -87,6 +87,16 @@ export class TorrentService {
 
     public addTorrent(magnetUri: string, ownerId: number) {
         try {
+            // Check if torrent already exists in client to avoid "Cannot add duplicate torrent" error
+            const infoHashMatch = magnetUri.match(/btih:([a-f0-9]+)/i);
+            if (infoHashMatch) {
+                const infoHash = infoHashMatch[1].toLowerCase();
+                if (this.client.get(infoHash)) {
+                    console.debug(`🧲 Torrent ${infoHash} already in client, skipping add.`);
+                    return;
+                }
+            }
+
             this.client.add(magnetUri, { path: this.torrentDir }, (torrent) => {
                 try {
                     console.log(`🧲 Torrent added: ${torrent.name} (${torrent.infoHash})`);
