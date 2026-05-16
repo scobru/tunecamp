@@ -91,7 +91,8 @@ export class TorrentService {
             const infoHashMatch = magnetUri.match(/btih:([a-f0-9]+)/i);
             if (infoHashMatch) {
                 const infoHash = infoHashMatch[1].toLowerCase();
-                if (this.client.get(infoHash)) {
+                const alreadyHas = this.client.torrents.some(t => t.infoHash === infoHash);
+                if (alreadyHas) {
                     console.debug(`🧲 Torrent ${infoHash} already in client, skipping add.`);
                     return;
                 }
