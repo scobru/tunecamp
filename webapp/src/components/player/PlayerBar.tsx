@@ -17,7 +17,9 @@ import {
   Radio,
   Download,
   Maximize2,
-  MoreVertical
+  MoreVertical,
+  User,
+  Disc
 } from "lucide-react";
 import clsx from "clsx";
 import * as ColorThiefReactModule from "color-thief-react";
@@ -278,6 +280,24 @@ export const PlayerBar = () => {
     (currentTrack.owner_id && String(currentTrack.owner_id) === String(useAuthStore.getState().user?.id)) ||
     (currentTrack.artistId && String(currentTrack.artistId) === String(useAuthStore.getState().user?.artistId)));
 
+  const handleStarArtist = async () => {
+    if (!currentTrack?.artistId && !currentTrack?.artistName) return;
+    try {
+        const id = currentTrack.artistId ? String(currentTrack.artistId) : `ext:artist:${currentTrack.artistName}`;
+        await API.starArtist(id, { name: currentTrack.artistName });
+        // Optional: show toast or feedback
+    } catch (e) { console.error(e); }
+  };
+
+  const handleStarAlbum = async () => {
+    if (!currentTrack?.albumId && !currentTrack?.album_title) return;
+    try {
+        const id = currentTrack.albumId ? String(currentTrack.albumId) : `ext:album:${currentTrack.album_title}`;
+        await API.starAlbum(id, { title: currentTrack.album_title, artist: currentTrack.artistName });
+        // Optional: show toast or feedback
+    } catch (e) { console.error(e); }
+  };
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-base-content/5 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
@@ -431,14 +451,37 @@ export const PlayerBar = () => {
               <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100">
                 <MoreVertical size={18} />
               </div>
-              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-48 border border-base-content/10 mb-4">
+              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-56 border border-base-content/10 mb-4">
                 <li><a onClick={toggleShuffle}><Shuffle size={16} className={clsx(isShuffled && "text-primary")}/> Shuffle</a></li>
                 <li><a onClick={toggleRepeat}><Repeat size={16} className={clsx(repeatMode !== 'none' && "text-primary")}/> Repeat: {repeatMode}</a></li>
                 <li><a onClick={toggleRadio}><Radio size={16} className={clsx(isRadioMode && "text-primary")}/> Radio Mode</a></li>
+                <div className="divider my-1 opacity-10"></div>
+                <li><a onClick={handleStarArtist}><User size={16}/> Favorite Artist</a></li>
+                <li><a onClick={handleStarAlbum}><Disc size={16}/> Favorite Album</a></li>
                 {isAdminOrOwner && (
-                  <li><a href={API.getTrackDownloadUrl(currentTrack.id)} target="_blank"><Download size={16}/> Download</a></li>
+                  <>
+                    <div className="divider my-1 opacity-10"></div>
+                    <li><a href={API.getTrackDownloadUrl(currentTrack.id)} target="_blank"><Download size={16}/> Download</a></li>
+                  </>
                 )}
               </ul>
+            </div>
+
+            <div className="hidden lg:flex gap-1">
+                <button 
+                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100"
+                    onClick={handleStarArtist}
+                    title="Favorite Artist"
+                >
+                    <User size={18} />
+                </button>
+                <button 
+                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100"
+                    onClick={handleStarAlbum}
+                    title="Favorite Album"
+                >
+                    <Disc size={18} />
+                </button>
             </div>
 
             <button
