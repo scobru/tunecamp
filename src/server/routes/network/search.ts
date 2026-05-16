@@ -216,11 +216,14 @@ export function createSearchRoutes(
             // We only include these if:
             // a) The user is an admin (useful for metadata matching)
             // b) We have few streaming results (to provide more discovery options)
+            // AND we have at least one active streaming provider to actually play the content
             // AND we skip providers that are already in the streaming service to avoid duplicates.
+            const streamingProviders = streamingService.getRegistry().getEnabled();
+            const hasAudioEngines = streamingProviders.length > 0;
             const streamingProviderIds = new Set(streamingService.listProviders().map(p => p.id));
 
             let externalResults: any[] = [];
-            if (isAdmin || streamingResults.length < 5) {
+            if (hasAudioEngines && (isAdmin || streamingResults.length < 5)) {
                 const metadataProviders = metadataService.getRegistry().getEnabled()
                     .filter(p => !streamingProviderIds.has(p.id)); // Avoid duplicates
 
