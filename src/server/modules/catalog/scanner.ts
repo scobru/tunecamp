@@ -652,6 +652,16 @@ export class Scanner implements ScannerService {
                     this.database.updateTrackLosslessPath(existing.id, normalizedPath);
                 }
 
+                // --- TITLE PROTECTION ---
+                const newTitle = metadataHints?.title || common.title || path.basename(currentFilePath, ext);
+                if (existing.title !== newTitle) {
+                    if (existing.title === "Untitled" || metadataHints?.title || overrideArtistId) {
+                        this.database.updateTrackTitle(existing.id, newTitle);
+                    } else {
+                        console.log(`🛡️ [Scanner] Protecting existing title for track ${existing.id} (Current: "${existing.title}", Tag Suggested: "${newTitle}")`);
+                    }
+                }
+
                 // --- ALBUM ASSOCIATION PROTECTION ---
                 // Only update album if the track doesn't have one, or if we found a "stronger" one (like a formal Release)
                 // We must NEVER overwrite a manual association (usually a Release) with a folder-based Library album.
