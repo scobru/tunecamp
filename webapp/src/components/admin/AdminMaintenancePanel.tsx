@@ -804,20 +804,24 @@ export const AdminMaintenancePanel = () => {
                                     )}
                                     <td className="text-right">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button 
-                                                className="btn btn-xs btn-ghost text-primary"
-                                                title="Community Match"
-                                                onClick={() => handleFingerprintLookup(item.id)}
-                                            >
-                                                <Fingerprint size={12} />
-                                            </button>
-                                            <button 
-                                                className="btn btn-xs btn-ghost text-secondary"
-                                                title="Share with Community"
-                                                onClick={() => handleShareFingerprint(item.id)}
-                                            >
-                                                <Share2 size={12} />
-                                            </button>
+                                            {mode === 'tracks' && (
+                                                <>
+                                                    <button 
+                                                        className="btn btn-xs btn-ghost text-primary"
+                                                        title="Community Match"
+                                                        onClick={() => handleFingerprintLookup(item.id)}
+                                                    >
+                                                        <Fingerprint size={12} />
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-xs btn-ghost text-secondary"
+                                                        title="Share with Community"
+                                                        onClick={() => handleShareFingerprint(item.id)}
+                                                    >
+                                                        <Share2 size={12} />
+                                                    </button>
+                                                </>
+                                            )}
                                             <button 
                                                 className="btn btn-xs btn-ghost"
                                                 onClick={() => {
