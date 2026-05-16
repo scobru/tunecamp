@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Search, Music, User, Book, Check, X, Loader2 } from "lucide-react";
 import API from "../services/api";
-import type { Track } from "../types";
 
 interface MetadataMatch {
   id: string;
@@ -11,6 +10,9 @@ interface MetadataMatch {
   coverUrl?: string;
   source?: "musicbrainz" | "discogs" | "itunes";
   date?: string;
+  genre?: string;
+  year?: string | number;
+  description?: string;
 }
 
 interface MetadataMatchModalProps {
