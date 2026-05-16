@@ -293,8 +293,6 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     noPlaylist: true,
                     // Use a realistic modern User-Agent
                     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
-                    // Official Best Practice: Impersonate a real browser to bypass TLS fingerprinting
-                    impersonate: 'chrome',
                     // Prioritizing mweb and android clients. mweb is currently the most resilient to bot checks.
                     // po_token=auto attempts to use installed providers like bgutil-ytdlp-pot-provider
                     extractorArgs: 'youtube:player_client=mweb,android;po_token=auto',

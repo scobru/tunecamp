@@ -119,8 +119,6 @@ export class LocalizationService {
                 '--prefer-free-formats',
                 '--add-metadata',
                 '--embed-thumbnail',
-                // Official Best Practice: Impersonate a real browser to bypass TLS fingerprinting
-                '--impersonate', 'chrome',
                 // Official Best Practice: Use multiple concurrent fragments for faster downloads
                 '-N', '5',
                 // Official Best Practice: Use native filename restriction
