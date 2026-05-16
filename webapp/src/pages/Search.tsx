@@ -125,7 +125,15 @@ export const Search = () => {
                 next.delete(id);
                 setStarredAlbums(next);
             } else {
-                await API.starAlbum(id);
+                const metadata = item.isExternal ? {
+                    title: item.title || item.albumTitle,
+                    artist: item.artist || item.artistName,
+                    coverUrl: item.coverUrl || item.thumbnail,
+                    type: item.type,
+                    year: item.year
+                } : {};
+                
+                await API.starAlbum(id, metadata);
                 const next = new Set(starredAlbums);
                 next.add(id);
                 setStarredAlbums(next);
@@ -147,7 +155,13 @@ export const Search = () => {
                 next.delete(id);
                 setStarredArtists(next);
             } else {
-                await API.starArtist(id);
+                const metadata = item.isExternal ? {
+                    name: item.name || item.artist,
+                    bio: item.bio,
+                    coverUrl: item.coverUrl || item.thumbnail
+                } : {};
+                
+                await API.starArtist(id, metadata);
                 const next = new Set(starredArtists);
                 next.add(id);
                 setStarredArtists(next);

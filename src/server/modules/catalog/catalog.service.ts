@@ -117,7 +117,24 @@ export class CatalogService {
                 tracks = this.database.getTracks();
             }
         } else {
-            tracks = this.database.getTracks(undefined, true);
+            const publicTracks = this.database.getTracks(undefined, true);
+            let starredTracks: Track[] = [];
+            
+            if (username) {
+                const starredIds = this.database.getStarredItems(username, 'track').map(i => i.item_id);
+                const validIds = starredIds.filter(id => /^\d+$/.test(id)).map(id => parseInt(id, 10));
+                if (validIds.length > 0) {
+                    starredTracks = this.database.getTracksByIds(validIds);
+                }
+            }
+
+            // Merge and deduplicate
+            const seen = new Set();
+            tracks = [...publicTracks, ...starredTracks].filter(t => {
+                if (seen.has(t.id)) return false;
+                seen.add(t.id);
+                return true;
+            });
         }
 
         return tracks.map(t => this.mapTrackDTO(t, username));
@@ -134,22 +151,45 @@ export class CatalogService {
         let album: Album | undefined;
         if (typeof albumIdOrSlug === 'number' || /^\d+$/.test(albumIdOrSlug as string)) {
             album = this.database.getAlbum(Number(albumIdOrSlug));
+        } else if (String(albumIdOrSlug).startsWith("ext:")) {
+            album = this.database.db.prepare("SELECT * FROM albums WHERE external_id = ?").get(albumIdOrSlug) as any;
         } else {
             album = this.database.getAlbumBySlug(albumIdOrSlug as string);
+        }
+
+        // 2. If not found locally, try external search
+        if (!album && typeof albumIdOrSlug === 'string' && !/^\d+$/.test(albumIdOrSlug)) {
+             const results = await this.openRouter.searchMetadata(albumIdOrSlug);
+             if (results && results.length > 0) {
+                 const match = results[0];
+                 return {
+                     id: `ext:search:${match.album}`,
+                     title: match.album,
+                     artist_name: match.artist,
+                     artistName: match.artist,
+                     coverImage: match.coverUrl,
+                     isExternal: true,
+                     is_release: false,
+                     is_public: true,
+                     tracks: [],
+                     starred: user.username ? this.database.isStarred(user.username, 'album', `ext:search:${match.album}`) : false
+                 } as any;
+             }
         }
 
         if (!album) throw new Error("Album not found");
 
         const isOwner = context.userId !== undefined && album.owner_id === context.userId;
         const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
+        const username = user.username;
+        const isStarred = username ? this.database.isStarred(username, 'album', String(album.id)) : false;
 
-        if (!canSeePrivate && !isOwner) {
+        if (!canSeePrivate && !isOwner && !isStarred) {
             if (!album.is_release) throw new Error("Access denied");
             if (album.visibility === 'private') throw new Error("Release not found");
         }
 
         const tracks = this.database.getTracksByAlbum(album.id);
-        const username = user.username;
 
         return {
             ...this.mapAlbumDTO(album, username),

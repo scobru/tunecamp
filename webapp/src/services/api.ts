@@ -182,12 +182,12 @@ export const API = {
     getStarredTracks: () => handleResponse(api.get<string[]>('tracks/starred')),
     getStarredAlbums: () => handleResponse(api.get<string[]>('albums/starred')),
 
-    starAlbum: (id: string | number) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`albums/${id}/star`)),
+    starAlbum: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`albums/${id}/star`, metadata)),
     unstarAlbum: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`albums/${id}/star`)),
     rateAlbum: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`albums/${id}/rating`, { rating })),
     getStarredArtists: () => handleResponse(api.get<string[]>('artists/starred')),
 
-    starArtist: (id: string | number) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`artists/${id}/star`)),
+    starArtist: (id: string | number, metadata?: any) => handleResponse(api.post<{ success: boolean, starred: boolean }>(`artists/${id}/star`, metadata)),
     unstarArtist: (id: string | number) => handleResponse(api.delete<{ success: boolean, starred: boolean }>(`artists/${id}/star`)),
     rateArtist: (id: string | number, rating: number) => handleResponse(api.post<{ success: boolean, rating: number }>(`artists/${id}/rating`, { rating })),
 

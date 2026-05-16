@@ -335,7 +335,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, metadataService, streamingService, federationService, gdriveService, playlistService, scrobbleService, maintenanceService, localizationService
     ));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
-    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir));
+    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir, metadataService, catalogService));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, catalogService, config.musicDir));
     app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, config.musicDir, authService, gdriveService, streamingService, localizationService));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));

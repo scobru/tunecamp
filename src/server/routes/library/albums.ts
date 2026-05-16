@@ -17,26 +17,36 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         let albums: Album[] = [];
+        const username = req.username;
+
         if (req.isAdmin || req.isSuperUser) {
             albums = database.getAlbums();
-        } else if (req.userId) {
-            // Artists and users only see their own albums + public ones
-            const owned = database.getAlbumsByOwner(req.userId!, false);
+        } else {
+            // Artists and users see their own albums + public ones + starred ones
+            const owned = req.userId ? database.getAlbumsByOwner(req.userId!, false) : [];
             const publicAlbums = database.getAlbums(true);
             
+            // Get starred albums (especially external/link ones)
+            let starredAlbums: Album[] = [];
+            if (username) {
+                const starredIds = database.getStarredItems(username, 'album').map(i => i.item_id);
+                // Filter to find IDs that are in the database
+                const validIds = starredIds.filter(id => /^\d+$/.test(id)).map(id => parseInt(id, 10));
+                if (validIds.length > 0) {
+                    starredAlbums = database.getAlbumsByIds(validIds);
+                }
+            }
+
             // Merge and deduplicate
             const seen = new Set();
-            albums = [...owned, ...publicAlbums].filter(a => {
+            albums = [...owned, ...publicAlbums, ...starredAlbums].filter(a => {
                 if (seen.has(a.id)) return false;
                 seen.add(a.id);
                 return true;
             });
-        } else {
-            throw new ForbiddenError("Access denied");
         }
 
         // Add starred and rating info if user is authenticated
-        const username = req.username;
         const result = albums.map(a => ({
             ...a,
             coverImage: a.cover_path,
@@ -74,9 +84,47 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
      */
     router.post("/:id/star", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
-        const id = parseInt(req.params.id as string, 10);
-        await catalogService.starAlbum(req.username, id);
-        res.json({ success: true, starred: true });
+        const idParam = req.params.id as string;
+        let albumId: number;
+
+        if (idParam.startsWith("ext:")) {
+            const existing = database.db.prepare("SELECT id FROM albums WHERE external_id = ?").get(idParam) as any;
+            if (existing) {
+                albumId = existing.id;
+            } else {
+                // Create a link album record
+                const { title, artist, coverUrl, type, year } = req.body;
+                if (!title) throw new BadRequestError("Album title required to star external album");
+                
+                // Try to find/create artist
+                let artistId = null;
+                if (artist) {
+                    const a = database.getArtistByName(artist);
+                    artistId = a ? a.id : database.createArtist(artist);
+                }
+
+                albumId = database.createAlbum({
+                    title,
+                    artist_id: artistId,
+                    artist_name: artist || null,
+                    owner_id: req.userId || null,
+                    cover_path: coverUrl || null,
+                    type: type || 'album',
+                    year: year || new Date().getFullYear(),
+                    external_id: idParam,
+                    status: 'draft',
+                    is_release: false,
+                    visibility: 'public' // Mark as public so it's viewable by the user who starred it
+                });
+            }
+        } else {
+            albumId = parseInt(idParam, 10);
+        }
+
+        if (isNaN(albumId)) throw new BadRequestError("Invalid album ID");
+
+        await catalogService.starAlbum(req.username, albumId);
+        res.json({ success: true, starred: true, albumId });
     }));
 
     /**
@@ -84,8 +132,18 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
      */
     router.delete("/:id/star", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
-        const id = parseInt(req.params.id as string, 10);
-        await catalogService.unstarAlbum(req.username, id);
+        const idParam = req.params.id as string;
+        let albumId: number;
+
+        if (idParam.startsWith("ext:")) {
+            const existing = database.db.prepare("SELECT id FROM albums WHERE external_id = ?").get(idParam) as any;
+            if (existing) albumId = existing.id;
+            else return res.json({ success: true, starred: false });
+        } else {
+            albumId = parseInt(idParam, 10);
+        }
+
+        await catalogService.unstarAlbum(req.username, albumId);
         res.json({ success: true, starred: false });
     }));
 

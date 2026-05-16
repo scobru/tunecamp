@@ -5,8 +5,11 @@ import path from "path";
 import fs from "fs-extra";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import { VisibilityGuardian } from "../../common/visibility.js";
+import type { MetadataService } from "../../modules/catalog/metadata.service.js";
+import type { CatalogService } from "../../modules/catalog/catalog.service.js";
+import { BadRequestError, NotFoundError } from "../../common/errors.js";
 
-export function createArtistsRoutes(database: DatabaseService, musicDir: string): Router {
+export function createArtistsRoutes(database: DatabaseService, musicDir: string, metadataService: MetadataService, catalogService: CatalogService): Router {
     const router = Router();
 
     /**
@@ -34,6 +37,8 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             // Filter artists based on centralized visibility rules
             const filteredArtists = allArtists.filter(a => {
                 const hasFormalRelease = formalReleaseArtistIds.has(a.id);
+                // Allow users to see artists they have starred
+                if (username && database.isStarred(username, 'artist', String(a.id))) return true;
                 return VisibilityGuardian.canSeeArtistInList(a, context, hasFormalRelease);
             });
 
@@ -103,15 +108,47 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
     /**
      * POST /api/artists/:id/star
      */
-    router.post("/:id/star", (req: AuthenticatedRequest, res) => {
+    router.post("/:id/star", async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const id = req.params.id;
-            database.starItem(req.username, 'artist', id);
-            res.json({ success: true, starred: true });
-        } catch (error) {
+            const idParam = req.params.id;
+            let artistId: number;
+
+            if (idParam.startsWith("ext:")) {
+                const existing = database.db.prepare("SELECT id FROM artists WHERE external_id = ?").get(idParam) as any;
+                if (existing) {
+                    artistId = existing.id;
+                } else {
+                    // Create a link artist record
+                    const { name, coverUrl, bio } = req.body;
+                    if (!name) throw new BadRequestError("Artist name required to star external artist");
+                    
+                    artistId = database.createArtist(
+                        name, 
+                        bio || "External Artist", 
+                        undefined, 
+                        undefined, 
+                        undefined, 
+                        undefined,
+                        idParam // external_id
+                    );
+
+                    // If we have an external cover, store it (assuming we can handle it later or the frontend shows it)
+                    if (coverUrl) {
+                         database.updateArtist(artistId, undefined, undefined, coverUrl);
+                    }
+                }
+            } else {
+                artistId = parseInt(idParam, 10);
+            }
+
+            if (isNaN(artistId)) throw new BadRequestError("Invalid artist ID");
+
+            database.starItem(req.username, 'artist', String(artistId));
+            res.json({ success: true, starred: true, artistId });
+        } catch (error: any) {
             console.error("Error starring artist:", error);
-            res.status(500).json({ error: "Failed to star artist" });
+            res.status(error.status || 500).json({ error: error.message || "Failed to star artist" });
         }
     });
 
@@ -121,8 +158,16 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
     router.delete("/:id/star", (req: AuthenticatedRequest, res) => {
         if (!req.username) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const id = req.params.id;
-            database.unstarItem(req.username, 'artist', id);
+            const idParam = req.params.id;
+            let artistId: string = idParam;
+
+            if (idParam.startsWith("ext:")) {
+                const existing = database.db.prepare("SELECT id FROM artists WHERE external_id = ?").get(idParam) as any;
+                if (existing) artistId = String(existing.id);
+                else return res.json({ success: true, starred: false });
+            }
+
+            database.unstarItem(req.username, 'artist', artistId);
             res.json({ success: true, starred: false });
         } catch (error) {
             console.error("Error unstarring artist:", error);
@@ -365,22 +410,45 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
 
     /**
      * GET /api/artists/:idOrSlug
-     * Get artist details with albums (supports numeric ID or slug)
+     * Get artist details with albums (supports numeric ID, slug, or external ID)
      */
-    router.get("/:idOrSlug", (req: AuthenticatedRequest, res) => {
+    router.get("/:idOrSlug", async (req: AuthenticatedRequest, res: any) => {
         const param = req.params.idOrSlug as string;
-        console.log(`🔍 [Debug] GET /api/artists/${param} requested by user: ${req.username || 'guest'}, isAdmin: ${req.isAdmin}, isSuperUser: ${req.isSuperUser}`);
+        const username = req.username;
+
         try {
             let artist;
 
-            // Check if it's a numeric ID or a slug
+            // 1. Try Local Database
             if (/^\d+$/.test(param)) {
                 artist = database.getArtist(parseInt(param, 10));
+            } else if (param.startsWith("ext:")) {
+                 artist = database.db.prepare("SELECT * FROM artists WHERE external_id = ?").get(param) as any;
             } else {
                 artist = database.getArtistBySlug(param);
             }
 
+            // 2. If not found locally, try External Providers
             if (!artist) {
+                console.log(`🔍 Artist not found locally: ${param}. Searching external providers...`);
+                const externalResults = await metadataService.searchArtist(param);
+                
+                if (externalResults.length > 0) {
+                    const bestMatch = externalResults[0];
+                    // Return a "Virtual Artist" object
+                    return res.json({
+                        id: `ext:${bestMatch.source}:${bestMatch.id}`,
+                        name: bestMatch.name,
+                        bio: bestMatch.bio || "Artist info fetched from " + bestMatch.source,
+                        coverImage: bestMatch.thumbnail,
+                        isExternal: true,
+                        source: bestMatch.source,
+                        albums: [], // We could potentially search albums too, but let's keep it simple for now
+                        tracks: [],
+                        starred: username ? database.isStarred(username, 'artist', `ext:${bestMatch.source}:${bestMatch.id}`) : false
+                    });
+                }
+
                 return res.status(404).json({ error: "Artist not found" });
             }
 
@@ -398,7 +466,10 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             const looseTracks = allArtistTracks.filter(t => !t.album_id);
 
             // SECURITY: If not admin and no public formal releases, library albums, or loose tracks, hide the artist entirely
-            if (!isAdmin && publicFormalReleases.length === 0 && libraryAlbums.length === 0 && looseTracks.length === 0) {
+            // UNLESS the user has starred this artist.
+            const isStarred = username ? database.isStarred(username, 'artist', String(artist.id)) : false;
+
+            if (!isAdmin && !isStarred && publicFormalReleases.length === 0 && libraryAlbums.length === 0 && looseTracks.length === 0) {
                 console.log(`⛔ [Security] Denying access to library-only artist ${artist.name} with no public content to non-admin user`);
                 return res.status(404).json({ error: "Artist not found" });
             }
@@ -449,8 +520,6 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                 } catch (e) { }
             }
 
-            const username = req.username;
-
             // Exclude sensitive data
             const { private_key, ...safeArtist } = artist;
 
@@ -462,7 +531,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                 isReleasing: publicFormalReleases.length > 0 || formalReleases.length > 0,
                 walletAddress: artist.wallet_address,
                 coverImage,
-                starred: username ? database.isStarred(username, 'artist', String(artist.id)) : false,
+                starred: isStarred,
                 rating: username ? database.getItemRating(username, 'artist', String(artist.id)) : 0,
                 albums: albums.map(a => ({ 
                     ...a, 
@@ -493,26 +562,32 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
 
             if (/^\d+$/.test(param)) {
                 artist = database.getArtistSimple(parseInt(param, 10));
+            } else if (param.startsWith("ext:")) {
+                artist = database.db.prepare("SELECT * FROM artists WHERE external_id = ?").get(param) as any;
             } else {
                 artist = database.getArtistBySlug(param);
             }
 
             if (!artist) {
+                // If it's an ext: ID, we might have it in the DB now, or we might need to redirect to external thumb
+                if (param.startsWith("ext:")) {
+                    // Try to resolve thumbnail from external ID if not in DB
+                    // This is complex because we don't have the full URL here.
+                    // For now, return placeholder.
+                    const svg = getPlaceholderSVG("Artist");
+                    res.setHeader("Content-Type", "image/svg+xml");
+                    return res.send(svg);
+                }
                 return res.status(404).json({ error: "Artist not found" });
             }
 
             // Try artist photo first
             if (artist.photo_path) {
+                if (artist.photo_path.startsWith('http')) return res.redirect(artist.photo_path);
+                
                 const photoPath = path.join(musicDir, artist.photo_path);
-                console.log(`🖼️ [Debug] Serving artist cover: ${photoPath}`);
                 if (await fs.pathExists(photoPath)) {
-                    // Use res.sendFile to handle ETag/Last-Modified and correct Content-Type automatically
-                    // Cache for 24 hours (86400000ms)
-                    return res.sendFile(path.resolve(photoPath), { maxAge: 86400000 }, (err) => {
-                        if (err) console.error(`❌ [Debug] Error sending file: ${err}`);
-                    });
-                } else {
-                    console.warn(`⚠️ [Debug] Artist photo not found at: ${photoPath}`);
+                    return res.sendFile(path.resolve(photoPath), { maxAge: 86400000 });
                 }
             }
 
@@ -526,13 +601,11 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
                 }
             }
 
-            // Fallback: Return SVG placeholder instead of 404
+            // Fallback: Return SVG placeholder
             const svg = getPlaceholderSVG(artist.name);
             res.setHeader("Content-Type", "image/svg+xml");
-            // Also reduce cache for placeholder so if an image IS uploaded, it shows up
             res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
             res.send(svg);
-            // res.status(404).json({ error: "No cover found" });
         } catch (error) {
             console.error("Error getting artist cover:", error);
             res.status(500).json({ error: "Failed to get cover" });
@@ -550,6 +623,8 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
 
             if (/^\d+$/.test(param)) {
                 artist = database.getArtist(parseInt(param, 10));
+            } else if (param.startsWith("ext:")) {
+                 artist = database.db.prepare("SELECT * FROM artists WHERE external_id = ?").get(param) as any;
             } else {
                 artist = database.getArtistBySlug(param);
             }
@@ -559,12 +634,10 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string)
             }
 
             const isAdmin = (req as any).isAdmin === true;
-            // Use SQL filtering for public posts if user is not admin
             const posts = database.getPostsByArtist(artist.id, !isAdmin);
 
-            // Map snake_case to camelCase for frontend and filter by visibility
             const mappedPosts = posts
-                .filter(p => p.visibility === 'public' || isAdmin) // (AuthenticatedRequest cast for safety)
+                .filter(p => p.visibility === 'public' || isAdmin)
                 .map(p => ({
                     id: p.id,
                     slug: p.slug,
