@@ -18,6 +18,15 @@ export class YouTubeCookieManager {
      * @param content The cookie file content (ideally in Netscape format)
      */
     async saveCookies(content: string): Promise<void> {
+        // Basic validation: check if it has the Netscape header or at least some content
+        if (!content || content.trim().length < 10) {
+            throw new Error("Cookie content is too short or empty");
+        }
+
+        if (content.includes('<!DOCTYPE html>') || content.includes('<html')) {
+            throw new Error("Received HTML instead of a cookie file. Please ensure you are uploading a raw .txt or .cookie file.");
+        }
+
         await fs.ensureDir(path.dirname(this.cookiesPath));
         await fs.writeFile(this.cookiesPath, content);
         console.log(`💾 YouTube cookies saved to: ${this.cookiesPath}`);

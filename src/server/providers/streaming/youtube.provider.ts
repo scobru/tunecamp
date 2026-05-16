@@ -101,17 +101,35 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         
         for (const line of lines) {
             const trimmed = line.trim();
+            // Netscape cookies are tab-separated
             if (!trimmed || trimmed.startsWith('#')) continue;
             
             const parts = trimmed.split('\t');
-            if (parts.length < 7) continue;
-            
-            const name = parts[5];
-            const value = parts[6];
-            cookies.push(`${name}=${value}`);
+            // Standard Netscape format has 7 columns
+            if (parts.length >= 7) {
+                const name = parts[5];
+                const value = parts[6];
+                if (name && value) {
+                    cookies.push(`${name}=${value}`);
+                }
+            } else {
+                // Some exporters might use spaces or different tab counts
+                const spaceParts = trimmed.split(/\s+/);
+                if (spaceParts.length >= 7) {
+                    const name = spaceParts[5];
+                    const value = spaceParts[6];
+                    if (name && value) {
+                        cookies.push(`${name}=${value}`);
+                    }
+                }
+            }
         }
         
-        return cookies.join('; ');
+        const result = cookies.join('; ');
+        if (!result && netscapeContent.includes('youtube.com')) {
+            console.warn(`[YouTubeProvider] ⚠ Found potential YouTube cookies in file but failed to parse them. Check formatting.`);
+        }
+        return result;
     }
 
     async isAvailable(): Promise<boolean> {
@@ -276,13 +294,11 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     // Use a realistic modern User-Agent
                     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
                     // Prioritizing mweb and android clients. mweb is currently the most resilient to bot checks.
-                    extractorArgs: 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player',
+                    // po_token=auto attempts to use installed providers like bgutil-ytdlp-pot-provider
+                    extractorArgs: 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player;po_token=auto',
                     referer: 'https://www.youtube.com/',
                     forceIpv4: true,
-                    geoBypass: true,
-                    // Performance and resilience flags
-                    youtubeSkipDashManifest: true,
-                    youtubeSkipHlsManifest: true
+                    geoBypass: true
                 };
                 
                 if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
@@ -310,6 +326,11 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
                 console.warn(`[YouTubeProvider] ⚠ yt-dlp failed: ${errorMsg.split('\n')[0]}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
                 
+                // Log the full error if it's not a common bot block to help debugging
+                if (!isBot || this.consecutiveBotBlocks < 2) {
+                    console.debug(`[YouTubeProvider] 🔍 Full yt-dlp error:`, errorMsg);
+                }
+
                 if (isBot) {
                     this.consecutiveBotBlocks++;
                     if (this.consecutiveBotBlocks > 5) {
