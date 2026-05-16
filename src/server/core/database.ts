@@ -1567,6 +1567,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             return !!row;
         },
 
+        deleteUser(id: number): void {
+            db.prepare("DELETE FROM admin WHERE id = ?").run(id);
+        },
+
+        deleteUsersBatch(ids: number[]): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    db.prepare("DELETE FROM admin WHERE id = ?").run(id);
+                }
+            })();
+        },
+
         // Followers
         addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void {
             socialRepository.addFollower(artistId, actorUri, inboxUri, sharedInboxUri);
