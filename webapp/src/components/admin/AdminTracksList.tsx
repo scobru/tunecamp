@@ -108,14 +108,23 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   };
 
   const handleBatchLocalize = async () => {
-    const count = selectedIds.size;
-    if (!confirm(`Are you sure you want to localize ${count} tracks? This will download them to the server library.`)) return;
+    const toLocalize = Array.from(selectedIds).filter(id => {
+      const t = tracks.find(track => track.id === id);
+      return t && t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/'));
+    });
+
+    if (toLocalize.length === 0) {
+      alert("None of the selected tracks need localization.");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to localize ${toLocalize.length} tracks? This will download them to the server library.`)) return;
     
     setIsLocalizingBatch(true);
     let success = 0;
     let failed = 0;
     try {
-      for (const id of Array.from(selectedIds)) {
+      for (const id of toLocalize) {
         try {
           await API.localizeTrack(id);
           success++;
@@ -130,6 +139,13 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       setIsLocalizingBatch(false);
     }
   };
+
+  const hasLocalizableSelected = useMemo(() => {
+    return Array.from(selectedIds).some(id => {
+      const t = tracks.find(track => track.id === id);
+      return t && t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/'));
+    });
+  }, [selectedIds, tracks]);
 
   const toggleSelect = (id: string | number) => {
     const newSelected = new Set(selectedIds);
@@ -172,14 +188,16 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
             <button className="btn btn-xs btn-ghost" onClick={() => setSelectedIds(new Set())}>Clear</button>
           </div>
           <div className="flex gap-2">
-            <button 
-              className="btn btn-sm btn-outline btn-primary gap-2"
-              onClick={handleBatchLocalize}
-              disabled={isLocalizingBatch}
-            >
-              {isLocalizingBatch ? <span className="loading loading-spinner loading-xs"></span> : <Music size={16} />}
-              Localize Selected
-            </button>
+            {hasLocalizableSelected && (
+              <button 
+                className="btn btn-sm btn-outline btn-primary gap-2"
+                onClick={handleBatchLocalize}
+                disabled={isLocalizingBatch}
+              >
+                {isLocalizingBatch ? <span className="loading loading-spinner loading-xs"></span> : <Music size={16} />}
+                Localize Selected
+              </button>
+            )}
             <button 
               className="btn btn-sm btn-primary gap-2"
               onClick={() => setShowBatchEdit(true)}
@@ -303,7 +321,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 >
                   Download
                 </a>
-                {t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/')) && (
+                {t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/')) && (
                   <button
                     className="btn btn-xs btn-ghost text-warning"
                     onClick={() => handleLocalize(t.id, t.title, t.path?.startsWith('gdrive://'))}

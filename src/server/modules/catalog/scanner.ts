@@ -686,8 +686,21 @@ export class Scanner implements ScannerService {
                         shouldUpdateArtist = true;
                     } else {
                         const existingArt = this.database.getArtist(existing.artist_id);
-                        // Only update if existing is "Unknown Artist" or if we have an explicit override (hint/config)
-                        if (!existingArt || existingArt.name === 'Unknown Artist' || overrideArtistId) {
+                        const currentArtistName = existingArt?.name || existing.artist_name;
+                        const newArtistName = metadataHints?.artist || common.artist;
+
+                        // Only update if:
+                        // 1. Existing is "Unknown Artist"
+                        // 2. We have an explicit override (hint/config)
+                        // 3. The artist record is missing AND the name in tags is actually different (not just a casing change)
+                        if (!existingArt) {
+                            if (currentArtistName && newArtistName && currentArtistName.toLowerCase() !== newArtistName.toLowerCase()) {
+                                // If the record is missing but names match, don't update ID yet, let database repair handle it
+                                // if names differ significantly, maybe it is a new artist.
+                                // BUT in TuneCamp, we prefer protecting manual edits.
+                                shouldUpdateArtist = false;
+                            }
+                        } else if (existingArt.name === 'Unknown Artist' || overrideArtistId) {
                             shouldUpdateArtist = true;
                         }
                     }
@@ -695,7 +708,7 @@ export class Scanner implements ScannerService {
                     if (shouldUpdateArtist) {
                         this.database.updateTrackArtist(existing.id, artistId);
                     } else {
-                        console.log(`🛡️ [Scanner] Protecting existing artist for track ${existing.id} (Current ID: ${existing.artist_id}, Tag Suggested ID: ${artistId})`);
+                        console.log(`🛡️ [Scanner] Protecting existing artist for track ${existing.id} (Current: ${existing.artist_name || 'ID ' + existing.artist_id}, Tag Suggested: ${common.artist || 'ID ' + artistId})`);
                     }
                 }
                 
@@ -1024,6 +1037,19 @@ export class Scanner implements ScannerService {
                     if (await this.storage.pathExists(fOld)) {
                         await this.storage.move(fOld, fNew, { overwrite: true });
                         this.database.updateTrackPath(t.id, newP, t.album_id);
+                        
+                        // Also rename lossless path if it exists and follows the same naming pattern
+                        if (t.lossless_path) {
+                            const oldLossless = path.join(musicDir, t.lossless_path);
+                            const losslessExt = path.extname(t.lossless_path);
+                            const newLosslessP = path.join(path.dirname(t.lossless_path), `${base}${losslessExt}`).replace(/\\/g, "/");
+                            const newLossless = path.join(musicDir, newLosslessP);
+                            
+                            if (await this.storage.pathExists(oldLossless) && oldLossless !== newLossless) {
+                                await this.storage.move(oldLossless, newLossless, { overwrite: true });
+                                this.database.updateTrackLosslessPath(t.id, newLosslessP);
+                            }
+                        }
                         success++;
                     } else skipped++;
                 } catch (e) { 

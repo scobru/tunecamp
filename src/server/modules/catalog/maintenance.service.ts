@@ -578,16 +578,25 @@ export class MaintenanceService {
         let failed = 0;
         console.log(`[Maintenance] Starting full tag sync for ${tracks.length} tracks...`);
 
-        for (const track of tracks) {
-            try {
-                if (track.file_path) {
-                    // Calling updateTrack with empty data triggers a tag write from current DB state
-                    await this.catalogService.updateTrack(track.id, {}, { skipSync: true });
-                    success++;
+        // Process in chunks to avoid EMFILE and overwhelming the system
+        const CHUNK_SIZE = 10;
+        for (let i = 0; i < tracks.length; i += CHUNK_SIZE) {
+            const chunk = tracks.slice(i, i + CHUNK_SIZE);
+            await Promise.all(chunk.map(async (track) => {
+                try {
+                    if (track.file_path) {
+                        // Calling updateTrack with empty data triggers a tag write from current DB state
+                        await this.catalogService.updateTrack(track.id, {}, { skipSync: true });
+                        success++;
+                    }
+                } catch (e) {
+                    console.error(`[Maintenance] Failed to sync tags for track ${track.id}:`, e);
+                    failed++;
                 }
-            } catch (e) {
-                console.error(`[Maintenance] Failed to sync tags for track ${track.id}:`, e);
-                failed++;
+            }));
+            
+            if (i % 100 === 0 && i > 0) {
+                console.log(`[Maintenance] Synced ${i}/${tracks.length} tracks...`);
             }
         }
 

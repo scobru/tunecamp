@@ -304,14 +304,6 @@ export class CatalogService {
         const updatedTrack = this.database.getTrack(trackId);
         if (!options?.skipTagWrite && updatedTrack && updatedTrack.file_path) {
             await this.writeTrackTags(updatedTrack);
-            // Recalculate hash after tag write so scanner doesn't re-process it
-            const fullPath = path.join(this.musicDir, updatedTrack.file_path);
-            if (await this.storage.pathExists(fullPath)) {
-                try {
-                    const newHash = await getFastFileHash(fullPath);
-                    this.database.updateTrackHash(trackId, newHash);
-                } catch (e) {}
-            }
         }
         if (!options?.skipSync && updatedTrack && updatedTrack.album_id) {
             await this.publishing.syncRelease(updatedTrack.album_id).catch(e => console.error(`[CatalogService] Sync failed:`, e));
@@ -348,16 +340,6 @@ export class CatalogService {
         if (updatedTracks.length > 0) {
             await Promise.all(updatedTracks.map(async t => {
                 await this.writeTrackTags(t);
-                // Update hashes for the batch
-                if (t.file_path) {
-                    const fullPath = path.join(this.musicDir, t.file_path);
-                    if (await this.storage.pathExists(fullPath)) {
-                        try {
-                            const newHash = await getFastFileHash(fullPath);
-                            this.database.updateTrackHash(t.id, newHash);
-                        } catch (e) {}
-                    }
-                }
             }));
             for (const albumId of affectedAlbums) {
                 await this.publishing.syncRelease(albumId).catch(e => console.error(`[CatalogService] Batch sync failed:`, e));
@@ -621,10 +603,12 @@ export class CatalogService {
     }
 
     private async writeTrackTags(track: Track): Promise<void> {
-        if (!track.file_path) return;
-        const fullPath = path.join(this.musicDir, track.file_path);
-        if (!(await this.storage.pathExists(fullPath))) return;
-        const ext = path.extname(fullPath).toLowerCase();
+        const pathsToUpdate = [];
+        if (track.file_path) pathsToUpdate.push(track.file_path);
+        if (track.lossless_path && track.lossless_path !== track.file_path) pathsToUpdate.push(track.lossless_path);
+
+        if (pathsToUpdate.length === 0) return;
+
         const tags = {
             title: track.title,
             artist: track.artist_name || undefined,
@@ -633,14 +617,32 @@ export class CatalogService {
             genre: track.genre || undefined,
             year: track.year?.toString() || undefined
         };
-        try {
-            if (ext === '.mp3') NodeID3.update(tags as any, fullPath);
-            else if (['.flac', '.ogg', '.m4a', '.wav'].includes(ext)) {
-                await writeMetadata(fullPath, {
-                    title: tags.title, artist: tags.artist, album: tags.album,
-                    track: tags.trackNumber, genre: tags.genre, year: tags.year
-                });
+
+        for (const relPath of pathsToUpdate) {
+            const fullPath = path.join(this.musicDir, relPath);
+            if (!(await this.storage.pathExists(fullPath))) continue;
+
+            const ext = path.extname(fullPath).toLowerCase();
+            try {
+                if (ext === '.mp3') {
+                    NodeID3.update(tags as any, fullPath);
+                } else if (['.flac', '.ogg', '.m4a', '.wav'].includes(ext)) {
+                    await writeMetadata(fullPath, {
+                        title: tags.title, artist: tags.artist, album: tags.album,
+                        track: tags.trackNumber, genre: tags.genre, year: tags.year
+                    });
+                }
+
+                // Recalculate hash after tag write so scanner doesn't re-process it
+                const newHash = await getFastFileHash(fullPath);
+                if (relPath === track.file_path) {
+                    this.database.updateTrackHash(track.id, newHash);
+                }
+                // Note: Currently we only store one hash per track in the DB (usually the primary file or the first scanned file)
+                // If the file_path is updated, it's the one we use for primary identification.
+            } catch (err) { 
+                console.error(`[CatalogService] Tag write failed for ${track.id} at ${relPath}:`, err); 
             }
-        } catch (err) { console.error(`[CatalogService] Tag write failed for ${track.id}:`, err); }
+        }
     }
 }
