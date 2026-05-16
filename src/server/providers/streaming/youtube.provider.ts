@@ -336,7 +336,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                             noWarnings: true,
                             noPlaylist: true,
                             extractorArgs: 'youtube:player_client=android;po_token=auto'
-                        });
+                        } as any);
                         if (simpleUrl && typeof simpleUrl === 'string') {
                             console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp (simpler format)`);
                             return simpleUrl.trim();
