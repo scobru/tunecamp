@@ -136,11 +136,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     initAIService(openRouterService);
     console.log(`🔌 [Plugins] AIService initialized with OpenRouter provider`);
 
-    if (process.env.SKIP_STARTUP_MAINTENANCE === 'true') {
-        console.log(`📦 [Maintenance] Skipping startup maintenance as requested`);
-    } else {
-        await runStartupMaintenance(database, config);
-    }
+    // Startup maintenance and scanner are now triggered manually via frontend
+    console.log(`📦 [Maintenance] Automatic startup maintenance disabled (trigger via UI)`);
 
     const authService = createAuthService(database.db, config.jwtSecret, config.adminUser, config.adminPass);
     await authService.init();
@@ -540,10 +537,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
 
         loadPlugins().catch(() => {});
-
-        if (process.env.SKIP_SCANNER !== 'true') {
-            scannerService.scanAll(config.musicDir).catch(() => {});
-        }
     });
 
     process.on("SIGINT", () => {
