@@ -102,6 +102,9 @@ import { createStorageRouter } from "./routes/library/storage.js";
 import { runStartupMaintenance } from "./modules/catalog/maintenance.startup.js";
 import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
+import { createTorrentSearchRouter } from "./routes/admin/torrent-search.js";
+import { torrentSearchService } from "./modules/integrations/torrent-search.service.js";
+import { PublicScraperTorrentProvider } from "./providers/torrent/public-scraper.provider.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { latchDomain, kprs } from "./modules/network/zen-network.js";
 import { getZen } from "./modules/network/zen.js";
@@ -233,6 +236,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const torrentService = new TorrentService(database, scanner, config.musicDir);
 
     const downloadService = initDownloadService(soulseekService, torrentService);
+
+    torrentSearchService.registerProvider(new PublicScraperTorrentProvider());
+    console.log(`🔌 [Integrations] TorrentSearch initialized with PublicScraper provider`);
 
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
     telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
