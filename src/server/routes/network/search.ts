@@ -20,10 +20,10 @@ export function createSearchRoutes(
     const router = Router();
 
     /**
-     * GET /api/search/soulseek
+     * GET /api/search/content/soulseek
      * Search Soulseek for music
      */
-    router.get("/soulseek", async (req: AuthenticatedRequest, res) => {
+    router.get("/content/soulseek", async (req: AuthenticatedRequest, res) => {
         const query = req.query.q as string;
         if (!query) return res.status(400).json({ error: "Query required" });
 
@@ -51,10 +51,10 @@ export function createSearchRoutes(
     });
 
     /**
-     * POST /api/search/soulseek/download
+     * POST /api/search/content/soulseek/download
      * Trigger a Soulseek download
      */
-    router.post("/soulseek/download", async (req: AuthenticatedRequest, res) => {
+    router.post("/content/soulseek/download", async (req: AuthenticatedRequest, res) => {
         const { result } = req.body;
         if (!result || !result.file) {
             return res.status(400).json({ error: "Valid search result with file path required" });
@@ -92,10 +92,10 @@ export function createSearchRoutes(
     });
 
     /**
-     * POST /api/search/soulseek/credentials
+     * POST /api/search/content/soulseek/credentials
      * Update user's Soulseek credentials
      */
-    router.post("/soulseek/credentials", async (req: AuthenticatedRequest, res) => {
+    router.post("/content/soulseek/credentials", async (req: AuthenticatedRequest, res) => {
         const { username, password } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Credentials required" });
 
@@ -110,10 +110,10 @@ export function createSearchRoutes(
     });
 
     /**
-     * GET /api/search/soulseek/status
+     * GET /api/search/content/soulseek/status
      * Get user's Soulseek download status
      */
-    router.get("/soulseek/status", async (req: AuthenticatedRequest, res) => {
+    router.get("/content/soulseek/status", async (req: AuthenticatedRequest, res) => {
         try {
             const downloads = database.getSoulseekDownloads(req.userId);
             res.json(downloads);
@@ -126,7 +126,7 @@ export function createSearchRoutes(
      * POST /api/search/content/soulseek/sync/:id
      * Manually trigger library indexing for a completed Soulseek download
      */
-    router.post("/soulseek/sync/:id", async (req: AuthenticatedRequest, res) => {
+    router.post("/content/soulseek/sync/:id", async (req: AuthenticatedRequest, res) => {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
@@ -154,7 +154,7 @@ export function createSearchRoutes(
      * DELETE /api/search/content/soulseek/status/failed
      * Clear all failed Soulseek downloads for the current user
      */
-    router.delete("/soulseek/status/failed", async (req: AuthenticatedRequest, res) => {
+    router.delete("/content/soulseek/status/failed", async (req: AuthenticatedRequest, res) => {
         try {
             database.clearFailedSoulseekDownloads(req.userId!);
             res.json({ success: true });
@@ -167,7 +167,7 @@ export function createSearchRoutes(
      * DELETE /api/search/content/soulseek/status/:id
      * Remove a specific Soulseek download entry
      */
-    router.delete("/soulseek/status/:id", async (req: AuthenticatedRequest, res) => {
+    router.delete("/content/soulseek/status/:id", async (req: AuthenticatedRequest, res) => {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
