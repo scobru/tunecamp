@@ -288,6 +288,10 @@ export const API = {
     matchTrackMetadata: (id: string | number, metadata: { title: string, artist: string, albumTitle?: string, coverUrl?: string }) =>
         handleResponse(api.post<{ message: string, track: Track }>(`tracks/${encodeURIComponent(String(id))}/match-metadata`, metadata)),
 
+    searchAlbumMetadata: (query: string) => handleResponse(api.get<any[]>(`albums/search-metadata?q=${encodeURIComponent(query)}`)),
+    matchAlbumMetadata: (id: string | number, metadata: { title: string, artist: string, coverUrl?: string, genre?: string, year?: number, description?: string }) =>
+        handleResponse(api.post<{ message: string, album: Album }>(`albums/${id}/match-metadata`, metadata)),
+
     fetchLyricsMetadata: (artist: string, title: string) => handleResponse(api.get<{ lyrics: string, source: string }>(`metadata/lyrics?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`)),
 
     // --- Admin: Uploads ---

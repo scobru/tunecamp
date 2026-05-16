@@ -31,12 +31,14 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const [selectedTrackIds, setSelectedTrackIds] = useState<number[]>([]);
     const [license, setLicense] = useState<string>('copyright');
     const [showMetadataModal, setShowMetadataModal] = useState(false);
+    const [currentAlbumData, setCurrentAlbumData] = useState<any>(null);
 
     useEffect(() => {
         const handleOpen = async (e: CustomEvent) => {
             loadAllTracks();
             // Check if editing (passed via detail)
             if (e.detail && e.detail.id) {
+                setCurrentAlbumData(e.detail);
                 setIsEditing(true);
                 setEditId(e.detail.id);
                 setTitle(e.detail.title || '');
@@ -75,6 +77,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 setPriceUsdc('');
                 setCurrency('ETH');
                 setSelectedTrackIds([]);
+                setCurrentAlbumData(null);
             }
             
             setCoverFile(null);
@@ -419,11 +422,19 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
 
             {showMetadataModal && (
                 <MetadataMatchModal
-                    track={{ title } as any}
+                    item={currentAlbumData || { title }}
+                    type="album"
                     onClose={() => setShowMetadataModal(false)}
                     onMatched={(updated) => {
                         setTitle(updated.title || title);
-                        // Other fields if needed
+                        if (updated.genre) setGenre(updated.genre);
+                        if (updated.year) setYear(updated.year);
+                        if (updated.artistName) {
+                            // Try to find artist ID from name if possible
+                            const matched = artists.find(a => a.name.toLowerCase() === updated.artistName.toLowerCase());
+                            if (matched) setArtistId(String(matched.id));
+                        }
+                        onReleaseUpdated();
                         setShowMetadataModal(false);
                     }}
                 />

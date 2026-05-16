@@ -3,9 +3,8 @@ import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, Shield, RefreshCw, Save, Zap } from "lucide-react";
 
-import { MetadataPickerModal } from "../modals/MetadataPickerModal";
+import { MetadataMatchModal } from "../MetadataMatchModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
-import { AlbumMetadataPickerModal } from "../modals/AlbumMetadataPickerModal";
 
 export const AdminMaintenancePanel = () => {
     const [mode, setMode] = useState<'tracks' | 'artists' | 'albums'>('tracks');
@@ -848,12 +847,17 @@ export const AdminMaintenancePanel = () => {
                 </table>
             </div>
 
-            <MetadataPickerModal 
-                track={pickerTrack}
-                isOpen={!!pickerTrack}
-                onClose={() => setPickerTrack(null)}
-                onApplied={loadTracks}
-            />
+            {pickerTrack && (
+                <MetadataMatchModal 
+                    item={pickerTrack}
+                    type="track"
+                    onClose={() => setPickerTrack(null)}
+                    onMatched={() => {
+                        loadTracks();
+                        setPickerTrack(null);
+                    }}
+                />
+            )}
 
             <ArtistMetadataPickerModal
                 artist={pickerArtist}
@@ -862,12 +866,17 @@ export const AdminMaintenancePanel = () => {
                 onApplied={loadArtists}
             />
 
-            <AlbumMetadataPickerModal
-                album={pickerAlbum}
-                isOpen={!!pickerAlbum}
-                onClose={() => setPickerAlbum(null)}
-                onApplied={loadAlbums}
-            />
+            {pickerAlbum && (
+                <MetadataMatchModal
+                    item={pickerAlbum}
+                    type="album"
+                    onClose={() => setPickerAlbum(null)}
+                    onMatched={() => {
+                        loadAlbums();
+                        setPickerAlbum(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

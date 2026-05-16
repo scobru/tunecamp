@@ -14,17 +14,19 @@ interface MetadataMatch {
 }
 
 interface MetadataMatchModalProps {
-  track: Track;
+  item: any;
+  type: "track" | "album";
   onClose: () => void;
-  onMatched: (updatedTrack: Track) => void;
+  onMatched: (updatedItem: any) => void;
 }
 
 export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
-  track,
+  item,
+  type,
   onClose,
   onMatched,
 }) => {
-  const [query, setQuery] = useState(track.title || "");
+  const [query, setQuery] = useState(item.title || "");
   const [results, setResults] = useState<MetadataMatch[]>([]);
   const [searching, setSearching] = useState(false);
   const [matching, setMatching] = useState<string | null>(null);
@@ -37,7 +39,9 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
     setSearching(true);
     setError(null);
     try {
-      const data = await API.searchTrackMetadata(query);
+      const data = type === "track" 
+        ? await API.searchTrackMetadata(query) 
+        : await API.searchAlbumMetadata(query);
       setResults(data);
     } catch (err: any) {
       setError(err.message || "Search failed");
@@ -50,22 +54,36 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
     setMatching(match.id);
     setError(null);
     try {
-      // Per Discogs, applichiamo solo Artista, Album e Cover come richiesto
-      // MusicBrainz continua ad applicare anche il Titolo della traccia
-      const payload: any = {
-        artist: match.artist,
-        albumTitle: match.albumTitle,
-        coverUrl: match.coverUrl,
-        mbid: match.id,
-        source: match.source
-      };
+      if (type === "track") {
+        const payload: any = {
+          artist: match.artist,
+          albumTitle: match.albumTitle,
+          coverUrl: match.coverUrl,
+          mbid: match.id,
+          source: match.source
+        };
 
-      if (match.source !== "discogs") {
-        payload.title = match.title;
+        if (match.source !== "discogs") {
+          payload.title = match.title;
+        }
+
+        const response = await API.matchTrackMetadata(item.id, payload);
+        onMatched(response.track);
+      } else {
+        // Album match
+        const payload: any = {
+          title: match.title,
+          artist: match.artist,
+          coverUrl: match.coverUrl,
+          genre: match.genre,
+          year: match.year,
+          description: match.description,
+          source: match.source
+        };
+
+        const response = await API.matchAlbumMetadata(item.id, payload);
+        onMatched(response.album);
       }
-
-      const response = await API.matchTrackMetadata(track.id, payload);
-      onMatched(response.track);
       onClose();
     } catch (err: any) {
       setError(err.message || "Match failed");

@@ -440,14 +440,15 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
 
       {showMetadataModal && currentTrackData && (
         <MetadataMatchModal
-          track={currentTrackData as any}
+          item={currentTrackData}
+          type="track"
           onClose={() => setShowMetadataModal(false)}
           onMatched={(updated) => {
             setTitle(updated.title || "");
-            setArtistName((updated as any).artist_name || updated.artistName || "");
-            setAlbumTitle((updated as any).album_title || updated.albumName || "");
-            setArtworkUrl(updated.coverUrl || null);
-            setHasCustomArtwork(!!(updated as any).external_artwork);
+            setArtistName(updated.artist_name || updated.artistName || "");
+            setAlbumTitle(updated.album_title || updated.albumName || "");
+            setArtworkUrl(updated.coverUrl || updated.cover_path || null);
+            setHasCustomArtwork(!!(updated as any).external_artwork || !!updated.cover_path);
             setCurrentTrackData((prev: any) => ({ ...prev, ...updated }));
             onTrackUpdated();
             setShowMetadataModal(false);

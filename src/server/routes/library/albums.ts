@@ -7,6 +7,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../common/errors.js";
+import { metadataService } from "../../modules/catalog/metadata.service.js";
 
 export function createAlbumsRoutes(database: DatabaseService, catalogService: CatalogService, musicDir: string): Router {
     const router = Router();
@@ -77,6 +78,16 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
         
         const albums = database.searchAlbums(query, limit, !(req.isAdmin || req.isSuperUser));
         res.json(albums.map((a: Album) => ({ ...a, coverImage: a.cover_path })));
+    }));
+
+    /**
+     * GET /api/albums/search-metadata
+     */
+    router.get("/search-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        const query = req.query.q as string;
+        if (!query) throw new BadRequestError("Query required");
+        res.json(await metadataService.searchRelease(query));
     }));
 
     /**
@@ -251,6 +262,46 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
 
         database.updateAlbumCover(id, relPath);
         res.json({ success: true, coverPath: relPath });
+    }));
+
+    /**
+     * POST /api/albums/:id/match-metadata
+     */
+    router.post("/:id/match-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        const id = parseInt(req.params.id, 10);
+        const album = database.getAlbum(id);
+        if (!album) throw new NotFoundError("Album not found");
+
+        const isRoot = req.isRootAdmin;
+        if (!isRoot && album.owner_id !== req.userId && album.artist_id !== req.artistId) {
+            throw new ForbiddenError("Access denied");
+        }
+
+        const { title, artist, coverUrl, genre, year, description } = req.body;
+        console.log(`🔍 [Album Metadata Match] Processing album ${id}:`, { title, artist, hasCover: !!coverUrl });
+
+        try {
+            const updateData: any = {};
+            if (title) updateData.title = title;
+            if (genre) updateData.genre = genre;
+            if (year) updateData.year = year;
+            if (coverUrl) updateData.cover_path = coverUrl;
+            if (description) updateData.description = description;
+
+            if (artist) {
+                const a = database.getArtistByName(artist);
+                updateData.artist_id = a ? a.id : database.createArtist(artist);
+            }
+
+            await catalogService.updateAlbum(id, updateData);
+            
+            const updated = database.getAlbum(id);
+            res.json({ message: "Album metadata matched", album: updated });
+        } catch (error: any) {
+            console.error(`❌ [Album Metadata Match Error] Album ${id}:`, error);
+            throw error;
+        }
     }));
 
     /**
