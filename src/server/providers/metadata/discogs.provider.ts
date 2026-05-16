@@ -9,21 +9,48 @@ export class DiscogsProvider implements TuneCampProvider, MetadataProvider {
     version = "1.0.0";
     description = "Metadata from the Discogs community database";
     
+    private dbSettings: any;
     private client: any;
 
     constructor() {
-        const token = process.env.DISCOGS_TOKEN;
+        this.initClient();
+    }
+
+    public setSettings(dbSettings: any) {
+        this.dbSettings = dbSettings;
+        this.initClient();
+    }
+
+    private initClient() {
+        const token = this.dbSettings?.getSetting("discogs_token") || process.env.DISCOGS_TOKEN;
         this.client = new DiscogsClient(USER_AGENT, token ? { userToken: token } : undefined);
+    }
+
+    private getClient() {
+        // Refresh client if token might have changed
+        this.initClient();
+        return this.client;
     }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {
         try {
-            const db = this.client.database();
+            const db = this.getClient().database();
             const results = await new Promise<any[]>((resolve, reject) => {
-                db.search({ q: query, type: 'release' }, (err: any, data: any) => {
-                    if (err) reject(err);
-                    else resolve(data.results || []);
-                });
+                try {
+                    db.search({ q: query, type: 'release' }, (err: any, data: any) => {
+                        if (err) {
+                            // Discogs sometimes returns HTML on error which causes SyntaxError in disconnect
+                            if (err.message && (err.message.includes('Unexpected token') || err.message.includes('Unexpected non-whitespace'))) {
+                                resolve([]);
+                            } else {
+                                reject(err);
+                            }
+                        }
+                        else resolve(data?.results || []);
+                    });
+                } catch (e) {
+                    reject(e);
+                }
             });
 
             return results.map(r => ({
@@ -50,12 +77,22 @@ export class DiscogsProvider implements TuneCampProvider, MetadataProvider {
 
     async getCoverUrl(id: string): Promise<string | null> {
         try {
-            const db = this.client.database();
+            const db = this.getClient().database();
             const data = await new Promise<any>((resolve, reject) => {
-                db.getRelease(id, (err: any, data: any) => {
-                    if (err) reject(err);
-                    else resolve(data);
-                });
+                try {
+                    db.getRelease(id, (err: any, data: any) => {
+                        if (err) {
+                            if (err.message && (err.message.includes('Unexpected token') || err.message.includes('Unexpected non-whitespace'))) {
+                                resolve(null);
+                            } else {
+                                reject(err);
+                            }
+                        }
+                        else resolve(data);
+                    });
+                } catch (e) {
+                    reject(e);
+                }
             });
             return data.images?.[0]?.resource_url || null;
         } catch (error) {

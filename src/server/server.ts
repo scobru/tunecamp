@@ -18,7 +18,9 @@ process.on('uncaughtException', (err) => {
         err.message.includes('socket hang up') ||
         err.message.includes('non-101 status code') ||
         err.message.includes('network error') ||
-        err.message.includes('fetch failed')
+        err.message.includes('fetch failed') ||
+        err.message.includes('Unexpected non-whitespace character after JSON') ||
+        err.message.includes('Unexpected token')
     )) {
         console.warn('⚠️ Non-fatal exception caught, staying alive...');
         return;

@@ -153,6 +153,10 @@ export class MetadataService {
 export const metadataService = new MetadataService();
 
 export async function initMetadataService(db: DatabaseService): Promise<MetadataService> {
+    // Pass DB settings to providers that need it
+    if ((discogsProvider as any).setSettings) {
+        (discogsProvider as any).setSettings(db);
+    }
     await syncRegistryWithDatabase(metadataService.getRegistry(), db);
     return metadataService;
 }
