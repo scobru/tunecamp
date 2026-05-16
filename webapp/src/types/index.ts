@@ -151,6 +151,10 @@ export interface Album {
     walletAddress?: string;
     starred?: boolean;
     rating?: number;
+    owner_id?: number | string;
+    artist_id?: string | number;
+    visibility?: 'public' | 'private' | 'unlisted';
+    status?: string;
 }
 
 export interface Playlist {

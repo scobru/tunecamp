@@ -6,18 +6,24 @@ import {
   BarChart2,
   Music,
   Settings,
+  Disc,
+  User,
+  Layout,
 } from "lucide-react";
 import { AdminReleaseModal } from "../components/modals/AdminReleaseModal";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
+import { AdminArtistModal } from "../components/modals/AdminArtistModal";
 
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminTracksList } from "../components/admin/AdminTracksList";
+import { AdminArtistsList } from "../components/admin/AdminArtistsList";
+import { AdminAlbumsList } from "../components/admin/AdminAlbumsList";
 
 export const MyMusic = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "albums" | "tracks"
+    "overview" | "releases" | "albums" | "artists" | "tracks"
   >("overview");
   const [stats, setStats] = useState<any>(null);
 
@@ -90,21 +96,35 @@ export const MyMusic = () => {
       <div role="tablist" className="tabs tabs-lifted">
         <a
           role="tab"
-          className={`tab ${activeTab === "overview" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${activeTab === "overview" ? "tab-active font-bold" : ""}`}
           onClick={() => setActiveTab("overview")}
         >
-          Overview
+          <Layout size={16}/> Overview
         </a>
         <a
           role="tab"
-          className={`tab ${activeTab === "albums" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${activeTab === "releases" ? "tab-active font-bold" : ""}`}
+          onClick={() => setActiveTab("releases")}
+        >
+          <Disc size={16}/> Releases
+        </a>
+        <a
+          role="tab"
+          className={`tab gap-2 ${activeTab === "albums" ? "tab-active font-bold" : ""}`}
           onClick={() => setActiveTab("albums")}
         >
-          Releases
+          <Music size={16}/> Albums
         </a>
         <a
           role="tab"
-          className={`tab ${activeTab === "tracks" ? "tab-active" : ""}`}
+          className={`tab gap-2 ${activeTab === "artists" ? "tab-active font-bold" : ""}`}
+          onClick={() => setActiveTab("artists")}
+        >
+          <User size={16}/> Artists
+        </a>
+        <a
+          role="tab"
+          className={`tab gap-2 ${activeTab === "tracks" ? "tab-active font-bold" : ""}`}
           onClick={() => setActiveTab("tracks")}
         >
           Tracks
@@ -136,6 +156,12 @@ export const MyMusic = () => {
                       💿 New Release
                     </button>
                   )}
+                  <button
+                    className="btn btn-outline gap-2 hover:scale-[1.02] transition-transform"
+                    onClick={() => document.dispatchEvent(new CustomEvent("open-admin-artist-modal"))}
+                  >
+                    👤 Manage Artist Profile
+                  </button>
                 </>
               )}
             </div>
@@ -167,10 +193,10 @@ export const MyMusic = () => {
           </div>
         )}
 
-        {activeTab === "albums" && (
+        {activeTab === "releases" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg tracking-tight">My Releases</h3>
+              <h3 className="font-bold text-lg tracking-tight">My Public Releases</h3>
               <div className="flex gap-2">
                 {(user?.isAdmin || user?.isActive) && (
                   <button
@@ -186,18 +212,50 @@ export const MyMusic = () => {
           </div>
         )}
 
+        {activeTab === "albums" && (
+           <div className="space-y-4">
+             <h3 className="font-bold text-lg tracking-tight">My Library Albums</h3>
+             <AdminAlbumsList mine={true} />
+           </div>
+        )}
+
+        {activeTab === "artists" && (
+            <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <h3 className="font-bold text-lg tracking-tight">My Artist Profiles</h3>
+                    {(user?.isRootAdmin || role === 'super_user') && (
+                        <button 
+                            className="btn btn-sm btn-primary"
+                            onClick={() => document.dispatchEvent(new CustomEvent("open-admin-artist-modal"))}
+                        >
+                            Create New Artist
+                        </button>
+                    )}
+                </div>
+                <AdminArtistsList />
+            </div>
+        )}
+
         {activeTab === "tracks" && <AdminTracksList mine={true} />}
       </div>
 
       <AdminReleaseModal
-        onReleaseUpdated={() =>
-          window.dispatchEvent(new CustomEvent("refresh-admin-releases"))
+        onReleaseUpdated={() => {
+          window.dispatchEvent(new CustomEvent("refresh-admin-releases"));
+          window.dispatchEvent(new CustomEvent("refresh-admin-albums"));
+        }}
+      />
+      <AdminArtistModal
+        onArtistUpdated={() =>
+          window.dispatchEvent(new CustomEvent("refresh-admin-artists"))
         }
       />
       <UploadTracksModal
-        onUploadComplete={() =>
-          window.dispatchEvent(new CustomEvent("refresh-admin-releases"))
-        }
+        onUploadComplete={() => {
+          window.dispatchEvent(new CustomEvent("refresh-admin-releases"));
+          window.dispatchEvent(new CustomEvent("refresh-admin-albums"));
+          window.dispatchEvent(new CustomEvent("refresh-admin-tracks"));
+        }}
       />
     </div>
   );
