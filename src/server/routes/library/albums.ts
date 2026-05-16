@@ -106,16 +106,16 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
                 albumId = database.createAlbum({
                     title,
                     artist_id: artistId,
-                    artist_name: artist || null,
+                    album_artist: artist || null,
                     owner_id: req.userId || null,
                     cover_path: coverUrl || null,
-                    type: type || 'album',
-                    year: year || new Date().getFullYear(),
+                    type: type || null,
+                    year: year || null,
                     external_id: idParam,
                     status: 'draft',
                     is_release: false,
                     visibility: 'public' // Mark as public so it's viewable by the user who starred it
-                });
+                } as any);
             }
         } else {
             albumId = parseInt(idParam, 10);

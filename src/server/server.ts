@@ -217,7 +217,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const fingerprintService = new FingerprintService();
 
-    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService, openRouterService);
+    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService, openRouterService, metadataService);
 
     const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
 

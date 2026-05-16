@@ -82,7 +82,7 @@ export class ArtistRepository extends BaseRepository {
         return rows.map(row => this.mapArtist(row)) as Artist[];
     }
 
-    create(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'private'): number {
+    create(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'private', externalId?: string): number {
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
         const linksJson = links ? JSON.stringify(links) : null;
         const postParamsJson = postParams ? JSON.stringify(postParams) : null;
@@ -91,8 +91,8 @@ export class ArtistRepository extends BaseRepository {
         while (attempt < 100) {
             try {
                 const result = this.db
-                    .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params, wallet_address, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-                    .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson, walletAddress || null, visibility);
+                    .prepare("INSERT INTO artists (name, slug, bio, photo_path, links, post_params, wallet_address, visibility, external_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                    .run(name, finalSlug, bio || null, photoPath || null, linksJson, postParamsJson, walletAddress || null, visibility, externalId || null);
                 return result.lastInsertRowid as number;
             } catch (e: any) {
                 if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {

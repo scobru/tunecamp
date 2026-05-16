@@ -218,9 +218,9 @@ export function createDatabase(dbPath: string): DatabaseService {
             },
             {
                 table: 'artists', columns: [
-
                     { name: 'visibility', type: 'TEXT DEFAULT "public"' },
-                    { name: 'wallet_address', type: 'TEXT' }
+                    { name: 'wallet_address', type: 'TEXT' },
+                    { name: 'external_id', type: 'TEXT' }
                 ]
             }
         ];
@@ -279,6 +279,7 @@ export function createDatabase(dbPath: string): DatabaseService {
       private_key TEXT,
       wallet_address TEXT,
       visibility TEXT DEFAULT 'public',
+      external_id TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -1523,8 +1524,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             return artistRepository.getBySlug(slug);
         },
 
-        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'private'): number {
-            return artistRepository.create(name, bio, photoPath, links, postParams, walletAddress, visibility);
+        createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility: 'public' | 'private' | 'unlisted' = 'private', externalId?: string): number {
+            return artistRepository.create(name, bio, photoPath, links, postParams, walletAddress, visibility, externalId);
         },
 
         updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void {

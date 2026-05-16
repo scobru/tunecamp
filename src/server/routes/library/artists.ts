@@ -130,6 +130,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                         undefined, 
                         undefined, 
                         undefined,
+                        'public',
                         idParam // external_id
                     );
 
@@ -440,7 +441,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                         id: `ext:${bestMatch.source}:${bestMatch.id}`,
                         name: bestMatch.name,
                         bio: bestMatch.bio || "Artist info fetched from " + bestMatch.source,
-                        coverImage: bestMatch.thumbnail,
+                        coverImage: bestMatch.avatarUrl,
                         isExternal: true,
                         source: bestMatch.source,
                         albums: [], // We could potentially search albums too, but let's keep it simple for now

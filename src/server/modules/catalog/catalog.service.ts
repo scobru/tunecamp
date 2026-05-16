@@ -1,5 +1,6 @@
 import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
+import type { MetadataService } from "./metadata.service.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
@@ -19,7 +20,8 @@ export class CatalogService {
         private storage: StorageEngine,
         private musicDir: string,
         private fingerprinting: FingerprintService,
-        private openRouter: OpenRouterService
+        private openRouter: OpenRouterService,
+        private metadataService: MetadataService
     ) {}
 
     // --- Query & Recommendation Operations ---
@@ -159,12 +161,13 @@ export class CatalogService {
 
         // 2. If not found locally, try external search
         if (!album && typeof albumIdOrSlug === 'string' && !/^\d+$/.test(albumIdOrSlug)) {
-             const results = await this.openRouter.searchMetadata(albumIdOrSlug);
+             const results = await this.metadataService.searchRelease(albumIdOrSlug);
              if (results && results.length > 0) {
                  const match = results[0];
+                 const extId = `ext:search:${match.source}:${match.id}`;
                  return {
-                     id: `ext:search:${match.album}`,
-                     title: match.album,
+                     id: extId,
+                     title: match.title,
                      artist_name: match.artist,
                      artistName: match.artist,
                      coverImage: match.coverUrl,
@@ -172,7 +175,7 @@ export class CatalogService {
                      is_release: false,
                      is_public: true,
                      tracks: [],
-                     starred: user.username ? this.database.isStarred(user.username, 'album', `ext:search:${match.album}`) : false
+                     starred: user.username ? this.database.isStarred(user.username, 'album', extId) : false
                  } as any;
              }
         }
