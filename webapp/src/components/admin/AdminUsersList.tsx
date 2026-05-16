@@ -37,7 +37,7 @@ export const AdminUsersList = () => {
     )
       return;
     try {
-      await API.deleteUser(id);
+      await API.deleteUser(String(id));
       loadUsers();
     } catch (e: any) {
       console.error(e);
