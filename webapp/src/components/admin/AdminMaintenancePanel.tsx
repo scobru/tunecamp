@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, CloudDownload } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, Shield, RefreshCw, Save, Zap } from "lucide-react";
 
 import { MetadataPickerModal } from "../modals/MetadataPickerModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
@@ -210,41 +210,6 @@ export const AdminMaintenancePanel = () => {
         }
     };
     
-    const handleLocalize = async (id: number) => {
-        setIsProcessing(true);
-        try {
-            await API.localizeTrack(id);
-            loadTracks();
-        } catch (e: any) {
-            alert("Localization failed: " + e.message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleBulkLocalize = async (ids: number[]) => {
-        if (ids.length === 0) return;
-        if (!confirm(`Are you sure you want to localize ${ids.length} tracks? This will download them to the server library.`)) return;
-        
-        setIsProcessing(true);
-        let success = 0;
-        let failed = 0;
-        try {
-            for (const id of ids) {
-                try {
-                    await API.localizeTrack(id);
-                    success++;
-                } catch (e) {
-                    failed++;
-                }
-            }
-            alert(`✅ Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
-            loadTracks();
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     const handleShareFingerprint = async (trackId: number) => {
 
         setIsProcessing(true);
@@ -285,6 +250,20 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
+    const handleRepairArtistLinks = async (artistId: number) => {
+        if (!confirm("This will attempt to relink orphaned tracks and albums to this artist by matching names. Continue?")) return;
+        setIsProcessing(true);
+        try {
+            const res = await API.repairArtistLinks(artistId);
+            alert(`✅ Repair complete!\n\nFixed ${res.tracks} tracks and ${res.albums} albums.`);
+            loadArtists();
+        } catch (e: any) {
+            alert(`❌ Repair failed: ${e.message}`);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const handleScanAllFingerprints = async () => {
         if (!confirm("Start mass fingerprint scan for the entire library? This will process tracks without fingerprints in the background.")) return;
         setIsProcessing(true);
@@ -319,14 +298,14 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
-    const handleConsolidate = async () => {
+    const handleOptimizeDB = async () => {
         if (!confirm("This will optimize the database and remove orphan records. Continue?")) return;
         setIsProcessing(true);
         try {
             const res = await API.consolidateDatabase();
             alert(res.message);
         } catch (e: any) {
-            alert("Consolidation failed: " + e.message);
+            alert("Optimization failed: " + e.message);
         } finally {
             setIsProcessing(false);
         }
@@ -340,6 +319,45 @@ export const AdminMaintenancePanel = () => {
             alert(res.message);
         } catch (e: any) {
             alert("Tag sync failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleNetworkCleanup = async () => {
+        if (!confirm("Are you sure you want to cleanup the network? This will check reachability of all registered sites.")) return;
+        setIsProcessing(true);
+        try {
+            await API.cleanupNetwork();
+            alert("Network cleanup finished successfully.");
+        } catch (e: any) {
+            alert("Cleanup failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleOrganizeFiles = async () => {
+        if (!confirm("Are you sure you want to organize physical files? This will rename files to 'Artist - Title' format based on database tags.")) return;
+        setIsProcessing(true);
+        try {
+            const res = await API.consolidateFiles();
+            alert(`File organization finished. Success: ${res.success}, Failed: ${res.failed}, Skipped: ${res.skipped}`);
+        } catch (e: any) {
+            alert("Organization failed: " + e.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRescan = async () => {
+        if (!confirm("Trigger a full library rescan? This deep scan finds new files and updates existing metadata.")) return;
+        setIsProcessing(true);
+        try {
+            await API.triggerRescan();
+            alert("Full library rescan triggered in background.");
+        } catch (e: any) {
+            alert("Rescan failed: " + e.message);
         } finally {
             setIsProcessing(false);
         }
@@ -382,35 +400,6 @@ export const AdminMaintenancePanel = () => {
                 </div>
                 
                 <div className="flex gap-2">
-                    {mode === 'tracks' && (
-                        <select 
-                            className="select select-bordered select-sm"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value as any)}
-                        >
-                            <option value="artist">Missing Artist</option>
-                            <option value="album">Missing Album</option>
-                            <option value="genre">Missing Genre</option>
-                            <option value="year">Missing Year</option>
-                            <option value="cover">Missing Cover</option>
-                            <option value="external">External / Streaming</option>
-                        </select>
-                    )}
-                    
-                    {mode === 'albums' && (
-                        <select 
-                            className="select select-bordered select-sm"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value as any)}
-                        >
-                            <option value="artist">Missing Artist</option>
-                            <option value="cover">Missing Cover</option>
-                            <option value="genre">Missing Genre</option>
-                            <option value="year">Missing Year</option>
-                            <option value="description">Missing Description</option>
-                        </select>
-                    )}
-                    
                     <button 
                         className="btn btn-sm btn-ghost"
                         onClick={mode === 'tracks' ? loadTracks : mode === 'artists' ? loadArtists : loadAlbums}
@@ -423,113 +412,26 @@ export const AdminMaintenancePanel = () => {
                     <div className="divider divider-horizontal mx-0"></div>
 
                     <button 
-                        className="btn btn-sm btn-outline btn-primary"
-                        onClick={handleScanAllFingerprints}
+                        className="btn btn-sm btn-outline btn-accent"
+                        onClick={handleNetworkCleanup}
                         disabled={isProcessing}
-                        title="Generate fingerprints and identify all tracks"
+                        title="Cleanup network site reachability"
                     >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Fingerprint size={18} />}
-                        Identify All
-                    </button>
-
-                    <button 
-                        className="btn btn-sm btn-outline btn-primary"
-                        onClick={handleSyncTags}
-                        disabled={isProcessing}
-                        title="Write database metadata to audio file tags"
-                    >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Disc size={18} />}
-                        Sync Tags
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+                        Cleanup Network
                     </button>
 
                     <button 
                         className="btn btn-sm btn-outline btn-error"
-                        onClick={handleConsolidate}
+                        onClick={handleOptimizeDB}
                         disabled={isProcessing}
+                        title="Optimize database and remove orphan records"
                     >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
-                        Consolidate DB
+                        Optimize DB
                     </button>
                 </div>
             </div>
-
-            <div className="bg-base-300/30 border border-base-content/10 rounded-xl p-4 space-y-4">
-                <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                        <div className="bg-primary/20 p-2 rounded-lg">
-                            <Activity className="text-primary" />
-                        </div>
-                        <div>
-                            <h4 className="font-bold">Library Auto-Tagger & Audit</h4>
-                            <p className="text-xs opacity-60 max-w-md">
-                                Background service that reconciles all library metadata against online sources. It verifies existing tags and repairs "Unknown" entries automatically.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        {auditStatus?.isScanning ? (
-                            <button className="btn btn-sm btn-error" onClick={handleStopAudit}>
-                                Stop Audit
-                            </button>
-                        ) : (
-                            <>
-                                <button className="btn btn-sm btn-primary" onClick={() => handleStartAudit(false, false)}>
-                                    Start Audit
-                                </button>
-                                <button className="btn btn-sm btn-outline btn-secondary" onClick={() => handleStartAudit(true, hasAI)}>
-                                    <Wand2 size={14} /> Repair & AI
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {auditStatus?.isScanning && (
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                            <span className="flex items-center gap-2">
-                                <Loader2 className="animate-spin" size={12} />
-                                Processing Library... ({auditStatus.processedTracks} / {auditStatus.totalTracks})
-                            </span>
-                            <span className="opacity-60">{Math.round((auditStatus.processedTracks / auditStatus.totalTracks) * 100)}%</span>
-                        </div>
-                        <progress 
-                            className="progress progress-primary w-full h-2" 
-                            value={auditStatus.processedTracks} 
-                            max={auditStatus.totalTracks}
-                        ></progress>
-                        <div className="flex gap-4 text-[10px] uppercase font-bold tracking-wider opacity-60">
-                            <span className="text-success">Verified: {auditStatus.verifiedCount}</span>
-                            <span className="text-secondary">Repaired: {auditStatus.repairedCount}</span>
-                            <span className="text-error">Failed: {auditStatus.failedCount}</span>
-                        </div>
-                        {auditStatus.lastResult && (
-                            <div className="text-[10px] italic opacity-40 border-t border-base-content/5 pt-1">
-                                Last: {auditStatus.lastResult.artist} - {auditStatus.lastResult.title} ({auditStatus.lastResult.status})
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {!auditStatus?.isScanning && auditStatus?.processedTracks > 0 && (
-                    <div className="text-xs bg-success/10 text-success p-2 rounded-lg border border-success/20 flex items-center gap-2">
-                        <CheckCircle2 size={14} />
-                        Last audit finished: {auditStatus.repairedCount} tracks repaired, {auditStatus.verifiedCount} verified.
-                    </div>
-                )}
-            </div>
-
-            {results && (
-                <div className="alert alert-success shadow-lg border border-success/20">
-                    <CheckCircle2 />
-                    <div>
-                        <h3 className="font-bold">Maintenance Finished</h3>
-                        <div className="text-xs opacity-80">
-                            Success: {results.success} | Failed: {results.failed} | Skipped: {results.skipped}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {!hasAI && (
                 <div className="alert alert-warning shadow-sm border border-warning/20 text-sm py-2">
@@ -538,81 +440,221 @@ export const AdminMaintenancePanel = () => {
                 </div>
             )}
 
-            {mode === 'tracks' ? (
-                <div className="flex flex-wrap gap-2 items-center">
-                    <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
-                        <button 
-                            className="btn btn-sm btn-primary"
-                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
-                            onClick={() => handleAutofill(selectedIds)}
-                        >
-                            {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
-                            Autofill Selected ({selectedIds.length})
-                        </button>
-                        
-                        <button 
-                            className="btn btn-sm btn-outline"
-                            disabled={tracks.length === 0 || isProcessing || isAIProcessing}
-                            onClick={() => handleAutofill(tracks.map(t => t.id))}
-                        >
-                            All
-                        </button>
-                    </div>
-
-                    <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
-                        <button 
-                            className="btn btn-sm btn-secondary"
-                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing || !hasAI}
-                            onClick={() => handleAIAutofill(selectedIds)}
-                        >
-                            {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
-                            AI Magic Autofill ({selectedIds.length})
-                        </button>
-                        
-                        <button 
-                            className="btn btn-sm btn-outline btn-secondary"
-                            disabled={tracks.length === 0 || isProcessing || isAIProcessing || !hasAI}
-                            onClick={() => handleAIAutofill(tracks.map(t => t.id))}
-                        >
-                            All
-                        </button>
-                    </div>
-
-                    <div className="flex gap-1 items-center bg-primary/10 p-1 rounded-lg border border-primary/20">
-                        <button 
-                            className="btn btn-sm btn-primary"
-                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
-                            onClick={() => handleBulkFingerprintMatch(selectedIds)}
-                        >
-                            <Fingerprint size={18} />
-                            Community Match ({selectedIds.length})
-                        </button>
-                    </div>
-
-                    <div className="flex gap-1 items-center bg-indigo-500/10 p-1 rounded-lg border border-indigo-500/20">
-                        <button 
-                            className="btn btn-sm btn-outline btn-primary border-indigo-500/30 text-indigo-400"
-                            disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
-                            onClick={() => handleBulkLocalize(selectedIds)}
-                        >
-                            <CloudDownload size={18} />
-                            Localize Selected ({selectedIds.length})
-                        </button>
+            {results && (
+                <div className="alert alert-success shadow-sm border border-success/20">
+                    <CheckCircle2 />
+                    <div className="text-sm">
+                        Maintenance Finished. Success: {results.success}, Failed: {results.failed}, Skipped: {results.skipped}
                     </div>
                 </div>
-            ) : mode === 'albums' ? (
+            )}
+
+            {/* CONTEXTUAL COMPARTMENTS */}
+            {mode === 'tracks' && (
+                <div className="space-y-6">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="card card-m3 bg-base-300/30 border border-base-content/5">
+                            <div className="card-body p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Save className="text-primary" size={18} />
+                                    <h2 className="card-title text-sm font-bold uppercase tracking-wider">File Organization</h2>
+                                </div>
+                                <p className="opacity-70 text-xs mb-4">
+                                    Rename physical files to "Artist - Title" format based on database tags.
+                                </p>
+                                <button
+                                    className="btn btn-primary btn-outline btn-xs w-full"
+                                    onClick={handleOrganizeFiles}
+                                    disabled={isProcessing}
+                                >
+                                    Organize Files
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="card card-m3 bg-base-300/30 border border-base-content/5">
+                            <div className="card-body p-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Zap className="text-secondary" size={18} />
+                                    <h2 className="card-title text-sm font-bold uppercase tracking-wider">Library Scanning</h2>
+                                </div>
+                                <p className="opacity-70 text-xs mb-4">
+                                    Deep scan of the music directory to detect new files.
+                                </p>
+                                <button
+                                    className="btn btn-secondary btn-outline btn-xs w-full"
+                                    onClick={handleRescan}
+                                    disabled={isProcessing}
+                                >
+                                    Rescan Library
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-base-300/30 border border-base-content/10 rounded-xl p-4 space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <div className="bg-primary/20 p-2 rounded-lg">
+                                    <Activity className="text-primary" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold">Library Auto-Tagger & Audit</h4>
+                                    <p className="text-xs opacity-60 max-w-md">
+                                        Background service that reconciles all library metadata against online sources.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                {auditStatus?.isScanning ? (
+                                    <button className="btn btn-sm btn-error" onClick={handleStopAudit}>
+                                        Stop Audit
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button className="btn btn-sm btn-primary" onClick={() => handleStartAudit(false, false)}>
+                                            Start Audit
+                                        </button>
+                                        <button className="btn btn-sm btn-outline btn-secondary" onClick={() => handleStartAudit(true, hasAI)}>
+                                            <Wand2 size={14} /> Repair & AI
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {auditStatus?.isScanning && (
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs">
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 className="animate-spin" size={12} />
+                                        Processing Library... ({auditStatus.processedTracks} / {auditStatus.totalTracks})
+                                    </span>
+                                    <span className="opacity-60">{Math.round((auditStatus.processedTracks / auditStatus.totalTracks) * 100)}%</span>
+                                </div>
+                                <progress 
+                                    className="progress progress-primary w-full h-2" 
+                                    value={auditStatus.processedTracks} 
+                                    max={auditStatus.totalTracks}
+                                ></progress>
+                                <div className="flex gap-4 text-[10px] uppercase font-bold tracking-wider opacity-60">
+                                    <span className="text-success">Verified: {auditStatus.verifiedCount}</span>
+                                    <span className="text-secondary">Repaired: {auditStatus.repairedCount}</span>
+                                    <span className="text-error">Failed: {auditStatus.failedCount}</span>
+                                </div>
+                                {auditStatus.lastResult && (
+                                    <div className="text-[10px] italic opacity-40 border-t border-base-content/5 pt-1">
+                                        Last: {auditStatus.lastResult.artist} - {auditStatus.lastResult.title} ({auditStatus.lastResult.status})
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {!auditStatus?.isScanning && auditStatus?.processedTracks > 0 && (
+                            <div className="text-xs bg-success/10 text-success p-2 rounded-lg border border-success/20 flex items-center gap-2">
+                                <CheckCircle2 size={14} />
+                                Last audit finished: {auditStatus.repairedCount} tracks repaired, {auditStatus.verifiedCount} verified.
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <select 
+                            className="select select-bordered select-sm"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value as any)}
+                        >
+                            <option value="artist">Missing Artist</option>
+                            <option value="album">Missing Album</option>
+                            <option value="genre">Missing Genre</option>
+                            <option value="year">Missing Year</option>
+                            <option value="cover">Missing Cover</option>
+                            <option value="external">External / Streaming</option>
+                        </select>
+
+                        <div className="divider divider-horizontal mx-0"></div>
+
+                        <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
+                            <button 
+                                className="btn btn-sm btn-primary"
+                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                                onClick={() => handleAutofill(selectedIds)}
+                            >
+                                {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
+                                Autofill ({selectedIds.length})
+                            </button>
+                            <button 
+                                className="btn btn-sm btn-outline btn-primary"
+                                onClick={handleScanAllFingerprints}
+                                disabled={isProcessing}
+                                title="Identify all tracks"
+                            >
+                                <Fingerprint size={18} />
+                                Identify
+                            </button>
+                            <button 
+                                className="btn btn-sm btn-outline btn-primary"
+                                onClick={handleSyncTags}
+                                disabled={isProcessing}
+                                title="Sync to files"
+                            >
+                                <Disc size={18} />
+                                Sync
+                            </button>
+                        </div>
+
+                        <div className="flex gap-1 items-center bg-secondary/10 p-1 rounded-lg border border-secondary/20">
+                            <button 
+                                className="btn btn-sm btn-secondary"
+                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing || !hasAI}
+                                onClick={() => handleAIAutofill(selectedIds)}
+                            >
+                                {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
+                                AI Magic Autofill ({selectedIds.length})
+                            </button>
+                        </div>
+
+                        <div className="flex gap-1 items-center bg-primary/10 p-1 rounded-lg border border-primary/20">
+                            <button 
+                                className="btn btn-sm btn-primary"
+                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
+                                onClick={() => handleBulkFingerprintMatch(selectedIds)}
+                            >
+                                <Fingerprint size={18} />
+                                Community Match ({selectedIds.length})
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {mode === 'albums' && (
                 <div className="flex flex-col gap-4">
                     <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
                         <Disc className="text-primary" />
                         <div>
                             <h3 className="font-bold">Album Metadata Cleanup</h3>
                             <div className="text-xs opacity-70">
-                                Scan your library for albums with missing covers or info. Match them with global databases to fix artwork and genres.
+                                Scan your library for albums with missing covers or info.
                             </div>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 items-center">
+                        <select 
+                            className="select select-bordered select-sm"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value as any)}
+                        >
+                            <option value="artist">Missing Artist</option>
+                            <option value="cover">Missing Cover</option>
+                            <option value="genre">Missing Genre</option>
+                            <option value="year">Missing Year</option>
+                            <option value="description">Missing Description</option>
+                        </select>
+
+                        <div className="divider divider-horizontal mx-0"></div>
+
                         <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
                             <button 
                                 className="btn btn-sm btn-primary"
@@ -620,15 +662,7 @@ export const AdminMaintenancePanel = () => {
                                 onClick={() => handleAlbumAutofill(selectedIds)}
                             >
                                 {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
-                                Autofill Selected ({selectedIds.length})
-                            </button>
-                            
-                            <button 
-                                className="btn btn-sm btn-outline"
-                                disabled={albums.length === 0 || isProcessing || isAIProcessing}
-                                onClick={() => handleAlbumAutofill(albums.map(t => t.id))}
-                            >
-                                All
+                                Autofill ({selectedIds.length})
                             </button>
                         </div>
 
@@ -641,28 +675,22 @@ export const AdminMaintenancePanel = () => {
                                 {isAIProcessing ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
                                 AI Magic Autofill ({selectedIds.length})
                             </button>
-                            
-                            <button 
-                                className="btn btn-sm btn-outline btn-secondary"
-                                disabled={albums.length === 0 || isProcessing || isAIProcessing || !hasAI}
-                                onClick={() => handleAIAlbumAutofill(albums.map(t => t.id))}
-                            >
-                                All
-                            </button>
                         </div>
                     </div>
                 </div>
-            ) : (
+            )}
+
+            {mode === 'artists' && (
                 <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
                     <User className="text-primary" />
                     <div>
                         <h3 className="font-bold">Artist Profile Enrichment</h3>
                         <div className="text-xs opacity-70">
-                            Missing photos? Click "Enrich" to use AI and external providers to find high-quality imagery and bios.
+                            Missing photos or bios? Use external providers to find high-quality imagery.
                         </div>
                     </div>
                 </div>
-            ) }
+            )}
 
             <div className="overflow-x-auto bg-base-200 rounded-box border border-base-content/5">
                 <table className="table table-zebra table-sm">
@@ -791,15 +819,6 @@ export const AdminMaintenancePanel = () => {
                                             >
                                                 <Share2 size={12} />
                                             </button>
-                                            {mode === 'tracks' && (!item.file_path || item.file_path.startsWith('http') || item.file_path.startsWith('gdrive://')) && (
-                                                <button 
-                                                    className="btn btn-xs btn-ghost text-primary"
-                                                    title="Localize (Rip)"
-                                                    onClick={() => handleLocalize(item.id)}
-                                                >
-                                                    <CloudDownload size={12} />
-                                                </button>
-                                            )}
                                             <button 
                                                 className="btn btn-xs btn-ghost"
                                                 onClick={() => {
@@ -810,6 +829,16 @@ export const AdminMaintenancePanel = () => {
                                             >
                                                 <Wand2 size={12} /> {mode === 'tracks' ? 'Match' : mode === 'albums' ? 'Match' : 'Enrich'}
                                             </button>
+                                            {mode === 'artists' && (
+                                                <button 
+                                                    className="btn btn-xs btn-ghost text-primary"
+                                                    title="Repair Artist Links"
+                                                    onClick={() => handleRepairArtistLinks(item.id)}
+                                                    disabled={isProcessing}
+                                                >
+                                                    <Shield size={12} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

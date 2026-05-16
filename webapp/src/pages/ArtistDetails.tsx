@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe, Trash2, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart } from 'lucide-react';
+import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { formatDuration } from '../utils/format';
@@ -29,7 +29,6 @@ export const ArtistDetails = () => {
     const [loading, setLoading] = useState(true);
     const { playTrack } = usePlayerStore();
     const { isAdminAuthenticated } = useAuthStore();
-    const [repairing, setRepairing] = useState(false);
     const [starred, setStarred] = useState(false);
 
     const loadData = () => {
@@ -72,29 +71,7 @@ export const ArtistDetails = () => {
         }
     };
 
-    const handleRepairLinks = async () => {
-        if (!artist || repairing) return;
-        setRepairing(true);
-        try {
-            const res = await API.repairArtistLinks(artist.id);
-            alert(`Repair complete!\nFixed ${res.tracks} tracks and ${res.albums} albums.`);
-            loadData();
-        } catch (e: any) {
-            alert("Repair failed: " + e.message);
-        } finally {
-            setRepairing(false);
-        }
-    };
 
-    const handleDeletePost = async (postId: string) => {
-        if (!confirm("Are you sure you want to delete this post? This will also remove it from the ActivityPub network.")) return;
-        try {
-            await API.deletePost(Number(postId));
-            setPosts(posts.filter(p => p.id !== postId));
-        } catch (err: any) {
-            alert("Failed to delete post: " + err.message);
-        }
-    };
 
     const handleToggleStar = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -159,24 +136,6 @@ export const ArtistDetails = () => {
                                  <span className="badge badge-warning badge-sm gap-1 py-3 px-3 mr-2">
                                      <Shield size={12}/> Empty Profile
                                  </span>
-                             )}
-                             {isAdminAuthenticated && (
-                                 <button 
-                                     className={`btn btn-xs btn-outline gap-1 ${repairing ? 'loading' : ''}`}
-                                     disabled={repairing}
-                                     onClick={handleRepairLinks}
-                                     title="Links unlinked tracks/albums by name"
-                                 >
-                                     <Shield size={12}/> {repairing ? 'Repairing...' : 'Repair Links'}
-                                 </button>
-                             )}
-                             {isAdminAuthenticated && (
-                                 <button 
-                                     className="btn btn-xs btn-secondary gap-1"
-                                     onClick={() => document.dispatchEvent(new CustomEvent('open-upload-tracks-modal', { detail: { artistId: artist.id } }))}
-                                 >
-                                     <Globe size={12}/> Upload Tracks
-                                 </button>
                              )}
 
                           </div>
@@ -250,17 +209,6 @@ export const ArtistDetails = () => {
                                         </div>
                                     </div>
                                     
-                                    {isAdminAuthenticated && (
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button 
-                                                className="btn btn-xs btn-circle btn-ghost text-error"
-                                                onClick={() => handleDeletePost(post.id)}
-                                                title="Delete Post"
-                                            >
-                                                <Trash2 size={14}/>
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                                 <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
                             </div>

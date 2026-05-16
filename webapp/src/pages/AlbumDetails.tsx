@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Trash2, Camera, Loader2, Play, Heart, Download, Unlock, ExternalLink, MoreHorizontal, CheckCircle2, Wallet, Music, Copyright, CloudDownload } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, MoreHorizontal, CheckCircle2, Wallet, Copyright } from "lucide-react";
 
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePurchases } from "../hooks/usePurchases";
@@ -19,7 +19,6 @@ import { RelatedTracks } from "../components/RelatedTracks";
 
 export const AlbumDetails = () => {
   const { idOrSlug } = useParams();
-  const navigate = useNavigate();
   const isRelease = window.location.pathname.startsWith('/releases');
   const [album, setAlbum] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,25 +36,6 @@ export const AlbumDetails = () => {
     return isAdmin || isPurchased(track.id) || 
            ownedNFTs.some(n => n.trackId === Number(track.id)) ||
            (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)));
-  };
-
-  const [uploading, setUploading] = useState(false);
-  const isOwnerOrAdmin = isAdmin || (user?.artistId && String(album?.owner_id) === String(user.artistId));
-
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !album) return;
-    setUploading(true);
-    try {
-      await API.uploadCover(e.target.files[0], album.slug);
-      // Force refresh album data to show new cover
-      const data = await (isRelease ? API.getRelease(idOrSlug!) : API.getAlbum(idOrSlug!));
-      setAlbum(data);
-    } catch (err) {
-      console.error("Upload failed:", err);
-      alert("Failed to upload cover");
-    } finally {
-      setUploading(false);
-    }
   };
 
   useEffect(() => {
@@ -168,54 +148,7 @@ export const AlbumDetails = () => {
     }
   };
 
-  const handleDeleteAlbum = async () => {
-    if (!album) return;
-    const isFormalRelease = !!isRelease;
-    const isRootAdmin = !!user?.isRootAdmin;
-    
-    // Permission check matching backend
-    const canDelete = isRootAdmin || String(album.owner_id) === String(user?.artistId);
-    
-    if (!canDelete) {
-      alert("You do not have permission to delete this " + (isFormalRelease ? "release" : "album") + ".");
-      return;
-    }
 
-    if (!window.confirm(`Are you sure you want to delete this ${isFormalRelease ? 'release' : 'album'}? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await API.deleteAlbum(album.id);
-      alert(`${isFormalRelease ? 'Release' : 'Album'} deleted successfully.`);
-      navigate(isFormalRelease ? '/releases' : '/');
-    } catch (err: any) {
-      console.error("Failed to delete album:", err);
-      alert(err.message || "Failed to delete album");
-      setLoading(false);
-    }
-  };
-
-  const handleLocalize = async (track: any) => {
-    if (!window.confirm(`Do you want to download and localize "${track.title}"? This will save the audio to the server's local library.`)) {
-      return;
-    }
-    
-    try {
-      alert(`Localizing "${track.title}"... This may take a minute. You will see a success message when finished.`);
-      const result = await API.localizeTrack(track.id);
-      if (result.success) {
-        alert(`Successfully localized "${track.title}"!`);
-        // Refresh album data
-        const data = await (isRelease ? API.getRelease(idOrSlug!) : API.getAlbum(idOrSlug!));
-        setAlbum(data);
-      }
-    } catch (err: any) {
-      console.error("Localization failed:", err);
-      alert(`Failed to localize track: ${err.message}`);
-    }
-  };
 
 
   // Parse external links safely
@@ -277,19 +210,6 @@ export const AlbumDetails = () => {
                 }}
               />
               
-              {!isRelease && isOwnerOrAdmin && (
-                <label className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover/cover:opacity-100 transition-opacity cursor-pointer rounded-2xl border-2 border-dashed border-white/20 hover:border-primary/50">
-                  {uploading ? (
-                    <Loader2 className="w-8 h-8 text-primary animate-spin" aria-hidden="true" />
-                  ) : (
-                    <>
-                      <Camera className="w-8 h-8 text-white mb-2" aria-hidden="true" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white">Upload Cover</span>
-                    </>
-                  )}
-                  <input type="file" className="hidden" accept="image/*" onChange={handleCoverUpload} disabled={uploading} />
-                </label>
-              )}
             </div>
 
           <div className="flex-1 space-y-6 text-center md:text-left">
@@ -353,15 +273,6 @@ export const AlbumDetails = () => {
                 <Share2 size={24} className="opacity-60" />
               </button>
 
-              {(user?.isRootAdmin || (user?.artistId && String(album?.owner_id) === String(user.artistId))) && (
-                <button
-                  className="btn btn-lg btn-square rounded-2xl border border-red-500/10 hover:bg-red-500/10 hover:border-red-500/20 text-red-500/50 hover:text-red-500 transition-all"
-                  onClick={handleDeleteAlbum}
-                  title="Delete Album"
-                >
-                  <Trash2 size={24} />
-                </button>
-              )}
 
               {(album.download === "free" || album.download === "codes") && (
                 <div className="flex gap-1 bg-base-300/50 p-1 rounded-[1.25rem] border border-base-content/5 backdrop-blur-md">
@@ -528,20 +439,6 @@ export const AlbumDetails = () => {
                             <Share2 size={16} aria-hidden="true" /> Share Track
                          </a>
                        </li>
-                       {isAdmin && (
-                         <li className="border-t border-base-content/5 mt-1 pt-1 opacity-50 hover:opacity-100">
-                           <a onClick={() => document.dispatchEvent(new CustomEvent("open-admin-track-modal", { detail: track }))}>
-                             <Music size={16} aria-hidden="true" /> Edit Metadata
-                           </a>
-                         </li>
-                       )}
-                       {isAdmin && (!track.file_path || track.file_path.startsWith('http') || track.file_path.startsWith('gdrive://')) && (
-                          <li className="opacity-50 hover:opacity-100">
-                            <a onClick={() => handleLocalize(track)}>
-                               <CloudDownload size={16} aria-hidden="true" /> Localize (Rip)
-                            </a>
-                          </li>
-                       )}
                     </ul>
                   </div>
                 </div>

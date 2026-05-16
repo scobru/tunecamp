@@ -145,6 +145,9 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
             if (!album) throw new NotFoundError("Album not found");
 
             if (album.cover_path) {
+                if (album.cover_path.startsWith('http')) {
+                    return res.redirect(album.cover_path);
+                }
                 const coverPath = path.join(musicDir, album.cover_path);
                 if (await fs.pathExists(coverPath)) {
                     return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });

@@ -9,8 +9,6 @@ import {
   Download,
   Share2,
   ListMusic,
-  Activity,
-  CloudDownload,
 } from "lucide-react";
 
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -110,25 +108,6 @@ export const Tracks = () => {
     }
   };
 
-  const handleLocalize = async (track: Track) => {
-    if (!window.confirm(`Do you want to download and localize "${track.title}"? This will save the audio to the server's local library.`)) {
-      return;
-    }
-    
-    try {
-      alert(`Localizing "${track.title}"... This may take a minute.`);
-      const result = await API.localizeTrack(track.id);
-      if (result.success) {
-        alert(`Successfully localized "${track.title}"!`);
-        // Refresh tracks list
-        const data = await API.getTracks();
-        setTracks(data);
-      }
-    } catch (err: any) {
-      console.error("Localization failed:", err);
-      alert(`Failed to localize track: ${err.message}`);
-    }
-  };
 
   const handleShare = (track: Track) => {
     const url = `${window.location.origin}/share/tr_${track.id}`;
@@ -261,22 +240,6 @@ export const Tracks = () => {
                           <ListMusic size={16} /> Add to Playlist
                         </a>
                       </li>
-                      {isAdminAuthenticated && (
-                        <li>
-                          <a onClick={() => {
-                             // Handle other admin actions here if needed
-                          }}>
-                             <Activity size={16} className="text-secondary" /> Maintenance
-                          </a>
-                        </li>
-                      )}
-                      {isAdminAuthenticated && (!track.file_path || track.file_path.startsWith('http') || track.file_path.startsWith('gdrive://')) && (
-                          <li>
-                            <a onClick={() => handleLocalize(track)}>
-                               <CloudDownload size={16} className="text-primary" /> Localize (Rip)
-                            </a>
-                          </li>
-                       )}
                     </ul>
                   </div>
                 </div>

@@ -1,7 +1,9 @@
-import { create } from "youtube-dl-exec";
-const youtubedl = create("yt-dlp");
 import path from "path";
 import fs from "fs-extra";
+import { execFile } from "child_process";
+import { promisify } from "util";
+const execFileAsync = promisify(execFile);
+
 import { type DatabaseService, type Track } from "../../core/database.types.js";
 import { type CatalogService } from "./catalog.service.js";
 
@@ -88,30 +90,32 @@ export class LocalizationService {
 
         console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url}`);
 
-        const options: any = {
-            extractAudio: true,
-            audioFormat: 'mp3',
-            output: outputTemplate,
-            noPlaylist: true,
-            addMetadata: true,
-            embedThumbnail: true,
-            noWarnings: true,
-            noCheckCertificate: true,
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+        const args = [
+            '--extract-audio',
+            '--audio-format', 'mp3',
+            '--output', outputTemplate,
+            '--no-playlist',
+            '--add-metadata',
+            '--embed-thumbnail',
+            '--no-warnings',
+            '--no-check-certificate',
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
             // Sync with YouTubeStreamingProvider for resilience. mweb is currently the most resilient to bot checks.
-            extractorArgs: 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player;po_token=auto',
-            referer: 'https://www.youtube.com/',
-            forceIpv4: true,
-            geoBypass: true
-        };
+            '--extractor-args', 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player;po_token=auto',
+            '--referer', 'https://www.youtube.com/',
+            '--force-ipv4',
+            '--geo-bypass',
+            url
+        ];
 
         if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
-            options.cookies = this.cookiesPath;
+            args.push('--cookies', this.cookiesPath);
             console.log(`🎬 [Localization] Using cookies for authentication`);
         }
 
         try {
-            await youtubedl(url, options);
+            // Use yt-dlp directly instead of the problematic youtube-dl-exec wrapper
+            await execFileAsync('yt-dlp', args);
             
             // Find the downloaded file
             const files = await fs.readdir(localizedDir);
@@ -126,10 +130,6 @@ export class LocalizationService {
             
             // Update track in database
             this.database.updateTrackPath(trackId, relativePath, track.album_id);
-            
-            // Clear external service info as it's now a local file
-            // Actually, keeping the external_id might be useful for history, 
-            // but the system prioritizes file_path.
             
             console.log(`✅ [Localization] Track localized to: ${relativePath}`);
 

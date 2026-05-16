@@ -15,6 +15,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showBatchEdit, setShowBatchEdit] = useState(false);
   const [localizing, setLocalizing] = useState<string | number | null>(null);
+  const [isLocalizingBatch, setIsLocalizingBatch] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "title", direction: "asc" });
 
   const loadTracks = () => API.getTracks({ mine }).then(setTracks).catch(console.error);
@@ -82,12 +83,20 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
     }
   };
 
-  const handleLocalize = async (id: string | number, name: string) => {
-    if (!confirm(`Do you want to download "${name}" from Google Drive and save it on the server? This will replace the Google Drive link with a local file.`)) return;
+  const handleLocalize = async (id: string | number, name: string, isGDrive: boolean) => {
+    const confirmMsg = isGDrive 
+      ? `Do you want to download "${name}" from Google Drive and save it on the server? This will replace the Google Drive link with a local file.`
+      : `Do you want to download and localize "${name}"? This will save the audio to the server's local library.`;
+    
+    if (!confirm(confirmMsg)) return;
     
     setLocalizing(id);
     try {
-      await API.localizeGDriveTrack(id);
+      if (isGDrive) {
+        await API.localizeGDriveTrack(id);
+      } else {
+        await API.localizeTrack(id);
+      }
       loadTracks();
       alert(`Track "${name}" successfully localized to server!`);
     } catch (e: any) {
@@ -95,6 +104,30 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       alert("Localization failed: " + e.message);
     } finally {
       setLocalizing(null);
+    }
+  };
+
+  const handleBatchLocalize = async () => {
+    const count = selectedIds.size;
+    if (!confirm(`Are you sure you want to localize ${count} tracks? This will download them to the server library.`)) return;
+    
+    setIsLocalizingBatch(true);
+    let success = 0;
+    let failed = 0;
+    try {
+      for (const id of Array.from(selectedIds)) {
+        try {
+          await API.localizeTrack(id);
+          success++;
+        } catch (e) {
+          failed++;
+        }
+      }
+      alert(`✅ Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
+      loadTracks();
+      setSelectedIds(new Set());
+    } finally {
+      setIsLocalizingBatch(false);
     }
   };
 
@@ -139,6 +172,14 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
             <button className="btn btn-xs btn-ghost" onClick={() => setSelectedIds(new Set())}>Clear</button>
           </div>
           <div className="flex gap-2">
+            <button 
+              className="btn btn-sm btn-outline btn-primary gap-2"
+              onClick={handleBatchLocalize}
+              disabled={isLocalizingBatch}
+            >
+              {isLocalizingBatch ? <span className="loading loading-spinner loading-xs"></span> : <Music size={16} />}
+              Localize Selected
+            </button>
             <button 
               className="btn btn-sm btn-primary gap-2"
               onClick={() => setShowBatchEdit(true)}
@@ -262,12 +303,12 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 >
                   Download
                 </a>
-                {t.path?.startsWith('gdrive://') && (
+                {(t.path?.startsWith('gdrive://') || (t.service && t.service !== 'local')) && (
                   <button
                     className="btn btn-xs btn-ghost text-warning"
-                    onClick={() => handleLocalize(t.id, t.title)}
+                    onClick={() => handleLocalize(t.id, t.title, t.path?.startsWith('gdrive://'))}
                     disabled={localizing === t.id}
-                    title="Download from GDrive and save to server"
+                    title={t.path?.startsWith('gdrive://') ? "Download from GDrive and save to server" : "Download and localize to server library"}
                   >
                     {localizing === t.id ? "..." : "Localize"}
                   </button>

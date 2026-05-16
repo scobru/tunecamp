@@ -128,3 +128,9 @@ Chronological log of completed tasks and significant architectural decisions.
     - Updated `Dockerfile` to include `python3`, `libc6-compat`, and `gcompat` for robust `yt-dlp` execution in production.
     - Verified `YouTubeProvider` integration with `YouTubeCookieManager`.
 
+### 2026-05-16: Application Hardening & yt-dlp Fixes
+- **Album Cover Redirection**: Fixed a bug in `src/server/routes/library/albums.ts` where external HTTP URLs in `cover_path` were incorrectly being looked up on the local disk. Added immediate HTTP redirect for such cases.
+- **Localization Service Process Fix**: Resolved a mysterious `yt-dlp: error: no such option: --binary` error in `LocalizationService` caused by the `youtube-dl-exec` wrapper's faulty argument mapping in its `v3.x` layer. Replaced the wrapper with direct `yt-dlp` execution via `child_process.execFile` for improved reliability and precision.
+- **Bot Detection Resilience**: Synchronized `LocalizationService` parameters with `YouTubeProvider` to use the most resilient client configurations (mweb/android).
+
+

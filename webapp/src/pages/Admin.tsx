@@ -4,8 +4,6 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { useNavigate } from "react-router-dom";
 import {
   Settings,
-  RefreshCw,
-  Save,
 } from "lucide-react";
 
 import { AdminUserModal } from "../components/modals/AdminUserModal";
@@ -30,7 +28,6 @@ export const Admin = () => {
     | "curation"
     | "users"
     | "settings"
-    | "system"
     | "backup"
     | "storage"
     | "maintenance"
@@ -63,31 +60,6 @@ export const Admin = () => {
     }
   };
 
-  const handleSystemAction = async (action: "cleanup" | "consolidate" | "rescan") => {
-    const isCleanup = action === "cleanup";
-    const isRescan = action === "rescan";
-    if (
-      !confirm(
-        `Are you sure you want to ${isCleanup ? "cleanup the network" : isRescan ? "trigger a full library rescan" : "consolidate files"}? This may take a while.`,
-      )
-    )
-      return;
-    try {
-      if (isCleanup) {
-        await API.cleanupNetwork();
-        alert(`Network cleanup finished successfully.`);
-      } else if (isRescan) {
-        await API.triggerRescan();
-        alert(`Full library rescan triggered in background. Changes will appear soon.`);
-      } else {
-        const res = await API.consolidateFiles();
-        alert(`File consolidation finished. Success: ${res.success}, Failed: ${res.failed}, Skipped: ${res.skipped}`);
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Failed to start action");
-    }
-  };
 
   if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) return null;
 
@@ -165,13 +137,6 @@ export const Admin = () => {
           <>
             <a
               role="tab"
-              className={`tab ${activeTab === "system" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("system")}
-            >
-              System
-            </a>
-            <a
-              role="tab"
               className={`tab ${activeTab === "backup" ? "tab-active" : ""}`}
               onClick={() => setActiveTab("backup")}
             >
@@ -222,70 +187,6 @@ export const Admin = () => {
 
         {activeTab === "curation" && isAdmin && <CurationQueue />}
 
-        {activeTab === "system" && isAdmin && (
-          <div className="space-y-6">
-            <h3 className="font-bold text-lg">System Maintenance</h3>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="card card-m3 bg-base-200/50">
-                <div className="card-body">
-                  <h2 className="card-title text-accent">
-                    <RefreshCw /> Cleanup
-                  </h2>
-                  <p className="opacity-70 text-sm">
-                    Check reachability of all registered sites on Zen network and
-                    remove dead entries.
-                  </p>
-                  <div className="card-actions justify-end mt-4">
-                    <button
-                      className="btn btn-accent btn-outline btn-sm"
-                      onClick={() => handleSystemAction("cleanup")}
-                    >
-                      Network Cleanup
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card card-m3 bg-base-200/50">
-                <div className="card-body">
-                  <h2 className="card-title text-primary">
-                    <Save /> Consolidate
-                  </h2>
-                  <p className="opacity-70 text-sm">
-                    Rename physical files to "Artist - Title" format based on database tags.
-                  </p>
-                  <div className="card-actions justify-end mt-4">
-                    <button
-                      className="btn btn-primary btn-outline btn-sm"
-                      onClick={() => handleSystemAction("consolidate")}
-                    >
-                      Consolidate Files
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="card card-m3 bg-base-200/50">
-                <div className="card-body">
-                  <h2 className="card-title text-secondary">
-                    <RefreshCw /> Full Rescan
-                  </h2>
-                  <p className="opacity-70 text-sm">
-                    Deep scan of the music directory to detect new files and update existing metadata.
-                  </p>
-                  <div className="card-actions justify-end mt-4">
-                    <button
-                      className="btn btn-secondary btn-outline btn-sm"
-                      onClick={() => handleSystemAction("rescan")}
-                    >
-                      Rescan Library
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeTab === "users" && isAdmin && (
           <div className="space-y-4">
