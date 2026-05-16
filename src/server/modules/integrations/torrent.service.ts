@@ -89,11 +89,35 @@ export class TorrentService {
         try {
             // Check if torrent already exists in client to avoid "Cannot add duplicate torrent" error
             const infoHashMatch = magnetUri.match(/btih:([a-f0-9]+)/i);
+            let infoHash = "";
             if (infoHashMatch) {
-                const infoHash = infoHashMatch[1].toLowerCase();
-                const alreadyHas = this.client.torrents.some(t => t.infoHash === infoHash);
-                if (alreadyHas) {
-                    console.debug(`🧲 Torrent ${infoHash} already in client, skipping add.`);
+                infoHash = infoHashMatch[1].toLowerCase();
+                
+                // If it's already in the database, we don't need to do anything
+                const dbExisting = this.db.getTorrent(infoHash);
+                if (dbExisting) {
+                    console.debug(`🧲 Torrent ${infoHash} already in DB, skipping add.`);
+                    return;
+                }
+
+                // If it's already in the client but NOT in DB (e.g. from previous session or external add)
+                // we should add it to DB to ensure UI consistency
+                const clientExisting = this.client.get(infoHash);
+                if (clientExisting) {
+                    console.log(`🧲 Torrent ${infoHash} already in client but missing from DB. Syncing...`);
+                    this.db.createTorrent({
+                        info_hash: infoHash,
+                        name: clientExisting.name || "Resolving...",
+                        magnet_uri: magnetUri,
+                        owner_id: ownerId,
+                        status: clientExisting.done ? 'completed' : 'downloading',
+                        progress: clientExisting.progress || 0,
+                        download_speed: clientExisting.downloadSpeed || 0,
+                        upload_speed: clientExisting.uploadSpeed || 0,
+                        num_peers: clientExisting.numPeers || 0,
+                        size: clientExisting.length || 0,
+                        path: clientExisting.path || null
+                    });
                     return;
                 }
             }
