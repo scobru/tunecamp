@@ -55,6 +55,7 @@ export interface AuthService {
     getUserByUsername(username: string): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean } | undefined;
     listAdmins(): { id: number; username: string; artist_id: number | null; role: UserRole; storage_quota: number; is_active: number; created_at: string }[];
     deleteAdmin(id: number): void;
+    deleteUsersBatch(ids: number[]): void;
     toggleUserStatus(id: number, active: boolean): void;
     changePassword(username: string, newPassword: string): Promise<void>;
     isFirstRun(): boolean;
@@ -620,6 +621,18 @@ export function createAuthService(
                 throw new Error("Cannot delete the last admin user");
             }
             db.prepare("DELETE FROM admin WHERE id = ?").run(id);
+        },
+        deleteUsersBatch(ids: number[]): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    try {
+                        this.deleteAdmin(id);
+                    } catch (e) {
+                        console.error(`Failed to delete user ${id}:`, e);
+                        // Skip if it fails (e.g. root admin or last admin)
+                    }
+                }
+            })();
         },
 
         toggleUserStatus(id: number, active: boolean): void {

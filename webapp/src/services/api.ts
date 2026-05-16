@@ -239,6 +239,9 @@ export const API = {
     toggleReleaseVisibility: (id: string, visibility: boolean | 'public' | 'private' | 'unlisted') =>
         handleResponse(api.put(`admin/releases/${id}/visibility`, typeof visibility === 'boolean' ? { isPublic: visibility } : { visibility })),
 
+    updateReleasesVisibilityBatch: (ids: (string | number)[], visibility: string) =>
+        handleResponse(api.put('admin/releases/batch/visibility', { ids, visibility })),
+
     promoteToRelease: (id: string) => handleResponse(api.post(`albums/${id}/promote`, {})),
 
     addTrackToRelease: (releaseId: string, trackId: string) =>
@@ -256,6 +259,12 @@ export const API = {
     updateArtist: (id: string, data: Partial<Artist>) => handleResponse(api.put<Artist>(`artists/${id}`, data)),
     deleteArtist: (id: string) => handleResponse(api.delete(`artists/${id}`)),
     repairArtistLinks: (id: string | number) => handleResponse(api.post<{ success: boolean, tracks: number, albums: number }>(`artists/${id}/repair-links`)),
+
+    deleteArtistsBatch: (ids: (string | number)[]) =>
+        handleResponse(api.delete('admin/artists/batch', { data: { ids } })),
+
+    updateArtistsVisibilityBatch: (ids: (string | number)[], visibility: string) =>
+        handleResponse(api.put('admin/artists/batch/visibility', { ids, visibility })),
 
     // --- Admin: Tracks ---
     getBatchPricing: () => handleResponse(api.get<any[]>('tracks/pricing/batch')),
@@ -458,6 +467,8 @@ export const API = {
     updateUser: (id: string, data: Partial<User>) => handleResponse(api.put<User>(`admin/system/users/${id}`, data)),
     updateUserStatus: (id: string, active: boolean) => handleResponse(api.put(`admin/system/users/${id}/status`, { active })),
     deleteUser: (id: string) => handleResponse(api.delete(`admin/system/users/${id}`)),
+    deleteUsersBatch: (ids: (string | number)[]) =>
+        handleResponse(api.delete('admin/system/users/batch', { data: { ids } })),
     resetUserPassword: (id: string, password: string) => handleResponse(api.put(`admin/system/users/${id}/password`, { password })),
 
     // --- Unlock Codes ---

@@ -92,6 +92,17 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
     }
   };
 
+  const handleVisibilityBatch = async (visibility: 'public' | 'private') => {
+    if (selectedIds.length === 0) return;
+    try {
+        await API.updateReleasesVisibilityBatch(selectedIds, visibility);
+        setSelectedIds([]);
+        loadReleases();
+    } catch (e: any) {
+        alert("Batch visibility update failed: " + e.message);
+    }
+  };
+
   if (releases.length === 0)
     return (
       <div className="opacity-50 text-center py-4">No releases found.</div>
@@ -100,8 +111,26 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   return (
     <div className="flex flex-col gap-4">
       {selectedIds.length > 0 && (
-        <div className="flex items-center gap-4 p-2 bg-error/10 rounded-lg border border-error/20 animate-in fade-in slide-in-from-top-2">
-            <span className="text-sm font-medium text-error ml-2">{selectedIds.length} items selected</span>
+        <div className="flex items-center gap-4 p-2 bg-base-200 rounded-lg border border-base-300 animate-in fade-in slide-in-from-top-2">
+            <span className="text-sm font-medium ml-2">{selectedIds.length} items selected</span>
+            
+            <div className="flex gap-2">
+                <button 
+                    className="btn btn-sm btn-ghost gap-2 text-success"
+                    onClick={() => handleVisibilityBatch('public')}
+                >
+                    <Globe size={16} /> Make Public
+                </button>
+                <button 
+                    className="btn btn-sm btn-ghost gap-2"
+                    onClick={() => handleVisibilityBatch('private')}
+                >
+                    <Lock size={16} /> Make Private
+                </button>
+            </div>
+
+            <div className="flex-1"></div>
+
             <button 
                 className="btn btn-sm btn-error gap-2"
                 onClick={handleDeleteSelected}

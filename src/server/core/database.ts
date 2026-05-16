@@ -1539,6 +1539,20 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteArtist(id: number): void {
             artistRepository.delete(id);
         },
+        deleteArtistsBatch(ids: number[]): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    artistRepository.delete(id);
+                }
+            })();
+        },
+        updateArtistsVisibilityBatch(ids: number[], visibility: Artist['visibility']): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    this.updateArtist(id, undefined, undefined, undefined, undefined, undefined, undefined, visibility);
+                }
+            })();
+        },
         isArtistLinkedToUser(id: number): boolean {
             const row = db.prepare("SELECT 1 FROM admin WHERE artist_id = ?").get(id);
             return !!row;
@@ -1675,6 +1689,13 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.transaction(() => {
                 for (const id of ids) {
                     albumRepository.delete(id, keepTracks);
+                }
+            })();
+        },
+        updateAlbumsVisibilityBatch(ids: number[], visibility: Album['visibility']): void {
+            db.transaction(() => {
+                for (const id of ids) {
+                    this.updateAlbumVisibility(id, visibility);
                 }
             })();
         },

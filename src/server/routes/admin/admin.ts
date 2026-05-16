@@ -978,6 +978,51 @@ export function createAdminRoutes(
     });
 
     /**
+     * PUT /api/admin/releases/batch/visibility
+     * Update visibility for multiple albums/releases
+     */
+    router.put("/releases/batch/visibility", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const { ids, visibility } = req.body;
+            if (!Array.isArray(ids) || ids.length === 0 || !visibility) {
+                return res.status(400).json({ error: "Invalid parameters" });
+            }
+
+            if (!req.isAdmin && !req.isActive) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            const processedIds: number[] = [];
+            for (const id of ids) {
+                const release = database.getRelease(id);
+                const album = database.getAlbum(id);
+                if (!release && !album) continue;
+
+                // Permission Check
+                const ownerId = release ? release.owner_id : album?.owner_id;
+                if (req.userId !== undefined && !req.isRootAdmin && ownerId !== req.userId) {
+                    continue; // Skip items not owned
+                }
+
+                processedIds.push(id);
+            }
+
+            if (processedIds.length > 0) {
+                database.updateAlbumsVisibilityBatch(processedIds, visibility);
+                // Sync with publishing service
+                for (const id of processedIds) {
+                    publishingService.syncRelease(id).catch(e => console.error(`Failed to sync batch visibility for ${id}:`, e));
+                }
+            }
+
+            res.json({ message: "Visibility updated successfully", count: processedIds.length });
+        } catch (error) {
+            console.error("Batch visibility update error:", error);
+            res.status(500).json({ error: "Failed to update visibility" });
+        }
+    });
+
+    /**
      * DELETE /api/admin/releases/:id
      * Delete an album or formal release
      */
@@ -1062,6 +1107,67 @@ export function createAdminRoutes(
         } catch (error) {
             console.error("Error getting artist identity:", error);
             res.status(500).json({ error: "Failed to get artist identity" });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/artists/batch
+     * Delete multiple artists
+     */
+    router.delete("/artists/batch", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const { ids } = req.body;
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({ error: "Invalid or empty IDs list" });
+            }
+
+            // Only Root Admin or Super User can delete artists batch
+            if (!req.isRootAdmin && req.role !== 'super_user') {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            database.deleteArtistsBatch(ids);
+            res.json({ message: "Artists deleted successfully", count: ids.length });
+        } catch (error) {
+            console.error("Batch delete artists error:", error);
+            res.status(500).json({ error: "Failed to delete artists" });
+        }
+    });
+
+    /**
+     * PUT /api/admin/artists/batch/visibility
+     * Update visibility for multiple artists
+     */
+    router.put("/artists/batch/visibility", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const { ids, visibility } = req.body;
+            if (!Array.isArray(ids) || ids.length === 0 || !visibility) {
+                return res.status(400).json({ error: "Invalid parameters" });
+            }
+
+            if (!req.isAdmin && !req.isActive) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            const processedIds: number[] = [];
+            for (const id of ids) {
+                // Permission Check
+                if (!req.isRootAdmin && req.role !== 'super_user' && req.artistId !== id) {
+                    continue; // Skip if not owner and not admin
+                }
+                processedIds.push(id);
+            }
+
+            if (processedIds.length > 0) {
+                database.updateArtistsVisibilityBatch(processedIds, visibility);
+                // Sync with publishing service (if artist sync exists, but artists are usually synced via updates)
+                // Note: Artist visibility might trigger Actor updates in AP
+            }
+
+            res.json({ message: "Visibility updated successfully", count: processedIds.length });
+        } catch (error) {
+            console.error("Batch artist visibility update error:", error);
+            res.status(500).json({ error: "Failed to update visibility" });
         }
     });
 
@@ -1177,6 +1283,28 @@ export function createAdminRoutes(
                 return res.status(400).json({ error: error.message });
             }
             res.status(500).json({ error: "Failed to delete admin" });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/system/users/batch
+     * Delete multiple admin users (root admin only)
+     */
+    router.delete("/system/users/batch", (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+                return res.status(403).json({ error: "Only the primary admin can remove users" });
+            }
+            const { ids } = req.body;
+            if (!Array.isArray(ids) || ids.length === 0) {
+                return res.status(400).json({ error: "Invalid or empty IDs list" });
+            }
+
+            authService.deleteUsersBatch(ids);
+            res.json({ message: "Users deleted successfully", count: ids.length });
+        } catch (error) {
+            console.error("Error deleting users batch:", error);
+            res.status(500).json({ error: "Failed to delete users" });
         }
     });
     

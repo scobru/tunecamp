@@ -389,6 +389,8 @@ export interface DatabaseService {
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     deleteArtist(id: number): void;
+    deleteArtistsBatch(ids: number[]): void;
+    updateArtistsVisibilityBatch(ids: number[], visibility: Artist['visibility']): void;
     // Followers
     addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void;
     removeFollower(artistId: number, actorUri: string): void;
@@ -453,6 +455,7 @@ export interface DatabaseService {
     promoteToRelease(id: number): void; // Mark library album as release
     deleteAlbum(id: number, keepTracks?: boolean): void;
     deleteAlbumsBatch(ids: number[], keepTracks?: boolean): void;
+    updateAlbumsVisibilityBatch(ids: number[], visibility: Album['visibility']): void;
     searchAlbums(query: string, limit: number, publicOnly?: boolean): Album[];
     // Tracks
     getTracks(albumId?: number, publicOnly?: boolean): Track[];
@@ -636,6 +639,8 @@ export interface DatabaseService {
     // ActivityPub Authorization
     isArtistLinkedToUser(artistId: number): boolean;
     isArtistLinkedToUserBySlug(slug: string): boolean;
+    deleteUser(id: number): void;
+    deleteUsersBatch(ids: number[]): void;
     consolidateDatabase(): void;
 
     // Plugins
