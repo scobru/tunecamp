@@ -99,7 +99,8 @@ export const Search = () => {
                     title: item.title,
                     artist: item.artist,
                     coverUrl: item.coverUrl || item.thumbnail,
-                    duration: item.duration
+                    duration: item.duration,
+                    url: item.url // Pass the source URL for localization
                 } : {};
                 
                 await API.starTrack(trackId, metadata);

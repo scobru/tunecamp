@@ -65,31 +65,29 @@ export class LocalizationService {
         // Determine the URL to download
         let url = track.url;
         if (!url && track.service === 'youtube' && track.external_id) {
-            url = `https://www.youtube.com/watch?v=${track.external_id}`;
+            url = track.external_id.includes('http') ? track.external_id : `https://www.youtube.com/watch?v=${track.external_id}`;
         } else if (!url && track.service === 'soundcloud' && track.external_id) {
-            url = `https://soundcloud.com/${track.external_id}`;
+            const id = track.external_id.includes(':') ? track.external_id.split(':').pop() : track.external_id;
+            url = id && /^\d+$/.test(id) ? `https://api.soundcloud.com/tracks/${id}` : `https://soundcloud.com/${id}`;
         } else if (!url && track.external_id) {
             url = track.external_id;
         }
 
         if (!url) throw new Error("Could not determine source URL for localization");
 
-        // Strip internal prefixes (e.g. ext:bandcamp:https://...)
+        // Strip internal prefixes and handle IDs
         if (url.startsWith('ext:')) {
             const parts = url.split(':');
-            // If it's ext:provider:http... -> take the http part
-            if (parts.length >= 3 && parts[2].startsWith('//')) {
-                 // Format ext:provider://... (unlikely but possible)
-                 url = parts.slice(2).join(':');
-            } else if (parts.length >= 3 && (parts[2].startsWith('http') || parts[1] === 'youtube' || parts[1] === 'soundcloud')) {
-                // Common format: ext:provider:actual_id_or_url
+            if (parts.length >= 3) {
+                const provider = parts[1];
                 const actual = parts.slice(2).join(':');
+
                 if (actual.startsWith('http')) {
                     url = actual;
-                } else if (parts[1] === 'youtube') {
+                } else if (provider === 'youtube') {
                     url = `https://www.youtube.com/watch?v=${actual}`;
-                } else if (parts[1] === 'soundcloud') {
-                    url = `https://soundcloud.com/${actual}`;
+                } else if (provider === 'soundcloud') {
+                    url = /^\d+$/.test(actual) ? `https://api.soundcloud.com/tracks/${actual}` : `https://soundcloud.com/${actual}`;
                 }
             } else if (parts.length >= 2 && parts[1].startsWith('http')) {
                 url = parts.slice(1).join(':');
@@ -103,17 +101,15 @@ export class LocalizationService {
         const safeTitle = track.title.replace(/[<>:"/\\|?*]/g, '_');
         const safeArtist = (track.artist_name || 'Unknown').replace(/[<>:"/\\|?*]/g, '_');
         
-        // Output template for yt-dlp
-        // Using [id] suffix to ensure uniqueness and easy retrieval
-        const outputTemplate = path.join(localizedDir, `${safeArtist} - ${safeTitle} [${trackId}].%(ext)s`);
-
-        console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url}`);
+        console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url} (Provider: ${track.service || 'unknown'})`);
 
         try {
             const format = 'mp3';
             const tempPath = path.join(localizedDir, `temp_${trackId}.%(ext)s`);
 
             const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+            const isSoundCloud = url.includes('soundcloud.com') || url.includes('sndcdn.com');
+            
             const args = [
                 '-x',
                 '--audio-format', format,
@@ -127,7 +123,14 @@ export class LocalizationService {
 
             if (isYouTube) {
                 args.push('--referer', 'https://www.youtube.com/');
-                args.push('--extractor-args', 'youtube:player_client=web;player_skip=web_embedded_client,mweb');
+                // Use more resilient extractor args aligned with youtube.provider.ts
+                args.push('--extractor-args', 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player;po_token=auto');
+                args.push('--force-ipv4');
+                args.push('--geo-bypass');
+            }
+
+            if (isSoundCloud) {
+                args.push('--referer', 'https://soundcloud.com/');
             }
 
             if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
@@ -148,6 +151,7 @@ export class LocalizationService {
             
             // Find the downloaded file (yt-dlp adds the extension)
             const files = await fs.readdir(localizedDir);
+            // Search for files starting with temp_{trackId}
             const downloadedFile = files.find(f => f.startsWith(`temp_${trackId}.`));
             if (downloadedFile) {
                 await fs.move(path.join(localizedDir, downloadedFile), finalPath, { overwrite: true });

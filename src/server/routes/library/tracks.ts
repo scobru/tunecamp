@@ -291,7 +291,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                 trackId = existing.id;
             } else {
                 // Create a "Link" track record
-                const { title, artist, coverUrl, duration } = req.body;
+                const { title, artist, coverUrl, duration, url: sourceUrl } = req.body;
                 if (!title) throw new BadRequestError("Title required to link external track");
                 
                 // Try to find/create artist
@@ -312,7 +312,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                     external_id: idParam,
                     external_artwork: coverUrl || null,
                     service: idParam.startsWith("ext:") ? idParam.split(":")[1] : "link",
-                    url: idParam, // The ext: ID acts as the identifier for streaming
+                    url: sourceUrl || idParam, // Prefer the actual source URL if provided
                     file_path: null, format: null, bitrate: null, sample_rate: null, lossless_path: null,
                     price: 0, price_usdc: 0, currency: 'ETH', waveform: null, lyrics: null
                 });
