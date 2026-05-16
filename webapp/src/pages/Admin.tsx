@@ -134,21 +134,23 @@ export const Admin = () => {
           </>
         )}
         {isRootAdmin && (
+          <a
+            role="tab"
+            className={`tab ${activeTab === "backup" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("backup")}
+          >
+            Backup
+          </a>
+        )}
+        <a
+          role="tab"
+          className={`tab ${activeTab === "storage" ? "tab-active" : ""}`}
+          onClick={() => setActiveTab("storage")}
+        >
+          Storage
+        </a>
+        {isRootAdmin && (
           <>
-            <a
-              role="tab"
-              className={`tab ${activeTab === "backup" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("backup")}
-            >
-              Backup
-            </a>
-            <a
-              role="tab"
-              className={`tab ${activeTab === "storage" ? "tab-active" : ""}`}
-              onClick={() => setActiveTab("storage")}
-            >
-              Storage
-            </a>
             <a
               role="tab"
               className={`tab ${activeTab === "maintenance" ? "tab-active" : ""}`}

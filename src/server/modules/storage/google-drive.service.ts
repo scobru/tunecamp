@@ -25,19 +25,25 @@ export class GoogleDriveService {
         this.redirectUri = config.redirectUri;
     }
 
-    getAuthUrl(): string {
+    getAuthUrl(state?: string): string {
         const scopes = [
             "https://www.googleapis.com/auth/drive.readonly",
             "https://www.googleapis.com/auth/drive.file",
             "https://www.googleapis.com/auth/userinfo.email"
         ];
-        return `https://accounts.google.com/o/oauth2/v2/auth?` +
+        let url = `https://accounts.google.com/o/oauth2/v2/auth?` +
             `client_id=${this.clientId}` +
             `&redirect_uri=${encodeURIComponent(this.redirectUri)}` +
             `&response_type=code` +
             `&scope=${encodeURIComponent(scopes.join(" "))}` +
             `&access_type=offline` +
             `&prompt=consent`;
+        
+        if (state) {
+            url += `&state=${encodeURIComponent(state)}`;
+        }
+        
+        return url;
     }
 
     async uploadFile(userId: number, name: string, mimeType: string, content: Readable | Buffer): Promise<GoogleDriveFile> {

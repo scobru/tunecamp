@@ -8,7 +8,9 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
     const router = Router();
 
     router.get("/gdrive/auth", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
-        const url = gdriveService.getAuthUrl();
+        // Pass userId as state to identify the user in the callback
+        const state = req.userId ? String(req.userId) : "";
+        const url = gdriveService.getAuthUrl(state);
         res.json({ url });
     });
 
@@ -18,14 +20,19 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
     });
 
     router.get("/gdrive/callback", async (req: any, res) => {
-        const { code } = req.query;
+        const { code, state } = req.query;
         if (!code) return res.status(400).send("No code provided");
 
         try {
-            // For the callback, we don't have the auth header in the redirect.
-            // We'll use the first admin for this prototype.
-            const userId = database.getPrimaryAdminId();
-            if (!userId) return res.status(500).send("No admin found");
+            // Use the userId passed via the state parameter
+            let userId = state ? parseInt(state as string, 10) : null;
+            
+            // Fallback to primary admin only if no state was provided (legacy/direct call)
+            if (!userId) {
+                userId = database.getPrimaryAdminId();
+            }
+            
+            if (!userId) return res.status(500).send("No user context found for authentication");
 
             await gdriveService.exchangeCode(code as string, userId);
             
