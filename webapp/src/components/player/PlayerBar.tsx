@@ -24,6 +24,7 @@ import * as ColorThiefReactModule from "color-thief-react";
 import { LyricsPanel } from "./LyricsPanel";
 import { QueuePanel } from "./QueuePanel";
 import { PlayerCanvas } from "./PlayerCanvas";
+import { useConfigStore } from "../../stores/useConfigStore";
 import { formatDuration } from "../../utils/format";
 
 // Robust interop for color-thief-react which has inconsistent exports across versions/builds
@@ -56,6 +57,7 @@ const PlayerBackground = ({ coverUrl }: { coverUrl: string }) => {
 };
 
 export const PlayerBar = () => {
+  const { cacheBuster } = useConfigStore();
   const {
     currentTime,
     progress,
@@ -250,9 +252,9 @@ export const PlayerBar = () => {
   let coverUrl = currentTrack ? (
     currentTrack.coverImage ||
     currentTrack.coverUrl ||
-    (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId) : "") ||
-    (currentTrack.id ? API.getTrackCoverUrl(currentTrack.id) : "") ||
-    (currentTrack.artistId ? API.getArtistCoverUrl(currentTrack.artistId) : "")
+    (currentTrack.albumId ? API.getAlbumCoverUrl(currentTrack.albumId, cacheBuster) : "") ||
+    (currentTrack.id ? API.getTrackCoverUrl(currentTrack.id, cacheBuster) : "") ||
+    (currentTrack.artistId ? API.getArtistCoverUrl(currentTrack.artistId, cacheBuster) : "")
   ) : "";
 
   // Fix relative paths that might be missing the root / or /api

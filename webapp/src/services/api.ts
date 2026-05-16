@@ -94,7 +94,7 @@ export const API = {
     getReleases: () => handleResponse(api.get<Release[]>('releases')),
     getRelease: (idOrSlug: string | number) => handleResponse(api.get<Release>(`releases/${idOrSlug}`)),
     getReleaseCoverUrl: (id: string | number, timestamp?: number) => id ? `${API_URL}/releases/${id}/cover${timestamp ? `?v=${timestamp}` : ''}` : '',
-    getTrackCoverUrl: (id: string | number) => id ? `${API_URL}/tracks/${id}/cover` : '',
+    getTrackCoverUrl: (id: string | number, timestamp?: number) => id ? `${API_URL}/tracks/${id}/cover${timestamp ? `?v=${timestamp}` : ''}` : '',
 
     getArtists: () => handleResponse(api.get<Artist[]>('artists')),
     getArtist: (idOrSlug: string | number) => handleResponse(api.get<Artist>(`artists/${idOrSlug}`)),

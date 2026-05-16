@@ -5,6 +5,7 @@ import { Share2, Play, Heart, Download, Unlock, ExternalLink, MoreHorizontal, Ch
 import { useParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useConfigStore } from "../stores/useConfigStore";
 import { usePurchases } from "../hooks/usePurchases";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { useWalletStore } from "../stores/useWalletStore";

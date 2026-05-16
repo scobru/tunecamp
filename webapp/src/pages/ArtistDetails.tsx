@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { useConfigStore } from '../stores/useConfigStore';
 import { formatDuration } from '../utils/format';
 import type { Artist, Album, Post, Track } from '../types';
 

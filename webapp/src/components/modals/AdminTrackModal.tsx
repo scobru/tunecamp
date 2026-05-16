@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
 import { Music, Trash2, Save, Search, FileText, Loader2 } from "lucide-react";
 import { MetadataMatchModal } from "../MetadataMatchModal";
+import { useConfigStore } from "../../stores/useConfigStore";
 
 interface AdminTrackModalProps {
   onTrackUpdated: () => void;
 }
 
 export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
+  const { bumpCacheBuster } = useConfigStore();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [title, setTitle] = useState("");
   const [artistName, setArtistName] = useState("");
@@ -116,6 +118,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
       const res = await API.uploadTrackArtwork(trackId, file);
       setArtworkUrl(`${res.url}?v=${Date.now()}`);
       setHasCustomArtwork(true);
+      bumpCacheBuster();
       onTrackUpdated();
     } catch (err: any) {
       setError(err.message || "Failed to upload artwork");
@@ -200,6 +203,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
 
       await API.updateTrack(trackId, payload);
 
+      bumpCacheBuster();
       onTrackUpdated();
       dialogRef.current?.close();
     } catch (e: any) {

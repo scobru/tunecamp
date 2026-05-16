@@ -338,7 +338,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         </label>
                         {isEditing && editId && !coverFile && (
                             <div className="mb-2">
-                                <img src={API.getAlbumCoverUrl(editId, Date.now())} className="w-24 h-24 rounded object-cover shadow border border-base-content/10" />
+                                <img src={API.getAlbumCoverUrl(editId, cacheBuster)} className="w-24 h-24 rounded object-cover shadow border border-base-content/10" />
                             </div>
                         )}
                         <input 
