@@ -102,7 +102,7 @@ export class TorrentService {
 
                 // If it's already in the client but NOT in DB (e.g. from previous session or external add)
                 // we should add it to DB to ensure UI consistency
-                const clientExisting = this.client.get(infoHash);
+                const clientExisting = this.client.torrents.find(t => t.infoHash === infoHash);
                 if (clientExisting) {
                     console.log(`🧲 Torrent ${infoHash} already in client but missing from DB. Syncing...`);
                     this.db.createTorrent({
