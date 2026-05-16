@@ -20,7 +20,7 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
 
 export const ArtistDetails = () => {
     const { idOrSlug } = useParams();
-    const [coverVersion] = useState(Date.now()); // Cache buster
+    const { cacheBuster } = useConfigStore();
     const [artist, setArtist] = useState<Artist | null>(null);
     const [formalReleases, setFormalReleases] = useState<Album[]>([]);
     const [libraryAlbums, setLibraryAlbums] = useState<Album[]>([]);
@@ -99,7 +99,7 @@ export const ArtistDetails = () => {
              <div className="relative h-80 rounded-2xl overflow-hidden flex items-end p-8 border border-base-content/5">
                  <div className="absolute inset-0 z-0">
                      {artist.coverImage ? (
-                        <img src={API.getArtistCoverUrl(artist.id, coverVersion)} className="w-full h-full object-cover opacity-30 blur-sm scale-105" />
+                        <img src={API.getArtistCoverUrl(artist.id, cacheBuster)} className="w-full h-full object-cover opacity-30 blur-sm scale-105" />
                      ) : (
                           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20"/>
                      )}
@@ -109,7 +109,7 @@ export const ArtistDetails = () => {
                 <div className="relative z-10 flex gap-6 items-end w-full">
                      <figure className="w-40 h-40 rounded-full shadow-2xl border-4 border-base-100 overflow-hidden shrink-0">
                          {artist.coverImage ? (
-                             <img src={API.getArtistCoverUrl(artist.id, coverVersion)} className="w-full h-full object-cover"/>
+                             <img src={API.getArtistCoverUrl(artist.id, cacheBuster)} className="w-full h-full object-cover"/>
                          ) : (
                              <div className="w-full h-full bg-neutral flex items-center justify-center text-4xl">{artist.name[0]}</div>
                          )}
@@ -229,7 +229,7 @@ export const ArtistDetails = () => {
                             <Link to={`/releases/${album.slug || album.id}`} key={album.id} className="group">
                                 <figure className="aspect-square relative overflow-hidden rounded-lg shadow-lg mb-3">
                                     <img 
-                                        src={API.getReleaseCoverUrl(album.id, coverVersion)} 
+                                        src={API.getReleaseCoverUrl(album.id, cacheBuster)} 
                                         alt={album.title} 
                                         className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
                                         onError={(e) => {
@@ -264,7 +264,7 @@ export const ArtistDetails = () => {
                              <Link to={`/albums/${album.slug || album.id}`} key={album.id} className="group">
                                  <figure className="aspect-square relative overflow-hidden rounded-lg shadow-lg mb-3">
                                      <img 
-                                         src={API.getAlbumCoverUrl(album.id, coverVersion)} 
+                                         src={API.getAlbumCoverUrl(album.id, cacheBuster)} 
                                          alt={album.title} 
                                          className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform" 
                                          onError={(e) => {

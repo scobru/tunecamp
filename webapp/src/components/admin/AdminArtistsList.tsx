@@ -4,9 +4,11 @@ import { User, Edit, Trash2, Globe, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { useConfigStore } from "../../stores/useConfigStore";
 
 export const AdminArtistsList = () => {
   const { user, role } = useAuthStore();
+  const { cacheBuster } = useConfigStore();
   const navigate = useNavigate();
   const [artists, setArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +173,7 @@ export const AdminArtistsList = () => {
                   <div className="avatar">
                     <div className="w-10 h-10 rounded-xl bg-neutral flex items-center justify-center">
                       {a.photoPath || a.coverImage ? (
-                        <img src={API.getArtistCoverUrl(a.id)} alt={a.name} className="object-cover" />
+                        <img src={API.getArtistCoverUrl(a.id, cacheBuster)} alt={a.name} className="object-cover" />
                       ) : (
                         <User size={20} className="opacity-30" />
                       )}

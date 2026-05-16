@@ -23,7 +23,7 @@ export const AlbumDetails = () => {
   const [album, setAlbum] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const { playTrack } = usePlayerStore();
-  const [coverVersion] = useState(Date.now()); // Cache buster
+  const { cacheBuster } = useConfigStore();
   const { isAdminAuthenticated: isAdmin, isAuthenticated, user } = useAuthStore();
   const { isPurchased, verifyAndGetCode } = usePurchases();
   const { address, externalAddress, useExternalWallet, isExternalConnected } = useWalletStore();
@@ -192,7 +192,7 @@ export const AlbumDetails = () => {
         <div className="absolute inset-0 z-0">
           {album?.coverImage && (
             <img
-              src={isRelease ? API.getReleaseCoverUrl(album.id, coverVersion) : API.getAlbumCoverUrl(album.id, coverVersion)}
+              src={isRelease ? API.getReleaseCoverUrl(album.id, cacheBuster) : API.getAlbumCoverUrl(album.id, cacheBuster)}
               className="w-full h-full object-cover opacity-10 blur-[100px] scale-150"
               aria-hidden="true"
             />
@@ -202,7 +202,7 @@ export const AlbumDetails = () => {
         <div className="relative z-10 flex flex-col md:flex-row gap-8 lg:gap-12 p-8 lg:p-12 items-center md:items-end">
             <div className="relative group/cover">
               <img
-                src={isRelease ? API.getReleaseCoverUrl(album.id, coverVersion) : API.getAlbumCoverUrl(album.id, coverVersion)}
+                src={isRelease ? API.getReleaseCoverUrl(album.id, cacheBuster) : API.getAlbumCoverUrl(album.id, cacheBuster)}
                 alt={album.title}
                 className="w-56 h-56 md:w-72 md:h-72 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-base-content/10"
                 onError={(e) => {

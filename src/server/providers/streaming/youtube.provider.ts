@@ -287,7 +287,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 
                 const options: any = {
                     getUrl: true,
-                    format: 'ba/b',
+                    format: 'bestaudio/best',
                     noWarnings: true,
                     noCheckCertificate: true,
                     noPlaylist: true,
@@ -295,7 +295,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
                     // Prioritizing mweb and android clients. mweb is currently the most resilient to bot checks.
                     // po_token=auto attempts to use installed providers like bgutil-ytdlp-pot-provider
-                    extractorArgs: 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player;po_token=auto',
+                    extractorArgs: 'youtube:player_client=mweb,android;po_token=auto',
                     referer: 'https://www.youtube.com/',
                     forceIpv4: true,
                     geoBypass: true
@@ -308,7 +308,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                     console.log(`[YouTubeProvider] 📡 Resolving via yt-dlp (no cookies)...`);
                 }
 
-                console.log(`[YouTubeProvider] 📡 yt-dlp command: yt-dlp --get-url --format "ba/b" --extractor-args "${options.extractorArgs}" ...`);
+                console.log(`[YouTubeProvider] 📡 yt-dlp command: yt-dlp --get-url --format "${options.format}" --extractor-args "${options.extractorArgs}" ...`);
                 const url: any = await youtubedl(targetUrl, options);
                 if (url && typeof url === 'string') {
                     console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp`);
@@ -326,6 +326,26 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
                 console.warn(`[YouTubeProvider] ⚠ yt-dlp failed: ${errorMsg.split('\n')[0]}${isBot ? " (Bot Detection/Rate Limit)" : ""}`);
                 
+                // If it failed with "Requested format is not available", try a simpler format as a quick retry
+                if (errorMsg.includes("Requested format is not available")) {
+                    try {
+                        console.log(`[YouTubeProvider] 🔄 Retrying with simpler 'best' format...`);
+                        const simpleUrl: any = await youtubedl(targetUrl, {
+                            getUrl: true,
+                            format: 'best',
+                            noWarnings: true,
+                            noPlaylist: true,
+                            extractorArgs: 'youtube:player_client=android;po_token=auto'
+                        });
+                        if (simpleUrl && typeof simpleUrl === 'string') {
+                            console.log(`[YouTubeProvider] ✅ Success! Resolved via yt-dlp (simpler format)`);
+                            return simpleUrl.trim();
+                        }
+                    } catch (e) {
+                        console.warn(`[YouTubeProvider] ⚠ Simpler format retry also failed.`);
+                    }
+                }
+
                 // Log the full error if it's not a common bot block to help debugging
                 if (!isBot || this.consecutiveBotBlocks < 2) {
                     console.debug(`[YouTubeProvider] 🔍 Full yt-dlp error:`, errorMsg);
@@ -360,13 +380,15 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 const res = await fetch(`${instance}/api/v1/videos/${videoId}?fields=adaptiveFormats`);
                 if (res.ok) {
                     const data: any = await res.json();
-                    const audioFormat = data.adaptiveFormats
-                        .filter((f: any) => f.type.startsWith("audio/"))
-                        .sort((a: any, b: any) => parseInt(b.bitrate) - parseInt(a.bitrate))[0];
-                    
-                    if (audioFormat?.url) {
-                        console.log(`[YouTubeProvider] Ô£¿ Success! Resolved via Invidious instance: ${instance}`);
-                        return audioFormat.url;
+                    if (data.adaptiveFormats) {
+                        const audioFormat = data.adaptiveFormats
+                            .filter((f: any) => f.type && f.type.startsWith("audio/"))
+                            .sort((a: any, b: any) => parseInt(b.bitrate || "0") - parseInt(a.bitrate || "0"))[0];
+                        
+                        if (audioFormat?.url) {
+                            console.log(`[YouTubeProvider] Ô£¿ Success! Resolved via Invidious instance: ${instance}`);
+                            return audioFormat.url;
+                        }
                     }
                 }
             } catch (e) {
@@ -378,7 +400,8 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
         try {
             console.log(`[YouTubeProvider] ­ƒöä Final attempt via play-dl fallback for ${urlOrId}...`);
             const info = await play.video_info(targetUrl);
-            const format = info.format.find(f => (f.mimeType?.includes("audio") || f.audioQuality) && f.url);
+            const formats = (info as any).format || (info as any).formats || [];
+            const format = formats.find((f: any) => (f.mimeType?.includes("audio") || f.audioQuality) && f.url);
             
             if (format?.url) {
                 console.log(`[YouTubeProvider] Ô£¿ Success! Resolved via play-dl fallback.`);

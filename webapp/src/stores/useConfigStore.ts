@@ -24,13 +24,16 @@ interface HealthStatus {
 interface ConfigStore {
   status: HealthStatus | null;
   isLoading: boolean;
+  cacheBuster: number;
   fetchStatus: () => Promise<void>;
   isConfigured: (service: keyof HealthStatus) => boolean;
+  bumpCacheBuster: () => void;
 }
 
 export const useConfigStore = create<ConfigStore>((set, get) => ({
   status: null,
   isLoading: false,
+  cacheBuster: Date.now(),
   fetchStatus: async () => {
     set({ isLoading: true });
     try {
@@ -47,5 +50,6 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     if (!status) return false;
     const s = status[service] as any;
     return !!(s.configured || s.active || s.connected || s.online);
-  }
+  },
+  bumpCacheBuster: () => set({ cacheBuster: Date.now() })
 }));

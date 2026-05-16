@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useConfigStore } from "../stores/useConfigStore";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart2,
@@ -21,6 +22,7 @@ import { AdminAlbumsList } from "../components/admin/AdminAlbumsList";
 
 export const MyMusic = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
+  const { bumpCacheBuster } = useConfigStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
     "overview" | "releases" | "albums" | "artists" | "tracks"
@@ -241,17 +243,20 @@ export const MyMusic = () => {
 
       <AdminReleaseModal
         onReleaseUpdated={() => {
+          bumpCacheBuster();
           window.dispatchEvent(new CustomEvent("refresh-admin-releases"));
           window.dispatchEvent(new CustomEvent("refresh-admin-albums"));
         }}
       />
       <AdminArtistModal
-        onArtistUpdated={() =>
-          window.dispatchEvent(new CustomEvent("refresh-admin-artists"))
-        }
+        onArtistUpdated={() => {
+          bumpCacheBuster();
+          window.dispatchEvent(new CustomEvent("refresh-admin-artists"));
+        }}
       />
       <UploadTracksModal
         onUploadComplete={() => {
+          bumpCacheBuster();
           window.dispatchEvent(new CustomEvent("refresh-admin-releases"));
           window.dispatchEvent(new CustomEvent("refresh-admin-albums"));
           window.dispatchEvent(new CustomEvent("refresh-admin-tracks"));

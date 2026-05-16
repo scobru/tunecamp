@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Disc, Download } from 'lucide-react';
 import clsx from 'clsx';
 import API from '../../services/api';
+import { useConfigStore } from '../../stores/useConfigStore';
 
 interface ReleaseCardProps {
     item: any;
@@ -10,6 +11,7 @@ interface ReleaseCardProps {
 }
 
 export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: ReleaseCardProps) => {
+    const { cacheBuster } = useConfigStore();
     if (!item) return null;
 
     const isRelease = type === 'release';
@@ -18,8 +20,8 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
         : `/albums/${item.slug || item.id}`;
     
     const coverUrl = isRelease 
-        ? API.getReleaseCoverUrl(item.id) 
-        : API.getAlbumCoverUrl(item.id);
+        ? API.getReleaseCoverUrl(item.id, cacheBuster) 
+        : API.getAlbumCoverUrl(item.id, cacheBuster);
 
     return (
         <Link to={linkTo} className={clsx(

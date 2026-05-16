@@ -3,9 +3,11 @@ import API from "../../services/api";
 import { Disc, Edit, Trash2, Globe, Lock, Share2 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { useConfigStore } from "../../stores/useConfigStore";
 
 export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
   const { user } = useAuthStore();
+  const { cacheBuster } = useConfigStore();
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -178,7 +180,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
                   <div className="avatar">
                     <div className="w-12 h-12 rounded-lg bg-neutral flex items-center justify-center overflow-hidden">
                       {a.coverPath || a.coverImage ? (
-                        <img src={API.getAlbumCoverUrl(a.id)} alt={a.title} className="object-cover w-full h-full" />
+                        <img src={API.getAlbumCoverUrl(a.id, cacheBuster)} alt={a.title} className="object-cover w-full h-full" />
                       ) : (
                         <Disc size={24} className="opacity-20" />
                       )}

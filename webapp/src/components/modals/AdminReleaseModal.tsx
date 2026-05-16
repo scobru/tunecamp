@@ -2,12 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { Disc, Trash2, Search } from 'lucide-react';
 import { MetadataMatchModal } from '../MetadataMatchModal';
+import { useConfigStore } from '../../stores/useConfigStore';
 
 interface AdminReleaseModalProps {
     onReleaseUpdated: () => void;
 }
 
 export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) => {
+    const { cacheBuster } = useConfigStore();
     const dialogRef = useRef<HTMLDialogElement>(null);
     const [title, setTitle] = useState('');
     const [artistId, setArtistId] = useState(''); // Could be dropdown in future
