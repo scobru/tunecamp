@@ -490,6 +490,7 @@ export interface DatabaseService {
     updateTrackGenre(id: number, genre: string | null): void;
     updateTrackYear(id: number, year: number | null): void;
     updateTrackPathsPrefix(oldPrefix: string, newPrefix: string): void;
+    updateTrack(id: number, track: Partial<Track>): void;
     deleteTrack(id: number, owner_id?: number): void;
     mergeTracks(fromId: number, toId: number): void;
     iterateTracks(whereClause?: string, params?: any[]): IterableIterator<Track>;

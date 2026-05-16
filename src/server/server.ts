@@ -255,6 +255,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         });
         const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
         initStorageService(gdriveService, adminRow?.id ?? 1);
+        localizationService.setGDriveService(gdriveService);
     }
 
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(database, scanner, config.musicDir, publishingService, storage, authService));

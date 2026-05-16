@@ -303,7 +303,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 >
                   Download
                 </a>
-                {(t.path?.startsWith('gdrive://') || (t.service && t.service !== 'local')) && (
+                {t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/')) && (
                   <button
                     className="btn btn-xs btn-ghost text-warning"
                     onClick={() => handleLocalize(t.id, t.title, t.path?.startsWith('gdrive://'))}

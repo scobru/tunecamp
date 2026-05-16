@@ -1770,6 +1770,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateTrackPathsPrefix(oldPrefix: string, newPrefix: string): void {
             trackRepository.updatePathsPrefix(oldPrefix, newPrefix);
         },
+        updateTrack(id: number, track: Partial<Track>): void {
+            trackRepository.update(id, track);
+        },
         mergeTracks(fromId: number, toId: number): void {
             const target = this.getTrack(toId); if (!target) return;
             trackRepository.merge(fromId, toId, target.file_path || "");

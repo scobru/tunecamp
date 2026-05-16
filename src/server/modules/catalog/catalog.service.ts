@@ -489,7 +489,10 @@ export class CatalogService {
 
         await this.storage.ensureDir(path.dirname(fullPath));
         await this.storage.writeFileStream(fullPath, stream);
-        this.database.updateTrackPath(trackId, relativePath, track.album_id);
+        this.database.updateTrack(trackId, { 
+            file_path: relativePath, 
+            service: 'local' 
+        });
         
         const updatedTrack = this.database.getTrack(trackId);
         if (updatedTrack) {

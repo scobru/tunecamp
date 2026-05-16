@@ -6,6 +6,7 @@ const execFileAsync = promisify(execFile);
 
 import { type DatabaseService, type Track } from "../../core/database.types.js";
 import { type CatalogService } from "./catalog.service.js";
+import { type GoogleDriveService } from "../storage/google-drive.service.js";
 
 /**
  * Universal Localization Service
@@ -17,8 +18,16 @@ export class LocalizationService {
         private database: DatabaseService,
         private catalogService: CatalogService,
         private musicDir: string,
-        private cookiesPath?: string
+        private cookiesPath?: string,
+        private gdriveService?: GoogleDriveService
     ) {}
+
+    /**
+     * Updates the Google Drive service for localization.
+     */
+    public setGDriveService(service: GoogleDriveService): void {
+        this.gdriveService = service;
+    }
 
     /**
      * Updates the cookies path for yt-dlp authentication.
@@ -41,6 +50,16 @@ export class LocalizationService {
         
         if (isLocal && !track.external_id && !track.url) {
             throw new Error("Track is already localized");
+        }
+
+        // Handle Google Drive tracks directly without yt-dlp
+        if (track.file_path?.startsWith('gdrive://')) {
+            if (this.gdriveService) {
+                console.log(`🎬 [Localization] Track ${trackId} is on Google Drive, using direct copy...`);
+                return this.catalogService.localizeTrack(trackId, this.gdriveService);
+            } else {
+                throw new Error("Google Drive service not available for localization");
+            }
         }
 
         // Determine the URL to download
@@ -90,52 +109,58 @@ export class LocalizationService {
 
         console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url}`);
 
-        const args = [
-            '--extract-audio',
-            '--audio-format', 'mp3',
-            '--output', outputTemplate,
-            '--no-playlist',
-            '--add-metadata',
-            '--embed-thumbnail',
-            '--no-warnings',
-            '--no-check-certificate',
-            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
-            // Sync with YouTubeStreamingProvider for resilience. mweb is currently the most resilient to bot checks.
-            '--extractor-args', 'youtube:player_client=mweb,android,web;player_skip=configs,web_embedded_player;po_token=auto',
-            '--referer', 'https://www.youtube.com/',
-            '--force-ipv4',
-            '--geo-bypass',
-            url
-        ];
-
-        if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
-            args.push('--cookies', this.cookiesPath);
-            console.log(`🎬 [Localization] Using cookies for authentication`);
-        }
-
         try {
-            // Use yt-dlp directly instead of the problematic youtube-dl-exec wrapper
-            await execFileAsync('yt-dlp', args);
-            
-            // Find the downloaded file
-            const files = await fs.readdir(localizedDir);
-            const idSuffix = `[${trackId}]`;
-            const downloadedFile = files.find(f => f.includes(idSuffix));
-            
-            if (!downloadedFile) {
-                throw new Error("Download completed but no file matching the pattern was found");
+            const format = 'mp3';
+            const tempPath = path.join(localizedDir, `temp_${trackId}.%(ext)s`);
+
+            const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+            const args = [
+                '-x',
+                '--audio-format', format,
+                '--audio-quality', '0',
+                '-o', tempPath,
+                '--no-playlist',
+                '--prefer-free-formats',
+                '--add-metadata',
+                '--embed-thumbnail',
+            ];
+
+            if (isYouTube) {
+                args.push('--referer', 'https://www.youtube.com/');
+                args.push('--extractor-args', 'youtube:player_client=web;player_skip=web_embedded_client,mweb');
             }
 
-            const relativePath = path.join("localized", downloadedFile);
-            
-            // Update track in database
-            this.database.updateTrackPath(trackId, relativePath, track.album_id);
-            
-            console.log(`✅ [Localization] Track localized to: ${relativePath}`);
+            if (this.cookiesPath && fs.existsSync(this.cookiesPath)) {
+                args.push('--cookies', this.cookiesPath);
+            }
 
-            // Return updated track
-            const updatedTrack = this.database.getTrack(trackId);
-            return updatedTrack!;
+            args.push(url);
+
+            await execFileAsync('yt-dlp', args);
+
+            // 3. Move to library and update DB
+            const sanitizedTitle = (track.title || "Untitled").replace(/[^a-z0-9_\-]/gi, '_');
+            const sanitizedArtist = (track.artist_name || "Unknown").replace(/[^a-z0-9_\-]/gi, '_');
+            const relativePath = path.posix.join("localized", `${sanitizedArtist} - ${sanitizedTitle}.${format}`);
+            const finalPath = path.join(this.musicDir, relativePath);
+
+            await fs.ensureDir(path.dirname(finalPath));
+            
+            // Find the downloaded file (yt-dlp adds the extension)
+            const files = await fs.readdir(localizedDir);
+            const downloadedFile = files.find(f => f.startsWith(`temp_${trackId}.`));
+            if (downloadedFile) {
+                await fs.move(path.join(localizedDir, downloadedFile), finalPath, { overwrite: true });
+            }
+
+            // Update DB with local path and mark as local service
+            this.database.updateTrack(trackId, { 
+                file_path: relativePath, 
+                service: 'local' 
+            });
+            
+            console.log(`✅ [Localization] Track ${trackId} localized to ${relativePath}`);
+            return this.database.getTrack(trackId)!;
         } catch (error: any) {
             console.error(`❌ [Localization] Error during download:`, error.message);
             throw new Error(`Localization failed: ${error.message}`);
