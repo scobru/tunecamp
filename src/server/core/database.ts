@@ -353,6 +353,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         getTorrentsStatus: () => [], 
         createTorrent: (t: any) => { db.prepare("INSERT OR REPLACE INTO torrents (info_hash, magnet_uri, status) VALUES (?, ?, ?)").run(t.info_hash, t.magnet_uri, t.status || 'metadata'); },
         updateTorrentProgress: (ih: string, p: number, s: any, ds: number, us: number, np: number, sz: number, path: string | null) => { db.prepare("UPDATE torrents SET progress = ?, status = ?, download_speed = ?, upload_speed = ?, num_peers = ?, size = ?, path = ? WHERE info_hash = ?").run(p, s, ds, us, np, sz, path, ih); },
+        updateTorrentStatus: (ih: string, s: any) => { db.prepare("UPDATE torrents SET status = ? WHERE info_hash = ?").run(s, ih); },
         deleteTorrent: (h: string) => { db.prepare("DELETE FROM torrents WHERE info_hash = ?").run(h); },
 
         // Gun Cache

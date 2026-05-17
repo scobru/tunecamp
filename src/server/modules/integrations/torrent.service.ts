@@ -1,7 +1,7 @@
 import WebTorrent from 'webtorrent';
 import path from 'path';
 import fs from 'fs-extra';
-import { type DatabaseService, type Torrent, type TorrentStatus } from '../../core/database.js';
+import { type DatabaseService, type Torrent, type TorrentStatus } from '../../core/database.types.js';
 import type { Scanner } from '../catalog/scanner.js';
 
 export class TorrentService {
@@ -56,7 +56,7 @@ export class TorrentService {
                 files = [t.path];
             }
 
-            this.client?.seed(files, { name: t.name || undefined }, (torrent) => {
+            this.client?.seed(files, { name: t.name || undefined } as any, (torrent) => {
                 console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${torrent.infoHash})`);
                 this.setupTorrentEvents(torrent, t.owner_id);
             });
@@ -73,7 +73,8 @@ export class TorrentService {
             const existingFiles = filePaths.filter(p => fs.existsSync(p));
             if (existingFiles.length === 0) return reject(new Error("No valid files to seed"));
 
-            this.client!.seed(existingFiles, { name }, (torrent) => {
+            const opts: any = { name };
+            this.client!.seed(existingFiles, opts, (torrent) => {
                 console.log(`📡 [TorrentService] Started seeding: ${torrent.name} (${torrent.infoHash})`);
                 
                 // Determine common base path

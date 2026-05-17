@@ -600,6 +600,7 @@ export interface DatabaseService {
     getTorrentsStatus(): any[];
     createTorrent(torrent: Partial<Torrent>): void;
     updateTorrentProgress(infoHash: string, progress: number, status: Torrent['status'], downloadSpeed: number, uploadSpeed: number, numPeers: number, size: number, path: string | null): void;
+    updateTorrentStatus(infoHash: string, status: Torrent['status']): void;
     deleteTorrent(hash: string): void;
 
     // Gun Cache
