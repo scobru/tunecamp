@@ -10,6 +10,10 @@
         "src/**/*.ts",
         "!src/**/*.test.ts"
       ],
+      "ignore": [
+        "check_db.js",
+        "website/**/*"
+      ],
       "ignoreDependencies": [
         "daisyui",
         "tailwindcss",
@@ -20,6 +24,12 @@
       "project": [
         "src/**/*.{ts,tsx}",
         "!src/**/*.test.{ts,tsx}"
+      ],
+      "ignore": [
+        "src/types/color-thief-react.d.ts",
+        "src/types/material-web.d.ts",
+        "src/zen.d.ts",
+        "src/stubs/empty.js"
       ],
       "ignoreDependencies": [
         "autoprefixer",
