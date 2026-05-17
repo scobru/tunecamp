@@ -183,17 +183,34 @@ export class DiscoveryService {
 
         if (!album) throw new Error("Album not found");
 
-        const isOwner = context.userId !== undefined && album.owner_id === context.userId;
+        const owners = this.database.getAlbumOwners(album.id);
+        const isOwner = context.userId !== undefined && context.userId !== null && (album.owner_id === context.userId || owners.includes(context.userId));
+        const isArtistOwner = context.artistId !== undefined && context.artistId !== null && album.artist_id === context.artistId;
         const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
         const username = user.username;
         const isStarred = username ? this.database.isStarred(username, 'album', String(album.id)) : false;
 
-        if (!canSeePrivate && !isOwner && !isStarred) {
+        const effectiveIsOwner = isOwner || isArtistOwner;
+
+        if (!canSeePrivate && !effectiveIsOwner && !isStarred) {
             if (!album.is_release) throw new Error("Access denied");
             if (album.visibility === 'private') throw new Error("Release not found");
         }
 
-        const tracks = this.database.getTracksByAlbum(album.id);
+        const profile = (effectiveIsOwner || canSeePrivate || isStarred) ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+        
+        let tracks: Track[] = [];
+        if (album.is_release) {
+            // For releases, authoritative tracks are in release_tracks
+            tracks = this.database.getTracksByReleaseId(album.id);
+            
+            // Fallback to library tracks if release tracks are missing for some reason
+            if (tracks.length === 0) {
+                tracks = this.database.getTracksByAlbum(album.id, profile);
+            }
+        } else {
+            tracks = this.database.getTracksByAlbum(album.id, profile);
+        }
 
         return {
             ...mapAlbumDTO(album, this.database, username),

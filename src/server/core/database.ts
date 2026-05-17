@@ -32,6 +32,505 @@ export function createDatabase(dbPath: string): DatabaseService {
     db.pragma("busy_timeout = 5000");
     db.pragma("foreign_keys = ON");
 
+    // Rescue Phase: Recover from interrupted migrations
+    const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks', 'admin', 'artists'];
+    db.transaction(() => {
+        for (const table of tablesToRescue) {
+            const mainExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+            const oldExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_old`);
+            const newExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(`${table}_new`);
+
+            if (!mainExists) {
+                if (oldExists) {
+                    console.log(`📦 [Database] Rescuing orphaned ${table}_old table...`);
+                    db.exec(`ALTER TABLE "${table}_old" RENAME TO "${table}"`);
+                } else if (newExists) {
+                    console.log(`📦 [Database] Rescuing orphaned ${table}_new table...`);
+                    db.exec(`ALTER TABLE "${table}_new" RENAME TO "${table}"`);
+                }
+            } else {
+                if (oldExists) {
+                    console.log(`🧹 [Database] Cleaning up legacy ${table}_old artifact...`);
+                    db.exec(`DROP TABLE "${table}_old"`);
+                }
+                if (newExists) {
+                    console.log(`🧹 [Database] Cleaning up legacy ${table}_new artifact...`);
+                    db.exec(`DROP TABLE "${table}_new"`);
+                }
+            }
+        }
+    })();
+
+    // Initial Schema (Base Tables)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS artists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            slug TEXT NOT NULL UNIQUE,
+            bio TEXT,
+            photo_path TEXT,
+            links TEXT,
+            public_key TEXT,
+            private_key TEXT,
+            wallet_address TEXT,
+            visibility TEXT DEFAULT 'public',
+            post_params TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            artist_id INTEGER DEFAULT NULL,
+            role TEXT NOT NULL DEFAULT 'admin',
+            storage_quota INTEGER NOT NULL DEFAULT 0,
+            storage_used INTEGER NOT NULL DEFAULT 0,
+            subsonic_token TEXT,
+            subsonic_password TEXT,
+            gun_pub TEXT,
+            gun_priv TEXT,
+            gun_auth_mode TEXT NOT NULL DEFAULT 'local',
+            is_active INTEGER DEFAULT 1,
+            token_version INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            slsk_username TEXT,
+            slsk_password TEXT,
+            telegram_bot_token TEXT,
+            telegram_allowed_channels TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS albums (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            artist_id INTEGER REFERENCES artists(id),
+            owner_id INTEGER REFERENCES admin(id),
+            date TEXT,
+            cover_path TEXT,
+            genre TEXT,
+            description TEXT,
+            type TEXT DEFAULT 'album',
+            year INTEGER,
+            download TEXT,
+            price REAL DEFAULT 0,
+            price_usdc REAL DEFAULT 0,
+            price_usdt REAL DEFAULT 0,
+            currency TEXT DEFAULT 'ETH',
+            external_links TEXT,
+            external_id TEXT,
+            is_public INTEGER DEFAULT 0,
+            visibility TEXT DEFAULT 'private',
+            is_release INTEGER DEFAULT 0,
+            published_at TEXT,
+            published_to_gundb INTEGER DEFAULT 0,
+            published_to_ap INTEGER DEFAULT 0,
+            license TEXT,
+            status TEXT DEFAULT 'draft',
+            album_artist TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS releases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            artist_id INTEGER REFERENCES artists(id),
+            owner_id INTEGER REFERENCES admin(id),
+            date TEXT,
+            cover_path TEXT,
+            genre TEXT,
+            description TEXT,
+            type TEXT DEFAULT 'album',
+            year INTEGER,
+            download TEXT,
+            price REAL DEFAULT 0,
+            price_usdc REAL DEFAULT 0,
+            price_usdt REAL DEFAULT 0,
+            currency TEXT DEFAULT 'ETH',
+            external_links TEXT,
+            external_id TEXT,
+            visibility TEXT DEFAULT 'private',
+            published_at TEXT,
+            published_to_gundb INTEGER DEFAULT 0,
+            published_to_ap INTEGER DEFAULT 0,
+            license TEXT,
+            status TEXT DEFAULT 'draft',
+            album_artist TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS tracks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            album_id INTEGER REFERENCES albums(id),
+            artist_id INTEGER REFERENCES artists(id),
+            owner_id INTEGER REFERENCES admin(id),
+            artist_name TEXT,
+            track_num INTEGER,
+            duration REAL,
+            file_path TEXT,
+            format TEXT,
+            bitrate INTEGER,
+            sample_rate INTEGER,
+            price REAL DEFAULT 0,
+            price_usdc REAL DEFAULT 0,
+            price_usdt REAL DEFAULT 0,
+            currency TEXT DEFAULT 'ETH',
+            waveform TEXT,
+            url TEXT,
+            service TEXT,
+            external_artwork TEXT,
+            lyrics TEXT,
+            lossless_path TEXT,
+            external_id TEXT,
+            hash TEXT,
+            fingerprint TEXT,
+            genre TEXT,
+            year INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS release_tracks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            release_id INTEGER REFERENCES releases(id),
+            track_id INTEGER REFERENCES tracks(id),
+            title TEXT NOT NULL,
+            artist_name TEXT,
+            track_num INTEGER,
+            duration REAL,
+            file_path TEXT,
+            price REAL DEFAULT 0,
+            price_usdc REAL DEFAULT 0,
+            price_usdt REAL DEFAULT 0,
+            currency TEXT DEFAULT 'ETH',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS album_ownership (
+            album_id INTEGER REFERENCES albums(id) ON DELETE CASCADE,
+            owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+            PRIMARY KEY (album_id, owner_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS track_ownership (
+            track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+            owner_id INTEGER REFERENCES admin(id) ON DELETE CASCADE,
+            PRIMARY KEY (track_id, owner_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS playlists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            username TEXT NOT NULL,
+            description TEXT,
+            is_public INTEGER DEFAULT 0,
+            cover_path TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS playlist_tracks (
+            playlist_id INTEGER REFERENCES playlists(id) ON DELETE CASCADE,
+            track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+            position INTEGER,
+            PRIMARY KEY (playlist_id, track_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS starred_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(username, item_type, item_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS item_ratings (
+            username TEXT NOT NULL,
+            item_type TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            rating INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (username, item_type, item_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS play_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+            played_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            slug TEXT NOT NULL UNIQUE,
+            visibility TEXT DEFAULT 'public',
+            published_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS ap_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+            note_id TEXT NOT NULL UNIQUE,
+            note_type TEXT NOT NULL,
+            content_id INTEGER NOT NULL,
+            content_slug TEXT NOT NULL,
+            content_title TEXT NOT NULL,
+            published_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            deleted_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS followers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+            actor_uri TEXT NOT NULL,
+            inbox_uri TEXT NOT NULL,
+            shared_inbox_uri TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(artist_id, actor_uri)
+        );
+
+        CREATE TABLE IF NOT EXISTS remote_actors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uri TEXT NOT NULL UNIQUE,
+            type TEXT NOT NULL,
+            username TEXT,
+            name TEXT,
+            summary TEXT,
+            icon_url TEXT,
+            inbox_url TEXT,
+            outbox_url TEXT,
+            is_followed INTEGER DEFAULT 0,
+            last_seen TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS remote_content (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ap_id TEXT NOT NULL UNIQUE,
+            actor_uri TEXT NOT NULL,
+            type TEXT NOT NULL,
+            title TEXT,
+            content TEXT,
+            url TEXT,
+            cover_url TEXT,
+            stream_url TEXT,
+            artist_name TEXT,
+            album_name TEXT,
+            duration REAL,
+            published_at TEXT,
+            received_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS oauth_clients (
+            instance_url TEXT PRIMARY KEY,
+            client_id TEXT NOT NULL,
+            client_secret TEXT NOT NULL,
+            redirect_uri TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS oauth_links (
+            provider TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            gun_pub TEXT NOT NULL,
+            gun_priv TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (provider, subject)
+        );
+
+        CREATE TABLE IF NOT EXISTS gun_users (
+            pub TEXT PRIMARY KEY,
+            epub TEXT,
+            alias TEXT,
+            avatar TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS gun_cache (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            type TEXT NOT NULL,
+            expires_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS unlock_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            release_id INTEGER REFERENCES albums(id),
+            track_id INTEGER REFERENCES tracks(id),
+            tx_hash TEXT,
+            is_used INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            redeemed_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS storage_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES admin(id),
+            provider TEXT NOT NULL,
+            account_email TEXT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            expiry_date INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS soulseek_downloads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            status TEXT NOT NULL,
+            progress REAL DEFAULT 0,
+            added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES admin (id)
+        );
+
+        CREATE TABLE IF NOT EXISTS torrents (
+            info_hash TEXT PRIMARY KEY,
+            name TEXT,
+            magnet_uri TEXT NOT NULL,
+            owner_id INTEGER REFERENCES admin(id) ON DELETE SET NULL,
+            status TEXT DEFAULT 'metadata',
+            progress REAL DEFAULT 0,
+            download_speed REAL DEFAULT 0,
+            upload_speed REAL DEFAULT 0,
+            num_peers INTEGER DEFAULT 0,
+            size INTEGER DEFAULT 0,
+            path TEXT,
+            added_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS system_plugins (
+            id TEXT PRIMARY KEY,
+            enabled INTEGER DEFAULT 0,
+            config TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS bookmarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            track_id TEXT NOT NULL,
+            position_ms INTEGER NOT NULL,
+            comment TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS fedify_kv (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            expires_at INTEGER
+        );
+    `);
+
+    // Views
+    db.exec(`
+        CREATE VIEW IF NOT EXISTS v_artists AS
+        SELECT * FROM artists;
+
+        CREATE VIEW IF NOT EXISTS v_albums AS
+        SELECT
+            a.*,
+            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
+            ar.slug as artist_slug,
+            ar.wallet_address as artist_wallet_address
+        FROM albums a
+        LEFT JOIN artists ar ON a.artist_id = ar.id;
+
+        CREATE VIEW IF NOT EXISTS v_releases AS
+        SELECT
+            r.*,
+            COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
+            ar.slug as artist_slug,
+            ar.wallet_address as artist_wallet_address
+        FROM releases r
+        LEFT JOIN artists ar ON r.artist_id = ar.id;
+
+        CREATE VIEW IF NOT EXISTS v_tracks AS
+        SELECT
+            t.*,
+            a.title as album_title,
+            a.album_artist as album_artist_tag,
+            a.visibility as album_visibility,
+            a.status as album_status,
+            COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name,
+            COALESCE(ar_t.slug, ar_a.slug) as artist_slug,
+            COALESCE(ar_t.wallet_address, ar_a.wallet_address) as artist_wallet_address,
+            COALESCE(t.owner_id, a.owner_id) as effective_owner_id
+        FROM tracks t
+        LEFT JOIN albums a ON t.album_id = a.id
+        LEFT JOIN artists ar_t ON t.artist_id = ar_t.id
+        LEFT JOIN artists ar_a ON a.artist_id = ar_a.id;
+    `);
+
+    // Triggers
+    db.exec(`
+        CREATE TRIGGER IF NOT EXISTS tr_cleanup_release_tracks_on_release_delete
+        AFTER DELETE ON releases
+        FOR EACH ROW
+        BEGIN
+            DELETE FROM release_tracks WHERE release_id = OLD.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS tr_cleanup_release_tracks_on_track_delete
+        AFTER DELETE ON tracks
+        FOR EACH ROW
+        BEGIN
+            DELETE FROM release_tracks WHERE track_id = OLD.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS tr_albums_status_sync
+        AFTER UPDATE OF visibility ON albums
+        FOR EACH ROW
+        WHEN NEW.visibility IN ('public', 'unlisted') AND OLD.status = 'draft'
+        BEGIN
+            UPDATE albums SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS tr_releases_status_sync
+        AFTER UPDATE OF visibility ON releases
+        FOR EACH ROW
+        WHEN NEW.visibility IN ('public', 'unlisted') AND OLD.status = 'draft'
+        BEGIN
+            UPDATE releases SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS tr_albums_status_init
+        AFTER INSERT ON albums
+        FOR EACH ROW
+        WHEN NEW.visibility IN ('public', 'unlisted')
+        BEGIN
+            UPDATE albums SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
+        END;
+    `);
+
+    // Indices
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC);
+        CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album_id);
+        CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
+        CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
+        CREATE INDEX IF NOT EXISTS idx_albums_public ON albums(is_public);
+        CREATE INDEX IF NOT EXISTS idx_albums_release ON albums(is_release);
+        CREATE INDEX IF NOT EXISTS idx_track_ownership_owner ON track_ownership(owner_id);
+        CREATE INDEX IF NOT EXISTS idx_album_ownership_owner ON album_ownership(owner_id);
+        CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));
+        CREATE INDEX IF NOT EXISTS idx_albums_visibility ON albums(visibility);
+        CREATE INDEX IF NOT EXISTS idx_releases_artist ON releases(artist_id);
+        CREATE INDEX IF NOT EXISTS idx_releases_visibility_status ON releases(visibility, status);
+    `);
+
     // Register Levenshtein
     db.function("levenshtein", (a: string, b: string) => {
         if (!a) return b ? b.length : 0;
