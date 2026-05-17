@@ -129,6 +129,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             license TEXT,
             status TEXT DEFAULT 'draft',
             album_artist TEXT,
+            use_nft INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -158,6 +159,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             license TEXT,
             status TEXT DEFAULT 'draft',
             album_artist TEXT,
+            use_nft INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 

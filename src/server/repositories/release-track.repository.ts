@@ -117,29 +117,48 @@ export class ReleaseTrackRepository extends BaseRepository {
 
     sync(releaseId: number, trackIds: number[]): void {
         this.db.transaction(() => {
-            // 1. Delete all existing tracks for this release
+            // 1. Fetch existing tracks to preserve "ghost tracks" (those not in library)
+            const existingTracks = this.db.prepare("SELECT * FROM release_tracks WHERE release_id = ?").all(releaseId) as any[];
+            
+            // 2. Delete all existing tracks for this release
             this.deleteByRelease(releaseId);
             
-            // 2. Validate and filter track IDs to avoid gaps in numbering
-            const validTrackIds = trackIds.filter(id => {
-                if (!id) return false;
-                const exists = this.db.prepare("SELECT 1 FROM tracks WHERE id = ?").get(id);
-                return !!exists;
-            });
-
-            // 3. Add them back in order
-            const stmt = this.db.prepare(`
+            // 3. Add them back in the new order
+            const insertStmt = this.db.prepare(`
                 INSERT INTO release_tracks (
                     release_id, track_id, title, artist_name, track_num, 
                     duration, file_path, price, price_usdc, price_usdt, currency
                 )
-                SELECT ?, t.id, t.title, t.artist_name, ?, 
-                       t.duration, t.file_path, t.price, t.price_usdc, t.price_usdt, t.currency
-                FROM tracks t WHERE t.id = ?
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
+
+            const libraryStmt = this.db.prepare("SELECT * FROM tracks WHERE id = ?");
             
-            validTrackIds.forEach((trackId, index) => {
-                stmt.run(releaseId, index + 1, trackId);
+            trackIds.forEach((id, index) => {
+                if (!id) return;
+
+                // Try to find in library
+                const libraryTrack = libraryStmt.get(id) as any;
+                if (libraryTrack) {
+                    insertStmt.run(
+                        releaseId, libraryTrack.id, libraryTrack.title, libraryTrack.artist_name, index + 1,
+                        libraryTrack.duration, libraryTrack.file_path, libraryTrack.price, 
+                        libraryTrack.price_usdc, libraryTrack.price_usdt, libraryTrack.currency || 'ETH'
+                    );
+                } else {
+                    // Not in library, maybe it's a ghost track that was already in this release?
+                    // The 'id' provided might be the old release_track_id
+                    const ghost = existingTracks.find(t => t.id === id && t.track_id === null);
+                    if (ghost) {
+                        insertStmt.run(
+                            releaseId, null, ghost.title, ghost.artist_name, index + 1,
+                            ghost.duration, ghost.file_path, ghost.price,
+                            ghost.price_usdc, ghost.price_usdt, ghost.currency || 'ETH'
+                        );
+                    } else {
+                        console.warn(`⚠️ [ReleaseTrackRepository] Track ID ${id} not found in library or existing release tracks. Skipping.`);
+                    }
+                }
             });
         });
     }

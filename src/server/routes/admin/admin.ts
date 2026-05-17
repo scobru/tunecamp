@@ -692,18 +692,17 @@ export function createAdminRoutes(
             }
 
             // Permission Check: Root Admin/Admin can edit anything. 
-            // Others (Super Users) can edit if they own the item OR if it has no owner (legacy/system).
-            const ownerId = release ? release.owner_id : album?.owner_id;
+            // Others (Super Users/Managers) can edit if they own the item OR if they are in album_ownership table.
+            const owners = database.getAlbumOwners(id);
+            const primaryOwnerId = release ? release.owner_id : album?.owner_id;
+            const isOwner = req.userId !== undefined && (primaryOwnerId === req.userId || owners.includes(req.userId));
+            
             const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
             const canManagePrivate = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
             
-            if (req.userId !== undefined && !isPrivileged && ownerId !== null && ownerId !== req.userId) {
-                console.warn(`⛔ [Debug] Access Denied for user ${req.username} on item ${id}. Owner: ${ownerId}, Request UserId: ${req.userId}`);
-                return res.status(403).json({ error: "Access denied" });
-            }
-
-            if (!isPrivileged && !canManagePrivate && ownerId !== req.userId) {
-                return res.status(403).json({ error: "Access denied: Insufficient permissions" });
+            if (!isPrivileged && !isOwner && !canManagePrivate) {
+                console.warn(`⛔ [Debug] Access Denied for user ${req.username} on item ${id}. Owners: ${owners}, PrimaryOwner: ${primaryOwnerId}, Request UserId: ${req.userId}`);
+                return res.status(403).json({ error: "Access denied: Insufficient permissions to modify this item" });
             }
 
             const updates: any = {};

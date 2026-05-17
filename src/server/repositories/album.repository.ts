@@ -322,14 +322,39 @@ export class AlbumRepository extends BaseRepository {
 
         if (fields.length === 0) return;
 
-        values.push(id);
-        this.db.prepare(`UPDATE albums SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+        const albumValues = [...values, id];
+        this.db.prepare(`UPDATE albums SET ${fields.join(', ')} WHERE id = ?`).run(...albumValues);
         
         // Also update corresponding release if exists
-        try {
-            this.db.prepare(`UPDATE releases SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-        } catch (e) {
-            // Might not exist, which is fine
+        // We must filter out columns that don't exist in the releases table
+        const releaseFields: string[] = [];
+        const releaseValues: any[] = [];
+        const validReleaseColumns = [
+            'title', 'slug', 'artist_id', 'owner_id', 'date', 'cover_path', 'genre', 
+            'description', 'type', 'year', 'download', 'price', 'price_usdc', 
+            'price_usdt', 'currency', 'external_links', 'external_id', 'visibility', 
+            'published_at', 'published_to_gundb', 'published_to_ap', 'license', 
+            'status', 'album_artist', 'use_nft'
+        ];
+
+        for (const [key, value] of Object.entries(album)) {
+            if (!validReleaseColumns.includes(key)) continue;
+            releaseFields.push(`${key} = ?`);
+            if (['published_to_gundb', 'published_to_ap'].includes(key)) {
+                releaseValues.push(value ? 1 : 0);
+            } else {
+                releaseValues.push(value);
+            }
+        }
+
+        if (releaseFields.length > 0) {
+            try {
+                releaseValues.push(id);
+                this.db.prepare(`UPDATE releases SET ${releaseFields.join(', ')} WHERE id = ?`).run(...releaseValues);
+            } catch (e: any) {
+                // Might not exist, or might have schema mismatch
+                console.warn(`⚠️ [AlbumRepository] Failed to sync update to releases table for ID ${id}:`, e.message);
+            }
         }
     }
 
