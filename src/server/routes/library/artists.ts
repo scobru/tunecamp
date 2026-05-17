@@ -179,8 +179,15 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
      */
     router.get("/:id/posts", async (req: AuthenticatedRequest, res) => {
         try {
-            const id = parseInt(req.params.id);
-            const artist = database.getArtist(id);
+            const param = req.params.id;
+            let artist;
+            
+            if (isNaN(parseInt(param))) {
+                artist = database.getArtistBySlug(param);
+            } else {
+                artist = database.getArtist(parseInt(param));
+            }
+
             if (!artist) return res.status(404).json({ error: "Artist not found" });
 
             const isAdmin = (req as any).isAdmin === true;

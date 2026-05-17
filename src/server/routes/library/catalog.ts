@@ -63,5 +63,21 @@ export function createCatalogRoutes(catalogService: CatalogService, discoverySer
         }
     });
 
+    /**
+     * GET /api/catalog/tracks/:id/related
+     * Alias for recommendations, matching common frontend naming
+     */
+    router.get("/tracks/:id/related", async (req, res) => {
+        const trackId = parseInt(req.params.id);
+        const limit = parseInt(req.query.limit as string) || 5;
+        try {
+            const related = await discoveryService.getAiRecommendations(trackId, limit);
+            res.json(related);
+        } catch (error) {
+            console.error("Error getting related tracks:", error);
+            res.status(500).json({ error: "Failed to get related tracks" });
+        }
+    });
+
     return router;
 }
