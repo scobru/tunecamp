@@ -29,9 +29,27 @@ export class ArtistRepository extends BaseRepository {
 
     private mapArtist(row: any): Artist | undefined {
         if (!row) return undefined;
+        let links = null;
+        try {
+            links = row.links ? JSON.parse(row.links) : [];
+        } catch (e: any) {
+            console.warn(`⚠️ [ArtistRepository] Failed to parse links for artist ${row.id}:`, e.message);
+            links = [];
+        }
+
+        let post_params = null;
+        try {
+            post_params = row.post_params ? JSON.parse(row.post_params) : {};
+        } catch (e: any) {
+            console.warn(`⚠️ [ArtistRepository] Failed to parse post_params for artist ${row.id}:`, e.message);
+            post_params = {};
+        }
+
         return {
             ...row,
             isLibraryArtist: !!row.isLibraryArtist,
+            links,
+            post_params
         } as Artist;
     }
 

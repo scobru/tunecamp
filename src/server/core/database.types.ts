@@ -39,8 +39,8 @@ export interface Artist {
     slug: string;
     bio: string | null;
     photo_path: string | null;
-    links: string | null; // JSON
-    post_params: string | null; // JSON
+    links: any | null; // Parsed JSON
+    post_params: any | null; // Parsed JSON
     wallet_address: string | null;
     visibility: 'public' | 'private' | 'unlisted';
     external_id?: string | null;
@@ -71,7 +71,7 @@ export interface Album {
     price_usdc: number;
     price_usdt?: number;
     currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
-    external_links: string | null; // JSON string
+    external_links: any | null; // Parsed JSON
     is_public: boolean;
     visibility: 'public' | 'private' | 'unlisted';
     is_release: boolean;

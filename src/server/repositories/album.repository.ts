@@ -39,6 +39,13 @@ export class AlbumRepository extends BaseRepository {
 
     protected mapAlbum(row: any): Album | undefined {
         if (!row) return undefined;
+        let external_links = null;
+        try {
+            external_links = row.external_links ? JSON.parse(row.external_links) : null;
+        } catch (e) {
+            console.warn(`⚠️ [AlbumRepository] Failed to parse external_links for album ${row.id}:`, (e as any).message);
+        }
+
         return {
             ...row,
             currency: row.currency || 'ETH',
@@ -47,6 +54,7 @@ export class AlbumRepository extends BaseRepository {
             published_to_gundb: !!row.published_to_gundb,
             published_to_ap: !!row.published_to_ap,
             price_usdt: row.price_usdt || 0,
+            external_links,
             // Standardize field names from view
             artistName: row.artist_name,
             artistSlug: row.artist_slug,

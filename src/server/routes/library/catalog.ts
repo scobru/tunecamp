@@ -25,6 +25,20 @@ export function createCatalogRoutes(catalogService: CatalogService, discoverySer
     });
 
     /**
+     * GET /api/catalog/settings
+     * Returns public site settings
+     */
+    router.get("/settings", (req: any, res) => {
+        try {
+            const settings = catalogService.getSettings();
+            res.json(settings);
+        } catch (error) {
+            console.error("Error getting catalog settings:", error);
+            res.status(500).json({ error: "Failed to fetch settings" });
+        }
+    });
+
+    /**
      * GET /api/catalog/genres
      */
     router.get("/genres", (req: any, res) => {
