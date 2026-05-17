@@ -466,7 +466,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             a.album_artist as album_artist_tag,
             a.visibility as album_visibility,
             a.status as album_status,
-            COALESCE(ar_t.name, t.artist_name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name,
+            COALESCE(t.artist_name, ar_t.name, a.album_artist, ar_a.name, 'Unknown Artist') as artist_name,
             COALESCE(ar_t.slug, ar_a.slug) as artist_slug,
             COALESCE(ar_t.wallet_address, ar_a.wallet_address) as artist_wallet_address,
             COALESCE(t.owner_id, a.owner_id) as effective_owner_id
