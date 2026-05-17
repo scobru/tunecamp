@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, MoreHorizontal, CheckCircle2, Wallet, Copyright } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, MoreHorizontal, CheckCircle2, Wallet, Copyright } from "lucide-react";
 
 import { useParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
