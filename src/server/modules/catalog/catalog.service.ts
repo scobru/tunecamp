@@ -78,15 +78,26 @@ export class CatalogService {
         const track = this.database.getTrack(trackId);
         if (!track) throw new Error("Track not found");
 
-        const { title, artistId, artist, albumId, album, ownerId, trackNumber, genre, year, price, priceUsdc, currency, lyrics, externalArtwork, fileName, duration } = data;
+        // Normalize input data to handle both DTO (camelCase) and DB (snake_case) formats
+        const title = data.title;
+        const artistName = data.artistName ?? data.artist_name ?? data.artist;
+        const artistId = data.artistId ?? data.artist_id;
+        const albumName = data.albumName ?? data.album_name ?? data.album;
+        const albumId = data.albumId ?? data.album_id;
+        const ownerId = data.ownerId ?? data.owner_id;
+        const trackNumber = data.trackNumber ?? data.track_num ?? data.track_number;
+        const genre = data.genre;
+        const year = data.year;
+        const price = data.price;
+        const priceUsdc = data.priceUsdc ?? data.price_usdc;
+        const priceUsdt = data.priceUsdt ?? data.price_usdt;
+        const currency = data.currency;
+        const lyrics = data.lyrics;
+        const externalArtwork = data.externalArtwork ?? data.external_artwork;
+        const fileName = data.fileName ?? data.filename ?? data.file_path;
+        const duration = data.duration;
 
-        let finalArtistId = artistId !== undefined ? artistId : undefined;
-        if (typeof artist === 'string' && artist.trim() !== "") {
-            const artistName = artist.trim();
-            const existingArtist = this.database.getArtistByName(artistName);
-            finalArtistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
-        }
-
+        // Resolve Owner
         let finalOwnerId = ownerId !== undefined ? ownerId : track.owner_id;
         if (finalOwnerId) {
             const isValidAdmin = (this.database as any).db.prepare("SELECT 1 FROM admin WHERE id = ?").get(finalOwnerId);
@@ -97,15 +108,35 @@ export class CatalogService {
             finalOwnerId = this.database.getPrimaryAdminId();
         }
 
-        let finalAlbumId = albumId !== undefined ? albumId : undefined;
-        if ((finalAlbumId === null || finalAlbumId === undefined) && typeof album === "string" && album.trim() !== "") {
-            const albumName = album.trim();
-            const slug = "lib-" + albumName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+        // Resolve Artist
+        let finalArtistId = artistId !== undefined ? artistId : track.artist_id;
+        let finalArtistName = typeof artistName === 'string' ? artistName.trim() : (track.artist_name || null);
+
+        if (typeof artistName === 'string' && artistName.trim() !== "") {
+            const trimmedName = artistName.trim();
+            const existingArtist = this.database.getArtistByName(trimmedName);
+            if (existingArtist) {
+                finalArtistId = existingArtist.id;
+                finalArtistName = existingArtist.name;
+            } else {
+                finalArtistId = this.database.createArtist(trimmedName);
+                finalArtistName = trimmedName;
+            }
+        } else if (artistName === null || artistName === "") {
+            finalArtistId = null;
+            finalArtistName = null;
+        }
+
+        // Resolve Album
+        let finalAlbumId = albumId !== undefined ? albumId : track.album_id;
+        if ((finalAlbumId === null || finalAlbumId === undefined) && typeof albumName === "string" && albumName.trim() !== "") {
+            const trimmedAlbum = albumName.trim();
+            const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, "-");
             const existingAlbum = this.database.getAlbumBySlug(slug);
             finalAlbumId = existingAlbum
                 ? existingAlbum.id
                 : this.database.createAlbum({
-                      title: albumName,
+                      title: trimmedAlbum,
                       slug,
                       artist_id: finalArtistId || track.artist_id,
                       owner_id: finalOwnerId,
@@ -131,6 +162,7 @@ export class CatalogService {
                   });
         }
 
+        // Handle File Rename
         if (track.file_path && fileName && typeof fileName === 'string') {
             const oldPath = track.file_path;
             const oldDir = path.dirname(oldPath);
@@ -162,40 +194,22 @@ export class CatalogService {
             }
         }
 
+        // Apply Updates to DB
         if (title !== undefined) this.database.updateTrackTitle(trackId, title);
         
-        let artistChanged = false;
-        if (typeof artist === 'string' && artist.trim() !== "") {
-            const artistName = artist.trim();
-            const existingArtist = this.database.getArtistByName(artistName);
-            const resolvedArtistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
-            
-            artistChanged = resolvedArtistId !== track.artist_id;
-            // Always update both ID and name string for better persistence and view compatibility
-            this.database.updateTrackArtistInfo(trackId, resolvedArtistId, artistName);
-            
-            if (artistChanged && track.album_id) {
-                const tracksInAlbum = this.database.getTracksByAlbum(track.album_id);
-                if (tracksInAlbum.length === 1) {
-                    this.database.updateAlbumArtist(track.album_id, resolvedArtistId);
-                    const release = this.database.getRelease(track.album_id);
-                    if (release) this.database.updateRelease(track.album_id, { artist_id: resolvedArtistId });
-                }
-            }
-        } else if (artist === null || artist === "") {
-            this.database.updateTrackArtistInfo(trackId, null, null);
-        } else if (artistId !== undefined) {
-            // If only ID is provided, link to it but keep current name or use artist record name
-            this.database.updateTrackArtist(trackId, artistId);
-        }
+        // Sync artist name and ID
+        this.database.updateTrackArtistInfo(trackId, finalArtistId, finalArtistName);
 
         if (finalAlbumId !== undefined) this.database.updateTrackAlbum(trackId, finalAlbumId);
         if (ownerId !== undefined) this.database.updateTrackOwner(trackId, finalOwnerId);
         if (trackNumber !== undefined) this.database.updateTrackNumber(trackId, trackNumber);
         if (duration !== undefined) this.database.updateTrackDuration(trackId, parseFloat(duration));
         
-        if (price !== undefined || priceUsdc !== undefined) {
+        if (price !== undefined || priceUsdc !== undefined || priceUsdt !== undefined) {
             this.database.updateTrackPrice(trackId, price ?? track.price, priceUsdc ?? track.price_usdc, currency ?? track.currency);
+            if (priceUsdt !== undefined) {
+                (this.database as any).db.prepare("UPDATE tracks SET price_usdt = ? WHERE id = ?").run(priceUsdt, trackId);
+            }
         }
         
         if (lyrics !== undefined) this.database.updateTrackLyrics(trackId, lyrics);

@@ -414,16 +414,18 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         try {
             let artistId = track.artist_id;
             if (artist) {
-                const a = database.getArtistByName(artist);
-                artistId = a ? a.id : database.createArtist(artist);
-                database.updateTrackArtist(track.id, artistId);
+                const trimmedArtist = artist.trim();
+                const a = database.getArtistByName(trimmedArtist);
+                artistId = a ? a.id : database.createArtist(trimmedArtist);
+                database.updateTrackArtistInfo(track.id, artistId, trimmedArtist);
             }
             if (albumTitle) {
-                const slug = "lib-" + albumTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                const trimmedAlbum = albumTitle.trim();
+                const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, '-');
                 let alb = database.getAlbumBySlug(slug);
                 if (!alb) {
                     const newId = database.createAlbum({
-                        title: albumTitle, slug, artist_id: artistId, owner_id: req.userId || null,
+                        title: trimmedAlbum, slug, artist_id: artistId, owner_id: req.userId || null,
                         date: null, cover_path: null, genre: "Matched", description: "Matched",
                         type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
                         external_links: null, is_public: false, visibility: 'private', is_release: false,
@@ -434,7 +436,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                 if (alb) database.updateTrackAlbum(track.id, alb.id);
             }
             if (title) database.updateTrackTitle(track.id, title);
-            if (coverUrl) (database as any).db.prepare("UPDATE tracks SET external_artwork = ? WHERE id = ?").run(coverUrl, track.id);
+            if (coverUrl) database.updateTrackExternalArtwork(track.id, coverUrl);
 
             const updated = database.getTrack(track.id);
             res.json({ message: "Metadata matched", track: updated ? mapTrackDTO(updated, database, req.username) : null });
