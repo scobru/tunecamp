@@ -163,11 +163,16 @@ export class CatalogService {
         if (ownerId !== undefined) this.database.updateTrackOwner(trackId, finalOwnerId);
         if (trackNumber !== undefined) this.database.updateTrackNumber(trackId, trackNumber);
         if (duration !== undefined) this.database.updateTrackDuration(trackId, parseFloat(duration));
-        if (price !== undefined || priceUsdc !== undefined) this.database.updateTrackPrice(trackId, price ?? track.price, priceUsdc ?? track.price_usdc, currency ?? track.currency);
+        
+        if (price !== undefined || priceUsdc !== undefined) {
+            this.database.updateTrackPrice(trackId, price ?? track.price, priceUsdc ?? track.price_usdc, currency ?? track.currency);
+        }
+        
         if (lyrics !== undefined) this.database.updateTrackLyrics(trackId, lyrics);
         if (genre !== undefined) this.database.updateTrackGenre(trackId, genre);
         if (year !== undefined) this.database.updateTrackYear(trackId, year ? Number(year) : null);
         if (externalArtwork !== undefined) this.database.updateTrackExternalArtwork(trackId, externalArtwork);
+        
         if (data.external_id !== undefined || data.externalId !== undefined) {
             (this.database as any).db.prepare("UPDATE tracks SET external_id = ? WHERE id = ?").run(data.external_id ?? data.externalId, trackId);
         }
