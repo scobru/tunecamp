@@ -6,7 +6,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useConfigStore } from '../stores/useConfigStore';
 import { formatDuration } from '../utils/format';
-import type { Artist, Album, Post, Track } from '../types';
+import type { Artist, Album, Post, Track, Release } from '../types';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
     const p = platform.toLowerCase();
