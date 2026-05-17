@@ -638,7 +638,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     const USERS_NAMESPACE = "tunecamp-users";
 
     async function registerUser(pubKey: string, username: string): Promise<boolean> {
-        if (!initialized || !zen) return false;
+        if (!initialized || !zen || !pubKey) return false;
 
         const now = Date.now();
         const userRecord: UserProfile = {

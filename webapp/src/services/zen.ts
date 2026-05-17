@@ -74,22 +74,47 @@ class ZenUser {
      * Create a new user identity.
      */
     async create(alias: string, pass: string, cb?: (ack: any) => void) {
+        if (!alias || !pass) {
+            const err = "Username and password are required for registration";
+            if (cb) cb({ err });
+            throw new Error(err);
+        }
+
         try {
             // HIGH SECURITY: Combine alias + pass as seed to ensure unique identity
             // even if two users choose the same password.
             const seed = alias + pass;
             const pair = await (ZEN as any).pair(null, { seed });
 
-            // Register alias -> pub mapping
-            await this._gun.get('~@' + alias).put({ '#': '~' + pair.pub }).then();
+            if (!pair || !pair.pub) throw new Error("Failed to generate valid key pair");
 
-            // Set initial profile data
-            await this._gun.get('~' + pair.pub).get('alias').put(alias, { authenticator: pair }).then();
+            // Set initial profile data in the user's namespace
+            // We use a flat put first to ensure the node exists
+            const userNode = this._gun.get('~' + pair.pub);
+            await userNode.put({
+                alias: alias,
+                pub: pair.pub,
+                epub: pair.epub,
+                created: Date.now()
+            }, { authenticator: pair }).then();
+
+            // Register alias -> pub mapping for discovery
+            // This is equivalent to Gun's internal alias system
+            try {
+                const aliasNode = this._gun.get('~@' + alias);
+                if (aliasNode && typeof aliasNode.put === 'function') {
+                    await aliasNode.put({ '#': '~' + pair.pub }, { authenticator: pair }).then();
+                }
+            } catch (aliasErr) {
+                console.warn("⚠️ [ZenUser] Alias mapping failed (discovery might be limited):", aliasErr);
+            }
 
             if (cb) cb({ ok: 1, pub: pair.pub });
             return pair;
         } catch (e: any) {
-            if (cb) cb({ err: e.message || e });
+            console.error("❌ ZenUser.create failed:", e);
+            const errMsg = e.message || String(e);
+            if (cb) cb({ err: errMsg });
             throw e;
         }
     }
