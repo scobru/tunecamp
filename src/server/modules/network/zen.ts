@@ -67,14 +67,19 @@ class ServerZenUser {
      * Automatically wraps the chain to inject the authenticator into .put() calls.
      */
     get(path: string) {
+        if (!this._zen) return null as any;
+
         if (!this.is || !this._pair) {
             // If not logged in, return a regular graph chain (read-only for user-space)
-            return this._zen.get(path);
+            const chain = this._zen.get(path);
+            return chain ? this._wrapChain(chain) : chain;
         }
 
         const userRoot = this._zen.get('~' + this.is.pub);
+        if (!userRoot) return this._zen.get(path);
+
         const chain = userRoot.get(path);
-        return this._wrapChain(chain);
+        return chain ? this._wrapChain(chain) : chain;
     }
 
     /**
@@ -82,6 +87,9 @@ class ServerZenUser {
      */
     private _wrapChain(chain: any) {
         if (!chain || chain._isZenWrapped) return chain;
+        if (typeof chain.put !== 'function' || typeof chain.get !== 'function') {
+            return chain;
+        }
 
         const originalPut = chain.put.bind(chain);
         const originalGet = chain.get.bind(chain);
@@ -102,7 +110,8 @@ class ServerZenUser {
 
         // Recursively wrap children
         chain.get = (path: string) => {
-            return self._wrapChain(originalGet(path));
+            const nextChain = originalGet(path);
+            return nextChain ? self._wrapChain(nextChain) : nextChain;
         };
 
         return chain;

@@ -146,14 +146,19 @@ class ZenUser {
      * Automatically wraps the chain to inject the authenticator into .put() calls.
      */
     get(path: string) {
+        if (!this._gun) return null as any;
+
         if (!this.is || !this._pair) {
             // If not logged in, return a regular graph chain (read-only for user-space)
-            return this._gun.get(path);
+            const chain = this._gun.get(path);
+            return chain ? this._wrapChain(chain) : chain;
         }
 
         const userRoot = this._gun.get('~' + this.is.pub);
+        if (!userRoot) return this._gun.get(path);
+        
         const chain = userRoot.get(path);
-        return this._wrapChain(chain);
+        return chain ? this._wrapChain(chain) : chain;
     }
 
     private _setSession(pair: any, alias: string) {
@@ -171,6 +176,10 @@ class ZenUser {
      */
     private _wrapChain(chain: any) {
         if (!chain || chain._isZenWrapped) return chain;
+        if (typeof chain.put !== 'function' || typeof chain.get !== 'function') {
+            console.warn("⚠️ [ZenUser] Attempted to wrap an invalid chain object:", chain);
+            return chain;
+        }
 
         const originalPut = chain.put.bind(chain);
         const originalGet = chain.get.bind(chain);
@@ -184,14 +193,15 @@ class ZenUser {
                 opt = {};
             }
             opt = opt || {};
-            // Inject authenticator
+            // Inject authenticator for ZEN stateless signing
             opt.authenticator = self._pair;
             return originalPut(data, opt, cb);
         };
 
         // Recursively wrap children
         chain.get = (path: string) => {
-            return self._wrapChain(originalGet(path));
+            const nextChain = originalGet(path);
+            return nextChain ? self._wrapChain(nextChain) : nextChain;
         };
 
         return chain;
@@ -434,7 +444,12 @@ export const ZenAuth = {
      */
     subscribeProfile: (cb: (profile: any) => void): (() => void) => {
         if (!user.is) return () => { };
-        const ref = user.get('profile').on((data: any) => {
+        const chain = user.get('profile');
+        if (!chain || typeof chain.on !== 'function') {
+            console.warn("⚠️ [ZenAuth] Could not subscribe to profile: chain is invalid");
+            return () => { };
+        }
+        const ref = chain.on((data: any) => {
             cb(data);
         });
         return () => {
@@ -447,7 +462,12 @@ export const ZenAuth = {
      */
     subscribeAlias: (cb: (alias: string) => void): (() => void) => {
         if (!user.is) return () => { };
-        const ref = user.get('alias').on((data: any) => {
+        const chain = user.get('alias');
+        if (!chain || typeof chain.on !== 'function') {
+            console.warn("⚠️ [ZenAuth] Could not subscribe to alias: chain is invalid");
+            return () => { };
+        }
+        const ref = chain.on((data: any) => {
             if (typeof data === 'string') {
                 cb(data);
             }
