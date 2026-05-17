@@ -173,8 +173,10 @@ export class CatalogService {
         if (year !== undefined) this.database.updateTrackYear(trackId, year ? Number(year) : null);
         if (externalArtwork !== undefined) this.database.updateTrackExternalArtwork(trackId, externalArtwork);
         
+        if (data.service !== undefined) this.database.updateTrackService(trackId, data.service);
+        if (data.url !== undefined) this.database.updateTrackUrl(trackId, data.url);
         if (data.external_id !== undefined || data.externalId !== undefined) {
-            (this.database as any).db.prepare("UPDATE tracks SET external_id = ? WHERE id = ?").run(data.external_id ?? data.externalId, trackId);
+            this.database.updateTrackExternalId(trackId, data.external_id ?? data.externalId);
         }
 
         const updatedTrack = this.database.getTrack(trackId);

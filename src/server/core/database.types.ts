@@ -469,6 +469,9 @@ export interface DatabaseService {
     updateTrackGenre(id: number, genre: string | null): void;
     updateTrackYear(id: number, year: number | null): void;
     updateTrackExternalArtwork(id: number, url: string | null): void;
+    updateTrackService(id: number, service: string | null): void;
+    updateTrackUrl(id: number, url: string | null): void;
+    updateTrackExternalId(id: number, externalId: string | null): void;
     updateTrackFingerprint(id: number, fingerprint: string): void;
     updateTrackHash(id: number, hash: string): void;
     updateTrackPathsPrefix(oldPrefix: string, newPrefix: string): void;

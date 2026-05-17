@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create } from "@fedify/fedify";
+import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio } from "@fedify/fedify";
 import { BetterSqliteKvStore } from "./fedify-kv.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -137,6 +137,29 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             return [{ privateKey, publicKey: publicKeyObj }];
         });
 
+    // Object Dispatcher for Audio - provides structured track metadata
+    federation.setObjectDispatcher(Audio, "/api/ap/audio/{id}", async (ctx, { id }) => {
+        const track = dbService.getTrack(Number(id));
+        if (!track) return null;
+        
+        const artist = dbService.getArtist(track.artist_id || 0);
+        const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl;
+        const baseUrl = publicUrl ? new URL(publicUrl) : ctx.url;
+
+        return new Audio({
+            id: ctx.getObjectUri(Audio, { id }),
+            name: track.title,
+            duration: track.duration ? Temporal.Duration.from({ seconds: Math.floor(track.duration) }) : undefined,
+            url: new URL(`/api/tracks/${track.id}/stream`, baseUrl),
+            mediaType: "audio/mpeg",
+            attribution: artist ? new URL(`/api/ap/users/${artist.slug}`, baseUrl) : undefined,
+            icon: artist ? new Image({
+                url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
+                mediaType: "image/jpeg"
+            }) : undefined
+        });
+    });
+
     // Outbox Dispatcher - allows other instances to fetch historical content
     federation.setOutboxDispatcher("/api/ap/users/{handle}/outbox", async (ctx, handle, cursor) => {
         const isSite = handle === "site";
@@ -171,28 +194,51 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const published = release.published_at || release.created_at;
                 const albumUrl = new URL(`/releases/${release.slug}`, baseUrl);
                 
-                // Note: In a full implementation, we'd use generateNote logic here
-                // For now, we return a Create Activity with a Note object
-                activities.push(new Create({
-                    id: new URL(`/api/ap/activity/release/${release.slug}`, baseUrl),
-                    actor: new URL(`/users/${artist.slug}`, baseUrl),
-                    published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                    to: new URL("https://www.w3.org/ns/activitystreams#Public"),
-                    object: new Note({
-                        id: new URL(`/api/ap/note/release/${release.slug}`, baseUrl),
-                        content: `<p>New release available: <a href="${albumUrl}">${release.title}</a></p>`,
-                        url: albumUrl,
+                // If we have tracks, we can emit an Audio object for the first track
+                // as a primary object, or use MusicAlbum (but Audio is better supported for playback)
+                if (tracks.length > 0) {
+                    const mainTrack = tracks[0];
+                    activities.push(new Create({
+                        id: new URL(`/api/ap/activity/release/${release.slug}`, baseUrl),
+                        actor: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                        attribution: new URL(`/users/${artist.slug}`, baseUrl),
-                    })
-                }));
+                        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+                        object: new Audio({
+                            id: ctx.getObjectUri(Audio, { id: String(mainTrack.id) }),
+                            name: `${release.title} - ${mainTrack.title}`,
+                            duration: mainTrack.duration ? Temporal.Duration.from({ seconds: Math.floor(mainTrack.duration) }) : undefined,
+                            url: new URL(`/api/tracks/${mainTrack.id}/stream`, baseUrl),
+                            mediaType: "audio/mpeg",
+                            attribution: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                            icon: new Image({
+                                url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
+                                mediaType: "image/jpeg"
+                            })
+                        })
+                    }));
+                } else {
+                    // Fallback to Note if no tracks found
+                    activities.push(new Create({
+                        id: new URL(`/api/ap/activity/release/${release.slug}`, baseUrl),
+                        actor: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                        published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
+                        to: new URL("https://www.w3.org/ns/activitystreams#Public"),
+                        object: new Note({
+                            id: new URL(`/api/ap/note/release/${release.slug}`, baseUrl),
+                            content: `<p>New release available: <a href="${albumUrl}">${release.title}</a></p>`,
+                            url: albumUrl,
+                            published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
+                            attribution: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                        })
+                    }));
+                }
             }
 
             for (const post of posts) {
                 const published = post.published_at || post.created_at;
                 activities.push(new Create({
                     id: new URL(`/api/ap/activity/post/${post.slug}`, baseUrl),
-                    actor: new URL(`/users/${artist.slug}`, baseUrl),
+                    actor: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
                     published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                     to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                     object: new Note({
@@ -200,7 +246,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                         content: `<p>${post.content}</p>`,
                         url: new URL(`/artists/${artist.slug}?post=${post.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                        attribution: new URL(`/users/${artist.slug}`, baseUrl),
+                        attribution: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
                     })
                 }));
             }
@@ -299,25 +345,52 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             // This is where "Discovery" happens via Relay or Federating Instances
             try {
                 const object = await announce.getObject(ctx);
-                if (!(object instanceof Note)) return;
+                if (!(object instanceof Note) && !(object instanceof Audio)) return;
 
-                const note = object;
-                const author = await note.getAttribution(ctx);
+                const author = await (object as any).getAttribution(ctx);
                 if (!author) return;
 
                 // Extract metadata (Tunecamp specific mapping)
-                // We look at attachments for Audio
-                const attachments: any[] = [];
-                for await (const attachment of note.getAttachments()) {
-                    attachments.push(attachment);
+                let audioUrl: string | null = null;
+                let coverUrl: string | null = null;
+                let duration: number | null = null;
+                let title = "Untitled";
+                let content: string | null = null;
+
+                if (object instanceof Note) {
+                    const note = object;
+                    title = note.content?.toString().replace(/<[^>]*>/g, '') || "Untitled";
+                    content = note.content?.toString() || null;
+
+                    // We look at attachments for Audio in Notes
+                    for await (const attachment of note.getAttachments()) {
+                        const type = (attachment as any).type?.toString().toLowerCase();
+                        const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
+                        
+                        if (type?.includes('audio') || mediaType?.startsWith('audio/')) {
+                            audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                            duration = (attachment as any).duration || null;
+                        } else if (type?.includes('image') || mediaType?.startsWith('image/')) {
+                            coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                        }
+                    }
+                } else if (object instanceof Audio) {
+                    const audio = object;
+                    title = audio.name?.toString() || "Untitled";
+                    content = audio.content?.toString() || null;
+                    audioUrl = audio.id?.toString() || (audio as any).url?.toString() || null;
+                    // Fedify Audio duration is a Temporal.Duration
+                    duration = audio.duration ? (audio.duration.total('second')) : null;
+                    
+                    const icon = await audio.getIcon();
+                    if (icon) {
+                        coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
+                    }
                 }
 
-                const audio = attachments.find(a => a.type?.toString().toLowerCase().includes('audio') || (a as any).mediaType?.startsWith('audio/'));
-                const image = attachments.find(a => a.type?.toString().toLowerCase().includes('image') || (a as any).mediaType?.startsWith('image/'));
+                if (!audioUrl) return; // Only care about tracks/releases
 
-                if (!audio) return; // Only care about tracks/releases
-
-                console.log(`📡 Discovered remote content: ${note.id?.toString()} by ${author.name?.toString()}`);
+                console.log(`📡 Discovered remote content: ${object.id?.toString()} by ${author.name?.toString()}`);
 
                 // Upsert remote actor
                 const authorUri = author.id?.toString() || "";
@@ -328,24 +401,24 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     name: author.name?.toString() || null,
                     summary: author.summary?.toString() || null,
                     icon_url: (author as any).icon?.id?.toString() || (author as any).icon?.toString() || null,
-                    inbox_url: author.inboxId?.toString() || null,
-                    outbox_url: author.outboxId?.toString() || null,
+                    inbox_url: (author as any).inboxId?.toString() || null,
+                    outbox_url: (author as any).outboxId?.toString() || null,
                 });
 
                 // Upsert remote content
                 dbService.upsertRemoteContent({
-                    ap_id: note.id?.toString() || "",
+                    ap_id: object.id?.toString() || "",
                     actor_uri: authorUri,
-                    type: 'release', // Default to release if it has audio
-                    title: note.content?.toString().replace(/<[^>]*>/g, '') || "Untitled",
-                    content: note.content?.toString() || null,
-                    url: note.url?.toString() || null,
-                    cover_url: image?.id?.toString() || image?.url?.toString() || null,
-                    stream_url: audio.id?.toString() || audio.url?.toString() || null,
+                    type: 'release', 
+                    title,
+                    content,
+                    url: (object as any).url?.toString() || null,
+                    cover_url: coverUrl,
+                    stream_url: audioUrl,
                     artist_name: author.name?.toString() || author.preferredUsername?.toString() || "Unknown Artist",
-                    album_name: note.summary?.toString() || null, // Tunecamp uses summary for album name in Notes
-                    duration: (audio as any).duration || null,
-                    published_at: note.published?.toString() || null,
+                    album_name: (object as any).summary?.toString() || null,
+                    duration,
+                    published_at: object.published?.toString() || null,
                 });
             } catch (e) {
                 console.error("❌ Error processing Announce:", e);
@@ -374,7 +447,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 type: actor instanceof Person ? 'Person' : 'Service',
                 username: actor.preferredUsername?.toString() || null,
                 name: actor.name?.toString() || null,
-                summary: actor.summary?.toString() || null,
+                summary: (actor as any).summary?.toString() || null,
                 icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
                 inbox_url: actor.inboxId?.toString() || null,
                 outbox_url: actor.outboxId?.toString() || null,
@@ -425,4 +498,3 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
     return federation;
 }
-
