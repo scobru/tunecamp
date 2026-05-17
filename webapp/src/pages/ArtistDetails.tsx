@@ -23,7 +23,7 @@ export const ArtistDetails = () => {
     const { idOrSlug } = useParams();
     const { cacheBuster } = useConfigStore();
     const [artist, setArtist] = useState<Artist | null>(null);
-    const [formalReleases, setFormalReleases] = useState<Album[]>([]);
+    const [formalReleases, setFormalReleases] = useState<Release[]>([]);
     const [libraryAlbums, setLibraryAlbums] = useState<Album[]>([]);
     const [looseTracks, setLooseTracks] = useState<Track[]>([]);
     const [posts, setPosts] = useState<Post[]>([]);
