@@ -189,103 +189,16 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         res.json({ message: "Batch deletion completed", ...results });
     }));
 
-    /**
-     * GET /api/tracks/:id
-     * Get track details
-     */
-    router.get("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        const idParam = req.params.id as string;
-        let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
-            const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
-        }
-
-        if (!track) throw new NotFoundError("Track not found");
-
-        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        if (!canSeePrivate && track.album_id) {
-            const album = database.getAlbum(track.album_id);
-            if (album && album.visibility === 'private' && track.owner_id !== req.userId) {
-                if (!database.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
-            }
-        }
-
-        res.json(mapTrackDTO(track, database, req.username));
-    }));
-
-    /**
-     * PUT /api/tracks/:id
-     * Update track metadata and files
-     */
-    router.put("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
-        if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
-
-        const idParam = req.params.id as string;
-        let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
-            const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
-        }
-
-        if (!track) throw new NotFoundError("Track not found");
-
-        const isRoot = req.isRootAdmin;
-        const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
-        if (!isRoot && !isOwner) throw new ForbiddenError("Access denied: You can only edit your own tracks");
-
-        const updated = await catalogService.updateTrack(track.id, req.body);
-        res.json({ message: "Track updated", track: updated ? mapTrackDTO(updated, database, req.username) : null });
-    }));
-
-    /**
-     * DELETE /api/tracks/:id
-     * Delete track
-     */
-    router.delete("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
-        if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
-
-        const idParam = req.params.id as string;
-        let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
-            const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
-        }
-
-        if (!track) throw new NotFoundError("Track not found");
-
-        const isRoot = req.isRootAdmin;
-        const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
-        if (!isRoot && !isOwner) throw new ForbiddenError("Access denied: You can only delete your own tracks");
-
-        const deleteFile = req.query.deleteFile === "true";
-        await catalogService.deleteTrack(track.id, deleteFile);
-        res.json({ message: "Track deleted" });
-    }));
+    // --- Sub-routes (must come BEFORE /:id(*) wildcard) ---
 
     /**
      * POST /api/tracks/:id/localize
-     * Rips an external stream into local library (Admin only)
      */
     router.post("/:id(*)/localize", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
             throw new ForbiddenError("Only admins can localize tracks");
         }
-
-        if (!localizationService) {
-            throw new BadRequestError("Localization service is not configured");
-        }
+        if (!localizationService) throw new BadRequestError("Localization service not available");
 
         const idParam = req.params.id as string;
         let trackId: number;
@@ -299,8 +212,6 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
 
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
-
-        console.log(`🎬 [API] Localization triggered for track ${trackId} by ${req.username}`);
         
         try {
             const updatedTrack = await localizationService.localizeTrack(trackId);
@@ -320,36 +231,24 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let trackId: number;
 
         if (idParam.startsWith("ext:") || idParam.startsWith("http")) {
-            // Check if we already have this external track linked
             const existing = database.getTrackByExternalId(idParam);
             if (existing) {
                 trackId = existing.id;
             } else {
-                // Create a "Link" track record
                 const { title, artist, coverUrl, duration, url: sourceUrl } = req.body;
                 if (!title) throw new BadRequestError("Title required to link external track");
-                
-                // Try to find/create artist
                 let artistId = null;
                 if (artist) {
                     const a = database.getArtistByName(artist);
                     artistId = a ? a.id : database.createArtist(artist);
                 }
-
                 trackId = database.createTrack({
-                    title,
-                    artist_id: artistId,
-                    artist_name: artist || null,
-                    owner_id: req.userId || null,
-                    album_id: null,
-                    track_num: 1,
-                    duration: duration || 0,
-                    external_id: idParam,
-                    external_artwork: coverUrl || null,
+                    title, artist_id: artistId, artist_name: artist || null,
+                    owner_id: req.userId || null, album_id: null, track_num: 1, duration: duration || 0,
+                    external_id: idParam, external_artwork: coverUrl || null,
                     service: idParam.startsWith("ext:") ? idParam.split(":")[1] : "link",
-                    url: sourceUrl || idParam, // Prefer the actual source URL if provided
-                    file_path: null, format: null, bitrate: null, sample_rate: null, lossless_path: null,
-                    price: 0, price_usdc: 0, currency: 'ETH', waveform: null, lyrics: null
+                    url: sourceUrl || idParam, file_path: null, format: null, bitrate: null, sample_rate: null, 
+                    lossless_path: null, price: 0, price_usdc: 0, currency: 'ETH', waveform: null, lyrics: null
                 });
             }
         } else {
@@ -387,7 +286,6 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      */
     router.post("/:id(*)/rating", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
-        
         const idParam = req.params.id as string;
         let trackId: number;
 
@@ -400,10 +298,9 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
 
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
-
         const { rating } = req.body;
         const r = parseInt(rating);
-        if (isNaN(r) || r < 0 || r > 5) throw new BadRequestError("Invalid rating (must be 0-5)");
+        if (isNaN(r) || r < 0 || r > 5) throw new BadRequestError("Invalid rating");
         await catalogService.setTrackRating(req.username, trackId, r);
         res.json({ success: true, rating: r });
     }));
@@ -414,10 +311,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)/lyrics", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
             const id = parseInt(idParam, 10);
             if (!isNaN(id)) track = database.getTrack(id);
         }
@@ -443,22 +338,18 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)/cover", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
             const id = parseInt(idParam, 10);
             if (!isNaN(id)) track = database.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
-
         if (track.external_artwork) {
             if (track.external_artwork.startsWith('http')) return res.redirect(track.external_artwork);
             const artworkPath = path.join(musicDir, track.external_artwork);
             if (await fs.pathExists(artworkPath)) return res.sendFile(path.resolve(artworkPath), { maxAge: 86400000 });
         }
-
         if (track.album_id) return res.redirect(`/api/albums/${track.album_id}/cover`);
 
         const { getPlaceholderSVG } = await import("../../../utils/audioUtils.js");
@@ -468,23 +359,19 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     }));
 
     /**
-     * GET /api/tracks/:id/metadata (extract from file)
+     * GET /api/tracks/:id/metadata
      */
     router.get("/:id(*)/metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
-        
         const idParam = req.params.id as string;
         let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
             const id = parseInt(idParam, 10);
             if (!isNaN(id)) track = database.getTrack(id);
         }
 
         if (!track || !track.file_path) throw new NotFoundError("Track or file not found");
-
         const trackPath = path.join(musicDir, track.file_path);
         const metadata = await parseFile(trackPath).catch(() => null);
         if (!metadata) throw new Error("Failed to parse metadata");
@@ -506,73 +393,48 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         });
     }));
 
-
-
     /**
      * POST /api/tracks/:id/match-metadata
      */
     router.post("/:id(*)/match-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
-        
         const idParam = req.params.id as string;
         let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
             const id = parseInt(idParam, 10);
             if (!isNaN(id)) track = database.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
-        
         const isRoot = req.isRootAdmin;
         if (!isRoot && !req.isAdmin && track.owner_id !== req.artistId) throw new ForbiddenError("Access denied");
 
         const { title, artist, albumTitle, coverUrl } = req.body;
-        console.log(`🔍 [Metadata Match] Processing track ${track.id}:`, { title, artist, albumTitle, hasCover: !!coverUrl });
-
         try {
             let artistId = track.artist_id;
             if (artist) {
-                console.log(`   - Matching artist: "${artist}"`);
                 const a = database.getArtistByName(artist);
                 artistId = a ? a.id : database.createArtist(artist);
-                console.log(`   - Artist ID: ${artistId}`);
                 database.updateTrackArtist(track.id, artistId);
             }
-
             if (albumTitle) {
-                console.log(`   - Matching album: "${albumTitle}"`);
                 const slug = "lib-" + albumTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
                 let alb = database.getAlbumBySlug(slug);
                 if (!alb) {
-                    console.log(`   - Creating new library album: "${albumTitle}" (slug: ${slug})`);
                     const newId = database.createAlbum({
                         title: albumTitle, slug, artist_id: artistId, owner_id: req.userId || null,
                         date: null, cover_path: null, genre: "Matched", description: "Matched",
                         type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
                         external_links: null, is_public: false, visibility: 'private', is_release: false,
-                        published_at: null, published_to_gundb: false, published_to_ap: false, license: null,
-                        status: 'draft',
+                        published_at: null, published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
                     });
                     alb = database.getAlbum(newId);
                 }
-                if (alb) {
-                    console.log(`   - Associating track with album ID: ${alb.id}`);
-                    database.updateTrackAlbum(track.id, alb.id);
-                }
+                if (alb) database.updateTrackAlbum(track.id, alb.id);
             }
-
-            if (title) {
-                console.log(`   - Updating title: "${title}"`);
-                database.updateTrackTitle(track.id, title);
-            }
-            
-            if (coverUrl) {
-                console.log(`   - Updating external artwork: ${coverUrl.substring(0, 50)}...`);
-                (database as any).db.prepare("UPDATE tracks SET external_artwork = ? WHERE id = ?").run(coverUrl, track.id);
-            }
+            if (title) database.updateTrackTitle(track.id, title);
+            if (coverUrl) (database as any).db.prepare("UPDATE tracks SET external_artwork = ? WHERE id = ?").run(coverUrl, track.id);
 
             const updated = database.getTrack(track.id);
             res.json({ message: "Metadata matched", track: updated ? mapTrackDTO(updated, database, req.username) : null });
@@ -587,130 +449,84 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      */
     router.get("/:id(*)/stream", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!mediaEngine) throw new Error("Media engine not initialized");
-        
         const idParam = req.params.id as string;
         let trackId: number | undefined;
         let externalId: string | undefined;
 
         if (idParam.startsWith("ext:")) {
             externalId = idParam;
-            // Look up track by external ID to see if we have it in DB
             const dbTrack = database.getTrackByExternalId(idParam);
-            if (dbTrack) {
-                trackId = dbTrack.id;
-            }
-        } else {
-            trackId = parseInt(idParam, 10);
-        }
+            if (dbTrack) trackId = dbTrack.id;
+        } else trackId = parseInt(idParam, 10);
 
-        // If we have a track in DB (either by numeric ID or by matched external ID), do permission check
         if (trackId && !isNaN(trackId)) {
             const track = database.getTrack(trackId);
-            if (!track) {
-                // If it was a numeric ID that's not in DB, it's a 404
-                if (!externalId) throw new NotFoundError("Track not found");
-            } else {
+            if (!track) { if (!externalId) throw new NotFoundError("Track not found"); }
+            else {
                 const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
                 const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-                const isAuthenticated = !!req.userId;
-
-                if (!canSeePrivate && !isOwner && !isAuthenticated) {
+                if (!canSeePrivate && !isOwner && !req.userId) {
                     if (track.album_id) {
                         const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                        if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) {
-                            throw new ForbiddenError("Access denied: track is private and you are not logged in");
-                        }
-                    } else {
-                        throw new ForbiddenError("Access denied: track is private and you are not logged in");
-                    }
+                        if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
+                    } else throw new ForbiddenError("Access denied");
                 }
             }
-        } else if (!externalId) {
-            throw new BadRequestError("Invalid track ID");
-        }
+        } else if (!externalId) throw new BadRequestError("Invalid track ID");
 
         try {
             const result = await mediaEngine.getStream({
-                trackId,
-                externalId,
-                format: req.query.format as string,
-                bitrate: req.query.bitrate as string,
-                range: req.headers.range
+                trackId, externalId, format: req.query.format as string, bitrate: req.query.bitrate as string, range: req.headers.range
             });
-
             if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
             if (result.contentRange) res.setHeader("Content-Range", result.contentRange);
-            res.setHeader("Content-Type", result.contentType);
-            res.setHeader("Accept-Ranges", "bytes");
-
+            res.setHeader("Content-Type", result.contentType).setHeader("Accept-Ranges", "bytes");
             res.status(result.statusCode);
             result.stream.pipe(res);
         } catch (error: any) {
-            if (error.message && error.message.startsWith("REDIRECT:")) {
-                return res.redirect(error.message.substring(9));
-            }
+            if (error.message?.startsWith("REDIRECT:")) return res.redirect(error.message.substring(9));
             throw error;
         }
     }));
 
     /**
      * GET /api/tracks/:id/download
-     * Download original file
      */
     router.get("/:id(*)/download", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-
-        if (idParam.startsWith("ext:")) {
-            track = database.getTrackByExternalId(idParam);
-        } else {
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
             const id = parseInt(idParam, 10);
             if (!isNaN(id)) track = database.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
-
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        
-        // Allow download for authenticated users
-        const isAuthenticated = !!req.userId;
-
-        if (!canSeePrivate && !isOwner && !isAuthenticated) {
+        if (!canSeePrivate && !isOwner && !req.userId) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(track.id)) {
-                    throw new ForbiddenError("Access denied: track is private and you are not logged in");
-                }
-            } else {
-                throw new ForbiddenError("Access denied: track is private and you are not logged in");
-            }
+                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
+            } else throw new ForbiddenError("Access denied");
         }
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
-
-        // Google Drive support
         if (track.file_path.startsWith("gdrive://")) {
             if (!gdriveService) throw new Error("Google Drive service not available");
             const fileId = track.file_path.substring(9);
             const ownerId = track.owner_id || database.getPrimaryAdminId() || 1;
             const { stream, headers } = await gdriveService.getFileStream(ownerId, fileId);
-            
-            const ext = headers['content-type'] === 'audio/flac' ? '.flac' : 
-                        headers['content-type'] === 'audio/mpeg' ? '.mp3' : 
-                        headers['content-type'] === 'audio/wav' ? '.wav' : '.mp3';
-            
+            const ext = headers['content-type']?.includes('flac') ? '.flac' : headers['content-type']?.includes('wav') ? '.wav' : '.mp3';
             const filename = `${track.artist_name || 'Unknown'} - ${track.title || 'Untitled'}${ext}`;
             res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
             res.setHeader('Content-Type', headers['content-type'] || 'application/octet-stream');
             if (headers['content-length']) res.setHeader('Content-Length', headers['content-length']);
-            
             stream.pipe(res);
             return;
         }
 
         let trackPath = path.join(musicDir, track.file_path);
-
         if (!await fs.pathExists(trackPath)) {
             const decoded = decodeURIComponent(trackPath);
             if (await fs.pathExists(decoded)) trackPath = decoded;
@@ -721,11 +537,78 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                 else throw new NotFoundError("Audio file not found");
             } else throw new NotFoundError("Audio file not found");
         }
-
         const ext = path.extname(trackPath);
         const filename = `${track.artist_name || 'Unknown'} - ${track.title || 'Untitled'}${ext}`;
-        
         res.download(trackPath, filename);
+    }));
+
+    // --- General Wildcard Routes (must come AFTER specific sub-routes) ---
+
+    /**
+     * GET /api/tracks/:id
+     */
+    router.get("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        const idParam = req.params.id as string;
+        let track;
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
+            const id = parseInt(idParam, 10);
+            if (!isNaN(id)) track = database.getTrack(id);
+        }
+        if (!track) throw new NotFoundError("Track not found");
+        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
+        if (!canSeePrivate && track.album_id) {
+            const album = database.getAlbum(track.album_id);
+            if (album && album.visibility === 'private' && track.owner_id !== req.userId) {
+                if (!database.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
+            }
+        }
+        res.json(mapTrackDTO(track, database, req.username));
+    }));
+
+    /**
+     * PUT /api/tracks/:id
+     */
+    router.put("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
+        const idParam = req.params.id as string;
+        let track;
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
+            const id = parseInt(idParam, 10);
+            if (!isNaN(id)) track = database.getTrack(id);
+        }
+        if (!track) throw new NotFoundError("Track not found");
+        const isRoot = req.isRootAdmin;
+        const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
+        if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
+
+        const updated = await catalogService.updateTrack(track.id, req.body);
+        res.json({ message: "Track updated", track: updated ? mapTrackDTO(updated, database, req.username) : null });
+    }));
+
+    /**
+     * DELETE /api/tracks/:id
+     */
+    router.delete("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
+        const idParam = req.params.id as string;
+        let track;
+        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        else {
+            const id = parseInt(idParam, 10);
+            if (!isNaN(id)) track = database.getTrack(id);
+        }
+        if (!track) throw new NotFoundError("Track not found");
+        const isRoot = req.isRootAdmin;
+        const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
+        if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
+
+        const deleteFile = req.query.deleteFile === "true";
+        await catalogService.deleteTrack(track.id, deleteFile);
+        res.json({ message: "Track deleted" });
     }));
 
     return router;
