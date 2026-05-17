@@ -436,12 +436,20 @@ export function createDatabase(dbPath: string): DatabaseService {
         );
     `);
 
+    // View Refresh Phase: Ensure views are always up-to-date with current logic
+    db.transaction(() => {
+        const views = ['v_artists', 'v_albums', 'v_releases', 'v_tracks'];
+        for (const view of views) {
+            db.exec(`DROP VIEW IF EXISTS ${view}`);
+        }
+    })();
+
     // Views
     db.exec(`
-        CREATE VIEW IF NOT EXISTS v_artists AS
+        CREATE VIEW v_artists AS
         SELECT * FROM artists;
 
-        CREATE VIEW IF NOT EXISTS v_albums AS
+        CREATE VIEW v_albums AS
         SELECT
             a.*,
             COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
@@ -450,7 +458,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         FROM albums a
         LEFT JOIN artists ar ON a.artist_id = ar.id;
 
-        CREATE VIEW IF NOT EXISTS v_releases AS
+        CREATE VIEW v_releases AS
         SELECT
             r.*,
             COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
@@ -459,7 +467,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         FROM releases r
         LEFT JOIN artists ar ON r.artist_id = ar.id;
 
-        CREATE VIEW IF NOT EXISTS v_tracks AS
+        CREATE VIEW v_tracks AS
         SELECT
             t.*,
             a.title as album_title,
