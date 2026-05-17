@@ -207,18 +207,13 @@ export function createAuthService(
             
             if (!user) {
                 console.log(`🔐 Admin user '${adminUser}' not found. Creating from configuration...`);
-                await this.createAdmin(adminUser, adminPass);
+                await this.createAdmin(adminUser, adminPass, null, UserRole.ROOT_ADMIN);
             } else {
-                // Ensure password matches the configuration (Source of Truth)
-                const passwordMatches = await this.verifyPassword(adminPass, user.password_hash);
-                if (!passwordMatches) {
-                    console.log(`🔐 Updating password for admin user '${adminUser}' to match configuration...`);
-                    await this.changePassword(adminUser, adminPass);
-                }
-                
-                // Ensure role is admin
-                if (user.role !== 'admin') {
-                    console.log(`🔐 Updating role for user '${adminUser}' to 'admin'...`);
+                // We no longer overwrite the password from configuration if it exists.
+                // This allows users to change their password via the UI without it being reset on restart.
+                // Only enforce the role if it's the configured primary admin.
+                if (user.role !== 'admin' && user.role !== 'root_admin') {
+                    console.log(`🔐 Updating role for primary admin '${adminUser}' to 'admin'...`);
                     db.prepare("UPDATE admin SET role = 'admin' WHERE id = ?").run(user.id);
                 }
             }
@@ -580,7 +575,7 @@ export function createAuthService(
                 SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, ar.name as artist_name
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
-                WHERE a.username = ?
+                WHERE a.username = ? COLLATE NOCASE
             `).get(username) as any;
 
             if (!row) {
@@ -645,10 +640,10 @@ export function createAuthService(
 
         async changePassword(username: string, newPassword: string): Promise<void> {
             const hash = await this.hashPassword(newPassword);
-            db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?").run(hash, username);
+            db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(hash, username);
 
             // Generate ZEN identity if missing (First Login / Password Change flow)
-            const user = db.prepare("SELECT id, gun_pub FROM admin WHERE username = ?").get(username) as { id: number, gun_pub: string | null } | undefined;
+            const user = db.prepare("SELECT id, gun_pub FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { id: number, gun_pub: string | null } | undefined;
             if (user && !user.gun_pub) {
                 console.log(`🔐 [AUTH] Generating new ZEN Identity for ${username} during password change...`);
                 const gunPair = await (Zen as any).pair();
@@ -662,12 +657,12 @@ export function createAuthService(
         },
 
         isRootAdmin(username: string): boolean {
-            const row = db.prepare("SELECT id FROM admin WHERE username = ?").get(username) as { id: number } | undefined;
+            const row = db.prepare("SELECT id FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
             return row?.id === 1;
         },
 
         getUserPair(username: string): any | null {
-            const user = db.prepare("SELECT gun_priv FROM admin WHERE username = ?").get(username) as { gun_priv: string | null } | undefined;
+            const user = db.prepare("SELECT gun_priv FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { gun_priv: string | null } | undefined;
             if (!user || !user.gun_priv) return null;
             try {
                 return this.decryptZenPriv(user.gun_priv);
@@ -679,7 +674,7 @@ export function createAuthService(
 
         updateZenPair(username: string, pair: any): void {
             const encryptedPriv = this.encryptZenPriv(pair);
-            db.prepare("UPDATE admin SET gun_pub = ?, gun_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?").run(pair.pub, encryptedPriv, username);
+            db.prepare("UPDATE admin SET gun_pub = ?, gun_priv = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(pair.pub, encryptedPriv, username);
             
             // Also ensure it's in gun_users for profile lookups
             db.prepare(`INSERT OR IGNORE INTO gun_users (pub, epub, alias) VALUES (?, ?, ?)`).run(pair.pub, pair.epub, username);
