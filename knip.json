@@ -1,0 +1,31 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/index.ts",
+        "src/tools/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts"
+      ],
+      "ignoreDependencies": [
+        "daisyui",
+        "tailwindcss",
+        "tsx"
+      ]
+    },
+    "webapp": {
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "!src/**/*.test.{ts,tsx}"
+      ],
+      "ignoreDependencies": [
+        "autoprefixer",
+        "daisyui",
+        "tailwindcss"
+      ]
+    }
+  }
+}
