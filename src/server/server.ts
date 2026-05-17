@@ -274,6 +274,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         process.exit(0);
     }, gdriveService));
     app.use("/api/admin/torrents", createTorrentRoutes(database, torrentService, authService));
+    app.use("/api/admin/torrent-search", authMiddleware.requireAdmin, createTorrentSearchRouter(database, torrentSearchService, torrentService));
 
     app.use(integrateFederation(federation, () => undefined));
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
