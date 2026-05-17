@@ -7,7 +7,8 @@ import type { StreamingService } from "../streaming/streaming.service.js";
 import { transcode, acquireTaskSlot, releaseTaskSlot } from "./ffmpeg.js";
 
 export interface StreamOptions {
-  trackId: number;
+  trackId?: number;
+  externalId?: string;
   format?: string;     // mp3, flac, ogg, etc.
   bitrate?: string;    // e.g. "128k", "192k"
   seek?: number;       // in seconds
@@ -35,7 +36,20 @@ export class MediaEngine {
    * Handles local files, Google Drive, and streaming provider fallbacks.
    */
   async getStream(options: StreamOptions): Promise<StreamResult> {
-    const track = this.database.getTrack(options.trackId);
+    let track: Track | undefined;
+
+    if (options.trackId) {
+        track = this.database.getTrack(options.trackId);
+    } else if (options.externalId) {
+        // 1. Try to find track in database by external ID
+        track = this.database.getTrackByExternalId(options.externalId);
+        
+        // 2. If not in DB, handle as direct external stream (e.g. from global search)
+        if (!track) {
+            return this.handleExternalStream(options.externalId);
+        }
+    }
+
     if (!track) {
       throw new Error("Track not found");
     }

@@ -509,44 +509,50 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!mediaEngine) throw new Error("Media engine not initialized");
         
         const idParam = req.params.id as string;
-        let trackId: number;
+        let trackId: number | undefined;
+        let externalId: string | undefined;
 
         if (idParam.startsWith("ext:")) {
-            // Look up track by external ID first
-            const track = database.getTrackByExternalId(idParam);
-            if (!track) throw new NotFoundError("External track not found in database");
-            trackId = track.id;
+            externalId = idParam;
+            // Look up track by external ID to see if we have it in DB
+            const dbTrack = database.getTrackByExternalId(idParam);
+            if (dbTrack) {
+                trackId = dbTrack.id;
+            }
         } else {
             trackId = parseInt(idParam, 10);
         }
 
-        if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
-
-        // Permission check
-        const track = database.getTrack(trackId);
-        if (!track) throw new NotFoundError("Track not found");
-
-        const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        
-        // Authenticated users are allowed to stream any local track (Discovery through Search)
-        // Guests (non-authenticated) are restricted to public tracks only.
-        const isAuthenticated = !!req.userId;
-
-        if (!canSeePrivate && !isOwner && !isAuthenticated) {
-            if (track.album_id) {
-                const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) {
-                    throw new ForbiddenError("Access denied: track is private and you are not logged in");
-                }
+        // If we have a track in DB (either by numeric ID or by matched external ID), do permission check
+        if (trackId && !isNaN(trackId)) {
+            const track = database.getTrack(trackId);
+            if (!track) {
+                // If it was a numeric ID that's not in DB, it's a 404
+                if (!externalId) throw new NotFoundError("Track not found");
             } else {
-                throw new ForbiddenError("Access denied: track is private and you are not logged in");
+                const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
+                const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
+                const isAuthenticated = !!req.userId;
+
+                if (!canSeePrivate && !isOwner && !isAuthenticated) {
+                    if (track.album_id) {
+                        const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
+                        if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) {
+                            throw new ForbiddenError("Access denied: track is private and you are not logged in");
+                        }
+                    } else {
+                        throw new ForbiddenError("Access denied: track is private and you are not logged in");
+                    }
+                }
             }
+        } else if (!externalId) {
+            throw new BadRequestError("Invalid track ID");
         }
 
         try {
             const result = await mediaEngine.getStream({
                 trackId,
+                externalId,
                 format: req.query.format as string,
                 bitrate: req.query.bitrate as string,
                 range: req.headers.range
