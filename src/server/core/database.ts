@@ -291,7 +291,7 @@ export function createDatabase(dbPath: string): DatabaseService {
                 albums: albumRepository.getCount(), 
                 tracks: trackRepository.getCount(), 
                 publicAlbums: albumRepository.getLibraryAlbums(VisibilityProfile.PUBLIC_STAGE).length, 
-                totalUsers: db.prepare("SELECT COUNT(*) as count FROM admin").get() as any, 
+                totalUsers: (db.prepare("SELECT COUNT(*) as count FROM admin").get() as any).count, 
                 storageUsed: 0, networkSites: 0, totalTracks: trackRepository.getCount(), 
                 genresCount: 0, genres: [] 
             }; 
