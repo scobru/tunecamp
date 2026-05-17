@@ -455,7 +455,8 @@ export interface DatabaseService {
     updateTrackLosslessPath(id: number, path: string | null): void;
     updateTrackTitle(id: number, title: string): void;
     updateTrackArtist(id: number, artistId: number | null): void;
-    updateTrackArtistName(id: number, artistName: string | null): void;
+    updateTrackArtistName(id: number, name: string | null): void;
+    updateTrackArtistInfo(id: number, artistId: number | null, name: string | null): void;
     updateTrackAlbum(id: number, albumId: number | null): void;
     updateTracksAlbum(trackIds: number[], albumId: number | null): void;
     updateTrackOrder(id: number, trackNum: number): void;

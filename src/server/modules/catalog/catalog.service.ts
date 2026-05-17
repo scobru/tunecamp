@@ -98,18 +98,37 @@ export class CatalogService {
         }
 
         let finalAlbumId = albumId !== undefined ? albumId : undefined;
-        if (finalAlbumId === null && typeof album === 'string' && album.trim() !== "") {
+        if ((finalAlbumId === null || finalAlbumId === undefined) && typeof album === "string" && album.trim() !== "") {
             const albumName = album.trim();
-            const slug = "lib-" + albumName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+            const slug = "lib-" + albumName.toLowerCase().replace(/[^a-z0-9]/g, "-");
             const existingAlbum = this.database.getAlbumBySlug(slug);
-            finalAlbumId = existingAlbum ? existingAlbum.id : this.database.createAlbum({
-                title: albumName, slug, artist_id: finalArtistId || track.artist_id, owner_id: finalOwnerId,
-                date: null, cover_path: null, genre: "Library", description: "",
-                type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
-                external_links: null, is_public: false, visibility: 'private', is_release: false,
-                published_at: null, published_to_gundb: false, published_to_ap: false, license: null,
-                status: 'draft',
-            });
+            finalAlbumId = existingAlbum
+                ? existingAlbum.id
+                : this.database.createAlbum({
+                      title: albumName,
+                      slug,
+                      artist_id: finalArtistId || track.artist_id,
+                      owner_id: finalOwnerId,
+                      date: null,
+                      cover_path: null,
+                      genre: "Library",
+                      description: "",
+                      type: "album",
+                      year: null,
+                      download: null,
+                      price: 0,
+                      price_usdc: 0,
+                      currency: "ETH",
+                      external_links: null,
+                      is_public: false,
+                      visibility: "private",
+                      is_release: false,
+                      published_at: null,
+                      published_to_gundb: false,
+                      published_to_ap: false,
+                      license: null,
+                      status: "draft",
+                  });
         }
 
         if (track.file_path && fileName && typeof fileName === 'string') {
@@ -144,19 +163,30 @@ export class CatalogService {
         }
 
         if (title !== undefined) this.database.updateTrackTitle(trackId, title);
-        if (finalArtistId !== undefined) {
-            const artistChanged = finalArtistId !== track.artist_id;
-            this.database.updateTrackArtist(trackId, finalArtistId);
+        
+        let artistChanged = false;
+        if (typeof artist === 'string' && artist.trim() !== "") {
+            const artistName = artist.trim();
+            const existingArtist = this.database.getArtistByName(artistName);
+            const resolvedArtistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
+            
+            artistChanged = resolvedArtistId !== track.artist_id;
+            // Always update both ID and name string for better persistence and view compatibility
+            this.database.updateTrackArtistInfo(trackId, resolvedArtistId, artistName);
+            
             if (artistChanged && track.album_id) {
                 const tracksInAlbum = this.database.getTracksByAlbum(track.album_id);
                 if (tracksInAlbum.length === 1) {
-                    this.database.updateAlbumArtist(track.album_id, finalArtistId);
+                    this.database.updateAlbumArtist(track.album_id, resolvedArtistId);
                     const release = this.database.getRelease(track.album_id);
-                    if (release) this.database.updateRelease(track.album_id, { artist_id: finalArtistId });
+                    if (release) this.database.updateRelease(track.album_id, { artist_id: resolvedArtistId });
                 }
             }
-        } else if (artist === undefined && (artist === null || artist === "")) {
-            this.database.updateTrackArtist(trackId, null);
+        } else if (artist === null || artist === "") {
+            this.database.updateTrackArtistInfo(trackId, null, null);
+        } else if (artistId !== undefined) {
+            // If only ID is provided, link to it but keep current name or use artist record name
+            this.database.updateTrackArtist(trackId, artistId);
         }
 
         if (finalAlbumId !== undefined) this.database.updateTrackAlbum(trackId, finalAlbumId);

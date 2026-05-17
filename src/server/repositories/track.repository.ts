@@ -230,7 +230,7 @@ export class TrackRepository extends BaseRepository {
         const fields: string[] = [];
         const values: any[] = [];
         for (const [key, value] of Object.entries(track)) {
-            if (['id', 'created_at', 'album_title', 'artist_name', 'owner_name'].includes(key)) continue;
+            if (['id', 'created_at', 'album_title', 'owner_name', 'artist_slug', 'wallet_address', 'effective_owner_id', 'album_status', 'album_visibility', 'album_artist_tag'].includes(key)) continue;
             fields.push(`${key} = ?`);
             values.push(value);
         }

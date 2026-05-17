@@ -691,6 +691,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateTrackTitle: (id: number, t: string) => trackRepository.update(id, { title: t }),
         updateTrackArtist: (id: number, aid: number | null) => trackRepository.updateArtist(id, aid, null),
         updateTrackArtistName: (id: number, n: string | null) => trackRepository.updateArtist(id, null, n),
+        updateTrackArtistInfo: (id: number, aid: number | null, n: string | null) => trackRepository.updateArtist(id, aid, n),
         updateTrackAlbum: (id: number, aid: number | null) => trackRepository.update(id, { album_id: aid }),
         updateTracksAlbum: (ids: number[], aid: number | null) => { ids.forEach(id => trackRepository.update(id, { album_id: aid })); },
         updateTrackOrder: (id: number, n: number) => trackRepository.updateOrder(id, n),
