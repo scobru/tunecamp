@@ -67,6 +67,22 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
     });
 
     /**
+     * GET /api/artists/starred
+     * Get user's starred artists
+     */
+    router.get("/starred", async (req: AuthenticatedRequest, res: any) => {
+        if (!req.username) return res.status(401).json({ error: "Unauthorized" });
+        try {
+            const starredItems = database.getStarredItems(req.username, 'artist');
+            // Return IDs for easy lookup
+            res.json(starredItems.map((i: any) => i.item_id));
+        } catch (error) {
+            console.error("Error getting starred artists:", error);
+            res.status(500).json({ error: "Failed to fetch starred artists" });
+        }
+    });
+
+    /**
      * GET /api/artists/:id
      */
     router.get("/:id", (req: AuthenticatedRequest, res) => {

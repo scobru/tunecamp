@@ -193,7 +193,10 @@ export function createSearchRoutes(
         if (!query) return res.status(400).json({ error: "Query required" });
 
         const isAdmin = req.isAdmin || req.role === UserRole.ADMIN || req.role === UserRole.SUPER_USER;
-        const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+        
+        // Special case: for SEARCH, we allow ALL authenticated users to see the entire local library (Santuario).
+        // This is to enable discovery of local tracks that might not be 'public' yet.
+        const profile = (isAdmin || req.userId) ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
 
         console.log(`🔍 [Global Search] Query: "${query}", Profile: ${profile}, User: ${req.username || 'Guest'} (Role: ${req.role || 'none'})`);
 

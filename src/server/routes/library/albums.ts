@@ -148,6 +148,22 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
     }));
 
     /**
+     * GET /api/albums/starred
+     * Get user's starred albums
+     */
+    router.get("/starred", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.username) throw new ForbiddenError("Unauthorized");
+        try {
+            const starredItems = database.getStarredItems(req.username, 'album');
+            // Return IDs for easy lookup
+            res.json(starredItems.map((i: any) => i.item_id));
+        } catch (error) {
+            console.error("Error getting starred albums:", error);
+            res.status(500).json({ error: "Failed to fetch starred albums" });
+        }
+    }));
+
+    /**
      * GET /api/albums/:id
      */
     router.get("/:id", wrapAsync(async (req: AuthenticatedRequest, res: any) => {

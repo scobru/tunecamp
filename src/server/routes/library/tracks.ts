@@ -512,13 +512,6 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let trackId: number;
 
         if (idParam.startsWith("ext:")) {
-            // We need to resolve the track ID if possible, but the MediaEngine 
-            // handleExternalStream logic expects an extId string. 
-            // However, our getStream expects a trackId.
-            // Let's refine getStream to handle this or just pass the trackId if we have it.
-            // For simplicity, let's assume web app always has a trackId for streaming.
-            // If it's a pure external link, we can still use the engine if we wrap it.
-            
             // Look up track by external ID first
             const track = database.getTrackByExternalId(idParam);
             if (!track) throw new NotFoundError("External track not found in database");
@@ -529,17 +522,26 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
 
-        // Permission check (Keep in route layer for now as it's a cross-cutting concern)
+        // Permission check
         const track = database.getTrack(trackId);
         if (!track) throw new NotFoundError("Track not found");
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        if (!canSeePrivate && !isOwner) {
+        
+        // Authenticated users are allowed to stream any local track (Discovery through Search)
+        // Guests (non-authenticated) are restricted to public tracks only.
+        const isAuthenticated = !!req.userId;
+
+        if (!canSeePrivate && !isOwner && !isAuthenticated) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
-            } else throw new ForbiddenError("Access denied");
+                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) {
+                    throw new ForbiddenError("Access denied: track is private and you are not logged in");
+                }
+            } else {
+                throw new ForbiddenError("Access denied: track is private and you are not logged in");
+            }
         }
 
         try {
@@ -576,11 +578,19 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        if (!canSeePrivate && !isOwner) {
+        
+        // Allow download for authenticated users
+        const isAuthenticated = !!req.userId;
+
+        if (!canSeePrivate && !isOwner && !isAuthenticated) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(id)) throw new ForbiddenError("Access denied");
-            } else throw new ForbiddenError("Access denied");
+                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(id)) {
+                    throw new ForbiddenError("Access denied: track is private and you are not logged in");
+                }
+            } else {
+                throw new ForbiddenError("Access denied: track is private and you are not logged in");
+            }
         }
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
