@@ -46,13 +46,13 @@ export const ArtistDetails = () => {
             if (artistData.releases) {
                 setFormalReleases(artistData.releases);
             } else if (artistData.albums) {
-                const formal = artistData.albums.filter((a: any) => a.is_formal_release || a.is_release);
-                setFormalReleases(formal);
+                const formal = artistData.albums.filter(a => a.is_formal_release || a.is_release);
+                setFormalReleases(formal as any); // Release and Album are slightly different but close enough for these lists
             }
 
             // Map library albums (extra items)
             if (artistData.albums) {
-                const library = artistData.albums.filter((a: any) => !a.is_formal_release && !a.is_release);
+                const library = artistData.albums.filter(a => !a.is_formal_release && !a.is_release);
                 setLibraryAlbums(library);
             }
 

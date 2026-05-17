@@ -110,6 +110,7 @@ export interface Artist {
     coverImage?: string;
     postParams?: any; // ActivityPub actor
     albums?: Album[];
+    releases?: Release[];
     tracks?: Track[];
     links?: ArtistLink[];
     donationLinks?: ArtistLink[];
@@ -143,6 +144,7 @@ export interface Album {
     description?: string;
     license?: string;
     is_release?: boolean;
+    is_formal_release?: boolean;
     download?: 'free' | 'paid' | 'codes';
     external_links?: string; // JSON string
     price?: number;
@@ -356,6 +358,18 @@ export interface StorageAccount {
     refresh_token: string | null;
     expiry_date: number | null;
     created_at: string;
+}
+
+export interface TorrentSearchResult {
+    title: string;
+    time?: string;
+    size: string;
+    seeds: number;
+    peers: number;
+    magnet?: string;
+    desc?: string;
+    provider: string;
+    searchProviderId?: string;
 }
 
 export interface GoogleDriveFile {
