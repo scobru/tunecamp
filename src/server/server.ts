@@ -46,6 +46,7 @@ import { createAuthRoutes } from "./routes/auth/auth.js";
 import { createAdminRoutes } from "./routes/admin/admin.js";
 import { createCatalogRoutes } from "./routes/library/catalog.js";
 import { CatalogService } from "./modules/catalog/catalog.service.js";
+import { DiscoveryService } from "./modules/catalog/discovery.service.js";
 import { LocalDiskStorage } from "./modules/storage/storage.engine.js";
 import { createAlbumsRoutes } from "./routes/library/albums.js";
 import { createTracksRoutes } from "./routes/library/tracks.js";
@@ -109,6 +110,8 @@ import { errorHandler } from "./middleware/error-handling.js";
 import { latchDomain, kprs } from "./modules/network/zen-network.js";
 import { getZen } from "./modules/network/zen.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
+import { MediaEngine } from "./modules/media/media-engine.js";
+import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -162,6 +165,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const zendbService = createZenDBService(database, server, config.zenPeers, config.publicUrl);
     await zendbService.init();
+
+    let gdriveService: GoogleDriveService | undefined;
 
     setTimeout(() => {
         zendbService.cleanupRegistry().catch(err => console.error("🚨 [ZenDB] Initial registry cleanup failed:", err));
@@ -218,6 +223,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const fingerprintService = new FingerprintService();
 
     const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService, openRouterService, metadataService);
+    const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
 
     const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
 
@@ -225,6 +231,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
     const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, fingerprintService, zendbService, autotaggerService);
     
+    const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService);
+    const subsonicService = new SubsonicService(database);
+
     const scanner = new Scanner(database, storage, autotaggerService);
     const scannerService = await initScannerService(database, scanner);
 
@@ -246,7 +255,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const lindaBotService = new LindaBotService(database, scanner, config, openRouterService);
     lindaBotService.start().catch((err: any) => console.error("Linda Bot failed to start:", err));
 
-    let gdriveService: GoogleDriveService | undefined;
     if (config.gdriveClientId && config.gdriveClientSecret) {
         const dbPublicUrl = database.getSetting("publicUrl");
         const publicUrl = (dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
@@ -327,7 +335,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
     });
 
-    app.use("/rest", createSubsonicRouter({ db: database, auth: authService, musicDir: config.musicDir, zendbService, scrobbleService }));
+    app.use("/rest", createSubsonicRouter({ db: database, auth: authService, musicDir: config.musicDir, zendbService, scrobbleService, mediaEngine }));
 
     app.get("/health", (req, res) => {
         res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
@@ -337,15 +345,15 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(
         database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, lindaBotService, metadataService, streamingService, federationService, gdriveService, playlistService, scrobbleService, maintenanceService, localizationService
     ));
-    app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService));
-    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir, metadataService, catalogService));
-    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, catalogService, config.musicDir));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, config.musicDir, authService, gdriveService, streamingService, localizationService));
+    app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService, discoveryService));
+    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir, metadataService, catalogService, discoveryService));
+    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, catalogService, discoveryService, config.musicDir));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, discoveryService, config.musicDir, authService, gdriveService, streamingService, localizationService, mediaEngine));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
 
 
     if (gdriveService) {
-        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware, catalogService));
+        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware, catalogService, discoveryService));
     }
 
     app.use("/api/import", authMiddleware.requireUser, createImportRoutes());

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { DatabaseService } from "../../core/database.js";
+import { VisibilityProfile, VisibilityGuardian } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
@@ -12,8 +13,11 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
      */
     router.get("/", (req: AuthenticatedRequest, res) => {
         try {
-            const genres = database.getGenres(!(req.isAdmin || req.isSuperUser));
-            const genreCounts = database.getGenreTrackCounts(!(req.isAdmin || req.isSuperUser));
+            const isAdmin = req.isAdmin || req.isSuperUser;
+            const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+            
+            const genres = database.getGenres(profile);
+            const genreCounts = database.getGenreTrackCounts(profile);
             
             const dynamicPlaylists = genres.map(genre => ({
                 id: `genre:${genre}`,
@@ -27,10 +31,10 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             }));
 
             if (req.isAdmin || req.isSuperUser) {
-                res.json([...database.getPlaylists(), ...dynamicPlaylists]);
+                res.json([...database.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS), ...dynamicPlaylists]);
             } else if (req.username) {
-                const myPlaylists = database.getPlaylists(req.username, false);
-                const publicPlaylists = database.getPlaylists(undefined, true);
+                const myPlaylists = database.getPlaylists(req.username, VisibilityProfile.ALL_ACCESS);
+                const publicPlaylists = database.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE);
                 
                 const seenIds = new Set(myPlaylists.map(p => p.id));
                 const combined = [...myPlaylists];
@@ -41,7 +45,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 }
                 res.json([...combined, ...dynamicPlaylists]);
             } else {
-                res.json([...database.getPlaylists(undefined, true), ...dynamicPlaylists]);
+                res.json([...database.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE), ...dynamicPlaylists]);
             }
         } catch (error) {
             console.error("Error getting playlists:", error);
@@ -126,8 +130,11 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             // Handle dynamic genre playlists
             if (idStr.startsWith("genre:")) {
                 const genre = idStr.replace("genre:", "");
-                const tracks = database.getTracksByGenre(genre, !(req.isAdmin || req.isSuperUser));
-                const genreCounts = database.getGenreTrackCounts(!(req.isAdmin || req.isSuperUser));
+                const isAdmin = req.isAdmin || req.isSuperUser;
+                const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+
+                const tracks = database.getTracksByGenre(genre, profile);
+                const genreCounts = database.getGenreTrackCounts(profile);
                 
                 return res.json({
                     id: idStr,

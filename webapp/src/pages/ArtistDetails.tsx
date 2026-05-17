@@ -41,12 +41,21 @@ export const ArtistDetails = () => {
         ]).then(([artistData, artistPosts]) => {
             setArtist(artistData);
             setStarred(!!artistData.starred);
-            if (artistData.albums) {
+            
+            // Map formal releases
+            if (artistData.releases) {
+                setFormalReleases(artistData.releases);
+            } else if (artistData.albums) {
                 const formal = artistData.albums.filter((a: any) => a.is_formal_release || a.is_release);
-                const library = artistData.albums.filter((a: any) => !a.is_formal_release && !a.is_release);
                 setFormalReleases(formal);
+            }
+
+            // Map library albums (extra items)
+            if (artistData.albums) {
+                const library = artistData.albums.filter((a: any) => !a.is_formal_release && !a.is_release);
                 setLibraryAlbums(library);
             }
+
             if (artistData.tracks) {
                 setLooseTracks(artistData.tracks);
             }
@@ -125,9 +134,9 @@ export const ArtistDetails = () => {
                                  {formalReleases.length > 0 ? (
                                      `${formalReleases.length} ${formalReleases.length === 1 ? 'Release' : 'Releases'}`
                                  ) : (
-                                     isAdminAuthenticated ? 'Library Artist' : '0 Releases'
+                                     (isAdminAuthenticated || libraryAlbums.length > 0 || looseTracks.length > 0) ? 'Library Artist' : '0 Releases'
                                  )}
-                                 {isAdminAuthenticated && (libraryAlbums.length + looseTracks.length > 0) && (
+                                 {(isAdminAuthenticated || libraryAlbums.length + looseTracks.length > 0) && (
                                      <span className="opacity-60 ml-1"> 
                                          ({formalReleases.length > 0 ? '+' : ''}{libraryAlbums.length + looseTracks.length} Library Items)
                                      </span>
@@ -253,12 +262,12 @@ export const ArtistDetails = () => {
                 </section>
              )}
 
-              {/* Library Additions - ADMIN ONLY */}
-              {isAdminAuthenticated && libraryAlbums.length > 0 && (
+              {/* Library Additions */}
+              {libraryAlbums.length > 0 && (
                  <section>
                      <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
                          <Disc />
-                         <h2 className="text-xl font-bold">Library Additions</h2>
+                         <h2 className="text-xl font-bold">{isAdminAuthenticated ? 'Library Additions' : 'Other Albums'}</h2>
                      </div>
                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                          {libraryAlbums.map(album => (
@@ -288,12 +297,12 @@ export const ArtistDetails = () => {
                  </section>
               )}
  
-              {/* Loose Tracks - ADMIN ONLY */}
-              {isAdminAuthenticated && looseTracks.length > 0 && (
+              {/* Loose Tracks */}
+              {looseTracks.length > 0 && (
                  <section>
                      <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
                          <Play size={20} />
-                         <h2 className="text-xl font-bold">Singles & Orphaned Tracks</h2>
+                         <h2 className="text-xl font-bold">{isAdminAuthenticated ? 'Singles & Orphaned Tracks' : 'Singles'}</h2>
                      </div>
                      <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-base-content/5">
                          <table className="table w-full">

@@ -1,7 +1,12 @@
 import fetch from "node-fetch";
+import path from "path";
+import NodeID3 from "node-id3";
 import { drainResponse } from "../../common/network.js";
 import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase, USER_AGENT } from "../../core/provider.js";
-import type { DatabaseService } from "../../core/database.js";
+import type { DatabaseService, Track } from "../../core/database.js";
+import { writeMetadata } from "../media/ffmpeg.js";
+import { getFastFileHash } from "../../../utils/fileUtils.js";
+import type { StorageEngine } from "../storage/storage.engine.js";
 import { 
     soundcloudMetadataProvider, 
     itunesProvider, 
@@ -139,6 +144,52 @@ export class MetadataService {
         } catch (error) {
             console.error("Error fetching lyrics from lyrics.ovh:", error);
             return null;
+        }
+    }
+
+    /**
+     * Physical Sync — Deepening the module by encapsulating tag writing, 
+     * hashing, and DB synchronization.
+     */
+    async syncPhysicalTags(track: Track, database: DatabaseService, storage: StorageEngine, musicDir: string): Promise<void> {
+        const pathsToUpdate = [];
+        if (track.file_path) pathsToUpdate.push(track.file_path);
+        if (track.lossless_path && track.lossless_path !== track.file_path) pathsToUpdate.push(track.lossless_path);
+
+        if (pathsToUpdate.length === 0) return;
+
+        const tags = {
+            title: track.title,
+            artist: track.artist_name || undefined,
+            album: track.album_title || undefined,
+            trackNumber: track.track_num?.toString() || undefined,
+            genre: track.genre || undefined,
+            year: track.year?.toString() || undefined
+        };
+
+        for (const relPath of pathsToUpdate) {
+            const fullPath = path.join(musicDir, relPath);
+            if (!(await storage.pathExists(fullPath))) continue;
+
+            const ext = path.extname(fullPath).toLowerCase();
+            try {
+                if (ext === '.mp3') {
+                    NodeID3.update(tags as any, fullPath);
+                } else if (['.flac', '.ogg', '.m4a', '.wav'].includes(ext)) {
+                    await writeMetadata(fullPath, {
+                        title: tags.title, artist: tags.artist, album: tags.album,
+                        track: tags.trackNumber, genre: tags.genre, year: tags.year
+                    });
+                }
+
+                // Recalculate hash after tag write so scanner doesn't re-process it
+                const newHash = await getFastFileHash(fullPath);
+                if (relPath === track.file_path) {
+                    database.updateTrackHash(track.id, newHash);
+                }
+            } catch (err) { 
+                console.error(`[MetadataService] Physical sync failed for ${track.id} at ${relPath}:`, err); 
+            }
         }
     }
 

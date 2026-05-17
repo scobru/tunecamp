@@ -3,21 +3,34 @@
  * All domain model interfaces used across the server codebase.
  */
 import type { Database as DatabaseType } from "better-sqlite3";
+import { VisibilityProfile } from "../common/visibility.js";
 
 export interface OAuthClient {
+    id?: number;
     instance_url: string;
     client_id: string;
     client_secret: string;
     redirect_uri: string;
-    created_at: string;
+    created_at?: string;
 }
 
 export interface OAuthLink {
-    provider: string; // 'mastodon'
-    subject: string;  // @user@instance.social
+    provider: string;
+    subject: string;
     gun_pub: string;
-    gun_priv: string; // Encrypted SEA pair
+    gun_priv: string;
     created_at: string;
+}
+
+export interface User {
+    id: number;
+    username: string;
+    password_hash: string;
+    artist_id: number | null;
+    is_active: boolean;
+    role: string;
+    storage_quota?: number;
+    storage_used?: number;
 }
 
 export interface Artist {
@@ -26,16 +39,180 @@ export interface Artist {
     slug: string;
     bio: string | null;
     photo_path: string | null;
-    links: string | null;  // JSON string of links
-    post_params: string | null; // JSON string of ActivityPub/Mastodon config
-    public_key: string | null;
-    private_key: string | null;
+    links: string | null; // JSON
+    post_params: string | null; // JSON
     wallet_address: string | null;
-    walletAddress?: string | null; // Added for frontend compatibility
-    isLibraryArtist?: number; // 1 if metadata-only, 0 if user/release artist
-    visibility?: 'public' | 'private' | 'unlisted';
+    visibility: 'public' | 'private' | 'unlisted';
     external_id?: string | null;
+    public_key?: string;
+    private_key?: string;
+    created_at?: string;
+    // Computed fields
+    isLibraryArtist?: boolean;
+    coverImage?: string;
+    starred?: boolean;
+    rating?: number;
+}
+
+export interface Album {
+    id: number;
+    title: string;
+    slug: string;
+    artist_id: number | null;
+    owner_id: number | null;
+    date: string | null;
+    cover_path: string | null;
+    genre: string | null;
+    description: string | null;
+    type: 'album' | 'single' | 'ep';
+    year: number | string | null;
+    download: string | null;
+    price: number;
+    price_usdc: number;
+    price_usdt?: number;
+    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
+    external_links: string | null; // JSON string
+    is_public: boolean;
+    visibility: 'public' | 'private' | 'unlisted';
+    is_release: boolean;
+    published_at: string | null;
+    published_to_gundb: boolean;
+    published_to_ap: boolean;
+    license?: string | null;
+    status: 'released' | 'draft' | 'curated' | 'archived' | 'pending' | 'awaiting_finalization';
     created_at: string;
+    external_id?: string | null;
+    use_nft?: boolean | number;
+    // View fields
+    artist_name?: string;
+    artist_slug?: string;
+    artist_wallet_address?: string;
+    album_artist?: string | null;
+}
+
+export interface Release extends Album {
+    // Release is a specific view of Album where is_release = 1
+}
+
+export interface Track {
+    id: number;
+    title: string;
+    album_id: number | null;
+    album_title?: string;
+    album_artist?: string | null;
+    albumArtist?: string | null;
+    album_download?: string;
+    album_visibility?: string;
+    album_price?: number;
+    artist_id: number | null;
+    artist_name?: string | null;
+    owner_id: number | null;
+    track_num: number | null;
+    duration: number | null;
+    file_path: string | null;
+    format: string | null;
+    bitrate: number | null;
+    sample_rate: number | null;
+    lossless_path: string | null;
+    url: string | null;
+    service: string | null;
+    external_artwork: string | null;
+    price: number;
+    price_usdc: number;
+    price_usdt?: number;
+    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
+    waveform: string | null;
+    lyrics?: string | null;
+    hash?: string | null;
+    genre?: string | null;
+    year?: number | null;
+    external_id?: string | null;
+    fingerprint?: string | null;
+    created_at?: string;
+    // View fields
+    artist_slug?: string;
+    artist_wallet_address?: string;
+    effective_owner_id?: number;
+    album_status?: string;
+}
+
+export interface ReleaseTrack {
+    id: number;
+    release_id: number;
+    track_id: number | null;
+    title: string;
+    artist_name: string | null;
+    track_num: number | null;
+    duration: number | null;
+    file_path: string | null;
+    price: number;
+    price_usdc: number;
+    price_usdt?: number;
+    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
+    created_at: string;
+}
+
+export interface TrackDTO extends Track {
+    albumId: number | null;
+    artistId: number | null;
+    losslessPath: string | null;
+    externalArtwork: string | null;
+    albumName?: string;
+    artistName: string | null;
+    path: string | null;
+    filename?: string;
+    coverUrl: string | null;
+    waveform: string | null;
+    starred?: boolean;
+    rating?: number;
+    album_download?: string;
+}
+
+export interface AlbumDTO extends Album {
+    coverImage: string | null;
+    tracks?: TrackDTO[];
+    isExternal?: boolean;
+    starred?: boolean;
+    rating?: number;
+}
+
+export interface Playlist {
+    id: number;
+    name: string;
+    username: string;
+    description: string | null;
+    is_public: boolean;
+    isPublic?: boolean;
+    cover_path: string | null;
+    coverPath?: string | null;
+    created_at: string;
+    createdAt?: string;
+    trackCount?: number;
+}
+
+export interface Post {
+    id: number;
+    artist_id: number;
+    content: string;
+    slug: string;
+    visibility: 'public' | 'private' | 'unlisted';
+    published_at: string | null;
+    created_at: string;
+    artist_name?: string;
+    artist_slug?: string;
+    artist_photo?: string | null;
+}
+
+export interface ApNote {
+    id: number;
+    artist_id: number;
+    note_id: string;
+    note_type: string;
+    content_id: number;
+    content_slug: string;
+    content_title: string;
+    published_at: string;
+    deleted_at: string | null;
 }
 
 export interface Follower {
@@ -53,172 +230,6 @@ export interface LikeEntry {
     object_type: 'album' | 'track' | 'post';
     object_id: number;
     created_at: string;
-}
-
-export interface Album {
-    id: number;
-    title: string;
-    slug: string;
-    artist_id: number | null;
-    owner_id: number | null;
-    artist_name?: string;
-    artist_slug?: string;
-    date: string | null;
-    cover_path: string | null;
-    genre: string | null;
-    description: string | null;
-    type: 'album' | 'single' | 'ep' | null;
-    year: number | null;
-    download: string | null;
-    price: number | null;
-    price_usdc: number | null;
-    price_usdt?: number | null;
-    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
-    external_links: string | null; // JSON string of ExternalLink[]
-    is_public: boolean;
-    visibility: 'public' | 'private' | 'unlisted';
-    license?: string | null; // e.g. 'cc-by'
-    is_release: boolean; // true = published release, false = library album
-    status: 'draft' | 'pending' | 'approved' | 'awaiting_finalization' | 'released';
-    published_to_gundb: boolean;
-    published_to_ap: boolean;
-    published_at: string | null;
-    use_nft?: boolean | number;
-    walletAddress?: string;
-    album_artist?: string | null;
-    external_id?: string | null;
-    created_at: string;
-}
-
-export interface Track {
-    id: number;
-    title: string;
-    album_id: number | null;
-    album_title?: string;
-    album_artist?: string | null;
-    albumArtist?: string | null;
-    album_download?: string;
-    album_visibility?: string;
-    artist_id: number | null;
-    owner_id: number | null;
-    owner_name?: string;
-    artist_name?: string;
-    track_num: number | null;
-    duration: number | null;
-    file_path: string | null;
-    format: string | null;
-    bitrate: number | null;
-    sample_rate: number | null;
-    price: number | null;
-    price_usdc: number | null;
-    price_usdt?: number | null;
-    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
-    album_price?: number | null;
-    album_price_usdc?: number | null;
-    lossless_path: string | null;
-    waveform: string | null; // JSON string of number[]
-    url: string | null;
-    service: string | null;
-    external_artwork: string | null;
-    lyrics?: string | null;
-    hash?: string | null;
-    fingerprint?: string | null;
-    external_id?: string | null;
-    created_at: string;
-    year?: number;
-    genre?: string;
-}
-
-export interface Release {
-    id: number;
-    title: string;
-    slug: string;
-    artist_id: number | null;
-    owner_id: number | null;
-    artist_name?: string;
-    artist_slug?: string;
-    date: string | null;
-    cover_path: string | null;
-    genre: string | null;
-    description: string | null;
-    type: 'album' | 'single' | 'ep' | null;
-    year: number | null;
-    download: string | null;
-    price: number | null;
-    price_usdc: number | null;
-    price_usdt?: number | null;
-    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
-    external_links: string | null;
-    visibility: 'public' | 'private' | 'unlisted';
-    status: 'draft' | 'pending' | 'approved' | 'awaiting_finalization' | 'released';
-    published_at: string | null;
-    published_to_gundb: boolean;
-    published_to_ap: boolean;
-    license?: string | null;
-    use_nft?: number;
-    album_artist?: string | null;
-    external_id?: string | null;
-    created_at: string;
-}
-
-export interface ReleaseTrack {
-    id: number;
-    release_id: number;
-    track_id: number | null;
-    title: string;
-    artist_name: string | null;
-    track_num: number | null;
-    duration: number | null;
-    file_path: string | null;
-    price: number | null;
-    price_usdc: number | null;
-    price_usdt?: number | null;
-    currency: 'ETH' | 'USD' | 'USDC' | 'USDT';
-    created_at: string;
-}
-
-export interface Playlist {
-    id: number;
-    name: string;
-    username: string;
-    description: string | null;
-    isPublic: boolean;
-    coverPath: string | null;
-    created_at: string;
-}
-
-export interface PlayHistoryEntry {
-    id: number;
-    track_id: number;
-    track_title: string;
-    artist_name: string | null;
-    album_title: string | null;
-    played_at: string;
-}
-
-export interface Post {
-    id: number;
-    artist_id: number;
-    artist_name?: string;
-    artist_slug?: string;
-    artist_photo?: string;
-    content: string;
-    slug: string;
-    visibility: 'public' | 'private' | 'unlisted';
-    published_at?: string;
-    created_at: string;
-}
-
-export interface ApNote {
-    id: number;
-    artist_id: number;
-    note_id: string;
-    note_type: 'post' | 'release';
-    content_id: number;
-    content_slug: string;
-    content_title: string;
-    published_at: string;
-    deleted_at: string | null;
 }
 
 export interface RemoteActor {
@@ -253,99 +264,64 @@ export interface RemoteContent {
     received_at: string;
 }
 
+export interface PlayHistoryEntry {
+    id: number;
+    track_id: number;
+    played_at: string;
+    track_title?: string;
+    artist_name?: string;
+    album_title?: string;
+}
+
 export interface TrackWithPlayCount extends Track {
-    play_count: number;
+    playCount: number;
 }
 
 export interface ArtistWithPlayCount extends Artist {
-    play_count: number;
+    playCount: number;
 }
 
 export interface ListeningStats {
     totalPlays: number;
-    totalListeningTime: number;
     uniqueTracks: number;
+    totalListeningTime: number;
     playsToday: number;
     playsThisWeek: number;
     playsThisMonth: number;
-}
-
-export interface GunCacheEntry {
-    key: string;
-    value: string;
-    type: string;
-    expires_at: number;
+    topGenres?: { genre: string, count: number }[];
 }
 
 export interface Torrent {
     info_hash: string;
-    name: string;
+    infoHash?: string;
+    name: string | null;
     magnet_uri: string;
     owner_id: number | null;
-    status: 'metadata' | 'downloading' | 'completed' | 'failed' | 'paused';
+    status: 'metadata' | 'downloading' | 'seeding' | 'paused' | 'error' | 'completed' | 'failed';
     progress: number;
     download_speed: number;
+    downloadSpeed?: number;
     upload_speed: number;
+    uploadSpeed?: number;
     num_peers: number;
+    numPeers?: number;
     size: number;
     path: string | null;
     added_at: string;
+    done?: boolean;
+    files?: any[];
 }
 
-export interface TorrentStatus {
-    infoHash: string;
-    name: string;
-    progress: number;
-    downloadSpeed: number;
-    uploadSpeed: number;
-    numPeers: number;
-    received: number;
-    uploaded: number;
-    size: number;
-    path: string | null;
-    timeRemaining: number;
-    done: boolean;
-    files: Array<{
-        name: string;
-        path: string;
-        progress: number;
-        length: number;
-        downloaded: number;
-    }>;
-}
+export type TorrentStatus = Torrent['status'];
 
 export interface SoulseekDownload {
     id: number;
     user_id: number;
     file_path: string;
     filename: string;
-    status: 'pending' | 'downloading' | 'completed' | 'failed';
+    status: string;
     progress: number;
     added_at: string;
-}
-
-export interface TrackDTO extends Track {
-    albumId: number | null;
-    artistId: number | null;
-    losslessPath: string | null;
-    externalArtwork: string | null;
-    albumName?: string;
-    albumDownload?: string;
-    albumVisibility?: string;
-    albumPrice?: number | null;
-    artistName?: string;
-    path: string | null;
-    filename?: string;
-    coverUrl: string | null;
-    starred: boolean;
-    rating: number;
-}
-
-export interface AlbumDTO extends Album {
-    coverImage: string | null;
-    tracks?: TrackDTO[];
-    starred: boolean;
-    rating: number;
 }
 
 export interface StorageAccount {
@@ -359,88 +335,90 @@ export interface StorageAccount {
     created_at: string;
 }
 
+export interface GunCacheEntry {
+    key: string;
+    value: string;
+    type: string;
+    expires_at: number;
+}
+
 export interface DatabaseService {
     db: DatabaseType;
+    consolidateDatabase(): void;
+    transaction<T>(fn: () => T): T;
 
-    // Storage Accounts
-    getStorageAccounts(userId?: number): StorageAccount[];
-    getStorageAccount(id: number): StorageAccount | undefined;
-    getStorageAccountByProvider(userId: number, provider: string): StorageAccount | undefined;
-    createStorageAccount(account: Omit<StorageAccount, "id" | "created_at">): number;
-    updateStorageAccount(id: number, account: Partial<StorageAccount>): void;
-    deleteStorageAccount(id: number): void;
-    getPrimaryAdminId(): number | null;
+    // Users
+    getUser(id: number): User | undefined;
+    getUserByUsername(username: string): User | undefined;
+    getUserByArtistId(artistId: number): User | undefined;
+    createUser(username: string, passwordHash: string, artistId?: number | null, role?: string): number;
+    updateUser(id: number, data: Partial<User>): void;
+    getAllUsers(): User[];
+    deleteUser(id: number): void;
+    getAdmins(): User[];
+    syncZenUser(pub: string, epub: string, alias: string, avatar?: string): void;
+    getZenUser(pub: string): { pub: string, epub: string, alias: string, avatar: string | null } | undefined;
 
-    // Torrents
-    getTorrents(): Torrent[];
-    getTorrent(infoHash: string): Torrent | undefined;
-    createTorrent(torrent: Omit<Torrent, "added_at">): void;
-    updateTorrentProgress(infoHash: string, progress: number, status: Torrent['status'], downloadSpeed: number, uploadSpeed: number, numPeers: number, size: number, path: string | null): void;
-    deleteTorrent(infoHash: string): void;
+    // Auth
+    createOAuthClient(client: Omit<OAuthClient, "created_at">): void;
+    getOAuthClient(instanceUrl: string): OAuthClient | undefined;
+    saveOAuthLink(provider: string, subject: string, gunPub: string, gunPriv: string): void;
+    getOAuthLink(provider: string, subject: string): OAuthLink | undefined;
 
     // Artists
-    getArtists(): Artist[];
+    getArtists(profile?: VisibilityProfile): Artist[];
     getArtist(id: number): Artist | undefined;
     getArtistSimple(id: number): Artist | undefined;
-    getArtistsByIds(ids: number[]): Artist[];
-    getArtistByName(name: string): Artist | undefined;
     getArtistBySlug(slug: string): Artist | undefined;
+    getArtistBySlugSimple(slug: string): Artist | undefined;
+    getArtistByName(name: string): Artist | undefined;
+    getArtistsByIds(ids: number[]): Artist[];
+    getFollowers(artistId: number): Follower[];
+    addFollower(artistId: number, actorUri: string, inboxUrl: string, sharedInboxUrl?: string): void;
+    removeFollower(artistId: number, actorUri: string): void;
+    unfollowActor(actorUri: string): void;
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     deleteArtist(id: number): void;
     deleteArtistsBatch(ids: number[]): void;
     updateArtistsVisibilityBatch(ids: number[], visibility: Artist['visibility']): void;
-    // Followers
-    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void;
-    removeFollower(artistId: number, actorUri: string): void;
-    getFollowers(artistId: number): Follower[];
-    getFollower(artistId: number, actorUri: string): Follower | undefined;
+    isArtistLinkedToUser(id: number): boolean;
+    isArtistLinkedToUserBySlug(slug: string): boolean;
+
     // Releases (New watertight compartment)
-    getReleases(publicOnly?: boolean): Release[];
+    getReleases(profile?: VisibilityProfile): Release[];
     getRelease(id: number): Release | undefined;
     getReleaseBySlug(slug: string): Release | undefined;
-    getReleasesByArtist(artistId: number, publicOnly?: boolean, artistName?: string): Release[];
-    getReleasesByOwner(ownerId: number, publicOnly?: boolean): Release[];
-    createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number;
-    updateRelease(id: number, release: Partial<Release>): void;
     getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined;
-    deleteRelease(id: number): void;
-    deleteReleasesBatch(ids: number[]): void;
-    
-    // Release Tracks
+    getReleasesByArtist(artistId: number, profile?: VisibilityProfile, artistName?: string): Release[];
+    getReleasesByOwner(ownerId: number, profile?: VisibilityProfile): Release[];
+    createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number;
+    updateRelease(id: number, data: Partial<Release>): void;
     getReleaseTracks(releaseId: number): ReleaseTrack[];
     getReleaseTrackIds(releaseId: number): number[];
-    getReleaseTrack(id: number): ReleaseTrack | undefined;
-    getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined;
     addTrackToRelease(releaseId: number, trackId: number, metadata?: Partial<ReleaseTrack>): number;
-    updateReleaseTrack(id: number, metadata: Partial<ReleaseTrack>): void;
-    updateReleaseTrackMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void;
-    removeTrackFromRelease(releaseId: number, trackId: number): void; // Old version by IDs
-    removeTracksFromRelease(releaseId: number, trackIds: number[]): void;
-    deleteReleaseTrack(id: number): void; // New version by record ID
-    updateReleaseTracksOrder(releaseId: number, trackIds: number[]): void;
     syncReleaseTracks(releaseId: number, trackIds: number[]): void;
-    cleanUpGhostTracks(releaseId: number): void;
-    transaction<T>(fn: () => T): () => T;
-
+    deleteRelease(id: number): void;
+    deleteReleasesBatch(ids: number[]): void;
 
     // Legacy/Library Albums
-    getAlbums(publicOnly?: boolean): Album[];
-    getAlbumsWithStats(publicOnly?: boolean): (Album & { songCount: number; duration: number })[];
-    getLibraryAlbums(): Album[]; // is_release=0
+    getAlbums(profile?: VisibilityProfile): Album[];
+    getAlbumsWithStats(profile?: VisibilityProfile): (Album & { songCount: number; duration: number })[];
+    getLibraryAlbums(profile?: VisibilityProfile): Album[]; // is_release=0
     getAlbum(id: number): Album | undefined;
     getAlbumsByIds(ids: number[]): Album[];
     getAlbumBySlug(slug: string): Album | undefined;
     getAlbumByTitle(title: string, artistId?: number): Album | undefined;
+    getAlbumByExternalId(externalId: string): Album | undefined;
     getArtistAlbumCounts(): { artist_id: number, count: number }[];
-    getAlbumsByArtist(artistId: number, publicOnly?: boolean, artistName?: string): Album[];
     getArtistCovers(artistId: number): string[];
-    getAlbumsByOwner(ownerId: number, publicOnly?: boolean): Album[];
+    getAlbumsByArtist(artistId: number, profile?: VisibilityProfile, artistName?: string): Album[];
+    getAlbumsByOwner(ownerId: number, profile?: VisibilityProfile): Album[];
     createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateAlbumVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
-    updateAlbumStatus(id: number, status: Album['status']): void;
-    updateReleaseStatus(id: number, status: Release['status']): void;
+    updateAlbumStatus(id: number, status: string): void;
+    updateReleaseStatus(id: number, status: string): void;
     updateAlbum(id: number, album: Partial<Album>): void;
     updateAlbumFederationSettings(id: number, publishedToGunDB: boolean, publishedToAP: boolean): void;
     updateAlbumArtist(id: number, artistId: number): void;
@@ -450,68 +428,72 @@ export interface DatabaseService {
     updateAlbumGenre(id: number, genre: string | null): void;
     updateAlbumYear(id: number, year: number | string | null): void;
     updateAlbumDownload(id: number, download: string | null): void;
-    updateAlbumPrice(id: number, price: number | null, price_usdc: number | null, currency?: 'ETH' | 'USD'): void;
+    updateAlbumPrice(id: number, price: number | null, price_usdc: number | null, currency?: 'ETH' | 'USD' | 'USDC' | 'USDT'): void;
     updateAlbumLinks(id: number, links: string | null): void;
     promoteToRelease(id: number): void; // Mark library album as release
     deleteAlbum(id: number, keepTracks?: boolean): void;
     deleteAlbumsBatch(ids: number[], keepTracks?: boolean): void;
     updateAlbumsVisibilityBatch(ids: number[], visibility: Album['visibility']): void;
-    searchAlbums(query: string, limit: number, publicOnly?: boolean): Album[];
+    searchAlbums(query: string, limit: number, profile?: VisibilityProfile): Album[];
+    addAlbumOwner(aid: number, oid: number): void;
+
     // Tracks
-    getTracks(albumId?: number, publicOnly?: boolean): Track[];
-    getTracksByAlbum(albumId: number, publicOnly?: boolean): Track[];
-    getTracksByArtist(artistId: number, publicOnly?: boolean, artistName?: string): Track[];
+    getTracks(albumId?: number, profile?: VisibilityProfile): Track[];
+    getTracksByAlbum(albumId: number, profile?: VisibilityProfile): Track[];
+    getTracksByArtist(artistId: number, profile?: VisibilityProfile, artistName?: string): Track[];
     repairArtistLinks(artistId: number, artistName: string): { tracks: number, albums: number };
-    getTracksByOwner(ownerId: number, publicOnly?: boolean): Track[];
-    getTracksByAlbumIds(albumIds: number[]): Track[];
-    getRandomTracks(limit: number): Track[];
-    getTracksByReleaseId(releaseId: number): Track[];
+    getTracksByOwner(ownerId: number, profile?: VisibilityProfile): Track[];
     getTrack(id: number): Track | undefined;
     getTracksByIds(ids: number[]): Track[];
-    getTrackByPath(filePath: string): Track | undefined;
-    getTrackByExternalId(externalId: string): Track | undefined;
-    createTrack(track: Omit<Track, "id" | "created_at" | "album_title">): number;
+    getTrackByPath(path: string): Track | undefined;
+    getTracksByPaths(paths: string[]): Track[];
+    getTracksByAlbumIds(albumIds: number[]): Track[];
+    getRandomTracks(limit: number): Track[];
+    createTrack(track: Omit<Track, "id" | "album_title" | "created_at">): number;
+    updateTrack(id: number, data: Partial<Track>): void;
+    updateTrackPath(id: number, path: string, albumId?: number | null): void;
+    updateTrackLosslessPath(id: number, path: string | null): void;
+    updateTrackTitle(id: number, title: string): void;
+    updateTrackArtist(id: number, artistId: number | null): void;
+    updateTrackArtistName(id: number, artistName: string | null): void;
     updateTrackAlbum(id: number, albumId: number | null): void;
     updateTracksAlbum(trackIds: number[], albumId: number | null): void;
     updateTrackOrder(id: number, trackNum: number): void;
-    updateTrackNumber(id: number, trackNum: number): void;
+    updateTrackNumber(id: number, num: number | null): void;
     updateTracksOrder(trackOrders: { id: number, trackNum: number }[]): void;
-    updateTrackArtist(id: number, artistId: number | null): void;
-    updateTrackArtistName(id: number, artistName: string | null): void;
-    updateTrackOwner(id: number, ownerId: number | null): void;
-    getTrackByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined;
-    updateTrackTitle(id: number, title: string): void;
-    updateTrackPath(id: number, filePath: string, albumId: number | null): void;
-    updateTrackPrice(id: number, price: number | null, price_usdc: number | null, currency?: 'ETH' | 'USD'): void;
     updateTrackDuration(id: number, duration: number): void;
     updateTrackBitrate(id: number, bitrate: number): void;
     updateTrackWaveform(id: number, waveform: string): void;
-    updateTrackFingerprint(id: number, fingerprint: string): void;
-    updateTrackHash(id: number, hash: string): void;
-    updateTrackLosslessPath(id: number, losslessPath: string | null): void;
-    updateTrackExternalArtwork(id: number, artworkPath: string | null): void;
+    updateTrackPrice(id: number, price: number | null, price_usdc: number | null, currency?: 'ETH' | 'USD' | 'USDC' | 'USDT'): void;
     updateTrackLyrics(id: number, lyrics: string | null): void;
     updateTrackGenre(id: number, genre: string | null): void;
     updateTrackYear(id: number, year: number | null): void;
+    updateTrackExternalArtwork(id: number, url: string | null): void;
+    updateTrackFingerprint(id: number, fingerprint: string): void;
+    updateTrackHash(id: number, hash: string): void;
     updateTrackPathsPrefix(oldPrefix: string, newPrefix: string): void;
-    updateTrack(id: number, track: Partial<Track>): void;
-    deleteTrack(id: number, owner_id?: number): void;
-    mergeTracks(fromId: number, toId: number): void;
-    iterateTracks(whereClause?: string, params?: any[]): IterableIterator<Track>;
-    getAllTracks(whereClause?: string, params?: any[]): Track[];
-    getTracksSummaryByReleaseId(releaseId: number): Track[];
-
-    // Ownership & Deduplication
-    addTrackOwner(trackId: number, ownerId: number): void;
-    removeTrackOwner(trackId: number, ownerId: number): void;
-    addAlbumOwner(albumId: number, ownerId: number): void;
-    removeAlbumOwner(albumId: number, ownerId: number): void;
-    getTrackByHash(hash: string): Track | undefined;
-    getTrackOwners(trackId: number): number[];
+    getTrackByExternalId(externalId: string): Track | undefined;
+    getTrackByFingerprint(fingerprint: string): Track | undefined;
+    getTrackByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined;
+    getRemoteTracks(): RemoteContent[];
+    getRemotePosts(): RemoteContent[];
+    getRemoteTrack(idOrSlug: string): RemoteContent | undefined;
+    deleteTrack(id: number, ownerId?: number): void;
+    deleteTracksBatch(ids: number[]): void;
     getAlbumOwners(albumId: number): number[];
+    addTrackOwner(tid: number, oid: number): void;
+    updateTrackOwner(id: number, oid: number | null): void;
+    getTracksByReleaseId(releaseId: number): Track[];
+    updateReleaseTrackMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void;
+    getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined;
+    getTracksSummaryByReleaseId(releaseId: number): Track[];
+    getTrackByHash(hash: string): Track | undefined;
+    mergeTracks(fromId: number, toId: number): void;
+    getAllTracks(whereClause?: string, params?: any[]): Track[];
+    iterateTracks(whereClause?: string, params?: any[]): IterableIterator<Track>;
 
     // Playlists
-    getPlaylists(username?: string, publicOnly?: boolean): Playlist[];
+    getPlaylists(username?: string, profile?: VisibilityProfile): Playlist[];
     getPlaylist(id: number): Playlist | undefined;
     createPlaylist(name: string, username: string, description?: string, isPublic?: boolean): number;
     updatePlaylistVisibility(id: number, isPublic: boolean): void;
@@ -521,8 +503,36 @@ export interface DatabaseService {
     isTrackInPublicPlaylist(trackId: number): boolean;
     addTrackToPlaylist(playlistId: number, trackId: number): void;
     removeTrackFromPlaylist(playlistId: number, trackId: number): void;
+
+    // Starred / Social
+    starItem(user: string, type: 'track' | 'album' | 'artist', id: string): void;
+    unstarItem(user: string, type: 'track' | 'album' | 'artist', id: string): void;
+    starItems(user: string, items: { type: 'track' | 'album' | 'artist', id: string }[]): void;
+    unstarItems(user: string, items: { type: 'track' | 'album' | 'artist', id: string }[]): void;
+    getStarredItems(user: string, type?: 'track' | 'album' | 'artist'): any[];
+    isStarred(user: string, type: 'track' | 'album' | 'artist', id: string): boolean;
+    setItemRating(user: string, type: 'track' | 'album' | 'artist', id: string, rating: number): void;
+    getItemRating(user: string, type: 'track' | 'album' | 'artist', id: string): number;
+    getItemRatings(user: string, type: 'track' | 'album' | 'artist'): Map<string, number>;
+    addLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void;
+    removeLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void;
+    getLikesCount(objectType: 'album' | 'track' | 'post', objectId: number): number;
+    hasLiked(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): boolean;
+    recordPlay(trackId: number, playedAt?: string): void;
+    getRecentPlays(limit?: number): PlayHistoryEntry[];
+    getTopTracks(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): TrackWithPlayCount[];
+    getTopArtists(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): ArtistWithPlayCount[];
+    savePlayQueue(username: string, trackIds: string[], current: string | null, positionMs: number): void;
+    getPlayQueue(username: string): { trackIds: string[], current: string | null, positionMs: number };
+
+    // Bookmarks
+    createBookmark(user: string, id: string, pos: number, comment?: string): void;
+    getBookmarks(user: string): any[];
+    getBookmark(user: string, id: string): any | undefined;
+    deleteBookmark(user: string, id: string): void;
+
     // Posts
-    getPostsByArtist(artistId: number, publicOnly?: boolean): Post[];
+    getPostsByArtist(artistId: number, profile?: VisibilityProfile): Post[];
     getPublicPosts(): Post[];
     getPost(id: number): Post | undefined;
     getPostBySlug(slug: string): Post | undefined;
@@ -530,122 +540,89 @@ export interface DatabaseService {
     updatePost(id: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updatePostVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     deletePost(id: number): void;
+
     // Stats
     getStats(artistId?: number, ownerId?: number): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number; genresCount: number; genres: string[] }>;
     getPublicTracksCount(): number;
-    getGenres(publicOnly?: boolean): string[];
-    getTracksByGenre(genre: string, publicOnly?: boolean): Track[];
-    getGenreTrackCounts(publicOnly?: boolean): Map<string, number>;
-    // Play History
-    recordPlay(trackId: number, playedAt?: string): void;
-    getRecentPlays(limit?: number): PlayHistoryEntry[];
-    getTopTracks(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): TrackWithPlayCount[];
-    getTopArtists(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): ArtistWithPlayCount[];
-    getPrimaryAdminId(): number | null;
-    getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[];
-    getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[];
-    getArtistsMissingMetadata(filter: 'photo'): Artist[];
+    getGenres(profile?: VisibilityProfile): string[];
+    getTracksByGenre(genre: string, profile?: VisibilityProfile): Track[];
+    getGenreTrackCounts(profile?: VisibilityProfile): Map<string, number>;
     getListeningStats(): ListeningStats;
-    // Search
-    search(query: string, publicOnly?: boolean): { artists: Artist[]; albums: Album[]; tracks: Track[] };
-    // Settings
-    getSetting(key: string): string | undefined;
-    setSetting(key: string, value: string): void;
-    getAllSettings(): { [key: string]: string };
 
-    // Unlock Codes
-    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string): void;
-    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean };
-    redeemUnlockCode(code: string): void;
-    getUnlockCodeByTxHash(txHash: string): any | undefined;
-    listUnlockCodes(releaseId?: number): any[];
-
-    // ActivityPub Notes
+    // ActivityPub Metadata
     createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number;
     getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
     getApNote(noteId: string): ApNote | undefined;
     markApNoteDeleted(noteId: string): void;
     deleteApNote(noteId: string): void;
-    // Zen Users
-    syncZenUser(pub: string, epub: string, alias: string, avatar?: string): void;
-    getZenUser(pub: string): { pub: string; epub: string; alias: string } | undefined;
 
-    // Remote Federation (ActivityPub)
-    upsertRemoteActor(actor: Omit<RemoteActor, "id" | "last_seen" | "is_followed" | "public_key"> & { is_followed?: boolean, public_key?: string | null }): void;
-    saveRemoteActor(actor: any): void; // More flexible version
+    // Remote Content (Fedify/AP)
     getRemoteActor(uri: string): RemoteActor | undefined;
     getRemoteActors(): RemoteActor[];
     getFollowedActors(): RemoteActor[];
-    unfollowActor(uri: string): void;
-    
-    upsertRemoteContent(content: Omit<RemoteContent, "id" | "received_at">): void;
+    upsertRemoteActor(actor: any): void;
+    upsertRemoteContent(content: any): void;
     getRemoteContent(apId: string): RemoteContent | undefined;
-    getRemoteTracks(): RemoteContent[];
-    getRemotePosts(): RemoteContent[];
-    getRemoteTrack(apIdOrSlug: string): RemoteContent | undefined;
+    saveRemoteActor(actor: any): void;
     saveRemotePost(post: any): void;
     deleteRemotePost(apId: string): void;
     deleteRemoteContent(apId: string): void;
 
-    // Likes
-    addLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void;
-    removeLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void;
-    getLikesCount(objectType: 'album' | 'track' | 'post', objectId: number): number;
-    hasLiked(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): boolean;
+    // Unlock Codes
+    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string): void;
+    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean };
+    redeemUnlockCode(code: string): void;
+    listUnlockCodes(releaseId?: number): any[];
+    getUnlockCodeByTxHash(txHash: string): any | undefined;
 
-    // OAuth
-    getOAuthClient(instanceUrl: string): OAuthClient | undefined;
-    saveOAuthClient(client: Omit<OAuthClient, "created_at">): void;
-
-    getOAuthLink(provider: string, subject: string): OAuthLink | undefined;
-    createOAuthLink(provider: string, subject: string, gunPub: string, gunPriv: string): void;
-
-    // Starred Items (Subsonic)
-    starItem(username: string, itemType: string, itemId: string): void;
-    starItems(username: string, items: { type: string; id: string }[]): void;
-    unstarItem(username: string, itemType: string, itemId: string): void;
-    unstarItems(username: string, items: { type: string; id: string }[]): void;
-    getStarredItems(username: string, itemType?: string): { item_type: string; item_id: string; created_at: string }[];
-    isStarred(username: string, itemType: string, itemId: string): boolean;
-
-    // Play Queue (Subsonic)
-    savePlayQueue(username: string, trackIds: string[], current: string | null, positionMs: number): void;
-    getPlayQueue(username: string): { trackIds: string[], current: string | null, positionMs: number };
-
-    // Ratings & Bookmarks
-    setItemRating(username: string, itemType: string, itemId: string, rating: number): void;
-    getItemRating(username: string, itemType: string, itemId: string): number;
-    getItemRatings(username: string, itemType: string): Map<string, number>;
-    createBookmark(username: string, trackId: string, positionMs: number, comment?: string): void;
-    getBookmarks(username: string): any[];
-    deleteBookmark(username: string, trackId: string): void;
-    getBookmark(username: string, trackId: string): any | undefined;
-
-    // Zen Cache
-    getGunCache(key: string): GunCacheEntry | undefined;
-    setGunCache(key: string, value: string, type: string, ttlSeconds: number): void;
-    clearExpiredGunCache(): void;
+    // Storage
+    getStorageAccounts(userId?: number): StorageAccount[];
+    getStorageAccount(id: number): StorageAccount | undefined;
+    getStorageAccountByProvider(userId: number, provider: string): StorageAccount | undefined;
+    createStorageAccount(account: Omit<StorageAccount, "id" | "created_at">): number;
+    updateStorageAccount(id: number, account: Partial<StorageAccount>): void;
+    deleteStorageAccount(id: number): void;
+    getPrimaryAdminId(): number | null;
 
     // Soulseek
-    updateUserSoulseekCredentials(userId: number, username: string, password_encrypted: string): void;
-    getUserSoulseekCredentials(userId: number): { username: string, password_encrypted: string } | undefined;
-    createSoulseekDownload(download: Omit<SoulseekDownload, "id" | "added_at" | "progress">): number;
-    updateSoulseekDownloadProgress(id: number, progress: number, status?: SoulseekDownload['status'], filePath?: string): void;
+    createSoulseekDownload(download: Partial<SoulseekDownload>): number;
+    updateSoulseekDownloadProgress(id: number, progress: number, status?: string, filePath?: string): void;
     getSoulseekDownloads(userId?: number): SoulseekDownload[];
     getSoulseekDownload(id: number): SoulseekDownload | undefined;
-    deleteSoulseekDownload(id: number): void;
+    getUserSoulseekCredentials(userId: number): { username?: string, password_encrypted?: string } | undefined;
+    updateUserSoulseekCredentials(userId: number, username?: string, password?: string): void;
     clearFailedSoulseekDownloads(userId: number): void;
+    deleteSoulseekDownload(id: number): void;
 
-    // ActivityPub Authorization
-    isArtistLinkedToUser(artistId: number): boolean;
-    isArtistLinkedToUserBySlug(slug: string): boolean;
-    deleteUser(id: number): void;
-    deleteUsersBatch(ids: number[]): void;
-    consolidateDatabase(): void;
+    // Torrent
+    getTorrents(): Torrent[];
+    getTorrent(hash: string): Torrent | undefined;
+    getTorrentsStatus(): any[];
+    createTorrent(torrent: Partial<Torrent>): void;
+    updateTorrentProgress(infoHash: string, progress: number, status: Torrent['status'], downloadSpeed: number, uploadSpeed: number, numPeers: number, size: number, path: string | null): void;
+    deleteTorrent(hash: string): void;
+
+    // Gun Cache
+    getGunCache(key: string): GunCacheEntry | undefined;
+    setGunCache(key: string, value: string, type: string, ttl: number): void;
+    clearExpiredGunCache(): void;
+
+    // Settings
+    getSetting(key: string): string | undefined;
+    setSetting(key: string, value: string): void;
+    getAllSettings(): { [key: string]: string };
 
     // Plugins
     getPluginState(id: string): { enabled: boolean; config: string | null } | undefined;
     setPluginEnabled(id: string, enabled: boolean): void;
     setPluginConfig(id: string, config: string): void;
     getAllPluginsState(): any[];
+
+    // Search
+    search(query: string, profile?: VisibilityProfile): { artists: Artist[]; albums: Album[]; tracks: Track[] };
+
+    // Maintenance
+    getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[];
+    getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[];
+    getArtistsMissingMetadata(filter: 'photo'): Artist[];
 }

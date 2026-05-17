@@ -4,8 +4,9 @@ import path from "path";
 import { parseFile } from "music-metadata";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
-import type { DatabaseService } from "../../core/database.js";
+import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
+import type { DiscoveryService } from "../../modules/catalog/discovery.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
@@ -23,9 +24,11 @@ import { getStreamingService } from "../../modules/streaming/streaming.service.j
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 import { LocalizationService } from "../../modules/catalog/localization.service.js";
+import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
+import type { MediaEngine } from "../../modules/media/media-engine.js";
 
 
-export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService, localizationService?: LocalizationService): Router {
+export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, discoveryService: DiscoveryService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService, localizationService?: LocalizationService, mediaEngine?: MediaEngine): Router {
 
     const router = Router();
 
@@ -35,7 +38,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const showMine = req.query.mine === 'true';
-        const tracks = await catalogService.getTracksForUser(
+        const tracks = await discoveryService.getTracksForUser(
             { 
                 userId: req.userId, 
                 artistId: req.artistId,
@@ -134,7 +137,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         });
 
         const newTrack = database.getTrack(trackId);
-        res.status(201).json(newTrack ? catalogService.mapTrackDTO(newTrack, req.username) : null);
+        res.status(201).json(newTrack ? mapTrackDTO(newTrack, database, req.username) : null);
 
         if (albumId) {
             publishingService.syncRelease(albumId).catch(e => console.error("Sync failed:", e));
@@ -205,7 +208,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             }
         }
 
-        res.json(catalogService.mapTrackDTO(track, req.username));
+        res.json(mapTrackDTO(track, database, req.username));
     }));
 
     /**
@@ -225,7 +228,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!isRoot && !isOwner) throw new ForbiddenError("Access denied: You can only edit your own tracks");
 
         const updated = await catalogService.updateTrack(id, req.body);
-        res.json({ message: "Track updated", track: updated ? catalogService.mapTrackDTO(updated, req.username) : null });
+        res.json({ message: "Track updated", track: updated ? mapTrackDTO(updated, database, req.username) : null });
     }));
 
     /**
@@ -492,46 +495,42 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             }
 
             const updated = database.getTrack(id);
-            res.json({ message: "Metadata matched", track: updated ? catalogService.mapTrackDTO(updated, req.username) : null });
+            res.json({ message: "Metadata matched", track: updated ? mapTrackDTO(updated, database, req.username) : null });
         } catch (error: any) {
             console.error(`❌ [Metadata Match Error] Track ${id}:`, error);
             throw error;
         }
     }));
 
-    const activeStreamingService = streamingService || getStreamingService();
-    
     /**
      * GET /api/tracks/:id/stream
      */
     router.get("/:id(*)/stream", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!mediaEngine) throw new Error("Media engine not initialized");
+        
         const idParam = req.params.id as string;
+        let trackId: number;
 
-        // Handle external streaming IDs (e.g., ext:soundcloud:TRACK_ID)
         if (idParam.startsWith("ext:")) {
-            const parts = idParam.split(":");
-            if (parts.length < 3) throw new BadRequestError("Invalid external ID");
-            const providerId = parts[1];
-            const originalId = parts.slice(2).join(":");
-
-            console.log(`🌐 [Streaming] Requesting external stream: ${providerId} / ${originalId}`);
+            // We need to resolve the track ID if possible, but the MediaEngine 
+            // handleExternalStream logic expects an extId string. 
+            // However, our getStream expects a trackId.
+            // Let's refine getStream to handle this or just pass the trackId if we have it.
+            // For simplicity, let's assume web app always has a trackId for streaming.
+            // If it's a pure external link, we can still use the engine if we wrap it.
             
-            let url: string | null = null;
-            if (providerId === 'search') {
-                const [artist, title] = originalId.split(" - ");
-                url = await activeStreamingService.resolve(title || originalId, artist || "");
-            } else {
-                url = await activeStreamingService.resolveById(providerId, originalId);
-            }
-            
-            if (!url) throw new NotFoundError("External stream not found");
-
-            // Redirect to the proxy route so CORS/SSL are handled centrally
-            return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(url)}`);
+            // Look up track by external ID first
+            const track = database.getTrackByExternalId(idParam);
+            if (!track) throw new NotFoundError("External track not found in database");
+            trackId = track.id;
+        } else {
+            trackId = parseInt(idParam, 10);
         }
 
-        const id = parseInt(idParam, 10);
-        const track = database.getTrack(id);
+        if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
+
+        // Permission check (Keep in route layer for now as it's a cross-cutting concern)
+        const track = database.getTrack(trackId);
         if (!track) throw new NotFoundError("Track not found");
 
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
@@ -539,132 +538,30 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!canSeePrivate && !isOwner) {
             if (track.album_id) {
                 const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(id)) throw new ForbiddenError("Access denied");
+                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
             } else throw new ForbiddenError("Access denied");
         }
 
-        // Handle DB tracks that are actually external links
-        const extId = track.external_id || track.url;
-        if (extId && extId.startsWith("ext:")) {
-            const parts = extId.split(":");
-            if (parts.length >= 3) {
-                const providerId = parts[1];
-                const originalId = parts.slice(2).join(":");
-                console.log(`🌐 [Streaming] Requesting external stream from DB track ${id}: ${providerId} / ${originalId}`);
-                
-                let streamUrl: string | null = null;
-                if (providerId === 'search') {
-                    const [artist, title] = originalId.split(" - ");
-                    streamUrl = await activeStreamingService.resolve(title || originalId, artist || "");
-                } else {
-                    streamUrl = await activeStreamingService.resolveById(providerId, originalId);
-                }
-                
-                if (!streamUrl) throw new NotFoundError("External stream not found");
-                return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`);
-            }
-        }
-
-        if (!track.file_path) {
-            // --- STREAMING PROVIDER FALLBACK ---
-            // Local file missing: ask StreamingService if any registered provider can serve it.
-            if (activeStreamingService.getRegistry().getAll().length > 0) {
-                const title = track.title || "";
-                const artist = track.artist_name || "";
-                const streamUrl = await activeStreamingService.resolve(title, artist).catch(() => null);
-                if (streamUrl) {
-                    console.log(`📡 [Stream] Local file missing, falling back to streaming provider for: ${artist} - ${title}`);
-                    // Redirect to the existing proxy route so CORS/SSL are handled centrally
-                    return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`);
-                }
-            }
-            throw new NotFoundError("Track file not found");
-        }
-
-        // Google Drive support
-        if (track.file_path.startsWith("gdrive://")) {
-            if (!gdriveService) throw new Error("Google Drive service not available");
-            const fileId = track.file_path.substring(9);
-            const ownerId = track.owner_id || database.getPrimaryAdminId() || 1;
-            const { stream, status, headers } = await gdriveService.getFileStream(ownerId, fileId, req.headers.range);
-            
-            const filteredHeaders: any = {};
-            ['content-type', 'content-length', 'content-range', 'accept-ranges'].forEach(h => {
-                if (headers[h]) filteredHeaders[h] = headers[h];
+        try {
+            const result = await mediaEngine.getStream({
+                trackId,
+                format: req.query.format as string,
+                bitrate: req.query.bitrate as string,
+                range: req.headers.range
             });
 
-            res.writeHead(status, filteredHeaders);
-            stream.pipe(res);
-            return;
-        }
+            if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
+            if (result.contentRange) res.setHeader("Content-Range", result.contentRange);
+            res.setHeader("Content-Type", result.contentType);
+            res.setHeader("Accept-Ranges", "bytes");
 
-        let trackPath = path.join(musicDir, track.file_path);
-        let usingLosslessFallback = false;
-
-        if (!await fs.pathExists(trackPath)) {
-            const decoded = decodeURIComponent(trackPath);
-            if (await fs.pathExists(decoded)) trackPath = decoded;
-            else if (track.lossless_path) {
-                let lp = path.join(musicDir, track.lossless_path);
-                if (!await fs.pathExists(lp)) lp = decodeURIComponent(lp);
-                if (await fs.pathExists(lp)) { trackPath = lp; usingLosslessFallback = true; }
-                else throw new NotFoundError("Audio file not found");
-            } else {
-                // --- STREAMING PROVIDER FALLBACK ---
-                // Local file missing: ask StreamingService if any registered provider can serve it.
-                if (activeStreamingService.getRegistry().getAll().length > 0) {
-                    const title = track.title || "";
-                    const artist = track.artist_name || "";
-                    const streamUrl = await activeStreamingService.resolve(title, artist).catch(() => null);
-                    if (streamUrl) {
-                        console.log(`📡 [Stream] Local file missing, falling back to streaming provider for: ${artist} - ${title}`);
-                        // Redirect to the existing proxy route so CORS/SSL are handled centrally
-                        return res.redirect(`/api/proxy/stream?url=${encodeURIComponent(streamUrl)}`);
-                    }
-                }
-                throw new NotFoundError("Audio file not found");
+            res.status(result.statusCode);
+            result.stream.pipe(res);
+        } catch (error: any) {
+            if (error.message && error.message.startsWith("REDIRECT:")) {
+                return res.redirect(error.message.substring(9));
             }
-        }
-
-        const stat = await fs.promises.stat(trackPath);
-        const ext = path.extname(trackPath).toLowerCase();
-        let targetFormat = req.query.format as string;
-        
-        // Only force MP3 transcoding for WAV (heavy/poorly supported) or when using a lossless fallback
-        // FLAC is well-supported natively and should be served as-is for better seeking/quality
-        if (!targetFormat && (ext === '.wav' || usingLosslessFallback)) targetFormat = 'mp3';
-
-        if (targetFormat && (targetFormat !== ext.substring(1) || usingLosslessFallback)) {
-            const contentTypeMap: any = { 'mp3': 'audio/mpeg', 'aac': 'audio/aac', 'ogg': 'audio/ogg', 'opus': 'audio/opus' };
-            res.setHeader("Content-Type", contentTypeMap[targetFormat] || 'audio/mpeg');
-            
-            ffmpeg(trackPath)
-                .format(targetFormat)
-                .audioCodec(targetFormat === 'mp3' ? 'libmp3lame' : 'copy')
-                .audioChannels(2)
-                .audioBitrate((req.query.bitrate as string) || '192k')
-                .on('error', (err) => { 
-                    if (!err.message.includes("Output stream closed")) {
-                        console.error('Transcoding error:', err.message);
-                    }
-                })
-                .pipe(res, { end: true });
-            return;
-        }
-
-        const range = req.headers.range;
-        const contentTypes: any = { ".mp3": "audio/mpeg", ".flac": "audio/flac", ".ogg": "audio/ogg", ".wav": "audio/wav", ".m4a": "audio/mp4", ".aac": "audio/aac", ".opus": "audio/opus" };
-        const contentType = contentTypes[ext] || "audio/mpeg";
-
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
-            res.writeHead(206, { "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Accept-Ranges": "bytes", "Content-Length": end - start + 1, "Content-Type": contentType });
-            fs.createReadStream(trackPath, { start, end }).pipe(res);
-        } else {
-            res.writeHead(200, { "Content-Length": stat.size, "Content-Type": contentType, "Accept-Ranges": "bytes" });
-            fs.createReadStream(trackPath).pipe(res);
+            throw error;
         }
     }));
 
@@ -729,4 +626,3 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
     return router;
 }
-

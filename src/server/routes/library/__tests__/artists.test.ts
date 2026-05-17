@@ -29,6 +29,7 @@ describe('Artists Routes', () => {
             getReleasesByArtist: jest.fn().mockReturnValue([]),
             getAlbumsByArtist: jest.fn().mockReturnValue([]),
             getTracksByArtist: jest.fn().mockReturnValue([]),
+            getStarredItems: jest.fn().mockReturnValue([]),
             createArtist: jest.fn().mockReturnValue(4),
             getArtistByName: jest.fn().mockReturnValue(null),
             updateArtist: jest.fn(),
@@ -47,7 +48,10 @@ describe('Artists Routes', () => {
             next();
         });
 
-        app.use('/api/artists', createArtistsRoutes(mockDatabase as any, musicDir));
+        const mockMetadataService = {
+            searchArtist: jest.fn().mockReturnValue([])
+        };
+        app.use('/api/artists', createArtistsRoutes(mockDatabase as any, musicDir, mockMetadataService as any, {} as any));
     });
 
     describe('GET /api/artists', () => {
@@ -124,6 +128,64 @@ describe('Artists Routes', () => {
 
             expect(response.status).toBe(200);
             expect(response.body.name).toBe('Artist 1');
+        });
+
+        test('returns artist with private album if user has starred a track in it', async () => {
+            const artist = { id: 1, name: 'Artist 1', slug: 'artist-1', visibility: 'public' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+            
+            // Mock empty public content
+            mockDatabase.getReleasesByArtist.mockReturnValue([]);
+            mockDatabase.getAlbumsByArtist.mockImplementation((id: any, profile: any) => {
+                if (profile === 'ALL_ACCESS') return [{ id: 501, title: 'Private Album', visibility: 'private' }];
+                return [];
+            });
+            mockDatabase.getTracksByArtist.mockImplementation((id: any, profile: any) => {
+                if (profile === 'ALL_ACCESS') return [{ id: 901, title: 'Starred Track', album_id: 501 }];
+                return [];
+            });
+            
+            // User has starred the track
+            mockDatabase.getStarredItems.mockImplementation((user: any, type: any) => {
+                if (type === 'track') return [{ item_id: '901' }];
+                return [];
+            });
+
+            const response = await request(app)
+                .get('/api/artists/1')
+                .set('x-username', 'testuser')
+                .set('x-is-admin', 'false');
+
+            expect(response.status).toBe(200);
+            // The private album should be visible now
+            expect(response.body.albums).toHaveLength(1);
+            expect(response.body.albums[0].id).toBe(501);
+        });
+
+        test('returns artist with starred private album', async () => {
+            const artist = { id: 1, name: 'Artist 1', slug: 'artist-1', visibility: 'public' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+            
+            mockDatabase.getReleasesByArtist.mockReturnValue([]);
+            mockDatabase.getAlbumsByArtist.mockImplementation((id: any, profile: any) => {
+                if (profile === 'ALL_ACCESS') return [{ id: 502, title: 'Starred Private Album', visibility: 'private' }];
+                return [];
+            });
+            mockDatabase.getTracksByArtist.mockReturnValue([]);
+            
+            mockDatabase.getStarredItems.mockImplementation((user: any, type: any) => {
+                if (type === 'album') return [{ item_id: '502' }];
+                return [];
+            });
+
+            const response = await request(app)
+                .get('/api/artists/1')
+                .set('x-username', 'testuser')
+                .set('x-is-admin', 'false');
+
+            expect(response.status).toBe(200);
+            expect(response.body.albums).toHaveLength(1);
+            expect(response.body.albums[0].id).toBe(502);
         });
     });
 });

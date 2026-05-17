@@ -5,13 +5,15 @@ import type { PublishingService } from "../publishing/publishing.service.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
 import type { FingerprintService } from "../media/fingerprint.service.js";
-import { VisibilityGuardian, Capability } from "../../common/visibility.js";
+import { VisibilityGuardian, Capability, VisibilityProfile, UserRole } from "../../common/visibility.js";
 import path from "path";
-import NodeID3 from "node-id3";
-import { writeMetadata } from "../media/ffmpeg.js";
-import { getFastFileHash } from "../../../utils/fileUtils.js";
+import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
 
 
+/**
+ * Catalog Service — Orchestrator for Library Management (Write/Core side).
+ * Responsible for promoting releases, updating metadata, managing files, and ownership.
+ */
 export class CatalogService {
     constructor(
         private database: DatabaseService,
@@ -24,181 +26,7 @@ export class CatalogService {
         private metadataService: MetadataService
     ) {}
 
-    // --- Query & Recommendation Operations ---
-
-    async getAiRecommendations(trackId: number, limit: number = 5) {
-        const targetTrack = this.database.getTrack(trackId);
-        if (!targetTrack) throw new Error("Track not found");
-
-        const candidates = this.database.getRandomTracks(50).filter(t => t.id !== trackId);
-
-        const recommendedIds = await this.openRouter.suggestRelatedTracks(targetTrack, candidates);
-        
-        if (recommendedIds.length === 0) {
-            return candidates
-                .filter(t => t.genre === targetTrack.genre)
-                .slice(0, limit)
-                .map(t => this.mapTrackDTO(t));
-        }
-
-        const recommendedTracks = this.database.getTracksByIds(recommendedIds);
-        return recommendedTracks.map(t => this.mapTrackDTO(t));
-    }
-
-    async getOverview(isAdmin: boolean, username?: string) {
-        const stats = await this.database.getStats();
-        const allAlbums = this.database.getAlbums(!isAdmin);
-        const allReleases = this.database.getReleases(!isAdmin);
-
-        const recentAlbums = allAlbums.slice(0, 20).map(a => {
-            const mapped = this.mapAlbumDTO(a, username);
-            (mapped as any).tracks = this.database.getTracksByAlbum(a.id).map(t => this.mapTrackDTO(t, username));
-            return mapped;
-        });
-        const recentReleases = allReleases.slice(0, 10).map(r => {
-            const mapped = this.mapAlbumDTO(r, username);
-            (mapped as any).tracks = this.database.getReleaseTracks(r.id).map(rt => rt); // Release tracks are a bit different
-            return mapped;
-        });
-
-        let publicStats = { ...stats };
-        if (!isAdmin) {
-            publicStats.albums = allAlbums.length;
-            publicStats.tracks = this.database.getPublicTracksCount();
-            publicStats.totalTracks = publicStats.tracks;
-            publicStats.genres = this.database.getGenres(true);
-            publicStats.genresCount = publicStats.genres.length;
-        }
-
-        return {
-            stats: publicStats,
-            releases: recentReleases,
-            recentReleases,
-            recentAlbums
-        };
-    }
-
-    getGenres(isAdmin: boolean) {
-        return this.database.getGenres(!isAdmin);
-    }
-
-    async search(query: string, isAdmin: boolean, username?: string) {
-        if (!query) return { artists: [], albums: [], tracks: [] };
-        
-        const results = this.database.search(query, !isAdmin);
-        
-        return {
-            artists: results.artists.map(a => ({
-                ...a,
-                coverImage: `/api/artists/${a.id}/cover`
-            })),
-            albums: results.albums.map(a => this.mapAlbumDTO(a, username)),
-            tracks: results.tracks.map(t => this.mapTrackDTO(t, username))
-        };
-    }
-
-    // --- Library Operations (Migrated from LibraryService) ---
-
-    async getTracksForUser(user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }, options: { mineOnly?: boolean } = {}): Promise<TrackDTO[]> {
-        const context = VisibilityGuardian.deriveContext({
-            userId: user.userId,
-            artistId: user.artistId || undefined,
-            role: user.role || 'guest',
-            isActive: user.isActive
-        });
-
-        const username = user.username;
-        let tracks: Track[] = [];
-
-        const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
-
-        if (canSeePrivate) {
-            if (options.mineOnly && context.userId !== undefined && context.userId !== null) {
-                tracks = this.database.getTracksByOwner(context.userId);
-            } else {
-                tracks = this.database.getTracks();
-            }
-        } else {
-            const publicTracks = this.database.getTracks(undefined, true);
-            let starredTracks: Track[] = [];
-            
-            if (username) {
-                const starredIds = this.database.getStarredItems(username, 'track').map(i => i.item_id);
-                const validIds = starredIds.filter(id => /^\d+$/.test(id)).map(id => parseInt(id, 10));
-                if (validIds.length > 0) {
-                    starredTracks = this.database.getTracksByIds(validIds);
-                }
-            }
-
-            // Merge and deduplicate
-            const seen = new Set();
-            tracks = [...publicTracks, ...starredTracks].filter(t => {
-                if (seen.has(t.id)) return false;
-                seen.add(t.id);
-                return true;
-            });
-        }
-
-        return tracks.map(t => this.mapTrackDTO(t, username));
-    }
-
-    async getAlbumForUser(albumIdOrSlug: string | number, user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }): Promise<AlbumDTO> {
-        const context = VisibilityGuardian.deriveContext({
-            userId: user.userId,
-            artistId: user.artistId || undefined,
-            role: user.role || 'guest',
-            isActive: user.isActive
-        });
-
-        let album: Album | undefined;
-        if (typeof albumIdOrSlug === 'number' || /^\d+$/.test(albumIdOrSlug as string)) {
-            album = this.database.getAlbum(Number(albumIdOrSlug));
-        } else if (String(albumIdOrSlug).startsWith("ext:")) {
-            album = this.database.db.prepare("SELECT * FROM albums WHERE external_id = ?").get(albumIdOrSlug) as any;
-        } else {
-            album = this.database.getAlbumBySlug(albumIdOrSlug as string);
-        }
-
-        // 2. If not found locally, try external search
-        if (!album && typeof albumIdOrSlug === 'string' && !/^\d+$/.test(albumIdOrSlug)) {
-             const results = await this.metadataService.searchRelease(albumIdOrSlug);
-             if (results && results.length > 0) {
-                 const match = results[0];
-                 const extId = `ext:search:${match.source}:${match.id}`;
-                 return {
-                     id: extId,
-                     title: match.title,
-                     artist_name: match.artist,
-                     artistName: match.artist,
-                     coverImage: match.coverUrl,
-                     isExternal: true,
-                     is_release: false,
-                     is_public: true,
-                     tracks: [],
-                     starred: user.username ? this.database.isStarred(user.username, 'album', extId) : false
-                 } as any;
-             }
-        }
-
-        if (!album) throw new Error("Album not found");
-
-        const isOwner = context.userId !== undefined && album.owner_id === context.userId;
-        const canSeePrivate = VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY);
-        const username = user.username;
-        const isStarred = username ? this.database.isStarred(username, 'album', String(album.id)) : false;
-
-        if (!canSeePrivate && !isOwner && !isStarred) {
-            if (!album.is_release) throw new Error("Access denied");
-            if (album.visibility === 'private') throw new Error("Release not found");
-        }
-
-        const tracks = this.database.getTracksByAlbum(album.id);
-
-        return {
-            ...this.mapAlbumDTO(album, username),
-            tracks: tracks.map(t => this.mapTrackDTO(t, username))
-        };
-    }
+    // --- Library Operations ---
 
     async promoteToRelease(albumId: number): Promise<void> {
         const album = this.database.getAlbum(albumId);
@@ -346,7 +174,7 @@ export class CatalogService {
 
         const updatedTrack = this.database.getTrack(trackId);
         if (!options?.skipTagWrite && updatedTrack && updatedTrack.file_path) {
-            await this.writeTrackTags(updatedTrack);
+            await this.metadataService.syncPhysicalTags(updatedTrack, this.database, this.storage, this.musicDir);
         }
         if (!options?.skipSync && updatedTrack && updatedTrack.album_id) {
             await this.publishing.syncRelease(updatedTrack.album_id).catch(e => console.error(`[CatalogService] Sync failed:`, e));
@@ -382,7 +210,7 @@ export class CatalogService {
 
         if (updatedTracks.length > 0) {
             await Promise.all(updatedTracks.map(async t => {
-                await this.writeTrackTags(t);
+                await this.metadataService.syncPhysicalTags(t, this.database, this.storage, this.musicDir);
             }));
             for (const albumId of affectedAlbums) {
                 await this.publishing.syncRelease(albumId).catch(e => console.error(`[CatalogService] Batch sync failed:`, e));
@@ -585,42 +413,7 @@ export class CatalogService {
     getRemotePosts() { return this.database.getRemotePosts(); }
 
     getRandomTracks(limit: number, _isAdmin: boolean) {
-        return this.database.getRandomTracks(limit).map(t => this.mapTrackDTO(t));
-    }
-
-    // --- DTO Mapping ---
-
-    mapTrackDTO(t: Track, username?: string): TrackDTO {
-        return {
-            ...t,
-            albumId: t.album_id,
-            artistId: t.artist_id,
-            losslessPath: t.lossless_path,
-            externalArtwork: t.external_artwork,
-            albumName: t.album_title,
-            albumDownload: t.album_download,
-            albumVisibility: t.album_visibility,
-            albumPrice: t.album_price,
-            artistName: t.artist_name,
-            path: t.file_path,
-            filename: t.file_path ? path.basename(t.file_path) : undefined,
-            coverUrl: t.external_artwork ? `/api/tracks/${t.id}/cover` : (t.album_id ? `/api/albums/${t.album_id}/cover` : null),
-            waveform: t.waveform || (t.file_path ? `/api/waveform/${t.id}` : null),
-            starred: username ? this.database.isStarred(username, 'track', String(t.id)) : false,
-            rating: username ? this.database.getItemRating(username, 'track', String(t.id)) : 0
-        };
-    }
-
-    mapAlbumDTO(a: Album | Release, username?: string): AlbumDTO {
-        const is_public = 'is_public' in a ? !!a.is_public : (a.visibility === 'public' || a.visibility === 'unlisted');
-        return {
-            ...a,
-            is_public,
-            is_release: 'is_release' in a ? !!a.is_release : true,
-            coverImage: a.cover_path,
-            starred: username ? this.database.isStarred(username, 'album', String(a.id)) : false,
-            rating: username ? this.database.getItemRating(username, 'album', String(a.id)) : 0
-        } as AlbumDTO;
+        return this.database.getRandomTracks(limit).map(t => mapTrackDTO(t, this.database));
     }
 
     async updateAlbum(id: number, data: any): Promise<void> {
@@ -643,49 +436,5 @@ export class CatalogService {
 
         this.database.updateAlbum(id, updateData);
         await this.publishing.syncRelease(id).catch(e => console.error(`[CatalogService] Sync failed for album update:`, e));
-    }
-
-    private async writeTrackTags(track: Track): Promise<void> {
-        const pathsToUpdate = [];
-        if (track.file_path) pathsToUpdate.push(track.file_path);
-        if (track.lossless_path && track.lossless_path !== track.file_path) pathsToUpdate.push(track.lossless_path);
-
-        if (pathsToUpdate.length === 0) return;
-
-        const tags = {
-            title: track.title,
-            artist: track.artist_name || undefined,
-            album: track.album_title || undefined,
-            trackNumber: track.track_num?.toString() || undefined,
-            genre: track.genre || undefined,
-            year: track.year?.toString() || undefined
-        };
-
-        for (const relPath of pathsToUpdate) {
-            const fullPath = path.join(this.musicDir, relPath);
-            if (!(await this.storage.pathExists(fullPath))) continue;
-
-            const ext = path.extname(fullPath).toLowerCase();
-            try {
-                if (ext === '.mp3') {
-                    NodeID3.update(tags as any, fullPath);
-                } else if (['.flac', '.ogg', '.m4a', '.wav'].includes(ext)) {
-                    await writeMetadata(fullPath, {
-                        title: tags.title, artist: tags.artist, album: tags.album,
-                        track: tags.trackNumber, genre: tags.genre, year: tags.year
-                    });
-                }
-
-                // Recalculate hash after tag write so scanner doesn't re-process it
-                const newHash = await getFastFileHash(fullPath);
-                if (relPath === track.file_path) {
-                    this.database.updateTrackHash(track.id, newHash);
-                }
-                // Note: Currently we only store one hash per track in the DB (usually the primary file or the first scanned file)
-                // If the file_path is updated, it's the one we use for primary identification.
-            } catch (err) { 
-                console.error(`[CatalogService] Tag write failed for ${track.id} at ${relPath}:`, err); 
-            }
-        }
     }
 }

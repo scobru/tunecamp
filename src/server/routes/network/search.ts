@@ -8,7 +8,7 @@ import { metadataService as defaultMetadataService } from "../../modules/catalog
 import { streamingService as defaultStreamingService } from "../../modules/streaming/streaming.service.js";
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
-import { VisibilityGuardian, UserRole, Capability } from "../../common/visibility.js";
+import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";
 
 export function createSearchRoutes(
     database: DatabaseService,
@@ -192,15 +192,14 @@ export function createSearchRoutes(
         const query = req.query.q as string;
         if (!query) return res.status(400).json({ error: "Query required" });
 
-        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        const onlyPublic = !canSeePrivate;
         const isAdmin = req.isAdmin || req.role === UserRole.ADMIN || req.role === UserRole.SUPER_USER;
+        const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
 
-        console.log(`🔍 [Global Search] Query: "${query}", Public Only: ${onlyPublic}, User: ${req.username || 'Guest'} (Role: ${req.role || 'none'})`);
+        console.log(`🔍 [Global Search] Query: "${query}", Profile: ${profile}, User: ${req.username || 'Guest'} (Role: ${req.role || 'none'})`);
 
         try {
             // 1. Search Local Database
-            const localResults = database.search(query, onlyPublic);
+            const localResults = database.search(query, profile);
 
             // 2. Search Streaming Providers (SoundCloud, etc.)
             // These are direct playable results and should be prioritized

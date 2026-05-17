@@ -632,7 +632,7 @@ export function createAuthService(
                         // Skip if it fails (e.g. root admin or last admin)
                     }
                 }
-            })();
+            });
         },
 
         toggleUserStatus(id: number, active: boolean): void {

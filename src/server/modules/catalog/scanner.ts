@@ -9,6 +9,7 @@ import { slugify } from "../../../utils/audioUtils.js";
 import { convertWavToMp3, getDurationFromFfmpeg } from "../media/ffmpeg.js";
 import { getFastFileHash } from "../../../utils/fileUtils.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
+import { LibrarySync } from "./library-sync.js";
 
 /**
  * Optimized processing queue with concurrency support to handle multiple heavy tasks (ffmpeg, conversion) in parallel.
@@ -135,6 +136,7 @@ export class Scanner implements ScannerService {
     private isScanning = false;
     private pendingScan: Promise<ScanResult> | null = null;
     private processQueue = new ProcessingQueue();
+    private librarySync: LibrarySync;
 
     private folderToAlbumMap = new Map<string, number>();
     private folderToArtistMap = new Map<string, number>();
@@ -155,6 +157,7 @@ export class Scanner implements ScannerService {
         private autotagger?: AutoTaggerService
     ) {
         this.lookupPrimaryAdmin();
+        this.librarySync = new LibrarySync(database, autotagger, this.primaryAdminId);
     }
 
     private lookupPrimaryAdmin() {
@@ -429,11 +432,6 @@ export class Scanner implements ScannerService {
             }
 
             this.folderToAlbumMap.set(dir, albumId);
-
-            // Note: We skip processing config.metadata.tracks here for library albums
-            // because library albums don't use the release_tracks table.
-            // Tracks found in the folder will be scanned and associated with this albumId
-            // by the processAudioFile method later in the scan process.
         } catch (e) {
             console.error(`❌ [Scanner] Error processing release config at ${filePath}:`, e);
         }
@@ -464,333 +462,51 @@ export class Scanner implements ScannerService {
         }
 
         this.hashingSemaphore++;
-        let hash: string | null = null;
-        let metadata: any = null;
-        const LOSSLESS_EXTENSIONS = ['.wav', '.flac'];
-        const normalizedPath = this.normalizePath(currentFilePath, musicDir);
-        let existing: any = this.database.getTrackByPath(normalizedPath);
-        let albumId: number | null = overrideAlbumId || this.folderToAlbumMap.get(dir) || null;
-        let artistId: number | null = overrideArtistId || null;
-
         try {
+            // Get Metadata
+            let metadata: any = null;
             try {
-                hash = await getFastFileHash(currentFilePath);
-                const existingByHash = this.database.getTrackByHash(hash);
-                if (existingByHash) {
-                    if (ownerId) {
-                        this.database.addTrackOwner(existingByHash.id, ownerId);
-                        if (existingByHash.owner_id === null) {
-                            this.database.db.prepare("UPDATE tracks SET owner_id = ? WHERE id = ?").run(ownerId, existingByHash.id);
-                        }
-                    }
-                    if (existingByHash.album_id && ownerId) {
-                        this.database.addAlbumOwner(existingByHash.album_id, ownerId);
-                    }
-
-                    // If it's a move (path changed), we update the path and continue processing
-                    // to ensure metadata/album associations are refreshed for the new location.
-                    if (existingByHash.file_path !== normalizedPath) {
-                        console.log(`🚚 [Scanner] Track ${existingByHash.id} moved: ${existingByHash.file_path} -> ${normalizedPath}`);
-                        this.database.updateTrackPath(existingByHash.id, normalizedPath, existingByHash.album_id);
-                        if (!existing) existing = existingByHash;
-                    } else {
-                        // Same path and hash, safe to return early
-                        if (currentFilePath.includes(path.sep + 'tmp' + path.sep) || currentFilePath.includes('/tmp/')) {
-                            await this.storage.remove(currentFilePath);
-                        }
-                        return { originalPath: filePath, success: true, message: "Hash matched, path identical.", trackId: existingByHash.id };
-                    }
-                }
-            } catch (e) {}
-
-            // 1. Get Metadata if needed for hints/tags
-            if (!metadata) {
-                try {
-                    metadata = await parseFileWithRetry(currentFilePath);
-                } catch (e) {}
-            }
-            const common = metadata?.common || {};
-            const format = metadata?.format || {};
-            const albumArtist = common.albumartist;
-
-            // 2. Resolve Artist (Priority: override > hint > tag > unknown)
-            if (!artistId) {
-                const artName = metadataHints?.artist || common.artist || "Unknown Artist";
-                const existArt = this.database.getArtistByName(artName);
-                artistId = existArt ? existArt.id : this.database.createArtist(artName, undefined, undefined, undefined, undefined, undefined, 'private');
+                metadata = await parseFileWithRetry(currentFilePath);
+            } catch (e) {
+                console.warn(`[Scanner] Metadata parse failed for ${currentFilePath}, using filename fallback.`);
             }
 
-            // 3. Resolve Album (Priority: existing > override > hint > tag > folder)
-            
-            // 3.1 Use existing track's album if available (and if it's not a generic folder album)
-            if (!albumId && existing && existing.album_id) {
-                const currentAlbum = this.database.getAlbum(existing.album_id);
-                if (currentAlbum && (currentAlbum.is_release || !currentAlbum.slug.startsWith("lib-"))) {
-                    albumId = existing.album_id;
-                } else {
-                    // It's a generic folder album. We'll try to find a better one via tags or hints.
-                    console.log(`📂 [Scanner] Track ${existing.id} currently in folder-based album "${currentAlbum?.title}". Checking for better metadata...`);
-                }
+            // Fallback to folder-based album if not recognized and we are in musicDir
+            if (!overrideAlbumId && !this.folderToAlbumMap.has(dir) && dir.startsWith(musicDir)) {
+                await this.getOrCreateLibraryAlbum(dir, musicDir, suggestedCoverPath, ownerId);
             }
 
-
-            // 3.2 Use hint or override if provided
-            const albumNameHint = metadataHints?.album;
-            if (!albumId && albumNameHint) {
-                const albumSlug = slugify("hint-" + artistId + "-" + albumNameHint);
-                let album = this.database.getAlbumBySlug(albumSlug);
-                
-                if (!album) {
-                    albumId = this.database.createAlbum({
-                        title: albumNameHint,
-                        slug: albumSlug,
-                        artist_id: artistId,
-                        album_artist: albumArtist || null,
-                        owner_id: ownerId || this.primaryAdminId,
-                        date: metadataHints.year ? `${metadataHints.year}-01-01` : null,
-                        year: metadataHints.year || null,
-                        cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
-                        genre: metadataHints.genre || "Imported",
-                        description: `Imported via metadata hint`,
-                        type: 'album',
-                        download: null,
-                        price: 0,
-                        price_usdc: 0,
-                        currency: 'ETH',
-                        external_links: null,
-                        is_public: false,
-                        visibility: 'private',
-                        is_release: false,
-                        published_at: new Date().toISOString(),
-                        published_to_gundb: false,
-                        published_to_ap: false,
-                        license: null,
-                        status: 'draft',
-                    });
-                } else {
-                    albumId = album.id;
-                }
-            }
-
-            // 3.3 Resolve from Metadata Tags (ID3)
-            if (!albumId && common.album) {
-                const albumName = common.album;
-                const albumSlug = slugify("tag-" + artistId + "-" + albumName);
-                let album = this.database.getAlbumBySlug(albumSlug);
-                
-                if (!album) {
-                    albumId = this.database.createAlbum({
-                        title: albumName,
-                        slug: albumSlug,
-                        artist_id: artistId,
-                        album_artist: albumArtist || common.artist || null,
-                        owner_id: ownerId || this.primaryAdminId,
-                        date: common.year ? `${common.year}-01-01` : (common.date ? common.date : null),
-                        year: common.year || (common.date ? new Date(common.date).getFullYear() : null),
-                        cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
-                        genre: common.genre ? common.genre.join(", ") : "Library",
-                        description: `Imported from tags`,
-                        type: 'album',
-                        download: null,
-                        price: 0,
-                        price_usdc: 0,
-                        currency: 'ETH',
-                        external_links: null,
-                        is_public: false,
-                        visibility: 'private',
-                        is_release: false,
-                        published_at: new Date().toISOString(),
-                        published_to_gundb: false,
-                        published_to_ap: false,
-                        license: null,
-                        status: 'draft',
-                    });
-                } else {
-                    albumId = album.id;
-                }
-            }
-
-            // 3.4 Fallback to folder-based album (Last Resort)
-            if (albumId === null && dir.startsWith(musicDir)) {
-                albumId = await this.getOrCreateLibraryAlbum(dir, musicDir, suggestedCoverPath, ownerId, albumArtist);
-            }
-
-
-            // 4. Handle Existing Track by Path or Metadata
-            if (!existing) {
-                // Try finding by metadata if title/artist/album are known
-                const title = metadataHints?.title || common.title || path.basename(currentFilePath, ext);
-                existing = this.database.getTrackByMetadata(title, artistId, albumId);
-                
-                if (!existing) {
-                    // Try finding by path siblings
-                    const baseName = path.basename(currentFilePath, ext);
-                    const siblingExts = ['.wav', '.flac', '.mp3', '.m4a', '.ogg'];
-                    for (const sExt of siblingExts) {
-                        if (sExt === ext) continue;
-                        const siblingPath = this.normalizePath(path.join(dir, baseName + sExt), musicDir);
-                        const sibling = this.database.getTrackByPath(siblingPath);
-                        if (sibling) {
-                            existing = sibling;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (existing) {
-                // Update hash if it changed (e.g. metadata was updated)
-                if (hash && existing.hash !== hash) {
-                    this.database.updateTrackHash(existing.id, hash);
-                }
-
-                if (ownerId) this.database.addTrackOwner(existing.id, ownerId);
-                
-                const isLossless = LOSSLESS_EXTENSIONS.includes(ext);
-                const mp3Path = isLossless ? normalizedPath.replace(new RegExp(`\\${ext}$`, 'i'), '.mp3') : normalizedPath;
-                if (isLossless && !existing.lossless_path) {
-                    this.database.updateTrackLosslessPath(existing.id, normalizedPath);
-                }
-
-                // --- TITLE PROTECTION ---
-                const newTitle = metadataHints?.title || common.title || path.basename(currentFilePath, ext);
-                if (existing.title !== newTitle) {
-                    if (existing.title === "Untitled" || metadataHints?.title || overrideArtistId) {
-                        this.database.updateTrackTitle(existing.id, newTitle);
-                    } else {
-                        console.log(`🛡️ [Scanner] Protecting existing title for track ${existing.id} (Current: "${existing.title}", Tag Suggested: "${newTitle}")`);
-                    }
-                }
-
-                // --- ALBUM ASSOCIATION PROTECTION ---
-                // Only update album if the track doesn't have one, or if we found a "stronger" one (like a formal Release)
-                // We must NEVER overwrite a manual association (usually a Release) with a folder-based Library album.
-                let finalAlbumId = albumId;
-                if (existing.album_id && existing.album_id !== albumId) {
-                    const existingAlbum = this.database.getAlbum(existing.album_id);
-                    const newAlbum = albumId ? this.database.getAlbum(albumId) : null;
-                    
-                    const isExistingFormal = existingAlbum?.is_release || false;
-                    const isNewFormal = newAlbum?.is_release || false;
-                    
-                    // Rule 1: If existing is a Release and new is just a folder, PROTECT.
-                    // Rule 2: If both are same type, PROTECT existing (assume manual intent).
-                    if (isExistingFormal && !isNewFormal) {
-                        console.log(`🛡️ [Scanner] Protecting existing release association for track ${existing.id} (Current: ${existing.album_id}, Found Folder: ${albumId})`);
-                        finalAlbumId = existing.album_id; 
-                    } else if (existing.album_id && !isNewFormal) {
-                        // General protection for any existing association if the new one isn't a "Formal Release"
-                        finalAlbumId = existing.album_id;
-                    }
-                }
-
-                this.database.updateTrackPath(existing.id, mp3Path, finalAlbumId);
-                if (existing.album_id !== finalAlbumId) this.database.updateTrackAlbum(existing.id, finalAlbumId);
-
-
-                // --- ARTIST ASSOCIATION PROTECTION ---
-                if (artistId && existing.artist_id !== artistId) {
-                    let shouldUpdateArtist = false;
-                    
-                    if (!existing.artist_id) {
-                        shouldUpdateArtist = true;
-                    } else {
-                        const existingArt = this.database.getArtist(existing.artist_id);
-                        const currentArtistName = existingArt?.name || existing.artist_name;
-                        const newArtistName = metadataHints?.artist || common.artist;
-
-                        // Only update if:
-                        // 1. Existing is "Unknown Artist"
-                        // 2. We have an explicit override (hint/config)
-                        // 3. The artist record is missing AND the name in tags is actually different (not just a casing change)
-                        if (!existingArt) {
-                            if (currentArtistName && newArtistName && currentArtistName.toLowerCase() !== newArtistName.toLowerCase()) {
-                                // If the record is missing but names match, don't update ID yet, let database repair handle it
-                                // if names differ significantly, maybe it is a new artist.
-                                // BUT in TuneCamp, we prefer protecting manual edits.
-                                shouldUpdateArtist = false;
-                            }
-                        } else if (existingArt.name === 'Unknown Artist' || overrideArtistId) {
-                            shouldUpdateArtist = true;
-                        }
-                    }
-
-                    if (shouldUpdateArtist) {
-                        this.database.updateTrackArtist(existing.id, artistId);
-                    } else {
-                        console.log(`🛡️ [Scanner] Protecting existing artist for track ${existing.id} (Current: ${existing.artist_name || 'ID ' + existing.artist_id}, Tag Suggested: ${common.artist || 'ID ' + artistId})`);
-                    }
-                }
-                
-                // If duration is missing, re-fetch it
-                if (!existing.duration || existing.duration <= 0) {
-                    const { common, format } = await parseFile(currentFilePath);
-                    let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
-                    if (duration == null) duration = format.duration || null;
-                    if (duration) {
-                        this.database.updateTrackDuration(existing.id, duration);
-                        // Also update bitrate/sample rate if available
-                        if (format.bitrate) this.database.updateTrackBitrate(existing.id, Math.round(format.bitrate / 1000));
-                    }
-                }
-
-                if (!existing.waveform) {
-                    processQueueWaveform(currentFilePath, existing.id, existing.duration, this.processQueue, this.database);
-                }
-                return { originalPath: filePath, success: true, message: "Track updated.", trackId: existing.id };
-            }
-
-            // 5. Create New Track
-            let duration: number | null = await getDurationFromFfmpeg(currentFilePath);
-            if (duration == null) duration = format.duration || null;
-
-            if (duration === null) {
-                console.warn(`⚠️ [Scanner] Could not determine duration for: ${path.basename(currentFilePath)}. This will result in 0 storage usage stats.`);
-            }
-
-            const isLossless = LOSSLESS_EXTENSIONS.includes(ext);
-            const trackId = this.database.createTrack({
-                title: metadataHints?.title || common.title || path.basename(currentFilePath, ext),
-                album_id: albumId,
-                artist_id: artistId,
-                owner_id: ownerId || this.primaryAdminId,
-                track_num: common.track?.no || null,
-                duration: duration,
-                file_path: isLossless ? this.normalizePath(currentFilePath.replace(new RegExp(`\\${ext}$`, 'i'), '.mp3'), musicDir) : normalizedPath,
-                format: isLossless ? 'mp3' : (format.codec || ext.substring(1)),
-                bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
-                sample_rate: format.sampleRate || null,
-                lossless_path: isLossless ? normalizedPath : null,
-                waveform: null,
-                year: metadataHints?.year || common.year || (common.date ? new Date(common.date).getFullYear() : null),
-                genre: metadataHints?.genre || (common.genre ? common.genre.join(", ") : null),
-                url: null,
-                service: null,
-                external_artwork: null,
-                price: 0,
-                price_usdc: 0,
-                currency: 'ETH',
-                hash: hash
+            const syncResult = await this.librarySync.syncFile(currentFilePath, metadata, {
+                musicDir,
+                overrideArtistId,
+                ownerId,
+                overrideAlbumId,
+                suggestedCoverPath,
+                metadataHints
             });
 
-            processQueueWaveform(currentFilePath, trackId, duration || undefined, this.processQueue, this.database);
+            if (syncResult.success && syncResult.trackId) {
+                const track = this.database.getTrack(syncResult.trackId);
+                if (track) {
+                    // Process Waveform if missing
+                    if (!track.waveform) {
+                        processQueueWaveform(currentFilePath, track.id, track.duration || undefined, this.processQueue, this.database);
+                    }
 
-            let queuedConversion = false;
-            if (ext === ".wav") {
-                queuedConversion = true;
-                this.processQueue.add(() => convertWavToMp3(currentFilePath));
-            }
-
-            if (this.autotagger && (artistId === null || albumId === null || trackId)) {
-                const track = this.database.getTrack(trackId);
-                if (track && (track.artist_name === 'Unknown Artist' || !track.album_id)) {
-                    this.autotagger.auditTrack(track, { forceRepair: false, useAI: true }).catch(e => {
-                        console.error(`[Scanner] Auto-tagging failed for track ${trackId}:`, e);
-                    });
+                    // Process Conversion if needed
+                    if (syncResult.queuedConversion) {
+                        this.processQueue.add(() => convertWavToMp3(currentFilePath));
+                    }
                 }
             }
 
-            return { originalPath: filePath, success: true, message: "Processed.", trackId, queuedConversion };
+            return { 
+                originalPath: filePath, 
+                success: syncResult.success, 
+                message: syncResult.message, 
+                trackId: syncResult.trackId, 
+                queuedConversion: syncResult.queuedConversion 
+            };
         } catch (error) {
             return { originalPath: filePath, success: false, message: String(error) };
         } finally {
@@ -870,57 +586,12 @@ export class Scanner implements ScannerService {
             if (i % 100 === 0 && (global as any).gc) (global as any).gc();
         }
 
-        // --- SCALABILITY FIX: Memory efficient deduplication and cleanup ---
         await this.deduplicateLibraryTracks();
         await this.cleanupStaleLibraryTracks(dir, knownFiles);
-        // -------------------------------------------------------------------
 
-        await this.cleanupEmptyEntities();
+        await this.librarySync.cleanupEmptyEntities();
         this.clearCaches();
         return { successful, failed };
-    }
-
-    private async cleanupEmptyEntities() {
-        console.log("🧹 [Scanner] Cleaning up empty albums and artists...");
-        try {
-            // 1. Clean up empty albums (albums with no tracks)
-            // We exclude formal releases (is_release = 1) from automatic deletion 
-            // just in case they are manually curated empty releases, though usually they aren't.
-            const emptyAlbums = this.database.db.prepare(`
-                SELECT a.id FROM albums a
-                LEFT JOIN tracks t ON a.id = t.album_id
-                WHERE t.id IS NULL AND a.is_release = 0
-            `).all() as { id: number }[];
-            
-            for (const row of emptyAlbums) {
-                console.log(`🗑️ [Scanner] Deleting empty album ${row.id}`);
-                this.database.deleteAlbum(row.id);
-            }
-
-            // 2. Clean up empty artists (artists with no tracks AND no albums)
-            const emptyArtists = this.database.db.prepare(`
-                SELECT ar.id FROM artists ar
-                LEFT JOIN albums a ON ar.id = a.artist_id
-                LEFT JOIN tracks t ON ar.id = t.artist_id
-                WHERE a.id IS NULL AND t.id IS NULL
-            `).all() as { id: number }[];
-
-            for (const row of emptyArtists) {
-                console.log(`🗑️ [Scanner] Deleting empty artist ${row.id}`);
-                this.database.deleteArtist(row.id);
-            }
-
-            // 3. Fix orphan albums (albums with no artist but all tracks share one artist)
-            const orphans = this.database.db.prepare("SELECT id, title FROM albums WHERE artist_id IS NULL").all() as any[];
-            for (const o of orphans) {
-                const tracks = this.database.getTracks(o.id);
-                if (tracks.length === 0) continue; // Should be caught by step 1
-                const arts = [...new Set(tracks.map(t => t.artist_id).filter(id => id !== null))];
-                if (arts.length === 1) this.database.updateAlbumArtist(o.id, arts[0]!);
-            }
-        } catch (e) {
-            console.error("❌ [Scanner] Error cleaning up empty entities:", e);
-        }
     }
 
     private async deduplicateLibraryTracks() {
@@ -936,8 +607,6 @@ export class Scanner implements ScannerService {
 
         for (const [key, ids] of groups.entries()) {
             if (ids.length <= 1) continue;
-            
-            // Keep the first one, delete others
             const primaryId = ids[0];
             const primary = this.database.getTrack(primaryId);
             if (!primary) continue;
@@ -945,11 +614,8 @@ export class Scanner implements ScannerService {
             for (let i = 1; i < ids.length; i++) {
                 const other = this.database.getTrack(ids[i]);
                 if (!other) continue;
-
                 const lossless = other.lossless_path || (path.extname(other.file_path || '').toLowerCase() === '.wav' ? other.file_path : null);
-                if (lossless && !primary.lossless_path) {
-                    this.database.updateTrackLosslessPath(primary.id, lossless);
-                }
+                if (lossless && !primary.lossless_path) this.database.updateTrackLosslessPath(primary.id, lossless);
                 this.database.deleteTrack(other.id);
             }
         }
@@ -966,19 +632,12 @@ export class Scanner implements ScannerService {
             const pKey = t.file_path.toLowerCase();
             const pExists = knownFiles.has(pKey);
             const lExists = t.lossless_path ? knownFiles.has(t.lossless_path.toLowerCase()) : false;
-            if (!pExists && !lExists) {
-                toDelete.push(t.id);
-            } else if (pExists && t.lossless_path && !lExists) {
-                toUpdateLossless.push(t.id);
-            }
+            if (!pExists && !lExists) toDelete.push(t.id);
+            else if (pExists && t.lossless_path && !lExists) toUpdateLossless.push(t.id);
         }
 
-        for (const id of toDelete) {
-            this.database.deleteTrack(id);
-        }
-        for (const id of toUpdateLossless) {
-            this.database.updateTrackLosslessPath(id, null);
-        }
+        for (const id of toDelete) this.database.deleteTrack(id);
+        for (const id of toUpdateLossless) this.database.updateTrackLosslessPath(id, null);
     }
 
     public startWatching(dir: string): void {
@@ -1002,59 +661,41 @@ export class Scanner implements ScannerService {
             for (const t of iter) {
                 try {
                     if (!t.file_path) { count++; continue; }
-                    
                     const oldP = t.file_path;
                     const fOld = path.join(musicDir, oldP);
                     const existsOld = await this.storage.pathExists(fOld);
-                    
                     let art = t.artist_id ? (cache.get(t.artist_id) || this.database.getArtist(t.artist_id)) : null;
                     if (t.artist_id && art) cache.set(t.artist_id, art);
-                    
                     const name = (art?.name || "Unknown").trim();
                     const title = (t.title || "Untitled").trim();
                     const safe = (s: string) => s.replace(/[^a-zA-Z0-9\s._-]/g, "_").trim();
                     const base = `${safe(name)} - ${safe(title)}`;
-                    
                     const ext = path.extname(oldP).toLowerCase();
                     const newP = path.join(path.dirname(oldP), `${base}${ext}`).replace(/\\/g, "/");
                     const fNew = path.join(musicDir, newP);
-
-                    // If original file is missing
                     if (!existsOld) {
                         const existsNew = await this.storage.pathExists(fNew);
                         if (!existsNew) {
-                            // Check lossless path as well if available
                             const existsLossless = t.lossless_path ? await this.storage.pathExists(path.join(musicDir, t.lossless_path)) : false;
-                            
                             if (!existsLossless && !t.url) {
                                 console.log(`🗑️ [Consolidate] File missing for track ${t.id} (${oldP}), deleting from DB`);
                                 this.database.deleteTrack(t.id);
-                                deleted++;
-                                count++;
-                                continue;
+                                deleted++; count++; continue;
                             }
                         } else if (oldP !== newP) {
-                            // File already exists at new path, just update DB
                             this.database.updateTrackPath(t.id, newP, t.album_id);
-                            success++;
-                            count++;
-                            continue;
+                            success++; count++; continue;
                         }
                     }
-
                     if (oldP === newP) { skipped++; count++; continue; }
-
                     if (await this.storage.pathExists(fOld)) {
                         await this.storage.move(fOld, fNew, { overwrite: true });
                         this.database.updateTrackPath(t.id, newP, t.album_id);
-                        
-                        // Also rename lossless path if it exists and follows the same naming pattern
                         if (t.lossless_path) {
                             const oldLossless = path.join(musicDir, t.lossless_path);
                             const losslessExt = path.extname(t.lossless_path);
                             const newLosslessP = path.join(path.dirname(t.lossless_path), `${base}${losslessExt}`).replace(/\\/g, "/");
                             const newLossless = path.join(musicDir, newLosslessP);
-                            
                             if (await this.storage.pathExists(oldLossless) && oldLossless !== newLossless) {
                                 await this.storage.move(oldLossless, newLossless, { overwrite: true });
                                 this.database.updateTrackLosslessPath(t.id, newLosslessP);
@@ -1062,19 +703,11 @@ export class Scanner implements ScannerService {
                         }
                         success++;
                     } else skipped++;
-                } catch (e) { 
-                    console.error(`❌ [Consolidate] Failed to process ${t.file_path}:`, e);
-                    failed++; 
-                }
+                } catch (e) { console.error(`❌ [Consolidate] Failed to process ${t.file_path}:`, e); failed++; }
                 count++;
                 if (count % 100 === 0 && (global as any).gc) (global as any).gc();
             }
-            
-            // Clean up any albums/artists that became empty due to deleted tracks
-            if (deleted > 0) {
-                await this.cleanupEmptyEntities();
-            }
-            
+            if (deleted > 0) await this.librarySync.cleanupEmptyEntities();
             return { success, failed, skipped, deleted };
         } finally { this.isConsolidating = false; }
     }

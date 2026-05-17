@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 import type { DatabaseService } from "../../core/database.js";
+import { VisibilityProfile } from "../../common/visibility.js";
 import type { ServerConfig } from "../../core/config.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 
@@ -203,7 +204,7 @@ export function createStatsRoutes(zendbService: ZenDBService, dbService: Databas
             }));
 
             // 4. Get local public releases
-            const localReleases = dbService.getReleases(true);
+            const localReleases = dbService.getReleases(VisibilityProfile.PUBLIC_STAGE);
             const formattedLocalReleases = localReleases.map(r => {
                 const tracks = dbService.getTracksByReleaseId(r.id);
                 const firstTrack = tracks[0];
@@ -260,7 +261,7 @@ export function createStatsRoutes(zendbService: ZenDBService, dbService: Databas
             const gunSites = await zendbService.getCommunitySites();
             const apActors = dbService.getFollowedActors();
             const apTracks = dbService.getRemoteTracks();
-            const localReleases = dbService.getReleases(true);
+            const localReleases = dbService.getReleases(VisibilityProfile.PUBLIC_STAGE);
 
             const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl;
             const apEnabled = !!publicUrl;

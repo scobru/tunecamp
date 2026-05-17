@@ -501,6 +501,9 @@ export const API = {
     clearFailedSoulseekDownloads: () => handleResponse(api.delete('search/content/soulseek/status/failed')),
     updateSoulseekCredentials: (creds: { username: string, password?: string }) => handleResponse(api.post('search/content/soulseek/credentials', creds)),
 
+    searchTorrents: (query: string, category = 'Music') => handleResponse(api.get<any[]>(`admin/torrent-search/search?q=${encodeURIComponent(query)}&cat=${category}`)),
+    downloadTorrentResult: (torrent: any, providerId: string) => handleResponse(api.post<{ success: boolean, message: string }>('admin/torrent-search/download', { torrent, providerId })),
+
     // --- Storage ---
     getGDriveAuthUrl: () => handleResponse(api.get<{ url: string }>('storage/gdrive/auth')),
     getGDriveAccounts: () => handleResponse(api.get<StorageAccount[]>('storage/gdrive/accounts')),

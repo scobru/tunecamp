@@ -4,6 +4,7 @@ import { BetterSqliteKvStore } from "./fedify-kv.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import { Temporal } from "@js-temporal/polyfill";
+import { VisibilityProfile } from "../../common/visibility.js";
 
 export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     const db = dbService.db;
@@ -108,8 +109,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (!dbService.isArtistLinkedToUserBySlug(handle)) return [];
                 const artist = dbService.getArtistBySlug(handle);
                 if (!artist) return [];
-                publicKey = artist.public_key;
-                privateKeyStr = artist.private_key;
+                publicKey = artist.public_key || null;
+                privateKeyStr = artist.private_key || null;
             }
 
             if (!privateKeyStr || !publicKey) return [];
@@ -148,11 +149,11 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
         if (artist) {
             // Get public releases
-            const albums = dbService.getAlbumsByArtist(artist.id, true);
+            const albums = dbService.getAlbumsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
             const releases = albums.filter(a => a.is_release && a.is_public);
             
             // Get public posts
-            const posts = dbService.getPostsByArtist(artist.id, true);
+            const posts = dbService.getPostsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
 
             // Fetch tracks for all releases
             const releaseIds = releases.map(r => r.id);

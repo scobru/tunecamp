@@ -14,7 +14,7 @@ import type { ActivityPubService } from "../../modules/activitypub/activitypub.s
 import type { SoulseekService } from "../../modules/integrations/soulseek.js";
 import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
-import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
+import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../../common/visibility.js";
 
 import multer from "multer";
 import { YouTubeCookieManager } from "../../utils/youtube-session.js";
@@ -90,24 +90,24 @@ export function createAdminRoutes(
                 // "My Releases" view: always show ONLY formal releases owned by this user.
                 // Library albums (scanned content) are never shown here, regardless of role.
                 releases = req.userId
-                    ? database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }))
+                    ? database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }))
                     : [];
             } else if (canSeeAll) {
                 // Admin/SuperUser global view: all formal releases
-                const formalReleases = database.getReleases(false).map(r => ({ ...r, is_formal_release: true }));
+                const formalReleases = database.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
                 releases = [...formalReleases];
 
                 // Only include library albums in promotion pipeline if explicitly requested (Curation Queue)
                 if (includeLibrary) {
-                    const pendingAlbums = database.getAlbums(false)
+                    const pendingAlbums = database.getAlbums(VisibilityProfile.ALL_ACCESS)
                         .filter(a => a.status !== 'draft')
                         .map(a => ({ ...a, is_formal_release: false }));
                     releases = [...releases, ...pendingAlbums];
                 }
             } else if (req.userId) {
                 // Non-admin artist: their formal releases + library albums they submitted for promotion
-                const ownedFormalReleases = database.getReleasesByOwner(req.userId, false).map(r => ({ ...r, is_formal_release: true }));
-                const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, false)
+                const ownedFormalReleases = database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, VisibilityProfile.ALL_ACCESS)
                     .filter(a => a.status && a.status !== 'draft')
                     .map(a => ({ ...a, is_formal_release: false }));
                 releases = [...ownedFormalReleases, ...ownedPendingAlbums];
@@ -480,7 +480,7 @@ export function createAdminRoutes(
                 } catch (e) {
                     console.error("❌ [Admin] Background rescan failed:", e);
                 }
-            })();
+            });
 
             res.json({ message: "Library maintenance and scan triggered in background" });
         } catch (error) {
@@ -795,7 +795,7 @@ export function createAdminRoutes(
                         }
                     }
                 }
-            })();
+            });
 
 
             // --- TRACKS UPDATE LOGIC ---
@@ -821,7 +821,7 @@ export function createAdminRoutes(
                                 });
                             }
                         }
-                    })();
+                    });
                 } else if (album) {
                     database.transaction(() => {
                         // Update library album tracks (standard library logic)
@@ -846,7 +846,7 @@ export function createAdminRoutes(
                             trackNum: index + 1
                         }));
                         database.updateTracksOrder(trackOrders);
-                    })();
+                    });
                 }
             }
 
@@ -1743,4 +1743,5 @@ export function createAdminRoutes(
 
     return router;
 }
+
 

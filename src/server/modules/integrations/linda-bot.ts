@@ -1,5 +1,6 @@
 import { Scanner } from "../catalog/scanner.js";
 import { DatabaseService } from "../../core/database.js";
+import { VisibilityProfile } from "../../common/visibility.js";
 import { getZen, Zen } from "../network/zen.js";
 import type { ServerConfig } from "../../core/config.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
@@ -177,7 +178,7 @@ export class LindaBotService {
         }
 
         console.log(`🔎 [LindaBot] Group Search for: "${query}"`);
-        const searchResults = this.database.search(query, false);
+        const searchResults = this.database.search(query, VisibilityProfile.PUBLIC_STAGE);
         const tracks = searchResults.tracks.slice(0, 3);
 
         if (tracks.length === 0) {

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { DatabaseService, Track } from "../../core/database.js";
+import { VisibilityProfile } from "../../common/visibility.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 
@@ -136,11 +137,11 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             orderedItems = [];
         } else if (artist) {
             // Get public releases
-            const albums = db.getAlbumsByArtist(artist.id, true);
+            const albums = db.getAlbumsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
             const releases = albums.filter(a => a.is_release && a.is_public);
 
             // Get posts (only public)
-            const posts = db.getPostsByArtist(artist.id, true);
+            const posts = db.getPostsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
 
             // OPTIMIZATION: Fetch all tracks for these releases in one go
             const releaseIds = releases.map(r => r.id);

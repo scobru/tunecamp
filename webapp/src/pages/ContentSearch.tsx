@@ -3,11 +3,13 @@ import { API } from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle } from 'lucide-react';
+import clsx from 'clsx';
 
 export const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'downloads'>('soulseek');
     const [results, setResults] = useState<any[]>([]);
+    const [torrentResults, setTorrentResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [downloads, setDownloads] = useState<any[]>([]);
     const [torrents, setTorrents] = useState<any[]>([]);
@@ -60,11 +62,16 @@ export const ContentSearch: React.FC = () => {
 
         setLoading(true);
         setResults([]);
+        setTorrentResults([]);
         setSearchError(null);
         try {
-            let data: any[];
-            data = await API.searchSoulseek(query);
-            setResults(data);
+            if (activeTab === 'soulseek') {
+                const data = await API.searchSoulseek(query);
+                setResults(data);
+            } else if (activeTab === 'torrents') {
+                const data = await API.searchTorrents(query);
+                setTorrentResults(data);
+            }
         } catch (err: any) {
             console.error(`Search failed: ${err.message}`);
             setSearchError("Search service is currently limited. Use manual links below.");
@@ -87,6 +94,18 @@ export const ContentSearch: React.FC = () => {
             alert(err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDownloadTorrentResult = async (torrent: any) => {
+        try {
+            await API.downloadTorrentResult(torrent, 'public-scraper');
+            alert('Torrent added to download queue!');
+            setActiveTab('torrents');
+            fetchTorrents();
+        } catch (err: any) {
+            console.error(`Failed to start torrent download: ${err.message}`);
+            alert(`Download failed: ${err.message}`);
         }
     };
 
@@ -266,93 +285,125 @@ export const ContentSearch: React.FC = () => {
             )}
 
             {activeTab === 'torrents' && (
-                <div className="space-y-6">
-                    <div className="card bg-base-200 border border-base-300 shadow-sm p-6">
-                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <RefreshCw size={20} className="text-primary" /> Add New Torrent
-                        </h2>
-                        <form onSubmit={handleAddTorrent} className="flex gap-2">
-                            <input 
-                                type="text" 
-                                placeholder="Paste magnet link here..."
-                                className="input input-bordered flex-1"
-                                value={magnetUri}
-                                onChange={e => setMagnetUri(e.target.value)}
-                            />
-                            <button type="submit" className="btn btn-primary gap-2" disabled={loading || !magnetUri}>
-                                {loading ? <span className="loading loading-spinner loading-xs"></span> : <Download size={18} />}
-                                Add Torrent
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                        <form onSubmit={handleSearch} className="flex gap-2 mb-8">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
+                                <input 
+                                    type="text" 
+                                    placeholder={`Search public trackers (1337x, TPB)...`}
+                                    className="input input-bordered w-full pl-10"
+                                    value={query}
+                                    onChange={e => setQuery(e.target.value)}
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary gap-2 min-w-[120px]" disabled={loading}>
+                                {loading ? <span className="loading loading-spinner loading-xs"></span> : <Search size={18} />}
+                                Search
                             </button>
                         </form>
-                        <p className="text-xs opacity-50 mt-2">
-                            Supports magnet links and info hashes. Files will be automatically imported into the library once completed.
-                        </p>
+
+                        <div className="grid gap-3">
+                            {torrentResults.length === 0 && !loading && (
+                                <div className="text-center py-20 bg-base-200/50 border border-dashed border-base-300 rounded-2xl">
+                                    <RefreshCw className="opacity-20 mx-auto mb-4" size={32} />
+                                    <p className="opacity-40 font-medium">Search for torrents or add a magnet below.</p>
+                                </div>
+                            )}
+
+                            {torrentResults.map((res: any, i: number) => (
+                                <div key={i} className="group card bg-base-200/50 hover:bg-base-200 border border-base-300/50 hover:border-primary/30 transition-all duration-200">
+                                    <div className="card-body p-4 flex-row justify-between items-center overflow-hidden">
+                                        <div className="flex-1 min-w-0 pr-4">
+                                            <h3 className="font-bold truncate text-sm lg:text-base group-hover:text-primary transition-colors" title={res.title}>
+                                                {res.title}
+                                            </h3>
+                                            <div className="text-[10px] uppercase opacity-50 flex flex-wrap gap-x-4 gap-y-1 mt-1 font-bold">
+                                                <span className="text-primary">{res.provider}</span>
+                                                <span>{res.size}</span>
+                                                <span className="text-success">S: {res.seeds}</span>
+                                                <span className="text-warning">P: {res.peers}</span>
+                                                <span>{res.time}</span>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => handleDownloadTorrentResult(res)}
+                                            className="btn btn-circle btn-sm btn-ghost hover:bg-primary hover:text-primary-content transition-all flex-shrink-0"
+                                            title="Download"
+                                        >
+                                            <Download size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="divider opacity-20">OR</div>
+
+                        <div className="card bg-base-200 border border-base-300 shadow-sm p-6">
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <RefreshCw size={20} className="text-primary" /> Add Manually
+                            </h2>
+                            <form onSubmit={handleAddTorrent} className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    placeholder="Paste magnet link here..."
+                                    className="input input-bordered flex-1"
+                                    value={magnetUri}
+                                    onChange={e => setMagnetUri(e.target.value)}
+                                />
+                                <button type="submit" className="btn btn-primary gap-2" disabled={loading || !magnetUri}>
+                                    {loading ? <span className="loading loading-spinner loading-xs"></span> : <Download size={18} />}
+                                    Add
+                                </button>
+                            </form>
+                        </div>
                     </div>
 
-                    <div className="overflow-x-auto bg-base-200/50 rounded-2xl border border-base-300 shadow-sm">
-                        <table className="table table-zebra w-full">
-                            <thead>
-                                <tr className="bg-base-300/50 text-base-content/60">
-                                    <th className="rounded-tl-2xl">Name</th>
-                                    <th>Status</th>
-                                    <th>Progress</th>
-                                    <th>Speed</th>
-                                    <th>Peers</th>
-                                    <th className="text-right rounded-tr-2xl">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-sm">
+                    <div className="space-y-6">
+                        <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
+                            <div className="p-4 bg-base-300 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+                                <Activity size={14} className="text-primary"/> Active Torrents
+                            </div>
+                            <div className="divide-y divide-base-content/5">
                                 {torrents.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-20 opacity-40 font-medium">No active torrents.</td>
-                                    </tr>
+                                    <div className="p-8 text-center opacity-30 text-xs italic">No active downloads</div>
                                 )}
                                 {torrents.map((t: any) => (
-                                    <tr key={t.info_hash} className="hover:bg-base-300/30 transition-colors">
-                                        <td className="max-w-md">
-                                            <div className="truncate font-semibold text-base-content" title={t.name}>
-                                                {t.name || t.info_hash}
+                                    <div key={t.info_hash} className="p-4 space-y-2">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-xs font-bold truncate" title={t.name}>{t.name || t.info_hash}</div>
+                                                <div className="text-[10px] opacity-40 font-mono truncate">{t.info_hash}</div>
                                             </div>
-                                            <div className="text-[10px] opacity-30 truncate">{t.info_hash}</div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge badge-sm px-3 h-6 font-bold uppercase tracking-tighter ${
-                                                t.status === 'completed' ? 'badge-success text-success-content' : 
-                                                t.status === 'failed' ? 'badge-error text-error-content' : 
-                                                'badge-info text-info-content'
-                                            }`}>
-                                                {t.status}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <progress 
-                                                    className={`progress w-24 ${t.status === 'completed' ? 'progress-success' : 'progress-primary'}`} 
-                                                    value={t.progress * 100} 
-                                                    max="100"
-                                                ></progress>
-                                                <span className="text-[10px] font-mono opacity-50">{(t.progress * 100).toFixed(1)}%</span>
-                                            </div>
-                                        </td>
-                                        <td className="text-[10px] font-mono opacity-60">
-                                            {t.downloadSpeed ? `${formatBytes(t.downloadSpeed)}/s` : '-'}
-                                        </td>
-                                        <td className="text-[10px] font-bold opacity-60">
-                                            {t.numPeers || 0}
-                                        </td>
-                                        <td className="text-right">
                                             <button 
                                                 onClick={() => handleDeleteTorrent(t.info_hash)}
-                                                className="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                                                title="Remove Torrent"
+                                                className="btn btn-ghost btn-xs text-error p-0 h-auto min-h-0"
                                             >
-                                                <Trash2 size={14} />
+                                                <Trash2 size={12} />
                                             </button>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <progress 
+                                                className={`progress h-1.5 flex-1 ${t.status === 'completed' ? 'progress-success' : 'progress-primary'}`} 
+                                                value={t.progress * 100} 
+                                                max="100"
+                                            ></progress>
+                                            <span className="text-[10px] font-mono opacity-50">{(t.progress * 100).toFixed(0)}%</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase">
+                                            <span className={clsx(
+                                                t.status === 'completed' ? 'text-success' : 
+                                                t.status === 'failed' ? 'text-error' : 
+                                                'text-info'
+                                            )}>{t.status}</span>
+                                            <span className="opacity-40">{t.downloadSpeed ? `${formatBytes(t.downloadSpeed)}/s` : ''}</span>
+                                        </div>
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

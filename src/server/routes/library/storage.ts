@@ -3,8 +3,9 @@ import { type GoogleDriveService } from "../../modules/storage/google-drive.serv
 import { type DatabaseService } from "../../core/database.types.js";
 import { type AuthenticatedRequest } from "../../middleware/auth.js";
 import { type CatalogService } from "../../modules/catalog/catalog.service.js";
+import { type DiscoveryService } from "../../modules/catalog/discovery.service.js";
 
-export function createStorageRouter(database: DatabaseService, gdriveService: GoogleDriveService, authMiddleware: any, catalogService: CatalogService) {
+export function createStorageRouter(database: DatabaseService, gdriveService: GoogleDriveService, authMiddleware: any, catalogService: CatalogService, discoveryService: DiscoveryService) {
     const router = Router();
 
     router.get("/gdrive/auth", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {

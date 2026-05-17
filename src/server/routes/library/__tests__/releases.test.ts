@@ -27,7 +27,7 @@ const mockDatabase = {
     getReleases: jest.fn(),
     getReleasesByOwner: jest.fn(),
     getRecentReleaseByMetadata: jest.fn(),
-    transaction: jest.fn((cb: any) => () => cb()),
+    transaction: jest.fn((cb: any) => cb()),
     db: {
         prepare: jest.fn(() => ({ run: jest.fn() }))
     }

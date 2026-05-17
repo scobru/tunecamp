@@ -138,7 +138,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                     updateStmt.run(r.path, r.lossless, r.id);
                     repairCount++;
                 }
-            })();
+            });
         }
 
         if (repairCount > 0) {
@@ -173,7 +173,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                     updateStmt.run(r.path, r.lossless, r.id);
                     encodedRepairCount++;
                 }
-            })();
+            });
             console.log(`✅ [Maintenance] Repaired ${encodedRepairCount} URL-encoded track paths.`);
         }
 

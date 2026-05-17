@@ -1,6 +1,7 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
 import type { Artist } from "../core/database.types.js";
+import { VisibilityProfile } from "../common/visibility.js";
 
 export class ArtistRepository extends BaseRepository {
     private getArtistStmt: Statement;
@@ -54,15 +55,20 @@ export class ArtistRepository extends BaseRepository {
         return this.mapArtist(row);
     }
 
-    getAll(): Artist[] {
-        const sql = `
+    getAll(profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Artist[] {
+        const publicOnly = profile === VisibilityProfile.PUBLIC_STAGE;
+        const baseSql = `
             SELECT a.*, a.wallet_address as walletAddress,
             (CASE WHEN EXISTS (SELECT 1 FROM admin WHERE artist_id = a.id)
                   OR EXISTS (SELECT 1 FROM releases WHERE artist_id = a.id)
                   OR EXISTS (SELECT 1 FROM albums WHERE artist_id = a.id AND is_release = 1)
                   THEN 0 ELSE 1 END) as isLibraryArtist
-            FROM artists a ORDER BY a.name
+            FROM artists a
         `;
+        const sql = publicOnly 
+            ? `${baseSql} WHERE a.visibility IN ('public', 'unlisted') ORDER BY a.name`
+            : `${baseSql} ORDER BY a.name`;
+            
         const rows = this.db.prepare(sql).all();
         return rows.map(row => this.mapArtist(row)) as Artist[];
     }
@@ -133,5 +139,18 @@ export class ArtistRepository extends BaseRepository {
             this.db.prepare("DELETE FROM followers WHERE artist_id = ?").run(id);
             this.db.prepare("DELETE FROM artists WHERE id = ?").run(id);
         })();
+    }
+
+    isLinkedToUser(id: number): boolean {
+        return !!this.db.prepare("SELECT 1 FROM admin WHERE artist_id = ?").get(id);
+    }
+
+    isLinkedToUserBySlug(slug: string): boolean {
+        return !!this.db.prepare("SELECT 1 FROM admin adm JOIN artists art ON adm.artist_id = art.id WHERE art.slug = ?").get(slug);
+    }
+
+    getCount(): number {
+        const row = this.db.prepare("SELECT COUNT(*) as count FROM artists").get() as any;
+        return row ? row.count : 0;
     }
 }

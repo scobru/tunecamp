@@ -20,13 +20,44 @@ export enum Capability {
   MANAGE_SYSTEM = 'MANAGE_SYSTEM'
 }
 
+/**
+ * Visibility Profile — Defines the scope of database read operations.
+ */
+export enum VisibilityProfile {
+  ALL_ACCESS = 'ALL_ACCESS',       // See everything (Admin/SuperUser)
+  PUBLIC_STAGE = 'PUBLIC_STAGE',   // See only released, public content
+  OWNER_SCOPED = 'OWNER_SCOPED'    // See public content + own private library
+}
+
 export interface ViewerContext {
   userId?: number | null;
   artistId?: number | null;
   role: UserRole;
+  isActive?: boolean;
 }
 
 export class VisibilityGuardian {
+  /**
+   * Translates a ViewerContext into a database access profile.
+   * This is the single source of truth for read scoping.
+   */
+  static getProfile(context: ViewerContext): VisibilityProfile {
+    const role = context.role;
+
+    // 1. Full Access: Admins and Super Users can see the entire Private Library
+    if ([UserRole.ROOT_ADMIN, UserRole.ADMIN, UserRole.SUPER_USER].includes(role)) {
+      return VisibilityProfile.ALL_ACCESS;
+    }
+
+    // 2. Owner Scoped: Logged-in users who aren't super users see public stage + their own files
+    if (context.userId) {
+      return VisibilityProfile.OWNER_SCOPED;
+    }
+
+    // 3. Guest/Anonymous: Public Stage only
+    return VisibilityProfile.PUBLIC_STAGE;
+  }
+
   /**
    * Helper to check if a role has administrative capabilities (access to admin area)
    */
