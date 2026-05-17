@@ -55,6 +55,26 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
     });
 
     /**
+     * POST /api/admin/torrents/seed
+     * Start seeding a list of files as a torrent
+     */
+    router.post("/seed", async (req: any, res) => {
+        const { filePaths, name } = req.body;
+        if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
+            return res.status(400).json({ error: "filePaths array is required" });
+        }
+        if (!name) return res.status(400).json({ error: "Torrent name is required" });
+
+        try {
+            const magnetUri = await torrentService.seedFiles(filePaths, name, req.userId || null);
+            res.json({ success: true, magnetUri });
+        } catch (error: any) {
+            console.error("❌ Torrent Seeding Error:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /**
      * DELETE /api/admin/torrents/:hash
      */
     router.delete("/:hash", async (req, res) => {

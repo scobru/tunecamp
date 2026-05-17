@@ -32,6 +32,8 @@ export const AlbumDetails = () => {
   const { ownedNFTs } = useOwnedNFTs(activeAddress);
   const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
+  const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const isTrackUnlocked = (track: any) => {
     return isAdmin || isPurchased(track.id) || 
@@ -149,6 +151,32 @@ export const AlbumDetails = () => {
     }
   };
 
+  const handleShareAsTorrent = async () => {
+      if (!album || !album.tracks) return;
+      
+      setIsSeeding(true);
+      try {
+          // Collect file paths from tracks
+          const filePaths = album.tracks
+            .map((t: any) => t.file_path || t.filePath)
+            .filter(Boolean);
+            
+          if (filePaths.length === 0) {
+              alert("No local files found for this album.");
+              return;
+          }
+
+          const res = await API.seedTorrent(filePaths, album.title);
+          setSeedingMagnet(res.magnetUri);
+          alert("Torrent seeding started!");
+      } catch (err: any) {
+          console.error("Seeding failed:", err);
+          alert(`Failed to start seeding: ${err.message}`);
+      } finally {
+          setIsSeeding(false);
+      }
+  };
+
 
 
 
@@ -250,6 +278,25 @@ export const AlbumDetails = () => {
               </div>
             </div>
 
+            {seedingMagnet && (
+              <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col gap-2 max-w-xl mx-auto md:mx-0 animate-fade-in">
+                 <div className="flex justify-between items-center text-xs font-bold text-primary uppercase tracking-widest">
+                    <span>Magnet Link Ready</span>
+                    <button className="btn btn-xs btn-ghost" onClick={() => setSeedingMagnet(null)}>Dismiss</button>
+                 </div>
+                 <div className="flex gap-2 items-center bg-base-100/50 p-2 rounded-xl border border-base-content/5">
+                    <code className="text-[10px] font-mono truncate flex-1">{seedingMagnet}</code>
+                    <button 
+                      className="btn btn-xs btn-primary" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(seedingMagnet);
+                        alert("Magnet link copied!");
+                      }}
+                    >Copy</button>
+                 </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-2">
               <button
                 className="btn btn-primary btn-lg rounded-2xl px-10 shadow-2xl shadow-primary/20 hover:scale-105 transition-all"
@@ -273,6 +320,16 @@ export const AlbumDetails = () => {
               >
                 <Share2 size={24} className="opacity-60" />
               </button>
+
+              {isAdmin && (
+                <button
+                  className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 transition-all", isSeeding && "loading")}
+                  onClick={handleShareAsTorrent}
+                  title="Share as Torrent (Seed)"
+                >
+                  <RefreshCw size={24} className={clsx("opacity-60", seedingMagnet && "text-primary opacity-100")} />
+                </button>
+              )}
 
 
               {(album.download === "free" || album.download === "codes") && (

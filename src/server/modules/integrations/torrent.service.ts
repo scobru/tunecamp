@@ -26,13 +26,98 @@ export class TorrentService {
             // Resume existing torrents
             const torrents = this.database.getTorrents();
             for (const t of torrents) {
-                if (t.status === 'downloading' || t.status === 'seeding' || t.status === 'metadata') {
+                if (t.status === 'downloading' || t.status === 'metadata') {
                     this.addTorrent(t.magnet_uri, t.owner_id);
+                } else if (t.status === 'seeding' && t.path) {
+                    // Resume seeding if we have the local files
+                    this.resumeSeeding(t);
                 }
             }
         } catch (e) {
             console.error("🚨 [TorrentService] Failed to initialize WebTorrent:", e);
         }
+    }
+
+    private async resumeSeeding(t: Torrent) {
+        if (!t.path || !await fs.pathExists(t.path)) {
+            console.warn(`⚠️ [TorrentService] Cannot resume seeding for ${t.name}, path missing: ${t.path}`);
+            this.database.updateTorrentStatus(t.info_hash, 'error');
+            return;
+        }
+
+        try {
+            // Find all files in the directory if it's a directory
+            const stats = await fs.stat(t.path);
+            let files: string[] = [];
+            if (stats.isDirectory()) {
+                const entries = await fs.readdir(t.path);
+                files = entries.map(e => path.join(t.path!, e));
+            } else {
+                files = [t.path];
+            }
+
+            this.client?.seed(files, { name: t.name || undefined }, (torrent) => {
+                console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${torrent.infoHash})`);
+                this.setupTorrentEvents(torrent, t.owner_id);
+            });
+        } catch (err) {
+            console.error(`❌ [TorrentService] Failed to resume seeding ${t.info_hash}:`, err);
+        }
+    }
+
+    public async seedFiles(filePaths: string[], name: string, ownerId: number | null): Promise<string> {
+        if (!this.client) throw new Error("Torrent client not initialized");
+
+        return new Promise((resolve, reject) => {
+            // Filter only existing files
+            const existingFiles = filePaths.filter(p => fs.existsSync(p));
+            if (existingFiles.length === 0) return reject(new Error("No valid files to seed"));
+
+            this.client!.seed(existingFiles, { name }, (torrent) => {
+                console.log(`📡 [TorrentService] Started seeding: ${torrent.name} (${torrent.infoHash})`);
+                
+                // Determine common base path
+                const commonPath = existingFiles.length === 1 ? existingFiles[0] : path.dirname(existingFiles[0]);
+
+                // Save to database
+                this.database.createTorrent({
+                    info_hash: torrent.infoHash,
+                    magnet_uri: torrent.magnetURI,
+                    owner_id: ownerId,
+                    status: 'seeding',
+                    name: torrent.name,
+                    path: commonPath
+                });
+
+                this.setupTorrentEvents(torrent, ownerId);
+                resolve(torrent.magnetURI);
+            });
+        });
+    }
+
+    private setupTorrentEvents(torrent: WebTorrent.Torrent, ownerId: number | null) {
+        torrent.on('upload', () => {
+            this.updateDbProgress(torrent);
+        });
+
+        torrent.on('download', () => {
+            this.updateDbProgress(torrent);
+        });
+
+        torrent.on('done', () => {
+            if (torrent.progress < 1) { // If it was a download that finished
+                console.log(`✅ [TorrentService] Torrent complete: ${torrent.name}`);
+                this.updateDbProgress(torrent, 'completed');
+                this.processCompletedTorrent(torrent, ownerId || 1);
+            } else {
+                this.updateDbProgress(torrent, 'seeding');
+            }
+        });
+
+        torrent.on('error', (err) => {
+            console.error(`❌ [TorrentService] Torrent ${torrent.infoHash} error:`, err);
+            this.updateDbProgress(torrent, 'error');
+        });
     }
 
     public async addTorrent(magnetUri: string, ownerId: number | null): Promise<string> {
@@ -42,34 +127,24 @@ export class TorrentService {
             this.client!.add(magnetUri, { path: path.join(this.musicDir, "downloads", "torrents") }, (torrent) => {
                 console.log(`📥 [TorrentService] Added torrent: ${torrent.name || torrent.infoHash}`);
                 
-                // Save to database
-                this.database.createTorrent({
-                    info_hash: torrent.infoHash,
-                    magnet_uri: magnetUri,
-                    owner_id: ownerId,
-                    status: 'metadata',
-                    name: torrent.name
-                });
+                // Save to database if not exists
+                const existing = this.database.getTorrent(torrent.infoHash);
+                if (!existing) {
+                    this.database.createTorrent({
+                        info_hash: torrent.infoHash,
+                        magnet_uri: magnetUri,
+                        owner_id: ownerId,
+                        status: 'metadata',
+                        name: torrent.name
+                    });
+                }
 
                 torrent.on('metadata', () => {
                     this.database.updateTorrentProgress(torrent.infoHash, 0, 'downloading', 0, 0, 0, torrent.length, torrent.path);
                     this.database.db.prepare("UPDATE torrents SET name = ? WHERE info_hash = ?").run(torrent.name, torrent.infoHash);
                 });
 
-                torrent.on('download', () => {
-                    this.updateDbProgress(torrent);
-                });
-
-                torrent.on('done', () => {
-                    console.log(`✅ [TorrentService] Torrent complete: ${torrent.name}`);
-                    this.updateDbProgress(torrent, 'completed');
-                    this.processCompletedTorrent(torrent, ownerId || 1);
-                });
-
-                torrent.on('error', (err) => {
-                    console.error(`❌ [TorrentService] Torrent ${torrent.infoHash} error:`, err);
-                    this.updateDbProgress(torrent, 'error');
-                });
+                this.setupTorrentEvents(torrent, ownerId);
 
                 resolve(torrent.infoHash);
             });
