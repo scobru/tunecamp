@@ -18,7 +18,7 @@ import clsx from "clsx";
 import { Comments } from "../components/Comments";
 import { RelatedTracks } from "../components/RelatedTracks";
 
-export const AlbumDetails = () => {
+const AlbumDetails = () => {
   const { idOrSlug } = useParams();
   const isRelease = window.location.pathname.startsWith('/releases');
   const [album, setAlbum] = useState<any | null>(null);
@@ -539,5 +539,10 @@ export const AlbumDetails = () => {
     </div>
   );
 };
+
+
+;
+
+export default AlbumDetails;
 
 

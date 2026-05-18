@@ -646,3 +646,5 @@ export const Network = () => {
   );
 };
 
+export default Network;
+

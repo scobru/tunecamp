@@ -15,25 +15,6 @@ export async function drainResponse(res: Response): Promise<void> {
         // Silently fail as we are just cleaning up
     }
 }
-
-/**
- * SAFELY executes a fetch request with a timeout.
- */
-export async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000): Promise<Response> {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
-
-    try {
-        const response = await fetch(url, {
-            ...options,
-            signal: controller.signal as any
-        });
-        return response;
-    } finally {
-        clearTimeout(id);
-    }
-}
-
 /**
  * SAFELY executes a fetch request.
  * If the response is not consumed by the caller, they MUST call drainResponse(res).

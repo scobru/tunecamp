@@ -20,7 +20,7 @@ export interface CatalogConfig {
   metadata?: Record<string, any>;
 }
 
-export interface PodcastConfig {
+interface PodcastConfig {
   enabled?: boolean;
   title?: string;
   description?: string;
@@ -42,21 +42,21 @@ export interface ArtistConfig {
   metadata?: Record<string, any>;
 }
 
-export interface DonationLink {
+interface DonationLink {
   platform: string;
   url: string;
   description?: string;
 }
 
-export interface ArtistLink {
+interface ArtistLink {
   [platform: string]: string;
 }
 
-export type DownloadMode = 'free' | 'paycurtain' | 'codes' | 'none';
+type DownloadMode = 'free' | 'paycurtain' | 'codes' | 'none';
 
-export type LicenseType = 'copyright' | 'cc-by' | 'cc-by-sa' | 'cc-by-nc' | 'cc-by-nc-sa' | 'cc-by-nc-nd' | 'cc-by-nd' | 'public-domain';
+type LicenseType = 'copyright' | 'cc-by' | 'cc-by-sa' | 'cc-by-nc' | 'cc-by-nc-sa' | 'cc-by-nc-nd' | 'cc-by-nd' | 'public-domain';
 
-export interface UnlockCodesConfig {
+interface UnlockCodesConfig {
   enabled: boolean;
   namespace?: string; // GunDB namespace (default: 'tunecamp')
   peers?: string[]; // Custom GunDB peers (optional)
@@ -83,17 +83,17 @@ export interface ReleaseConfig {
   metadata?: Record<string, any>;
 }
 
-export interface StreamingLink {
+interface StreamingLink {
   platform: string; // e.g., "Spotify", "Apple Music", "YouTube Music", etc.
   url: string;
 }
 
-export interface Credit {
+interface Credit {
   role: string;
   name: string;
 }
 
-export interface TrackConfig {
+interface TrackConfig {
   file?: string;
   url?: string;
   title?: string;
@@ -126,7 +126,7 @@ export interface Track {
   artistName?: string;
 }
 
-export interface Release {
+interface Release {
   config: ReleaseConfig;
   tracks: Track[];
   coverPath?: string;
@@ -134,14 +134,14 @@ export interface Release {
   slug: string;
 }
 
-export interface Catalog {
+interface Catalog {
   config: CatalogConfig;
   artist?: ArtistConfig; // Single artist (non-label mode)
   artists?: ArtistConfig[]; // Multiple artists (label mode)
   releases: Release[];
 }
 
-export interface BuildOptions {
+interface BuildOptions {
   inputDir: string;
   outputDir: string;
   theme?: string;
@@ -149,7 +149,7 @@ export interface BuildOptions {
   verbose?: boolean;
 }
 
-export interface GeneratorOptions extends BuildOptions {
+interface GeneratorOptions extends BuildOptions {
   watch?: boolean;
 }
 

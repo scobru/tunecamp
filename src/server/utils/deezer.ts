@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 
 const DEEZER_API_BASE = 'https://api.deezer.com';
 
-export class DeezerClient {
+class DeezerClient {
     private async request<T>(path: string): Promise<T> {
         const url = `${DEEZER_API_BASE}${path}`;
         const res = await fetch(url);

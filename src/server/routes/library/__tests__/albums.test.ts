@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import type { DatabaseService } from '../../../core/database.js';
 import type { CatalogService } from '../../../modules/catalog/catalog.service.js';
+import type { DiscoveryService } from '../../../modules/catalog/discovery.service.js';
 
 // Mock music-metadata
 jest.unstable_mockModule('music-metadata', () => ({
@@ -41,6 +42,10 @@ const mockCatalogService = {
     getAlbumForUser: jest.fn(),
 } as unknown as CatalogService;
 
+const mockDiscoveryService = {
+    getAlbumForUser: jest.fn(),
+} as unknown as DiscoveryService;
+
 describe('Albums Routes - Cache Optimization', () => {
     let app: express.Express;
     let tempMusicDir: string;
@@ -65,7 +70,7 @@ describe('Albums Routes - Cache Optimization', () => {
             next();
         });
 
-        const router = createAlbumsRoutes(mockDatabase, mockCatalogService, tempMusicDir);
+        const router = createAlbumsRoutes(mockDatabase, mockCatalogService, mockDiscoveryService, tempMusicDir);
         app.use('/albums', router);
 
         // Simple error handler
@@ -77,7 +82,9 @@ describe('Albums Routes - Cache Optimization', () => {
 
     afterEach(async () => {
         // Clean up temp directory
-        await fs.remove(tempMusicDir);
+        if (tempMusicDir) {
+            await fs.remove(tempMusicDir);
+        }
     });
 
     test('GET /albums/:id/cover returns correct cache headers (max-age=86400)', async () => {

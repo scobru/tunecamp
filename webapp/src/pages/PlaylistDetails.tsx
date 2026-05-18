@@ -16,7 +16,7 @@ import {
 import { formatDuration } from "../utils/format";
 import type { Playlist } from "../types";
 
-export const PlaylistDetails = () => {
+const PlaylistDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [playlist, setPlaylist] = useState<Playlist | null>(null);

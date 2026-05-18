@@ -1,6 +1,6 @@
 import { Heart, Github, Coffee } from 'lucide-react';
 
-export const Support = () => {
+const Support = () => {
     return (
         <div className="p-4 lg:p-8 animate-fade-in max-w-2xl mx-auto">
             <div className="text-center mb-12">

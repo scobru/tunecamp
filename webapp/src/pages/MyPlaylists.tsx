@@ -4,10 +4,10 @@ import { Link } from "react-router-dom";
 import { ListMusic, Plus, Music, Lock, Unlock, Heart, LayoutGrid, List, AlignJustify } from "lucide-react";
 import clsx from "clsx";
 import type { Playlist, UserPlaylist } from "../types";
-import { API } from "../services/api";
+import API from "../services/api";
 import { CreateUserPlaylistModal } from "../components/modals/CreateUserPlaylistModal";
 
-export const MyPlaylists = () => {
+const MyPlaylists = () => {
   const [playlists, setPlaylists] = useState<(Playlist | UserPlaylist)[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { API } from '../services/api';
+import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import type { TorrentSearchResult } from '../types';
 
-export const ContentSearch: React.FC = () => {
+const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'downloads'>('soulseek');
     const [results, setResults] = useState<any[]>([]);

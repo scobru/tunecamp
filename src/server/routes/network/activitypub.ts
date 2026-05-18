@@ -540,24 +540,3 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
     return router;
 }
 
-export function createWebFingerRoute(apService: ActivityPubService): Router {
-    const router = Router();
-
-    router.get("/webfinger", (req, res) => {
-        const resource = req.query.resource as string;
-        if (!resource || !resource.startsWith("acct:")) {
-            return res.status(400).send("Bad Request: Missing or invalid resource param");
-        }
-
-        const finger = apService.generateWebFinger(resource);
-        if (!finger) {
-            return res.status(404).send("Not found");
-        }
-
-        res.setHeader("Content-Type", "application/jrd+json");
-        res.json(finger);
-    });
-
-    return router;
-}
-

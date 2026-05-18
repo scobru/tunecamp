@@ -54,7 +54,7 @@ const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<T> => {
     }
 };
 
-export const API = {
+const API = {
     getToken: () => localStorage.getItem('tunecamp_token'),
     setToken: (token: string | null) => {
         if (token) localStorage.setItem('tunecamp_token', token);

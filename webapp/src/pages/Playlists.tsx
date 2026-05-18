@@ -11,7 +11,7 @@ interface UnifiedPlaylist extends Playlist {
   isUserPlaylist?: boolean;
 }
 
-export const Playlists = () => {
+const Playlists = () => {
   const [playlists, setPlaylists] = useState<UnifiedPlaylist[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');

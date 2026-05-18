@@ -7,7 +7,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import type { Track } from '../types';
 
-export const Files = () => {
+const Files = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const currentPath = searchParams.get('path') || '/';
     const [items, setItems] = useState<any[]>([]);

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
-import { API } from "../services/api";
+import API from "../services/api";
 import { ZenPlaylists } from "../services/zen";
 import {
   Music,
@@ -40,7 +40,7 @@ function toPlayableTrack(t: Track | UserPlaylistTrack): Track {
   };
 }
 
-export const MyPlaylistDetails = () => {
+const MyPlaylistDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [playlist, setPlaylist] = useState<Playlist | UserPlaylist | null>(null);

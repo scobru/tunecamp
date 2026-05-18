@@ -125,6 +125,9 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
             });
 
             const createdRelease = database.getRelease(newReleaseId);
+            if (createdRelease && createdRelease.visibility === 'public') {
+                await publishing.syncRelease(newReleaseId).catch(e => console.error("Sync failed:", e));
+            }
             res.status(201).json(createdRelease);
         } catch (error) {
             console.error("Error creating release:", error);

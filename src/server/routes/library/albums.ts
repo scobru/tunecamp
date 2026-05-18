@@ -231,7 +231,7 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
         }
 
         const tracks = database.getTracksByAlbum(id);
-        if (tracks.length === 0) throw new BadRequestError("Album has no tracks");
+        if (tracks.length === 0) throw new NotFoundError("No tracks found");
 
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(album.title || 'album')}.zip"`);

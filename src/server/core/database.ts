@@ -11,18 +11,14 @@ import { RemoteContentRepository } from "../repositories/remote-content.reposito
 
 // Re-export all types so consumers can continue to import from here
 export type {
-    Album, Artist, Track, Release, ReleaseTrack, Follower, Post, ApNote,
-    Playlist, PlayHistoryEntry, RemoteActor, RemoteContent, Torrent, GunCacheEntry,
-    OAuthClient, OAuthLink, TrackWithPlayCount, ArtistWithPlayCount, ListeningStats,
-    LikeEntry, SoulseekDownload, DatabaseService, TorrentStatus, StorageAccount,
+    Album, Artist, Track, Release, Post, Playlist,
+    DatabaseService,
     TrackDTO, AlbumDTO
 } from "./database.types.js";
 
 import type {
-    Album, Artist, Track, Release, ReleaseTrack, Follower, Post, ApNote,
-    Playlist, PlayHistoryEntry, RemoteActor, RemoteContent, Torrent, GunCacheEntry,
-    OAuthClient, OAuthLink, TrackWithPlayCount, ArtistWithPlayCount, ListeningStats,
-    LikeEntry, SoulseekDownload, DatabaseService, TorrentStatus, StorageAccount
+    Album, Artist, Track, Release, Post, Playlist,
+    DatabaseService
 } from "./database.types.js";
 
 export function createDatabase(dbPath: string): DatabaseService {

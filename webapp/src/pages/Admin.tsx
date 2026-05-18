@@ -16,7 +16,7 @@ import { IntegrationsPanel } from "../components/admin/IntegrationsPanel";
 import { BackupPanel } from "../components/admin/BackupPanel";
 import { StoragePanel } from "../components/admin/StoragePanel";
 
-export const Admin = () => {
+const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
   const navigate = useNavigate();
   const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin';

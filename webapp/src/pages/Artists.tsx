@@ -5,7 +5,7 @@ import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucid
 import type { Artist, User as AppUser } from '../types';
 import clsx from 'clsx';
 
-export const Artists = () => {
+const Artists = () => {
     const [artists, setArtists] = useState<Artist[]>([]);
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
     const [loading, setLoading] = useState(true);
@@ -201,4 +201,9 @@ export const Artists = () => {
         </div>
     );
 };
+
+
+};
+
+export default Artists;
 

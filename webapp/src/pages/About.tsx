@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Music, Shield, Users, Zap, Globe, Cpu, Brain, CreditCard, Cloud, Layout } from "lucide-react";
 
-export const About = () => {
+const About = () => {
   return (
     <div className="p-4 lg:p-8 animate-fade-in max-w-5xl mx-auto space-y-12">
       <div className="text-center space-y-4">

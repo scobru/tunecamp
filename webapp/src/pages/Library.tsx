@@ -6,7 +6,7 @@ import type { Album } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
 import clsx from 'clsx';
 
-export const Library = () => {
+const Library = () => {
     const { isAuthenticated, role, user } = useAuthStore();
     const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
     const isArtist = !!user?.artistId;
@@ -105,3 +105,7 @@ export const Library = () => {
         </div>
     );
 };
+ );
+};
+
+export default Library;

@@ -30,7 +30,7 @@ describe("AuthService", () => {
         const admin = db.prepare("SELECT * FROM admin WHERE username = ?").get("admin");
         expect(admin).toBeDefined();
         expect(admin.username).toBe("admin");
-        expect(admin.role).toBe("admin");
+        expect(admin.role).toBe("root_admin");
     });
 
     test("isDefaultPassword returns true for default password tunecamp", async () => {

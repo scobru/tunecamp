@@ -3,15 +3,19 @@ import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
 import type { CatalogService } from '../../../modules/catalog/catalog.service.js';
+import type { DiscoveryService } from '../../../modules/catalog/discovery.service.js';
 
 // Mock dependencies
 const mockCatalogService = {
-    getOverview: jest.fn(),
-    search: jest.fn(),
     getSettings: jest.fn(),
     getRemoteTracks: jest.fn(),
     getRemotePosts: jest.fn(),
 } as unknown as CatalogService;
+
+const mockDiscoveryService = {
+    getOverview: jest.fn(),
+    search: jest.fn(),
+} as unknown as DiscoveryService;
 
 describe('Catalog Routes', () => {
     let app: express.Express;
@@ -33,7 +37,7 @@ describe('Catalog Routes', () => {
             next();
         });
 
-        const router = createCatalogRoutes(mockCatalogService);
+        const router = createCatalogRoutes(mockCatalogService, mockDiscoveryService);
         app.use('/catalog', router);
     });
 
@@ -47,17 +51,17 @@ describe('Catalog Routes', () => {
 
         test('should return overview from service', async () => {
             mockIsAdmin = true;
-            (mockCatalogService.getOverview as jest.Mock<any>).mockResolvedValue(mockOverview);
+            (mockDiscoveryService.getOverview as jest.Mock<any>).mockResolvedValue(mockOverview);
 
             const response = await request(app).get('/catalog');
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(mockOverview);
-            expect(mockCatalogService.getOverview).toHaveBeenCalledWith(true);
+            expect(mockDiscoveryService.getOverview).toHaveBeenCalledWith(true);
         });
 
         test('should handle errors and return 500', async () => {
-            (mockCatalogService.getOverview as jest.Mock<any>).mockRejectedValue(new Error('Service Error'));
+            (mockDiscoveryService.getOverview as jest.Mock<any>).mockRejectedValue(new Error('Service Error'));
 
             const response = await request(app).get('/catalog');
 
@@ -69,13 +73,13 @@ describe('Catalog Routes', () => {
     describe('GET /catalog/search', () => {
         test('should search via service', async () => {
             const mockResults = { artists: [], albums: [], tracks: [] };
-            (mockCatalogService.search as jest.Mock<any>).mockResolvedValue(mockResults);
+            (mockDiscoveryService.search as jest.Mock<any>).mockResolvedValue(mockResults);
 
             const response = await request(app).get('/catalog/search?q=test');
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(mockResults);
-            expect(mockCatalogService.search).toHaveBeenCalledWith('test', false);
+            expect(mockDiscoveryService.search).toHaveBeenCalledWith('test', false, undefined);
         });
     });
 

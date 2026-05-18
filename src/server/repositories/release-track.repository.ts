@@ -112,7 +112,7 @@ export class ReleaseTrackRepository extends BaseRepository {
             trackIds.forEach((trackId, index) => {
                 stmt.run(index + 1, releaseId, trackId);
             });
-        });
+        })();
     }
 
     sync(releaseId: number, trackIds: number[]): void {
@@ -160,7 +160,7 @@ export class ReleaseTrackRepository extends BaseRepository {
                     }
                 }
             });
-        });
+        })();
     }
 
     cleanUpGhostTracks(releaseId: number): void {

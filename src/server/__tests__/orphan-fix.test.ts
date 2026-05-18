@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { createDatabase } from '../core/database.js';
 import { Scanner } from '../modules/catalog/scanner.js';
+import { runStartupMaintenance } from '../modules/catalog/maintenance.startup.js';
 import path from 'path';
 import fs from 'fs-extra';
 
@@ -81,8 +82,11 @@ describe('Orphan Release Fix Verification', () => {
         expect(album.artist_id).toBeNull();
         expect(album.owner_id).toBeNull();
 
-        // 5. Run the fixing logic
-        await (scanner as any).cleanupEmptyEntities();
+        // Create a default admin so runStartupMaintenance doesn't skip fixing ownership/artists
+        db.db.prepare("INSERT OR IGNORE INTO admin (username, password_hash, role) VALUES (?, ?, ?)").run("admin", "admin", "admin");
+
+        // 5. Run the fixing logic (Startup Maintenance claims orphans and auto-assigns artists)
+        await runStartupMaintenance(db, { musicDir: TEST_MUSIC_DIR } as any);
 
         // 6. Verify it is FIXED
         album = db.getAlbum(albumId);
@@ -144,7 +148,7 @@ describe('Orphan Release Fix Verification', () => {
         let album = db.getAlbum(albumId);
         expect(album).toBeDefined();
 
-        await (scanner as any).cleanupEmptyEntities();
+        await (scanner as any).librarySync.cleanupEmptyEntities();
 
         album = db.getAlbum(albumId);
         expect(album).toBeUndefined(); // Should have been deleted

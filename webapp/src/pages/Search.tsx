@@ -8,7 +8,7 @@ import { formatDuration } from '../utils/format';
 import clsx from 'clsx';
 import type { Track, Album, Artist, Playlist } from '../types';
 
-export const Search = () => {
+const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
     const [inputValue, setInputValue] = useState(query);

@@ -1,5 +1,6 @@
 
 import { createDatabase } from "../../../core/database.js";
+import { VisibilityProfile } from "../../../common/visibility.js";
 import fs from "fs";
 import path from "path";
 
@@ -93,7 +94,7 @@ describe("ActivityPub Outbox Performance", () => {
 
     test("Benchmark N+1 vs Bulk Fetch", () => {
         const artist = dbService.getArtistByName("Test Artist")!;
-        const albums = dbService.getAlbumsByArtist(artist.id, true);
+        const albums = dbService.getAlbumsByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
         const releases = albums.filter((a: any) => a.is_release && a.is_public);
 
         // Measure N+1

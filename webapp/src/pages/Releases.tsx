@@ -5,7 +5,7 @@ import { ReleaseCard } from '../components/ui/ReleaseCard';
 import { useAuthStore } from '../stores/useAuthStore';
 import clsx from 'clsx';
 
-export const Releases = () => {
+const Releases = () => {
     const { isAuthenticated } = useAuthStore();
     const [releases, setReleases] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -88,3 +88,7 @@ export const Releases = () => {
         </div>
     );
 };
+ );
+};
+
+export default Releases;

@@ -257,13 +257,10 @@ export class TrackRepository extends BaseRepository {
     }
 
     updateArtist(id: number, artistId: number | null, artistName: string | null): void {
-        console.log("[DEBUG trackRepository.updateArtist]", { id, artistId, artistName });
         this.db.transaction(() => {
-            const res = this.db.prepare("UPDATE tracks SET artist_id = ?, artist_name = ? WHERE id = ?").run(artistId, artistName, id);
-            console.log("[DEBUG trackRepository.updateArtist tracks changes]", res.changes);
-            const res2 = this.db.prepare("UPDATE release_tracks SET artist_name = ? WHERE track_id = ?").run(artistName, id);
-            console.log("[DEBUG trackRepository.updateArtist release_tracks changes]", res2.changes);
-        });
+            this.db.prepare("UPDATE tracks SET artist_id = ?, artist_name = ? WHERE id = ?").run(artistId, artistName, id);
+            this.db.prepare("UPDATE release_tracks SET artist_name = ? WHERE track_id = ?").run(artistName, id);
+        })();
     }
 
     updateOwner(id: number, ownerId: number | null): void {
@@ -294,7 +291,7 @@ export class TrackRepository extends BaseRepository {
                 console.error(`🚨 [TrackRepository] Merge failed during transaction (${fromId} -> ${toId}):`, err);
                 throw err; // Re-throw to ensure transaction rollback
             }
-        });
+        })();
     }
 
     getTrackOwners(id: number): number[] {

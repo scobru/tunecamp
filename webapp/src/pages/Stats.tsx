@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { BarChart2, User, Music } from 'lucide-react';
 
-export const Stats = () => {
+const Stats = () => {
     const [topTracks, setTopTracks] = useState<any[]>([]);
     const [topArtists, setTopArtists] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -94,4 +94,9 @@ export const Stats = () => {
         </div>
     );
 };
+
+
+};
+
+export default Stats;
 

@@ -51,7 +51,7 @@ describe('Artists Routes', () => {
         const mockMetadataService = {
             searchArtist: jest.fn().mockReturnValue([])
         };
-        app.use('/api/artists', createArtistsRoutes(mockDatabase as any, musicDir, mockMetadataService as any, {} as any));
+        app.use('/api/artists', createArtistsRoutes(mockDatabase as any, musicDir, mockMetadataService as any, {} as any, {} as any));
     });
 
     describe('GET /api/artists', () => {

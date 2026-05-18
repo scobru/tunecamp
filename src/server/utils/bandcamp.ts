@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 import { load } from "cheerio";
 
 export const BANDCAMP_IMAGE_BASE = "https://f4.bcbits.com/img";
-export const BANDCAMP_SEARCH_API_URL = "https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic";
+const BANDCAMP_SEARCH_API_URL = "https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic";
 const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 export interface BandcampSearchResult {
@@ -18,7 +18,7 @@ export interface BandcampSearchResult {
     location?: string;
 }
 
-export interface BandcampTrack {
+interface BandcampTrack {
     title: string;
     duration: number;
     position: number;

@@ -1,11 +1,11 @@
 import fetch from "node-fetch";
 
 // ─── Config (from nuclear-plugin-soundcloud) ──────────────────────────────────
-export const SOUNDCLOUD_URL = "https://soundcloud.com";
-export const SOUNDCLOUD_API_V2 = "https://api-v2.soundcloud.com";
-export const CLIENT_ID_REGEX = /[{,]client_id:"(\w+)"/;
-export const SNDCDN_SCRIPT_URL_REGEX = /https?:\/\/[^\s"]*sndcdn\.com[^\s"]*\.js/g;
-export const ARTWORK_LARGE_SUFFIX = "-t500x500";
+const SOUNDCLOUD_URL = "https://soundcloud.com";
+const SOUNDCLOUD_API_V2 = "https://api-v2.soundcloud.com";
+const CLIENT_ID_REGEX = /[{,]client_id:"(\w+)"/;
+const SNDCDN_SCRIPT_URL_REGEX = /https?:\/\/[^\s"]*sndcdn\.com[^\s"]*\.js/g;
+const ARTWORK_LARGE_SUFFIX = "-t500x500";
 export const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

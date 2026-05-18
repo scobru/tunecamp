@@ -13,7 +13,7 @@ export function createCatalogRoutes(catalogService: CatalogService, discoverySer
      * GET /api/catalog/overview
      * Returns statistics, latest albums, and releases
      */
-    router.get("/overview", async (req: any, res) => {
+    router.get(["/", "/overview"], async (req: any, res) => {
         try {
             const isAdmin = req.isAdmin || req.isSuperUser;
             const overview = await discoveryService.getOverview(isAdmin, req.username);

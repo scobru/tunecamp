@@ -6,33 +6,33 @@ import { useConfigStore } from "./stores/useConfigStore";
 import { SetupWizardModal } from "./components/modals/SetupWizardModal";
 
 // Lazy-load all page components to reduce initial bundle size
-const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
-const Releases = lazy(() => import("./pages/Releases").then(m => ({ default: m.Releases })));
-const Library = lazy(() => import("./pages/Library").then(m => ({ default: m.Library })));
-const AlbumDetails = lazy(() => import("./pages/AlbumDetails").then(m => ({ default: m.AlbumDetails })));
-const Artists = lazy(() => import("./pages/Artists").then(m => ({ default: m.Artists })));
-const ArtistDetails = lazy(() => import("./pages/ArtistDetails").then(m => ({ default: m.ArtistDetails })));
-const Tracks = lazy(() => import("./pages/Tracks").then(m => ({ default: m.Tracks })));
-const Stats = lazy(() => import("./pages/Stats").then(m => ({ default: m.Stats })));
-const Search = lazy(() => import("./pages/Search").then(m => ({ default: m.Search })));
-const Network = lazy(() => import("./pages/Network").then(m => ({ default: m.Network })));
-const Support = lazy(() => import("./pages/Support").then(m => ({ default: m.Support })));
-const Playlists = lazy(() => import("./pages/Playlists").then(m => ({ default: m.Playlists })));
-const PlaylistDetails = lazy(() => import("./pages/PlaylistDetails").then(m => ({ default: m.PlaylistDetails })));
-const MyPlaylists = lazy(() => import("./pages/MyPlaylists").then(m => ({ default: m.MyPlaylists })));
-const MyPlaylistDetails = lazy(() => import("./pages/MyPlaylistDetails").then(m => ({ default: m.MyPlaylistDetails })));
-const Post = lazy(() => import("./pages/Post").then(m => ({ default: m.PostPage })));
-const Wallet = lazy(() => import("./pages/Wallet").then(m => ({ default: m.Wallet })));
-const Profile = lazy(() => import("./pages/Profile").then(m => ({ default: m.Profile })));
-const MyMusic = lazy(() => import("./pages/MyMusic").then(m => ({ default: m.MyMusic })));
-const Social = lazy(() => import("./pages/Social").then(m => ({ default: m.Social })));
-const About = lazy(() => import("./pages/About").then(m => ({ default: m.About })));
-const SharePage = lazy(() => import("./pages/SharePage").then(m => ({ default: m.SharePage })));
-const ContentSearch = lazy(() => import("./pages/ContentSearch").then(m => ({ default: m.ContentSearch })));
+const Home = lazy(() => import("./pages/Home"));
+const Releases = lazy(() => import("./pages/Releases"));
+const Library = lazy(() => import("./pages/Library"));
+const AlbumDetails = lazy(() => import("./pages/AlbumDetails"));
+const Artists = lazy(() => import("./pages/Artists"));
+const ArtistDetails = lazy(() => import("./pages/ArtistDetails"));
+const Tracks = lazy(() => import("./pages/Tracks"));
+const Stats = lazy(() => import("./pages/Stats"));
+const Search = lazy(() => import("./pages/Search"));
+const Network = lazy(() => import("./pages/Network"));
+const Support = lazy(() => import("./pages/Support"));
+const Playlists = lazy(() => import("./pages/Playlists"));
+const PlaylistDetails = lazy(() => import("./pages/PlaylistDetails"));
+const MyPlaylists = lazy(() => import("./pages/MyPlaylists"));
+const MyPlaylistDetails = lazy(() => import("./pages/MyPlaylistDetails"));
+const Post = lazy(() => import("./pages/Post").then(m => ({ default: m.PostPage }))); // Special case
+const Wallet = lazy(() => import("./pages/Wallet"));
+const Profile = lazy(() => import("./pages/Profile"));
+const MyMusic = lazy(() => import("./pages/MyMusic"));
+const Social = lazy(() => import("./pages/Social"));
+const About = lazy(() => import("./pages/About"));
+const SharePage = lazy(() => import("./pages/SharePage"));
+const ContentSearch = lazy(() => import("./pages/ContentSearch"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
-const Favorites = lazy(() => import("./pages/Favorites").then(m => ({ default: m.Favorites })));
+const Favorites = lazy(() => import("./pages/Favorites"));
 
 
 const LoadingSpinner = () => (

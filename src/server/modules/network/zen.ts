@@ -195,4 +195,3 @@ export function getZen(options?: ZenOptions): any {
  * Re-exports from ZEN for convenience
  */
 export const Zen = ZEN;
-export default zenInstance;

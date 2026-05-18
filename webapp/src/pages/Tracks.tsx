@@ -21,7 +21,7 @@ import { formatDuration } from "../utils/format";
 import type { Track } from "../types";
 import clsx from "clsx";
 
-export const Tracks = () => {
+const Tracks = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -257,5 +257,10 @@ export const Tracks = () => {
     </div>
   );
 };
+
+
+;
+
+export default Tracks;
 
 

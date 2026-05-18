@@ -1,6 +1,6 @@
 import { TorrentSearchProvider, TorrentSearchResult } from "../../core/torrent-search.types.js";
 
-export class TorrentSearchService {
+class TorrentSearchService {
     private providers: TorrentSearchProvider[] = [];
 
     constructor() {

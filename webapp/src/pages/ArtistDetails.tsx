@@ -19,7 +19,7 @@ const PlatformIcon = ({ platform }: { platform: string }) => {
     return <Globe size={16} />;
 };
 
-export const ArtistDetails = () => {
+const ArtistDetails = () => {
     const { idOrSlug } = useParams();
     const { cacheBuster } = useConfigStore();
     const [artist, setArtist] = useState<Artist | null>(null);
@@ -341,4 +341,9 @@ export const ArtistDetails = () => {
         </div>
     );
 };
+
+
+};
+
+export default ArtistDetails;
 

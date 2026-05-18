@@ -35,13 +35,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 publicReleases.map(r => r.artist_id).filter(id => id !== null)
             );
 
-            // 2. Determine which artists have PUBLIC library albums
-            const publicAlbums = database.getAlbums(VisibilityProfile.PUBLIC_STAGE);
-            const libraryAlbumArtistIds = new Set(
-                publicAlbums.map(a => a.artist_id).filter(id => id !== null)
-            );
-
-            // 3. Determine which artists are STARRED by the user
+            // 2. Determine which artists are STARRED by the user
             const starredItems = username ? database.getStarredItems(username, 'artist') : [];
             const starredArtistIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
 
@@ -49,7 +43,6 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 if (isAdmin) return true;
                 if (req.userId && artist.id === req.userId) return true; // TODO: Fix userId vs artistId logic
                 if (formalReleaseArtistIds.has(artist.id)) return true;
-                if (libraryAlbumArtistIds.has(artist.id)) return true;
                 if (starredArtistIds.has(artist.id)) return true;
                 return false;
             });
@@ -63,6 +56,27 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
         } catch (error) {
             console.error("Error getting artists:", error);
             res.status(500).json({ error: "Failed to fetch artists" });
+        }
+    });
+
+    /**
+     * POST /api/artists
+     * Create a new artist profile (Admin only)
+     */
+    router.post("/", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin && !req.isSuperUser) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        try {
+            const { name, bio, photoPath, walletAddress, externalLinks, status } = req.body;
+            if (!name) {
+                return res.status(400).json({ error: "Artist name is required" });
+            }
+            const newArtistId = database.createArtist(name, bio, photoPath, walletAddress, externalLinks, status);
+            res.status(201).json({ id: newArtistId, name, bio });
+        } catch (error) {
+            console.error("Error creating artist:", error);
+            res.status(500).json({ error: "Failed to create artist" });
         }
     });
 
@@ -100,34 +114,63 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 return res.status(404).json({ error: "Artist not found" });
             }
 
-            const isAdmin = req.isAdmin || req.isSuperUser || (req.artistId && req.artistId === artist.id);
-            const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
-
-            // Get formal releases (visible to everyone if public)
-            const formalReleases = database.getReleasesByArtist(artist.id, profile, artist.name);
-            const publicFormalReleases = formalReleases.filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
-
-            // Get library albums (non-formal releases)
-            const libraryAlbums = database.getAlbumsByArtist(artist.id, profile, artist.name);
-
-            // Get loose tracks (tracks with no album)
-            const allArtistTracks = database.getTracksByArtist(artist.id, profile, artist.name);
-            const looseTracks = allArtistTracks.filter(t => !t.album_id);
-
-            res.json({
-                ...artist,
-                coverImage: `/api/artists/${artist.id}/cover`,
-                releases: publicFormalReleases.map(r => ({ ...r, coverImage: r.cover_path })),
-                albums: libraryAlbums.map(a => ({ ...a, coverImage: a.cover_path })),
-                tracks: looseTracks,
-                starred: req.username ? database.isStarred(req.username, 'artist', String(artist.id)) : false,
-                rating: req.username ? database.getItemRating(req.username, 'artist', String(artist.id)) : 0
-            });
-        } catch (error) {
-            console.error("Error getting artist:", error);
-            res.status(500).json({ error: "Failed to fetch artist" });
-        }
-    });
+             const isAdmin = req.isAdmin || req.isSuperUser || (req.artistId && req.artistId === artist.id);
+             const username = req.username;
+ 
+             // Get formal releases (visible to everyone if public)
+             const formalReleases = database.getReleasesByArtist(artist.id, isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE, artist.name);
+             const publicFormalReleases = formalReleases.filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
+ 
+             // Get all library albums (non-formal releases) - fetch with ALL_ACCESS if we need to filter starred items, or just PUBLIC_STAGE otherwise
+             const allLibraryAlbums = database.getAlbumsByArtist(artist.id, VisibilityProfile.ALL_ACCESS, artist.name);
+ 
+             // Get starred items for user to enable visibility override
+             const starredAlbums = username ? database.getStarredItems(username, 'album') : [];
+             const starredAlbumIds = new Set(starredAlbums.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
+ 
+             const starredTracks = username ? database.getStarredItems(username, 'track') : [];
+             const starredTrackIds = new Set(starredTracks.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
+ 
+             const allArtistTracks = database.getTracksByArtist(artist.id, VisibilityProfile.ALL_ACCESS, artist.name);
+             const starredTrackAlbumIds = new Set(
+                 allArtistTracks.filter(t => starredTrackIds.has(t.id)).map(t => t.album_id).filter(id => id !== null)
+             );
+ 
+             // Filter library albums based on visibility and starred status
+             const libraryAlbums = allLibraryAlbums.filter(album => {
+                 if (isAdmin) return true;
+                 if (album.visibility === 'public' || album.visibility === 'unlisted') return true;
+                 if (req.userId && album.owner_id === req.userId) return true;
+                 if (starredAlbumIds.has(album.id)) return true;
+                 if (starredTrackAlbumIds.has(album.id)) return true;
+                 return false;
+             });
+ 
+             // Filter loose tracks based on visibility and starred status
+             const looseTracks = allArtistTracks.filter(track => {
+                 if (track.album_id) return false; // not loose track
+                 if (isAdmin) return true;
+                 const trackVisibility = (track as any).visibility || 'public';
+                 if (trackVisibility === 'public' || trackVisibility === 'unlisted') return true;
+                 if (req.userId && (track as any).owner_id === req.userId) return true;
+                 if (starredTrackIds.has(track.id)) return true;
+                 return false;
+             });
+ 
+             res.json({
+                 ...artist,
+                 coverImage: `/api/artists/${artist.id}/cover`,
+                 releases: publicFormalReleases.map(r => ({ ...r, coverImage: r.cover_path })),
+                 albums: libraryAlbums.map(a => ({ ...a, coverImage: a.cover_path })),
+                 tracks: looseTracks,
+                 starred: req.username ? database.isStarred(req.username, 'artist', String(artist.id)) : false,
+                 rating: req.username ? database.getItemRating(req.username, 'artist', String(artist.id)) : 0
+             });
+         } catch (error) {
+             console.error("Error getting artist:", error);
+             res.status(500).json({ error: "Failed to fetch artist" });
+         }
+     });
 
     /**
      * GET /api/artists/:id/cover

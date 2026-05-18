@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { API } from "../../services/api";
+import API from "../../services/api";
 import { Save, Heart } from "lucide-react";
 
 import type { UserPlaylist, Playlist } from "../../types";

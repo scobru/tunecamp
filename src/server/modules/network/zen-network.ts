@@ -13,7 +13,7 @@ import { disc, hwid } from "zen/lib/discover.js";
 import { scanbg, mkpat } from "zen/lib/scan.js";
 
 export const kprs = new Set<string>(); // Known peers
-export const spat = new Set<string>(); // Scanned patterns
+const spat = new Set<string>(); // Scanned patterns
 
 let stmr: NodeJS.Timeout | null = null;
 let pmsh: any = null;
@@ -54,11 +54,11 @@ function scnd(host: string, zenInstance: any) {
   });
 }
 
-export function scanNetwork(zenInstance: any) {
+function scanNetwork(zenInstance: any) {
   if (activeDomain) scnd(activeDomain, zenInstance);
 }
 
-export function scheduleNetworkScan(zenInstance: any) {
+function scheduleNetworkScan(zenInstance: any) {
   if (stmr) clearTimeout(stmr);
   stmr = setTimeout(() => {
     fic = false;
@@ -80,7 +80,7 @@ export function scheduleNetworkScan(zenInstance: any) {
   if (stmr.unref) stmr.unref();
 }
 
-export function addPeer(url: string, zenInstance: any) {
+function addPeer(url: string, zenInstance: any) {
   if (kprs.has(url)) return;
   kprs.add(url);
   fic = true;

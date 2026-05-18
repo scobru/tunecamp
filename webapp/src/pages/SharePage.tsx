@@ -7,7 +7,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import type { Track, Album } from "../types";
 import clsx from "clsx";
 
-export const SharePage = () => {
+const SharePage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { playTrack } = usePlayerStore();
@@ -256,4 +256,6 @@ export const SharePage = () => {
 };
 
 // Help with Link import - removed duplicate
+
+ Link import - removed duplicate
 

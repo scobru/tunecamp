@@ -46,7 +46,7 @@ export interface Track {
     year?: number;
 }
 
-export interface ReleaseTrack {
+interface ReleaseTrack {
     id: number;
     release_id: number;
     track_id: number | null;
@@ -121,7 +121,7 @@ export interface Artist {
     rating?: number;
 }
 
-export interface ArtistLink {
+interface ArtistLink {
     platform: string;
     url: string;
     type: 'social' | 'support' | 'music';
@@ -295,7 +295,7 @@ export interface AdminStats {
     genres?: string[];
 }
 
-export interface ZenProfile {
+interface ZenProfile {
     pub: string;
     alias: string;
     epub: string;

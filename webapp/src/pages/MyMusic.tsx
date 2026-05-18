@@ -266,3 +266,5 @@ export const MyMusic = () => {
   );
 };
 
+export default MyMusic;
+

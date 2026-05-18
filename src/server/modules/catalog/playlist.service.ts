@@ -45,7 +45,7 @@ export class PlaylistService {
     }
 }
 
-export const playlistService = new PlaylistService();
+const playlistService = new PlaylistService();
 
 let _playlistService: PlaylistService;
 

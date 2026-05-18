@@ -23,7 +23,7 @@ import { formatDuration } from "../utils/format";
 import type { Track } from "../types";
 import clsx from "clsx";
 
-export const Profile = () => {
+const Profile = () => {
   const { user, isAuthenticated, role, isInitializing } = useAuthStore();
   const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
   const { address, externalAddress, useExternalWallet, isExternalConnected } = useWalletStore();

@@ -1,44 +1,10 @@
-import { parseFile } from 'music-metadata';
 import path from 'path';
-import { Track } from '../types/index.js';
 import { StringUtils } from './stringUtils.js';
 import { LibraryUtils } from './libraryUtils.js';
 
 /**
  * Audio file utilities
  */
-
-export async function readAudioMetadata(filePath: string): Promise<Track> {
-  try {
-    const metadata = await parseFile(filePath);
-    const filename = path.basename(filePath);
-
-    return {
-      id: StringUtils.slugify(metadata.common.title || filename.replace(/\.[^.]+$/, '')),
-      file: filePath,
-      filename,
-      title: metadata.common.title || filename.replace(/\.[^.]+$/, ''),
-      artist: metadata.common.artist,
-      album: metadata.common.album,
-      year: metadata.common.year,
-      track: metadata.common.track.no ?? undefined,
-      duration: metadata.format.duration,
-      format: metadata.format.container,
-      bitrate: metadata.format.bitrate,
-      sampleRate: metadata.format.sampleRate,
-      genre: metadata.common.genre,
-    };
-  } catch (error) {
-    // Fallback if metadata reading fails
-    const filename = path.basename(filePath);
-    return {
-      id: StringUtils.slugify(filename.replace(/\.[^.]+$/, '')),
-      file: filePath,
-      filename,
-      title: filename.replace(/\.[^.]+$/, ''),
-    };
-  }
-}
 
 export function formatDuration(seconds?: number): string {
   if (!seconds && seconds !== 0) return '0:00';
@@ -52,57 +18,12 @@ export function formatDuration(seconds?: number): string {
   return `${mins}:${secsStr}`;
 }
 
-export function formatFileSize(bytes?: number): string {
-  if (!bytes && bytes !== 0) return '0 B';
-
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let size = bytes;
-  let unitIndex = 0;
-
-  while (size >= 1024 && unitIndex < 3) {
-    size /= 1024;
-    unitIndex++;
-  }
-
-  return `${size.toFixed(1)} ${units[unitIndex]}`;
-}
-
-export function getAudioFormat(filename: string): string {
-  const ext = getFileExtension(filename);
-  const formats: Record<string, string> = {
-    'mp3': 'MP3',
-    'flac': 'FLAC',
-    'ogg': 'OGG Vorbis',
-    'wav': 'WAV',
-    'm4a': 'M4A/AAC',
-    'aac': 'AAC',
-    'opus': 'OPUS',
-  };
-
-  return formats[ext] || ext.toUpperCase();
-}
-
-/**
- * Escapes HTML special characters to prevent XSS attacks
- */
-export function escapeHtml(text: string | null | undefined): string {
-  if (!text) return '';
-  return StringUtils.escapeHtml(text);
-}
-
 /**
  * Converts text to a URL-safe slug
  */
 export function slugify(text: string): string {
   if (!text) return '';
   return StringUtils.slugify(text);
-}
-
-/**
- * Generates a track slug from album title and track title
- */
-export function generateTrackSlug(albumTitle: string, trackTitle: string): string {
-  return StringUtils.generateTrackSlug(albumTitle || '', trackTitle || '');
 }
 
 /**
@@ -133,14 +54,6 @@ export function normalizeUrl(url: string): string {
 }
 
 /**
- * Extracts file extension from filename (without the dot, lowercase)
- */
-export function getFileExtension(filename: string): string {
-  if (!filename) return '';
-  return StringUtils.getFileExtension(filename);
-}
-
-/**
  * Validates username format
  * Returns { valid: boolean, error?: string }
  */
@@ -162,13 +75,6 @@ export function validateUsername(username: string): { valid: boolean; error?: st
  */
 export function formatAudioFilename(trackNum: number, title: string, extension: string): string {
   return LibraryUtils.formatAudioFilename(trackNum || 0, title || 'Unknown', extension || 'mp3');
-}
-
-/**
- * Formats an album directory: "Artist - Album (Year)"
- */
-export function formatAlbumDirectory(artist: string, album: string): string {
-  return LibraryUtils.formatAlbumDirectory(artist || 'Unknown Artist', album || 'Unknown Album');
 }
 
 /**

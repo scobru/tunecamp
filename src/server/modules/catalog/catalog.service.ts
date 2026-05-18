@@ -112,7 +112,6 @@ export class CatalogService {
         let finalArtistId = artistId !== undefined ? (artistId === null || artistId === 'null' || artistId === '' ? null : Number(artistId)) : track.artist_id;
         let finalArtistName = typeof artistName === 'string' ? artistName.trim() : (track.artist_name || null);
 
-        console.log("[DEBUG updateTrack RESOLVE ARTIST INPUTS]", { artistId, artistName, finalArtistId, finalArtistName, "data": JSON.stringify(data) });
 
         if (typeof artistName === 'string' && artistName.trim() !== "") {
             const trimmedName = artistName.trim();
@@ -205,10 +204,7 @@ export class CatalogService {
         // Apply Updates to DB
         if (title !== undefined) this.database.updateTrackTitle(trackId, title);
         
-        // Sync artist name and ID
-        console.log("[DEBUG updateTrack BEFORE DB SAVE]", { trackId, finalArtistId, finalArtistName });
         this.database.updateTrackArtistInfo(trackId, finalArtistId, finalArtistName);
-        console.log("[DEBUG updateTrack IMMEDIATELY AFTER DB SAVE]", this.database.getTrack(trackId));
 
         if (finalAlbumId !== undefined) this.database.updateTrackAlbum(trackId, finalAlbumId);
         if (ownerId !== undefined) this.database.updateTrackOwner(trackId, finalOwnerId);

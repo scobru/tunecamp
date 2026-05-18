@@ -7,8 +7,6 @@ export const DEFAULT_ZEN_PEERS = [
     "wss://shogun-relay.scobrudot.dev/zen",
 ];
 
-export const ZEN_NAMESPACE = "tunecamp";
-
 export const ZEN_CONFIG_DEFAULTS = {
     localStorage: false,
     radisk: true,
