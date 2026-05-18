@@ -156,7 +156,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(404).json({ error: "Playlist not found" });
             }
 
-            if (!req.isAdmin && !req.isSuperUser && !playlist.isPublic) {
+            if (!req.isAdmin && !req.isSuperUser && !playlist.isPublic && playlist.username !== req.username) {
                 return res.status(403).json({ error: "Unauthorized" });
             }
 
