@@ -68,7 +68,17 @@ export class MetadataService {
         const cached = this.searchCache.get(`release:${query}`);
         if (cached) return cached;
 
-        const results = await Promise.all(this.registry.getEnabled().map(p => p.searchRelease(query)));
+        const results = await Promise.all(this.registry.getEnabled().map(async p => {
+            try {
+                return await Promise.race([
+                    p.searchRelease(query),
+                    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Provider ${p.id} timeout (15s)`)), 15000))
+                ]) as MetadataMatch[];
+            } catch (e: any) {
+                console.warn(`[MetadataService] Provider ${p.id} searchRelease failed or timed out:`, e.message);
+                return [];
+            }
+        }));
         const flatResults = results.flat();
         this.searchCache.set(`release:${query}`, flatResults);
         return flatResults;
@@ -92,7 +102,12 @@ export class MetadataService {
 
         for (const provider of providers) {
             try {
-                const matches = await provider.searchRecording(query);
+                // Use a safety timeout per provider to ensure the service remains responsive
+                const matches = await Promise.race([
+                    provider.searchRecording(query),
+                    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Provider ${provider.id} timeout (15s)`)), 15000))
+                ]) as MetadataMatch[];
+
                 if (matches.length > 0) {
                     results.push(...matches);
                     // If we have strong matches from a top-tier provider, we can stop early
@@ -100,8 +115,8 @@ export class MetadataService {
                         break;
                     }
                 }
-            } catch (e) {
-                console.warn(`[MetadataService] Provider ${provider.id} failed for query "${query}":`, e);
+            } catch (e: any) {
+                console.warn(`[MetadataService] Provider ${provider.id} failed or timed out for query "${query}":`, e.message);
             }
         }
 
@@ -110,8 +125,18 @@ export class MetadataService {
     }
 
     async searchArtist(query: string): Promise<ArtistMetadata[]> {
-        const results = await Promise.all(this.registry.getEnabled().map(p => {
-            if (p.searchArtist) return p.searchArtist(query);
+        const results = await Promise.all(this.registry.getEnabled().map(async p => {
+            if (p.searchArtist) {
+                try {
+                    return await Promise.race([
+                        p.searchArtist(query),
+                        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Provider ${p.id} timeout (15s)`)), 15000))
+                    ]) as ArtistMetadata[];
+                } catch (e: any) {
+                    console.warn(`[MetadataService] Provider ${p.id} searchArtist failed or timed out:`, e.message);
+                    return [];
+                }
+            }
             return Promise.resolve([]);
         }));
         return results.flat();

@@ -151,7 +151,13 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
             
             console.log(`[YouTubeMetadata] 🔍 Searching via yt-search: ${query}`);
-            const results = await ytSearch(query);
+            
+            // Add a strict timeout to yt-search as it can hang indefinitely
+            const results = await Promise.race([
+                ytSearch(query),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("yt-search timeout (10s)")), 10000))
+            ]);
+
             const videos = results.videos.slice(0, 5);
 
             return videos.map((v: any) => ({
@@ -163,7 +169,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 source: "youtube"
             }));
         } catch (error) {
-            console.error(`[YouTubeMetadata] yt-search failed, falling back to play-dl:`, error);
+            console.error(`[YouTubeMetadata] yt-search failed or timed out, falling back to play-dl:`, error);
             try {
                 const results = await play.search(query, {
                     limit: 5,
@@ -201,7 +207,12 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             const query = artist ? `${artist} - ${title}` : title;
             console.log(`[YouTubeProvider] 🔍 Searching: ${query}`);
 
-            const results = await ytSearch(query);
+            // Add timeout to yt-search in stream resolution too
+            const results = await Promise.race([
+                ytSearch(query),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("yt-search timeout (10s)")), 10000))
+            ]);
+
             if (results.videos.length === 0) {
                 console.log(`[YouTubeProvider] 🚫 No results for: ${query}`);
                 return null;
@@ -211,7 +222,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
             console.log(`[YouTubeProvider] ✨ Found: ${video.title} → ${video.url}`);
             return this._resolveStreamUrl(video.videoId);
         } catch (error) {
-            console.error(`[YouTubeProvider] 🚫 getStreamUrl failed for "${title}", trying fallback search...`);
+            console.error(`[YouTubeProvider] 🚫 getStreamUrl failed for "${title}" (yt-search hang or error), trying fallback search...`);
             try {
                 const query = artist ? `${artist} - ${title}` : title;
                 const results = await play.search(query, { limit: 1, source: { youtube: "video" } });
@@ -235,7 +246,12 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
 
     async search(query: string): Promise<StreamCandidate[]> {
         try {
-            const results = await ytSearch(query);
+            // Add timeout to yt-search
+            const results = await Promise.race([
+                ytSearch(query),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("yt-search timeout (12s)")), 12000))
+            ]);
+
             return results.videos.slice(0, 10).map((v: any) => ({
                 id: v.videoId,
                 title: v.title,
@@ -246,7 +262,7 @@ export class YouTubeStreamingProvider implements StreamingProvider, MetadataProv
                 meta: { url: v.url }
             }));
         } catch (error) {
-            console.error(`[YouTubeProvider] 🚫 Search failed for: ${query}, falling back to play-dl`, error);
+            console.error(`[YouTubeProvider] 🚫 Search failed or timed out for: ${query}, falling back to play-dl`, error);
             try {
                 const results = await play.search(query, {
                     limit: 10,
