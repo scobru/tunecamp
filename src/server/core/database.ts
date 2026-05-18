@@ -902,9 +902,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         }),
 
         // Maintenance
-        getTracksMissingMetadata: (f: any) => [],
-        getAlbumsMissingMetadata: (f: any) => [],
-        getArtistsMissingMetadata: (f: any) => []
+        getTracksMissingMetadata: (f: any) => trackRepository.getMissingMetadata(f),
+        getAlbumsMissingMetadata: (f: any) => albumRepository.getMissingMetadata(f),
+        getArtistsMissingMetadata: (f: any) => artistRepository.getMissingMetadata(f)
     };
 
     return service;

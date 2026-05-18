@@ -358,4 +358,19 @@ export class TrackRepository extends BaseRepository {
         const rows = this.db.prepare("SELECT file_path FROM tracks WHERE file_path IS NOT NULL").all() as any[];
         return rows.map(r => r.file_path);
     }
+
+    getMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[] {
+        let condition = "";
+        switch (filter) {
+            case 'genre': condition = "(genre IS NULL OR genre = 'Library' OR genre = '')"; break;
+            case 'year': condition = "(year IS NULL OR year = 0)"; break;
+            case 'cover': condition = "(external_artwork IS NULL AND album_id IS NULL)"; break;
+            case 'album': condition = "album_id IS NULL"; break;
+            case 'artist': condition = "(artist_id IS NULL OR artist_name = 'Unknown Artist')"; break;
+            case 'external': condition = "external_id IS NULL"; break;
+            default: return [];
+        }
+        const rows = this.db.prepare(`SELECT * FROM v_tracks WHERE ${condition}`).all();
+        return rows.map(row => this.mapTrack(row));
+    }
 }

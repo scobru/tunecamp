@@ -173,4 +173,16 @@ export class ArtistRepository extends BaseRepository {
         const row = this.db.prepare("SELECT COUNT(*) as count FROM artists").get() as any;
         return row ? row.count : 0;
     }
+
+    getMissingMetadata(filter: 'photo' | 'bio' | 'links'): Artist[] {
+        let condition = "";
+        switch (filter) {
+            case 'photo': condition = "photo_path IS NULL"; break;
+            case 'bio': condition = "bio IS NULL OR bio = ''"; break;
+            case 'links': condition = "links IS NULL OR links = '[]'"; break;
+            default: return [];
+        }
+        const rows = this.db.prepare(`SELECT * FROM artists WHERE ${condition}`).all();
+        return rows.map(row => this.mapArtist(row)) as Artist[];
+    }
 }

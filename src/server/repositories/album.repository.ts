@@ -427,4 +427,18 @@ export class AlbumRepository extends BaseRepository {
         const row = this.db.prepare("SELECT COUNT(*) as count FROM releases").get() as any;
         return row ? row.count : 0;
     }
+
+    getMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[] {
+        let condition = "";
+        switch (filter) {
+            case 'genre': condition = "(genre IS NULL OR genre = 'Library' OR genre = '')"; break;
+            case 'year': condition = "(year IS NULL OR year = 0)"; break;
+            case 'cover': condition = "cover_path IS NULL"; break;
+            case 'description': condition = "description IS NULL OR description = ''"; break;
+            case 'artist': condition = "(artist_id IS NULL OR album_artist = 'Unknown Artist')"; break;
+            default: return [];
+        }
+        const rows = this.db.prepare(`SELECT * FROM v_albums WHERE ${condition}`).all();
+        return rows.map(row => this.mapAlbum(row)) as Album[];
+    }
 }

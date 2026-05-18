@@ -480,7 +480,7 @@ export function createAdminRoutes(
                 } catch (e) {
                     console.error("❌ [Admin] Background rescan failed:", e);
                 }
-            });
+            })();
 
             res.json({ message: "Library maintenance and scan triggered in background" });
         } catch (error) {
