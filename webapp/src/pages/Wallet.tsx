@@ -16,7 +16,7 @@ import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { TokenRole } from "shogun-contracts-sdk";
 import { openOnramp } from "../utils/onramp";
 
-export const Wallet = () => {
+const Wallet = () => {
   const {
     wallet,
     address,
@@ -448,3 +448,4 @@ export const Wallet = () => {
   );
 };
 
+export default Wallet;

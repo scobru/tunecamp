@@ -318,6 +318,16 @@ export class AlbumRepository extends BaseRepository {
         const fields: string[] = [];
         const values: any[] = [];
 
+        // Domain Invariant: Only 'released' status or correct organization allows public visibility
+        if (album.visibility === 'public' || album.visibility === 'unlisted') {
+            const current = this.getById(id);
+            if (current && !current.is_release && album.is_release !== true) {
+                console.warn(`⚠️ [AlbumRepository] Attempted to set public visibility on a non-release album (ID: ${id}). Reverting to private.`);
+                album.visibility = 'private';
+                album.is_public = false;
+            }
+        }
+
         for (const [key, value] of Object.entries(album)) {
             if (['id', 'created_at', 'artist_name', 'artist_slug'].includes(key)) continue;
             fields.push(`${key} = ?`);

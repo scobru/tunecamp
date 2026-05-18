@@ -17,7 +17,7 @@ import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
 
-export const Favorites = () => {
+const Favorites = () => {
   const { isAuthenticated, isInitializing } = useAuthStore();
   const { playTrack } = usePlayerStore();
 
@@ -340,3 +340,5 @@ const TrackList = ({
     </table>
   </div>
 );
+
+export default Favorites;
