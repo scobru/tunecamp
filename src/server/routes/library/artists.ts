@@ -4,7 +4,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import path from "path";
 import fs from "fs-extra";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
-import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
+import { VisibilityGuardian, VisibilityProfile, Capability } from "../../common/visibility.js";
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 import type { DiscoveryService } from "../../modules/catalog/discovery.service.js";
@@ -203,6 +203,19 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
     router.post("/:id/star", async (req: AuthenticatedRequest, res) => {
         if (!req.username) return res.status(401).json({ error: "Unauthorized" });
         const id = parseInt(req.params.id);
+        
+        const artist = database.getArtist(id);
+        if (!artist) return res.status(404).json({ error: "Artist not found" });
+
+        if (req.context && !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+            const isPublic = artist.visibility === 'public' || artist.visibility === 'unlisted';
+            // Also check if they have at least one formal release to be considered "Public Stage"
+            const hasFormalRelease = database.getReleasesByArtist(artist.id).length > 0;
+            if (!isPublic || !hasFormalRelease) {
+                return res.status(403).json({ error: "You can only favorite public artists" });
+            }
+        }
+
         database.starItem(req.username, 'artist', String(id));
         res.json({ success: true, starred: true });
     });

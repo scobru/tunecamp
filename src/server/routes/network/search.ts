@@ -193,13 +193,13 @@ export function createSearchRoutes(
         if (!query) return res.status(400).json({ error: "Query required" });
 
         const isAdmin = req.isAdmin || req.role === UserRole.ADMIN || req.role === UserRole.SUPER_USER;
-        
-        // Special case: for SEARCH, we allow ALL authenticated users to see the entire local library (Santuario).
-        // This is to enable discovery of local tracks that might not be 'public' yet.
-        const profile = (isAdmin || req.userId) ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+
+        // Respect visibility profiles even in search. 
+        // Admin/SuperUser see everything (Santuario + Arena).
+        // Normal users see only the public stage (Arena) + their own uploads.
+        const profile = req.context ? VisibilityGuardian.getProfile(req.context) : VisibilityProfile.PUBLIC_STAGE;
 
         console.log(`🔍 [Global Search] Query: "${query}", Profile: ${profile}, User: ${req.username || 'Guest'} (Role: ${req.role || 'none'})`);
-
         try {
             // 1. Search Local Database
             const localResults = database.search(query, profile);

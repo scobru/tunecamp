@@ -740,6 +740,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         addTrackOwner: (tid: number, oid: number) => { trackRepository.addOwner(tid, oid); },
         updateTrackOwner: (id: number, oid: number | null) => { trackRepository.updateOwner(id, oid); },
         getTracksByReleaseId: (id: number) => trackRepository.getByReleaseId(id),
+        getReleasesByTrackId: (tid: number) => db.prepare("SELECT r.* FROM releases r JOIN release_tracks rt ON r.id = rt.release_id WHERE rt.track_id = ?").all(tid) as Release[],
         updateReleaseTrackMetadata: (rid: number, tid: number, m: any) => releaseTrackRepository.updateMetadata(rid, tid, m),
         getTrackPriceFromRelease: (rid: number, tid: number) => releaseTrackRepository.getPriceFromRelease(rid, tid),
         getTracksSummaryByReleaseId: (id: number) => trackRepository.getByReleaseId(id),

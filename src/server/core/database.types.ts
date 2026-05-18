@@ -128,6 +128,7 @@ export interface Track {
     year?: number | null;
     external_id?: string | null;
     fingerprint?: string | null;
+    visibility?: 'public' | 'private' | 'unlisted';
     created_at?: string;
     // View fields
     artist_slug?: string;
@@ -488,6 +489,7 @@ export interface DatabaseService {
     addTrackOwner(tid: number, oid: number): void;
     updateTrackOwner(id: number, oid: number | null): void;
     getTracksByReleaseId(releaseId: number): Track[];
+    getReleasesByTrackId(trackId: number): Release[];
     updateReleaseTrackMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void;
     getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined;
     getTracksSummaryByReleaseId(releaseId: number): Track[];

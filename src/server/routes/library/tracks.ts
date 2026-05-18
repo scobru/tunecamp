@@ -256,6 +256,16 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
 
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
+
+        const track = database.getTrack(trackId);
+        if (!track) throw new NotFoundError("Track not found");
+
+        if (req.context && !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+            const releases = database.getReleasesByTrackId(trackId);
+            const isPublic = track.visibility === 'public' || track.visibility === 'unlisted' || releases.length > 0;
+            if (!isPublic) throw new ForbiddenError("You can only favorite public tracks");
+        }
+
         await catalogService.starTrack(req.username, trackId);
         res.json({ success: true, starred: true, trackId });
     }));

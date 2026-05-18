@@ -507,17 +507,6 @@ const Search = () => {
                                                 </a>
                                             )}
 
-                                            <button 
-                                                className={clsx(
-                                                    "btn btn-ghost btn-xs transition-colors",
-                                                    starredTracks.has(item.id) ? "text-primary opacity-100" : "opacity-0 group-hover:opacity-100"
-                                                )}
-                                                onClick={() => handleToggleStar({...item, isExternal: true})}
-                                                title="Add to Favourites"
-                                            >
-                                                <Heart size={14} fill={starredTracks.has(item.id) ? "currentColor" : "none"} />
-                                            </button>
-
                                             <div className="dropdown dropdown-end">
                                                 <button 
                                                     className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"

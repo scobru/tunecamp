@@ -9,7 +9,7 @@ import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../common/errors.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
-import { VisibilityProfile, VisibilityGuardian } from "../../common/visibility.js";
+import { VisibilityProfile, VisibilityGuardian, Capability } from "../../common/visibility.js";
 
 /**
  * Albums Routes — Handles album and release discovery and management.
@@ -105,6 +105,15 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
         }
 
         if (isNaN(albumId)) throw new BadRequestError("Invalid album ID");
+
+        const album = database.getAlbum(albumId) || database.getRelease(albumId);
+        if (!album) throw new NotFoundError("Album not found");
+        
+        if (req.context && !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+            const isPublic = album.visibility === 'public' || album.visibility === 'unlisted' || album.is_release;
+            if (!isPublic) throw new ForbiddenError("You can only favorite public albums");
+        }
+
         await catalogService.starAlbum(req.username, albumId);
         res.json({ success: true, starred: true });
     }));
