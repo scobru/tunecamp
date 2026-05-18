@@ -6,10 +6,8 @@ export class PublicScraperTorrentProvider implements TorrentSearchProvider {
     readonly name = 'Public Trackers (1337x, TPB)';
 
     constructor() {
-        // Enable stable public providers
-        torrentSearch.enableProvider('1337x');
-        torrentSearch.enableProvider('ThePirateBay');
-        torrentSearch.enableProvider('LimeTorrents');
+        // Enable all available public providers for better reliability
+        torrentSearch.enablePublicProviders();
     }
 
     async search(query: string, category: string = 'Music'): Promise<TorrentSearchResult[]> {
