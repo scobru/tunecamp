@@ -208,6 +208,7 @@ export class CatalogService {
         // Sync artist name and ID
         console.log("[DEBUG updateTrack BEFORE DB SAVE]", { trackId, finalArtistId, finalArtistName });
         this.database.updateTrackArtistInfo(trackId, finalArtistId, finalArtistName);
+        console.log("[DEBUG updateTrack IMMEDIATELY AFTER DB SAVE]", this.database.getTrack(trackId));
 
         if (finalAlbumId !== undefined) this.database.updateTrackAlbum(trackId, finalAlbumId);
         if (ownerId !== undefined) this.database.updateTrackOwner(trackId, finalOwnerId);
