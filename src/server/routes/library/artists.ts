@@ -41,7 +41,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
 
             const filtered = allArtists.filter(artist => {
                 if (isAdmin) return true;
-                if (req.userId && artist.id === req.userId) return true; // TODO: Fix userId vs artistId logic
+                if (req.artistId && artist.id === req.artistId) return true;
                 if (formalReleaseArtistIds.has(artist.id)) return true;
                 if (starredArtistIds.has(artist.id)) return true;
                 return false;
@@ -77,6 +77,54 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
         } catch (error) {
             console.error("Error creating artist:", error);
             res.status(500).json({ error: "Failed to create artist" });
+        }
+    });
+
+    /**
+     * PUT /api/artists/:id
+     * Update an artist profile (Admin or self only)
+     */
+    router.put("/:id", async (req: AuthenticatedRequest, res) => {
+        if (!req.username) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        try {
+            const id = parseInt(req.params.id);
+            if (isNaN(id)) {
+                return res.status(400).json({ error: "Invalid artist ID" });
+            }
+
+            const artist = database.getArtist(id);
+            if (!artist) {
+                return res.status(404).json({ error: "Artist not found" });
+            }
+
+            const isAdmin = req.isAdmin || req.isSuperUser;
+            const isSelf = req.artistId && req.artistId === id;
+
+            if (!isAdmin && !isSelf) {
+                return res.status(403).json({ error: "Forbidden: You can only edit your own profile" });
+            }
+
+            const { name, bio, photoPath, links, postParams, walletAddress, visibility } = req.body;
+
+            database.updateArtist(
+                id,
+                name,
+                bio,
+                photoPath,
+                links ? (typeof links === 'string' ? JSON.parse(links) : links) : undefined,
+                postParams ? (typeof postParams === 'string' ? JSON.parse(postParams) : postParams) : undefined,
+                walletAddress,
+                visibility
+            );
+
+            const updated = database.getArtist(id);
+            res.json(updated);
+        } catch (error) {
+            console.error("Error updating artist:", error);
+            res.status(500).json({ error: "Failed to update artist" });
         }
     });
 

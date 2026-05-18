@@ -188,5 +188,47 @@ describe('Artists Routes', () => {
             expect(response.body.albums[0].id).toBe(502);
         });
     });
+
+    describe('PUT /api/artists/:id', () => {
+        test('allows admin to update artist', async () => {
+            const artist = { id: 1, name: 'Artist 1', slug: 'artist-1' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+
+            const response = await request(app)
+                .put('/api/artists/1')
+                .set('x-is-admin', 'true')
+                .send({ name: 'Updated Artist', bio: 'Updated Bio' });
+
+            expect(response.status).toBe(200);
+            expect(mockDatabase.updateArtist).toHaveBeenCalledWith(1, 'Updated Artist', 'Updated Bio', undefined, undefined, undefined, undefined, undefined);
+        });
+
+        test('allows self (artist editing own profile) to update artist', async () => {
+            const artist = { id: 2, name: 'Artist 2', slug: 'artist-2' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+
+            const response = await request(app)
+                .put('/api/artists/2')
+                .set('x-is-admin', 'false')
+                .set('x-artist-id', '2')
+                .send({ name: 'Updated Artist 2', bio: 'Updated Bio 2' });
+
+            expect(response.status).toBe(200);
+            expect(mockDatabase.updateArtist).toHaveBeenCalledWith(2, 'Updated Artist 2', 'Updated Bio 2', undefined, undefined, undefined, undefined, undefined);
+        });
+
+        test('denies non-admin, non-self from updating artist', async () => {
+            const artist = { id: 1, name: 'Artist 1', slug: 'artist-1' };
+            mockDatabase.getArtist.mockReturnValue(artist);
+
+            const response = await request(app)
+                .put('/api/artists/1')
+                .set('x-is-admin', 'false')
+                .set('x-artist-id', '2')
+                .send({ name: 'Hack Artist' });
+
+            expect(response.status).toBe(403);
+        });
+    });
 });
 
