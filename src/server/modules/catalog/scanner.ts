@@ -130,6 +130,7 @@ export interface ScannerService {
 }
 
 import type { AutoTaggerService } from "./autotagger.service.js";
+import type { CatalogService } from "./catalog.service.js";
 
 export class Scanner implements ScannerService {
     private watcher: FSWatcher | null = null;
@@ -154,7 +155,8 @@ export class Scanner implements ScannerService {
     constructor(
         private database: DatabaseService,
         private storage: StorageEngine,
-        private autotagger?: AutoTaggerService
+        private autotagger?: AutoTaggerService,
+        private catalogService?: CatalogService
     ) {
         this.lookupPrimaryAdmin();
         this.librarySync = new LibrarySync(database, autotagger, this.primaryAdminId);
@@ -359,9 +361,13 @@ export class Scanner implements ScannerService {
 
             let coverPath: string | null = null;
             if (config.cover) {
-                const absoluteCoverPath = path.resolve(dir, config.cover);
-                if (await this.storage.pathExists(absoluteCoverPath)) {
-                    coverPath = this.normalizePath(absoluteCoverPath, musicDir);
+                if (config.cover.startsWith('http')) {
+                    coverPath = config.cover;
+                } else {
+                    const absoluteCoverPath = path.resolve(dir, config.cover);
+                    if (await this.storage.pathExists(absoluteCoverPath)) {
+                        coverPath = this.normalizePath(absoluteCoverPath, musicDir);
+                    }
                 }
             } else {
                 const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png"];
@@ -393,7 +399,7 @@ export class Scanner implements ScannerService {
 
             if (existingAlbum) {
                 albumId = existingAlbum.id;
-                this.database.updateAlbum(albumId, {
+                const updateData = {
                     artist_id: artistId || existingAlbum.artist_id,
                     cover_path: coverPath || existingAlbum.cover_path,
                     genre: config.genres?.join(", ") || existingAlbum.genre,
@@ -402,7 +408,13 @@ export class Scanner implements ScannerService {
                     external_links: linksJson || existingAlbum.external_links,
                     type: config.type || existingAlbum.type,
                     year: config.year || existingAlbum.year
-                });
+                };
+
+                if (this.catalogService) {
+                    await this.catalogService.updateAlbum(albumId, updateData);
+                } else {
+                    this.database.updateAlbum(albumId, updateData);
+                }
             } else {
                 albumId = this.database.createAlbum({
                     title: config.title,
@@ -429,6 +441,11 @@ export class Scanner implements ScannerService {
                     status: 'draft',
                     is_release: false
                 });
+
+                // Trigger download if it was a URL
+                if (coverPath && coverPath.startsWith('http') && this.catalogService) {
+                    await this.catalogService.updateAlbum(albumId, { cover_path: coverPath });
+                }
             }
 
             this.folderToAlbumMap.set(dir, albumId);

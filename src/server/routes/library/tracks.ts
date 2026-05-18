@@ -422,34 +422,15 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         const { title, artist, albumTitle, coverUrl } = req.body;
         try {
-            let artistId = track.artist_id;
-            if (artist) {
-                const trimmedArtist = artist.trim();
-                const a = database.getArtistByName(trimmedArtist);
-                artistId = a ? a.id : database.createArtist(trimmedArtist);
-                database.updateTrackArtistInfo(track.id, artistId, trimmedArtist);
-            }
-            if (albumTitle) {
-                const trimmedAlbum = albumTitle.trim();
-                const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                let alb = database.getAlbumBySlug(slug);
-                if (!alb) {
-                    const newId = database.createAlbum({
-                        title: trimmedAlbum, slug, artist_id: artistId, owner_id: req.userId || null,
-                        date: null, cover_path: null, genre: "Matched", description: "Matched",
-                        type: 'album', year: null, download: null, price: 0, price_usdc: 0, currency: 'ETH',
-                        external_links: null, is_public: false, visibility: 'private', is_release: false,
-                        published_at: null, published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
-                    });
-                    alb = database.getAlbum(newId);
-                }
-                if (alb) database.updateTrackAlbum(track.id, alb.id);
-            }
-            if (title) database.updateTrackTitle(track.id, title);
-            if (coverUrl) database.updateTrackExternalArtwork(track.id, coverUrl);
+            await catalogService.updateTrack(track.id, {
+                title,
+                artist,
+                album: albumTitle,
+                externalArtwork: coverUrl
+            });
 
             const updated = database.getTrack(track.id);
-            res.json({ message: "Metadata matched", track: updated ? mapTrackDTO(updated, database, req.username) : null });
+            res.json({ message: "Metadata matched and synced", track: updated ? mapTrackDTO(updated, database, req.username) : null });
         } catch (error: any) {
             console.error(`❌ [Metadata Match Error] Track ${track.id}:`, error);
             throw error;

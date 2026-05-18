@@ -809,6 +809,10 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Stats
         getStats: async (aid?: number, oid?: number) => { 
+            const isAdmin = aid === undefined && oid === undefined;
+            const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+            const genres = service.getGenres(profile);
+
             return { 
                 artists: artistRepository.getCount(), 
                 albums: albumRepository.getCount(), 
@@ -816,13 +820,42 @@ export function createDatabase(dbPath: string): DatabaseService {
                 publicAlbums: albumRepository.getLibraryAlbums(VisibilityProfile.PUBLIC_STAGE).length, 
                 totalUsers: (db.prepare("SELECT COUNT(*) as count FROM admin").get() as any).count, 
                 storageUsed: 0, networkSites: 0, totalTracks: trackRepository.getCount(), 
-                genresCount: 0, genres: [] 
+                genresCount: genres.length, genres: genres 
             }; 
         },
         getPublicTracksCount: () => trackRepository.getAll(VisibilityProfile.PUBLIC_STAGE).length,
-        getGenres: (p = VisibilityProfile.PUBLIC_STAGE) => [],
-        getTracksByGenre: (g: string, p = VisibilityProfile.PUBLIC_STAGE) => [],
-        getGenreTrackCounts: (p = VisibilityProfile.PUBLIC_STAGE) => new Map(),
+        getGenres(p = VisibilityProfile.PUBLIC_STAGE): string[] {
+            const visibilityFilter = p === VisibilityProfile.ALL_ACCESS ? "1=1" : TrackRepository.PUBLIC_CONDITION;
+            const rows = db.prepare(`SELECT DISTINCT genre FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${visibilityFilter})`).all() as any[];
+            const genreSet = new Set<string>();
+            rows.forEach(r => {
+                r.genre.split(',').forEach((g: string) => {
+                    const trimmed = g.trim();
+                    if (trimmed) genreSet.add(trimmed);
+                });
+            });
+            return Array.from(genreSet).sort();
+        },
+        getTracksByGenre(g: string, p = VisibilityProfile.PUBLIC_STAGE): Track[] {
+            const visibilityFilter = p === VisibilityProfile.ALL_ACCESS ? "1=1" : TrackRepository.PUBLIC_CONDITION;
+            // Use LIKE to find tracks that have the genre in a comma-separated list
+            const rows = db.prepare(`SELECT * FROM v_tracks WHERE (genre = ? OR genre LIKE ? OR genre LIKE ? OR genre LIKE ?) AND (${visibilityFilter}) ORDER BY artist_name, album_title, track_num`).all(g, `${g},%`, `%, ${g},%`, `%, ${g}`);
+            return rows.map(r => (trackRepository as any).mapTrack(r));
+        },
+        getGenreTrackCounts(p = VisibilityProfile.PUBLIC_STAGE): Map<string, number> {
+            const visibilityFilter = p === VisibilityProfile.ALL_ACCESS ? "1=1" : TrackRepository.PUBLIC_CONDITION;
+            const rows = db.prepare(`SELECT genre, COUNT(*) as count FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${visibilityFilter}) GROUP BY genre`).all() as any[];
+            const counts = new Map<string, number>();
+            rows.forEach(r => {
+                r.genre.split(',').forEach((g: string) => {
+                    const trimmed = g.trim().toLowerCase();
+                    if (trimmed) {
+                        counts.set(trimmed, (counts.get(trimmed) || 0) + r.count);
+                    }
+                });
+            });
+            return counts;
+        },
         getListeningStats: () => ({ totalPlays: 0, uniqueTracks: 0, totalListeningTime: 0, playsToday: 0, playsThisWeek: 0, playsThisMonth: 0 }),
 
         // AP Metadata

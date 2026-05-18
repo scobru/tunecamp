@@ -188,6 +188,9 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
             const release = database.getRelease(releaseId) || database.getAlbum(releaseId);
             
             if (release && release.cover_path) {
+                if (release.cover_path.startsWith('http')) {
+                    return res.redirect(release.cover_path);
+                }
                 const coverPath = path.join(musicDir, release.cover_path);
                 if (await fs.pathExists(coverPath)) {
                     return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });

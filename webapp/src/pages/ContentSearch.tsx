@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
+import { usePlayerStore } from '../stores/usePlayerStore';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe } from 'lucide-react';
+import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause } from 'lucide-react';
 import clsx from 'clsx';
-import type { TorrentSearchResult } from '../types';
+import type { TorrentSearchResult, Track } from '../types';
 
 const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
@@ -18,6 +19,7 @@ const ContentSearch: React.FC = () => {
     const [magnetUri, setMagnetUri] = useState('');
     const [searchError, setSearchError] = useState<string | null>(null);
     const { user, isAuthenticated, isLoading: authLoading, role } = useAuthStore();
+    const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -87,6 +89,31 @@ const ContentSearch: React.FC = () => {
             setSearchError("Search service is currently limited.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePlayStreaming = (item: any) => {
+        const trackId = `ext:${item.source}:${item.id || item.originalId}`;
+        const isCurrent = currentTrack?.id === trackId;
+
+        if (isCurrent) {
+            togglePlay();
+        } else {
+            const virtualTrack: Track = {
+                id: trackId,
+                title: item.title,
+                artistName: item.artist,
+                artistId: 0,
+                albumId: 0,
+                duration: item.duration || 0,
+                path: '',
+                filename: '',
+                playCount: 0,
+                streamUrl: item.streamUrl || item.url,
+                coverUrl: item.thumbnail || item.coverUrl,
+                external_id: trackId
+            };
+            playTrack(virtualTrack);
         }
     };
 
@@ -377,14 +404,31 @@ const ContentSearch: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button 
-                                            onClick={() => handleRipStreaming(res)}
-                                            className="btn btn-primary btn-sm gap-2"
-                                            disabled={loading}
-                                        >
-                                            <Download size={14} />
-                                            Rip
-                                        </button>
+                                        <div className="flex gap-2 items-center">
+                                            <button 
+                                                onClick={() => handlePlayStreaming(res)}
+                                                className={clsx(
+                                                    "btn btn-circle btn-sm",
+                                                    currentTrack?.id === `ext:${res.source}:${res.id || res.originalId}` && isPlaying 
+                                                        ? "btn-primary" 
+                                                        : "btn-ghost hover:bg-primary/20"
+                                                )}
+                                                title="Preview"
+                                            >
+                                                {currentTrack?.id === `ext:${res.source}:${res.id || res.originalId}` && isPlaying 
+                                                    ? <Pause size={16} /> 
+                                                    : <Play size={16} className="ml-0.5" />
+                                                }
+                                            </button>
+                                            <button 
+                                                onClick={() => handleRipStreaming(res)}
+                                                className="btn btn-primary btn-sm gap-2"
+                                                disabled={loading}
+                                            >
+                                                <Download size={14} />
+                                                Rip
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

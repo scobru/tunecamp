@@ -8,6 +8,8 @@ import type { FingerprintService } from "../media/fingerprint.service.js";
 import { VisibilityGuardian, Capability, VisibilityProfile, UserRole } from "../../common/visibility.js";
 import path from "path";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
+import { fetchSafe, drainResponse } from "../../common/network.js";
+import { isSafeUrl } from "../../../utils/networkUtils.js";
 
 
 /**
@@ -221,7 +223,18 @@ export class CatalogService {
         if (lyrics !== undefined) this.database.updateTrackLyrics(trackId, lyrics);
         if (genre !== undefined) this.database.updateTrackGenre(trackId, genre);
         if (year !== undefined) this.database.updateTrackYear(trackId, year ? Number(year) : null);
-        if (externalArtwork !== undefined) this.database.updateTrackExternalArtwork(trackId, externalArtwork);
+        
+        if (externalArtwork !== undefined) {
+            let finalArtwork = externalArtwork;
+            if (typeof externalArtwork === 'string' && externalArtwork.startsWith('http')) {
+                const relDir = track.file_path ? path.dirname(track.file_path) : "artwork/tracks";
+                const localPath = await this.downloadRemoteImage(externalArtwork, relDir, `artwork-tr${trackId}`);
+                if (localPath) {
+                    finalArtwork = localPath;
+                }
+            }
+            this.database.updateTrackExternalArtwork(trackId, finalArtwork);
+        }
         
         if (data.service !== undefined) this.database.updateTrackService(trackId, data.service);
         if (data.url !== undefined) this.database.updateTrackUrl(trackId, data.url);
@@ -473,6 +486,33 @@ export class CatalogService {
         return this.database.getRandomTracks(limit).map(t => mapTrackDTO(t, this.database));
     }
 
+    private async downloadRemoteImage(url: string, relativeDir: string, filenamePrefix: string): Promise<string | null> {
+        try {
+            if (!url || !url.startsWith('http')) return null;
+            if (!(await isSafeUrl(url))) return null;
+
+            const fullDir = path.join(this.musicDir, relativeDir);
+            await this.storage.ensureDir(fullDir);
+
+            const res = await fetchSafe(url, { size: 10 * 1024 * 1024 }); // 10MB limit
+            if (!res.ok) {
+                await drainResponse(res);
+                return null;
+            }
+
+            const contentType = res.headers.get('content-type');
+            const ext = contentType?.includes('png') ? '.png' : (contentType?.includes('webp') ? '.webp' : '.jpg');
+            const filename = `${filenamePrefix}-${Date.now()}${ext}`;
+            const fullPath = path.join(fullDir, filename);
+
+            await this.storage.writeFileStream(fullPath, res.body);
+            return path.posix.join(relativeDir, filename);
+        } catch (err: any) {
+            console.error(`[CatalogService] Failed to download remote image from ${url}:`, err.message);
+            return null;
+        }
+    }
+
     async updateAlbum(id: number, data: any): Promise<void> {
         const album = this.database.getAlbum(id) || this.database.getRelease(id);
         if (!album) throw new Error("Album not found");
@@ -489,6 +529,22 @@ export class CatalogService {
         const updateData = { ...rest };
         if (finalArtistId !== undefined) {
             updateData.artist_id = finalArtistId;
+        }
+
+        // Handle remote cover download
+        if (updateData.cover_path && updateData.cover_path.startsWith('http')) {
+            const tracks = this.database.getTracksByAlbum(id);
+            let relDir = "artwork/albums";
+            if (tracks.length > 0 && tracks[0].file_path) {
+                relDir = path.dirname(tracks[0].file_path);
+            } else if (album.cover_path && !album.cover_path.startsWith('http')) {
+                relDir = path.dirname(album.cover_path);
+            }
+
+            const localPath = await this.downloadRemoteImage(updateData.cover_path, relDir, `cover-al${id}`);
+            if (localPath) {
+                updateData.cover_path = localPath;
+            }
         }
 
         this.database.updateAlbum(id, updateData);

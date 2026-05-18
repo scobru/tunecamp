@@ -234,7 +234,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService);
     const subsonicService = new SubsonicService(database);
 
-    const scanner = new Scanner(database, storage, autotaggerService);
+    const scanner = new Scanner(database, storage, autotaggerService, catalogService);
     const scannerService = await initScannerService(database, scanner);
 
     const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));
@@ -365,7 +365,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/stats", createStatsRoutes(zendbService, database, config));
     app.use("/api/stats/library", createLibraryStatsRoutes(database));
     app.use("/api/browser", authMiddleware.requireRootAdmin, createBrowserRoutes(config.musicDir, database));
-    app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(database, config.musicDir, maintenanceService));
+    app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(database, config.musicDir, maintenanceService, catalogService));
     app.use("/api/users", createUsersRoutes(zendbService, database, authService, apService));
     app.use("/api/comments", createCommentsRoutes(zendbService));
     app.use("/api/unlock", createUnlockRoutes(database, authMiddleware));

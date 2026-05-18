@@ -8,8 +8,9 @@ import { metadataService } from "../../modules/catalog/metadata.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
+import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 
-export function createMetadataRoutes(database: DatabaseService, musicDir: string, maintenance: MaintenanceService): Router {
+export function createMetadataRoutes(database: DatabaseService, musicDir: string, maintenance: MaintenanceService, catalogService: CatalogService): Router {
     const router = Router();
 
     router.get("/search", async (req: AuthenticatedRequest, res) => {
@@ -46,7 +47,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         const { albumId, mbid, title, artist, date, coverUrl } = req.body;
 
         try {
-            const album = database.getAlbum(albumId);
+            const album = database.getAlbum(albumId) || database.getRelease(albumId);
             if (!album) return res.status(404).json({ error: "Album not found" });
 
             // Permission Check: Artist can only apply metadata to their own albums
@@ -54,100 +55,16 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
                 return res.status(403).json({ error: "Access denied" });
             }
 
-            // 1. Update Database Info
-            // Update title/date if provided
-            // Assuming we might implement updateAlbumMetadata in DB, for now manually?
-            // Existing DB service doesn't have updateAlbumMetadata fully exposed but we have updateAlbumArtist etc.
-            // Let's just download cover for MVP as that's the visual part user wants.
+            await catalogService.updateAlbum(albumId, {
+                external_id: mbid,
+                title,
+                artist,
+                date,
+                year: date ? parseInt(date.substring(0, 4)) : undefined,
+                cover_path: coverUrl
+            });
 
-            let coverUpdated = false;
-
-            // 2. Download Cover if URL provided
-            if (coverUrl) {
-                // Validate SSRF
-                if (!(await isSafeUrl(coverUrl))) {
-                    return res.status(400).json({ error: "Invalid or unsafe cover URL" });
-                }
-
-                // Find album directory
-                // We need to find the directory path from tracks or store it on album
-                // Schema doesn't store album path directly, only cover_path
-                // But we can guess from cover_path or first track
-                const tracks = database.getTracks(albumId);
-                let dir = "";
-                if (tracks.length > 0 && tracks[0].file_path) {
-                    dir = path.dirname(tracks[0].file_path);
-                } else if (album.cover_path) {
-                    dir = path.dirname(album.cover_path);
-                }
-
-                if (dir && await fs.pathExists(dir)) {
-                    const uniqueId = Date.now();
-                    const dest = path.join(dir, `cover-al${albumId}-${uniqueId}.jpg`);
-
-                    let currentUrl = coverUrl;
-                    let response: import("node-fetch").Response | null = null;
-
-                    for (let i = 0; i <= 3; i++) {
-                        response = await fetch(currentUrl, {
-                            redirect: 'manual',
-                            size: 5 * 1024 * 1024 // 5MB limit
-                        });
-
-                        if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
-                            const location = response.headers.get('location');
-                            if (!location) break;
-                            currentUrl = new URL(location, currentUrl).toString();
-                            await drainResponse(response);
-                            if (!(await isSafeUrl(currentUrl))) {
-                                return res.status(400).json({ error: "Invalid or unsafe cover URL on redirect" });
-                            }
-                            continue;
-                        }
-                        break; // Not a redirect
-                    }
-
-                    if (response && response.ok) {
-                        const buffer = await response.buffer();
-                        await fs.writeFile(dest, buffer);
-                        console.log(`Downloaded cover to ${dest}`);
-
-                        // Update DB
-                        const dbPath = path.relative(musicDir, dest).replace(/\\/g, "/");
-                        database.updateAlbumCover(albumId, dbPath);
-                        coverUpdated = true;
-                    } else if (response) {
-                        await drainResponse(response);
-                    }
-                }
-            }
-
-            // 3. Update metadata in DB
-            const albumUpdate: any = {};
-            if (mbid) albumUpdate.external_id = mbid;
-            if (title) albumUpdate.title = title;
-            if (date) {
-                albumUpdate.date = date;
-                albumUpdate.year = parseInt(date.substring(0, 4));
-            }
-            
-            if (Object.keys(albumUpdate).length > 0) {
-                database.updateAlbum(albumId, albumUpdate);
-            }
-
-            // 4. Update artist if needed
-            if (artist) {
-                let artistRec = database.getArtistByName(artist);
-                if (!artistRec) {
-                    const newId = database.createArtist(artist);
-                    artistRec = database.getArtist(newId);
-                }
-                if (artistRec) {
-                    database.updateAlbumArtist(albumId, artistRec.id);
-                }
-            }
-
-            res.json({ success: true, coverUpdated });
+            res.json({ success: true, message: "Metadata applied and synced" });
 
         } catch (error) {
             console.error("Error applying metadata:", error);
