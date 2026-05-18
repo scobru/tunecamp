@@ -164,6 +164,115 @@ export function createAlbumsRoutes(database: DatabaseService, catalogService: Ca
     }));
 
     /**
+     * GET /api/albums/search-metadata
+     */
+    router.get("/search-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        const query = req.query.q as string;
+        if (!query) throw new BadRequestError("Query required");
+        res.json(await metadataService.searchRelease(query));
+    }));
+
+    /**
+     * POST /api/albums/:id/match-metadata
+     */
+    router.post("/:id/match-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.artistId && req.userId === undefined) throw new ForbiddenError("Unauthorized");
+
+        const idParam = req.params.id as string;
+        const albumId = parseInt(idParam, 10);
+        if (isNaN(albumId)) throw new BadRequestError("Invalid album ID");
+
+        const album = database.getAlbum(albumId) || database.getRelease(albumId);
+        if (!album) throw new NotFoundError("Album not found");
+
+        if (!req.isAdmin && album.owner_id !== req.userId) {
+            throw new ForbiddenError("Access denied");
+        }
+
+        const { title, artist, coverUrl, genre, year, description } = req.body;
+
+        let coverUpdated = false;
+
+        if (coverUrl) {
+            const { isSafeUrl } = await import("../../../utils/networkUtils.js");
+            const { drainResponse } = await import("../../common/network.js");
+            const fetch = (await import("node-fetch")).default;
+
+            if (await isSafeUrl(coverUrl)) {
+                const tracks = database.getTracksByAlbum(albumId);
+                let dir = "";
+                if (tracks.length > 0 && tracks[0].file_path) {
+                    dir = path.dirname(tracks[0].file_path);
+                } else if (album.cover_path) {
+                    dir = path.dirname(album.cover_path);
+                }
+
+                if (dir && await fs.pathExists(path.join(musicDir, dir))) {
+                    const uniqueId = Date.now();
+                    const dest = path.join(musicDir, dir, `cover-al${albumId}-${uniqueId}.jpg`);
+
+                    let currentUrl = coverUrl;
+                    let response: any = null;
+
+                    for (let i = 0; i <= 3; i++) {
+                        response = await fetch(currentUrl, {
+                            redirect: 'manual',
+                            size: 5 * 1024 * 1024 // 5MB limit
+                        });
+
+                        if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+                            const location = response.headers.get('location');
+                            if (!location) break;
+                            currentUrl = new URL(location, currentUrl).toString();
+                            await drainResponse(response);
+                            if (!(await isSafeUrl(currentUrl))) {
+                                break;
+                            }
+                            continue;
+                        }
+                        break;
+                    }
+
+                    if (response && response.ok) {
+                        const buffer = await response.buffer();
+                        await fs.writeFile(dest, buffer);
+                        const dbPath = path.relative(musicDir, dest).replace(/\\/g, "/");
+                        database.updateAlbumCover(albumId, dbPath);
+                        coverUpdated = true;
+                    } else if (response) {
+                        await drainResponse(response);
+                    }
+                }
+            }
+        }
+
+        const albumUpdate: any = {};
+        if (title) albumUpdate.title = title;
+        if (genre) albumUpdate.genre = genre;
+        if (year) albumUpdate.year = typeof year === 'string' ? parseInt(year, 10) : year;
+        if (description) albumUpdate.description = description;
+
+        if (Object.keys(albumUpdate).length > 0) {
+            database.updateAlbum(albumId, albumUpdate);
+        }
+
+        if (artist) {
+            let artistRec = database.getArtistByName(artist);
+            if (!artistRec) {
+                const newId = database.createArtist(artist);
+                artistRec = database.getArtist(newId);
+            }
+            if (artistRec) {
+                database.updateAlbumArtist(albumId, artistRec.id);
+            }
+        }
+
+        const updatedAlbum = database.getAlbum(albumId) || database.getRelease(albumId);
+        res.json({ message: "Metadata matched", album: updatedAlbum });
+    }));
+
+    /**
      * GET /api/albums/:id
      */
     router.get("/:id", wrapAsync(async (req: AuthenticatedRequest, res: any) => {

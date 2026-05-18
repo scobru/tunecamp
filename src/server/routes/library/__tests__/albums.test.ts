@@ -13,6 +13,13 @@ jest.unstable_mockModule('music-metadata', () => ({
   parseFile: jest.fn()
 }), { virtual: true });
 
+// Mock metadataService
+jest.unstable_mockModule('../../../modules/catalog/metadata.service.js', () => ({
+  metadataService: {
+    searchRelease: jest.fn().mockImplementation(() => Promise.resolve([{ title: 'Matched Album', artist: 'Matched Artist' }]))
+  }
+}), { virtual: true });
+
 // Import module under test dynamically
 let createAlbumsRoutes: any;
 beforeAll(async () => {
@@ -30,6 +37,12 @@ const mockDatabase = {
     isStarred: jest.fn(),
     getItemRating: jest.fn(),
     updateAlbumCover: jest.fn(),
+    getRelease: jest.fn(),
+    updateAlbum: jest.fn(),
+    updateAlbumArtist: jest.fn(),
+    getArtistByName: jest.fn(),
+    createArtist: jest.fn(),
+    getArtist: jest.fn(),
 } as unknown as DatabaseService;
 
 const mockCatalogService = {
@@ -124,6 +137,51 @@ describe('Albums Routes - Cache Optimization', () => {
             // Assert
             expect(response.status).toBe(404);
             expect(response.body).toEqual({ error: "No tracks found" });
+        });
+    });
+
+    describe('Metadata Search & Matching', () => {
+        test('GET /albums/search-metadata calls metadataService.searchRelease', async () => {
+            const response = await request(app)
+                .get('/albums/search-metadata')
+                .query({ q: 'Test Query' });
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual([{ title: 'Matched Album', artist: 'Matched Artist' }]);
+        });
+
+        test('POST /albums/:id/match-metadata updates metadata and matches artist', async () => {
+            // Setup database mocks
+            (mockDatabase.getAlbum as jest.Mock).mockReturnValue({
+                id: 1,
+                title: 'Old Title',
+                owner_id: 1
+            });
+            (mockDatabase.getArtistByName as jest.Mock).mockReturnValue({
+                id: 42,
+                name: 'Matched Artist'
+            });
+
+            // Act
+            const response = await request(app)
+                .post('/albums/1/match-metadata')
+                .send({
+                    title: 'New Title',
+                    artist: 'Matched Artist',
+                    genre: 'Rock',
+                    year: 2026,
+                    description: 'New Description'
+                });
+
+            // Assert
+            expect(response.status).toBe(200);
+            expect(mockDatabase.updateAlbum).toHaveBeenCalledWith(1, {
+                title: 'New Title',
+                genre: 'Rock',
+                year: 2026,
+                description: 'New Description'
+            });
+            expect(mockDatabase.updateAlbumArtist).toHaveBeenCalledWith(1, 42);
         });
     });
 });
