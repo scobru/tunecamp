@@ -17,17 +17,17 @@ const ContentSearch: React.FC = () => {
     const [torrents, setTorrents] = useState<any[]>([]);
     const [magnetUri, setMagnetUri] = useState('');
     const [searchError, setSearchError] = useState<string | null>(null);
-    const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
+    const { user, isAuthenticated, isLoading: authLoading, role } = useAuthStore();
     const navigate = useNavigate();
 
     useEffect(() => {
         if (!authLoading) {
-            const isAdmin = user?.role === 'admin' || user?.role === 'root_admin' || user?.role === 'super_user';
+            const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
             if (!isAuthenticated || !isAdmin) {
                 navigate('/');
             }
         }
-    }, [authLoading, isAuthenticated, user, navigate]);
+    }, [authLoading, isAuthenticated, user, role, navigate]);
 
     const fetchDownloads = async () => {
         try {
