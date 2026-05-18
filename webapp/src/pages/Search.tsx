@@ -125,15 +125,14 @@ const Search = () => {
                 next.delete(id);
                 setStarredAlbums(next);
             } else {
-                const metadata = item.isExternal ? {
-                    title: item.title || item.albumTitle,
-                    artist: item.artist || item.artistName,
-                    coverUrl: item.coverUrl || item.thumbnail,
-                    type: item.type,
-                    year: item.year
-                } : {};
+                // RESTRICTION: Only local albums can be starred.
+                // Streaming/External albums must be localized/matched first.
+                if (item.isExternal || id.startsWith('ext:')) {
+                    alert("You can only favorite albums in your library. Please localize or match this content first.");
+                    return;
+                }
                 
-                await API.starAlbum(id, metadata);
+                await API.starAlbum(id, {});
                 const next = new Set(starredAlbums);
                 next.add(id);
                 setStarredAlbums(next);
@@ -155,13 +154,13 @@ const Search = () => {
                 next.delete(id);
                 setStarredArtists(next);
             } else {
-                const metadata = item.isExternal ? {
-                    name: item.name || item.artist,
-                    bio: item.bio,
-                    coverUrl: item.coverUrl || item.thumbnail
-                } : {};
+                // RESTRICTION: Only local artists can be starred.
+                if (item.isExternal || id.startsWith('ext:')) {
+                    alert("You can only favorite artists in your library. Please localize or match this content first.");
+                    return;
+                }
                 
-                await API.starArtist(id, metadata);
+                await API.starArtist(id, {});
                 const next = new Set(starredArtists);
                 next.add(id);
                 setStarredArtists(next);
