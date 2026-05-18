@@ -32,6 +32,18 @@ export function createDatabase(dbPath: string): DatabaseService {
     db.pragma("busy_timeout = 5000");
     db.pragma("foreign_keys = ON");
 
+    // Runtime Migrations (robust column checks)
+    db.transaction(() => {
+        const artistsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
+        if (artistsExists) {
+            const cols = db.prepare("PRAGMA table_info(artists)").all() as any[];
+            if (!cols.some(col => col.name === 'external_id')) {
+                console.log("📦 [Database] Migrating artists table: adding external_id column...");
+                db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
+            }
+        }
+    })();
+
     // Rescue Phase: Recover from interrupted migrations
     const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks', 'admin', 'artists'];
     db.transaction(() => {
@@ -75,6 +87,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             wallet_address TEXT,
             visibility TEXT DEFAULT 'public',
             post_params TEXT,
+            external_id TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
