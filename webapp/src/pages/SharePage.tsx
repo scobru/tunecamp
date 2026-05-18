@@ -255,7 +255,4 @@ const SharePage = () => {
     );
 };
 
-// Help with Link import - removed duplicate
-
- Link import - removed duplicate
-
+export default SharePage;

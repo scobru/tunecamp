@@ -343,7 +343,7 @@ const ArtistDetails = () => {
 };
 
 
-};
+
 
 export default ArtistDetails;
 

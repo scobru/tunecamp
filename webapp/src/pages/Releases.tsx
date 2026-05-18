@@ -88,7 +88,5 @@ const Releases = () => {
         </div>
     );
 };
- );
-};
 
 export default Releases;
