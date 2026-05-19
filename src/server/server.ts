@@ -133,12 +133,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : true;
     app.use(cors({ origin: corsOrigin, credentials: true }));
 
-    // Global body parser for API routes
-    app.use("/api", express.json({
-        type: ['application/json', 'application/activity+json', 'application/ld+json'],
-        limit: '10mb'
-    }));
-
     console.log(`📦 Initializing database: ${config.dbPath}`);
     const database = createDatabase(config.dbPath);
 
@@ -279,8 +273,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
         process.exit(0);
     }, gdriveService));
-    app.use("/api/admin/torrents", authMiddleware.requireManager, createTorrentRoutes(database, torrentService, authService));
-    app.use("/api/admin/torrent-search", authMiddleware.requireManager, createTorrentSearchRouter(database, torrentService as any, authService));
+    app.use("/api/admin/torrents", authMiddleware.requireManager, express.json(), createTorrentRoutes(database, torrentService, authService));
+    app.use("/api/admin/torrent-search", authMiddleware.requireManager, express.json(), createTorrentSearchRouter(database, torrentService as any, authService));
 
     app.use(integrateFederation(federation, () => undefined));
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
