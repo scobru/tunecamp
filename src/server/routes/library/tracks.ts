@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import fs from "fs-extra";
 import path from "path";
 import { parseFile } from "music-metadata";
@@ -31,6 +31,7 @@ import type { MediaEngine } from "../../modules/media/media-engine.js";
 export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, discoveryService: DiscoveryService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService, localizationService?: LocalizationService, mediaEngine?: MediaEngine): Router {
 
     const router = Router();
+    router.use(express.json());
 
     /**
      * GET /api/tracks
@@ -576,6 +577,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const isRoot = req.isRootAdmin;
         const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
         if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
+
+        if (!req.body || typeof req.body !== "object") throw new BadRequestError("Request body is required");
 
         const updated = await catalogService.updateTrack(track.id, req.body);
         res.json({ message: "Track updated", track: updated ? mapTrackDTO(updated, database, req.username) : null });

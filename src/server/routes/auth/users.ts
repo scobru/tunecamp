@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import { validateUsername } from "../../../utils/audioUtils.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 import type { DatabaseService } from "../../core/database.js";
@@ -16,6 +16,7 @@ export function createUsersRoutes(
     apService: ActivityPubService
 ): Router {
     const router = Router();
+    router.use(json());
     const authMiddleware = createAuthMiddleware(authService);
 
     /**
@@ -151,6 +152,9 @@ export function createUsersRoutes(
      */
     router.post("/sync", async (req, res) => {
         try {
+            if (!req.body || typeof req.body !== "object") {
+                return res.status(400).json({ error: "Request body is required" });
+            }
             const { pub, epub, alias, avatar } = req.body;
 
             if (!pub || !epub) {
