@@ -27,6 +27,12 @@ export default defineConfig({
       "node:events": "events",
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    css: true,
+  },
   build: {
     rollupOptions: {
       output: {
