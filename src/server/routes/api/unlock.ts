@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 import { VisibilityGuardian, Capability } from "../../common/visibility.js";
@@ -6,6 +6,7 @@ import { StringUtils } from "../../../utils/stringUtils.js";
 
 export function createUnlockRoutes(database: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * POST /api/unlock/validate

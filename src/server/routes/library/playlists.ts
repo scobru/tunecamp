@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
@@ -6,6 +6,7 @@ import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
 export function createPlaylistsRoutes(database: DatabaseService, zendbService?: ZenDBService): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * GET /api/playlists

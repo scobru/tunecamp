@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { DatabaseService, Track } from "../../core/database.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
@@ -6,6 +6,7 @@ import { createAuthMiddleware, type AuthenticatedRequest } from "../../middlewar
 
 export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
     const router = Router();
+    router.use(json());
 
     // Actor Endpoint
     router.get("/users/:slug", async (req, res) => {

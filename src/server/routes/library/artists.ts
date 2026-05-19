@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import path from "path";
@@ -16,6 +16,7 @@ import { BadRequestError, NotFoundError } from "../../common/errors.js";
  */
 export function createArtistsRoutes(database: DatabaseService, musicDir: string, metadataService: MetadataService, catalogService: CatalogService, discoveryService: DiscoveryService): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * GET /api/artists

@@ -1,11 +1,12 @@
 
-import { Router } from "express";
+import { Router, json } from "express";
 import type { LifecycleService } from "../../modules/catalog/lifecycle.service.js";
 
 import { wrapAsync } from "../../middleware/error-handling.js";
 
 export function createLifecycleRoutes(lifecycleService: LifecycleService): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * POST /api/lifecycle/promote/:id

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { SoulseekService } from "../../modules/integrations/soulseek.js";
@@ -18,6 +18,7 @@ export function createSearchRoutes(
     streamingService: StreamingService = defaultStreamingService
 ): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * GET /api/search/content/soulseek

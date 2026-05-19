@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import fs from "fs-extra";
 import path from "path";
 import type { DatabaseService, Album, Track } from "../../core/database.js";
@@ -13,14 +13,16 @@ import { VisibilityProfile, VisibilityGuardian, Capability } from "../../common/
 
 /**
  * Albums Routes — Handles album and release discovery and management.
- * Refactored to separate Discovery (Read) from Catalog (Write).
  */
-export function createAlbumsRoutes(database: DatabaseService, catalogService: CatalogService, discoveryService: DiscoveryService, musicDir: string): Router {
+export function createAlbumsRoutes(
+    database: DatabaseService,
+    catalogService: CatalogService,
+    discoveryService: DiscoveryService,
+    musicDir: string
+): Router {
     const router = Router();
+    router.use(express.json());
 
-    /**
-     * GET /api/albums
-     * List all albums
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         let albums: Album[] = [];

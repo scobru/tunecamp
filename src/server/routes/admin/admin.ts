@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
-import { Router } from "express";
+import { Router, json } from "express";
 import path from "path";
 import fs from "fs-extra";
 import type { DatabaseService } from "../../core/database.js";
@@ -45,6 +45,7 @@ export function createAdminRoutes(
     localizationService?: LocalizationService
 ): Router {
     const router = Router();
+    router.use(json());
     const authMiddleware = createAuthMiddleware(authService);
 
     /**

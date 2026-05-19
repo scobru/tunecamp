@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import { type GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 import { type DatabaseService } from "../../core/database.types.js";
 import { type AuthenticatedRequest } from "../../middleware/auth.js";
@@ -7,6 +7,7 @@ import { type DiscoveryService } from "../../modules/catalog/discovery.service.j
 
 export function createStorageRouter(database: DatabaseService, gdriveService: GoogleDriveService, authMiddleware: any, catalogService: CatalogService, discoveryService: DiscoveryService) {
     const router = Router();
+    router.use(json());
 
     router.get("/gdrive/auth", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
         // Pass userId as state to identify the user in the callback

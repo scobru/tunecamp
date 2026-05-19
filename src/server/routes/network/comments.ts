@@ -1,8 +1,9 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
 export function createCommentsRoutes(zendbService: ZenDBService): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * GET /api/comments/track/:trackId

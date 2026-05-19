@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
@@ -36,6 +36,7 @@ interface CreateReleaseBody {
  */
 export function createReleaseRouter(database: DatabaseService, scanner: ScannerService, publishing: PublishingService, auth: AuthService, musicDir: string): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * GET /api/releases

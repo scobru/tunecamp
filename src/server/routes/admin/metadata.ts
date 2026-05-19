@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import fs from "fs-extra";
 import path from "path";
 import fetch from "node-fetch";
@@ -12,6 +12,7 @@ import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 
 export function createMetadataRoutes(database: DatabaseService, musicDir: string, maintenance: MaintenanceService, catalogService: CatalogService): Router {
     const router = Router();
+    router.use(json());
 
     router.get("/search", async (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin && req.userId === undefined) return res.status(401).json({ error: "Unauthorized" });
@@ -405,7 +406,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      */
     router.post("/maintenance/audit-all", async (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
-        const { forceRepair, useAI } = req.body;
+        const { forceRepair, useAI } = req.body ?? {};
         
         maintenance.startLibraryAudit({
             forceRepair: !!forceRepair,

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import fs from "fs-extra";
 import path from "path";
 import type { DatabaseService } from "../../core/database.js";
@@ -9,6 +9,7 @@ const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
 export function createBrowserRoutes(musicDir: string, database: DatabaseService): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * GET /api/browser

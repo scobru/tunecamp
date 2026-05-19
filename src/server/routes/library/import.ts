@@ -1,9 +1,10 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import { getPlaylistService } from "../../modules/catalog/playlist.service.js";
 import { extractBandcampMetadata } from "../../utils/bandcamp.js";
 
 export function createImportRoutes() {
   const router = Router();
+    router.use(json());
   const playlistService = getPlaylistService();
 
   /**

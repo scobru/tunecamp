@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, json } from "express";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { validatePassword } from "../../common/validators.js";
@@ -7,6 +7,7 @@ import { rateLimit } from "../../middleware/rateLimit.js";
 
 export function createAuthRoutes(authService: AuthService, authMiddleware: any): Router {
     const router = Router();
+    router.use(json());
 
     /**
      * POST /api/auth/login
