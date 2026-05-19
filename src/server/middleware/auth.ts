@@ -151,6 +151,37 @@ export function createAuthMiddleware(authService: AuthService) {
         },
 
         /**
+         * Middleware that requires manager or root admin access (excludes super_user)
+         */
+        async requireManager(
+            req: AuthenticatedRequest,
+            res: Response,
+            next: NextFunction
+        ) {
+            const payload = await extractPayload(req);
+            
+            if (!payload) {
+                return res.status(403).json({ error: "Access denied: Manager only" });
+            }
+
+            const context = VisibilityGuardian.deriveContext(payload);
+
+            if (!VisibilityGuardian.isAdminRole(context.role)) {
+                return res.status(403).json({ error: "Access denied: Manager only" });
+            }
+
+            req.isAdmin = true;
+            req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+            req.username = payload.username;
+            req.artistId = payload.artistId;
+            req.role = context.role;
+            req.isActive = payload.isActive;
+            req.userId = payload.userId;
+            req.context = context;
+            next();
+        },
+
+        /**
          * Middleware that requires root admin access
          */
         async requireRootAdmin(

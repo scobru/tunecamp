@@ -10,6 +10,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   const navigate = useNavigate();
   const [releases, setReleases] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadReleases = () =>
     API.getAdminReleases({ mine }).then(setReleases).catch(console.error);
@@ -21,9 +22,14 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
       window.removeEventListener("refresh-admin-releases", loadReleases);
   }, [mine]);
 
+  const filteredReleases = releases.filter(release => 
+    release.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    release.artistName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(releases.map((r) => r.id));
+      setSelectedIds(filteredReleases.map((r) => r.id));
     } else {
       setSelectedIds([]);
     }
@@ -110,6 +116,22 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:max-w-xs">
+          <Disc className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+          <input
+            type="text"
+            placeholder="Search releases..."
+            className="input input-bordered w-full pl-10 h-10 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="text-xs opacity-50 font-mono">
+          {filteredReleases.length} {filteredReleases.length === 1 ? 'item' : 'items'} found
+        </div>
+      </div>
+
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-4 p-2 bg-base-200 rounded-lg border border-base-300 animate-in fade-in slide-in-from-top-2">
             <span className="text-sm font-medium ml-2">{selectedIds.length} items selected</span>
@@ -152,7 +174,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
                 <input 
                     type="checkbox" 
                     className="checkbox checkbox-sm" 
-                    checked={selectedIds.length === releases.length && releases.length > 0}
+                    checked={selectedIds.length === filteredReleases.length && filteredReleases.length > 0}
                     onChange={handleSelectAll}
                 />
             </th>
@@ -165,7 +187,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
           </tr>
         </thead>
         <tbody>
-          {releases.map((r) => (
+          {filteredReleases.map((r) => (
             <tr key={r.id} className={clsx(selectedIds.includes(r.id) && "bg-base-200/50")}>
               <td>
                 <input 

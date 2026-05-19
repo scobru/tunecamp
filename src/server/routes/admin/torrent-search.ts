@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { torrentSearchService } from '../../modules/integrations/torrent-search.service.js';
 import { createAuthMiddleware } from '../../middleware/auth.js';
 import type { AuthService } from '../../modules/auth/auth.service.js';
@@ -8,6 +8,7 @@ import { TorrentService } from '../../modules/integrations/torrent.service.js';
 
 export function createTorrentSearchRouter(database: DatabaseService, torrentService: TorrentService, authService: AuthService): Router {
     const router = Router();
+    router.use(express.json());
     const auth = createAuthMiddleware(authService);
 
     /**

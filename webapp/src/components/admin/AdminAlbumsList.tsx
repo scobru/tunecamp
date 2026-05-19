@@ -11,6 +11,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
   const [albums, setAlbums] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadAlbums = async () => {
     setLoading(true);
@@ -36,9 +37,14 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
     return () => window.removeEventListener("refresh-admin-albums", loadAlbums);
   }, [mine]);
 
+  const filteredAlbums = albums.filter(album => 
+    album.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    album.artistName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(albums.map((a) => a.id));
+      setSelectedIds(filteredAlbums.map((a) => a.id));
     } else {
       setSelectedIds([]);
     }
@@ -109,6 +115,22 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:max-w-xs">
+          <Disc className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+          <input
+            type="text"
+            placeholder="Search albums..."
+            className="input input-bordered w-full pl-10 h-10 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="text-xs opacity-50 font-mono">
+          {filteredAlbums.length} {filteredAlbums.length === 1 ? 'album' : 'albums'} found
+        </div>
+      </div>
+
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-4 p-2 bg-base-200 rounded-lg border border-base-300 animate-in fade-in slide-in-from-top-2">
             <span className="text-sm font-medium ml-2">{selectedIds.length} albums selected</span>
@@ -153,7 +175,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
                 <input 
                     type="checkbox" 
                     className="checkbox checkbox-sm" 
-                    checked={selectedIds.length === albums.length && albums.length > 0}
+                    checked={selectedIds.length === filteredAlbums.length && filteredAlbums.length > 0}
                     onChange={handleSelectAll}
                 />
               </th>
@@ -166,7 +188,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
             </tr>
           </thead>
           <tbody>
-            {albums.map((a) => (
+            {filteredAlbums.map((a) => (
               <tr key={a.id} className={clsx("hover:bg-base-200/50 transition-colors", selectedIds.includes(a.id) && "bg-base-200")}>
                 <td>
                     <input 

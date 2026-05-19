@@ -10,6 +10,7 @@ const Artists = () => {
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         API.getCurrentUser()
@@ -60,6 +61,11 @@ const Artists = () => {
         }
     };
 
+    const filteredArtists = artists.filter(artist => 
+        artist.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        artist.slug?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     if (loading) return <div className="p-12 text-center opacity-50">Loading artists...</div>;
 
     return (
@@ -69,7 +75,17 @@ const Artists = () => {
                     <User size={32} className="text-primary"/> Artists
                 </h1>
 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full sm:w-64">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search artists..."
+                            className="input input-bordered w-full pl-10 h-10 text-sm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                     {currentUser?.isRootAdmin && (
                         <button 
                             className="btn btn-sm btn-primary"
@@ -78,7 +94,7 @@ const Artists = () => {
                             New Artist
                         </button>
                     )}
-                    <span className="opacity-50 font-mono text-sm">{artists.length} items</span>
+                    <span className="opacity-50 font-mono text-sm">{filteredArtists.length} items</span>
                     <div className="join bg-base-200">
                         <button
                             className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
@@ -113,7 +129,7 @@ const Artists = () => {
                         ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
                         : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2"
              )}>
-                {artists.map(artist => (
+                {filteredArtists.map(artist => (
                     <div key={artist.id} className={clsx(
                         "group relative transition-all duration-200",
                         viewMode === 'grid' && "text-center block",

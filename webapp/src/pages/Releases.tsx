@@ -10,6 +10,7 @@ const Releases = () => {
     const [releases, setReleases] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('grid');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const loadData = async () => {
@@ -29,6 +30,11 @@ const Releases = () => {
         loadData();
     }, [isAuthenticated]);
 
+    const filteredReleases = releases.filter(release => 
+        release.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        release.artistName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     if (loading) return <div className="p-12 text-center opacity-50">Loading releases...</div>;
 
     return (
@@ -38,7 +44,18 @@ const Releases = () => {
                     <Disc size={32} className="text-primary"/> Formal Releases
                 </h1>
                 
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative w-full md:w-64">
+                        <Disc className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search releases..."
+                            className="input input-bordered w-full pl-10 h-10 text-sm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <span className="opacity-50 font-mono text-sm">{filteredReleases.length} items</span>
                     <div className="join bg-base-200 hidden md:flex">
                         <button
                             className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
@@ -73,16 +90,16 @@ const Releases = () => {
                         ? "grid-cols-1 md:grid-cols-2 gap-4"
                         : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2"
              )}>
-                {releases.map(item => (
+                {filteredReleases.map(item => (
                     <ReleaseCard key={item.id} item={item} viewMode={viewMode} />
                 ))}
              </div>
 
              
-             {releases.length === 0 && (
+             {filteredReleases.length === 0 && (
                 <div className="text-center py-20 opacity-30 flex flex-col items-center gap-4">
                     <Disc size={64}/>
-                    <p className="text-xl">No formal releases published yet.</p>
+                    <p className="text-xl">No formal releases found matching your search.</p>
                 </div>
              )}
         </div>

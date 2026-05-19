@@ -24,8 +24,8 @@ const ContentSearch: React.FC = () => {
 
     useEffect(() => {
         if (!authLoading) {
-            const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
-            if (!isAuthenticated || !isAdmin) {
+            const isManager = role === 'admin' || role === 'root_admin';
+            if (!isAuthenticated || !isManager) {
                 navigate('/');
             }
         }

@@ -1,10 +1,11 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import type { TorrentService } from "../../modules/integrations/torrent.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 
 export function createTorrentRoutes(database: DatabaseService, torrentService: TorrentService, auth: AuthService): Router {
     const router = Router();
+    router.use(express.json());
 
     /**
      * GET /api/admin/torrents
@@ -43,6 +44,7 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
      * POST /api/admin/torrents/add
      */
     router.post("/add", async (req: any, res) => {
+        if (!req.body) return res.status(400).json({ error: "Request body required" });
         const { magnet } = req.body;
         if (!magnet) return res.status(400).json({ error: "Magnet URI is required" });
 
@@ -59,6 +61,7 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
      * Start seeding a list of files as a torrent
      */
     router.post("/seed", async (req: any, res) => {
+        if (!req.body) return res.status(400).json({ error: "Request body required" });
         const { filePaths, name } = req.body;
         if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
             return res.status(400).json({ error: "filePaths array is required" });

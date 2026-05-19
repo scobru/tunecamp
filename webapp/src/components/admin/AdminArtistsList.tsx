@@ -13,6 +13,7 @@ export const AdminArtistsList = () => {
   const [artists, setArtists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadArtists = async () => {
     setLoading(true);
@@ -38,9 +39,14 @@ export const AdminArtistsList = () => {
     return () => window.removeEventListener("refresh-admin-artists", loadArtists);
   }, []);
 
+  const filteredArtists = artists.filter(artist => 
+    artist.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    artist.slug?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(artists.map((a) => a.id));
+      setSelectedIds(filteredArtists.map((a) => a.id));
     } else {
       setSelectedIds([]);
     }
@@ -103,6 +109,22 @@ export const AdminArtistsList = () => {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full md:max-w-xs">
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
+          <input
+            type="text"
+            placeholder="Search artists..."
+            className="input input-bordered w-full pl-10 h-10 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="text-xs opacity-50 font-mono">
+          {filteredArtists.length} {filteredArtists.length === 1 ? 'artist' : 'artists'} found
+        </div>
+      </div>
+
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-4 p-2 bg-base-200 rounded-lg border border-base-300 animate-in fade-in slide-in-from-top-2">
             <span className="text-sm font-medium ml-2">{selectedIds.length} artists selected</span>
@@ -147,7 +169,7 @@ export const AdminArtistsList = () => {
                 <input 
                     type="checkbox" 
                     className="checkbox checkbox-sm" 
-                    checked={selectedIds.length === artists.length && artists.length > 0}
+                    checked={selectedIds.length === filteredArtists.length && filteredArtists.length > 0}
                     onChange={handleSelectAll}
                 />
               </th>
@@ -159,7 +181,7 @@ export const AdminArtistsList = () => {
             </tr>
           </thead>
           <tbody>
-            {artists.map((a) => (
+            {filteredArtists.map((a) => (
               <tr key={a.id} className={clsx("hover:bg-base-200/50 transition-colors", selectedIds.includes(a.id) && "bg-base-200")}>
                 <td>
                     <input 

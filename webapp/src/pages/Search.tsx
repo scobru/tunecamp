@@ -15,7 +15,7 @@ const Search = () => {
     const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[], external?: any[], streaming?: any[] } | null>(null);
     const [loading, setLoading] = useState(false);
     const { playTrack } = usePlayerStore();
-    const { user } = useAuthStore();
+    const { user, role } = useAuthStore();
     const [starredTracks, setStarredTracks] = useState<Set<string>>(new Set());
     const [starredAlbums, setStarredAlbums] = useState<Set<string>>(new Set());
     const [starredArtists, setStarredArtists] = useState<Set<string>>(new Set());
@@ -425,7 +425,7 @@ const Search = () => {
                     )}
 
                     {/* External & Streaming Results */}
-                    {((results as any).external?.length > 0 || (results as any).streaming?.length > 0) && (
+                    {((role === 'admin' || role === 'root_admin') && ((results as any).external?.length > 0 || (results as any).streaming?.length > 0)) && (
                         <section>
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-secondary">
                                 <Globe size={20}/> Discover (External & Streaming)

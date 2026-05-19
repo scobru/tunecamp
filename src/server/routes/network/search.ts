@@ -24,6 +24,11 @@ export function createSearchRoutes(
      * Search Soulseek for music
      */
     router.get("/content/soulseek", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         const query = req.query.q as string;
         if (!query) return res.status(400).json({ error: "Query required" });
 
@@ -55,6 +60,11 @@ export function createSearchRoutes(
      * Trigger a Soulseek download
      */
     router.post("/content/soulseek/download", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         const { result } = req.body;
         if (!result || !result.file) {
             return res.status(400).json({ error: "Valid search result with file path required" });
@@ -96,6 +106,11 @@ export function createSearchRoutes(
      * Update user's Soulseek credentials
      */
     router.post("/content/soulseek/credentials", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         const { username, password } = req.body;
         if (!username || !password) return res.status(400).json({ error: "Credentials required" });
 
@@ -114,6 +129,11 @@ export function createSearchRoutes(
      * Get user's Soulseek download status
      */
     router.get("/content/soulseek/status", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         try {
             const downloads = database.getSoulseekDownloads(req.userId);
             res.json(downloads);
@@ -127,6 +147,11 @@ export function createSearchRoutes(
      * Manually trigger library indexing for a completed Soulseek download
      */
     router.post("/content/soulseek/sync/:id", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         const id = parseInt(req.params.id);
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
@@ -155,6 +180,11 @@ export function createSearchRoutes(
      * Clear all failed Soulseek downloads for the current user
      */
     router.delete("/content/soulseek/status/failed", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         try {
             database.clearFailedSoulseekDownloads(req.userId!);
             res.json({ success: true });
@@ -168,6 +198,11 @@ export function createSearchRoutes(
      * Remove a specific Soulseek download entry
      */
     router.delete("/content/soulseek/status/:id", async (req: AuthenticatedRequest, res) => {
+        const isAdmin = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Access denied: Root Admin or Manager only" });
+        }
+
         const id = parseInt(req.params.id);
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
@@ -192,7 +227,7 @@ export function createSearchRoutes(
         const query = req.query.q as string;
         if (!query) return res.status(400).json({ error: "Query required" });
 
-        const isAdmin = req.isAdmin || req.role === UserRole.ADMIN || req.role === UserRole.SUPER_USER;
+        const isManagerOrAbove = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
 
         // Respect visibility profiles even in search. 
         // Admin/SuperUser see everything (Santuario + Arena).
@@ -204,55 +239,57 @@ export function createSearchRoutes(
             // 1. Search Local Database
             const localResults = database.search(query, profile);
 
-            // 2. Search Streaming Providers (SoundCloud, etc.)
-            // These are direct playable results and should be prioritized
-            const candidates = await streamingService.search(query);
-            const streamingResults = candidates.map(r => ({
-                ...r,
-                isStreaming: true,
-                providerId: r.provider,
-                source: r.provider // Frontend expects 'source' for ID construction
-            }));
-
-            // 3. Search External Metadata Plugins (MusicBrainz, Discogs, etc.)
-            // We only include these if:
-            // a) The user is an admin (useful for metadata matching)
-            // b) We have few streaming results (to provide more discovery options)
-            // AND we have at least one active streaming provider to actually play the content
-            // AND we skip providers that are already in the streaming service to avoid duplicates.
-            const streamingProviders = streamingService.getRegistry().getEnabled();
-            const hasAudioEngines = streamingProviders.length > 0;
-            const streamingProviderIds = new Set(streamingService.listProviders().map(p => p.id));
-
+            // Provider search (Streaming & External Metadata) is restricted to Manager/Root
+            let streamingResults: any[] = [];
             let externalResults: any[] = [];
-            if (hasAudioEngines && (isAdmin || streamingResults.length < 5)) {
-                const metadataProviders = metadataService.getRegistry().getEnabled()
-                    .filter(p => !streamingProviderIds.has(p.id)); // Avoid duplicates
 
-                const metadataSearchPromises = metadataProviders.map(async (provider) => {
-                    try {
-                        // Use a local timeout for each provider to prevent one from hanging the whole search
-                        const providerResults = await Promise.race([
-                            provider.searchRecording(query),
-                            new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000))
-                        ]);
+            if (isManagerOrAbove) {
+                // 2. Search Streaming Providers (SoundCloud, etc.)
+                // These are direct playable results and should be prioritized
+                const candidates = await streamingService.search(query);
+                streamingResults = candidates.map(r => ({
+                    ...r,
+                    isStreaming: true,
+                    providerId: r.provider,
+                    source: r.provider // Frontend expects 'source' for ID construction
+                }));
 
-                        const limit = isAdmin ? 5 : 2;
-                        return providerResults.slice(0, limit).map(r => ({
-                            ...r,
-                            isExternal: true,
-                            providerId: provider.id,
-                            source: provider.id
-                        }));
-                    } catch (e) {
-                        return [];
-                    }
-                });
+                // 3. Search External Metadata Plugins (MusicBrainz, Discogs, etc.)
+                // We only include these if we have at least one active streaming provider to actually play the content
+                // AND we skip providers that are already in the streaming service to avoid duplicates.
+                const streamingProviders = streamingService.getRegistry().getEnabled();
+                const hasAudioEngines = streamingProviders.length > 0;
+                const streamingProviderIds = new Set(streamingService.listProviders().map(p => p.id));
 
-                const settles = await Promise.allSettled(metadataSearchPromises);
-                externalResults = settles
-                    .filter((s): s is PromiseFulfilledResult<any[]> => s.status === 'fulfilled')
-                    .flatMap(s => s.value);
+                if (hasAudioEngines) {
+                    const metadataProviders = metadataService.getRegistry().getEnabled()
+                        .filter(p => !streamingProviderIds.has(p.id)); // Avoid duplicates
+
+                    const metadataSearchPromises = metadataProviders.map(async (provider) => {
+                        try {
+                            // Use a local timeout for each provider to prevent one from hanging the whole search
+                            const providerResults = await Promise.race([
+                                provider.searchRecording(query),
+                                new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000))
+                            ]);
+
+                            const limit = 5; // Always 5 for managers/admins
+                            return providerResults.slice(0, limit).map(r => ({
+                                ...r,
+                                isExternal: true,
+                                providerId: provider.id,
+                                source: provider.id
+                            }));
+                        } catch (e) {
+                            return [];
+                        }
+                    });
+
+                    const settles = await Promise.allSettled(metadataSearchPromises);
+                    externalResults = settles
+                        .filter((s): s is PromiseFulfilledResult<any[]> => s.status === 'fulfilled')
+                        .flatMap(s => s.value);
+                }
             }
 
             res.json({
