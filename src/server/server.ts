@@ -109,6 +109,7 @@ import { PublicScraperTorrentProvider } from "./providers/torrent/public-scraper
 import { errorHandler } from "./middleware/error-handling.js";
 import { latchDomain, kprs } from "./modules/network/zen-network.js";
 import { getZen } from "./modules/network/zen.js";
+import { createZenRelayRoutes } from "./routes/network/zen-relay.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
@@ -481,6 +482,15 @@ export async function startServer(config: ServerConfig): Promise<void> {
             res.sendFile(path.resolve(path.join(assetsDir, coverFile)));
         } catch { res.status(404).json({ error: "Not found" }); }
     });
+
+    // ── Zen Relay HTTP endpoints ─────────────────────────────────────────────
+    // MUST be registered before express.static so they are not intercepted by
+    // the SPA catch-all or static file middleware.
+    //
+    // GET /status              → signed ZEN string (AXE peer discovery, axe.js)
+    // GET /.well-known/peers.json → { peers: [...] } (bootstrap.js wellKnownBootstrap)
+    const zenRelayRouter = createZenRelayRoutes(zendbService, config.publicUrl);
+    app.use("/", zenRelayRouter);
 
     if (fs.existsSync(webappDistPath)) app.use(express.static(webappDistPath, { index: false }));
     if (fs.existsSync(webappPublicPath)) app.use(express.static(webappPublicPath, { index: false }));
