@@ -23,6 +23,8 @@ export function createAlbumsRoutes(
     const router = Router();
     router.use(express.json());
 
+    /**
+     * GET /
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         let albums: Album[] = [];
