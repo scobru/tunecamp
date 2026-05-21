@@ -3,6 +3,7 @@ import API from '../services/api';
 import { Link } from 'react-router-dom';
 import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucide-react';
 import type { Artist, User as AppUser } from '../types';
+import { PageHeader } from '../components/ui/PageHeader';
 import clsx from 'clsx';
 
 const Artists = () => {
@@ -70,12 +71,13 @@ const Artists = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <User size={32} className="text-primary"/> Artists
-                </h1>
-
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+             <PageHeader 
+                title="Artists" 
+                subtitle={`${filteredArtists.length} artists in catalog`}
+                icon={User}
+                iconColor="text-primary"
+             >
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                     <div className="relative w-full sm:w-64">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
                         <input
@@ -88,30 +90,29 @@ const Artists = () => {
                     </div>
                     {currentUser?.isRootAdmin && (
                         <button 
-                            className="btn btn-sm btn-primary"
+                            className="btn btn-sm btn-primary w-full sm:w-auto h-10"
                             onClick={() => document.dispatchEvent(new CustomEvent('open-admin-artist-modal'))}
                         >
                             New Artist
                         </button>
                     )}
-                    <span className="opacity-50 font-mono text-sm">{filteredArtists.length} items</span>
-                    <div className="join bg-base-200">
+                    <div className="join bg-base-200 w-full sm:w-auto justify-center">
                         <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'grid' && "btn-active")}
                             onClick={() => setViewMode('grid')}
                             title="Grid View"
                         >
                             <LayoutGrid size={16} />
                         </button>
                         <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'list' && "btn-active")}
                             onClick={() => setViewMode('list')}
                             title="List View"
                         >
                             <List size={16} />
                         </button>
                         <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'minimal' && "btn-active")}
                             onClick={() => setViewMode('minimal')}
                             title="Minimal View"
                         >
@@ -119,7 +120,7 @@ const Artists = () => {
                         </button>
                     </div>
                 </div>
-             </div>
+             </PageHeader>
 
              <div className={clsx(
                 "grid gap-4",

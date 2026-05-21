@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { Playlist, UserPlaylist } from "../types";
 import API from "../services/api";
 import { CreateUserPlaylistModal } from "../components/modals/CreateUserPlaylistModal";
+import { PageHeader } from "../components/ui/PageHeader";
 
 const MyPlaylists = () => {
   const [playlists, setPlaylists] = useState<(Playlist | UserPlaylist)[]>([]);
@@ -67,38 +68,33 @@ const MyPlaylists = () => {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-gradient-to-br from-pink-500/20 to-purple-500/20">
-            <Heart size={32} className="text-pink-400" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold">My Playlists</h1>
-            <p className="opacity-50 text-sm mt-1">
-              {user?.zenProfile?.alias || user?.username}'s personal collection
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="join bg-base-200">
+    <div className="space-y-8 animate-fade-in">
+      <PageHeader 
+        title="My Playlists" 
+        subtitle={`${user?.zenProfile?.alias || user?.username}'s personal collection`}
+        icon={Heart}
+        iconColor="text-pink-400"
+        gradientFrom="from-pink-500/20"
+        gradientTo="to-purple-500/20"
+      >
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="join bg-base-200 w-full sm:w-auto justify-center">
             <button
-              className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
+              className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'grid' && "btn-active")}
               onClick={() => setViewMode('grid')}
               title="Grid View"
             >
               <LayoutGrid size={16} />
             </button>
             <button
-              className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
+              className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'list' && "btn-active")}
               onClick={() => setViewMode('list')}
               title="List View"
             >
               <List size={16} />
             </button>
             <button
-              className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
+              className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'minimal' && "btn-active")}
               onClick={() => setViewMode('minimal')}
               title="Minimal View"
             >
@@ -106,7 +102,7 @@ const MyPlaylists = () => {
             </button>
           </div>
           <button
-            className="btn btn-primary gap-2"
+            className="btn btn-primary btn-sm h-10 w-full sm:w-auto gap-2"
             onClick={() =>
               document.dispatchEvent(
                 new CustomEvent("open-create-user-playlist-modal"),
@@ -116,7 +112,7 @@ const MyPlaylists = () => {
             <Plus size={20} /> New Playlist
           </button>
         </div>
-      </div>
+      </PageHeader>
 
       {loading ? (
         <div className="text-center opacity-50 py-12">

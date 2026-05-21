@@ -4,6 +4,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { Search as SearchIcon, Music, Disc, User, Globe, Play, Heart, Plus } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { PageHeader } from '../components/ui/PageHeader';
 import { formatDuration } from '../utils/format';
 import clsx from 'clsx';
 import type { Track, Album, Artist, Playlist } from '../types';
@@ -198,38 +199,39 @@ const Search = () => {
 
     return (
         <div className="space-y-8 animate-fade-in">
-            {/* Search Header */}
-            <div className="flex flex-col gap-4">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <SearchIcon size={32} className="text-primary"/> 
+            {/* Standardized Header */}
+            <PageHeader 
+                title="Search" 
+                subtitle="Explore and find music across the network" 
+                icon={SearchIcon}
+                iconColor="text-primary"
+            />
+            
+            <form onSubmit={onSearchSubmit} className="flex gap-2 mb-8">
+                <div className="relative flex-full w-full">
+                    <input 
+                        type="text" 
+                        placeholder="Search for songs, artists, albums..." 
+                        aria-label="Search"
+                        className="input input-bordered w-full text-lg pr-12"
+                        value={inputValue}
+                        onChange={e => setInputValue(e.target.value)}
+                        autoFocus
+                    />
+                    {inputValue && (
+                        <button 
+                            type="button"
+                            onClick={clearSearch}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+                        >
+                            <Plus size={20} className="rotate-45" />
+                        </button>
+                    )}
+                </div>
+                <button type="submit" className="btn btn-primary px-8">
                     Search
-                </h1>
-                <form onSubmit={onSearchSubmit} className="flex gap-2">
-                    <div className="relative flex-full w-full">
-                        <input 
-                            type="text" 
-                            placeholder="Search for songs, artists, albums..." 
-                            aria-label="Search"
-                            className="input input-bordered w-full text-lg pr-12"
-                            value={inputValue}
-                            onChange={e => setInputValue(e.target.value)}
-                            autoFocus
-                        />
-                        {inputValue && (
-                            <button 
-                                type="button"
-                                onClick={clearSearch}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
-                            >
-                                <Plus size={20} className="rotate-45" />
-                            </button>
-                        )}
-                    </div>
-                    <button type="submit" className="btn btn-primary px-8">
-                        Search
-                    </button>
-                </form>
-            </div>
+                </button>
+            </form>
 
             {loading ? (
                 <div className="text-center opacity-50 py-12 flex flex-col items-center gap-4">

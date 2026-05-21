@@ -10,10 +10,12 @@ import {
   Disc,
   User,
   Layout,
+  Upload,
 } from "lucide-react";
 import { AdminReleaseModal } from "../components/modals/AdminReleaseModal";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
 import { AdminArtistModal } from "../components/modals/AdminArtistModal";
+import { PageHeader } from "../components/ui/PageHeader";
 
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminTracksList } from "../components/admin/AdminTracksList";
@@ -56,10 +58,12 @@ export const MyMusic = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Music size={32} className="text-primary" /> My Music
-        </h1>
+      <PageHeader 
+        title="My Music" 
+        subtitle="Manage your artist profiles, releases, and audio files"
+        icon={Upload}
+        iconColor="text-primary"
+      >
         {(user?.isRootAdmin || role === 'super_user') && (
            <button 
              className="btn btn-ghost btn-sm gap-2"
@@ -68,7 +72,7 @@ export const MyMusic = () => {
              <Settings size={16} /> Go to Admin
            </button>
         )}
-      </div>
+      </PageHeader>
 
       {/* Stats Cards */}
       {stats && (

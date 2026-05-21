@@ -1,16 +1,17 @@
-import { Heart, Github, Coffee } from 'lucide-react';
+import { LifeBuoy, Github, Coffee } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
 
 const Support = () => {
     return (
-        <div className="p-4 lg:p-8 animate-fade-in max-w-2xl mx-auto">
-            <div className="text-center mb-12">
-                <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
-                    <Heart className="text-primary fill-primary/20" size={40} /> Support TuneCamp
-                </h1>
-                <p className="text-xl opacity-60">Help us keep the platform growing.</p>
-            </div>
+        <div className="space-y-8 animate-fade-in">
+            <PageHeader 
+                title="Support" 
+                subtitle="Help us keep the platform growing"
+                icon={LifeBuoy}
+                iconColor="text-primary"
+            />
 
-            <div className="space-y-8">
+            <div className="max-w-2xl mx-auto space-y-8 mt-8">
                 {/* TuneCamp Support */}
                 <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
                     <div className="card-body items-center text-center">

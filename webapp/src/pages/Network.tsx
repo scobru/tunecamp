@@ -3,6 +3,7 @@ import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { Globe, Server, Music, ExternalLink, Play } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
+import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
 import { formatDuration } from "../utils/format";
 import type { NetworkSite, NetworkTrack, NetworkStatus } from "../types";
@@ -444,91 +445,81 @@ export const Network = () => {
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">
-      <header className="flex flex-col gap-4 border-b border-base-content/5 pb-8">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-              <Globe size={48} className="text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black tracking-tight">
-                Federated Network
-              </h1>
-              <p className="opacity-60 text-lg">
-                Discover music across the decentralized TuneCamp network.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdminAuthenticated && (
-              <button
-                className="btn btn-primary btn-sm gap-2"
-                onClick={async () => {
-                  if (
-                    confirm(
-                      "Do you want to synchronize all content with ActivityPub? This will update metadata and ensure visibility settings are correct on remote instances.",
-                    )
-                  ) {
-                    try {
-                      const res = (await API.syncActivityPub()) as {
-                        artists: number;
-                        notes: number;
-                      };
-                      alert(
-                        `Sync complete! Processed ${res.artists} artists and ${res.notes} items.`,
-                      );
-                    } catch (err: unknown) {
-                      alert("Sync failed: " + (err instanceof Error ? err.message : String(err)));
-                    }
-                  }
-                }}
-              >
-                <Server size={16} /> Sync with ActivityPub
-              </button>
-            )}
-            {isAdminAuthenticated && (
-              <div className="form-control ml-4">
-                <label className="label cursor-pointer gap-2">
-                  <span className="label-text text-xs uppercase font-bold opacity-50">
-                    Show Hidden
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-xs toggle-neutral"
-                    checked={showHidden}
-                    onChange={(e) => setShowHidden(e.target.checked)}
-                  />
-                </label>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Network Status */}
-        <div className="flex items-center gap-4 text-xs">
-          <div
-            className={`px-3 py-1 rounded-full border font-bold flex items-center gap-2 ${status?.zen?.connected ? "bg-green-500/10 border-green-500/30 text-green-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}
-          >
+      <PageHeader
+        title="Federated Network"
+        subtitle="Discover music across the decentralized TuneCamp network."
+        icon={Globe}
+        iconColor="text-blue-400"
+        gradientFrom="from-blue-500/20"
+        gradientTo="to-purple-500/20"
+        extra={
+          <div className="flex flex-wrap items-center gap-3 text-xs mt-2">
             <div
-              className={`w-1.5 h-1.5 rounded-full ${status?.zen?.connected ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
-            ></div>
-            ZEN: {status?.zen?.connected
-              ? `${status.zen.peers} PEERS`
-              : "DISCONNECTED"}
-          </div>
-          <div
-            className={`px-3 py-1 rounded-full border font-bold flex items-center gap-2 ${status?.activitypub?.enabled ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"}`}
-          >
+              className={`px-3 py-1 rounded-full border font-bold flex items-center gap-2 ${status?.zen?.connected ? "bg-green-500/10 border-green-500/30 text-green-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}
+            >
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${status?.zen?.connected ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+              ></div>
+              ZEN: {status?.zen?.connected
+                ? `${status.zen.peers} PEERS`
+                : "DISCONNECTED"}
+            </div>
             <div
-              className={`w-1.5 h-1.5 rounded-full ${status?.activitypub?.enabled ? "bg-blue-400" : "bg-yellow-400"}`}
-            ></div>
-            ActivityPub: {status?.activitypub?.enabled ? "ACTIVE" : "SETUP REQUIRED"}
+              className={`px-3 py-1 rounded-full border font-bold flex items-center gap-2 ${status?.activitypub?.enabled ? "bg-blue-500/10 border-blue-500/30 text-blue-400" : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"}`}
+            >
+              <div
+                className={`w-1.5 h-1.5 rounded-full ${status?.activitypub?.enabled ? "bg-blue-400" : "bg-yellow-400"}`}
+              ></div>
+              ActivityPub: {status?.activitypub?.enabled ? "ACTIVE" : "SETUP REQUIRED"}
+            </div>
+            <div className="px-3 py-1 rounded-full border border-base-content/10 text-base-content/50 font-bold">
+              {(status?.sites || 0)} instances • {allReleases.length} tracks
+            </div>
           </div>
-          <div className="px-3 py-1 rounded-full border border-base-content/10 text-base-content/50 font-bold">
-            {(status?.sites || 0)} instances • {allReleases.length} tracks
+        }
+      >
+        {isAdminAuthenticated && (
+          <button
+            className="btn btn-primary btn-sm gap-2"
+            onClick={async () => {
+              if (
+                confirm(
+                  "Do you want to synchronize all content with ActivityPub? This will update metadata and ensure visibility settings are correct on remote instances.",
+                )
+              ) {
+                try {
+                  const res = (await API.syncActivityPub()) as {
+                    artists: number;
+                    notes: number;
+                  };
+                  alert(
+                    `Sync complete! Processed ${res.artists} artists and ${res.notes} items.`,
+                  );
+                } catch (err: unknown) {
+                  alert("Sync failed: " + (err instanceof Error ? err.message : String(err)));
+                }
+              }
+            }}
+          >
+            <Server size={16} /> Sync with ActivityPub
+          </button>
+        )}
+        {isAdminAuthenticated && (
+          <div className="form-control ml-2">
+            <label className="label cursor-pointer gap-2">
+              <span className="label-text text-xs uppercase font-bold opacity-50">
+                Show Hidden
+              </span>
+              <input
+                type="checkbox"
+                className="toggle toggle-xs toggle-neutral"
+                checked={showHidden}
+                onChange={(e) => setShowHidden(e.target.checked)}
+              />
+            </label>
           </div>
-        </div>
-      </header>
+        )}
+      </PageHeader>
 
       {/* Remote Network Content */}
       <section className="space-y-8">

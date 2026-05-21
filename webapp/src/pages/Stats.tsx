@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { BarChart2, User, Music } from 'lucide-react';
+import { PageHeader } from '../components/ui/PageHeader';
 
 const Stats = () => {
     const [topTracks, setTopTracks] = useState<any[]>([]);
@@ -21,25 +22,27 @@ const Stats = () => {
 
     return (
         <div className="space-y-8 animate-fade-in">
-             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                 <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <BarChart2 size={32} className="text-primary"/> Statistics
-                </h1>
-                <div className="join">
+             <PageHeader 
+                title="Stats" 
+                subtitle="Your most listened tracks and artists"
+                icon={BarChart2}
+                iconColor="text-primary"
+             >
+                <div className="join bg-base-200">
                     <button 
-                        className={`join-item btn btn-sm ${filter === 'releases' ? 'btn-primary' : 'btn-ghost bg-base-200'}`}
+                        className={`join-item btn btn-sm ${filter === 'releases' ? 'btn-primary text-primary-content' : 'btn-ghost'}`}
                         onClick={() => setFilter('releases')}
                     >
                         Releases
                     </button>
                     <button 
-                        className={`join-item btn btn-sm ${filter === 'library' ? 'btn-primary' : 'btn-ghost bg-base-200'}`}
+                        className={`join-item btn btn-sm ${filter === 'library' ? 'btn-primary text-primary-content' : 'btn-ghost'}`}
                         onClick={() => setFilter('library')}
                     >
                         Library
                     </button>
                 </div>
-            </div>
+             </PageHeader>
 
             {loading ? (
                 <div className="p-12 text-center opacity-50">Loading stats...</div>

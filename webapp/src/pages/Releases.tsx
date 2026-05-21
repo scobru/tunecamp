@@ -3,6 +3,7 @@ import API from '../services/api';
 import { Disc, LayoutGrid, List, AlignJustify } from 'lucide-react';
 import { ReleaseCard } from '../components/ui/ReleaseCard';
 import { useAuthStore } from '../stores/useAuthStore';
+import { PageHeader } from '../components/ui/PageHeader';
 import clsx from 'clsx';
 
 const Releases = () => {
@@ -39,13 +40,14 @@ const Releases = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <Disc size={32} className="text-primary"/> Formal Releases
-                </h1>
-                
-                <div className="flex flex-col md:flex-row items-center gap-4">
-                    <div className="relative w-full md:w-64">
+             <PageHeader 
+                title="Releases" 
+                subtitle={`${filteredReleases.length} releases available`}
+                icon={Disc}
+                iconColor="text-primary"
+             >
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="relative w-full sm:w-64">
                         <Disc className="absolute left-3 top-1/2 -translate-y-1/2 opacity-30" size={18} />
                         <input
                             type="text"
@@ -55,24 +57,23 @@ const Releases = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <span className="opacity-50 font-mono text-sm">{filteredReleases.length} items</span>
-                    <div className="join bg-base-200 hidden md:flex">
+                    <div className="join bg-base-200 w-full sm:w-auto justify-center">
                         <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'grid' && "btn-active")}
                             onClick={() => setViewMode('grid')}
                             title="Grid View"
                         >
                             <LayoutGrid size={16} />
                         </button>
                         <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'list' && "btn-active")}
                             onClick={() => setViewMode('list')}
                             title="List View"
                         >
                             <List size={16} />
                         </button>
                         <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'minimal' && "btn-active")}
                             onClick={() => setViewMode('minimal')}
                             title="Minimal View"
                         >
@@ -80,7 +81,7 @@ const Releases = () => {
                         </button>
                     </div>
                 </div>
-             </div>
+             </PageHeader>
 
              <div className={clsx(
                 "grid gap-6",

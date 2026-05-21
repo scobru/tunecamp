@@ -4,6 +4,7 @@ import { Library as LibraryIcon, LayoutGrid, List, AlignJustify } from 'lucide-r
 import { ReleaseCard } from '../components/ui/ReleaseCard';
 import type { Album } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
+import { PageHeader } from '../components/ui/PageHeader';
 import clsx from 'clsx';
 
 const Library = () => {
@@ -51,37 +52,36 @@ const Library = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
-                    <LibraryIcon size={32} className="text-primary"/> File Library
-                </h1>
-                
-                <div className="flex items-center gap-4">
-                    <div className="join bg-base-200 hidden md:flex">
-                        <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
-                            onClick={() => setViewMode('grid')}
-                            title="Grid View"
-                        >
-                            <LayoutGrid size={16} />
-                        </button>
-                        <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
-                            onClick={() => setViewMode('list')}
-                            title="List View"
-                        >
-                            <List size={16} />
-                        </button>
-                        <button
-                            className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
-                            onClick={() => setViewMode('minimal')}
-                            title="Minimal View"
-                        >
-                            <AlignJustify size={16} />
-                        </button>
-                    </div>
+             <PageHeader 
+                title="Library" 
+                subtitle={`${albums.length} albums in your library`}
+                icon={LibraryIcon}
+                iconColor="text-primary"
+             >
+                <div className="join bg-base-200">
+                    <button
+                        className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
+                        onClick={() => setViewMode('grid')}
+                        title="Grid View"
+                    >
+                        <LayoutGrid size={16} />
+                    </button>
+                    <button
+                        className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
+                        onClick={() => setViewMode('list')}
+                        title="List View"
+                    >
+                        <List size={16} />
+                    </button>
+                    <button
+                        className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
+                        onClick={() => setViewMode('minimal')}
+                        title="Minimal View"
+                    >
+                        <AlignJustify size={16} />
+                    </button>
                 </div>
-             </div>
+             </PageHeader>
 
              <div className={clsx(
                 "grid gap-6",

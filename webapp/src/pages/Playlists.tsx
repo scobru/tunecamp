@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ListMusic, Globe, Lock, Music, LayoutGrid, List, AlignJustify } from "lucide-react";
 import type { Playlist } from "../types";
 import { ZenPlaylists } from "../services/zen";
+import { PageHeader } from "../components/ui/PageHeader";
 import clsx from "clsx";
 
 // Extended interface to handle both types
@@ -66,38 +67,37 @@ const Playlists = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold flex items-center gap-3">
-          <ListMusic size={40} className="text-secondary" /> Playlists
-        </h1>
-
-        <div className="flex items-center gap-4">
-          <div className="join bg-base-200">
-            <button
-              className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
-              onClick={() => setViewMode('grid')}
-              title="Grid View"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button
-              className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
-              onClick={() => setViewMode('list')}
-              title="List View"
-            >
-              <List size={16} />
-            </button>
-            <button
-              className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
-              onClick={() => setViewMode('minimal')}
-              title="Minimal View"
-            >
-              <AlignJustify size={16} />
-            </button>
-          </div>
+    <div className="space-y-8 animate-fade-in">
+      <PageHeader 
+        title="Playlists" 
+        subtitle={`${playlists.length} public playlists on the network`}
+        icon={ListMusic}
+        iconColor="text-secondary"
+      >
+        <div className="join bg-base-200">
+          <button
+            className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
+            onClick={() => setViewMode('grid')}
+            title="Grid View"
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button
+            className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
+            onClick={() => setViewMode('list')}
+            title="List View"
+          >
+            <List size={16} />
+          </button>
+          <button
+            className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
+            onClick={() => setViewMode('minimal')}
+            title="Minimal View"
+          >
+            <AlignJustify size={16} />
+          </button>
         </div>
-      </div>
+      </PageHeader>
 
       {loading ? (
         <div className="text-center opacity-50 py-12">Loading playlists...</div>

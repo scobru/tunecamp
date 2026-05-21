@@ -9,6 +9,7 @@ import {
   Download,
   Share2,
   ListMusic,
+  Music,
 } from "lucide-react";
 
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -18,6 +19,7 @@ import { useWalletStore } from "../stores/useWalletStore";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { ZenSocial } from "../services/zen";
 import { formatDuration } from "../utils/format";
+import { PageHeader } from "../components/ui/PageHeader";
 import type { Track } from "../types";
 import clsx from "clsx";
 
@@ -124,17 +126,13 @@ const Tracks = () => {
 
   return (
     <div className="space-y-8 min-h-screen pb-20">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
-        <div className="space-y-2">
-          <h1 className="text-4xl lg:text-6xl font-black tracking-tighter uppercase">
-            Tracks
-          </h1>
-          <p className="text-sm opacity-60 font-medium tracking-widest uppercase">
-            Explore the complete audio library ({tracks.length})
-          </p>
-        </div>
-
-        <div className="relative group max-w-md w-full">
+      <PageHeader 
+        title="Tracks" 
+        subtitle={`Explore the complete audio library (${tracks.length} tracks)`}
+        icon={Music}
+        iconColor="text-primary"
+      >
+        <div className="relative group w-full sm:w-80">
           <Search
             className="absolute left-4 top-1/2 -translate-y-1/2 opacity-40 group-focus-within:opacity-100 transition-opacity"
             size={18}
@@ -142,13 +140,13 @@ const Tracks = () => {
           <input
             type="text"
             aria-label="Filter tracks"
-            placeholder="Search titles, artists, albums..."
-            className="input input-lg bg-base-200/50 border-base-content/5 focus:border-primary/30 w-full pl-12 rounded-2xl transition-all"
+            placeholder="Search titles, artists..."
+            className="input input-bordered w-full pl-12 rounded-2xl transition-all"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-      </div>
+      </PageHeader>
 
       <div className="space-y-2">
         <div className="list bg-base-200/20 rounded-[2rem] border border-base-content/5 overflow-visible">

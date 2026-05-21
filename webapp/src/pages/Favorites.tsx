@@ -14,6 +14,7 @@ import {
 import { formatDuration } from "../utils/format";
 import type { Track, Album, Artist, Release } from "../types";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
+import { PageHeader } from "../components/ui/PageHeader";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
 
@@ -103,21 +104,12 @@ const Favorites = () => {
 
   return (
     <div className="space-y-10 animate-fade-in pb-20">
-      <header className="space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-             <Heart size={32} fill="currentColor" />
-          </div>
-          <div>
-            <h1 className="text-4xl lg:text-5xl font-black tracking-tighter uppercase italic">
-              Favorites
-            </h1>
-            <p className="text-xs opacity-50 font-bold tracking-widest uppercase mt-1">
-              Your curated collection of sounds
-            </p>
-          </div>
-        </div>
-      </header>
+      <PageHeader 
+        title="Favorites" 
+        subtitle="Your curated collection of sounds"
+        icon={Heart}
+        iconColor="text-primary"
+      />
 
       {/* Tabs */}
       <div className="tabs tabs-boxed bg-base-300/50 p-1 rounded-2xl w-fit">
