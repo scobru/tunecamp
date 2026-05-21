@@ -859,7 +859,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         getListeningStats: () => ({ totalPlays: 0, uniqueTracks: 0, totalListeningTime: 0, playsToday: 0, playsThisWeek: 0, playsThisMonth: 0 }),
 
         // AP Metadata
-        createApNote: (aid: number, nid: string, nt: any, cid: number, cs: string, ct: string) => Number(db.prepare("INSERT INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title) VALUES (?, ?, ?, ?, ?, ?)").run(aid, nid, nt, cid, cs, ct).lastInsertRowid),
+        createApNote: (aid: number, nid: string, nt: any, cid: number, cs: string, ct: string) => Number(db.prepare("INSERT OR IGNORE INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title) VALUES (?, ?, ?, ?, ?, ?)").run(aid, nid, nt, cid, cs, ct).lastInsertRowid),
         getApNotes: (aid: number, id = false) => db.prepare(id ? "SELECT * FROM ap_notes WHERE artist_id = ?" : "SELECT * FROM ap_notes WHERE artist_id = ? AND deleted_at IS NULL").all(aid) as any[],
         getApNote: (nid: string) => db.prepare("SELECT * FROM ap_notes WHERE note_id = ?").get(nid) as any,
         markApNoteDeleted: (nid: string) => { db.prepare("UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE note_id = ?").run(nid); },
