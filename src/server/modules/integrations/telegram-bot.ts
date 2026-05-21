@@ -7,6 +7,7 @@ import { ScannerService } from '../catalog/scanner.js';
 import { DatabaseService } from '../../core/database.js';
 import type { ServerConfig } from '../../core/config.js';
 import type { OpenRouterService } from '../ai/openrouter.service.js';
+import { VisibilityProfile } from '../../common/visibility.js';
 
 export class TelegramBotService {
     private bot?: Telegraf;
@@ -212,15 +213,17 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
 
                     console.log(`[TelegramBot] Searching for: "${query}"`);
 
+                    const profile = this.isAuthorized(ctx) ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+
                     // 1. Use the main database search which is more comprehensive
-                    const searchResults = this.database.search(query, false);
+                    const searchResults = this.database.search(query, profile);
                     let tracks: any[] = [...searchResults.tracks];
 
                     // 2. If no tracks found but an artist matched, fetch all tracks for that artist
                     if (tracks.length === 0 && searchResults.artists.length > 0) {
                         const artist = searchResults.artists[0];
                         console.log(`[TelegramBot] No direct track matches, but artist "${artist.name}" found. Fetching artist tracks.`);
-                        const artistTracks = this.database.getTracksByArtist(artist.id);
+                        const artistTracks = this.database.getTracksByArtist(artist.id, profile);
                         tracks.push(...artistTracks);
                     }
 
