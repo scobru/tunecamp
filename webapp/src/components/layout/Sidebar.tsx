@@ -19,7 +19,8 @@ import {
   Heart,
   Upload,
   MessageSquare,
-  Library
+  Library,
+  Wrench
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -160,6 +161,7 @@ export const Sidebar = () => {
       <div className="mt-auto space-y-4">
         <ul className="menu menu-sm p-0">
           <NavItem to="/support" icon={LifeBuoy} label="Support" />
+          <NavItem to="/tools" icon={Wrench} label="Tools" />
         </ul>
 
         {/* User Footer */}

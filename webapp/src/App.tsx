@@ -33,6 +33,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
 const Favorites = lazy(() => import("./pages/Favorites"));
+const Tools = lazy(() => import("./pages/Tools"));
 
 
 const LoadingSpinner = () => (
@@ -138,6 +139,7 @@ function App() {
 
             {/* Other */}
             <Route path="/support" element={<Support />} />
+            <Route path="/tools" element={<Tools />} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />

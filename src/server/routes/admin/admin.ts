@@ -18,7 +18,7 @@ import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../
 
 import multer from "multer";
 import { YouTubeCookieManager } from "../../utils/youtube-session.js";
-import { youtubeProvider } from "../../core/providers.js";
+
 import type { LocalizationService } from "../../modules/catalog/localization.service.js";
 
 const upload = multer({ dest: "uploads/" });
@@ -520,43 +520,7 @@ export function createAdminRoutes(
         }
     });
 
-    /**
-     * POST /api/admin/system/youtube-cookies
-     * Upload YouTube cookies (Root Admin only)
-     */
-    router.post("/system/youtube-cookies", upload.single("cookies"), async (req: AuthenticatedRequest, res: any) => {
-        try {
-            if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only root admin can upload YouTube cookies" });
-            }
 
-            if (!req.file) {
-                return res.status(400).json({ error: "No cookie file uploaded" });
-            }
-
-            const cookieManager = new YouTubeCookieManager();
-            const content = await fs.readFile(req.file.path, 'utf8');
-            
-            await cookieManager.saveCookies(content);
-
-            // Sync active providers immediately
-            const cookiesPath = cookieManager.getCookiesPath();
-            console.log(`[Admin] 🔄 Syncing YouTube cookies with active providers: ${cookiesPath}`);
-            
-            await youtubeProvider.reset(cookiesPath);
-            if (localizationService) {
-                localizationService.setCookiesPath(cookiesPath);
-            }
-            
-            // Clean up temp file
-            await fs.unlink(req.file.path).catch(() => {});
-
-            res.json({ message: "YouTube cookies uploaded and saved successfully. Providers updated." });
-        } catch (error) {
-            console.error("Error uploading YouTube cookies:", error);
-            res.status(500).json({ error: "Failed to upload YouTube cookies" });
-        }
-    });
 
     /**
      * POST /api/admin/system/consolidate-db

@@ -8,7 +8,7 @@ const REGISTRY_PEERS = [
 ];
 
 // Add current origin as a peer if we are running on a Tunecamp instance
-if (window.location.protocol.startsWith('http')) {
+if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('vercel.app')) {
     const localPeer = `${window.location.origin}/zen`.replace('http://', 'ws://').replace('https://', 'wss://');
     if (!REGISTRY_PEERS.includes(localPeer)) {
         REGISTRY_PEERS.push(localPeer);

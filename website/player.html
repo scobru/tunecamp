@@ -252,30 +252,6 @@
             const artistsSet = new Set();
             const processedSites = new Set();
 
-            try {
-                const localTracks = await fetch('/api/catalog/remote/tracks').then(res => res.json());
-                if (Array.isArray(localTracks)) {
-                    localTracks.forEach(track => {
-                        if(track.audioUrl || track.stream_url || track.url) {
-                            const trackData = {
-                                id: track.id || track.slug,
-                                title: track.title,
-                                artistName: track.artistName || track.artist_name || "Unknown Artist",
-                                releaseTitle: track.albumName || track.album_name || track.releaseTitle || "Unknown Release",
-                                coverUrl: track.coverUrl || track.cover_url,
-                                audioUrl: track.audioUrl || track.stream_url || track.url,
-                                duration: track.duration,
-                                siteUrl: track.siteUrl || track.actor_uri,
-                                addedAt: track.addedAt || track.published_at || Date.now()
-                            };
-                            tracksMap.set(`local:${trackData.id}`, trackData);
-                            artistsSet.add(trackData.artistName);
-                        }
-                    });
-                    updateTracksList(tracksMap, artistsSet);
-                }
-            } catch (e) {}
-
             zen.get(REGISTRY_ROOT).get(REGISTRY_NAMESPACE).get('sites').map().on((siteData, siteId) => {
                 if (!siteData || siteId === "_" || processedSites.has(siteId)) return;
                 const siteUrl = siteData.url ? siteData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;

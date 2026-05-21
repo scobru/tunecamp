@@ -61,7 +61,6 @@ export class MetadataService {
         this.registry.register(spotifyProvider as any);
         this.registry.register(deezerProvider as any);
         this.registry.register(bandcampMetadataProvider as any);
-        this.registry.register(youtubeProvider as any);
     }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {

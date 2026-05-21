@@ -2,8 +2,7 @@ import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.
 import type { StreamingProvider, StreamCandidate } from "../../core/provider.js";
 import { 
     soundcloudStreamingProvider, 
-    bandcampStreamingProvider,
-    youtubeProvider
+    bandcampStreamingProvider 
 } from "../../core/providers.js";
 import type { DatabaseService } from "../../core/database.types.js";
 
@@ -24,7 +23,6 @@ export class StreamingService {
     constructor() {
         this.registry.register(soundcloudStreamingProvider);
         this.registry.register(bandcampStreamingProvider);
-        this.registry.register(youtubeProvider);
     }
 
     /**

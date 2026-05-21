@@ -42,7 +42,7 @@
             @apply bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6 shadow-[0_10px_40px_rgba(0,0,0,0.5)];
         }
         .site-card {
-            @apply glass-panel p-0 overflow-hidden flex flex-col transition-all duration-300 hover:border-primary/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(139,92,246,0.15)];
+            @apply p-0 overflow-hidden flex flex-col transition-all duration-300 hover:border-primary/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(139,92,246,0.15)];
         }
         .track-row {
             @apply flex items-center gap-4 p-4 border-b border-white/5 transition-all hover:bg-white/5 cursor-pointer;
@@ -204,22 +204,6 @@
 
         async function initDiscovery() {
             const processedSites = new Set();
-            try {
-                const localTracks = await fetch('/api/catalog/remote/tracks').then(res => res.json());
-                if (Array.isArray(localTracks)) {
-                    localTracks.forEach(track => {
-                        processTrackFromApi(track, {
-                            title: track.albumName || track.album_name || track.releaseTitle || "Remote Release",
-                            artistName: track.artistName || track.artist_name,
-                            created_at: track.addedAt || track.published_at
-                        }, {
-                            url: track.siteUrl || track.actor_uri || '',
-                            title: track.siteTitle || 'Remote Network'
-                        });
-                    });
-                    renderTracks();
-                }
-            } catch (e) {}
 
             zen.get(REGISTRY_ROOT).get(REGISTRY_NAMESPACE).get('sites').map().on((directoryData, siteId) => {
                 if (!directoryData || siteId === "_" || processedSites.has(siteId)) return;
@@ -296,7 +280,7 @@
             grid.innerHTML = sites.map(site => {
                 const coverHtml = site.coverImage ? `<img src="${escapeHtml(site.coverImage)}" class="w-full h-full object-cover">` : `<i class="fas fa-compact-disc"></i>`;
                 return `
-                    <div class="site-card">
+                    <div class="glass-panel site-card">
                         <div class="h-40 bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center text-5xl text-white/50 relative group">
                             ${coverHtml}
                             <a href="${escapeHtml(site.url)}" target="_blank" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i class="fas fa-external-link-alt text-2xl text-white"></i></a>
