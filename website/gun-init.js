@@ -4,7 +4,11 @@
 
 // Default peers
 const REGISTRY_PEERS = [
-    "https://shogun-relay.scobrudot.dev/zen"
+    "wss://sudorecords.scobrudot.dev/zen",
+"wss://shogun-relay.scobrudot.dev/zen",
+"wss://zen.akao.io:8420/zen",
+"wss://zen0.akao.io:8420/zen",
+"wss://zen1.akao.io:8420/zen"
 ];
 
 // Add current origin as a peer if we are running on a Tunecamp instance
