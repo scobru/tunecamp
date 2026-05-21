@@ -25,21 +25,21 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
 
     return (
         <Link to={linkTo} className={clsx(
-            "group transition-all duration-300 shadow-xl border border-base-content/5 overflow-hidden",
-            viewMode === 'grid' && "card bg-base-200 hover:bg-base-300 hover:-translate-y-1 rounded-3xl",
+            "group transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] shadow-level-1 hover:shadow-level-2 border border-base-content/5 overflow-hidden",
+            viewMode === 'grid' && "card bg-base-200 hover:bg-base-300 hover:-translate-y-1 rounded-xl",
             viewMode === 'list' && "flex items-center gap-4 bg-base-200 p-4 rounded-xl hover:bg-base-300",
             viewMode === 'minimal' && "flex items-center gap-3 bg-base-200/40 p-2 px-3 rounded-lg hover:bg-base-200"
         )}>
             <figure className={clsx(
-                "relative overflow-hidden transition-all duration-500 shrink-0",
-                viewMode === 'grid' && "aspect-square rounded-t-3xl",
-                viewMode === 'list' && "w-12 h-12 rounded-lg shadow-lg",
+                "relative overflow-hidden transition-all duration-medium-4 [transition-timing-function:var(--ease-spring)] shrink-0",
+                viewMode === 'grid' && "aspect-square rounded-t-xl",
+                viewMode === 'list' && "w-12 h-12 rounded-lg shadow-level-1",
                 viewMode === 'minimal' && "w-0 h-0 opacity-0 absolute pointer-events-none"
             )}>
                 <img
                     src={coverUrl}
                     alt={item.title}
-                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-medium-4 [transition-timing-function:var(--ease-spring)]"
                     onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
@@ -73,7 +73,7 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                 <div className="flex items-start justify-between gap-2">
                     <h3 className={clsx(
                         "font-bold truncate group-hover:text-primary transition-colors",
-                        viewMode === 'grid' ? "text-lg" : viewMode === 'list' ? "text-base" : "text-sm"
+                        viewMode === 'grid' ? "text-title-medium" : viewMode === 'list' ? "text-body-large" : "text-body-medium"
                     )} title={item.title}>
                         {item.title}
                     </h3>
@@ -83,7 +83,7 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                         </div>
                     )}
                 </div>
-                <p className={clsx("opacity-60 truncate", viewMode === 'minimal' ? "text-[10px] -mt-0.5" : "text-sm")}>
+                <p className={clsx("opacity-60 truncate", viewMode === 'minimal' ? "text-[10px] -mt-0.5" : "text-body-medium")}>
                     {item.artistName || item.artist_name}
                 </p>
                 {viewMode === 'grid' && (

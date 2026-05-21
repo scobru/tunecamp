@@ -66,9 +66,9 @@ export const Sidebar = () => {
         to={to}
         aria-current={isActive(to) ? "page" : undefined}
         className={clsx(
-          "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 group",
+          "flex items-center gap-3 px-4 py-2 rounded-full transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] group",
           isActive(to)
-            ? "bg-primary text-primary-content font-bold shadow-md shadow-primary/20"
+            ? "bg-primary text-primary-content font-bold shadow-level-1"
             : "hover:bg-base-300/50 text-base-content/70 hover:text-base-content",
         )}
       >
@@ -76,7 +76,7 @@ export const Sidebar = () => {
           "transition-transform group-hover:scale-110",
           isActive(to) ? "opacity-100" : "opacity-60"
         )} />
-        <span className="text-sm tracking-tight">{label}</span>
+        <span className="text-label-large tracking-tight">{label}</span>
       </Link>
     </li>
   );
@@ -85,7 +85,7 @@ export const Sidebar = () => {
     <div className="w-64 min-h-full bg-base-200 text-base-content border-r border-base-content/10 flex flex-col gap-6 p-4 pb-32 overflow-y-auto">
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-4">
-        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-primary/20 bg-base-300">
+        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-level-2 shadow-primary/20 bg-base-300">
           {siteLogo ? (
             <img src={siteLogo} alt={siteName} className="w-full h-full object-cover" />
           ) : (
@@ -171,7 +171,7 @@ export const Sidebar = () => {
                 to="/profile"
                 className="avatar placeholder"
               >
-                <div className="bg-neutral text-neutral-content rounded-lg w-10 ring-1 ring-base-content/10 cursor-pointer hover:ring-primary/50 transition-all overflow-hidden">
+                <div className="bg-neutral text-neutral-content rounded-xl w-10 ring-1 ring-base-content/10 cursor-pointer hover:ring-primary/50 transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] overflow-hidden">
                   {user?.zenProfile?.profile?.avatar ? (
                     <img
                       src={user.zenProfile.profile.avatar}

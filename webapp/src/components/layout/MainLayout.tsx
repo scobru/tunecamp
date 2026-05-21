@@ -54,7 +54,7 @@ export const MainLayout = () => {
         />
 
         {/* Mobile Header */}
-        <div className="navbar lg:hidden bg-base-100/80 backdrop-blur-md border-b border-base-content/5 min-h-16 z-20">
+        <div className="navbar lg:hidden bg-base-100/80 backdrop-blur-md border-b border-base-content/5 shadow-level-1 min-h-16 z-20">
           <div className="flex-none">
             <label
               htmlFor="main-drawer"
