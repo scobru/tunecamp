@@ -1,530 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tunecamp Community Player - Listen to Independent Music</title>
-    <meta name="description"
-        content="Listen to music from independent artists using Tunecamp. A decentralized community player powered by Zen.">
+    <meta name="description" content="Listen to music from independent artists using Tunecamp. A decentralized community player powered by Zen.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" crossorigin="anonymous" />
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Player-specific styles */
-        .player-widget {
-            background: #1a1a1a;
-            border-radius: 12px;
-            padding: var(--space-xl);
-            margin-bottom: var(--space-2xl);
-            color: #ffffff;
+    <style type="text/tailwindcss">
+        @theme {
+            --color-primary: #8b5cf6;
+            --color-primary-hover: #a78bfa;
+            --color-bg-base: #050505;
+            --color-bg-surface: #111111;
+            --color-bg-surface-alt: #1a1a1a;
+            --color-text-base: #ffffff;
+            --color-text-muted: #a3a3a3;
+            --font-sans: 'Inter', sans-serif;
+            --font-display: 'Outfit', sans-serif;
         }
-
-        .player-content {
-            display: flex;
-            gap: var(--space-xl);
-            align-items: center;
-            flex-wrap: wrap;
+        body {
+            @apply bg-bg-base text-text-base font-sans antialiased selection:bg-primary/30;
         }
-
-        .player-cover {
-            width: 120px;
-            height: 120px;
-            background: var(--accent);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            color: rgba(255, 255, 255, 0.3);
-            overflow: hidden;
-            flex-shrink: 0;
+        .glass-panel {
+            @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)];
         }
-
-        .player-cover img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .player-info {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .player-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-            color: white;
-        }
-
-        .player-artist {
-            font-size: 0.9375rem;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 4px;
-        }
-
-        .player-release {
-            font-size: 0.8125rem;
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .player-controls {
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-            margin-top: var(--space-lg);
-        }
-
         .ctrl-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.15s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            @apply w-12 h-12 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/15 transition-all text-white border border-white/5;
         }
-
-        .ctrl-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
         .ctrl-btn-play {
-            width: 56px;
-            height: 56px;
-            background: var(--accent);
-            font-size: 1.25rem;
+            @apply w-16 h-16 bg-gradient-to-r from-primary to-purple-500 hover:scale-105 border-none shadow-[0_0_20px_rgba(139,92,246,0.4)] text-2xl;
         }
-
-        .ctrl-btn-play:hover {
-            background: var(--accent-hover);
-        }
-
-        .player-progress {
-            flex: 1;
-            min-width: 200px;
-            margin-top: var(--space-lg);
-        }
-
-        .progress-wrapper {
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-        }
-
-        .progress-bar {
-            flex: 1;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: var(--accent);
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.1s;
-        }
-
-        .progress-time {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.6);
-            font-variant-numeric: tabular-nums;
-            min-width: 40px;
-        }
-
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-        }
-
-        .volume-slider {
-            width: 70px;
-            height: 4px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-            cursor: pointer;
-        }
-
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            background: white;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-
-        /* Filter Bar */
-        .filter-bar {
-            display: flex;
-            gap: var(--space-md);
-            margin-bottom: var(--space-xl);
-            flex-wrap: wrap;
-        }
-
-        .filter-bar input,
-        .filter-bar select {
-            flex: 1;
-            min-width: 200px;
-            padding: var(--space-sm) var(--space-md);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 0.9375rem;
-            background: var(--bg-surface);
-            color: var(--text-primary);
-        }
-
-        .filter-bar input:focus,
-        .filter-bar select:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .shuffle-btn {
-            padding: var(--space-sm) var(--space-lg);
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 0.9375rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .shuffle-btn:hover {
-            background: var(--accent-hover);
-        }
-
-        /* Track List */
-        .tracks-list {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
         .track-row {
-            display: flex;
-            align-items: center;
-            padding: var(--space-md) var(--space-lg);
-            gap: var(--space-md);
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background 0.15s;
+            @apply flex items-center p-3 gap-4 rounded-xl transition-all duration-300 hover:bg-white/5 cursor-pointer border border-transparent hover:border-white/5;
         }
-
-        .track-row:last-child {
-            border-bottom: none;
-        }
-
-        .track-row:hover {
-            background: var(--bg-surface-alt);
-        }
-
         .track-row.playing {
-            background: var(--accent-light);
+            @apply bg-primary/10 border-primary/20;
         }
-
-        .track-play-icon {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--bg-surface-alt);
-            border-radius: 50%;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            flex-shrink: 0;
+        .progress-bar {
+            @apply h-1.5 bg-white/20 rounded-full cursor-pointer relative overflow-hidden flex-1;
         }
-
-        .track-row:hover .track-play-icon {
-            background: var(--accent);
-            color: white;
+        .progress-fill {
+            @apply absolute top-0 left-0 h-full bg-primary rounded-full;
         }
-
-        .track-cover-sm {
-            width: 44px;
-            height: 44px;
-            background: var(--accent);
+        /* Custom scrollbar for track list */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
             border-radius: 4px;
-            overflow: hidden;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 1.25rem;
         }
-
-        .track-cover-sm img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .track-details {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .track-name {
-            font-weight: 500;
-            font-size: 0.9375rem;
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .track-meta {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .track-duration {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            font-variant-numeric: tabular-nums;
-            flex-shrink: 0;
-        }
-
-        .track-link {
-            color: var(--accent);
-            font-size: 0.8125rem;
-            flex-shrink: 0;
-            opacity: 0;
-            transition: opacity 0.15s;
-        }
-
-        .track-row:hover .track-link {
-            opacity: 1;
-        }
-
-        /* Empty/loading states */
-        .empty-state {
-            text-align: center;
-            padding: var(--space-3xl);
-            color: var(--text-muted);
-        }
-
-        .empty-state .icon {
-            font-size: 3rem;
-            margin-bottom: var(--space-lg);
-        }
-
-        .loading-spinner {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* CTA */
-        .cta-section {
-            background: var(--accent);
-            color: white;
-            padding: var(--space-xl);
-            border-radius: 8px;
-            text-align: center;
-            margin: var(--space-2xl) 0;
-        }
-
-        .cta-section h3 {
-            color: white;
-            margin-bottom: var(--space-sm);
-        }
-
-        .cta-section p {
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: var(--space-lg);
-        }
-
-        .cta-section .btn {
-            background: white;
-            color: var(--accent);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .player-content {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .player-controls {
-                justify-content: center;
-            }
-
-            .player-progress {
-                width: 100%;
-            }
-        }
-
-        .stat-row {
-            display: flex;
-            gap: var(--space-lg);
-            justify-content: center;
-            margin-top: var(--space-xl);
-        }
-
-        .stat-item {
-            background: var(--bg-surface-alt);
-            border: 1px solid var(--border);
-            padding: var(--space-md) var(--space-xl);
-            border-radius: 8px;
-            text-align: center;
-            min-width: 120px;
-        }
-
-        .stat-number {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 4px;
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--text-muted);
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.2);
         }
     </style>
 </head>
-
-<body>
-    <div class="container">
-        <header style="border-bottom: none; padding-bottom: var(--space-lg);">
-            <p style="margin-bottom: var(--space-lg);"><a href="index.html"
-                    style="color: var(--text-muted); font-size: 0.875rem;">← Back to Tunecamp</a></p>
-            <h1>🎵 Community Player</h1>
-            <div class="flex items-center gap-4 mb-6">
-                <p class="subtitle" style="margin-bottom: 0;">Listen to music from independent artists</p>
-                <div class="flex items-center gap-2 px-3 py-1 bg-base-200/50 rounded-full border border-base-content/5 text-[10px] font-bold uppercase tracking-wider">
-                    <span id="statusDot" style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%;"></span>
-                    <span id="statusText" class="opacity-60">Connecting</span>
-                </div>
+<body class="min-h-screen flex flex-col relative h-screen overflow-hidden">
+    <!-- Ambient Player Glow -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/15 blur-[150px] rounded-full pointer-events-none -z-10" id="ambientGlow"></div>
+    
+    <!-- Top Header -->
+    <header class="p-6 flex items-center justify-between z-10 bg-gradient-to-b from-black/80 to-transparent">
+        <div class="flex items-center gap-4">
+            <a href="community.html" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors text-text-muted hover:text-white">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1 class="font-display text-2xl font-bold hidden sm:block">Community Player</h1>
+        </div>
+        
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10 text-xs font-medium">
+                <span id="statusDot" class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                <span id="statusText" class="text-text-muted">Connecting...</span>
             </div>
-
-            <div class="stat-row">
-                <div class="stat-item">
-                    <div class="stat-number" id="trackCount">-</div>
-                    <div class="stat-label">Tracks</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="artistCount">-</div>
-                    <div class="stat-label">Artists</div>
-                </div>
-            </div>
-        </header>
-
-        <!-- Player Widget -->
-        <div class="player-widget">
-            <div class="player-content">
-                <div class="player-cover" id="playerCover">♪</div>
-
-                <div class="player-info">
-                    <div class="player-title" id="playerTitle">Select a track to play</div>
-                    <div class="player-artist" id="playerArtist">Browse the tracks below</div>
-                    <div class="player-release" id="playerRelease"></div>
-
-                    <div class="player-controls">
-                        <button class="ctrl-btn" id="prevBtn" title="Previous">⏮</button>
-                        <button class="ctrl-btn ctrl-btn-play" id="playBtn" title="Play">▶</button>
-                        <button class="ctrl-btn" id="nextBtn" title="Next">⏭</button>
-
-                        <div class="volume-control">
-                            <span>🔊</span>
-                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="player-progress">
-                    <div class="progress-wrapper">
-                        <span class="progress-time" id="currentTime">0:00</span>
-                        <div class="progress-bar" id="progressBar">
-                            <div class="progress-fill" id="progressFill"></div>
-                        </div>
-                        <span class="progress-time" id="duration">0:00</span>
-                    </div>
+            <div class="flex gap-4 text-sm font-mono text-text-muted/60">
+                <div class="flex flex-col items-center">
+                    <span id="trackCount" class="text-white font-bold">-</span>
+                    <span class="text-[10px] uppercase tracking-wider">Tracks</span>
                 </div>
             </div>
         </div>
+    </header>
 
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-            <input type="text" id="searchInput" placeholder="Search tracks or artists..." oninput="filterTracks()">
-            <select id="artistFilter" onchange="filterTracks()">
-                <option value="">All Artists</option>
-            </select>
-            <button class="shuffle-btn" onclick="shufflePlay()">🔀 Shuffle</button>
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-[1600px] mx-auto w-full px-6 gap-8 pb-32">
+        <!-- Main Player Area (Left) -->
+        <div class="lg:w-1/2 flex flex-col justify-center items-center h-full relative">
+            <div id="playerCover" class="w-[300px] h-[300px] md:w-[450px] md:h-[450px] rounded-3xl bg-white/5 border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] overflow-hidden flex items-center justify-center text-7xl text-white/20 transition-transform duration-500 relative z-10">
+                <i class="fas fa-music"></i>
+            </div>
+            
+            <div class="mt-12 text-center max-w-lg w-full z-10">
+                <h2 id="playerTitle" class="text-3xl md:text-4xl font-bold font-display mb-2 truncate">Select a track</h2>
+                <p id="playerArtist" class="text-xl text-primary mb-1 truncate">Browse the tracks to start</p>
+                <p id="playerRelease" class="text-sm text-text-muted truncate"></p>
+            </div>
         </div>
 
-        <!-- Tracks List -->
-        <section>
-            <h2>📻 All Tracks <span id="displayedCount" style="font-weight: normal; color: var(--text-muted);"></span>
-            </h2>
-
-            <div id="tracksContainer">
-                <div class="empty-state">
-                    <div class="icon loading-spinner">⟳</div>
-                    <p>Loading tracks from the community...</p>
+        <!-- Track List (Right) -->
+        <div class="lg:w-1/2 flex flex-col h-full glass-panel rounded-3xl overflow-hidden mt-8 lg:mt-0">
+            <div class="p-6 border-b border-white/10 flex flex-col sm:flex-row gap-4 bg-black/20">
+                <div class="relative flex-1">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"></i>
+                    <input type="text" id="searchInput" placeholder="Search tracks or artists..." oninput="filterTracks()" class="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:border-primary/50 text-white placeholder-text-muted transition-colors">
+                </div>
+                <div class="flex gap-2">
+                    <select id="artistFilter" onchange="filterTracks()" class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 text-white appearance-none pr-10 relative">
+                        <option value="" class="bg-bg-surface text-white">All Artists</option>
+                    </select>
+                    <button onclick="shufflePlay()" class="bg-primary/20 text-primary border border-primary/30 rounded-xl px-5 hover:bg-primary/30 transition-colors" title="Shuffle Play">
+                        <i class="fas fa-random"></i>
+                    </button>
                 </div>
             </div>
-        </section>
 
-        <!-- CTA -->
-        <div class="cta-section">
-            <h3>🎵 Add Your Music!</h3>
-            <p>Create your own Tunecamp site and your tracks will automatically appear here.<br>
-                No sign-up needed — just build, deploy, and share!</p>
-            <a href="index.html" class="btn">Get Started with Tunecamp</a>
+            <div id="tracksContainer" class="flex-1 overflow-y-auto p-4 flex flex-col gap-1">
+                <div class="flex flex-col items-center justify-center h-full text-center p-8">
+                    <i class="fas fa-circle-notch fa-spin text-4xl text-primary/50 mb-4"></i>
+                    <p class="text-text-muted">Loading tracks from the community...</p>
+                </div>
+            </div>
         </div>
-
-        <footer>
-            <nav class="footer-nav">
-                <a href="https://github.com/scobru/tunecamp">GitHub</a>
-                <a href="https://www.npmjs.com/package/tunecamp">NPM</a>
-                <a href="community.html">🌐 Community</a>
-                <a href="index.html">Home</a>
-                <a href="https://buymeacoffee.com/scobru" target="_blank">☕ Support</a>
-            </nav>
-            <p class="copyright">
-                Powered by Zen. Made with ❤️ by <a href="https://github.com/scobru" target="_blank">scobru</a>
-            </p>
-        </footer>
     </div>
 
-    <!-- Zen Consolidato -->
+    <!-- Bottom Control Bar -->
+    <div class="fixed bottom-0 left-0 w-full glass-panel border-t border-white/10 border-l-0 border-r-0 border-b-0 rounded-none px-6 py-4 z-50">
+        <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Mini Info (Left) -->
+            <div class="flex items-center gap-4 w-full md:w-1/3 min-w-0 hidden md:flex">
+                <div id="miniCover" class="w-14 h-14 rounded-lg bg-white/10 overflow-hidden flex items-center justify-center text-white/30 text-xl flex-shrink-0">
+                    <i class="fas fa-music"></i>
+                </div>
+                <div class="min-w-0">
+                    <div id="miniTitle" class="font-bold text-sm truncate">No track selected</div>
+                    <div id="miniArtist" class="text-xs text-text-muted truncate">Tunecamp Community</div>
+                </div>
+            </div>
+
+            <!-- Controls (Center) -->
+            <div class="flex flex-col items-center w-full md:w-1/3">
+                <div class="flex items-center gap-6 mb-3">
+                    <button class="text-text-muted hover:text-white transition-colors" title="Shuffle" id="toggleShuffle"><i class="fas fa-random"></i></button>
+                    <button class="ctrl-btn" id="prevBtn"><i class="fas fa-step-backward"></i></button>
+                    <button class="ctrl-btn ctrl-btn-play" id="playBtn"><i class="fas fa-play" id="playIcon"></i></button>
+                    <button class="ctrl-btn" id="nextBtn"><i class="fas fa-step-forward"></i></button>
+                    <button class="text-text-muted hover:text-white transition-colors" title="Repeat" id="toggleRepeat"><i class="fas fa-redo"></i></button>
+                </div>
+                <div class="w-full flex items-center gap-3">
+                    <span id="currentTime" class="text-xs text-text-muted font-mono w-10 text-right">0:00</span>
+                    <div id="progressBar" class="progress-bar">
+                        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <span id="duration" class="text-xs text-text-muted font-mono w-10">0:00</span>
+                </div>
+            </div>
+
+            <!-- Volume/Extra (Right) -->
+            <div class="flex items-center justify-end gap-4 w-full md:w-1/3 hidden md:flex">
+                <i class="fas fa-volume-up text-text-muted text-sm"></i>
+                <input type="range" id="volumeSlider" class="w-24 h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer focus:outline-none" min="0" max="100" value="80">
+            </div>
+        </div>
+    </div>
+
+    <!-- Zen & Player Scripts -->
     <script type="module" src="zen.js"></script>
     <script type="module" src="gun-init.js"></script>
 
@@ -538,6 +185,8 @@
         let filteredTracks = [];
         let currentTrackIndex = -1;
         let isPlaying = false;
+        let isShuffle = false;
+        let isRepeat = false;
 
         zen = getZen();
         initStatus();
@@ -548,16 +197,17 @@
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
 
-            zen.on('hi', (peer) => {
+            zen.on('hi', () => {
                 dot.style.background = '#10b981';
-                text.textContent = 'Live';
-                console.log("✅ Network connection established.");
+                dot.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.8)';
+                text.textContent = 'Network Live';
             });
 
-            zen.on('bye', (peer) => {
+            zen.on('bye', () => {
                 const peers = Object.keys(zen._.opt.peers || {}).length;
                 if (peers === 0) {
                     dot.style.background = '#ef4444';
+                    dot.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.8)';
                     text.textContent = 'Offline';
                 }
             });
@@ -566,324 +216,259 @@
         function initPlayer() {
             audio.addEventListener('timeupdate', updateProgress);
             audio.addEventListener('loadedmetadata', updateDuration);
-            audio.addEventListener('ended', () => playNext());
-            audio.addEventListener('play', () => { isPlaying = true; updatePlayButton(); });
-            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButton(); });
+            audio.addEventListener('ended', () => {
+                if(isRepeat) { audio.currentTime = 0; audio.play(); }
+                else playNext();
+            });
+            audio.addEventListener('play', () => { isPlaying = true; updatePlayButton(); updateVisuals(); });
+            audio.addEventListener('pause', () => { isPlaying = false; updatePlayButton(); updateVisuals(); });
 
             document.getElementById('playBtn').addEventListener('click', togglePlay);
             document.getElementById('prevBtn').addEventListener('click', playPrev);
             document.getElementById('nextBtn').addEventListener('click', playNext);
+
+            document.getElementById('toggleShuffle').addEventListener('click', (e) => {
+                isShuffle = !isShuffle;
+                e.currentTarget.style.color = isShuffle ? '#8b5cf6' : '';
+            });
+            document.getElementById('toggleRepeat').addEventListener('click', (e) => {
+                isRepeat = !isRepeat;
+                e.currentTarget.style.color = isRepeat ? '#8b5cf6' : '';
+            });
 
             const volumeSlider = document.getElementById('volumeSlider');
             volumeSlider.addEventListener('input', (e) => { audio.volume = e.target.value / 100; });
             audio.volume = volumeSlider.value / 100;
 
             document.getElementById('progressBar').addEventListener('click', (e) => {
-                const rect = e.target.getBoundingClientRect();
+                const rect = e.currentTarget.getBoundingClientRect();
                 const percent = (e.clientX - rect.left) / rect.width;
                 if (audio.duration) audio.currentTime = audio.duration * percent;
             });
         }
 
         async function loadTracks() {
-            const container = document.getElementById('tracksContainer');
             const tracksMap = new Map();
             const artistsSet = new Set();
             const processedSites = new Set();
 
-            // 0. Bootstrap from local server if possible
             try {
                 const localTracks = await fetch('/api/catalog/remote/tracks').then(res => res.json());
                 if (Array.isArray(localTracks)) {
                     localTracks.forEach(track => {
-                        const uniqueKey = `local:${track.slug || track.id}`;
-                        const trackData = {
-                            id: track.id || track.slug || track.ap_id,
-                            title: track.title,
-                            artistName: track.artistName || track.artist_name || "Unknown Artist",
-                            releaseTitle: track.albumName || track.album_name || track.releaseTitle || "Remote Release",
-                            coverUrl: track.coverUrl || track.cover_url,
-                            audioUrl: track.audioUrl || track.stream_url || track.url,
-                            duration: track.duration,
-                            siteUrl: track.siteUrl || track.actor_uri,
-                            addedAt: track.addedAt || track.published_at || Date.now()
-                        };
-                        if (trackData.audioUrl) {
-                            tracksMap.set(uniqueKey, trackData);
+                        if(track.audioUrl || track.stream_url || track.url) {
+                            const trackData = {
+                                id: track.id || track.slug,
+                                title: track.title,
+                                artistName: track.artistName || track.artist_name || "Unknown Artist",
+                                releaseTitle: track.albumName || track.album_name || track.releaseTitle || "Unknown Release",
+                                coverUrl: track.coverUrl || track.cover_url,
+                                audioUrl: track.audioUrl || track.stream_url || track.url,
+                                duration: track.duration,
+                                siteUrl: track.siteUrl || track.actor_uri,
+                                addedAt: track.addedAt || track.published_at || Date.now()
+                            };
+                            tracksMap.set(`local:${trackData.id}`, trackData);
                             artistsSet.add(trackData.artistName);
                         }
                     });
                     updateTracksList(tracksMap, artistsSet);
                 }
-            } catch (e) {
-                console.log("ℹ️ Local bootstrap skipped");
-            }
+            } catch (e) {}
 
-            zen.get(REGISTRY_ROOT)
-                .get(REGISTRY_NAMESPACE)
-                .get('sites')
-                .map()
-                .on((siteData, siteId) => {
-                    if (!siteData || siteId === "_") return;
-                    if (processedSites.has(siteId)) return;
-                    
-                    const siteUrl = siteData.url ? siteData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;
-                    if (!siteUrl) return;
-                    
-                    processedSites.add(siteId);
-                    console.log("📡 Discovered site via Zen:", siteId, siteUrl);
+            zen.get(REGISTRY_ROOT).get(REGISTRY_NAMESPACE).get('sites').map().on((siteData, siteId) => {
+                if (!siteData || siteId === "_" || processedSites.has(siteId)) return;
+                const siteUrl = siteData.url ? siteData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;
+                if (!siteUrl) return;
+                processedSites.add(siteId);
 
-                    // Fetch catalog from instance REST API
-                    fetch(`${siteUrl}/api/catalog`, {
-                        headers: { 'Accept': 'application/json' }
-                    })
-                    .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch catalog'))
-                    .then(catalog => {
-                        console.log(`📦 Received catalog from ${siteId}:`, catalog);
-                        
-                        const allItems = [];
-                        
-                        // 1. Process Releases (Standard & Compatibility)
-                        const releases = catalog.releases || catalog.recentReleases || [];
-                        if (Array.isArray(releases)) {
-                            releases.forEach(rel => {
-                                if (rel.tracks && Array.isArray(rel.tracks)) {
-                                    rel.tracks.forEach(t => allItems.push({ track: t, release: rel }));
-                                }
-                            });
-                        }
-                        
-                        // 2. Process Albums
-                        const albums = catalog.recentAlbums || catalog.albums || [];
-                        if (Array.isArray(albums)) {
-                            albums.forEach(alb => {
-                                if (alb.tracks && Array.isArray(alb.tracks)) {
-                                    alb.tracks.forEach(t => allItems.push({ track: t, release: alb }));
-                                }
-                            });
-                        }
-                        
-                        // 3. Process Flat Tracks
-                        if (catalog.tracks && Array.isArray(catalog.tracks)) {
-                            catalog.tracks.forEach(t => allItems.push({ track: t, release: null }));
-                        }
-
-                        // Process and add to map
-                        allItems.forEach(({ track, release }) => {
-                            const uniqueKey = `${siteId}:${track.id || track.title}`;
-                            const trackData = {
-                                id: track.id || track.title,
-                                title: track.title || "Untitled",
-                                artistName: track.artistName || track.artist || (release ? (release.artistName || release.artist_name) : null) || siteData.title || "Unknown Artist",
-                                releaseTitle: (release ? release.title : track.album) || "Unknown Release",
-                                coverUrl: track.coverUrl || track.coverImage || (release && release.coverImage ? (release.coverImage.startsWith('http') ? release.coverImage : `${siteUrl}${release.coverImage}`) : (release && release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null)),
-                                audioUrl: track.streamUrl || track.audioUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
-                                duration: track.duration || 0,
-                                siteUrl: siteUrl,
-                                addedAt: track.addedAt || (release ? (release.created_at || release.published_at) : null) || Date.now()
+                fetch(`${siteUrl}/api/catalog`, { headers: { 'Accept': 'application/json' } })
+                .then(res => res.ok ? res.json() : Promise.reject())
+                .then(catalog => {
+                    const process = (t, r) => {
+                        if(t && (t.streamUrl || t.audioUrl || t.id)) {
+                            const audioUrl = t.streamUrl || t.audioUrl || `${siteUrl}/api/tracks/${t.id}/stream`;
+                            const cover = t.coverUrl || t.coverImage || (r && r.coverImage ? (r.coverImage.startsWith('http') ? r.coverImage : `${siteUrl}${r.coverImage}`) : null) || siteData.coverImage;
+                            const td = {
+                                id: t.id || t.title, title: t.title || "Untitled",
+                                artistName: t.artistName || t.artist || (r ? (r.artistName || r.artist_name) : null) || siteData.title || "Unknown Artist",
+                                releaseTitle: (r ? r.title : t.album) || "Unknown Release",
+                                coverUrl: cover, audioUrl: audioUrl, duration: t.duration || 0,
+                                siteUrl: siteUrl, addedAt: t.addedAt || (r ? (r.created_at || r.published_at) : null) || Date.now()
                             };
-
-                            if (trackData.audioUrl) {
-                                tracksMap.set(uniqueKey, trackData);
-                                if (trackData.artistName) artistsSet.add(trackData.artistName);
-                            }
-                        });
-                        
-                        updateTracksList(tracksMap, artistsSet);
-                    })
-                    .catch(err => {
-                        console.warn(`⚠️ Could not fetch catalog from ${siteUrl}:`, err);
-                    });
-                });
-
-            function updateTracksList(tracksMap, artistsSet) {
-                // Deduplicate by title + artist
-                const deduped = new Map();
-                Array.from(tracksMap.values()).forEach(track => {
-                    const dedupKey = `${(track.title || '').toLowerCase()}::${(track.artistName || '').toLowerCase()}`;
-                    const existing = deduped.get(dedupKey);
-                    if (!existing || (track.addedAt || 0) > (existing.addedAt || 0)) {
-                        deduped.set(dedupKey, track);
-                    }
-                });
-
-                allTracks = Array.from(deduped.values());
-                allTracks.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
-
-                updateArtistFilter(artistsSet);
-                filterTracks();
-                updateStats();
-            }
+                            tracksMap.set(`${siteId}:${td.id}`, td);
+                            artistsSet.add(td.artistName);
+                        }
+                    };
+                    if (Array.isArray(catalog.releases)) catalog.releases.forEach(r => { if (Array.isArray(r.tracks)) r.tracks.forEach(t => process(t, r)); });
+                    if (Array.isArray(catalog.recentAlbums)) catalog.recentAlbums.forEach(r => { if (Array.isArray(r.tracks)) r.tracks.forEach(t => process(t, r)); });
+                    if (Array.isArray(catalog.tracks)) catalog.tracks.forEach(t => process(t, null));
+                    updateTracksList(tracksMap, artistsSet);
+                }).catch(()=>{});
+            });
 
             setTimeout(() => {
                 if (allTracks.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <div class="icon">🎵</div>
-                            <h3>No tracks yet</h3>
-                            <p>Be the first! Create a Tunecamp site with music and your tracks will appear here.</p>
+                    document.getElementById('tracksContainer').innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full text-center p-8">
+                            <i class="fas fa-music text-4xl text-white/20 mb-4"></i>
+                            <p class="text-text-muted">No tracks found yet. Join the network!</p>
                         </div>
                     `;
                 }
             }, 5000);
         }
 
-
-        function updateArtistFilter(artistsSet) {
-            const select = document.getElementById('artistFilter');
-            const currentValue = select.value;
-            select.innerHTML = '<option value="">All Artists</option>';
-            Array.from(artistsSet).sort().forEach(artist => {
-                const option = document.createElement('option');
-                option.value = artist;
-                option.textContent = artist;
-                select.appendChild(option);
+        function updateTracksList(tracksMap, artistsSet) {
+            const deduped = new Map();
+            Array.from(tracksMap.values()).forEach(track => {
+                const key = `${(track.title || '').toLowerCase()}::${(track.artistName || '').toLowerCase()}`;
+                if (!deduped.has(key) || (track.addedAt || 0) > (deduped.get(key).addedAt || 0)) deduped.set(key, track);
             });
-            select.value = currentValue;
+            allTracks = Array.from(deduped.values()).sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+            document.getElementById('trackCount').textContent = allTracks.length;
+
+            const select = document.getElementById('artistFilter');
+            const current = select.value;
+            select.innerHTML = '<option value="" class="bg-bg-surface text-white">All Artists</option>';
+            Array.from(artistsSet).sort().forEach(a => {
+                select.innerHTML += `<option value="${escapeHtml(a)}" class="bg-bg-surface text-white">${escapeHtml(a)}</option>`;
+            });
+            select.value = current;
+
+            filterTracks();
         }
 
         function filterTracks() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const artistFilter = document.getElementById('artistFilter').value;
-
-            filteredTracks = allTracks.filter(track => {
-                const matchesSearch = !searchTerm ||
-                    track.title.toLowerCase().includes(searchTerm) ||
-                    (track.artistName && track.artistName.toLowerCase().includes(searchTerm)) ||
-                    (track.releaseTitle && track.releaseTitle.toLowerCase().includes(searchTerm));
-                const matchesArtist = !artistFilter || track.artistName === artistFilter;
-                return matchesSearch && matchesArtist;
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const a = document.getElementById('artistFilter').value;
+            filteredTracks = allTracks.filter(t => {
+                const mq = !q || t.title.toLowerCase().includes(q) || (t.artistName && t.artistName.toLowerCase().includes(q));
+                const ma = !a || t.artistName === a;
+                return mq && ma;
             });
-
             renderTracks();
         }
 
         function renderTracks() {
             const container = document.getElementById('tracksContainer');
-            const countEl = document.getElementById('displayedCount');
-
             if (filteredTracks.length === 0) {
-                container.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><h3>No tracks found</h3><p>Try adjusting your search.</p></div>`;
-                countEl.textContent = '';
+                container.innerHTML = `<div class="p-8 text-center text-text-muted">No tracks match your search.</div>`;
                 return;
             }
-
-            countEl.textContent = `(${filteredTracks.length})`;
-
-            container.innerHTML = `
-                <div class="tracks-list">
-                    ${filteredTracks.map((track, index) => renderTrackRow(track, index)).join('')}
-                </div>
-            `;
-        }
-
-        function renderTrackRow(track, index) {
-            const isCurrentTrack = currentTrackIndex === index;
-            const coverHtml = track.coverUrl
-                ? `<img src="${esc(track.coverUrl)}" alt="${esc(track.title)}" onerror="this.parentElement.innerHTML='♪'">`
-                : '♪';
-
-            return `
-                <div class="track-row ${isCurrentTrack ? 'playing' : ''}" onclick="playTrack(${index})">
-                    <div class="track-play-icon">${isCurrentTrack && isPlaying ? '▐▐' : '▶'}</div>
-                    <div class="track-cover-sm">${coverHtml}</div>
-                    <div class="track-details">
-                        <div class="track-name">${esc(track.title)}</div>
-                        <div class="track-meta">${esc(track.artistName || 'Unknown')} · ${esc(track.releaseTitle || '')}</div>
+            container.innerHTML = filteredTracks.map((t, i) => {
+                const active = currentTrackIndex === i;
+                const cover = t.coverUrl ? `<img src="${escapeHtml(t.coverUrl)}" class="w-full h-full object-cover">` : '<i class="fas fa-music text-xs"></i>';
+                const time = t.duration ? `${Math.floor(t.duration/60)}:${Math.floor(t.duration%60).toString().padStart(2,'0')}` : '';
+                return `
+                    <div class="track-row group ${active ? 'playing' : ''}" onclick="playTrackIndex(${i})">
+                        <div class="w-10 h-10 bg-white/10 rounded-lg overflow-hidden flex items-center justify-center text-white/50 relative flex-shrink-0">
+                            ${cover}
+                            <div class="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center text-white text-xs">
+                                <i class="fas ${active && isPlaying ? 'fa-pause' : 'fa-play'}"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-white font-medium truncate">${escapeHtml(t.title)}</div>
+                            <div class="text-xs text-text-muted truncate">${escapeHtml(t.artistName)}</div>
+                        </div>
+                        <div class="text-xs text-text-muted/50 font-mono">${time}</div>
                     </div>
-                    <div class="track-duration">${formatTime(track.duration)}</div>
-                    <a href="${esc(track.siteUrl)}" target="_blank" class="track-link" onclick="event.stopPropagation()">Visit →</a>
-                </div>
-            `;
+                `;
+            }).join('');
         }
 
-        function updateStats() {
-            document.getElementById('trackCount').textContent = allTracks.length;
-            const artists = new Set(allTracks.map(t => t.artistName).filter(Boolean));
-            document.getElementById('artistCount').textContent = artists.size;
-        }
-
-        function playTrack(index) {
+        function playTrackIndex(index) {
             if (index < 0 || index >= filteredTracks.length) return;
-            currentTrackIndex = index;
             const track = filteredTracks[index];
-
+            if (currentTrackIndex === index) {
+                togglePlay();
+                return;
+            }
+            currentTrackIndex = index;
             audio.src = track.audioUrl;
-            audio.play().catch(e => console.warn('Playback failed:', e));
-
+            audio.play().catch(()=>{});
+            
+            // Update UI
+            const coverHtml = track.coverUrl ? `<img src="${escapeHtml(track.coverUrl)}" class="w-full h-full object-cover shadow-2xl">` : '<i class="fas fa-music"></i>';
+            document.getElementById('playerCover').innerHTML = coverHtml;
+            document.getElementById('miniCover').innerHTML = coverHtml;
             document.getElementById('playerTitle').textContent = track.title;
-            document.getElementById('playerArtist').textContent = track.artistName || 'Unknown Artist';
+            document.getElementById('miniTitle').textContent = track.title;
+            document.getElementById('playerArtist').textContent = track.artistName;
+            document.getElementById('miniArtist').textContent = track.artistName;
             document.getElementById('playerRelease').textContent = track.releaseTitle || '';
-
-            const coverEl = document.getElementById('playerCover');
-            coverEl.innerHTML = track.coverUrl
-                ? `<img src="${esc(track.coverUrl)}" alt="${esc(track.title)}" onerror="this.parentElement.innerHTML='♪'">`
-                : '♪';
+            
+            // Extract colors for ambient glow (simplified pseudo-random based on title)
+            const colors = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b'];
+            const cIdx = track.title.length % colors.length;
+            document.getElementById('ambientGlow').style.backgroundColor = colors[cIdx];
 
             renderTracks();
         }
 
         function togglePlay() {
-            if (currentTrackIndex === -1 && filteredTracks.length > 0) { playTrack(0); return; }
-            if (isPlaying) audio.pause(); else audio.play().catch(e => console.warn('Playback failed:', e));
+            if (currentTrackIndex === -1 && filteredTracks.length > 0) { playTrackIndex(0); return; }
+            if (isPlaying) audio.pause(); else audio.play();
         }
 
-        function playPrev() {
-            if (filteredTracks.length === 0) return;
-            let newIndex = currentTrackIndex - 1;
-            if (newIndex < 0) newIndex = filteredTracks.length - 1;
-            playTrack(newIndex);
+        function updatePlayButton() {
+            document.getElementById('playIcon').className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+            renderTracks(); // Update the tiny icon in the list too
+        }
+
+        function updateVisuals() {
+            const cover = document.getElementById('playerCover');
+            if (isPlaying) {
+                cover.style.transform = 'scale(1.05)';
+            } else {
+                cover.style.transform = 'scale(1)';
+            }
         }
 
         function playNext() {
             if (filteredTracks.length === 0) return;
-            let newIndex = currentTrackIndex + 1;
-            if (newIndex >= filteredTracks.length) newIndex = 0;
-            playTrack(newIndex);
+            let next = currentTrackIndex + 1;
+            if (isShuffle) next = Math.floor(Math.random() * filteredTracks.length);
+            if (next >= filteredTracks.length) next = 0;
+            playTrackIndex(next);
         }
 
-        function shufflePlay() {
+        function playPrev() {
             if (filteredTracks.length === 0) return;
-            playTrack(Math.floor(Math.random() * filteredTracks.length));
+            let prev = currentTrackIndex - 1;
+            if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+            if (prev < 0) prev = filteredTracks.length - 1;
+            playTrackIndex(prev);
         }
 
-        function updatePlayButton() {
-            document.getElementById('playBtn').textContent = isPlaying ? '⏸' : '▶';
-            renderTracks();
+        window.shufflePlay = function() {
+            isShuffle = true;
+            document.getElementById('toggleShuffle').style.color = '#8b5cf6';
+            if(filteredTracks.length > 0) playTrackIndex(Math.floor(Math.random() * filteredTracks.length));
         }
 
         function updateProgress() {
             if (!audio.duration) return;
-            document.getElementById('progressFill').style.width = (audio.currentTime / audio.duration) * 100 + '%';
+            const p = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('progressFill').style.width = `${p}%`;
             document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
         }
 
         function updateDuration() {
-            if (!audio.duration) return;
             document.getElementById('duration').textContent = formatTime(audio.duration);
         }
 
-        function formatTime(seconds) {
-            if (!seconds || isNaN(seconds)) return "0:00";
-            const m = Math.floor(seconds / 60);
-            const s = Math.floor(seconds % 60);
-            return `${m}:${s.toString().padStart(2, '0')}`;
+        function formatTime(s) {
+            if (!s || isNaN(s)) return '0:00';
+            const m = Math.floor(s / 60);
+            const se = Math.floor(s % 60);
+            return `${m}:${se.toString().padStart(2,'0')}`;
         }
-
-        function esc(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-        }
-
-        // Expose to global scope for inline handlers
+        function escapeHtml(s) { return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'):''; }
+        
         window.filterTracks = filterTracks;
-        window.shufflePlay = shufflePlay;
-        window.playTrack = playTrack;
-        window.togglePlay = togglePlay;
-        window.playPrev = playPrev;
-        window.playNext = playNext;
+        window.playTrackIndex = playTrackIndex;
     </script>
 </body>
-
 </html>
