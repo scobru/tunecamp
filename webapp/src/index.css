@@ -35,13 +35,13 @@
   --color-error: oklch(60% 0.2 30);
 
   /* Minimalist Shapes */
-  --radius-selector: 0.5rem;
+  --radius-selector: 1rem;
   --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
+  --radius-box: 1.5rem;
 
-  --rounded-btn: 0.5rem;
-  --rounded-badge: 0.25rem;
-  --tab-radius: 0.25rem;
+  --rounded-btn: 2rem;
+  --rounded-badge: 0.5rem;
+  --tab-radius: 0.5rem;
 
   --border-btn: 1px;
   --animation-btn: 0.2s;
@@ -74,11 +74,11 @@
 
   --color-prominent: oklch(10% 0.02 280);
 
-  --radius-selector: 0.5rem;
+  --radius-selector: 1rem;
   --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
-  --rounded-btn: 0.5rem;
-  --rounded-badge: 0.25rem;
+  --radius-box: 1.5rem;
+  --rounded-btn: 2rem;
+  --rounded-badge: 0.5rem;
 }
 
 @plugin "daisyui/theme" {
@@ -97,10 +97,10 @@
   --color-secondary: oklch(55% 0.01 280);
   --color-accent: oklch(80% 0.1 200); /* Steel Blue */
 
-  --radius-selector: 0.25rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.4rem;
-  --rounded-btn: 0.25rem;
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1.5rem;
+  --rounded-btn: 2rem;
 }
 
 @plugin "daisyui/theme" {
@@ -119,10 +119,10 @@
   --color-secondary: oklch(50% 0.1 220);
   --color-accent: oklch(75% 0.15 160); /* Frosty Mint */
 
-  --radius-selector: 0.8rem;
-  --radius-field: 0.8rem;
-  --radius-box: 1.2rem;
-  --rounded-btn: 0.8rem;
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1.5rem;
+  --rounded-btn: 2rem;
 }
 
 @theme {
@@ -280,6 +280,40 @@
 
   .chip {
     @apply inline-flex items-center gap-2 rounded-full border border-base-content/20 px-4 py-1.5 text-label-large text-base-content/80 transition-all duration-short-4 hover:bg-base-content/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary;
+  }
+
+  /* Global Overrides for standard DaisyUI components to inherit M3 properties */
+  .btn {
+    transition: transform var(--duration-medium-2) var(--ease-spring),
+                background-color var(--duration-short-4) var(--ease-standard),
+                box-shadow var(--duration-short-4) var(--ease-standard),
+                color var(--duration-short-4) var(--ease-standard) !important;
+  }
+  
+  .btn:active {
+    transform: scale(0.95);
+  }
+
+  .modal-box {
+    @apply shadow-level-3 rounded-[var(--radius-box)];
+    animation: modal-enter var(--duration-medium-4) var(--ease-emphasized-decelerate);
+  }
+
+  @keyframes modal-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .input, .textarea {
+    transition: background-color var(--duration-short-4) var(--ease-standard),
+                border-color var(--duration-short-4) var(--ease-standard),
+                box-shadow var(--duration-short-4) var(--ease-standard) !important;
   }
 }
 

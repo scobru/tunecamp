@@ -213,7 +213,7 @@ const Search = () => {
                         type="text" 
                         placeholder="Search for songs, artists, albums..." 
                         aria-label="Search"
-                        className="input input-bordered w-full text-lg pr-12"
+                        className="input input-bordered w-full text-lg pr-12 rounded-full shadow-level-1 focus:shadow-level-2 transition-all duration-medium-2"
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
                         autoFocus
@@ -228,7 +228,7 @@ const Search = () => {
                         </button>
                     )}
                 </div>
-                <button type="submit" className="btn btn-primary px-8">
+                <button type="submit" className="btn btn-primary px-8 rounded-full shadow-level-1">
                     Search
                 </button>
             </form>
@@ -246,7 +246,7 @@ const Search = () => {
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><User size={20}/> Artists</h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                 {results.artists.map(artist => (
-                                     <div key={artist.id} className="group card bg-base-200 hover:bg-base-300 transition-colors overflow-hidden">
+                                     <div key={artist.id} className="group card-m3 overflow-hidden">
                                          <Link to={`/artists/${artist.slug || artist.id}`} className="flex-1">
                                              <figure className="aspect-square relative">
                                                  {artist.coverImage ? (
@@ -292,7 +292,7 @@ const Search = () => {
                                     const linkTo = isRelease ? `/releases/${album.slug || album.id}` : `/albums/${album.slug || album.id}`;
                                     const coverUrl = album.coverImage || (isRelease ? API.getReleaseCoverUrl(album.id) : API.getAlbumCoverUrl(album.id));
                                     return (
-                                            <div key={album.id} className="group card bg-base-200 hover:bg-base-300 transition-colors overflow-hidden">
+                                            <div key={album.id} className="group card-m3 overflow-hidden">
                                                 <Link to={linkTo} className="flex-1">
                                                     <figure className="aspect-square relative">
                                                         <img 

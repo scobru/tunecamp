@@ -300,7 +300,7 @@ export const PlayerBar = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-base-content/5 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-base-content/5 shadow-level-3 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
         <PlayerBackground coverUrl={coverUrl} />
         
         <audio
@@ -318,18 +318,18 @@ export const PlayerBar = () => {
               <img
                 src={coverUrl}
                 alt="Cover"
-                className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-2xl object-cover ring-1 ring-white/10"
+                className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-level-2 object-cover ring-1 ring-white/10"
               />
             ) : (
-              <div className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-2xl flex items-center justify-center ring-1 ring-white/10">
+              <div className="w-10 h-10 lg:w-16 lg:h-16 rounded-xl bg-base-300 shadow-level-2 flex items-center justify-center ring-1 ring-white/10">
                 <Music className="opacity-20" size={20} />
               </div>
             )}
           </div>
 
           <div className="min-w-0">
-            <h3 className="font-black text-xs lg:text-base truncate tracking-tight">{currentTrack.title}</h3>
-            <p className="text-[10px] lg:text-sm font-medium opacity-60 text-primary truncate uppercase tracking-widest">{currentTrack.artistName}</p>
+            <h3 className="font-black text-title-small lg:text-title-medium truncate tracking-tight">{currentTrack.title}</h3>
+            <p className="text-[10px] lg:text-label-small font-medium opacity-60 text-primary truncate uppercase tracking-widest">{currentTrack.artistName}</p>
           </div>
         </div>
 
@@ -362,7 +362,7 @@ export const PlayerBar = () => {
 
             <button
               aria-label={isPlaying ? "Pause" : "Play"}
-              className="btn btn-circle btn-primary btn-md lg:btn-lg shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+              className="btn btn-circle btn-primary btn-md lg:btn-lg shadow-level-2 shadow-primary/20 hover:scale-110 active:scale-95 transition-all"
               onClick={togglePlay}
             >
               {isPlaying ? (
