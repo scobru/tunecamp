@@ -15,8 +15,7 @@ import {
     theaudiodbProvider, 
     spotifyProvider, 
     deezerProvider,
-    bandcampMetadataProvider,
-    youtubeProvider
+    bandcampMetadataProvider
 } from "../../core/providers.js";
 
 export interface LyricsResult {

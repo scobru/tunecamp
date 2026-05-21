@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import API from '../../services/api';
-import { PenTool, Save } from 'lucide-react';
+import { PenTool, Globe, Eye, Lock, Send } from 'lucide-react';
 import type { Artist } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
 
@@ -10,6 +10,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const [content, setContent] = useState('');
     const [artistId, setArtistId] = useState('');
     const [artists, setArtists] = useState<Artist[]>([]);
+    const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -17,6 +18,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         const handleOpen = () => {
              loadArtists();
              setContent('');
+             setVisibility('public');
              setError('');
              dialogRef.current?.showModal();
         };
@@ -33,7 +35,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
             // Priority:
             // 1. Current user's artistId if set and valid
             // 2. First artist in list if none
-            if (user?.artistId && user.artistId !== '0') {
+            if (user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined') {
                 setArtistId(String(user.artistId));
             } else if (data.length > 0) {
                 setArtistId(String(data[0].id));
@@ -51,11 +53,15 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
             setError('Please select an artist');
             return;
         }
+        if (content.length > 500) {
+            setError('Content exceeds 500 characters limit');
+            return;
+        }
         setLoading(true);
         setError('');
 
         try {
-            await API.createPost(Number(artistId), content, 'public');
+            await API.createPost(Number(artistId), content, visibility);
             if (onPostCreated) onPostCreated();
             dialogRef.current?.close();
         } catch (e: any) {
@@ -65,33 +71,44 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         }
     };
 
-    // If user is not admin and has an artistId, we skip the dropdown
-    const isRestrictedArtist = !user?.isAdmin && user?.artistId && user.artistId !== '0';
+    // Bypasses the artist selection dropdown if the account has an associated artist profile
+    const isRestrictedArtist = !!(user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined');
+
+    // Circular progress metrics for character counter
+    const charPercentage = Math.min((content.length / 500) * 100, 100);
+    const radius = 14;
+    const stroke = 3;
+    const normalizedRadius = radius - stroke * 2;
+    const circumference = normalizedRadius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (charPercentage / 100) * circumference;
 
     return (
         <dialog id="create-post-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl rounded-2xl shadow-2xl p-6">
                 <form method="dialog">
-                    <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+                    <button className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 rounded-full">✕</button>
                 </form>
                 
-                <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
-                    <PenTool size={20} className="text-secondary"/> Create New Post
+                <h3 className="font-bold text-xl mb-6 flex items-center gap-2 tracking-tight">
+                    <PenTool size={22} className="text-primary"/> Compose New Activity
                 </h3>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                     {isRestrictedArtist ? (
+                <form onSubmit={handleSubmit} className="space-y-5">
+                      {isRestrictedArtist ? (
                         <div className="bg-base-200/50 p-4 rounded-xl border border-base-content/5 flex items-center justify-between">
-                            <span className="text-sm opacity-60">Posting as Artist</span>
-                            <span className="font-bold text-primary">{selectedArtist?.name || '...'}</span>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold opacity-40 uppercase tracking-wide">Posting Identity</span>
+                                <span className="font-bold text-base-content mt-0.5">{selectedArtist?.name || 'Loading profile...'}</span>
+                            </div>
+                            <span className="badge badge-primary badge-outline badge-sm rounded-full font-bold px-3 py-2">Sovereign Account</span>
                         </div>
-                     ) : (
-                        <div className="form-control">
+                      ) : (
+                        <div className="form-control w-full">
                             <label className="label">
-                                <span className="label-text">Post as Artist</span>
+                                <span className="label-text font-bold text-xs opacity-60">Post as Artist Identity</span>
                             </label>
                             <select 
-                                className="select select-bordered w-full"
+                                className="select select-bordered w-full rounded-xl bg-base-200 border-base-content/10 focus:outline-none focus:border-primary"
                                 value={artistId}
                                 onChange={e => setArtistId(e.target.value)}
                                 required
@@ -101,29 +118,124 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                                 ))}
                             </select>
                         </div>
-                     )}
+                      )}
 
+                    {/* Content text editor */}
                     <div className="form-control">
                         <label className="label">
-                            <span className="label-text">Content</span>
+                            <span className="label-text font-bold text-xs opacity-60">Content Body</span>
                         </label>
-                        <textarea 
-                            className="textarea textarea-bordered h-48 text-base" 
-                            value={content}
-                            onChange={e => setContent(e.target.value)}
-                            placeholder="Write something..."
-                            required
-                        />
+                        <div className="relative">
+                            <textarea 
+                                className="textarea textarea-bordered w-full h-44 text-base rounded-xl bg-base-200/30 border-base-content/10 focus:outline-none focus:border-primary p-4 scrollbar-thin resize-none" 
+                                value={content}
+                                onChange={e => setContent(e.target.value)}
+                                placeholder="What's new in the community? Share releases, updates, thoughts..."
+                                maxLength={550}
+                                required
+                            />
+                        </div>
                     </div>
 
-                    {error && <div className="text-error text-sm">{error}</div>}
+                    {/* Bottom controls panel inside modal */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-base-content/5">
+                        
+                        {/* Visibility settings dropdown */}
+                        <div className="dropdown dropdown-top">
+                            <div 
+                                tabIndex={0} 
+                                role="button" 
+                                className="btn btn-sm btn-ghost bg-base-200 border-none rounded-full gap-2 text-xs px-4"
+                            >
+                                {visibility === 'public' && <Globe size={14} className="text-primary" />}
+                                {visibility === 'unlisted' && <Eye size={14} className="text-accent" />}
+                                {visibility === 'private' && <Lock size={14} className="text-warning" />}
+                                <span className="capitalize font-bold">{visibility === 'private' ? 'Followers only' : visibility}</span>
+                            </div>
+                            <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[10] w-48 p-1.5 shadow-xl mb-1">
+                                <li>
+                                    <button 
+                                        type="button" 
+                                        className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'public' ? 'active bg-primary text-primary-content' : ''}`}
+                                        onClick={() => setVisibility('public')}
+                                    >
+                                        <Globe size={14} /> <span>Public (🌐)</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button 
+                                        type="button" 
+                                        className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'unlisted' ? 'active bg-primary text-primary-content' : ''}`}
+                                        onClick={() => setVisibility('unlisted')}
+                                    >
+                                        <Eye size={14} /> <span>Unlisted (👁️)</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button 
+                                        type="button" 
+                                        className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'private' ? 'active bg-primary text-primary-content' : ''}`}
+                                        onClick={() => setVisibility('private')}
+                                    >
+                                        <Lock size={14} /> <span>Followers-only (🔒)</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
 
-                    <div className="modal-action">
-                        <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>Cancel</button>
-                        <button type="submit" className="btn btn-secondary gap-2" disabled={loading}>
-                            <Save size={16}/> Publish
-                        </button>
+                        {/* Character count & Submit buttons */}
+                        <div className="flex items-center justify-end gap-4">
+                            {/* SVG Character Limit Counter */}
+                            <div className="relative flex items-center justify-center">
+                                <svg height={radius * 2} width={radius * 2} className="transform -rotate-90">
+                                    <circle
+                                        stroke="rgba(255, 255, 255, 0.05)"
+                                        fill="transparent"
+                                        strokeWidth={stroke}
+                                        r={normalizedRadius}
+                                        cx={radius}
+                                        cy={radius}
+                                    />
+                                    <circle
+                                        stroke={content.length > 500 ? 'var(--color-error)' : content.length > 420 ? 'var(--color-warning)' : 'var(--color-primary)'}
+                                        fill="transparent"
+                                        strokeWidth={stroke}
+                                        strokeDasharray={circumference + ' ' + circumference}
+                                        style={{ strokeDashoffset, transition: 'stroke-dashoffset 0.1s ease-out' }}
+                                        r={normalizedRadius}
+                                        cx={radius}
+                                        cy={radius}
+                                    />
+                                </svg>
+                                
+                                {content.length >= 450 && (
+                                    <span className={`absolute text-[8px] font-bold ${content.length > 500 ? 'text-error' : 'text-base-content'}`}>
+                                        {500 - content.length}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button type="button" className="btn btn-sm btn-ghost rounded-full px-4" onClick={() => dialogRef.current?.close()}>Cancel</button>
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-sm btn-primary rounded-full px-5 gap-1.5 shadow-md" 
+                                    disabled={loading || content.trim().length === 0 || content.length > 500}
+                                >
+                                    {loading ? (
+                                        <span className="loading loading-spinner loading-xs"/>
+                                    ) : (
+                                        <>
+                                            <Send size={12}/>
+                                            <span>Publish</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    {error && <div className="text-error text-xs font-bold bg-error/5 p-3 rounded-xl border border-error/10">{error}</div>}
                 </form>
             </div>
             <form method="dialog" className="modal-backdrop">
@@ -132,4 +244,5 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         </dialog>
     );
 };
+
 

@@ -1,7 +1,5 @@
 import { SoundCloudStreamingProvider } from "../providers/streaming/soundcloud.provider.js";
 import { SoundCloudMetadataProvider } from "../providers/metadata/soundcloud.metadata.js";
-import { SoundCloudStreamingProvider } from "../providers/streaming/soundcloud.provider.js";
-import { SoundCloudMetadataProvider } from "../providers/metadata/soundcloud.metadata.js";
 import { ITunesProvider } from "../providers/metadata/itunes.provider.js";
 import { MusicBrainzProvider } from "../providers/metadata/musicbrainz.provider.js";
 import { DiscogsProvider } from "../providers/metadata/discogs.provider.js";
