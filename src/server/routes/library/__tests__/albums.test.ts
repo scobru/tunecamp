@@ -53,6 +53,7 @@ const mockCatalogService = {
     unstarAlbum: jest.fn(),
     setAlbumRating: jest.fn(),
     getAlbumForUser: jest.fn(),
+    updateAlbum: jest.fn(),
 } as unknown as CatalogService;
 
 const mockDiscoveryService = {
@@ -157,10 +158,7 @@ describe('Albums Routes - Cache Optimization', () => {
                 title: 'Old Title',
                 owner_id: 1
             });
-            (mockDatabase.getArtistByName as jest.Mock).mockReturnValue({
-                id: 42,
-                name: 'Matched Artist'
-            });
+            (mockCatalogService.updateAlbum as jest.Mock).mockResolvedValue(undefined);
 
             // Act
             const response = await request(app)
@@ -175,13 +173,14 @@ describe('Albums Routes - Cache Optimization', () => {
 
             // Assert
             expect(response.status).toBe(200);
-            expect(mockDatabase.updateAlbum).toHaveBeenCalledWith(1, {
+            expect(mockCatalogService.updateAlbum).toHaveBeenCalledWith(1, {
                 title: 'New Title',
+                artist: 'Matched Artist',
+                cover_path: undefined,
                 genre: 'Rock',
                 year: 2026,
                 description: 'New Description'
             });
-            expect(mockDatabase.updateAlbumArtist).toHaveBeenCalledWith(1, 42);
         });
     });
 });

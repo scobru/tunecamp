@@ -2,6 +2,11 @@
 export default {
   preset: 'ts-jest/presets/default-esm', // or other ESM presets
   testEnvironment: 'node',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/webapp/',
+    '<rootDir>/website/'
+  ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^music-metadata$': '<rootDir>/__mocks__/music-metadata.ts',
@@ -14,3 +19,4 @@ export default {
   },
   extensionsToTreatAsEsm: ['.ts'],
 };
+

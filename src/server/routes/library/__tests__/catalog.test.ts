@@ -57,7 +57,7 @@ describe('Catalog Routes', () => {
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(mockOverview);
-            expect(mockDiscoveryService.getOverview).toHaveBeenCalledWith(true);
+            expect(mockDiscoveryService.getOverview).toHaveBeenCalledWith(true, undefined);
         });
 
         test('should handle errors and return 500', async () => {
@@ -66,7 +66,7 @@ describe('Catalog Routes', () => {
             const response = await request(app).get('/catalog');
 
             expect(response.status).toBe(500);
-            expect(response.body).toEqual({ error: 'Failed to get catalog' });
+            expect(response.body).toEqual({ error: 'Failed to get overview' });
         });
     });
 
