@@ -13,7 +13,7 @@ const Library = () => {
     const isArtist = !!user?.artistId;
     const [albums, setAlbums] = useState<Album[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('list');
+    const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
 
     useEffect(() => {
         const loadData = async () => {

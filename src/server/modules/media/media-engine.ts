@@ -5,6 +5,7 @@ import type { DatabaseService, Track } from "../../core/database.js";
 import type { GoogleDriveService } from "../storage/google-drive.service.js";
 import type { StreamingService } from "../streaming/streaming.service.js";
 import { transcode, acquireTaskSlot, releaseTaskSlot } from "./ffmpeg.js";
+import { NotFoundError } from "../../common/errors.js";
 
 export interface StreamOptions {
   trackId?: number;
@@ -51,7 +52,7 @@ export class MediaEngine {
     }
 
     if (!track) {
-      throw new Error("Track not found");
+      throw new NotFoundError("Track not found");
     }
 
     // 1. Handle External IDs / Linked Tracks
@@ -77,7 +78,7 @@ export class MediaEngine {
     const fallback = await this.handleStreamingFallback(track);
     if (fallback) return fallback;
 
-    throw new Error("Audio source not found");
+    throw new NotFoundError("Audio source not found");
   }
 
   private async handleExternalStream(extId: string): Promise<StreamResult> {
@@ -95,7 +96,7 @@ export class MediaEngine {
       url = await this.streamingService.resolveById(providerId, originalId);
     }
 
-    if (!url) throw new Error("External stream not found");
+    if (!url) throw new NotFoundError("External stream not found");
 
     // For now, we return a redirect-like response or we could proxy it here.
     // The current implementation redirects to /api/proxy/stream.
