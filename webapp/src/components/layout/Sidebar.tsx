@@ -85,7 +85,7 @@ export const Sidebar = () => {
     <div className="w-64 min-h-full bg-base-200 text-base-content border-r border-base-content/10 flex flex-col gap-6 p-4 pb-32 overflow-y-auto">
       {/* Brand */}
       <div className="flex items-center gap-3 px-2 mb-4">
-        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-level-2 shadow-primary/20 bg-base-300">
+        <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center shadow-level-2 shadow-primary/20 bg-base-300">
           {siteLogo ? (
             <img src={siteLogo} alt={siteName} className="w-full h-full object-cover" />
           ) : (
@@ -94,7 +94,10 @@ export const Sidebar = () => {
             </div>
           )}
         </div>
-        <span className="text-xl font-black tracking-tighter uppercase">{siteName}</span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-xl font-black tracking-tighter uppercase leading-none break-words mb-1">{siteName}</span>
+          <span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">by tunecamp</span>
+        </div>
       </div>
  
       {/* Main Nav */}

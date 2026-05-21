@@ -25,7 +25,7 @@ The bot is highly intelligent in how it handles track metadata:
 
 ### 3. Remote Search & Streaming
 Search your library directly from Telegram using commands:
-*   `/search <query>`: Find tracks in the library.
+*   `/search <query>`: Find tracks in the library. **Note:** Authorized users (via `/admin`) can search across all tracks (including private/drafts). Unauthorized users can only search for public tracks.
 *   `/play <query>`: Get a streaming link for a specific track.
 *   **Linda Bridge**: If the Linda bridge is active, Telegram uploads can be automatically forwarded to Linda groups.
 

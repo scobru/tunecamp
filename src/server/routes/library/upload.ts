@@ -567,7 +567,7 @@ export function createUploadRoutes(
                 const dbPath = path.relative(musicDir, avatarPath).replace(/\\/g, "/");
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
-                database.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? JSON.parse(artist.links) : undefined);
+                database.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
             }
 
 
@@ -715,7 +715,7 @@ export function createUploadRoutes(
                 const dbPath = path.relative(musicDir, avatarPath).replace(/\\/g, "/");
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
-                database.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? JSON.parse(artist.links) : undefined);
+                database.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
             }
 
 
