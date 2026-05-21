@@ -49,14 +49,14 @@ jest.unstable_mockModule('fs-extra', () => ({
     }
 }));
 
-jest.unstable_mockModule('../../modules/catalog/price.js', () => ({
+jest.unstable_mockModule('../../../modules/catalog/price.js', () => ({
     getEthUsdRate: jest.fn()
 }));
 
 const { default: Stripe } = await import('stripe');
 const { ethers } = await import('ethers');
 const { default: fs } = await import('fs-extra');
-const { getEthUsdRate } = await import('../../modules/catalog/price.js');
+const { getEthUsdRate } = await import('../../../modules/catalog/price.js');
 const { createPaymentsRoutes } = await import('../payments.js');
 
 describe('Payments Routes', () => {
@@ -353,7 +353,8 @@ describe('Payments Routes', () => {
             (fs.pathExists as any).mockResolvedValue(true);
             const mockStream = {
                 pipe: jest.fn().mockImplementation((res: any) => {
-                    res.send('streaming-data');
+                    res.write(Buffer.from('streaming-data'));
+                    res.end();
                 })
             };
             (fs.createReadStream as any).mockReturnValue(mockStream);
@@ -363,7 +364,7 @@ describe('Payments Routes', () => {
                 .query({ code: 'GOODCODE' });
 
             expect(res.status).toBe(200);
-            expect(res.text).toBe('streaming-data');
+            expect(res.body.toString()).toBe('streaming-data');
             expect(fs.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
         });
     });

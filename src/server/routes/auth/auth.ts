@@ -138,7 +138,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
             }
 
             const valid = await authService.authenticateUser(username, currentPassword);
-            if (!valid) {
+            if (!valid || !valid.success) {
                 return res.status(401).json({ error: "Current password is incorrect" });
             }
 

@@ -3,11 +3,11 @@ import express from 'express';
 import request from 'supertest';
 
 // Mock networkUtils for ESM
-jest.unstable_mockModule('../../../utils/networkUtils.js', () => ({
+jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
     isSafeUrl: jest.fn()
 }));
 
-const { isSafeUrl } = await import('../../../utils/networkUtils.js');
+const { isSafeUrl } = await import('../../../../utils/networkUtils.js');
 const { createStatsRoutes } = await import('../stats.js');
 
 describe('Stats Routes', () => {
@@ -27,12 +27,12 @@ describe('Stats Routes', () => {
             incrementTrackDownloadCount: jest.fn(),
             getTrackPlayCount: jest.fn(),
             incrementTrackPlayCount: jest.fn(),
-            getCommunitySites: jest.fn().mockResolvedValue([]),
+            getCommunitySites: jest.fn<any>().mockResolvedValue([]),
             getPeerCount: jest.fn().mockReturnValue(0)
         };
 
         mockDbService = {
-            getSetting: jest.fn().mockImplementation((key: string) => {
+            getSetting: jest.fn<any>().mockImplementation((key: string) => {
                 if (key === 'publicUrl') return 'https://localinstance.com';
                 if (key === 'siteName') return 'Local site';
                 if (key === 'siteDescription') return 'Local desc';

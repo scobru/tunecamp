@@ -6,7 +6,7 @@ jest.unstable_mockModule('node-fetch', () => ({
 }));
 
 const { default: fetch } = await import('node-fetch');
-const { getEthUsdRate } = await import('../price.js');
+const { getEthUsdRate, clearCache } = await import('../price.js');
 
 describe('Price Module - getEthUsdRate', () => {
     let mockNow = 1000000;
@@ -16,6 +16,7 @@ describe('Price Module - getEthUsdRate', () => {
         jest.clearAllMocks();
         mockNow = 1000000;
         dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => mockNow);
+        clearCache();
     });
 
     afterEach(() => {
@@ -106,7 +107,14 @@ describe('Price Module - getEthUsdRate', () => {
     });
 
     test('uses expired cache as last fallback if both providers fail', async () => {
-        // Expire cache from previous test (which set it to 3200.5)
+        // Populate cache first
+        (fetch as any).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ ethereum: { usd: 3200.5 } })
+        });
+        await getEthUsdRate();
+
+        // Expire cache
         mockNow += 10 * 60 * 1000;
 
         // Both providers fail

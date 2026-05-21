@@ -56,6 +56,10 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
                 return res.status(403).json({ error: "Access denied" });
             }
 
+            if (coverUrl && !(await isSafeUrl(coverUrl))) {
+                return res.status(400).json({ error: "Invalid or unsafe cover URL" });
+            }
+
             await catalogService.updateAlbum(albumId, {
                 external_id: mbid,
                 title,

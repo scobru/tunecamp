@@ -158,7 +158,7 @@ describe('Albums Routes - Cache Optimization', () => {
                 title: 'Old Title',
                 owner_id: 1
             });
-            (mockCatalogService.updateAlbum as jest.Mock).mockResolvedValue(undefined);
+            (mockCatalogService.updateAlbum as jest.Mock<any>).mockResolvedValue(undefined);
 
             // Act
             const response = await request(app)

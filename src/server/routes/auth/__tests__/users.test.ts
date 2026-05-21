@@ -31,7 +31,8 @@ describe('Users Routes', () => {
             generateToken: jest.fn().mockReturnValue('mocked-user-token'),
             verifyZenSignature: (jest.fn() as any).mockResolvedValue(true),
             updateZenPair: jest.fn(),
-            getStorageInfo: jest.fn().mockReturnValue({ storage_used: 123456 })
+            getStorageInfo: jest.fn().mockReturnValue({ storage_used: 123456 }),
+            verifyToken: jest.fn<any>().mockResolvedValue({ username: 'testuser', role: UserRole.NORMAL_USER, isActive: true, userId: 10 })
         };
 
         mockAPService = {};
@@ -174,6 +175,7 @@ describe('Users Routes', () => {
 
             const res = await request(authApp)
                 .post('/api/users/sync-pair')
+                .set('Authorization', 'Bearer token')
                 .send({
                     pair: {
                         pub: 'pub',
@@ -207,7 +209,9 @@ describe('Users Routes', () => {
                 role: 'user'
             });
 
-            const res = await request(authApp).get('/api/users/me/storage');
+            const res = await request(authApp)
+                .get('/api/users/me/storage')
+                .set('Authorization', 'Bearer token');
 
             expect(res.status).toBe(200);
             expect(res.body.storage_quota).toBe(5000);

@@ -20,6 +20,10 @@ const mockDb = {
     updateAlbumArtist: jest.fn(),
 } as any;
 
+const mockCatalogService = {
+    updateAlbum: jest.fn<any>().mockResolvedValue(undefined),
+} as any;
+
 describe('Metadata Security', () => {
     let app: express.Express;
 
@@ -32,7 +36,7 @@ describe('Metadata Security', () => {
             req.isAdmin = true;
             next();
         });
-        app.use('/api/metadata', createMetadataRoutes(mockDb, '/tmp/music', { scanTracks: jest.fn(), scanDirectory: jest.fn() } as any, {} as any));
+        app.use('/api/metadata', createMetadataRoutes(mockDb, '/tmp/music', { scanTracks: jest.fn(), scanDirectory: jest.fn() } as any, mockCatalogService));
     });
 
     test('POST /api/metadata/apply should block unsafe coverUrl', async () => {

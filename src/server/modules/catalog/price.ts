@@ -9,6 +9,10 @@ interface PriceCache {
 let cache: PriceCache | null = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+export function clearCache() {
+    cache = null;
+}
+
 /**
  * Fetch the current ETH pool price in USD.
  * Uses multiple public APIs (CoinGecko, CryptoCompare) with local caching for redundancy.

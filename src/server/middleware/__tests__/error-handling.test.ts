@@ -3,6 +3,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../common/errors.js';
 import { errorHandler, wrapAsync } from '../error-handling.js';
 
+class ConcreteAppError extends AppError {}
+
 describe('Error Handling Middleware', () => {
     let mockReq: Partial<Request>;
     let mockRes: Partial<Response>;
@@ -32,7 +34,8 @@ describe('Error Handling Middleware', () => {
 
     describe('wrapAsync', () => {
         test('calls the wrapped function and resolves successfully', async () => {
-            const mockHandler = jest.fn().mockResolvedValue('success');
+            const mockHandler = jest.fn() as any;
+            mockHandler.mockResolvedValue('success');
             const wrapped = wrapAsync(mockHandler);
 
             wrapped(mockReq as Request, mockRes as Response, mockNext);
@@ -45,7 +48,8 @@ describe('Error Handling Middleware', () => {
 
         test('catches error from the wrapped function and passes it to next', async () => {
             const error = new Error('Async error');
-            const mockHandler = jest.fn().mockRejectedValue(error);
+            const mockHandler = jest.fn() as any;
+            mockHandler.mockRejectedValue(error);
             const wrapped = wrapAsync(mockHandler);
 
             wrapped(mockReq as Request, mockRes as Response, mockNext);
@@ -69,7 +73,7 @@ describe('Error Handling Middleware', () => {
         describe('AppError handling', () => {
             test('formats AppError correctly in development mode', () => {
                 process.env.NODE_ENV = 'development';
-                const appError = new AppError('Resource not found', 'NOT_FOUND', 404, { id: 123 });
+                const appError = new ConcreteAppError('Resource not found', 404, 'NOT_FOUND', { id: 123 });
 
                 errorHandler(appError, mockReq as Request, mockRes as Response, mockNext);
 
@@ -85,7 +89,7 @@ describe('Error Handling Middleware', () => {
 
             test('excludes stack trace in production mode', () => {
                 process.env.NODE_ENV = 'production';
-                const appError = new AppError('Resource not found', 'NOT_FOUND', 404, { id: 123 });
+                const appError = new ConcreteAppError('Resource not found', 404, 'NOT_FOUND', { id: 123 });
 
                 errorHandler(appError, mockReq as Request, mockRes as Response, mockNext);
 
