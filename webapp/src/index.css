@@ -236,6 +236,18 @@
   }
 }
 
+@utility duration-short-4 {
+  transition-duration: var(--duration-short-4);
+}
+
+@utility duration-medium-2 {
+  transition-duration: var(--duration-medium-2);
+}
+
+@utility duration-medium-4 {
+  transition-duration: var(--duration-medium-4);
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);
