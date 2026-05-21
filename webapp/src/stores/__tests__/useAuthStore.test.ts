@@ -78,7 +78,7 @@ describe('useAuthStore', () => {
         const mockAuthStatus = {
             authenticated: true,
             role: 'admin',
-            user: { username: 'testadmin', id: '1' },
+            user: { username: 'testadmin', id: '1', isAdmin: true },
             firstRun: false,
             mustChangePassword: false,
         };
@@ -108,7 +108,7 @@ describe('useAuthStore', () => {
             pair: { pub: 'key' },
         };
 
-        const mockZenProfile = { pub: 'key', alias: 'testuser' };
+        const mockZenProfile = { pub: 'key', alias: 'testuser', epub: 'epub-key' };
 
         vi.mocked(API.getAuthStatus).mockResolvedValue(mockAuthStatus);
         vi.mocked(ZenAuth.loginWithPair).mockResolvedValue(mockZenProfile);
@@ -126,7 +126,7 @@ describe('useAuthStore', () => {
         const mockLoginResponse = {
             token: 'test-jwt-token',
             role: 'user',
-            user: { username: 'testuser', id: '2' },
+            user: { username: 'testuser', id: '2', isAdmin: false },
         };
 
         vi.mocked(API.login).mockResolvedValue(mockLoginResponse);
