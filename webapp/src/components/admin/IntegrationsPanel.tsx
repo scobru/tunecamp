@@ -12,11 +12,14 @@ import {
   CreditCard,
   Loader2,
   Youtube,
+  Settings,
+  Save
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
 import clsx from "clsx";
+import type { SiteSettings } from "../../types";
 
 interface PluginInfo {
     id: string;
@@ -31,9 +34,12 @@ export const IntegrationsPanel = () => {
   const { status, fetchStatus, isLoading: isStatusLoading } = useConfigStore();
   const { role, user } = useAuthStore();
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [isPluginsLoading, setIsPluginsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedConfig, setExpandedConfig] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isRootAdmin = role === 'root_admin' || user?.isRootAdmin;
 
@@ -41,7 +47,8 @@ export const IntegrationsPanel = () => {
     setRefreshing(true);
     await Promise.all([
         fetchStatus(),
-        loadPlugins()
+        loadPlugins(),
+        API.getAdminSettings().then(setSettings).catch(console.error)
     ]);
     setRefreshing(false);
   };
@@ -111,6 +118,21 @@ export const IntegrationsPanel = () => {
     }
   };
 
+  const handleSaveSettings = async () => {
+    if (!settings) return;
+    setIsSaving(true);
+    try {
+      await API.updateSettings(settings);
+      alert("API settings saved successfully.");
+      await loadData();
+    } catch (e: any) {
+      console.error(e);
+      alert("Failed to save settings: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const services = [
     {
       id: "soulseek",
@@ -119,7 +141,20 @@ export const IntegrationsPanel = () => {
       status: status?.soulseek.connected ? 'online' : 'offline',
       details: status?.soulseek.connected ? `Connected as ${status.soulseek.username}` : "Not connected",
       description: "P2P music search and download service.",
-      pluginId: "soulseek"
+      pluginId: "soulseek",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">Username</label>
+            <input type="text" className="input input-sm input-bordered" value={settings?.soulseek_username || ''} onChange={e => setSettings({ ...settings!, soulseek_username: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Password</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.soulseek_password || ''} onChange={e => setSettings({ ...settings!, soulseek_password: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "telegram",
@@ -128,7 +163,46 @@ export const IntegrationsPanel = () => {
       status: status?.telegram.active ? 'online' : 'offline',
       details: status?.telegram.active ? "Bot is online" : "Bot is offline or not configured",
       description: "Remote control and notifications via Telegram.",
-      pluginId: "telegram"
+      pluginId: "telegram",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">Bot Token</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.telegram_bot_token || ''} onChange={e => setSettings({ ...settings!, telegram_bot_token: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Allowed Channels (Comma separated)</label>
+            <input type="text" className="input input-sm input-bordered" value={settings?.telegram_allowed_channels || ''} onChange={e => setSettings({ ...settings!, telegram_allowed_channels: e.target.value })} />
+          </div>
+        </div>
+      )
+    },
+    {
+      id: "linda",
+      name: "Linda Bridge",
+      icon: <Globe className="text-purple-400" />,
+      status: settings?.linda_bot_enabled ? 'online' : 'offline',
+      details: settings?.linda_bot_enabled ? "Integration Enabled" : "Integration Disabled",
+      description: "Linda Decentralized Bridge integration.",
+      pluginId: "linda",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="toggle toggle-sm toggle-primary" checked={settings?.linda_bot_enabled === true || settings?.linda_bot_enabled === "true" as any} onChange={e => setSettings({ ...settings!, linda_bot_enabled: e.target.checked })} />
+            <span className="text-sm">Enable Linda Bot</span>
+          </label>
+          <div className="form-control">
+            <label className="label text-xs">Invite Link</label>
+            <input type="text" className="input input-sm input-bordered" value={settings?.linda_invite_link || ''} onChange={e => setSettings({ ...settings!, linda_invite_link: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Bot Public Key (Read Only)</label>
+            <input type="text" className="input input-sm input-bordered bg-base-300" readOnly value={settings?.linda_bot_pubkey || 'Not initialized'} />
+          </div>
+        </div>
+      )
     },
     {
       id: "itunes",
@@ -149,14 +223,32 @@ export const IntegrationsPanel = () => {
       pluginId: "musicbrainz"
     },
     {
-        id: "openrouter",
-        name: "AI (OpenRouter)",
-        icon: <Cpu className="text-warning" />,
-        status: status?.openrouter.configured ? 'online' : 'offline',
-        details: status?.openrouter.configured ? `Active: ${status.openrouter.model}` : "API Key missing",
-        description: "AI-powered metadata enrichment and suggestions.",
-        pluginId: "openrouter"
-      },
+      id: "openrouter",
+      name: "AI (OpenRouter)",
+      icon: <Cpu className="text-warning" />,
+      status: status?.openrouter.configured ? 'online' : 'offline',
+      details: status?.openrouter.configured ? `Active: ${status.openrouter.model}` : "API Key missing",
+      description: "AI-powered metadata enrichment and suggestions.",
+      pluginId: "openrouter",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">API Key</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.openrouter_api_key || ''} onChange={e => setSettings({ ...settings!, openrouter_api_key: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Model Selection</label>
+            <select className="select select-sm select-bordered" value={settings?.openrouter_model || ''} onChange={e => setSettings({ ...settings!, openrouter_model: e.target.value })}>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+              <option value="openai/gpt-4o">GPT-4o</option>
+              <option value="openai/gpt-4o-mini">GPT-4o-Mini</option>
+            </select>
+          </div>
+        </div>
+      )
+    },
     {
       id: "discogs",
       name: "Discogs",
@@ -164,7 +256,16 @@ export const IntegrationsPanel = () => {
       status: status?.discogs.configured ? 'online' : 'offline',
       details: status?.discogs.configured ? "Token configured" : "Token missing",
       description: "Vinyl-focused metadata and marketplace data.",
-      pluginId: "discogs"
+      pluginId: "discogs",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">Personal Access Token</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.discogs_token || ''} onChange={e => setSettings({ ...settings!, discogs_token: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "stripe",
@@ -173,7 +274,20 @@ export const IntegrationsPanel = () => {
       status: status?.stripe?.configured ? 'online' : 'offline',
       details: status?.stripe?.configured ? (status.stripe.webhookConfigured ? "Ready (Live Webhooks)" : "Keys Set (No Webhook)") : "Not Configured",
       description: "Credit card processing and checkout sessions.",
-      pluginId: "stripe"
+      pluginId: "stripe",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">Secret Key</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.stripe_secret_key || ''} onChange={e => setSettings({ ...settings!, stripe_secret_key: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Webhook Secret</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.stripe_webhook_secret || ''} onChange={e => setSettings({ ...settings!, stripe_webhook_secret: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "moonpay",
@@ -182,7 +296,16 @@ export const IntegrationsPanel = () => {
       status: status?.moonpay?.configured ? 'online' : 'offline',
       details: status?.moonpay?.configured ? "API Key configured" : "API Key missing",
       description: "Credit card to crypto on-ramp provider.",
-      pluginId: "moonpay"
+      pluginId: "moonpay",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">MoonPay Secret Key</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.moonpay_api_key || ''} onChange={e => setSettings({ ...settings!, moonpay_api_key: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "gdrive",
@@ -280,23 +403,32 @@ export const IntegrationsPanel = () => {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="font-bold text-xl flex items-center gap-2">
-            <Activity className="text-primary" /> Service Integrations
+            <Activity className="text-primary" /> Service & API Integrations
           </h3>
-          <p className="text-sm opacity-60">Monitor health and manage external provider modules.</p>
+          <p className="text-sm opacity-60">Manage API keys and monitor health of external provider modules.</p>
         </div>
-        <button 
-          className={clsx("btn btn-circle btn-ghost", refreshing && "loading")}
-          onClick={loadData}
-          disabled={refreshing}
-        >
-          {!refreshing && <RefreshCw size={20} />}
-        </button>
+        <div className="flex gap-2">
+          <button 
+            className={clsx("btn btn-primary gap-2", isSaving && "loading")}
+            onClick={handleSaveSettings}
+            disabled={isSaving || !settings}
+          >
+            {!isSaving && <Save size={18} />} Save Configurations
+          </button>
+          <button 
+            className={clsx("btn btn-circle btn-ghost", refreshing && "loading")}
+            onClick={loadData}
+            disabled={refreshing}
+          >
+            {!refreshing && <RefreshCw size={20} />}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services.map((service) => {
           const plugin = plugins.find(p => p.id === service.pluginId);
-          const isEnabled = plugin ? plugin.enabled : true; // Some might not be plugins
+          const isEnabled = plugin ? plugin.enabled : true;
           
           return (
             <div key={service.id} className={clsx(
@@ -333,9 +465,20 @@ export const IntegrationsPanel = () => {
                 </div>
 
                 <div className="space-y-1">
-                    <h4 className="font-bold text-lg flex items-center gap-2">
-                        {service.name}
-                        {plugin && <span className="text-[10px] opacity-30 font-mono">v{plugin.version}</span>}
+                    <h4 className="font-bold text-lg flex items-center gap-2 justify-between">
+                        <span className="flex items-center gap-2">
+                          {service.name}
+                          {plugin && <span className="text-[10px] opacity-30 font-mono">v{plugin.version}</span>}
+                        </span>
+                        {service.hasConfig && isRootAdmin && (
+                          <button 
+                            className="btn btn-xs btn-ghost btn-circle"
+                            onClick={() => setExpandedConfig(expandedConfig === service.id ? null : service.id)}
+                            title="Configure APIs"
+                          >
+                            <Settings size={14} className={expandedConfig === service.id ? "text-primary" : ""} />
+                          </button>
+                        )}
                     </h4>
                     <p className="text-xs opacity-60 leading-relaxed h-8 line-clamp-2">{service.description}</p>
                     
@@ -350,6 +493,12 @@ export const IntegrationsPanel = () => {
                         </button>
                     )}
                 </div>
+
+                {expandedConfig === service.id && service.renderConfig && (
+                  <div className="mt-2 animate-in fade-in slide-in-from-top-2">
+                    {service.renderConfig()}
+                  </div>
+                )}
 
                 <div className={clsx(
                     "mt-4 text-[10px] font-mono p-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors",

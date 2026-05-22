@@ -243,6 +243,8 @@ export function createAdminRoutes(
                 stripe_secret_key, stripe_webhook_secret,
                 discogs_token,
                 linda_bot_enabled,
+                linda_invite_link,
+                allowPublicRegistration,
                 siteLogo
             } = req.body;
             let settingsChanged = false;
@@ -328,6 +330,16 @@ export function createAdminRoutes(
 
             if (linda_bot_enabled !== undefined) {
                 database.setSetting("linda_bot_enabled", linda_bot_enabled ? "true" : "false");
+                settingsChanged = true;
+            }
+
+            if (linda_invite_link !== undefined) {
+                database.setSetting("linda_invite_link", linda_invite_link);
+                settingsChanged = true;
+            }
+
+            if (allowPublicRegistration !== undefined) {
+                database.setSetting("allowPublicRegistration", allowPublicRegistration ? "true" : "false");
                 settingsChanged = true;
             }
 
