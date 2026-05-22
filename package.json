@@ -76,7 +76,7 @@
     "yaml": "^2.3.4",
     "youtube-dl-exec": "^3.1.6",
     "yt-search": "^2.13.1",
-    "zen": "https://github.com/akaoio/zen"
+    "zen": "https://github.com/scobru/zen"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

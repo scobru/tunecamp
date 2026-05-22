@@ -24,7 +24,7 @@
     "react-router-dom": "^7.13.0",
     "shogun-contracts-sdk": "^1.3.7",
     "ts-pattern": "^5.9.0",
-    "zen": "akaoio/zen",
+    "zen": "https://github.com/scobru/zen",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
