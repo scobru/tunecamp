@@ -28,3 +28,29 @@ export class NotFoundError extends AppError {
         super(message, 404, code);
     }
 }
+
+/**
+ * Checks if an uncaught exception/error is non-fatal and should not cause the server to crash.
+ * This includes network timeouts, temporary SQLite lock/busy errors, and known P2P/GunDB issues.
+ */
+export function isNonFatalError(err: any): boolean {
+    if (!err || !err.message) return false;
+    const msg = err.message;
+    return (
+        msg.includes('GunDB') ||
+        msg.includes('Zen') ||
+        msg.includes('ECONNREFUSED') ||
+        msg.includes('ETIMEDOUT') ||
+        msg.includes('socket hang up') ||
+        msg.includes('non-101 status code') ||
+        msg.includes('network error') ||
+        msg.includes('fetch failed') ||
+        msg.includes('Unexpected non-whitespace character after JSON') ||
+        msg.includes('Unexpected token') ||
+        msg.includes('database is busy') ||
+        msg.includes('ECONNRESET') ||
+        msg.includes('EPIPE') ||
+        msg.includes('ENOTFOUND')
+    );
+}
+

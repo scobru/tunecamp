@@ -6,28 +6,13 @@ import path from "path";
 import http from "http";
 import fs from "fs-extra";
 import { fileURLToPath } from "url";
+import { isNonFatalError } from "./common/errors.js";
 
 // Global crash protection for async modules
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', (err: any) => {
     console.error('🌊 SEVERE: Uncaught Exception:', err);
-    // Certain errors like those from Zen or network timeouts are not fatal
-    if (err.message && (
-        err.message.includes('Zen') ||
-        err.message.includes('ECONNREFUSED') ||
-        err.message.includes('ETIMEDOUT') ||
-        err.message.includes('socket hang up') ||
-        err.message.includes('non-101 status code') ||
-        err.message.includes('network error') ||
-        err.message.includes('fetch failed') ||
-        err.message.includes('Unexpected non-whitespace character after JSON') ||
-        err.message.includes('Unexpected token')
-    )) {
+    if (isNonFatalError(err)) {
         console.warn('⚠️ Non-fatal exception caught, staying alive...');
-        return;
-    }
-
-    if (err.message && err.message.includes('database is busy')) {
-        console.warn('⚠️ SQLite busy error caught. Check your concurrency settings.');
         return;
     }
 

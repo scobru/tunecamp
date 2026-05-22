@@ -7,17 +7,10 @@
 
 import { loadConfig } from './server/core/config.js';
 import { startServer } from './server/server.js';
+import { isNonFatalError } from './server/common/errors.js';
 
 process.on('uncaughtException', (err: any) => {
-    if (err.message && (
-        err.message.includes('GunDB') ||
-        err.message.includes('ECONNREFUSED') ||
-        err.message.includes('ETIMEDOUT') ||
-        err.message.includes('socket hang up') ||
-        err.message.includes('non-101 status code') ||
-        err.message.includes('network error') ||
-        err.message.includes('fetch failed')
-    )) {
+    if (isNonFatalError(err)) {
         console.warn('⚠️ Non-fatal exception caught, staying alive...');
         return;
     }

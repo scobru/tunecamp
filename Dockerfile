@@ -157,7 +157,7 @@ RUN apk add --no-cache curl libc6-compat gcompat ffmpeg unzip python3 py3-pip &&
 
 # Add a more lenient healthcheck
 # to avoid restart loops during heavy maintenance/discovery
-HEALTHCHECK --interval=60s --timeout=15s --start-period=120s --retries=3 \
+HEALTHCHECK --interval=60s --timeout=30s --start-period=180s --retries=5 \
     CMD curl -f http://localhost:1970/health || exit 1
 
 # Default command: start server directly
