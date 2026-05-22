@@ -1,4 +1,4 @@
-import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT } from "../../core/provider.js";
+import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT, ArtistMetadata } from "../../core/provider.js";
 // @ts-ignore
 import pkg from "disconnect";
 const { Client: DiscogsClient } = pkg;
@@ -98,6 +98,38 @@ export class DiscogsProvider implements TuneCampProvider, MetadataProvider {
         } catch (error) {
             console.error("Error fetching Discogs cover:", error);
             return null;
+        }
+    }
+
+    async searchArtist(query: string): Promise<ArtistMetadata[]> {
+        try {
+            const db = this.getClient().database();
+            const results = await new Promise<any[]>((resolve, reject) => {
+                try {
+                    db.search({ q: query, type: 'artist' }, (err: any, data: any) => {
+                        if (err) {
+                            if (err.message && (err.message.includes('Unexpected token') || err.message.includes('Unexpected non-whitespace'))) {
+                                resolve([]);
+                            } else {
+                                reject(err);
+                            }
+                        }
+                        else resolve(data?.results || []);
+                    });
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
+            return results.map(r => ({
+                id: r.id.toString(),
+                name: r.title,
+                avatarUrl: r.cover_image || r.thumb || undefined,
+                source: "discogs"
+            }));
+        } catch (error) {
+            console.error("Error searching Discogs artists:", error);
+            return [];
         }
     }
 }

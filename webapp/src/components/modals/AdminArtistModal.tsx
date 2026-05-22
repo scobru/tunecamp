@@ -26,6 +26,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const [editId, setEditId] = useState<string | number | null>(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarUrl, setAvatarUrl] = useState('');
+    const [candidates, setCandidates] = useState<any[]>([]);
     const [error, setError] = useState('');
     const [warning, setWarning] = useState('');
     const [loading, setLoading] = useState(false);
@@ -102,6 +103,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
             
             setAvatarFile(null);
             setAvatarUrl('');
+            setCandidates([]);
             setError('');
             setWarning('');
             dialogRef.current?.showModal();
@@ -111,40 +113,59 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
         return () => document.removeEventListener('open-admin-artist-modal', handleOpen as EventListener);
     }, []);
 
-    const handleFetchTheAudioDB = async () => {
+    const handleSelectCandidate = (match: any) => {
+        if (match.bioIT || match.bio) {
+            setBio(match.bioIT || match.bio);
+        }
+        
+        if (match.avatarUrl) {
+            setAvatarUrl(match.avatarUrl);
+        }
+        
+        // Merge links
+        if (match.links && match.links.length > 0) {
+            setSocialLinks(prev => {
+                const existingUrls = new Set(prev.map(l => l.url.toLowerCase()));
+                // handle both arrays of structures and simple key-value structures from various providers
+                let incomingLinks = [];
+                if (Array.isArray(match.links)) {
+                    incomingLinks = match.links;
+                } else if (typeof match.links === 'object') {
+                    incomingLinks = Object.entries(match.links).map(([platform, url]) => ({
+                        platform: platform.charAt(0).toUpperCase() + platform.slice(1),
+                        url: url as string
+                    }));
+                }
+                const newLinks = incomingLinks.filter((l: any) => l.url && !existingUrls.has(l.url.toLowerCase()));
+                return [...prev, ...newLinks];
+            });
+        }
+        setCandidates([]);
+    };
+
+    const handleFetchArtistMetadata = async () => {
         if (!name) {
             setError("Please enter an artist name first");
             return;
         }
         setLoading(true);
         setError('');
+        setCandidates([]);
         try {
             const results = await API.searchArtistMetadata(name);
             if (results && results.length > 0) {
-                const match = results[0]; // Take first result
-                // Prefer Italian bio if available, fallback to English
-                if (match.bioIT || match.bio) {
-                    setBio(match.bioIT || match.bio);
-                }
-                
-                if (match.avatarUrl) {
-                    setAvatarUrl(match.avatarUrl);
-                }
-                
-                // Merge links
-                if (match.links && match.links.length > 0) {
-                    setSocialLinks(prev => {
-                        const existingUrls = new Set(prev.map(l => l.url.toLowerCase()));
-                        const newLinks = match.links.filter((l: any) => !existingUrls.has(l.url.toLowerCase()));
-                        return [...prev, ...newLinks];
-                    });
+                if (results.length === 1) {
+                    // Auto-apply if only one match is found
+                    handleSelectCandidate(results[0]);
+                } else {
+                    setCandidates(results);
                 }
             } else {
-                setError("No artist found on TheAudioDB");
+                setError("No artist info found on any provider");
             }
         } catch (err: any) {
             console.error(err);
-            setError("Failed to fetch from TheAudioDB");
+            setError("Failed to fetch artist metadata");
         } finally {
             setLoading(false);
         }
@@ -241,10 +262,10 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 <button 
                                     type="button" 
                                     className="label-text-alt btn btn-xs btn-ghost gap-1 h-auto min-h-0 py-1"
-                                    onClick={handleFetchTheAudioDB}
+                                    onClick={handleFetchArtistMetadata}
                                     disabled={loading}
                                 >
-                                    <Search size={12}/> Fetch from TheAudioDB
+                                    <Search size={12}/> {loading ? 'Fetching...' : 'Fetch Info & Avatar'}
                                 </button>
                             </label>
                             <input 
@@ -268,6 +289,54 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                             />
                         </div>
                     </div>
+
+                    {candidates.length > 0 && (
+                        <div className="bg-base-200/50 border border-base-content/10 rounded-xl p-4 mt-2 space-y-3 shadow-inner backdrop-blur-md">
+                            <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider opacity-75">
+                                <span className="flex items-center gap-1.5 text-primary">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                                    Select artist info to import:
+                                </span>
+                                <button type="button" className="btn btn-xs btn-ghost btn-circle" onClick={() => setCandidates([])}>✕</button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {candidates.map((c, idx) => (
+                                    <div 
+                                        key={`${c.source}-${c.id}-${idx}`} 
+                                        className="flex items-center gap-3 p-3 rounded-lg bg-base-100 hover:bg-base-300 border border-base-content/5 hover:border-base-content/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-md"
+                                        onClick={() => handleSelectCandidate(c)}
+                                    >
+                                        <div className="avatar shrink-0">
+                                            <div className="w-12 h-12 rounded-full ring-2 ring-base-content/5 bg-neutral text-neutral-content flex items-center justify-center overflow-hidden">
+                                                {c.avatarUrl ? (
+                                                    <img 
+                                                        src={c.avatarUrl} 
+                                                        alt={c.name} 
+                                                        className="object-cover w-full h-full"
+                                                        onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs font-bold uppercase">{c.name.substring(0, 2)}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-sm truncate text-base-content">{c.name}</div>
+                                            {c.bio && <div className="text-[11px] opacity-60 line-clamp-2 mt-0.5 leading-tight">{c.bio}</div>}
+                                        </div>
+                                        <span className={`badge badge-sm badge-outline shrink-0 capitalize ${
+                                            c.source === 'theaudiodb' ? 'text-secondary border-secondary/30' :
+                                            c.source === 'soundcloud' ? 'text-warning border-warning/30' :
+                                            c.source === 'bandcamp' ? 'text-accent border-accent/30' :
+                                            'text-info border-info/30'
+                                        }`}>
+                                            {c.source}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {!isLibraryOnly && (
                         <>
