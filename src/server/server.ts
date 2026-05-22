@@ -125,7 +125,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const storage = new LocalDiskStorage();
 
     const openRouterService = new OpenRouterService(database, config);
-    initAIService(openRouterService);
+    initAIService(openRouterService, database);
     console.log(`🔌 [Plugins] AIService initialized with OpenRouter provider`);
 
     // Startup maintenance and scanner are now triggered manually via frontend
@@ -146,6 +146,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const scrobbleService = getScrobbleService();
     scrobbleService.register(new LastFmProvider(database));
     scrobbleService.register(new ListenBrainzProvider(database));
+    const { syncRegistryWithDatabase } = await import("./core/provider.js");
+    await syncRegistryWithDatabase(scrobbleService.getRegistry(), database);
 
     const waveformService = new WaveformService(path.dirname(config.dbPath));
 
@@ -230,7 +232,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     
     const torrentService = new TorrentService(database, scanner, config.musicDir);
 
-    const downloadService = initDownloadService(soulseekService, torrentService);
+    const downloadService = initDownloadService(soulseekService, torrentService, 1, database);
 
     torrentSearchService.registerProvider(new PublicScraperTorrentProvider());
     console.log(`🔌 [Integrations] TorrentSearch initialized with PublicScraper provider`);

@@ -332,7 +332,7 @@ export const IntegrationsPanel = () => {
       status: status?.youtube?.online ? 'online' : 'offline',
       details: status?.youtube?.online ? "Service reachable" : "Service unreachable",
       description: "Resilient streaming via yt-dlp with fallbacks.",
-      pluginId: "youtube",
+      pluginId: "youtube-playlists",
       onAuth: () => handleAuth('youtube')
     },
     {

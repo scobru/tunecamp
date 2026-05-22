@@ -1,4 +1,4 @@
-import { ProviderRegistry } from "../../core/provider.js";
+import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.js";
 import type { DownloadProvider, DownloadResult } from "../../core/provider.js";
 import { SoulseekDownloadProvider } from "../../providers/download/soulseek.provider.js";
 import { TorrentDownloadProvider } from "../../providers/download/torrent.provider.js";
@@ -87,11 +87,14 @@ export function getDownloadService(): DownloadService | null {
     return _downloadService;
 }
 
-export function initDownloadService(soulseekService: SoulseekService, torrentService?: TorrentService, defaultOwnerId: number = 1): DownloadService {
+export function initDownloadService(soulseekService: SoulseekService, torrentService?: TorrentService, defaultOwnerId: number = 1, db?: any): DownloadService {
     _downloadService = new DownloadService();
     _downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService));
     if (torrentService) {
         _downloadService.getRegistry().register(new TorrentDownloadProvider(torrentService, defaultOwnerId));
+    }
+    if (db) {
+        syncRegistryWithDatabase(_downloadService.getRegistry(), db).catch(err => console.error("Failed to sync download registry:", err));
     }
     return _downloadService;
 }

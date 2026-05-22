@@ -1,4 +1,4 @@
-import { ProviderRegistry } from "../../core/provider.js";
+import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.js";
 import type { AIProvider } from "../../core/provider.js";
 import { OpenRouterAIProvider } from "../../providers/ai/openrouter.provider.js";
 import type { OpenRouterService } from "./openrouter.service.js";
@@ -69,7 +69,10 @@ export class AIService {
 
 export const aiService = new AIService();
 
-export function initAIService(openRouterService: OpenRouterService): AIService {
+export function initAIService(openRouterService: OpenRouterService, db?: any): AIService {
     aiService.getRegistry().register(new OpenRouterAIProvider(openRouterService));
+    if (db) {
+        syncRegistryWithDatabase(aiService.getRegistry(), db).catch(err => console.error("Failed to sync AI registry:", err));
+    }
     return aiService;
 }

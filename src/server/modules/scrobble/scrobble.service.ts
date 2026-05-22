@@ -7,6 +7,10 @@ export class ScrobbleService {
         this.registry.register(provider);
     }
 
+    getRegistry() {
+        return this.registry;
+    }
+
     getProviders() {
         return this.registry.getAll();
     }

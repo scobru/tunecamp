@@ -20,6 +20,8 @@ import multer from "multer";
 import { YouTubeCookieManager } from "../../utils/youtube-session.js";
 
 import type { LocalizationService } from "../../modules/catalog/localization.service.js";
+import { getDownloadService } from "../../modules/catalog/download.service.js";
+import { aiService } from "../../modules/ai/ai.service.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -1659,7 +1661,9 @@ export function createAdminRoutes(
             ...streamingService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'streaming' })),
             ...federationService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'federation' })),
             ...playlistService?.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'playlist' })) || [],
-            ...scrobbleService?.getProviders().map((p: any) => ({ ...p, type: 'scrobble', enabled: 1 })) || []
+            ...scrobbleService?.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'scrobble' })) || [],
+            ...getDownloadService()?.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'download' })) || [],
+            ...aiService?.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'ai' })) || []
         ];
 
         res.json(plugins);
@@ -1688,7 +1692,10 @@ export function createAdminRoutes(
                 metadataService.getRegistry(),
                 streamingService.getRegistry(),
                 federationService.getRegistry(),
-                playlistService?.getRegistry()
+                playlistService?.getRegistry(),
+                scrobbleService?.getRegistry(),
+                getDownloadService()?.getRegistry(),
+                aiService?.getRegistry()
             ].filter(Boolean);
 
             let found = false;

@@ -1,0 +1,14 @@
+{
+  "folders": [
+	{
+		"path": "."
+	},
+	{
+		"path": "../zen"
+	},
+	{
+		"path": "../shogun-relay"
+	}
+],
+  "settings": {}
+}
