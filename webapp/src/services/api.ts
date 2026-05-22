@@ -514,7 +514,7 @@ const API = {
     
     // --- Torrents ---
     getTorrents: () => handleResponse(api.get<any[]>('admin/torrents')),
-    addTorrent: (magnetUri: string) => handleResponse(api.post('admin/torrents/add', { magnetUri })),
+    addTorrent: (magnetUri: string) => handleResponse(api.post('admin/torrents/add', { magnet: magnetUri })),
     seedTorrent: (filePaths: string[], name: string) => handleResponse(api.post<{ success: boolean, magnetUri: string }>('admin/torrents/seed', { filePaths, name })),
     deleteTorrent: (infoHash: string, deleteFiles = false) => handleResponse(api.delete(`admin/torrents/${infoHash}${deleteFiles ? '?deleteFiles=true' : ''}`)),
     
