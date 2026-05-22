@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Activity, CreditCard, Search } from "lucide-react";
+import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory } from "shogun-contracts-sdk";
@@ -264,7 +264,7 @@ export const AdminSettingsPanel = () => {
               <input
                 type="checkbox"
                 className="toggle toggle-primary toggle-sm"
-                checked={settings.allowPublicRegistration === true || settings.allowPublicRegistration === "true"}
+                checked={settings.allowPublicRegistration === true || (settings.allowPublicRegistration as unknown) === "true"}
                 onChange={(e) =>
                   setSettings({ ...settings, allowPublicRegistration: e.target.checked })
                 }
