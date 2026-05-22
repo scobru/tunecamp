@@ -60,6 +60,35 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RootAdminGuard({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isLoading, role } = useAuthStore();
+  
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  const isRoot = user?.isRootAdmin || role === 'root_admin';
+  if (!isAuthenticated || !isRoot) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+function ManagerOrRootGuard({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isLoading, role } = useAuthStore();
+  
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  const isRoot = user?.isRootAdmin || role === 'root_admin';
+  const isManager = role === 'admin';
+  if (!isAuthenticated || (!isRoot && !isManager)) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 function EditorGuard({ children }: { children: React.ReactNode }) {
   const { role, isAuthenticated, isLoading } = useAuthStore();
   
@@ -126,16 +155,16 @@ function App() {
             <Route path="/social" element={<Social />} />
             <Route path="/share/:id" element={<SharePage />} />
 
-            {/* Admin - Protected: only role='admin' can access */}
+            {/* Admin - Protected */}
             <Route path="/admin" element={<AdminGuard><Admin /></AdminGuard>} />
             <Route path="/admin/release/new" element={<EditorGuard><AdminReleaseEditor /></EditorGuard>} />
             <Route
               path="/admin/release/:id/edit"
               element={<EditorGuard><AdminReleaseEditor /></EditorGuard>}
             />
-            <Route path="/browser" element={<AdminGuard><Files /></AdminGuard>} />
+            <Route path="/browser" element={<RootAdminGuard><Files /></RootAdminGuard>} />
 
-            <Route path="/search/content" element={<AdminGuard><ContentSearch /></AdminGuard>} />
+            <Route path="/search/content" element={<ManagerOrRootGuard><ContentSearch /></ManagerOrRootGuard>} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

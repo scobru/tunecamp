@@ -16,6 +16,7 @@ import {
   Users,
   Clock,
   Globe,
+  Shield,
 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
@@ -349,6 +350,113 @@ const Profile = () => {
                     onChange={handleAvatarChange}
                   />
                 </label>
+              </div>
+            </div>
+
+            {/* Role & Permissions Card */}
+            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6 md:col-span-2">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Shield size={20} className="text-secondary" /> Ruolo e Permessi dell'Account
+              </h3>
+              <p className="text-sm opacity-60">
+                Qui puoi consultare il tuo ruolo corrente all'interno della piattaforma TuneCamp e scoprire quali azioni puoi compiere.
+              </p>
+              
+              <div className="bg-base-200/30 rounded-2xl p-6 border border-base-content/5 flex flex-col md:flex-row gap-6 items-start">
+                <div className="flex flex-col gap-2 min-w-[200px]">
+                  <span className="text-xs opacity-50 uppercase tracking-widest font-black">Ruolo Corrente</span>
+                  <div className={clsx("badge badge-lg gap-2 font-bold py-4 px-5 text-sm uppercase tracking-wider rounded-xl shadow-sm border-0", 
+                    role === 'root_admin' ? "bg-red-500/20 text-red-500" :
+                    role === 'admin' ? "bg-primary/20 text-primary" :
+                    role === 'super_user' ? "bg-secondary/20 text-secondary" :
+                    "bg-accent/20 text-accent"
+                  )}>
+                    {role === 'root_admin' ? "Root Admin (Owner)" :
+                     role === 'admin' ? "Manager (Full Admin)" :
+                     role === 'super_user' ? "Curator (Super User)" :
+                     "Listener (Standard)"}
+                  </div>
+                  {user?.artistId && (
+                    <div className="badge badge-outline gap-1 py-3 px-4 mt-1 font-semibold text-xs border-base-content/10">
+                      🎨 Artista Collegato
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h4 className="font-bold text-base">
+                      {role === 'root_admin' && "Instance Owner (Root Admin)"}
+                      {role === 'admin' && "Manager (Full Admin)"}
+                      {role === 'super_user' && "Curator (Super User)"}
+                      {role === 'user' && "Listener (Standard User / Artist)"}
+                    </h4>
+                    <p className="text-sm opacity-70 mt-1">
+                      {role === 'root_admin' && "Hai il controllo amministrativo e di sicurezza completo di questa istanza di TuneCamp."}
+                      {role === 'admin' && "Hai poteri amministrativi per moderare la community, gestire le release e supportare gli artisti."}
+                      {role === 'super_user' && "Ti occupi della qualità del catalogo musicale, dell'organizzazione e della correzione dei metadati dei brani."}
+                      {role === 'user' && "Sei un utente standard. Puoi ascoltare la musica, acquistare album e, se sei un artista, caricare le tue tracce."}
+                    </p>
+                  </div>
+                  
+                  <div className="divider opacity-5 my-2"></div>
+                  
+                  <div className="space-y-3">
+                    <span className="text-xs opacity-50 uppercase tracking-wider font-bold">Cosa puoi fare:</span>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      {role === 'root_admin' && [
+                        "Gestire tutti gli utenti, i ruoli e lo stato attivo/disattivo",
+                        "Accedere a chiavi di cifratura e master key di sicurezza",
+                        "Modificare le impostazioni globali del sito (nome, logo, sfondi)",
+                        "Gestire la Curation Queue e le promozioni dei brani",
+                        "Effettuare backup completi e gestire l'archiviazione",
+                        "Gestire la federazione e l'integrazione ActivityPub globale"
+                      ].map((cap, idx) => (
+                        <li key={idx} className="flex gap-2 items-start text-base-content/80">
+                          <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
+                          <span>{cap}</span>
+                        </li>
+                      ))}
+
+                      {role === 'admin' && [
+                        "Visualizzare gli account utente registrati sul server",
+                        "Moderare post e release a livello globale sull'istanza",
+                        "Gestire e promuovere i contenuti all'interno del catalogo",
+                        "Gestire i follow di ActivityPub e la federazione social",
+                        "Operare per conto degli artisti a cui sei assegnato"
+                      ].map((cap, idx) => (
+                        <li key={idx} className="flex gap-2 items-start text-base-content/80">
+                          <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
+                          <span>{cap}</span>
+                        </li>
+                      ))}
+
+                      {role === 'super_user' && [
+                        "Visibilità globale della libreria (inclusi bozze e file privati)",
+                        "Modificare i metadati di qualsiasi brano o album (titoli, generi)",
+                        "Caricare tracce e curare l'ordine del catalogo",
+                        "Correggere errori o imperfezioni nelle copertine e tag"
+                      ].map((cap, idx) => (
+                        <li key={idx} className="flex gap-2 items-start text-base-content/80">
+                          <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
+                          <span>{cap}</span>
+                        </li>
+                      ))}
+
+                      {role === 'user' && [
+                        "Ascoltare la musica pubblica (Arena) e acquistare brani",
+                        "Creare e gestire playlist personali e preferiti",
+                        "Caricare e gestire la tua musica (se collegato ad un Artista)",
+                        "Personalizzare il tuo profilo, alias e avatar decentralizzati"
+                      ].map((cap, idx) => (
+                        <li key={idx} className="flex gap-2 items-start text-base-content/80">
+                          <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
+                          <span>{cap}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

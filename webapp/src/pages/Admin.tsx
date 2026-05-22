@@ -19,9 +19,10 @@ import { StoragePanel } from "../components/admin/StoragePanel";
 const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin';
+  const isRootAdmin = !!user?.isRootAdmin || role === 'root_admin';
+  const isManager = role === 'admin';
   const isSuperUser = role === 'super_user';
-  const isRootAdmin = !!user?.isRootAdmin;
+  const isAdmin = isRootAdmin || isManager || isSuperUser;
   
   const [activeTab, setActiveTab] = useState<
     | "releases"
@@ -63,10 +64,17 @@ const Admin = () => {
 
   if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) return null;
 
+  const getDashboardTitle = () => {
+    if (isRootAdmin) return "Root Admin Dashboard";
+    if (isManager) return "Manager Dashboard";
+    if (isSuperUser) return "Curator Dashboard";
+    return "Artist Dashboard";
+  };
+
   return (
     <div className="space-y-8 animate-fade-in">
       <h1 className="text-3xl font-bold flex items-center gap-3">
-        <Settings size={32} className="text-primary" /> {isAdmin ? "Admin Dashboard" : "Artist Dashboard"}
+        <Settings size={32} className="text-primary" /> {getDashboardTitle()}
       </h1>
 
       {/* Stats Cards */}
@@ -102,7 +110,7 @@ const Admin = () => {
         >
           {isAdmin ? "All Releases" : "My Releases"}
         </a>
-        {isAdmin && (
+        {(isRootAdmin || isManager || isSuperUser) && (
           <a
             role="tab"
             className={`tab ${activeTab === "curation" ? "tab-active" : ""}`}
@@ -111,7 +119,7 @@ const Admin = () => {
             Curation Queue
           </a>
         )}
-        {isRootAdmin && (
+        {(isRootAdmin || isManager) && (
           <>
             <a
               role="tab"
@@ -122,7 +130,7 @@ const Admin = () => {
             </a>
           </>
         )}
-        {isAdmin && !isSuperUser && (
+        {isRootAdmin && (
           <>
             <a
               role="tab"
@@ -187,33 +195,35 @@ const Admin = () => {
          </div>
         )}
 
-        {activeTab === "curation" && isAdmin && <CurationQueue />}
+        {activeTab === "curation" && (isRootAdmin || isManager || isSuperUser) && <CurationQueue />}
 
 
-        {activeTab === "users" && isAdmin && (
+        {activeTab === "users" && (isRootAdmin || isManager) && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-lg">User Management</h3>
-              <button
-                className="btn btn-sm btn-primary shadow-md"
-                onClick={() =>
-                  document.dispatchEvent(
-                    new CustomEvent("open-admin-user-modal"),
-                  )
-                }
-              >
-                Add User
-              </button>
+              {isRootAdmin && (
+                <button
+                  className="btn btn-sm btn-primary shadow-md"
+                  onClick={() =>
+                    document.dispatchEvent(
+                      new CustomEvent("open-admin-user-modal"),
+                    )
+                  }
+                >
+                  Add User
+                </button>
+              )}
             </div>
             <AdminUsersList />
           </div>
         )}
 
-        {activeTab === "settings" && isAdmin && <AdminSettingsPanel />}
-        {activeTab === "backup" && isAdmin && <BackupPanel />}
+        {activeTab === "settings" && isRootAdmin && <AdminSettingsPanel />}
+        {activeTab === "backup" && isRootAdmin && <BackupPanel />}
         {activeTab === "storage" && isAdmin && <StoragePanel />}
-        {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
-        {activeTab === "integrations" && isAdmin && <IntegrationsPanel />}
+        {activeTab === "maintenance" && isRootAdmin && <AdminMaintenancePanel />}
+        {activeTab === "integrations" && isRootAdmin && <IntegrationsPanel />}
       </div>
 
       <AdminUserModal

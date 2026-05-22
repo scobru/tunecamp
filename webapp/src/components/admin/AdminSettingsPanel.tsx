@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert } from "lucide-react";
+import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory } from "shogun-contracts-sdk";
@@ -19,6 +19,16 @@ export const AdminSettingsPanel = () => {
 
   const [isCheckingOnChain, setIsCheckingOnChain] = useState(false);
   const [hasOnChainInstance, setHasOnChainInstance] = useState(false);
+
+  const [showSecret, setShowSecret] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopySecret = () => {
+    if (!settings?.jwtSecret) return;
+    navigator.clipboard.writeText(settings.jwtSecret);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleDeploy = async () => {
     if (!activeSigner || !isReady) {
@@ -555,6 +565,49 @@ export const AdminSettingsPanel = () => {
           </div>
         </div>
 
+        {/* Security & System Keys */}
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+          <div className="flex items-center gap-2 mb-2 text-error/80">
+            <Shield size={18} />
+            <h4 className="font-bold uppercase text-xs tracking-wider">Security & System Keys (Root Admin)</h4>
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-medium text-sm">Server Master Key (JWT Secret)</span>
+            </label>
+            <div className="flex gap-2 items-center">
+              <input
+                type={showSecret ? "text" : "password"}
+                readOnly
+                className="input input-bordered bg-base-300/50 font-mono text-xs flex-1 cursor-default select-all"
+                value={settings.jwtSecret || "Not configured or restricted"}
+              />
+              <button
+                type="button"
+                className="btn btn-square btn-outline btn-sm"
+                onClick={() => setShowSecret(!showSecret)}
+                title={showSecret ? "Hide secret" : "Reveal secret"}
+              >
+                {showSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+              <button
+                type="button"
+                className="btn btn-square btn-outline btn-sm"
+                onClick={handleCopySecret}
+                title="Copy to clipboard"
+                disabled={!settings.jwtSecret}
+              >
+                {copied ? <CheckCircle2 size={16} className="text-success" /> : <Copy size={16} />}
+              </button>
+            </div>
+            <label className="label">
+              <span className="label-text-alt text-error/80 text-[10px] flex items-center gap-1 font-medium mt-1">
+                <OctagonAlert size={12} />
+                WARNING: This is the server's master cryptographic key. Keep it secret and secure. It is used to decrypt all Zen identities and derive user wallets.
+              </span>
+            </label>
+          </div>
+        </div>
 
       </div>
 

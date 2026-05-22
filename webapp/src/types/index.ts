@@ -226,6 +226,7 @@ export interface SiteSettings {
     linda_bot_enabled?: boolean;
     linda_invite_link?: string;
     linda_bot_pubkey?: string;
+    jwtSecret?: string;
 }
 
 export interface Post {

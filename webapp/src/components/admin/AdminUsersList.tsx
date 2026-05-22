@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { User, Trash2 } from "lucide-react";
 import clsx from "clsx";
+import { useAuthStore } from "../../stores/useAuthStore";
 
 export const AdminUsersList = () => {
+  const { user, role } = useAuthStore();
+  const isRootAdmin = !!user?.isRootAdmin || role === 'root_admin';
   const [users, setUsers] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -86,14 +89,16 @@ export const AdminUsersList = () => {
       <table className="table">
         <thead>
           <tr>
-            <th className="w-10">
-                <input 
-                    type="checkbox" 
-                    className="checkbox checkbox-sm" 
-                    checked={selectedIds.length === users.length && users.length > 0}
-                    onChange={handleSelectAll}
-                />
-            </th>
+            {isRootAdmin && (
+              <th className="w-10">
+                  <input 
+                      type="checkbox" 
+                      className="checkbox checkbox-sm" 
+                      checked={selectedIds.length === users.length && users.length > 0}
+                      onChange={handleSelectAll}
+                  />
+              </th>
+            )}
             <th>Username</th>
             <th>Role</th>
             <th>Linked Artist</th>
@@ -104,14 +109,16 @@ export const AdminUsersList = () => {
         <tbody>
           {users.map((u) => (
             <tr key={u.id} className={clsx(selectedIds.includes(u.id) && "bg-base-200")}>
-              <td>
-                <input 
-                    type="checkbox" 
-                    className="checkbox checkbox-sm" 
-                    checked={selectedIds.includes(u.id)}
-                    onChange={() => handleSelectOne(u.id)}
-                />
-              </td>
+              {isRootAdmin && (
+                <td>
+                  <input 
+                      type="checkbox" 
+                      className="checkbox checkbox-sm" 
+                      checked={selectedIds.includes(u.id)}
+                      onChange={() => handleSelectOne(u.id)}
+                  />
+                </td>
+              )}
               <td className="font-bold">{u.username}</td>
               <td>
                 {u.role === "root_admin" ? (
@@ -140,22 +147,28 @@ export const AdminUsersList = () => {
                 {new Date(u.createdAt).toLocaleDateString()}
               </td>
               <td className="flex gap-2">
-                <button
-                  className="btn btn-xs btn-ghost"
-                  onClick={() =>
-                    document.dispatchEvent(
-                      new CustomEvent("open-admin-user-modal", { detail: u }),
-                    )
-                  }
-                >
-                  Edit
-                </button>
-                <button
-                  className="btn btn-xs btn-ghost text-error"
-                  onClick={() => handleDelete(u.id, u.username)}
-                >
-                  Delete
-                </button>
+                {isRootAdmin ? (
+                  <>
+                    <button
+                      className="btn btn-xs btn-ghost"
+                      onClick={() =>
+                        document.dispatchEvent(
+                          new CustomEvent("open-admin-user-modal", { detail: u }),
+                        )
+                      }
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-xs btn-ghost text-error"
+                      onClick={() => handleDelete(u.id, u.username)}
+                    >
+                      Delete
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs opacity-40 italic">Read-only</span>
+                )}
               </td>
             </tr>
           ))}

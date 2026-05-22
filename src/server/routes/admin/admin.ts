@@ -217,7 +217,10 @@ export function createAdminRoutes(
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) return res.status(403).json({ error: "Super Root access required" });
         try {
             const settings = database.getAllSettings();
-            res.json(settings);
+            res.json({
+                ...settings,
+                jwtSecret: config.jwtSecret
+            });
         } catch (error) {
             console.error("Error getting settings:", error);
             res.status(500).json({ error: "Failed to get settings" });

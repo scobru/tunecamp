@@ -32,9 +32,39 @@ export const Sidebar = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteLogo, setSiteLogo] = useState<string | null>(null);
  
-  const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
+  const isRoot = user?.isRootAdmin || role === 'root_admin';
+  const isAdmin = role === 'admin' || isRoot || role === 'super_user';
   const isSuperUser = role === 'super_user';
   const isUser = role === 'user';
+
+  const getRoleLabel = (r: typeof role) => {
+    switch (r) {
+      case "root_admin":
+        return "Root Admin";
+      case "admin":
+        return "Manager";
+      case "super_user":
+        return "Curator";
+      case "user":
+        return "Listener";
+      default:
+        return "Listener";
+    }
+  };
+
+  const getRoleBadgeClass = (r: typeof role) => {
+    switch (r) {
+      case "root_admin":
+        return "bg-red-500/10 text-red-500 border-red-500/20";
+      case "admin":
+        return "bg-primary/10 text-primary border-primary/20";
+      case "super_user":
+        return "bg-secondary/10 text-secondary border-secondary/20";
+      case "user":
+      default:
+        return "bg-base-content/5 text-base-content/60 border-base-content/10";
+    }
+  };
  
   useEffect(() => {
     API.getSiteSettings()
@@ -122,7 +152,7 @@ export const Sidebar = () => {
         <div>
           <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Collection</h3>
           <ul className="menu menu-sm p-0 gap-1">
-            {(isAdmin || isSuperUser || user?.isRootAdmin || !!user?.artistId) && (
+            {(isAdmin || isSuperUser || isRoot || !!user?.artistId) && (
               <NavItem to="/library" icon={Library} label="Library" />
             )}
             <NavItem to="/artists" icon={User} label="Artists" />
@@ -138,22 +168,21 @@ export const Sidebar = () => {
           </ul>
         </div>
 
-        {isAuthenticated && (user?.isRootAdmin || isAdmin || isSuperUser || isUser) && (
+        {isAuthenticated && (
           <div>
             <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Management</h3>
             <ul className="menu menu-sm p-0 gap-1">
-              {user?.isRootAdmin && (
+              {isRoot && (
                 <NavItem to="/browser" icon={Folder} label="Files" />
               )}
-              {(user?.isRootAdmin || isAdmin || isSuperUser) && (
-                <NavItem to="/my-music" icon={Upload} label="My Music" />
-              )}
-              {(user?.isRootAdmin || isAdmin || isSuperUser) && (user?.artistId || user?.isRootAdmin) && (
+              <NavItem to="/my-music" icon={Upload} label="My Music" />
+              {(user?.artistId || isRoot) && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
-              {(user?.isRootAdmin || isAdmin || isSuperUser) && (
+              {(isRoot || role === 'admin') && (
                 <NavItem to="/search/content" icon={Globe} label="Search Content" />
-              )}            </ul>
+              )}
+            </ul>
           </div>
         )}
       </div>
@@ -194,12 +223,17 @@ export const Sidebar = () => {
               </Link>
               
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate">{user?.username || "User"}</p>
-                <p className="text-[10px] opacity-50 uppercase tracking-widest">{role}</p>
+                <p className="text-sm font-bold truncate leading-snug">{user?.username || "User"}</p>
+                <span className={clsx(
+                  "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border mt-0.5 shadow-sm transition-all duration-medium-1",
+                  getRoleBadgeClass(role)
+                )}>
+                  {getRoleLabel(role)}
+                </span>
               </div>
 
               <div className="flex gap-1">
-                {(user?.isRootAdmin || isAdmin || isSuperUser) && (
+                {(isRoot || isAdmin || isSuperUser) && (
                   <Link
                     to="/admin"
                     className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100"
