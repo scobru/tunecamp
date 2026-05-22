@@ -10,18 +10,17 @@ const loggers = {
 // @ts-ignore
 import { disc, hwid } from "zen/lib/discover.js";
 // @ts-ignore
-import { scanbg, mkpat } from "zen/lib/scan.js";
+import { setupRelayPex } from "zen/lib/pex.js";
+// @ts-ignore
+import { PeerRegistry } from "zen/lib/peer-registry.js";
+// @ts-ignore
+import * as xdg from "zen/lib/xdg.js";
+import path from "path";
 
-export const kprs = new Set<string>(); // Known peers
-const spat = new Set<string>(); // Scanned patterns
+export const kprs = new Set<string>(); // Keep for backward-compatibility
+export let registry: any = null;
+export let adoptPeer: any = null;
 
-let stmr: NodeJS.Timeout | null = null;
-let pmsh: any = null;
-let fic = false;
-const SIV = 10 * 60 * 1000; // 10 min base interval
-const MSIV = 2 * 60 * 60 * 1000; // 2 hr cap
-const MUPS = 10; // max outbound peer connections from scan
-let siv = SIV;
 let activeDomain: string | null = null;
 let activePort: number = 8420;
 
@@ -37,96 +36,54 @@ export function getHardwarePeerId() {
   return hwid();
 }
 
-function pkey(host: string) {
-  const p = mkpat((host || "").split(":")[0]);
-  return p ? p.prefix + "*" + p.tail + p.suffix : host;
-}
-
-function scnd(host: string, zenInstance: any) {
-  if (!host) return;
-  const key = pkey(host);
-  if (spat.has(key)) return;
-  spat.add(key);
-  loggers.server.info(`🔍 Scanning ZEN pattern: ${key}`);
-  scanbg(host, {
-    port: activePort,
-    onFound: (url: string) => addPeer(url, zenInstance),
-  });
-}
-
-function scanNetwork(zenInstance: any) {
-  if (activeDomain) scnd(activeDomain, zenInstance);
-}
-
-function scheduleNetworkScan(zenInstance: any) {
-  if (stmr) clearTimeout(stmr);
-  stmr = setTimeout(() => {
-    fic = false;
-    spat.clear();
-    scanNetwork(zenInstance);
-    const check = setTimeout(() => {
-      if (!fic) {
-        siv = Math.min(siv * 2, MSIV);
-        loggers.server.debug(
-          `Scan: no new peers - next scan in ${Math.round(siv / 60000)}m`,
-        );
-      } else {
-        siv = SIV;
-      }
-      scheduleNetworkScan(zenInstance);
-    }, 2 * 60 * 1000);
-    if (check.unref) check.unref();
-  }, siv);
-  if (stmr.unref) stmr.unref();
-}
-
-function addPeer(url: string, zenInstance: any) {
-  if (kprs.has(url)) return;
-  kprs.add(url);
-  fic = true;
-  loggers.server.info(`🤝 Discovered new ZEN peer: ${url}`);
-
-  const r = zenInstance && zenInstance._graph && zenInstance._graph._;
-  const ups = r && r.axe ? Object.keys(r.axe.up || {}).length : 0;
-
-  if (pmsh && ups < MUPS) {
-    try {
-      pmsh.hi({ id: url, url, retry: 9 });
-    } catch {}
-  } else if (!pmsh && r && r.opt) {
-    if (!Array.isArray(r.opt.peers)) r.opt.peers = [];
-    if (!r.opt.peers.includes(url)) r.opt.peers.push(url);
-  }
-
-  if (pmsh) {
-    try {
-      pmsh.say({ dam: "pex", peers: [url] }, r && r.opt && r.opt.peers);
-    } catch {}
-  }
-
-  try {
-    scnd(new URL(url).hostname, zenInstance);
-  } catch {}
-}
-
 export function setupPeerExchange(zenInstance: any, serverUrl: string | null) {
-  if (serverUrl) kprs.add(serverUrl);
+  if (serverUrl) {
+    kprs.add(serverUrl);
+  }
 
   const root = zenInstance._graph._;
+  const initPeers = (root.opt && root.opt.peers) || [];
 
-  setImmediate(() => {
-    const mesh = root.opt && root.opt.mesh;
-    if (!mesh) return;
-    pmsh = mesh;
+  // 1. Initialize PeerRegistry persisting to data directory
+  const PEERS_PATH = path.join(xdg.data(), "peers.json");
+  loggers.server.info(`📂 PeerRegistry persisting to: ${PEERS_PATH}`);
+  registry = new PeerRegistry().bindSave(PEERS_PATH);
 
-    // AXE handles PEX and hi/bye events internally.
-    loggers.server.info("📡 AXE taking over Peer Exchange (PEX)");
+  // 2. Protect boot and initial peers
+  if (serverUrl) {
+    registry.protect(serverUrl);
+  }
+  if (Array.isArray(initPeers) && initPeers.length > 0) {
+    registry.protect(initPeers);
+  }
+
+  // 3. Wire up PEX using setupRelayPex
+  const pexResult = setupRelayPex(zenInstance, {
+    domain: activeDomain,
+    port: activePort,
+    registry,
+    pexMax: 50,
+    onAdopt: (url: string) => {
+      // Keep kprs dynamic for backward-compatibility
+      kprs.add(PeerRegistry.alt(url));
+    }
   });
 
-  if (activeDomain) {
-    scanNetwork(zenInstance);
-    scheduleNetworkScan(zenInstance);
-  }
+  adoptPeer = pexResult.adopt;
+
+  // 4. Load persisted peers
+  setImmediate(() => {
+    try {
+      const count = registry.load(adoptPeer);
+      loggers.server.info(`🤝 Loaded ${count} persisted peers`);
+
+      // Populate kprs with loaded peers for full compatibility
+      registry.bootEntries().forEach((e: any) => kprs.add(PeerRegistry.alt(e.url)));
+      registry.confirmedNonBoot().forEach((e: any) => kprs.add(PeerRegistry.alt(e.url)));
+    } catch (err: any) {
+      loggers.server.error(`🚨 Error loading persisted peers: ${err.message}`);
+    }
+  });
 }
 
 export function latchDomain(req: any, zenInstance: any) {
@@ -135,9 +92,10 @@ export function latchDomain(req: any, zenInstance: any) {
   if (host && host !== "localhost" && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
     activeDomain = host;
     loggers.server.info(`🌐 Domain latched from request: ${activeDomain}`);
-    if (zenInstance) {
-      scanNetwork(zenInstance);
-      scheduleNetworkScan(zenInstance);
+    if (registry && activeDomain) {
+      const scheme = "wss";
+      const origin = `${scheme}://${activeDomain}:1970/zen`;
+      registry.setSelf(origin);
     }
   }
   return activeDomain;

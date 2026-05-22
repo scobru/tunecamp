@@ -2,7 +2,9 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 import { Zen } from "../../modules/network/zen.js";
-import { kprs } from "../../modules/network/zen-network.js";
+import { kprs, registry } from "../../modules/network/zen-network.js";
+// @ts-ignore
+import { PeerRegistry } from "zen/lib/peer-registry.js";
 
 /**
  * buildRelayStatus — Builds a canonical Zen relay status payload.
@@ -85,10 +87,11 @@ export function createZenRelayRoutes(
      */
     router.get("/status", async (req: Request, res: Response) => {
         try {
-            // Collect known peers in wss:// wire format
-            const peers = Array.from(kprs).filter((p) =>
-                /^wss?:\/\//.test(p)
-            );
+            // Collect known peers in wss:// wire format using PeerRegistry
+            const peers = registry
+                ? registry.bootEntries().map((e: any) => PeerRegistry.alt(e.url))
+                    .concat(registry.confirmedNonBoot().map((e: any) => PeerRegistry.alt(e.url)))
+                : Array.from(kprs).filter((p) => /^wss?:\/\//.test(p));
 
             const domain = getDomain();
             const serverPair = await zendbService.getIdentityKeyPair();
@@ -127,9 +130,11 @@ export function createZenRelayRoutes(
      */
     router.get("/.well-known/peers.json", (req: Request, res: Response) => {
         try {
-            const peers = Array.from(kprs).filter((p) =>
-                /^wss?:\/\//.test(p)
-            );
+            const peers = registry
+                ? registry.bootEntries().map((e: any) => PeerRegistry.alt(e.url))
+                    .concat(registry.confirmedNonBoot().map((e: any) => PeerRegistry.alt(e.url)))
+                : Array.from(kprs).filter((p) => /^wss?:\/\//.test(p));
+
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.setHeader(
                 "Cache-Control",
