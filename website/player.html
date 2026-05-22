@@ -264,7 +264,36 @@
                     const process = (t, r) => {
                         if(t && (t.streamUrl || t.audioUrl || t.id)) {
                             const audioUrl = t.streamUrl || t.audioUrl || `${siteUrl}/api/tracks/${t.id}/stream`;
-                            const cover = t.coverUrl || t.coverImage || (r && r.coverImage ? (r.coverImage.startsWith('http') ? r.coverImage : `${siteUrl}${r.coverImage}`) : null) || siteData.coverImage;
+                            
+                            let cover = t.coverUrl || t.coverImage;
+                            if (cover) {
+                                if (!cover.startsWith('http') && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
+                                    const path = cover.startsWith('/') ? cover : '/' + cover;
+                                    cover = `${siteUrl}${path}`;
+                                }
+                            } else if (r) {
+                                const relCover = r.coverImage || r.cover_path;
+                                if (relCover) {
+                                    if (relCover.startsWith('http') || relCover.startsWith('data:') || relCover.startsWith('blob:')) {
+                                        cover = relCover;
+                                    } else {
+                                        if (relCover.includes('/') && !relCover.startsWith('/api/')) {
+                                            cover = `${siteUrl}/api/albums/${r.slug || r.id || r.title}/cover`;
+                                        } else {
+                                            const path = relCover.startsWith('/') ? relCover : '/' + relCover;
+                                            cover = `${siteUrl}${path}`;
+                                        }
+                                    }
+                                }
+                            }
+                            if (!cover) {
+                                cover = siteData.coverImage;
+                            }
+                            if (cover && !cover.startsWith('http') && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
+                                const path = cover.startsWith('/') ? cover : '/' + cover;
+                                cover = `${siteUrl}${path}`;
+                            }
+
                             const td = {
                                 id: t.id || t.title, title: t.title || "Untitled",
                                 artistName: t.artistName || t.artist || (r ? (r.artistName || r.artist_name) : null) || siteData.title || "Unknown Artist",

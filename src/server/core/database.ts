@@ -799,7 +799,13 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Posts
         getPostsByArtist: (aid: number, pr = VisibilityProfile.PUBLIC_STAGE) => db.prepare(pr === VisibilityProfile.PUBLIC_STAGE ? "SELECT * FROM posts WHERE artist_id = ? AND visibility = 'public' ORDER BY created_at DESC" : "SELECT * FROM posts WHERE artist_id = ? ORDER BY created_at DESC").all(aid) as any[],
-        getPublicPosts: () => db.prepare("SELECT * FROM posts WHERE visibility = 'public' ORDER BY created_at DESC").all() as any[],
+        getPublicPosts: () => db.prepare(`
+            SELECT p.*, a.name AS artist_name, a.slug AS artist_slug, a.photo_path AS artist_photo
+            FROM posts p
+            LEFT JOIN artists a ON p.artist_id = a.id
+            WHERE p.visibility = 'public'
+            ORDER BY p.created_at DESC
+        `).all() as any[],
         getPost: (id: number) => db.prepare("SELECT * FROM posts WHERE id = ?").get(id) as any,
         getPostBySlug: (s: string) => db.prepare("SELECT * FROM posts WHERE slug = ?").get(s) as any,
         createPost: (aid: number, c: string, v: any = 'public') => Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at) VALUES (?, ?, ?, ?, ?)").run(aid, c, c.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 8), v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null).lastInsertRowid),

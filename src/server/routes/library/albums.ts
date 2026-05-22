@@ -255,8 +255,14 @@ export function createAlbumsRoutes(
                 return res.send(svg);
             }
 
+            let album = null;
             albumId = parseInt(param, 10);
-            const album = database.getAlbum(albumId) || database.getRelease(albumId);
+            if (!isNaN(albumId)) {
+                album = database.getAlbum(albumId) || database.getRelease(albumId);
+            }
+            if (!album) {
+                album = database.getAlbumBySlug(param) || database.getReleaseBySlug(param);
+            }
             
             if (album && album.cover_path) {
                 if (album.cover_path.startsWith('http')) {

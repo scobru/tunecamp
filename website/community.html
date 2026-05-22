@@ -245,12 +245,41 @@
             const audioUrl = track.streamUrl || track.audioUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null);
             if (!audioUrl) return;
 
+            let cover = track.coverUrl || track.coverImage;
+            if (cover) {
+                if (!cover.startsWith('http') && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
+                    const path = cover.startsWith('/') ? cover : '/' + cover;
+                    cover = `${siteUrl}${path}`;
+                }
+            } else if (release) {
+                const relCover = release.coverImage || release.cover_path;
+                if (relCover) {
+                    if (relCover.startsWith('http') || relCover.startsWith('data:') || relCover.startsWith('blob:')) {
+                        cover = relCover;
+                    } else {
+                        if (relCover.includes('/') && !relCover.startsWith('/api/')) {
+                            cover = `${siteUrl}/api/albums/${release.slug || release.id || release.title}/cover`;
+                        } else {
+                            const path = relCover.startsWith('/') ? relCover : '/' + relCover;
+                            cover = `${siteUrl}${path}`;
+                        }
+                    }
+                }
+            }
+            if (!cover) {
+                cover = siteInfo.coverImage;
+            }
+            if (cover && !cover.startsWith('http') && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
+                const path = cover.startsWith('/') ? cover : '/' + cover;
+                cover = `${siteUrl}${path}`;
+            }
+
             const entry = {
                 id: track.id || track.title,
                 title: track.title,
                 artistName: track.artistName || track.artist || (release ? (release.artistName || release.artist_name) : null) || siteInfo.artistName || siteInfo.title || "Unknown Artist",
                 albumName: (release ? release.title : track.album) || "Unknown Album",
-                coverUrl: track.coverUrl || track.coverImage || (release && release.coverImage ? (release.coverImage.startsWith('http') ? release.coverImage : `${siteUrl}${release.coverImage}`) : (release && release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null)) || siteInfo.coverImage,
+                coverUrl: cover,
                 audioUrl: audioUrl,
                 duration: track.duration || 0,
                 siteUrl: siteUrl,
@@ -278,7 +307,13 @@
             if (sites.length === 0) return;
 
             grid.innerHTML = sites.map(site => {
-                const coverHtml = site.coverImage ? `<img src="${escapeHtml(site.coverImage)}" class="w-full h-full object-cover">` : `<i class="fas fa-compact-disc"></i>`;
+                let resolvedCover = site.coverImage;
+                if (resolvedCover && !resolvedCover.startsWith('http') && !resolvedCover.startsWith('data:') && !resolvedCover.startsWith('blob:')) {
+                    const cleanUrl = site.url.replace(/\/$/, "");
+                    const path = resolvedCover.startsWith('/') ? resolvedCover : '/' + resolvedCover;
+                    resolvedCover = `${cleanUrl}${path}`;
+                }
+                const coverHtml = resolvedCover ? `<img src="${escapeHtml(resolvedCover)}" class="w-full h-full object-cover">` : `<i class="fas fa-compact-disc"></i>`;
                 return `
                     <div class="glass-panel site-card">
                         <div class="h-40 bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center text-5xl text-white/50 relative group">

@@ -25,7 +25,7 @@ services:
       # Base Network Currency Contract (e.g. USDC)
       - TUNECAMP_CURRENCY_CONTRACT=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
       # Optional: Set public URL for community registration
-      - TUNECAMP_PUBLIC_URL=https://sudorecords.scobrudot.dev
+      - TUNECAMP_PUBLIC_URL=https://sudorecords.scobrudot.dev/
       # Optional: Site name for community
       - TUNECAMP_SITE_NAME=My TuneCamp Server
       # Optional: JWT secret (auto-generated if not set)
