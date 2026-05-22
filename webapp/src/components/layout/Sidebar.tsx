@@ -35,7 +35,6 @@ export const Sidebar = () => {
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
   const isSuperUser = role === 'super_user';
-  const isUser = role === 'user';
 
   const getRoleLabel = (r: typeof role) => {
     switch (r) {
