@@ -3,6 +3,7 @@ import { slugify } from "../../../utils/audioUtils.js";
 import { getFastFileHash } from "../../../utils/fileUtils.js";
 import type { DatabaseService, Track } from "../../core/database.js";
 import type { AutoTaggerService } from "./autotagger.service.js";
+import { getDurationFromFfmpeg } from "../media/ffmpeg.js";
 
 export interface SyncOptions {
   musicDir: string;
@@ -73,6 +74,20 @@ export class LibrarySync {
     const artistId = await this.resolveArtist(common.artist, metadataHints?.artist, overrideArtistId);
     const albumId = await this.resolveAlbum(dir, common, metadataHints, overrideAlbumId, musicDir, ownerId, suggestedCoverPath, artistId, albumArtist);
 
+    // Resolve duration with FFmpeg fallback if missing/falsy
+    let duration = format.duration || null;
+    if (!duration || duration <= 0 || isNaN(duration)) {
+      try {
+        const ffDuration = await getDurationFromFfmpeg(filePath);
+        if (ffDuration && ffDuration > 0 && !isNaN(ffDuration)) {
+          duration = ffDuration;
+          console.log(`⏱️ [LibrarySync] Extracted fallback duration using FFmpeg/ffprobe for ${path.basename(filePath)}: ${duration}s`);
+        }
+      } catch (err) {
+        console.warn(`[LibrarySync] FFmpeg duration fallback failed for ${filePath}:`, err);
+      }
+    }
+
     // 3. Handle Existing Track by Path or Metadata
     let existing = this.database.getTrackByPath(normalizedPath);
     if (!existing) {
@@ -81,11 +96,11 @@ export class LibrarySync {
     }
 
     if (existing) {
-        return this.updateExistingTrack(existing, { hash, normalizedPath, ownerId, metadata, metadataHints, overrideArtistId, artistId, albumId, musicDir });
+        return this.updateExistingTrack(existing, { hash, normalizedPath, ownerId, metadata, metadataHints, overrideArtistId, artistId, albumId, musicDir, duration });
     }
 
     // 4. Create New Track
-    return this.createNewTrack({ filePath, normalizedPath, hash, artistId, albumId, ownerId, metadata, metadataHints, musicDir });
+    return this.createNewTrack({ filePath, normalizedPath, hash, artistId, albumId, ownerId, metadata, metadataHints, musicDir, duration });
   }
 
   private handleHashMatch(existing: Track, normalizedPath: string, ownerId?: number): SyncResult {
@@ -177,7 +192,7 @@ export class LibrarySync {
   }
 
   private updateExistingTrack(existing: Track, data: any): SyncResult {
-    const { hash, normalizedPath, ownerId, metadata, metadataHints, overrideArtistId, artistId, albumId } = data;
+    const { hash, normalizedPath, ownerId, metadata, metadataHints, overrideArtistId, artistId, albumId, duration } = data;
     const common = metadata?.common || {};
     const ext = path.extname(normalizedPath).toLowerCase();
 
@@ -219,11 +234,17 @@ export class LibrarySync {
         }
     }
 
+    // Dynamic duration auto-repair/update
+    if (duration && (!existing.duration || existing.duration <= 0)) {
+        this.database.updateTrackDuration(existing.id, duration);
+        console.log(`⏱️ [LibrarySync] Updated existing track ${existing.id} duration to ${duration}s`);
+    }
+
     return { trackId: existing.id, success: true, message: "Track updated.", action: 'updated' };
   }
 
   private createNewTrack(data: any): SyncResult {
-    const { normalizedPath, hash, artistId, albumId, ownerId, metadata, metadataHints } = data;
+    const { normalizedPath, hash, artistId, albumId, ownerId, metadata, metadataHints, duration } = data;
     const common = metadata?.common || {};
     const format = metadata?.format || {};
     const ext = path.extname(normalizedPath).toLowerCase();
@@ -235,7 +256,7 @@ export class LibrarySync {
         artist_id: artistId,
         owner_id: ownerId || this.primaryAdminId || 1,
         track_num: common.track?.no || null,
-        duration: format.duration || null,
+        duration: duration || null,
         file_path: isLossless ? normalizedPath.replace(new RegExp(`\\${ext}$`, 'i'), '.mp3') : normalizedPath,
         format: isLossless ? 'mp3' : (format.codec || ext.substring(1)),
         bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
