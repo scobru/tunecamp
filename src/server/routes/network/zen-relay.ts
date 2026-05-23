@@ -130,10 +130,20 @@ export function createZenRelayRoutes(
      */
     router.get("/.well-known/peers.json", (req: Request, res: Response) => {
         try {
-            const peers = registry
-                ? registry.bootEntries().map((e: any) => PeerRegistry.alt(e.url))
-                    .concat(registry.confirmedNonBoot().map((e: any) => PeerRegistry.alt(e.url)))
-                : Array.from(kprs).filter((p) => /^wss?:\/\//.test(p));
+            const entries = registry
+                ? registry.bootEntries().concat(registry.confirmedNonBoot())
+                : Array.from(kprs).map(p => ({ url: p }));
+
+            const peers = entries
+                .map((e: any) => {
+                    try {
+                        const u = new URL(e.url);
+                        return u.hostname + ":" + (u.port || (u.protocol === "https:" ? "443" : "1970"));
+                    } catch {
+                        return null;
+                    }
+                })
+                .filter((v: any, i: any, a: any) => v && a.indexOf(v) === i); // unique, non-null
 
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.setHeader(
