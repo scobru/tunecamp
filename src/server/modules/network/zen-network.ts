@@ -42,7 +42,10 @@ export function setupPeerExchange(zenInstance: any, serverUrl: string | null) {
   }
 
   const root = zenInstance._graph._;
-  const initPeers = (root.opt && root.opt.peers) || [];
+  const rawPeers = (root.opt && root.opt.peers) || [];
+  const initPeers = Array.isArray(rawPeers)
+    ? rawPeers
+    : (rawPeers && typeof rawPeers === "object" ? Object.keys(rawPeers) : []);
 
   // 1. Initialize PeerRegistry persisting to data directory
   const PEERS_PATH = path.join(xdg.data(), "peers.json");
