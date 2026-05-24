@@ -157,8 +157,7 @@ const Admin = () => {
         >
           Storage
         </a>
-        {isRootAdmin && (
-          <>
+        {isAdmin && (
             <a
               role="tab"
               className={`tab ${activeTab === "maintenance" ? "tab-active" : ""}`}
@@ -166,6 +165,8 @@ const Admin = () => {
             >
               Maintenance
             </a>
+        )}
+        {isRootAdmin && (
             <a
               role="tab"
               className={`tab ${activeTab === "integrations" ? "tab-active" : ""}`}
@@ -173,7 +174,6 @@ const Admin = () => {
             >
               Integrations
             </a>
-          </>
         )}
       </div>
 
@@ -222,7 +222,7 @@ const Admin = () => {
         {activeTab === "settings" && isRootAdmin && <AdminSettingsPanel />}
         {activeTab === "backup" && isRootAdmin && <BackupPanel />}
         {activeTab === "storage" && isAdmin && <StoragePanel />}
-        {activeTab === "maintenance" && isRootAdmin && <AdminMaintenancePanel />}
+        {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
         {activeTab === "integrations" && isRootAdmin && <IntegrationsPanel />}
       </div>
 

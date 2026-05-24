@@ -82,7 +82,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * List tracks with missing metadata
      */
     router.get("/maintenance/missing", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const filter = (req.query.filter as 'genre' | 'year' | 'cover' | 'description' | 'album' | 'artist') || 'genre';
         const tracks = maintenance.getTracksWithMissingMetadata(filter);
         res.json(tracks);
@@ -93,7 +93,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * List albums with missing metadata
      */
     router.get("/maintenance/albums/missing", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const filter = (req.query.filter as 'genre' | 'year' | 'cover' | 'description' | 'artist') || 'genre';
         const albums = maintenance.getAlbumsWithMissingMetadata(filter);
         res.json(albums);
@@ -104,7 +104,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Autofill metadata for selected tracks
      */
     router.post("/maintenance/autofill", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { trackIds, fields, force } = req.body;
         if (!Array.isArray(trackIds)) return res.status(400).json({ error: "trackIds array required" });
 
@@ -121,7 +121,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Autofill metadata for selected tracks using AI (OpenRouter)
      */
     router.post("/maintenance/ai-autofill", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { trackIds, force } = req.body;
         if (!Array.isArray(trackIds)) return res.status(400).json({ error: "trackIds array required" });
 
@@ -136,7 +136,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * POST /api/metadata/maintenance/albums/autofill
      */
     router.post("/maintenance/albums/autofill", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { albumIds, fields, force } = req.body;
         if (!Array.isArray(albumIds)) return res.status(400).json({ error: "albumIds array required" });
 
@@ -152,7 +152,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * POST /api/metadata/maintenance/albums/ai-autofill
      */
     router.post("/maintenance/albums/ai-autofill", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { albumIds, force } = req.body;
         if (!Array.isArray(albumIds)) return res.status(400).json({ error: "albumIds array required" });
 
@@ -168,7 +168,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Get metadata candidates for manual selection
      */
     router.get("/maintenance/candidates/:trackId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const trackId = parseInt(req.params.trackId);
         try {
             const candidates = await maintenance.getMetadataCandidates(trackId);
@@ -182,7 +182,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * GET /api/metadata/maintenance/albums/candidates/:albumId
      */
     router.get("/maintenance/albums/candidates/:albumId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const albumId = parseInt(req.params.albumId);
         try {
             const candidates = await maintenance.getAlbumMetadataCandidates(albumId);
@@ -197,7 +197,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Apply specific metadata to a track
      */
     router.post("/maintenance/apply-track", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { trackId, metadata } = req.body;
         if (!trackId || !metadata) return res.status(400).json({ error: "trackId and metadata required" });
 
@@ -213,7 +213,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * POST /api/metadata/maintenance/albums/apply
      */
     router.post("/maintenance/albums/apply", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { albumId, metadata } = req.body;
         if (!albumId || !metadata) return res.status(400).json({ error: "albumId and metadata required" });
 
@@ -290,7 +290,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * GET /api/metadata/maintenance/artists/missing
      */
     router.get("/maintenance/artists/missing", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const artists = await maintenance.getArtistsWithMissingPhotos();
         res.json(artists);
     });
@@ -299,7 +299,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * GET /api/metadata/maintenance/artists/candidates/:artistId
      */
     router.get("/maintenance/artists/candidates/:artistId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const artistId = parseInt(req.params.artistId);
         try {
             const candidates = await maintenance.getArtistPhotoCandidates(artistId);
@@ -313,7 +313,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * POST /api/metadata/maintenance/artists/apply
      */
     router.post("/maintenance/artists/apply", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { artistId, metadata } = req.body;
         if (!artistId || !metadata) return res.status(400).json({ error: "artistId and metadata required" });
 
@@ -358,7 +358,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Lookup metadata for a track using its fingerprint via ZenDB
      */
     router.post("/maintenance/fingerprint/lookup/:trackId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const trackId = parseInt(req.params.trackId);
         try {
             const metadata = await maintenance.fingerprintLookup(trackId);
@@ -377,7 +377,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Share track metadata with the community via ZenDB fingerprinting
      */
     router.post("/maintenance/fingerprint/share/:trackId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const trackId = parseInt(req.params.trackId);
         try {
             await maintenance.shareFingerprint(trackId);
@@ -392,7 +392,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Scans all tracks that don't have a fingerprint and identifies them.
      */
     router.post("/maintenance/fingerprint/scan-all", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         try {
             // Runs in background to avoid client timeout
             maintenance.batchIdentifyTracks().catch(e => {
@@ -409,7 +409,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Starts the background library audit/repair process
      */
     router.post("/maintenance/audit-all", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { forceRepair, useAI } = req.body ?? {};
         
         maintenance.startLibraryAudit({
@@ -425,7 +425,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * Returns the status of the library audit
      */
     router.get("/maintenance/audit-status", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         res.json(maintenance.getAuditStatus());
     });
 
@@ -433,7 +433,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
      * POST /api/metadata/maintenance/audit-stop
      */
     router.post("/maintenance/audit-stop", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin only" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         maintenance.stopLibraryAudit();
         res.json({ message: "Audit stopped" });
     });

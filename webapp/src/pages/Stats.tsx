@@ -7,7 +7,7 @@ const Stats = () => {
     const [topTracks, setTopTracks] = useState<any[]>([]);
     const [topArtists, setTopArtists] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'releases' | 'library'>('releases');
+    const [filter, setFilter] = useState<'releases' | 'all'>('releases');
 
     useEffect(() => {
         setLoading(true);
@@ -36,8 +36,8 @@ const Stats = () => {
                         Releases
                     </button>
                     <button 
-                        className={`join-item btn btn-sm ${filter === 'library' ? 'btn-primary text-primary-content' : 'btn-ghost'}`}
-                        onClick={() => setFilter('library')}
+                        className={`join-item btn btn-sm ${filter === 'all' ? 'btn-primary text-primary-content' : 'btn-ghost'}`}
+                        onClick={() => setFilter('all')}
                     >
                         Library
                     </button>
