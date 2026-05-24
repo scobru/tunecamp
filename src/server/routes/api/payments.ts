@@ -139,12 +139,14 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
      * Check if Onramp is configured and which provider to use.
      */
     router.get("/onramp-config", (req, res) => {
-        const hasStripe = !!(database.getSetting("stripe_onramp_secret_key") || config.stripeOnrampSecretKey);
+        const hasStripeOnramp = !!(database.getSetting("stripe_onramp_secret_key") || config.stripeOnrampSecretKey);
+        const hasStripeCheckout = !!(database.getSetting("stripe_secret_key") || config.stripeSecretKey);
         const hasMoonpay = !!(database.getSetting("moonpay_api_key") || config.moonpayApiKey);
         
         res.json({
-            configured: hasStripe || hasMoonpay,
-            provider: database.getSetting("onramp_provider") || (hasStripe ? "stripe" : (hasMoonpay ? "moonpay" : "none")),
+            configured: hasStripeOnramp || hasMoonpay,
+            stripeCheckout: hasStripeCheckout,
+            provider: database.getSetting("onramp_provider") || (hasStripeOnramp ? "stripe" : (hasMoonpay ? "moonpay" : "none")),
             moonpayApiKey: database.getSetting("moonpay_api_key") || config.moonpayApiKey,
             stripePublishableKey: database.getSetting("stripe_publishable_key") || process.env.STRIPE_PUBLISHABLE_KEY
         });

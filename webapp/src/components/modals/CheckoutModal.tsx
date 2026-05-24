@@ -47,7 +47,16 @@ export const CheckoutModal = () => {
   const [stableBalance, setStableBalance] = useState<string>("0");
   const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("crypto");
 
-  const hasStripe = useConfigStore(state => state.isConfigured("stripe"));
+  const [hasStripe, setHasStripe] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/payments/onramp-config")
+      .then(res => res.json())
+      .then(data => {
+        if (data.stripeCheckout) setHasStripe(true);
+      })
+      .catch(err => console.error("Failed to fetch payment config", err));
+  }, []);
 
   const {
     wallet,
