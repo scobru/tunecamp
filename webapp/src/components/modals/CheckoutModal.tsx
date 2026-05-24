@@ -4,7 +4,6 @@ import { ZenAuth } from "../../services/zen";
 import { Wallet, Loader2, CheckCircle2, Download } from "lucide-react";
 import { ethers } from "ethers";
 import { TokenRole, DEPLOYMENTS } from "shogun-contracts-sdk";
-import { openOnramp } from "../../utils/onramp";
 
 
 
@@ -536,30 +535,18 @@ export const CheckoutModal = () => {
               )}
 
               {!hasEnoughBalance && !txHash && paymentMethod === "ETH" && (
-                <div className="w-full">
-                  <p className="text-error text-sm mb-2">
-                    Insufficient ETH balance in {activeWalletLabel}.
+                <div className="w-full mb-4">
+                  <p className="text-error text-sm p-3 bg-error/5 rounded-xl border border-error/10 text-left">
+                    Insufficient ETH balance in {activeWalletLabel}. Please fund your wallet to complete the purchase.
                   </p>
-                  <button
-                    onClick={() => openOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "ETH", track.currency === "USD" ? track.price : undefined)}
-                    className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-base-content/10 hover:bg-primary/20"
-                  >
-                    💳 Fund with Credit Card / Onramp
-                  </button>
                 </div>
               )}
 
               {!hasEnoughBalance && !txHash && paymentMethod === "USDC" && (
-                <div className="w-full">
-                  <p className="text-error text-sm mb-2">
-                    Insufficient {paymentMethod} balance in {activeWalletLabel}. You have {stableBalance} {paymentMethod}.
+                <div className="w-full mb-4">
+                  <p className="text-error text-sm p-3 bg-error/5 rounded-xl border border-error/10 text-left">
+                    Insufficient {paymentMethod} balance in {activeWalletLabel}. You have {stableBalance} {paymentMethod}. Please fund your wallet to complete the purchase.
                   </p>
-                  <button
-                    onClick={() => openOnramp((activeSigner ? (useExternalWallet ? externalAddress : wallet?.address) : '') || '', "USDC", currentStablePrice)}
-                    className="btn btn-outline btn-sm btn-block mb-4 gap-2 border-base-content/10 hover:bg-[#2775CA]/20"
-                  >
-                    💳 Buy USDC via Onramp
-                  </button>
                 </div>
               )}
 

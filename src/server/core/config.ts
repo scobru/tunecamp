@@ -17,7 +17,6 @@ export interface ServerConfig {
     adminPass?: string;
     downloadDir?: string;
     stripeOnrampSecretKey?: string;
-    moonpayApiKey?: string;
     telegramBotToken?: string;
     telegramMasterId?: string;
     openrouterApiKey?: string;
@@ -88,7 +87,6 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         adminPass: process.env.TUNECAMP_ADMIN_PASS || overrides?.adminPass || "admin",
         downloadDir: process.env.TUNECAMP_DOWNLOAD_DIR || overrides?.downloadDir || defaultDownloadDir,
         stripeOnrampSecretKey: process.env.STRIPE_ONRAMP_SECRET_KEY || process.env.STRIPE_SECRET_KEY || overrides?.stripeOnrampSecretKey,
-        moonpayApiKey: process.env.MOONPAY_API_KEY || overrides?.moonpayApiKey,
         telegramBotToken: process.env.TUNECAMP_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || overrides?.telegramBotToken,
         telegramMasterId: process.env.TUNECAMP_TELEGRAM_MASTER_ID || process.env.TELEGRAM_MASTER_ID || overrides?.telegramMasterId,
         openrouterApiKey: process.env.OPENROUTER_API_KEY || overrides?.openrouterApiKey,

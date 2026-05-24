@@ -411,7 +411,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-yellow-400">
             <Wallet size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Web3 Store & On-Ramp Configuration</h4>
+            <h4 className="font-bold uppercase text-xs tracking-wider">Web3 Store Configuration</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -440,35 +440,6 @@ export const AdminSettingsPanel = () => {
                 placeholder="0x..."
               />
             </div>
-
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-sm">On-Ramp Provider</span>
-              </label>
-              <select 
-                className="select select-bordered bg-base-300/50"
-                value={settings.onramp_provider || "moonpay"}
-                onChange={(e) => setSettings({ ...settings, onramp_provider: e.target.value as any })}
-              >
-                <option value="moonpay">MoonPay</option>
-              </select>
-              <label className="label">
-                <span className="label-text-alt opacity-40 text-[10px]">Select which service to use for credit card to crypto purchases.</span>
-              </label>
-            </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-sm">MoonPay API Key (Live)</span>
-                </label>
-                <input
-                  type="password"
-                  className="input input-bordered bg-base-300/50 font-mono text-xs"
-                  value={settings.moonpay_api_key || ""}
-                  onChange={(e) => setSettings({ ...settings, moonpay_api_key: e.target.value })}
-                  placeholder="pk_live_..."
-                />
-              </div>
           </div>
 
           <div className="pt-4 border-t border-base-content/5">

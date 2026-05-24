@@ -36,7 +36,6 @@ export function createAdminRoutes(
     apService: ActivityPubService,
     telegramBotService: any,
     soulseekService: SoulseekService,
-    lindaBotService: any,
     metadataService: any,
     streamingService: any,
     federationService: any,
@@ -244,11 +243,8 @@ export function createAdminRoutes(
                 telegram_bot_token, telegram_allowed_channels,
                 adminFeePercentage, adminTreasuryAddress,
                 soulseek_username, soulseek_password,
-                onramp_provider, moonpay_api_key,
                 stripe_secret_key, stripe_webhook_secret,
                 discogs_token,
-                linda_bot_enabled,
-                linda_invite_link,
                 allowPublicRegistration,
                 siteLogo,
                 lastfm_api_key,
@@ -321,12 +317,6 @@ export function createAdminRoutes(
             if (soulseek_password !== undefined) {
                 database.setSetting("soulseek_password", soulseek_password);
             }
-            if (onramp_provider !== undefined) {
-                database.setSetting("onramp_provider", onramp_provider);
-            }
-            if (moonpay_api_key !== undefined) {
-                database.setSetting("moonpay_api_key", moonpay_api_key);
-            }
             if (stripe_secret_key !== undefined) {
                 database.setSetting("stripe_secret_key", stripe_secret_key);
             }
@@ -336,16 +326,6 @@ export function createAdminRoutes(
 
             if (discogs_token !== undefined) {
                 database.setSetting("discogs_token", discogs_token);
-            }
-
-            if (linda_bot_enabled !== undefined) {
-                database.setSetting("linda_bot_enabled", linda_bot_enabled ? "true" : "false");
-                settingsChanged = true;
-            }
-
-            if (linda_invite_link !== undefined) {
-                database.setSetting("linda_invite_link", linda_invite_link);
-                settingsChanged = true;
             }
 
             if (allowPublicRegistration !== undefined) {
@@ -374,11 +354,6 @@ export function createAdminRoutes(
             // Restart telegram bot if settings changed
             if (telegram_bot_token !== undefined || telegram_allowed_channels !== undefined) {
                 telegramBotService.restart().catch((err: any) => console.error("Failed to restart Telegram bot:", err));
-            }
-
-            // Restart Linda bot if settings changed (e.g. zenPeers, enabled state)
-            if (zenPeers !== undefined || linda_bot_enabled !== undefined) {
-                lindaBotService.start().catch((err: any) => console.error("Failed to restart Linda bot:", err));
             }
 
             // Reconnect Soulseek if credentials changed
@@ -1552,11 +1527,7 @@ export function createAdminRoutes(
             configured: !!ppId && !!ppSecret,
             environment: database.getSetting("paypal_environment") || config.paypalEnvironment || "sandbox"
         };
-        
-        // 9. MoonPay
-        results.moonpay = {
-            configured: !!database.getSetting("moonpay_api_key")
-        };
+
         
         // 10. Google Drive
         results.gdrive = {

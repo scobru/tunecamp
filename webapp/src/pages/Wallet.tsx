@@ -14,7 +14,6 @@ import { ZenAuth } from "../services/zen";
 import clsx from "clsx";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { TokenRole } from "shogun-contracts-sdk";
-import { openOnramp } from "../utils/onramp";
 
 const Wallet = () => {
   const {
@@ -174,13 +173,6 @@ const Wallet = () => {
                     disabled={!useExternalWallet && true}
                   >
                     {!useExternalWallet ? "Currently Active" : "Set as Default"}
-                  </button>
-                  <button
-                    onClick={() => openOnramp(address || "", "ETH")}
-                    className="btn btn-ghost border-base-content/10 hover:bg-primary/20"
-                    title="Fund with Credit Card / Coinbase"
-                  >
-                    <span className="text-lg">💳</span>
                   </button>
                 </div>
               </div>

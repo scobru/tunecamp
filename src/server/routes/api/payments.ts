@@ -88,67 +88,14 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
     router.use(express.json());
 
     /**
-     * POST /api/payments/onramp-session
-     * Create a Stripe Crypto Onramp session.
-     */
-    router.post("/onramp-session", async (req, res) => {
-        try {
-            const { address } = req.body;
-
-            const sKey = database.getSetting("stripe_onramp_secret_key") || config.stripeOnrampSecretKey;
-
-            if (!sKey) {
-                return res.status(501).json({ 
-                    error: "Stripe Onramp is not configured on this server.",
-                    configured: false 
-                });
-            }
-
-            if (!address) {
-                return res.status(400).json({ error: "Destination address is required" });
-            }
-
-            const stripe = new Stripe(sKey);
-            
-            // Create a Crypto Onramp Session
-            // Note: Stripe requires specific parameters for onramp sessions
-            const onrampSession = await (stripe as any).crypto.onrampSessions.create({
-                transaction_details: {
-                    destination_currencies: ["usdc"],
-                    destination_networks: ["base"],
-                    wallet_addresses: {
-                        base: address
-                    }
-                },
-                customer_ip_address: req.ip || "0.0.0.0"
-            });
-
-            res.json({ 
-                client_secret: onrampSession.client_secret,
-                id: onrampSession.id
-            });
-
-        } catch (error: any) {
-            console.error("Stripe Onramp session error:", error);
-            res.status(500).json({ error: error.message || "Failed to create Stripe Onramp session" });
-        }
-    });
-
-    /**
      * GET /api/payments/onramp-config
-     * Check if Onramp is configured and which provider to use.
+     * Check if direct payments are configured. Onramp is permanently disabled.
      */
     router.get("/onramp-config", (req, res) => {
-        const hasStripeOnramp = !!(database.getSetting("stripe_onramp_secret_key") || config.stripeOnrampSecretKey);
         const hasStripeCheckout = !!(database.getSetting("stripe_secret_key") || config.stripeSecretKey);
-        const hasMoonpay = !!(database.getSetting("moonpay_api_key") || config.moonpayApiKey);
-        
         res.json({
-            configured: hasStripeOnramp || hasMoonpay,
-            stripeCheckout: hasStripeCheckout,
-            provider: database.getSetting("onramp_provider") || (hasStripeOnramp ? "stripe" : (hasMoonpay ? "moonpay" : "none")),
-            moonpayApiKey: database.getSetting("moonpay_api_key") || config.moonpayApiKey,
-            stripePublishableKey: database.getSetting("stripe_publishable_key") || process.env.STRIPE_PUBLISHABLE_KEY
+            configured: false,
+            stripeCheckout: hasStripeCheckout
         });
     });
 

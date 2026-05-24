@@ -178,32 +178,7 @@ export const IntegrationsPanel = () => {
         </div>
       )
     },
-    {
-      id: "linda",
-      name: "Linda Bridge",
-      icon: <Globe className="text-purple-400" />,
-      status: settings?.linda_bot_enabled ? 'online' : 'offline',
-      details: settings?.linda_bot_enabled ? "Integration Enabled" : "Integration Disabled",
-      description: "Linda Decentralized Bridge integration.",
-      pluginId: "linda",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" className="toggle toggle-sm toggle-primary" checked={settings?.linda_bot_enabled === true || settings?.linda_bot_enabled === "true" as any} onChange={e => setSettings({ ...settings!, linda_bot_enabled: e.target.checked })} />
-            <span className="text-sm">Enable Linda Bot</span>
-          </label>
-          <div className="form-control">
-            <label className="label text-xs">Invite Link</label>
-            <input type="text" className="input input-sm input-bordered" value={settings?.linda_invite_link || ''} onChange={e => setSettings({ ...settings!, linda_invite_link: e.target.value })} />
-          </div>
-          <div className="form-control">
-            <label className="label text-xs">Bot Public Key (Read Only)</label>
-            <input type="text" className="input input-sm input-bordered bg-base-300" readOnly value={settings?.linda_bot_pubkey || 'Not initialized'} />
-          </div>
-        </div>
-      )
-    },
+
     {
       id: "itunes",
       name: "iTunes API",
@@ -289,24 +264,7 @@ export const IntegrationsPanel = () => {
         </div>
       )
     },
-    {
-      id: "moonpay",
-      name: "MoonPay",
-      icon: <CreditCard className="text-[#a042ff]" />,
-      status: status?.moonpay?.configured ? 'online' : 'offline',
-      details: status?.moonpay?.configured ? "API Key configured" : "API Key missing",
-      description: "Credit card to crypto on-ramp provider.",
-      pluginId: "moonpay",
-      hasConfig: true,
-      renderConfig: () => (
-        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
-          <div className="form-control">
-            <label className="label text-xs">MoonPay Secret Key</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.moonpay_api_key || ''} onChange={e => setSettings({ ...settings!, moonpay_api_key: e.target.value })} />
-          </div>
-        </div>
-      )
-    },
+
     {
       id: "gdrive",
       name: "Google Drive",

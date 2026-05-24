@@ -218,14 +218,9 @@ export interface SiteSettings {
     soulseek_password?: string;
     openrouter_api_key?: string;
     openrouter_model?: string;
-    onramp_provider?: 'moonpay';
-    moonpay_api_key?: string;
     stripe_secret_key?: string;
     stripe_webhook_secret?: string;
     discogs_token?: string;
-    linda_bot_enabled?: boolean;
-    linda_invite_link?: string;
-    linda_bot_pubkey?: string;
     jwtSecret?: string;
     lastfm_api_key?: string;
     lastfm_session_key?: string;
