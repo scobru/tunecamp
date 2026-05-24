@@ -266,8 +266,10 @@ export default function AdminReleaseEditor() {
   const handleSave = async (exit: boolean = false) => {
     setSaving(true);
     try {
-      // Prepare track IDs in order
-      const track_ids = tracks.map((t) => t.id);
+      // Prepare track IDs in order.
+      // Use track_id if available (for existing release tracks) to reference the library track.
+      // Fallback to id for newly added library tracks (which use id) or ghost tracks.
+      const track_ids = tracks.map((t: any) => t.track_id || t.id);
 
       const dataToSave = {
         ...metadata,
@@ -277,8 +279,8 @@ export default function AdminReleaseEditor() {
           ? metadata.genre.split(",").map((s: string) => s.trim())
           : [],
         track_ids,
-        tracks_data: tracks.map((t) => ({ 
-          id: t.id, 
+        tracks_data: tracks.map((t: any) => ({ 
+          id: t.track_id || t.id, 
           title: t.title, 
           price: t.price, 
           price_usdc: t.priceUsdc,
