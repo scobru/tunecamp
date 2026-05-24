@@ -92,9 +92,8 @@ import { createTorrentSearchRouter } from "./routes/admin/torrent-search.js";
 import { torrentSearchService } from "./modules/integrations/torrent-search.service.js";
 import { PublicScraperTorrentProvider } from "./providers/torrent/public-scraper.provider.js";
 import { errorHandler } from "./middleware/error-handling.js";
-import { latchDomain, kprs } from "./modules/network/zen-network.js";
+import { kprs } from "./modules/network/zen-network.js";
 import { getZen } from "./modules/network/zen.js";
-import { createZenRelayRoutes } from "./routes/network/zen-relay.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
@@ -151,7 +150,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const waveformService = new WaveformService(path.dirname(config.dbPath));
 
-    const zendbService = createZenDBService(database, server, config.zenPeers, config.publicUrl);
+    const zendbService = createZenDBService(database, undefined, config.zenPeers, config.publicUrl);
     await zendbService.init();
 
     let gdriveService: GoogleDriveService | undefined;
@@ -163,12 +162,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     setInterval(() => {
         zendbService.cleanupRegistry().catch(err => console.error("🚨 [ZenDB] Scheduled registry cleanup failed:", err));
     }, 12 * 60 * 60 * 1000);
-
-    app.use((req, res, next) => {
-        const zen = getZen();
-        if (zen) latchDomain(req, zen);
-        next();
-    });
 
     app.get("/api/peers", (req, res) => {
         res.status(200).json(Array.from(kprs));
@@ -470,14 +463,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         } catch { res.status(404).json({ error: "Not found" }); }
     });
 
-    // ── Zen Relay HTTP endpoints ─────────────────────────────────────────────
-    // MUST be registered before express.static so they are not intercepted by
-    // the SPA catch-all or static file middleware.
-    //
-    // GET /status              → signed ZEN string (AXE peer discovery, axe.js)
-    // GET /.well-known/peers.json → { peers: [...] } (bootstrap.js wellKnownBootstrap)
-    const zenRelayRouter = createZenRelayRoutes(zendbService, config.publicUrl);
-    app.use("/", zenRelayRouter);
+
 
     if (fs.existsSync(webappDistPath)) app.use(express.static(webappDistPath, { index: false }));
     if (fs.existsSync(webappPublicPath)) app.use(express.static(webappPublicPath, { index: false }));

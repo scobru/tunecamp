@@ -133,14 +133,11 @@ export function getZen(options?: ZenOptions): any {
 
         const initializationOptions = {
             peers: filteredPeers,
-            web: options?.web,
-            port: 1970, // Explicitly use port 1970 for ZEN relay as requested
-            ws: { path: '/zen' }, // Explicit path for ZEN wire to match shogun-relay pattern
             radisk: options?.radisk !== undefined ? options.radisk : ZEN_CONFIG_DEFAULTS.radisk,
             localStorage: false, // Ensure localStorage is always disabled on server
             file: options?.file || ZEN_CONFIG_DEFAULTS.file,
-            axe: true, // Enable AXE mesh (PEX + routing)
-            super: true, // Identify as a ZEN Relay node
+            axe: false, // Disable AXE mesh routing as a client
+            super: false, // Identify as a ZEN client node, not a Relay node
             pid: options?.pid,
             stats: false // Prevent writing to /root/.local/state/zen/
         };
@@ -167,8 +164,8 @@ export function getZen(options?: ZenOptions): any {
 
         // Initialize internal graph state
         (zenInstance as any)._graph; 
-    } else if (options?.peers || options?.web) {
-        // Update existing instance if new options provided (peers/server)
+    } else if (options?.peers) {
+        // Update existing instance if new options provided (peers)
         if (options.peers) {
             let filteredPeers = options.peers;
             if (options.publicUrl) {
@@ -177,9 +174,6 @@ export function getZen(options?: ZenOptions): any {
             }
             console.log(`📡 [ZEN] Shared singleton adding ${filteredPeers.length} peers...`);
             zenInstance.opt({ peers: filteredPeers });
-        }
-        if (options.web) {
-            zenInstance.opt({ web: options.web });
         }
     }
 

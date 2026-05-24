@@ -1,7 +1,7 @@
 import { getZen, Zen } from "./zen.js";
 import fetch from "node-fetch";
 import { drainResponse } from "../../common/network.js";
-import { discoverNetworkIdentity, getHardwarePeerId, setupPeerExchange } from "./zen-network.js";
+import { getHardwarePeerId, kprs } from "./zen-network.js";
 
 import type { DatabaseService } from "../../core/database.js";
 import { normalizeUrl, slugify } from "../../../utils/audioUtils.js";
@@ -122,10 +122,6 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 console.warn(`⚠️  [ZEN] Some peers do NOT use /zen path:`, nonZenPeers);
             }
 
-            // Discover network identity and Hardware ID
-            const networkIdentity = await discoverNetworkIdentity(1970);
-            console.log(`🌐 Network Identity Discovered: ${JSON.stringify(networkIdentity)}`);
-
             const hwidRaw = getHardwarePeerId();
             let ppid = null;
             if (hwidRaw) {
@@ -141,14 +137,12 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
 
             zen = getZen({
                 peers: initializationPeers,
-                web: server,
                 publicUrl: publicUrl,
                 pid: ppid || undefined
             });
 
-            const activeDomain = networkIdentity.domain || networkIdentity.ip;
-            const serverUrlToShare = activeDomain ? `wss://${activeDomain}:1970/zen` : null;
-            setupPeerExchange(zen, serverUrlToShare);
+            // Populate the backward-compatibility kprs set with configured peers
+            initializationPeers.forEach(p => kprs.add(p));
 
             console.log(`📡 [ZenDB] Shared instance acquired.`);
 
