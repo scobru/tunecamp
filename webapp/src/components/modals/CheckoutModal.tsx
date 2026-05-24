@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useWalletStore } from "../../stores/useWalletStore";
-import { useConfigStore } from "../../stores/useConfigStore";
 import { ZenAuth } from "../../services/zen";
 import { Wallet, Loader2, CheckCircle2, Download } from "lucide-react";
 import { ethers } from "ethers";
