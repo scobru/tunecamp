@@ -314,7 +314,20 @@ export const IntegrationsPanel = () => {
       status: status?.gdrive?.configured && status?.gdrive?.active ? 'online' : 'offline',
       details: status?.gdrive?.configured ? (status.gdrive.active ? "Integration active" : "Service disabled") : "Client ID/Secret missing",
       description: "Cloud storage for track localization and backup.",
-      pluginId: "gdrive"
+      pluginId: "gdrive",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">Client ID</label>
+            <input type="text" className="input input-sm input-bordered" value={settings?.google_drive_client_id || ''} onChange={e => setSettings({ ...settings!, google_drive_client_id: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Client Secret</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.google_drive_client_secret || ''} onChange={e => setSettings({ ...settings!, google_drive_client_secret: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "deezer",
@@ -351,7 +364,20 @@ export const IntegrationsPanel = () => {
       status: status?.lastfm?.configured ? 'online' : 'offline',
       details: status?.lastfm?.configured ? "Scrobbling active" : "Not configured",
       description: "Music scrobbling and recommendations.",
-      pluginId: "lastfm"
+      pluginId: "lastfm",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">API Key</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.lastfm_api_key || ''} onChange={e => setSettings({ ...settings!, lastfm_api_key: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Session Key</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.lastfm_session_key || ''} onChange={e => setSettings({ ...settings!, lastfm_session_key: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "listenbrainz",
@@ -360,7 +386,16 @@ export const IntegrationsPanel = () => {
       status: status?.listenbrainz?.configured ? 'online' : 'offline',
       details: status?.listenbrainz?.configured ? "Scrobbling active" : "Not configured",
       description: "Open source music scrobbling service.",
-      pluginId: "listenbrainz"
+      pluginId: "listenbrainz",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">User Token</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.listenbrainz_token || ''} onChange={e => setSettings({ ...settings!, listenbrainz_token: e.target.value })} />
+          </div>
+        </div>
+      )
     },
     {
       id: "spotify",

@@ -227,6 +227,11 @@ export interface SiteSettings {
     linda_invite_link?: string;
     linda_bot_pubkey?: string;
     jwtSecret?: string;
+    lastfm_api_key?: string;
+    lastfm_session_key?: string;
+    listenbrainz_token?: string;
+    google_drive_client_id?: string;
+    google_drive_client_secret?: string;
 }
 
 export interface Post {

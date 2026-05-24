@@ -250,7 +250,12 @@ export function createAdminRoutes(
                 linda_bot_enabled,
                 linda_invite_link,
                 allowPublicRegistration,
-                siteLogo
+                siteLogo,
+                lastfm_api_key,
+                lastfm_session_key,
+                listenbrainz_token,
+                google_drive_client_id,
+                google_drive_client_secret
             } = req.body;
             let settingsChanged = false;
 
@@ -346,6 +351,24 @@ export function createAdminRoutes(
             if (allowPublicRegistration !== undefined) {
                 database.setSetting("allowPublicRegistration", allowPublicRegistration ? "true" : "false");
                 settingsChanged = true;
+            }
+
+            if (lastfm_api_key !== undefined) {
+                database.setSetting("lastfm_api_key", lastfm_api_key);
+            }
+            if (lastfm_session_key !== undefined) {
+                database.setSetting("lastfm_session_key", lastfm_session_key);
+            }
+
+            if (listenbrainz_token !== undefined) {
+                database.setSetting("listenbrainz_token", listenbrainz_token);
+            }
+
+            if (google_drive_client_id !== undefined) {
+                database.setSetting("google_drive_client_id", google_drive_client_id);
+            }
+            if (google_drive_client_secret !== undefined) {
+                database.setSetting("google_drive_client_secret", google_drive_client_secret);
             }
 
             // Restart telegram bot if settings changed

@@ -123,8 +123,8 @@ export class SocialRepository extends BaseRepository {
             )`;
         } else if (filter === 'releases') {
             where += ` AND (
-                (t.album_id IS NOT NULL AND alb.is_release = 1) OR 
-                EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.track_id = t.id)
+                (t.album_id IS NOT NULL AND alb.is_release = 1 AND alb.status = 'released') OR 
+                EXISTS (SELECT 1 FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE rt.track_id = t.id AND r.status = 'released')
             )`;
         }
         
@@ -150,8 +150,8 @@ export class SocialRepository extends BaseRepository {
             )`;
         } else if (filter === 'releases') {
             where += ` AND (
-                (t.album_id IS NOT NULL AND alb.is_release = 1) OR 
-                EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.track_id = t.id)
+                (t.album_id IS NOT NULL AND alb.is_release = 1 AND alb.status = 'released') OR 
+                EXISTS (SELECT 1 FROM release_tracks rt JOIN releases r ON rt.release_id = r.id WHERE rt.track_id = t.id AND r.status = 'released')
             )`;
         }
 
