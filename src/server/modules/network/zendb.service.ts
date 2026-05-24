@@ -183,10 +183,23 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             const user = zen.user();
 
             if (serverPair) {
-                const missing = ['pub', 'priv', 'epub', 'epriv'].filter(k => !serverPair[k] || serverPair[k].length === 0);
-                const isLegacy = serverPair.pub && serverPair.pub.length < 80; 
+                const isSecp256k1 = serverPair.curve === 'secp256k1';
+                let isCorrupted = false;
+                let isLegacy = false;
 
-                if (missing.length > 0 || isLegacy || (serverPair.curve && serverPair.curve !== 'secp256k1')) {
+                if (isSecp256k1) {
+                    if (!serverPair.pub || !serverPair.priv) {
+                        isCorrupted = true;
+                    }
+                } else {
+                    const missing = ['pub', 'priv', 'epub', 'epriv'].filter(k => !serverPair[k] || serverPair[k].length === 0);
+                    if (missing.length > 0) {
+                        isCorrupted = true;
+                    }
+                    isLegacy = true; // Non-secp256k1 keys are legacy
+                }
+
+                if (isCorrupted || isLegacy) {
                     console.warn(`🚨 [ZenDB] Server Identity is LEGACY or CORRUPTED! Generating new ZEN pair...`);
                     serverPair = await (Zen as any).pair();
                     database.setSetting("zenPair", JSON.stringify(serverPair));
