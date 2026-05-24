@@ -347,7 +347,7 @@ export function createAuthService(
                 if (user.gun_pub && user.gun_priv) {
                     try {
                         const existingPair = this.decryptZenPriv(user.gun_priv);
-                        if (existingPair.curve !== 'secp256k1' || existingPair.pub.length < 80) {
+                        if ((existingPair.curve && existingPair.curve !== 'secp256k1') || existingPair.pub.length < 80) {
                             console.warn(`🚨 [AUTH] User ${username} has a LEGACY (SEA/P-256) identity. Flagging for regeneration.`);
                             user.gun_priv = null; // Force regeneration
                             user.gun_pub = null;

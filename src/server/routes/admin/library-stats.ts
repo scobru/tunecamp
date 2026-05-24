@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { DatabaseService } from "../../core/database.js";
+import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 
 export function createLibraryStatsRoutes(database: DatabaseService): Router {
     const router = Router();
@@ -44,17 +45,20 @@ export function createLibraryStatsRoutes(database: DatabaseService): Router {
         }
     });
 
-    /**
-     * GET /api/stats/library/top-tracks
-     * Get most played tracks
-     */
     router.get("/top-tracks", async (req, res) => {
         try {
             const limit = parseInt(req.query.limit as string, 10) || 20;
             const days = parseInt(req.query.days as string, 10) || 30;
             const filter = (req.query.filter as 'all' | 'library' | 'releases') || 'all';
             const tracks = database.getTopTracks(limit, days, filter);
-            res.json(tracks);
+            const mappedTracks = tracks.map(track => {
+                const dto = mapTrackDTO(track, database, (req as any).username);
+                return {
+                    ...dto,
+                    playCount: (track as any).play_count
+                };
+            });
+            res.json(mappedTracks);
         } catch (error) {
             console.error("Error getting top tracks:", error);
             res.status(500).json({ error: "Failed to get top tracks" });
@@ -71,7 +75,11 @@ export function createLibraryStatsRoutes(database: DatabaseService): Router {
             const days = parseInt(req.query.days as string, 10) || 30;
             const filter = (req.query.filter as 'all' | 'library' | 'releases') || 'all';
             const artists = database.getTopArtists(limit, days, filter);
-            res.json(artists);
+            const mappedArtists = artists.map(artist => ({
+                ...artist,
+                playCount: (artist as any).play_count
+            }));
+            res.json(mappedArtists);
         } catch (error) {
             console.error("Error getting top artists:", error);
             res.status(500).json({ error: "Failed to get top artists" });

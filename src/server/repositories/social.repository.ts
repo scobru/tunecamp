@@ -117,7 +117,10 @@ export class SocialRepository extends BaseRepository {
     getTopTracks(limit: number = 10, days: number = 30, filter: 'all' | 'library' | 'releases' = 'all'): TrackWithPlayCount[] {
         let where = "ph.played_at > datetime('now', '-' || ? || ' days')";
         if (filter === 'library') {
-            where += " AND t.album_id IS NOT NULL AND alb.is_release = 0";
+            where += ` AND NOT (
+                (t.album_id IS NOT NULL AND alb.is_release = 1) OR 
+                EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.track_id = t.id)
+            )`;
         } else if (filter === 'releases') {
             where += ` AND (
                 (t.album_id IS NOT NULL AND alb.is_release = 1) OR 
@@ -141,7 +144,10 @@ export class SocialRepository extends BaseRepository {
     getTopArtists(limit: number = 10, days: number = 30, filter: 'all' | 'library' | 'releases' = 'all'): ArtistWithPlayCount[] {
         let where = "ph.played_at > datetime('now', '-' || ? || ' days')";
         if (filter === 'library') {
-            where += " AND t.album_id IS NOT NULL AND alb.is_release = 0";
+            where += ` AND NOT (
+                (t.album_id IS NOT NULL AND alb.is_release = 1) OR 
+                EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.track_id = t.id)
+            )`;
         } else if (filter === 'releases') {
             where += ` AND (
                 (t.album_id IS NOT NULL AND alb.is_release = 1) OR 
