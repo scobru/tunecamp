@@ -60,7 +60,6 @@ export const CheckoutModal = () => {
     wallet,
     balanceEth,
     externalWallet,
-    externalAddress,
     externalBalanceEth,
     useExternalWallet,
   } = useWalletStore();
