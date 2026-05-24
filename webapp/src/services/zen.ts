@@ -31,7 +31,7 @@ if (envPeers && typeof envPeers === 'string' && envPeers.trim().length > 0) {
 const zen = new ZEN({
     peers: PEERS,
     port: 1970,
-    localStorage: true,
+    localStorage: false, // Fix: disable localStorage to prevent QuotaExceededError and main-thread freezes when graph grows > 5MB
     radisk: true,
     axe: true
 });
