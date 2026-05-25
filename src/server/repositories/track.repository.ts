@@ -213,11 +213,39 @@ export class TrackRepository extends BaseRepository {
     }
 
     create(track: Omit<Track, "id" | "created_at" | "album_title">): number {
+        // Safeguard foreign keys to prevent "FOREIGN KEY constraint failed"
+        let safeAlbumId = track.album_id;
+        if (safeAlbumId !== null && safeAlbumId !== undefined) {
+            const exists = this.db.prepare("SELECT 1 FROM albums WHERE id = ?").get(safeAlbumId);
+            if (!exists) {
+                console.warn(`[TrackRepository] Invalid album_id ${safeAlbumId} for track "${track.title}", nulling out.`);
+                safeAlbumId = null;
+            }
+        }
+
+        let safeArtistId = track.artist_id;
+        if (safeArtistId !== null && safeArtistId !== undefined) {
+            const exists = this.db.prepare("SELECT 1 FROM artists WHERE id = ?").get(safeArtistId);
+            if (!exists) {
+                console.warn(`[TrackRepository] Invalid artist_id ${safeArtistId} for track "${track.title}", nulling out.`);
+                safeArtistId = null;
+            }
+        }
+
+        let safeOwnerId = track.owner_id;
+        if (safeOwnerId !== null && safeOwnerId !== undefined) {
+            const exists = this.db.prepare("SELECT 1 FROM admin WHERE id = ?").get(safeOwnerId);
+            if (!exists) {
+                console.warn(`[TrackRepository] Invalid owner_id ${safeOwnerId} for track "${track.title}", nulling out.`);
+                safeOwnerId = null;
+            }
+        }
+
         const result = this.db.prepare(`
             INSERT OR IGNORE INTO tracks (title, album_id, artist_id, owner_id, artist_name, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, price_usdt, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id, fingerprint)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-            track.title, track.album_id, track.artist_id, track.owner_id, track.artist_name || null,
+            track.title, safeAlbumId, safeArtistId, safeOwnerId, track.artist_name || null,
             track.track_num, track.duration, track.file_path, track.format, track.bitrate, 
             track.sample_rate, track.price || 0, track.price_usdc || 0, track.price_usdt || 0, track.currency || 'ETH', 
             track.lossless_path || null, track.url || null, track.service || null, 
