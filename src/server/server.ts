@@ -207,6 +207,19 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
 
+    if (config.gdriveClientId && config.gdriveClientSecret) {
+        const dbPublicUrl = database.getSetting("publicUrl");
+        const publicUrl = (dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
+        const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
+        gdriveService = new GoogleDriveService(database, {
+            clientId: config.gdriveClientId,
+            clientSecret: config.gdriveClientSecret,
+            redirectUri
+        });
+        const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
+        initStorageService(gdriveService, adminRow?.id ?? 1);
+        localizationService.setGDriveService(gdriveService);
+    }
 
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
     const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, fingerprintService, zendbService, autotaggerService);
@@ -231,20 +244,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
     telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
-
-    if (config.gdriveClientId && config.gdriveClientSecret) {
-        const dbPublicUrl = database.getSetting("publicUrl");
-        const publicUrl = (dbPublicUrl || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
-        const redirectUri = `${publicUrl}/api/storage/gdrive/callback`;
-        gdriveService = new GoogleDriveService(database, {
-            clientId: config.gdriveClientId,
-            clientSecret: config.gdriveClientSecret,
-            redirectUri
-        });
-        const adminRow = database.db.prepare("SELECT id FROM admin ORDER BY id ASC LIMIT 1").get() as any;
-        initStorageService(gdriveService, adminRow?.id ?? 1);
-        localizationService.setGDriveService(gdriveService);
-    }
 
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(database, scanner, config.musicDir, publishingService, storage, authService));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
