@@ -415,6 +415,13 @@ export class AlbumRepository extends BaseRepository {
     }
 
     addOwner(aid: number, oid: number): void {
+        if (oid !== null && oid !== undefined) {
+            const exists = this.db.prepare("SELECT 1 FROM admin WHERE id = ?").get(oid);
+            if (!exists) {
+                console.warn(`[AlbumRepository] Invalid owner_id ${oid} in addOwner for album ${aid}, skipping.`);
+                return;
+            }
+        }
         this.db.prepare("INSERT OR IGNORE INTO album_ownership (album_id, owner_id) VALUES (?, ?)").run(aid, oid);
     }
 

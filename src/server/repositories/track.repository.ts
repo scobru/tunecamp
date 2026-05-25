@@ -327,6 +327,13 @@ export class TrackRepository extends BaseRepository {
     }
 
     addOwner(tid: number, oid: number): void {
+        if (oid !== null && oid !== undefined) {
+            const exists = this.db.prepare("SELECT 1 FROM admin WHERE id = ?").get(oid);
+            if (!exists) {
+                console.warn(`[TrackRepository] Invalid owner_id ${oid} in addOwner for track ${tid}, skipping.`);
+                return;
+            }
+        }
         this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) VALUES (?, ?)").run(tid, oid);
     }
 
