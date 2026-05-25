@@ -28,73 +28,6 @@ export function createDatabase(dbPath: string): DatabaseService {
     db.pragma("busy_timeout = 5000");
     db.pragma("foreign_keys = ON");
 
-    // Runtime Migrations (robust column checks)
-    db.transaction(() => {
-        const artistsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
-        if (artistsExists) {
-            const cols = db.prepare("PRAGMA table_info(artists)").all() as any[];
-            if (!cols.some(col => col.name === 'external_id')) {
-                console.log("📦 [Database] Migrating artists table: adding external_id column...");
-                db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
-            }
-            if (!cols.some(col => col.name === 'visibility')) {
-                console.log("📦 [Database] Migrating artists table: adding visibility column...");
-                db.exec("ALTER TABLE artists ADD COLUMN visibility TEXT DEFAULT 'public'");
-            }
-            if (!cols.some(col => col.name === 'post_params')) {
-                console.log("📦 [Database] Migrating artists table: adding post_params column...");
-                db.exec("ALTER TABLE artists ADD COLUMN post_params TEXT");
-            }
-            if (!cols.some(col => col.name === 'wallet_address')) {
-                console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
-                db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
-            }
-        }
-
-        const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
-        if (albumsExists) {
-            const cols = db.prepare("PRAGMA table_info(albums)").all() as any[];
-            if (!cols.some(col => col.name === 'status')) {
-                console.log("📦 [Database] Migrating albums table: adding status column...");
-                db.exec("ALTER TABLE albums ADD COLUMN status TEXT DEFAULT 'draft'");
-            }
-            if (!cols.some(col => col.name === 'album_artist')) {
-                console.log("📦 [Database] Migrating albums table: adding album_artist column...");
-                db.exec("ALTER TABLE albums ADD COLUMN album_artist TEXT");
-            }
-            if (!cols.some(col => col.name === 'use_nft')) {
-                console.log("📦 [Database] Migrating albums table: adding use_nft column...");
-                db.exec("ALTER TABLE albums ADD COLUMN use_nft INTEGER DEFAULT 1");
-            }
-        }
-
-        const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
-        if (tracksExists) {
-            const cols = db.prepare("PRAGMA table_info(tracks)").all() as any[];
-            if (!cols.some(col => col.name === 'fingerprint')) {
-                console.log("📦 [Database] Migrating tracks table: adding fingerprint column...");
-                db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
-            }
-        }
-
-        const releasesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='releases'").get();
-        if (releasesExists) {
-            const cols = db.prepare("PRAGMA table_info(releases)").all() as any[];
-            if (!cols.some(col => col.name === 'status')) {
-                console.log("📦 [Database] Migrating releases table: adding status column...");
-                db.exec("ALTER TABLE releases ADD COLUMN status TEXT DEFAULT 'draft'");
-            }
-            if (!cols.some(col => col.name === 'album_artist')) {
-                console.log("📦 [Database] Migrating releases table: adding album_artist column...");
-                db.exec("ALTER TABLE releases ADD COLUMN album_artist TEXT");
-            }
-            if (!cols.some(col => col.name === 'use_nft')) {
-                console.log("📦 [Database] Migrating releases table: adding use_nft column...");
-                db.exec("ALTER TABLE releases ADD COLUMN use_nft INTEGER DEFAULT 1");
-            }
-        }
-    })();
-
     // Rescue Phase: Recover from interrupted migrations
     const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks', 'admin', 'artists'];
     db.transaction(() => {
@@ -499,6 +432,73 @@ export function createDatabase(dbPath: string): DatabaseService {
             expires_at INTEGER
         );
     `);
+
+    // Runtime Migrations (robust column checks)
+    db.transaction(() => {
+        const artistsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
+        if (artistsExists) {
+            const cols = db.prepare("PRAGMA table_info(artists)").all() as any[];
+            if (!cols.some(col => col.name === 'external_id')) {
+                console.log("📦 [Database] Migrating artists table: adding external_id column...");
+                db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
+            }
+            if (!cols.some(col => col.name === 'visibility')) {
+                console.log("📦 [Database] Migrating artists table: adding visibility column...");
+                db.exec("ALTER TABLE artists ADD COLUMN visibility TEXT DEFAULT 'public'");
+            }
+            if (!cols.some(col => col.name === 'post_params')) {
+                console.log("📦 [Database] Migrating artists table: adding post_params column...");
+                db.exec("ALTER TABLE artists ADD COLUMN post_params TEXT");
+            }
+            if (!cols.some(col => col.name === 'wallet_address')) {
+                console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
+                db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
+            }
+        }
+
+        const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
+        if (albumsExists) {
+            const cols = db.prepare("PRAGMA table_info(albums)").all() as any[];
+            if (!cols.some(col => col.name === 'status')) {
+                console.log("📦 [Database] Migrating albums table: adding status column...");
+                db.exec("ALTER TABLE albums ADD COLUMN status TEXT DEFAULT 'draft'");
+            }
+            if (!cols.some(col => col.name === 'album_artist')) {
+                console.log("📦 [Database] Migrating albums table: adding album_artist column...");
+                db.exec("ALTER TABLE albums ADD COLUMN album_artist TEXT");
+            }
+            if (!cols.some(col => col.name === 'use_nft')) {
+                console.log("📦 [Database] Migrating albums table: adding use_nft column...");
+                db.exec("ALTER TABLE albums ADD COLUMN use_nft INTEGER DEFAULT 1");
+            }
+        }
+
+        const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
+        if (tracksExists) {
+            const cols = db.prepare("PRAGMA table_info(tracks)").all() as any[];
+            if (!cols.some(col => col.name === 'fingerprint')) {
+                console.log("📦 [Database] Migrating tracks table: adding fingerprint column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
+            }
+        }
+
+        const releasesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='releases'").get();
+        if (releasesExists) {
+            const cols = db.prepare("PRAGMA table_info(releases)").all() as any[];
+            if (!cols.some(col => col.name === 'status')) {
+                console.log("📦 [Database] Migrating releases table: adding status column...");
+                db.exec("ALTER TABLE releases ADD COLUMN status TEXT DEFAULT 'draft'");
+            }
+            if (!cols.some(col => col.name === 'album_artist')) {
+                console.log("📦 [Database] Migrating releases table: adding album_artist column...");
+                db.exec("ALTER TABLE releases ADD COLUMN album_artist TEXT");
+            }
+            if (!cols.some(col => col.name === 'use_nft')) {
+                console.log("📦 [Database] Migrating releases table: adding use_nft column...");
+                db.exec("ALTER TABLE releases ADD COLUMN use_nft INTEGER DEFAULT 1");
+            }
+        }
+    })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic
     db.transaction(() => {
