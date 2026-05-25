@@ -459,7 +459,7 @@ export class CatalogService {
     // --- Helpers & Settings ---
 
     getSettings() {
-        const settings = ["siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage", "mode", "siteId", "zenPeers", "web3_checkout_address", "web3_nft_address"];
+        const settings = ["siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage", "siteLogo", "mode", "siteId", "zenPeers", "web3_checkout_address", "web3_nft_address"];
         const res: any = {};
         settings.forEach(k => {
             const v = this.database.getSetting(k);

@@ -745,6 +745,19 @@ export function createUploadRoutes(
     });
 
     /**
+     * POST /api/admin/upload/site-cover
+     * Upload site cover image (Node Cover)
+     */
+    router.post("/site-cover", imageUpload.single("file") as any, async (req: any, res: any) => {
+        await handleSiteSettingImageUpload(req, res, {
+            type: "site-cover",
+            settingKey: "coverImage",
+            apiUrl: "/api/settings/cover",
+            errorLabel: "site cover"
+        });
+    });
+
+    /**
      * POST /api/admin/upload/site-logo
      * Upload site logo image (for sidebar)
      */
