@@ -379,5 +379,6 @@ export interface GoogleDriveFile {
     mimeType: string;
     size?: string;
     parents?: string[];
+    isImported?: boolean;
 }
 

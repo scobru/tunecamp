@@ -40,6 +40,39 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
             
             // Redirect back to the UI (assuming /admin/settings exists)
             res.send("<h1>Google Drive Connected!</h1><p>You can close this window and return to TuneCamp.</p><script>setTimeout(() => window.location.href='/', 2000)</script>");
+    router.use(json());
+
+    router.get("/gdrive/auth", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
+        // Pass userId as state to identify the user in the callback
+        const state = req.userId ? String(req.userId) : "";
+        const url = gdriveService.getAuthUrl(state);
+        res.json({ url });
+    });
+
+    router.get("/gdrive/accounts", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
+        const accounts = database.getStorageAccounts(req.userId);
+        res.json(accounts.filter(a => a.provider === "google"));
+    });
+
+    router.get("/gdrive/callback", async (req: any, res) => {
+        const { code, state } = req.query;
+        if (!code) return res.status(400).send("No code provided");
+
+        try {
+            // Use the userId passed via the state parameter
+            let userId = state ? parseInt(state as string, 10) : null;
+            
+            // Fallback to primary admin only if no state was provided (legacy/direct call)
+            if (!userId) {
+                userId = database.getPrimaryAdminId();
+            }
+            
+            if (!userId) return res.status(500).send("No user context found for authentication");
+
+            await gdriveService.exchangeCode(code as string, userId);
+            
+            // Redirect back to the UI (assuming /admin/settings exists)
+            res.send("<h1>Google Drive Connected!</h1><p>You can close this window and return to TuneCamp.</p><script>setTimeout(() => window.location.href='/', 2000)</script>");
         } catch (error: any) {
             console.error("GDrive OAuth Error:", error.response?.data || error.message);
             res.status(500).send("Authentication failed: " + (error.response?.data?.error_description || error.message));
@@ -64,6 +97,23 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
             const userId = req.userId!;
             const { folderId } = req.query;
             const files = await gdriveService.listFiles(userId, folderId as string);
+            
+            if (files.length > 0) {
+                const fileIds = files.map(f => f.id);
+                // Fast check against existing imported tracks using the raw DB connection
+                const importedIds = new Set(
+                    database.db.prepare(`SELECT external_id FROM tracks WHERE external_id IN (${fileIds.map(() => '?').join(',')}) AND service = 'google-drive'`)
+                        .all(...fileIds)
+                        .map((r: any) => r.external_id)
+                );
+                
+                const enrichedFiles = files.map(f => ({
+                    ...f,
+                    isImported: importedIds.has(f.id)
+                }));
+                return res.json(enrichedFiles);
+            }
+
             res.json(files);
         } catch (error: any) {
             res.status(500).json({ error: error.message });
@@ -128,4 +178,3 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
 
     return router;
 }
-

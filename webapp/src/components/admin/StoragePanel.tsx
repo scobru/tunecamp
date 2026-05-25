@@ -186,11 +186,11 @@ export const StoragePanel = () => {
                                                         </button>
                                                     ) : file.mimeType.startsWith('audio/') ? (
                                                         <button 
-                                                            className="btn btn-primary btn-xs" 
+                                                            className={`btn btn-xs ${file.isImported ? 'btn-success btn-outline' : 'btn-primary'}`} 
                                                             onClick={() => handleImport(file)}
-                                                            disabled={importing === file.id}
+                                                            disabled={importing === file.id || file.isImported}
                                                         >
-                                                            {importing === file.id ? '...' : 'Import'}
+                                                            {importing === file.id ? '...' : file.isImported ? 'Imported' : 'Import'}
                                                         </button>
                                                     ) : (
                                                         <span className="text-[10px] opacity-30">N/A</span>

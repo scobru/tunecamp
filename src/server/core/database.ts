@@ -68,6 +68,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
         }
 
+        const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
+        if (tracksExists) {
+            const cols = db.prepare("PRAGMA table_info(tracks)").all() as any[];
+            if (!cols.some(col => col.name === 'fingerprint')) {
+                console.log("📦 [Database] Migrating tracks table: adding fingerprint column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
+            }
+        }
+
         const releasesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='releases'").get();
         if (releasesExists) {
             const cols = db.prepare("PRAGMA table_info(releases)").all() as any[];
