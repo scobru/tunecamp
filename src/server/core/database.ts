@@ -38,6 +38,40 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
             }
         }
+
+        const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
+        if (albumsExists) {
+            const cols = db.prepare("PRAGMA table_info(albums)").all() as any[];
+            if (!cols.some(col => col.name === 'status')) {
+                console.log("📦 [Database] Migrating albums table: adding status column...");
+                db.exec("ALTER TABLE albums ADD COLUMN status TEXT DEFAULT 'draft'");
+            }
+            if (!cols.some(col => col.name === 'album_artist')) {
+                console.log("📦 [Database] Migrating albums table: adding album_artist column...");
+                db.exec("ALTER TABLE albums ADD COLUMN album_artist TEXT");
+            }
+            if (!cols.some(col => col.name === 'use_nft')) {
+                console.log("📦 [Database] Migrating albums table: adding use_nft column...");
+                db.exec("ALTER TABLE albums ADD COLUMN use_nft INTEGER DEFAULT 1");
+            }
+        }
+
+        const releasesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='releases'").get();
+        if (releasesExists) {
+            const cols = db.prepare("PRAGMA table_info(releases)").all() as any[];
+            if (!cols.some(col => col.name === 'status')) {
+                console.log("📦 [Database] Migrating releases table: adding status column...");
+                db.exec("ALTER TABLE releases ADD COLUMN status TEXT DEFAULT 'draft'");
+            }
+            if (!cols.some(col => col.name === 'album_artist')) {
+                console.log("📦 [Database] Migrating releases table: adding album_artist column...");
+                db.exec("ALTER TABLE releases ADD COLUMN album_artist TEXT");
+            }
+            if (!cols.some(col => col.name === 'use_nft')) {
+                console.log("📦 [Database] Migrating releases table: adding use_nft column...");
+                db.exec("ALTER TABLE releases ADD COLUMN use_nft INTEGER DEFAULT 1");
+            }
+        }
     })();
 
     // Rescue Phase: Recover from interrupted migrations
