@@ -37,6 +37,18 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating artists table: adding external_id column...");
                 db.exec("ALTER TABLE artists ADD COLUMN external_id TEXT");
             }
+            if (!cols.some(col => col.name === 'visibility')) {
+                console.log("📦 [Database] Migrating artists table: adding visibility column...");
+                db.exec("ALTER TABLE artists ADD COLUMN visibility TEXT DEFAULT 'public'");
+            }
+            if (!cols.some(col => col.name === 'post_params')) {
+                console.log("📦 [Database] Migrating artists table: adding post_params column...");
+                db.exec("ALTER TABLE artists ADD COLUMN post_params TEXT");
+            }
+            if (!cols.some(col => col.name === 'wallet_address')) {
+                console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
+                db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
+            }
         }
 
         const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
