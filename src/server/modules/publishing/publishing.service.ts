@@ -96,6 +96,8 @@ export class PublishingService {
             const release = this.db.getRelease(releaseId);
             if (!release) return;
 
+            if (!release.is_release) return;
+
             // 1. Generate/Update release.yaml for portability and scanner recognition
             await this.generateReleaseYaml(release);
 
