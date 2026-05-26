@@ -2,7 +2,7 @@ import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useAuthStore } from '../useAuthStore';
 import API from '../../services/api';
 import { ZenAuth } from '../../services/zen';
-import { useWalletStore } from '../useWalletStore';
+
 
 vi.mock('../../services/api', () => ({
     default: {
