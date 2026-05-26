@@ -118,7 +118,6 @@ describe('Admin Routes Vulnerability Check', () => {
             {} as any, // apService
             {} as any, // telegramBotService
             {} as any, // soulseekService
-            {} as any, // lindaBotService
             {} as any, // metadataService
             {} as any, // streamingService
             {} as any, // federationService

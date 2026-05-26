@@ -49,6 +49,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     const status = get().status;
     if (!status) return false;
     const s = status[service] as any;
+    if (!s) return false;
     return !!(s.configured || s.active || s.connected || s.online);
   },
   bumpCacheBuster: () => set({ cacheBuster: Date.now() })

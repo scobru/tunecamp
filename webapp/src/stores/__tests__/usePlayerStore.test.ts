@@ -298,21 +298,21 @@ describe('usePlayerStore', () => {
         expect(usePlayerStore.getState().repeatMode).toBe('none');
     });
 
-    test('toggleRadio fetches random track if radio enabled and queue is empty', () => {
+    test('toggleRadio fetches random track if radio enabled and queue is empty', async () => {
         vi.mocked(API.getRandomTracks).mockResolvedValue([track1]);
 
         const store = usePlayerStore.getState();
-        store.toggleRadio();
+        await store.toggleRadio();
 
         expect(usePlayerStore.getState().isRadioMode).toBe(true);
         // Wait for radio API call to resolve
-        new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
-            const state = usePlayerStore.getState();
-            expect(state.queue).toEqual([track1]);
-            expect(state.queueIndex).toBe(0);
-            expect(state.currentTrack).toEqual(track1);
-            expect(state.isPlaying).toBe(true);
-        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        const state = usePlayerStore.getState();
+        expect(state.queue).toEqual([track1]);
+        expect(state.queueIndex).toBe(0);
+        expect(state.currentTrack).toEqual(track1);
+        expect(state.isPlaying).toBe(true);
     });
 
     test('toggles other UI states properly', () => {

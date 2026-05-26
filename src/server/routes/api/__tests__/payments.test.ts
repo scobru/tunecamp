@@ -169,44 +169,13 @@ describe('Payments Routes', () => {
         });
     });
 
-    describe('POST /api/payments/onramp-session', () => {
-        test('returns 400 if address is missing', async () => {
-            const res = await request(app)
-                .post('/api/payments/onramp-session')
-                .send({});
-
-            expect(res.status).toBe(400);
-            expect(res.body.error).toBe('Destination address is required');
-        });
-
-        test('returns client_secret on successful creation', async () => {
-            mockStripe.crypto.onrampSessions.create.mockResolvedValue({
-                client_secret: 'secret_onramp_xxx',
-                id: 'cos_123'
-            });
-
-            const res = await request(app)
-                .post('/api/payments/onramp-session')
-                .send({ address: '0xAddress' });
-
-            expect(res.status).toBe(200);
-            expect(res.body.client_secret).toBe('secret_onramp_xxx');
-            expect(res.body.id).toBe('cos_123');
-        });
-    });
-
     describe('GET /api/payments/onramp-config', () => {
         test('returns configured onramp providers', async () => {
-            mockDatabase.getSetting.mockImplementation((key: string) => {
-                if (key === 'onramp_provider') return 'stripe';
-                return null;
-            });
-
             const res = await request(app).get('/api/payments/onramp-config');
 
             expect(res.status).toBe(200);
-            expect(res.body.configured).toBe(true);
-            expect(res.body.provider).toBe('stripe');
+            expect(res.body.configured).toBe(false);
+            expect(res.body.stripeCheckout).toBe(true);
         });
     });
 

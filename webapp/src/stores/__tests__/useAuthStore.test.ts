@@ -33,10 +33,11 @@ vi.mock('../../services/zen', () => ({
     }
 }));
 
+const mockClearWallet = vi.fn();
 vi.mock('../useWalletStore', () => ({
     useWalletStore: {
         getState: vi.fn(() => ({
-            clearWallet: vi.fn(),
+            clearWallet: mockClearWallet,
         })),
     }
 }));
@@ -95,7 +96,8 @@ describe('useAuthStore', () => {
         expect(state.user).toEqual({
             username: 'testadmin',
             id: '1',
-            zenProfile: null,
+            isAdmin: true,
+            zenProfile: undefined,
         });
     });
 
@@ -142,7 +144,9 @@ describe('useAuthStore', () => {
     });
 
     test('login handles failure', async () => {
-        vi.mocked(API.login).mockRejectedValue(new Error('Invalid username or password.'));
+        const error = new Error('Invalid username or password.') as any;
+        error.status = 401;
+        vi.mocked(API.login).mockRejectedValue(error);
 
         const store = useAuthStore.getState();
 
@@ -167,7 +171,7 @@ describe('useAuthStore', () => {
         expect(state.isAuthenticated).toBe(false);
         expect(state.role).toBeNull();
         expect(ZenAuth.logout).toHaveBeenCalled();
-        expect(useWalletStore.getState().clearWallet).toHaveBeenCalled();
+        expect(mockClearWallet).toHaveBeenCalled();
         expect(API.setToken).toHaveBeenCalledWith(null);
     });
 });
