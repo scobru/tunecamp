@@ -10,6 +10,7 @@ import { convertWavToMp3, getDurationFromFfmpeg } from "../media/ffmpeg.js";
 import { getFastFileHash } from "../../../utils/fileUtils.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
 import { LibrarySync } from "./library-sync.js";
+import { workerPool } from "../workers/worker-pool.js";
 
 /**
  * Optimized processing queue with concurrency support to handle multiple heavy tasks (ffmpeg, conversion) in parallel.
@@ -17,12 +18,19 @@ import { LibrarySync } from "./library-sync.js";
 class ProcessingQueue {
     private queue: (() => Promise<any>)[] = [];
     private activeWorkers = 0;
-    private readonly MAX_CONCURRENCY = 4; // Allow up to 4 parallel processes
-    private readonly MAX_QUEUE_SIZE = 200;
+    private readonly maxConcurrency: number;
+    private readonly maxQueueSize: number;
+    public readonly label: string;
+
+    constructor(label = 'default', maxConcurrency = 4, maxQueueSize = 200) {
+        this.label = label;
+        this.maxConcurrency = maxConcurrency;
+        this.maxQueueSize = maxQueueSize;
+    }
 
     async add<T>(task: () => Promise<T>): Promise<T> {
-        if (this.queue.length >= this.MAX_QUEUE_SIZE) {
-            console.warn(`[Queue] ⚠️ Maximum queue size (${this.MAX_QUEUE_SIZE}) reached. Throttling scanner...`);
+        if (this.queue.length >= this.maxQueueSize) {
+            console.warn(`[Queue:${this.label}] ⚠️ Maximum queue size (${this.maxQueueSize}) reached. Throttling...`);
             await new Promise(r => setTimeout(r, 2000));
         }
 
@@ -40,7 +48,7 @@ class ProcessingQueue {
     }
 
     private async next() {
-        if (this.activeWorkers >= this.MAX_CONCURRENCY || this.queue.length === 0) return;
+        if (this.activeWorkers >= this.maxConcurrency || this.queue.length === 0) return;
         
         this.activeWorkers++;
         const task = this.queue.shift();
@@ -48,7 +56,7 @@ class ProcessingQueue {
             try {
                 await task();
             } catch (e) {
-                console.error("[Queue] Task execution failed:", e);
+                console.error(`[Queue:${this.label}] Task execution failed:`, e);
             }
         }
         this.activeWorkers--;
@@ -136,7 +144,9 @@ export class Scanner implements ScannerService {
     private watcher: FSWatcher | null = null;
     private isScanning = false;
     private pendingScan: Promise<ScanResult> | null = null;
-    private processQueue = new ProcessingQueue();
+    /** Separate queues for different operation types to prevent starvation */
+    private conversionQueue = new ProcessingQueue('conversion', 2);  // FFmpeg is CPU-heavy
+    private waveformQueue = new ProcessingQueue('waveform', 4);      // Waveform is lighter
     private librarySync: LibrarySync;
 
     private folderToAlbumMap = new Map<string, number>();
@@ -480,12 +490,17 @@ export class Scanner implements ScannerService {
 
         this.hashingSemaphore++;
         try {
-            // Get Metadata
+            // Get Metadata — use worker thread to keep main event loop free
             let metadata: any = null;
             try {
-                metadata = await parseFileWithRetry(currentFilePath);
+                metadata = await workerPool.runTask('parse-metadata', currentFilePath);
             } catch (e) {
-                console.warn(`[Scanner] Metadata parse failed for ${currentFilePath}, using filename fallback.`);
+                // Fallback to main-thread parsing if worker fails
+                try {
+                    metadata = await parseFileWithRetry(currentFilePath);
+                } catch (e2) {
+                    console.warn(`[Scanner] Metadata parse failed for ${currentFilePath}, using filename fallback.`);
+                }
             }
 
             // Fallback to folder-based album if not recognized and we are in musicDir
@@ -505,14 +520,14 @@ export class Scanner implements ScannerService {
             if (syncResult.success && syncResult.trackId) {
                 const track = this.database.getTrack(syncResult.trackId);
                 if (track) {
-                    // Process Waveform if missing
+                    // Process Waveform if missing (separate queue, won't block conversions)
                     if (!track.waveform) {
-                        processQueueWaveform(currentFilePath, track.id, track.duration || undefined, this.processQueue, this.database);
+                        processQueueWaveform(currentFilePath, track.id, track.duration || undefined, this.waveformQueue, this.database);
                     }
 
-                    // Process Conversion if needed
+                    // Process Conversion if needed (separate queue, limited concurrency)
                     if (syncResult.queuedConversion) {
-                        this.processQueue.add(() => convertWavToMp3(currentFilePath));
+                        this.conversionQueue.add(() => convertWavToMp3(currentFilePath));
                     }
                 }
             }

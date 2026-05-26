@@ -9,6 +9,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
+import { taskManager } from "../../modules/workers/task-manager.js";
 
 export function createMetadataRoutes(database: DatabaseService, musicDir: string, maintenance: MaintenanceService, catalogService: CatalogService): Router {
     const router = Router();
@@ -394,10 +395,13 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     router.post("/maintenance/fingerprint/scan-all", async (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         try {
-            // Runs in background to avoid client timeout
-            maintenance.batchIdentifyTracks().catch(e => {
-                console.error("[MetadataRoutes] Batch identification failed:", e);
-            });
+            // Runs in background with dedup protection
+            const started = taskManager.run('fingerprint-scan', () => maintenance.batchIdentifyTracks());
+            
+            if (!started) {
+                return res.status(409).json({ error: "Fingerprint scan is already in progress" });
+            }
+            
             res.json({ message: "Batch fingerprint identification started in background" });
         } catch (e: any) {
             res.status(500).json({ error: e.message });
@@ -412,10 +416,14 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         const { forceRepair, useAI } = req.body ?? {};
         
-        maintenance.startLibraryAudit({
+        const started = taskManager.run('library-audit', () => maintenance.startLibraryAudit({
             forceRepair: !!forceRepair,
             useAI: !!useAI
-        }).catch(e => console.error("[MetadataRoutes] Audit failed:", e));
+        }));
+
+        if (!started) {
+            return res.status(409).json({ error: "Library audit is already in progress" });
+        }
 
         res.json({ message: "Library audit started in background" });
     });

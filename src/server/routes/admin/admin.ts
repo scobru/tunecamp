@@ -22,6 +22,7 @@ import { YouTubeCookieManager } from "../../utils/youtube-session.js";
 import type { LocalizationService } from "../../modules/catalog/localization.service.js";
 import { getDownloadService } from "../../modules/catalog/download.service.js";
 import { aiService } from "../../modules/ai/ai.service.js";
+import { taskManager } from "../../modules/workers/task-manager.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -486,17 +487,18 @@ export function createAdminRoutes(
             console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
             const { runStartupMaintenance } = await import("../../modules/catalog/maintenance.startup.js");
 
-            // Run maintenance and full scan in background
-            (async () => {
-                try {
-                    await runStartupMaintenance(database, config);
-                    console.log(`🔍 [Admin] Starting manual library scan: ${musicDir}`);
-                    const result = await scanner.scanDirectory(musicDir);
-                    console.log(`✅ [Admin] Manual scan complete. Processed ${result.successful.length} files.`);
-                } catch (e) {
-                    console.error("❌ [Admin] Background rescan failed:", e);
-                }
-            })();
+            // Run maintenance and full scan in background with dedup protection
+            const started = taskManager.run('library-rescan', async () => {
+                await runStartupMaintenance(database, config);
+                console.log(`🔍 [Admin] Starting manual library scan: ${musicDir}`);
+                const result = await scanner.scanDirectory(musicDir);
+                console.log(`✅ [Admin] Manual scan complete. Processed ${result.successful.length} files.`);
+                return { processed: result.successful.length, failed: result.failed.length };
+            });
+
+            if (!started) {
+                return res.status(409).json({ error: "Library scan is already in progress" });
+            }
 
             res.json({ message: "Library maintenance and scan triggered in background" });
         } catch (error) {
@@ -521,12 +523,12 @@ export function createAdminRoutes(
 
             console.log(`🏷️ [Admin] Full tag sync triggered by ${req.username}`);
 
-            // Run in background to avoid Gateway Timeout for large libraries
-            maintenance.syncAllTagsFromDb().then(result => {
-                console.log(`✅ [Admin] Tag sync complete. Success: ${result.success}, Failed: ${result.failed}`);
-            }).catch(e => {
-                console.error("❌ [Admin] Background tag sync failed:", e);
-            });
+            // Run in background with dedup protection
+            const started = taskManager.run('tag-sync', () => maintenance.syncAllTagsFromDb());
+
+            if (!started) {
+                return res.status(409).json({ error: "Tag synchronization is already in progress" });
+            }
 
             res.json({ message: "Tag synchronization started in background. This may take several minutes for large libraries." });
         } catch (error) {

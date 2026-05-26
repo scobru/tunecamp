@@ -96,6 +96,8 @@ import { getZen } from "./modules/network/zen.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
+import { taskManager } from "./modules/workers/task-manager.js";
+import { createTaskRoutes } from "./routes/admin/tasks.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -155,11 +157,11 @@ export async function startServer(config: ServerConfig): Promise<void> {
     let gdriveService: GoogleDriveService | undefined;
 
     setTimeout(() => {
-        zendbService.cleanupRegistry().catch(err => console.error("🚨 [ZenDB] Initial registry cleanup failed:", err));
+        taskManager.run('zendb-cleanup', () => zendbService.cleanupRegistry());
     }, 60000);
 
     setInterval(() => {
-        zendbService.cleanupRegistry().catch(err => console.error("🚨 [ZenDB] Scheduled registry cleanup failed:", err));
+        taskManager.run('zendb-cleanup', () => zendbService.cleanupRegistry());
     }, 12 * 60 * 60 * 1000);
 
     app.get("/api/peers", (req, res) => {
@@ -344,6 +346,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(lifecycleService));
     app.use("/api/ap", createActivityPubRoutes(apService, database, authMiddleware));
     app.use("/api/proxy", createProxyRoutes());
+    app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes());
     app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(database, soulseekService, scannerService, metadataService, streamingService));
 
     app.get("/api/plugins", authMiddleware.requireAdmin, (_req, res) => {
