@@ -48,6 +48,9 @@ ARG STRIPE_WEBHOOK_SECRET
 
 WORKDIR /app
 
+# Prevent Puppeteer from downloading Chromium during build time
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 # Consume build-args (avoids unconsumed build-arg warnings; SHA also busts cache per deploy)
 RUN echo "CapRover commit: ${CAPROVER_GIT_COMMIT_SHA:-none}" && \
     echo "Tunecamp URL: ${TUNECAMP_PUBLIC_URL:-unset}" && \
@@ -147,12 +150,15 @@ ENV SKIP_STARTUP_MAINTENANCE=true
 ENV COINBASE_CDP_API_KEY_NAME=""
 ENV COINBASE_CDP_API_KEY_SECRET=""
 
+# Puppeteer & Chromium configuration for Alpine
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Expose default port
 EXPOSE 1970
 
 # Install runtime dependencies
-RUN apk add --no-cache curl libc6-compat gcompat ffmpeg unzip python3 py3-pip && \
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont curl libc6-compat gcompat ffmpeg unzip python3 py3-pip && \
     python3 -m pip install --break-system-packages -U yt-dlp bgutil-ytdlp-pot-provider
 
 # Add a more lenient healthcheck
