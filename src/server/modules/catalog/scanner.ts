@@ -700,7 +700,21 @@ export class Scanner implements ScannerService {
                     const base = `${trackPrefix}${safeTitle}`;
                     
                     const ext = path.extname(oldP).toLowerCase();
-                    const newDir = path.join(safeName, safeAlbum).replace(/\\/g, "/");
+                    
+                    // Retain subfolder prefix (releases, downloads, tracks, import, localized, gdrive:, artwork, assets)
+                    const pathParts = oldP.split("/");
+                    let subfolder = "";
+                    if (pathParts.length > 1) {
+                        const firstSegment = pathParts[0];
+                        const recognized = ["releases", "downloads", "tracks", "import", "localized", "gdrive:", "artwork", "assets"];
+                        if (recognized.includes(firstSegment)) {
+                            subfolder = firstSegment;
+                        }
+                    }
+                    
+                    const newDir = subfolder 
+                        ? path.join(subfolder, safeName, safeAlbum).replace(/\\/g, "/") 
+                        : path.join(safeName, safeAlbum).replace(/\\/g, "/");
                     const newP = path.join(newDir, `${base}${ext}`).replace(/\\/g, "/");
                     const fNew = path.join(musicDir, newP);
                     
