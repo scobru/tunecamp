@@ -673,7 +673,7 @@ export class Scanner implements ScannerService {
         this.isConsolidating = true;
         try {
             let success = 0, failed = 0, skipped = 0, deleted = 0, count = 0;
-            const cache = new Map<number, any>();
+            const cache = new Map<string, any>();
             const iter = Array.from(this.database.iterateTracks("file_path IS NOT NULL"));
             for (const t of iter) {
                 try {
@@ -681,15 +681,29 @@ export class Scanner implements ScannerService {
                     const oldP = t.file_path;
                     const fOld = path.join(musicDir, oldP);
                     const existsOld = await this.storage.pathExists(fOld);
-                    let art = t.artist_id ? (cache.get(t.artist_id) || this.database.getArtist(t.artist_id)) : null;
-                    if (t.artist_id && art) cache.set(t.artist_id, art);
+                    
+                    let art = t.artist_id ? (cache.get(`artist_${t.artist_id}`) || this.database.getArtist(t.artist_id)) : null;
+                    if (t.artist_id && art) cache.set(`artist_${t.artist_id}`, art);
+                    
+                    let album = t.album_id ? (cache.get(`album_${t.album_id}`) || this.database.getAlbum(t.album_id)) : null;
+                    if (t.album_id && album) cache.set(`album_${t.album_id}`, album);
+
                     const name = (art?.name || "Unknown").trim();
+                    const albumTitle = (album?.title || "Unknown Album").trim();
                     const title = (t.title || "Untitled").trim();
                     const safe = (s: string) => s.replace(/[^a-zA-Z0-9\s._-]/g, "_").trim();
-                    const base = `${safe(name)} - ${safe(title)}`;
+                    
+                    const safeName = safe(name);
+                    const safeAlbum = safe(albumTitle);
+                    const safeTitle = safe(title);
+                    const trackPrefix = t.track_num ? String(t.track_num).padStart(2, '0') + " - " : "";
+                    const base = `${trackPrefix}${safeTitle}`;
+                    
                     const ext = path.extname(oldP).toLowerCase();
-                    const newP = path.join(path.dirname(oldP), `${base}${ext}`).replace(/\\/g, "/");
+                    const newDir = path.join(safeName, safeAlbum).replace(/\\/g, "/");
+                    const newP = path.join(newDir, `${base}${ext}`).replace(/\\/g, "/");
                     const fNew = path.join(musicDir, newP);
+                    
                     if (!existsOld) {
                         const existsNew = await this.storage.pathExists(fNew);
                         if (!existsNew) {
@@ -706,14 +720,16 @@ export class Scanner implements ScannerService {
                     }
                     if (oldP === newP) { skipped++; count++; continue; }
                     if (await this.storage.pathExists(fOld)) {
+                        await this.storage.ensureDir(path.dirname(fNew));
                         await this.storage.move(fOld, fNew, { overwrite: true });
                         this.database.updateTrackPath(t.id, newP, t.album_id);
                         if (t.lossless_path) {
                             const oldLossless = path.join(musicDir, t.lossless_path);
                             const losslessExt = path.extname(t.lossless_path);
-                            const newLosslessP = path.join(path.dirname(t.lossless_path), `${base}${losslessExt}`).replace(/\\/g, "/");
+                            const newLosslessP = path.join(newDir, `${base}${losslessExt}`).replace(/\\/g, "/");
                             const newLossless = path.join(musicDir, newLosslessP);
                             if (await this.storage.pathExists(oldLossless) && oldLossless !== newLossless) {
+                                await this.storage.ensureDir(path.dirname(newLossless));
                                 await this.storage.move(oldLossless, newLossless, { overwrite: true });
                                 this.database.updateTrackLosslessPath(t.id, newLosslessP);
                             }

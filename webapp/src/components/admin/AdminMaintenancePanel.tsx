@@ -337,7 +337,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleOrganizeFiles = async () => {
-        if (!confirm("Are you sure you want to organize physical files? This will rename files to 'Artist - Title' format based on database tags.")) return;
+        if (!confirm("Are you sure you want to organize physical files? This will move files to an 'Artist / Album / Track' structure and rename them based on database tags.")) return;
         setIsProcessing(true);
         try {
             const res = await API.consolidateFiles();
