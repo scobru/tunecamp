@@ -95,7 +95,8 @@ export class LifecycleService {
         }
 
         // 1. Promote to Release table (if it's an album)
-        const existsInAlbums = (this.db as any).db.prepare("SELECT 1 FROM albums WHERE id = ?").get(id);
+        const rawDb = (this.db as any).db;
+        const existsInAlbums = rawDb ? !!rawDb.prepare("SELECT 1 FROM albums WHERE id = ?").get(id) : true;
         if (existsInAlbums) {
             this.db.promoteToRelease(id);
             this.db.updateAlbumStatus(id, 'released');
