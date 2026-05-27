@@ -340,7 +340,25 @@ export const AdminSettingsPanel = () => {
                   type="text"
                   className="input input-bordered bg-base-300/50"
                   value={settings.backgroundImage || ""}
-                  onChange={(e) => setSettings({ ...settings, backgroundImage: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSettings({ ...settings, backgroundImage: val });
+                    // Live preview background image
+                    const mainDiv = document.querySelector(".drawer");
+                    if (mainDiv) {
+                      if (val) {
+                        (mainDiv as HTMLElement).style.backgroundImage = `url(${val})`;
+                        (mainDiv as HTMLElement).style.backgroundSize = 'cover';
+                        (mainDiv as HTMLElement).style.backgroundPosition = 'center';
+                        (mainDiv as HTMLElement).style.backgroundAttachment = 'fixed';
+                        (mainDiv as HTMLElement).style.backgroundRepeat = 'no-repeat';
+                        (mainDiv as HTMLElement).classList.add("has-custom-bg");
+                      } else {
+                        (mainDiv as HTMLElement).style.backgroundImage = '';
+                        (mainDiv as HTMLElement).classList.remove("has-custom-bg");
+                      }
+                    }
+                  }}
                   placeholder="/images/custom-bg.jpg"
                 />
               </div>
@@ -353,7 +371,101 @@ export const AdminSettingsPanel = () => {
                   type="file"
                   className="file-input file-input-bordered file-input-sm bg-base-300/50 w-full"
                   accept="image/*"
-                  onChange={(e) => setBgFile(e.target.files ? e.target.files[0] : null)}
+                  onChange={(e) => {
+                    const file = e.target.files ? e.target.files[0] : null;
+                    setBgFile(file);
+                    if (file) {
+                      const url = URL.createObjectURL(file);
+                      const mainDiv = document.querySelector(".drawer");
+                      if (mainDiv) {
+                        (mainDiv as HTMLElement).style.backgroundImage = `url(${url})`;
+                        (mainDiv as HTMLElement).style.backgroundSize = 'cover';
+                        (mainDiv as HTMLElement).style.backgroundPosition = 'center';
+                        (mainDiv as HTMLElement).style.backgroundAttachment = 'fixed';
+                        (mainDiv as HTMLElement).style.backgroundRepeat = 'no-repeat';
+                        (mainDiv as HTMLElement).classList.add("has-custom-bg");
+                      }
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Theme Font Family</span>
+                </label>
+                <select
+                  className="select select-bordered bg-base-300/50 w-full"
+                  value={settings.themeFont || "Outfit"}
+                  onChange={(e) => {
+                    const font = e.target.value;
+                    setSettings({ ...settings, themeFont: font });
+                    // Live dynamic font loading and application
+                    if (font !== "Outfit" && font !== "sans-serif") {
+                      const fontId = "dynamic-google-font";
+                      let linkElement = document.getElementById(fontId) as HTMLLinkElement;
+                      if (!linkElement) {
+                        linkElement = document.createElement("link");
+                        linkElement.id = fontId;
+                        linkElement.rel = "stylesheet";
+                        document.head.appendChild(linkElement);
+                      }
+                      const fontQuery = font.replace(/\s+/g, "+");
+                      linkElement.href = `https://fonts.googleapis.com/css2?family=${fontQuery}:wght@100..900&display=swap`;
+                    }
+                    document.documentElement.style.setProperty("--font-sans", `"${font}", sans-serif`);
+                  }}
+                >
+                  <option value="Outfit">Outfit (Default)</option>
+                  <option value="Inter">Inter (Geometric & Clean)</option>
+                  <option value="Montserrat">Montserrat (Modern & Bold)</option>
+                  <option value="Lora">Lora (Elegant & Classic Serif)</option>
+                  <option value="Playfair Display">Playfair Display (Premium Serif)</option>
+                  <option value="JetBrains Mono">JetBrains Mono (Tech & Minimal)</option>
+                </select>
+              </div>
+
+              <div className="form-control">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="label p-0">
+                    <span className="label-text font-medium text-sm">Glass Overlay Opacity</span>
+                  </label>
+                  <span className="text-xs opacity-60 font-bold">{Math.round((Number(settings.themeOverlayOpacity) !== undefined ? Number(settings.themeOverlayOpacity) : 0.85) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.4"
+                  max="0.95"
+                  step="0.05"
+                  className="range range-xs range-primary"
+                  value={settings.themeOverlayOpacity !== undefined ? Number(settings.themeOverlayOpacity) : 0.85}
+                  onChange={(e) => {
+                    const opacity = Number(e.target.value);
+                    setSettings({ ...settings, themeOverlayOpacity: opacity });
+                    document.documentElement.style.setProperty("--custom-bg-opacity", `${opacity * 100}%`);
+                  }}
+                />
+              </div>
+
+              <div className="form-control">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="label p-0">
+                    <span className="label-text font-medium text-sm">Global Background Blur</span>
+                  </label>
+                  <span className="text-xs opacity-60 font-bold">{settings.themeBlur || "10px"}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="24"
+                  step="4"
+                  className="range range-xs range-primary"
+                  value={parseInt(settings.themeBlur || "10px")}
+                  onChange={(e) => {
+                    const blurValue = `${e.target.value}px`;
+                    setSettings({ ...settings, themeBlur: blurValue });
+                    document.documentElement.style.setProperty("--custom-bg-blur", blurValue);
+                  }}
                 />
               </div>
             </div>

@@ -18,6 +18,7 @@ import { useUIStore } from "../../stores/useUIStore";
 
 export const MainLayout = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const dominantColor = usePlayerStore(state => state.dominantColor);
   const theme = useUIStore(state => state.theme);
 
@@ -29,13 +30,61 @@ export const MainLayout = () => {
   useEffect(() => {
     API.getSiteSettings()
       .then((s: SiteSettings) => {
+        setSiteSettings(s);
         if (s.siteName) setSiteName(s.siteName);
       })
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    if (!siteSettings) return;
+
+    // Dynamic Font Loading from Google Fonts
+    const font = siteSettings.themeFont || "Outfit";
+    if (font !== "Outfit" && font !== "sans-serif") {
+      const fontId = "dynamic-google-font";
+      let linkElement = document.getElementById(fontId) as HTMLLinkElement;
+      if (!linkElement) {
+        linkElement = document.createElement("link");
+        linkElement.id = fontId;
+        linkElement.rel = "stylesheet";
+        document.head.appendChild(linkElement);
+      }
+      const fontQuery = font.replace(/\s+/g, "+");
+      linkElement.href = `https://fonts.googleapis.com/css2?family=${fontQuery}:wght@100..900&display=swap`;
+    }
+
+    // Dynamic CSS Custom Properties
+    document.documentElement.style.setProperty("--font-sans", `"${font}", sans-serif`);
+    
+    if (siteSettings.themeBlur) {
+      document.documentElement.style.setProperty("--custom-bg-blur", siteSettings.themeBlur);
+    } else {
+      document.documentElement.style.removeProperty("--custom-bg-blur");
+    }
+    
+    if (siteSettings.themeOverlayOpacity) {
+      const percent = Number(siteSettings.themeOverlayOpacity) * 100;
+      document.documentElement.style.setProperty("--custom-bg-opacity", `${percent}%`);
+    } else {
+      document.documentElement.style.removeProperty("--custom-bg-opacity");
+    }
+  }, [siteSettings]);
+
+  const hasBgImage = !!siteSettings?.backgroundImage;
+  const bgImageStyle = hasBgImage ? {
+    backgroundImage: `url(${siteSettings.backgroundImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundAttachment: 'fixed',
+    backgroundRepeat: 'no-repeat',
+  } : undefined;
+
   return (
-    <div className="drawer lg:drawer-open h-screen bg-base-100 text-base-content font-sans overflow-hidden">
+    <div 
+      className={`drawer lg:drawer-open h-screen text-base-content font-sans overflow-hidden ${hasBgImage ? "has-custom-bg" : "bg-base-100"}`}
+      style={bgImageStyle}
+    >
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] btn btn-primary btn-sm"

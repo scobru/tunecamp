@@ -327,5 +327,25 @@
                 border-color var(--duration-short-4) var(--ease-standard),
                 box-shadow var(--duration-short-4) var(--ease-standard) !important;
   }
+
+  /* Translucent theme-aware panels when global background image is applied */
+  .has-custom-bg .drawer-content {
+    background-color: color-mix(in srgb, var(--color-base-100) var(--custom-bg-opacity, 85%), transparent) !important;
+    backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+    -webkit-backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+  }
+
+  .has-custom-bg .drawer-side > div,
+  .has-custom-bg .drawer-side > aside {
+    background-color: color-mix(in srgb, var(--color-base-200) var(--custom-bg-opacity, 85%), transparent) !important;
+    backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+    -webkit-backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+  }
+  
+  .has-custom-bg .navbar {
+    background-color: color-mix(in srgb, var(--color-base-100) 80%, transparent) !important;
+    backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+    -webkit-backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+  }
 }
 

@@ -287,29 +287,11 @@ export class TrackRepository extends BaseRepository {
         if (fields.length === 0) return;
         values.push(id);
         this.db.prepare(`UPDATE tracks SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-
-        // Side effect: sync some fields to release_tracks
-        if (track.title || track.duration || track.file_path || track.price || track.currency) {
-            const rtFields: string[] = [];
-            const rtValues: any[] = [];
-            if (track.title) { rtFields.push("title = ?"); rtValues.push(track.title); }
-            if (track.duration) { rtFields.push("duration = ?"); rtValues.push(track.duration); }
-            if (track.file_path) { rtFields.push("file_path = ?"); rtValues.push(track.file_path); }
-            if (track.price_usdc) { rtFields.push("price_usdc = ?"); rtValues.push(track.price_usdc); }
-            if (track.price_usdt) { rtFields.push("price_usdt = ?"); rtValues.push(track.price_usdt); }
-            if (track.currency) { rtFields.push("currency = ?"); rtValues.push(track.currency); }
-            
-            if (rtFields.length > 0) {
-                rtValues.push(id);
-                this.db.prepare(`UPDATE release_tracks SET ${rtFields.join(', ')} WHERE track_id = ?`).run(...rtValues);
-            }
-        }
     }
 
     updateArtist(id: number, artistId: number | null, artistName: string | null): void {
         this.db.transaction(() => {
             this.db.prepare("UPDATE tracks SET artist_id = ?, artist_name = ? WHERE id = ?").run(artistId, artistName, id);
-            this.db.prepare("UPDATE release_tracks SET artist_name = ? WHERE track_id = ?").run(artistName, id);
         })();
     }
 
@@ -330,7 +312,6 @@ export class TrackRepository extends BaseRepository {
         this.db.transaction(() => {
             try {
                 this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id = ?").run(toId, fromId);
-                this.db.prepare("UPDATE release_tracks SET track_id = ?, file_path = ? WHERE track_id = ?").run(toId, targetFilePath, fromId);
                 this.db.prepare("UPDATE play_history SET track_id = ? WHERE track_id = ?").run(toId, fromId);
                 this.db.prepare("UPDATE bookmarks SET track_id = ? WHERE track_id = ?").run(toId, String(fromId));
                 this.db.prepare("UPDATE starred_items SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
@@ -370,7 +351,6 @@ export class TrackRepository extends BaseRepository {
         }
         this.db.transaction(() => {
             this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(id);
-            this.db.prepare("DELETE FROM release_tracks WHERE track_id = ?").run(id);
             this.db.prepare("DELETE FROM tracks WHERE id = ?").run(id);
         })();
     }

@@ -205,6 +205,9 @@ export interface SiteSettings {
     publicUrl?: string;
     allowPublicRegistration?: boolean;
     backgroundImage?: string;
+    themeFont?: string;
+    themeBlur?: string;
+    themeOverlayOpacity?: string | number;
     donationLinks?: ArtistLink[];
     zenPeers?: string;
     gunPeers?: string;

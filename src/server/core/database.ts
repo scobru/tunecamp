@@ -29,7 +29,7 @@ export function createDatabase(dbPath: string): DatabaseService {
     db.pragma("foreign_keys = ON");
 
     // Rescue Phase: Recover from interrupted migrations
-    const tablesToRescue = ['albums', 'tracks', 'releases', 'release_tracks', 'admin', 'artists'];
+    const tablesToRescue = ['albums', 'tracks', 'admin', 'artists'];
     db.transaction(() => {
         for (const table of tablesToRescue) {
             const mainExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
@@ -130,36 +130,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS releases (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            slug TEXT NOT NULL UNIQUE,
-            artist_id INTEGER REFERENCES artists(id),
-            owner_id INTEGER REFERENCES admin(id),
-            date TEXT,
-            cover_path TEXT,
-            genre TEXT,
-            description TEXT,
-            type TEXT DEFAULT 'album',
-            year INTEGER,
-            download TEXT,
-            price REAL DEFAULT 0,
-            price_usdc REAL DEFAULT 0,
-            price_usdt REAL DEFAULT 0,
-            currency TEXT DEFAULT 'ETH',
-            external_links TEXT,
-            external_id TEXT,
-            visibility TEXT DEFAULT 'private',
-            published_at TEXT,
-            published_to_gundb INTEGER DEFAULT 0,
-            published_to_ap INTEGER DEFAULT 0,
-            license TEXT,
-            status TEXT DEFAULT 'draft',
-            album_artist TEXT,
-            use_nft INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
         CREATE TABLE IF NOT EXISTS tracks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -188,22 +158,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             fingerprint TEXT,
             genre TEXT,
             year INTEGER,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS release_tracks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            release_id INTEGER REFERENCES releases(id),
-            track_id INTEGER REFERENCES tracks(id),
-            title TEXT NOT NULL,
-            artist_name TEXT,
-            track_num INTEGER,
-            duration REAL,
-            file_path TEXT,
-            price REAL DEFAULT 0,
-            price_usdc REAL DEFAULT 0,
-            price_usdt REAL DEFAULT 0,
-            currency TEXT DEFAULT 'ETH',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -435,6 +389,54 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Runtime Migrations (robust column checks)
     db.transaction(() => {
+        // --- Consolidation Migration ---
+        const releasesTableInfo = db.prepare("SELECT type FROM sqlite_master WHERE type='table' AND name='releases'").get() as { type: string } | undefined;
+        if (releasesTableInfo) {
+            console.log("📦 [Database Consolidation] Physical releases table detected. Migrating data to albums...");
+            
+            // 1. Move unique releases to albums
+            db.exec(`
+                INSERT OR IGNORE INTO albums (
+                    id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
+                    price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
+                    published_to_gundb, published_to_ap, license, status, album_artist, use_nft, created_at
+                )
+                SELECT 
+                    id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, 
+                    price, price_usdc, price_usdt, currency, external_links, external_id, visibility, published_at, 
+                    published_to_gundb, published_to_ap, license, 'released', album_artist, use_nft, created_at
+                FROM releases;
+            `);
+
+            // 2. Move unique release tracks to tracks, ensuring album_id is mapped correctly
+            const releaseTracksTableInfo = db.prepare("SELECT type FROM sqlite_master WHERE type='table' AND name='release_tracks'").get() as { type: string } | undefined;
+            if (releaseTracksTableInfo) {
+                console.log("📦 [Database Consolidation] Physical release_tracks table detected. Syncing to tracks...");
+                // Link existing tracks to their album if they aren't linked yet
+                db.exec(`
+                    UPDATE tracks 
+                    SET album_id = (SELECT release_id FROM release_tracks WHERE release_tracks.track_id = tracks.id LIMIT 1)
+                    WHERE album_id IS NULL AND EXISTS (SELECT 1 FROM release_tracks WHERE release_tracks.track_id = tracks.id);
+                `);
+                
+                // If any release_tracks didn't have a track_id (ghost tracks), we can insert them into tracks
+                db.exec(`
+                    INSERT OR IGNORE INTO tracks (
+                        title, album_id, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency, created_at
+                    )
+                    SELECT 
+                        title, release_id, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency, created_at
+                    FROM release_tracks
+                    WHERE track_id IS NULL;
+                `);
+
+                db.exec("DROP TABLE release_tracks");
+            }
+            
+            db.exec("DROP TABLE releases");
+            console.log("📦 [Database Consolidation] Physical tables dropped. Ready to create views.");
+        }
+
         const artistsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
         if (artistsExists) {
             const cols = db.prepare("PRAGMA table_info(artists)").all() as any[];
@@ -481,34 +483,17 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
             }
         }
-
-        const releasesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='releases'").get();
-        if (releasesExists) {
-            const cols = db.prepare("PRAGMA table_info(releases)").all() as any[];
-            if (!cols.some(col => col.name === 'status')) {
-                console.log("📦 [Database] Migrating releases table: adding status column...");
-                db.exec("ALTER TABLE releases ADD COLUMN status TEXT DEFAULT 'draft'");
-            }
-            if (!cols.some(col => col.name === 'album_artist')) {
-                console.log("📦 [Database] Migrating releases table: adding album_artist column...");
-                db.exec("ALTER TABLE releases ADD COLUMN album_artist TEXT");
-            }
-            if (!cols.some(col => col.name === 'use_nft')) {
-                console.log("📦 [Database] Migrating releases table: adding use_nft column...");
-                db.exec("ALTER TABLE releases ADD COLUMN use_nft INTEGER DEFAULT 1");
-            }
-        }
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic
     db.transaction(() => {
-        const views = ['v_artists', 'v_albums', 'v_releases', 'v_tracks'];
+        const views = ['v_artists', 'v_albums', 'v_releases', 'v_tracks', 'releases', 'release_tracks'];
         for (const view of views) {
             db.exec(`DROP VIEW IF EXISTS ${view}`);
         }
     })();
 
-    // Views
+    // Views & Backward Compatibility Views
     db.exec(`
         CREATE VIEW v_artists AS
         SELECT * FROM artists;
@@ -522,14 +507,37 @@ export function createDatabase(dbPath: string): DatabaseService {
         FROM albums a
         LEFT JOIN artists ar ON a.artist_id = ar.id;
 
+        CREATE VIEW releases AS
+        SELECT * FROM albums WHERE status = 'released';
+
+        CREATE VIEW release_tracks AS
+        SELECT 
+            t.id as id,
+            t.album_id as release_id,
+            t.id as track_id,
+            t.title,
+            t.artist_name,
+            t.track_num,
+            t.duration,
+            t.file_path,
+            t.price,
+            t.price_usdc,
+            t.price_usdt,
+            t.currency,
+            t.created_at
+        FROM tracks t
+        JOIN albums a ON t.album_id = a.id
+        WHERE a.status = 'released';
+
         CREATE VIEW v_releases AS
         SELECT
-            r.*,
-            COALESCE(r.album_artist, ar.name, (SELECT artist_name FROM release_tracks WHERE release_id = r.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
+            a.*,
+            COALESCE(a.album_artist, ar.name, (SELECT artist_name FROM tracks WHERE album_id = a.id AND artist_name IS NOT NULL LIMIT 1), 'Unknown Artist') as artist_name,
             ar.slug as artist_slug,
             ar.wallet_address as artist_wallet_address
-        FROM releases r
-        LEFT JOIN artists ar ON r.artist_id = ar.id;
+        FROM albums a
+        LEFT JOIN artists ar ON a.artist_id = ar.id
+        WHERE a.status = 'released';
 
         CREATE VIEW v_tracks AS
         SELECT
@@ -550,34 +558,12 @@ export function createDatabase(dbPath: string): DatabaseService {
 
     // Triggers
     db.exec(`
-        CREATE TRIGGER IF NOT EXISTS tr_cleanup_release_tracks_on_release_delete
-        AFTER DELETE ON releases
-        FOR EACH ROW
-        BEGIN
-            DELETE FROM release_tracks WHERE release_id = OLD.id;
-        END;
-
-        CREATE TRIGGER IF NOT EXISTS tr_cleanup_release_tracks_on_track_delete
-        AFTER DELETE ON tracks
-        FOR EACH ROW
-        BEGIN
-            DELETE FROM release_tracks WHERE track_id = OLD.id;
-        END;
-
         CREATE TRIGGER IF NOT EXISTS tr_albums_status_sync
         AFTER UPDATE OF visibility ON albums
         FOR EACH ROW
         WHEN NEW.visibility IN ('public', 'unlisted') AND OLD.status = 'draft'
         BEGIN
             UPDATE albums SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
-        END;
-
-        CREATE TRIGGER IF NOT EXISTS tr_releases_status_sync
-        AFTER UPDATE OF visibility ON releases
-        FOR EACH ROW
-        WHEN NEW.visibility IN ('public', 'unlisted') AND OLD.status = 'draft'
-        BEGIN
-            UPDATE releases SET status = 'released', published_at = COALESCE(published_at, CURRENT_TIMESTAMP) WHERE id = NEW.id;
         END;
 
         CREATE TRIGGER IF NOT EXISTS tr_albums_status_init
@@ -601,8 +587,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_album_ownership_owner ON album_ownership(owner_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));
         CREATE INDEX IF NOT EXISTS idx_albums_visibility ON albums(visibility);
-        CREATE INDEX IF NOT EXISTS idx_releases_artist ON releases(artist_id);
-        CREATE INDEX IF NOT EXISTS idx_releases_visibility_status ON releases(visibility, status);
+        -- Legacy indexes on releases removed (releases is now a view)
     `);
 
     // Register Levenshtein

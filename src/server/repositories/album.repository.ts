@@ -291,15 +291,15 @@ export class AlbumRepository extends BaseRepository {
         while (attempt < 100) {
             try {
                 const result = this.db.prepare(`
-                    INSERT INTO releases (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO albums (title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, album_artist, status, is_release)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                 `).run(
                     release.title, finalSlug, release.artist_id, release.owner_id,
                     release.date, release.cover_path, release.genre, release.description, release.type, release.year,
                     release.download, release.price || 0, release.price_usdc || 0, release.price_usdt || 0, release.currency || 'ETH', release.external_links,
                     release.visibility || 'private', release.published_at, 
                     release.published_to_gundb ? 1 : 0, release.published_to_ap ? 1 : 0,
-                    release.license, release.album_artist || null, release.status || 'draft'
+                    release.license, release.album_artist || null, release.status || 'released'
                 );
                 return result.lastInsertRowid as number;
             } catch (e: any) {
@@ -367,72 +367,29 @@ export class AlbumRepository extends BaseRepository {
 
         const albumValues = [...values, id];
         this.db.prepare(`UPDATE albums SET ${fields.join(', ')} WHERE id = ?`).run(...albumValues);
-        
-        // Also update corresponding release if exists
-        // We must filter out columns that don't exist in the releases table
-        const releaseFields: string[] = [];
-        const releaseValues: any[] = [];
-        const validReleaseColumns = [
-            'title', 'slug', 'artist_id', 'owner_id', 'date', 'cover_path', 'genre', 
-            'description', 'type', 'year', 'download', 'price', 'price_usdc', 
-            'price_usdt', 'currency', 'external_links', 'external_id', 'visibility', 
-            'published_at', 'published_to_gundb', 'published_to_ap', 'license', 
-            'status', 'album_artist', 'use_nft'
-        ];
-
-        for (const [key, value] of Object.entries(album)) {
-            if (!validReleaseColumns.includes(key)) continue;
-            releaseFields.push(`${key} = ?`);
-            if (['published_to_gundb', 'published_to_ap'].includes(key)) {
-                releaseValues.push(value ? 1 : 0);
-            } else {
-                releaseValues.push(value);
-            }
-        }
-
-        if (releaseFields.length > 0) {
-            try {
-                releaseValues.push(id);
-                this.db.prepare(`UPDATE releases SET ${releaseFields.join(', ')} WHERE id = ?`).run(...releaseValues);
-            } catch (e: any) {
-                // Might not exist, or might have schema mismatch
-                console.warn(`⚠️ [AlbumRepository] Failed to sync update to releases table for ID ${id}:`, e.message);
-            }
-        }
     }
 
     promoteToRelease(id: number): void {
         const album = this.db.prepare("SELECT * FROM albums WHERE id = ?").get(id) as any;
         if (!album) return;
         this.db.transaction(() => {
-            this.db.prepare(`INSERT OR IGNORE INTO releases (id, title, slug, artist_id, owner_id, date, cover_path, genre, description, type, year, download, price, price_usdc, price_usdt, currency, external_links, visibility, published_at, published_to_gundb, published_to_ap, license, created_at, use_nft, album_artist)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-                .run(album.id, album.title, album.slug, album.artist_id, album.owner_id, album.date, album.cover_path, album.genre, album.description, album.type, album.year, album.download, album.price, album.price_usdc || 0, album.price_usdt || 0, album.currency, album.external_links, album.visibility, album.published_at, album.published_to_gundb, album.published_to_ap, album.license, album.created_at, album.use_nft ?? 1, album.album_artist);
-            
-            const tracks = this.db.prepare("SELECT * FROM tracks WHERE album_id = ?").all(id) as any[];
-            for (const track of tracks) {
-                this.db.prepare(`INSERT OR IGNORE INTO release_tracks (release_id, track_id, title, artist_name, track_num, duration, file_path, price, price_usdc, price_usdt, currency, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-                    .run(id, track.id, track.title, track.artist_name, track.track_num, track.duration, track.file_path, track.price, track.price_usdc || 0, track.price_usdt || 0, track.currency, track.created_at);
-            }
             const isPublic = album.visibility === 'public' || album.visibility === 'unlisted';
-            this.db.prepare("UPDATE albums SET is_release = 1, is_public = ? WHERE id = ?").run(isPublic ? 1 : 0, id);
+            this.db.prepare("UPDATE albums SET is_release = 1, is_public = ?, status = 'released' WHERE id = ?").run(isPublic ? 1 : 0, id);
         })();
     }
 
     delete(id: number, keepTracks = false): void {
         this.db.transaction(() => {
-            this.db.prepare("DELETE FROM release_tracks WHERE release_id = ?").run(id);
             this.db.prepare("DELETE FROM unlock_codes WHERE release_id = ?").run(id);
             this.db.prepare("UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE content_id = ? AND note_type = 'release'").run(id);
             if (keepTracks) this.db.prepare("UPDATE tracks SET album_id = NULL WHERE album_id = ?").run(id);
             else this.db.prepare("DELETE FROM tracks WHERE album_id = ?").run(id);
             this.db.prepare("DELETE FROM albums WHERE id = ?").run(id);
-            this.db.prepare("DELETE FROM releases WHERE id = ?").run(id);
         })();
     }
 
     updateReleaseStatus(id: number, status: string): void {
-        this.db.prepare("UPDATE releases SET status = ? WHERE id = ?").run(status, id);
+        this.db.prepare("UPDATE albums SET status = ? WHERE id = ?").run(status, id);
     }
 
     getAlbumOwners(id: number): number[] {

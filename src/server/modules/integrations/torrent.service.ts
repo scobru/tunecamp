@@ -126,7 +126,7 @@ export class TorrentService {
 
         try {
             // Check if already active in client to prevent duplicate error
-            const active = this.client.get(magnetUri);
+            const active = await this.client.get(magnetUri);
             if (active) {
                 console.log(`ℹ️ [TorrentService] Torrent already active: ${active.infoHash}`);
                 return active.infoHash;

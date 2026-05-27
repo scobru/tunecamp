@@ -252,7 +252,8 @@ export function createAdminRoutes(
                 lastfm_session_key,
                 listenbrainz_token,
                 google_drive_client_id,
-                google_drive_client_secret
+                google_drive_client_secret,
+                themeFont, themeBlur, themeOverlayOpacity
             } = req.body;
             let settingsChanged = false;
 
@@ -286,6 +287,18 @@ export function createAdminRoutes(
             }
             if (req.body.backgroundImage !== undefined) {
                 database.setSetting("backgroundImage", req.body.backgroundImage);
+            }
+            if (themeFont !== undefined) {
+                database.setSetting("themeFont", themeFont);
+                settingsChanged = true;
+            }
+            if (themeBlur !== undefined) {
+                database.setSetting("themeBlur", themeBlur);
+                settingsChanged = true;
+            }
+            if (themeOverlayOpacity !== undefined) {
+                database.setSetting("themeOverlayOpacity", themeOverlayOpacity.toString());
+                settingsChanged = true;
             }
             if (zenPeers !== undefined) {
                 database.setSetting("zenPeers", zenPeers);

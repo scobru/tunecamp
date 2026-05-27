@@ -459,12 +459,28 @@ export class CatalogService {
     // --- Helpers & Settings ---
 
     getSettings() {
-        const settings = ["siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage", "siteLogo", "mode", "siteId", "zenPeers", "web3_checkout_address", "web3_nft_address"];
+        const settings = [
+            "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage", 
+            "siteLogo", "mode", "siteId", "zenPeers", "web3_checkout_address", "web3_nft_address",
+            "themeFont", "themeBlur", "themeOverlayOpacity"
+        ];
         const res: any = {};
         settings.forEach(k => {
             const v = this.database.getSetting(k);
-            if (k === 'donationLinks' && v) res[k] = JSON.parse(v);
-            else res[k] = v || (k === 'siteName' ? 'TuneCamp' : (k === 'mode' ? 'label' : ''));
+            if (k === 'donationLinks' && v) {
+                res[k] = JSON.parse(v);
+            } else {
+                if (v !== undefined && v !== null) {
+                    res[k] = v;
+                } else {
+                    if (k === 'siteName') res[k] = 'TuneCamp';
+                    else if (k === 'mode') res[k] = 'label';
+                    else if (k === 'themeFont') res[k] = 'Outfit';
+                    else if (k === 'themeBlur') res[k] = '10px';
+                    else if (k === 'themeOverlayOpacity') res[k] = '0.85';
+                    else res[k] = '';
+                }
+            }
         });
         return res;
     }

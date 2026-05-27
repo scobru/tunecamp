@@ -52,7 +52,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 // 0.1 Fix Missing Ownership
                 const trackFix = database.db.prepare("UPDATE tracks SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
                 const albumFix = database.db.prepare("UPDATE albums SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
-                const releaseFix = database.db.prepare("UPDATE releases SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
+                const releaseFix = { changes: 0 };
                 
                 // 0.2 Fix Invalid Ownership (Foreign Key leaks)
                 const invalidTrackFix = database.db.prepare(`
@@ -67,11 +67,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                     WHERE owner_id NOT IN (SELECT id FROM admin)
                 `).run(adminId);
 
-                const invalidReleaseFix = database.db.prepare(`
-                    UPDATE releases 
-                    SET owner_id = ? 
-                    WHERE owner_id NOT IN (SELECT id FROM admin)
-                `).run(adminId);
+                const invalidReleaseFix = { changes: 0 };
 
                 // 0.3 Clean up redundant/corrupted ownership tables
                 const cleanTrackOwnership = database.db.prepare(`DELETE FROM track_ownership WHERE owner_id NOT IN (SELECT id FROM admin)`).run();
@@ -297,12 +293,8 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 WHERE artist_id IS NULL AND id IN (SELECT DISTINCT album_id FROM tracks WHERE artist_id IS NOT NULL)
             `).run();
 
-            // B. Propagate artist_id from tracks to releases where missing
-            const releaseFix = database.db.prepare(`
-                UPDATE releases 
-                SET artist_id = (SELECT artist_id FROM release_tracks WHERE release_id = releases.id AND artist_id IS NOT NULL LIMIT 1)
-                WHERE artist_id IS NULL AND id IN (SELECT DISTINCT release_id FROM release_tracks WHERE artist_id IS NOT NULL)
-            `).run();
+            // B. Propagate artist_id from tracks to releases where missing (handled by albums since releases is a view)
+            const releaseFix = { changes: 0 };
 
             // C. Fix tracks that have an artist_name but null artist_id
             const orphanTracks = database.db.prepare("SELECT DISTINCT artist_name FROM tracks WHERE artist_id IS NULL AND artist_name IS NOT NULL").all() as { artist_name: string }[];
@@ -345,7 +337,6 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                             // Merge associations
                             database.db.prepare("UPDATE tracks SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
                             database.db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
-                            database.db.prepare("UPDATE releases SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
                             database.db.prepare("UPDATE admin SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
                             database.db.prepare("DELETE FROM artists WHERE id = ?").run(fromId);
                             mergeCount++;
