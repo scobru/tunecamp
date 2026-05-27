@@ -25,7 +25,8 @@ const mockDatabase = {
     getTracksByReleaseId: jest.fn(),
     deleteAlbum: jest.fn(),
     getReleases: jest.fn(),
-    getReleasesByOwner: jest.fn(),
+    getReleasesByArtist: jest.fn().mockReturnValue([]),
+    getReleasesByOwner: jest.fn().mockReturnValue([]),
     getRecentReleaseByMetadata: jest.fn(),
     transaction: jest.fn((cb: any) => cb()),
     db: {
@@ -110,6 +111,31 @@ describe('Release Routes - Creation and Publishing', () => {
 
         // Ensure syncRelease is called for new releases
         expect(mockPublishingService.syncRelease).toHaveBeenCalledWith(newReleaseId);
+    });
+
+    test('POST /releases should prevent rapid double-submission duplicate creation', async () => {
+        // Setup a duplicate release created 2 seconds ago
+        const duplicateRelease = {
+            id: 456,
+            title: 'Test Album',
+            visibility: 'public',
+            created_at: new Date(Date.now() - 2000).toISOString()
+        };
+        (mockDatabase.getReleasesByArtist as jest.Mock).mockReturnValue([duplicateRelease]);
+
+        // Act
+        const response = await request(app)
+            .post('/releases')
+            .send({
+                title: 'Test Album',
+                visibility: 'public',
+                artist_id: 1
+            });
+
+        // Assert: It should return the duplicate release with 201 status, but NOT call mockDatabase.createRelease
+        expect(response.status).toBe(201);
+        expect(response.body.id).toBe(456);
+        expect(mockDatabase.createRelease).not.toHaveBeenCalled();
     });
 });
 

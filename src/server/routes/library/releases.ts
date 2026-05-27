@@ -85,6 +85,31 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
         const body = req.body as CreateReleaseBody;
         if (!body.title) throw new BadRequestError("Title is required");
 
+        // Prevent rapid duplicate creation (double-submission prevention)
+        const checkArtistId = body.artist_id || body.artistId || null;
+        const checkOwnerId = req.userId || null;
+        if (checkArtistId || checkOwnerId) {
+            let recentReleases: any[] = [];
+            if (checkArtistId && typeof database.getReleasesByArtist === 'function') {
+                recentReleases = database.getReleasesByArtist(checkArtistId, VisibilityProfile.ALL_ACCESS);
+            } else if (checkOwnerId && typeof database.getReleasesByOwner === 'function') {
+                recentReleases = database.getReleasesByOwner(checkOwnerId, VisibilityProfile.ALL_ACCESS);
+            }
+
+            const duplicate = recentReleases.find(r => {
+                if (r.title.toLowerCase() !== body.title.toLowerCase()) return false;
+                if (!r.created_at) return false;
+                // Support both SQLite 'YYYY-MM-DD HH:MM:SS' and ISO formats
+                const createdTime = Date.parse(r.created_at.replace(" ", "T"));
+                return !isNaN(createdTime) && (Date.now() - createdTime) < 10000; // 10-second threshold
+            });
+
+            if (duplicate) {
+                console.log(`🛡️ [Releases] Blocked duplicate release creation in rapid succession for "${body.title}"`);
+                return res.status(201).json(duplicate); // Return the existing release instead of duplicating
+            }
+        }
+
         const slug = body.title.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
         
         let newReleaseId: number;
