@@ -124,9 +124,20 @@ export class TorrentService {
     public async addTorrent(magnetUri: string, ownerId: number | null): Promise<string> {
         if (!this.client) throw new Error("Torrent client not initialized");
 
+        try {
+            // Check if already active in client to prevent duplicate error
+            const active = this.client.get(magnetUri);
+            if (active) {
+                console.log(`ℹ️ [TorrentService] Torrent already active: ${active.infoHash}`);
+                return active.infoHash;
+            }
+        } catch (e) {}
+
         return new Promise((resolve, reject) => {
-            this.client!.add(magnetUri, { path: path.join(this.musicDir, "downloads", "torrents") }, (torrent) => {
-                console.log(`📥 [TorrentService] Added torrent: ${torrent.name || torrent.infoHash}`);
+            try {
+                // Call add() synchronously without ontorrent callback
+                const torrent = this.client!.add(magnetUri, { path: path.join(this.musicDir, "downloads", "torrents") });
+                console.log(`📥 [TorrentService] Added torrent synchronously: ${torrent.infoHash}`);
                 
                 // Save to database if not exists
                 const existing = this.database.getTorrent(torrent.infoHash);
@@ -136,19 +147,24 @@ export class TorrentService {
                         magnet_uri: magnetUri,
                         owner_id: ownerId,
                         status: 'metadata',
-                        name: torrent.name
+                        name: torrent.name || 'Fetching metadata...'
                     });
                 }
 
                 torrent.on('metadata', () => {
+                    console.log(`📡 [TorrentService] Metadata received for: ${torrent.name} (${torrent.infoHash})`);
                     this.database.updateTorrentProgress(torrent.infoHash, 0, 'downloading', 0, 0, 0, torrent.length, torrent.path);
                     this.database.db.prepare("UPDATE torrents SET name = ? WHERE info_hash = ?").run(torrent.name, torrent.infoHash);
                 });
 
                 this.setupTorrentEvents(torrent, ownerId);
 
+                // Resolve immediately so the HTTP request doesn't timeout while waiting for metadata
                 resolve(torrent.infoHash);
-            });
+            } catch (err: any) {
+                console.error("❌ [TorrentService] Error adding torrent:", err);
+                reject(err);
+            }
         });
     }
 
