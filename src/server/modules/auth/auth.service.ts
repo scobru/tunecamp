@@ -347,7 +347,7 @@ export function createAuthService(
                 if (user.gun_pub && user.gun_priv) {
                     try {
                         const existingPair = this.decryptZenPriv(user.gun_priv);
-                        if ((existingPair.curve && existingPair.curve !== 'secp256k1') || existingPair.pub.length < 80) {
+                        if ((existingPair.curve && existingPair.curve !== 'secp256k1') || existingPair.pub.length > 80) {
                             console.warn(`🚨 [AUTH] User ${username} has a LEGACY (SEA/P-256) identity. Flagging for regeneration.`);
                             user.gun_priv = null; // Force regeneration
                             user.gun_pub = null;
@@ -497,6 +497,22 @@ export function createAuthService(
                     try {
                         parsedProof = JSON.parse(proof);
                     } catch (e) {}
+                }
+
+                // Robustness: If the proof is a legacy signature format containing a Base64 signature,
+                // convert the signature to Base62 so that ZEN can verify it.
+                if (parsedProof && typeof parsedProof === 'object') {
+                    if (typeof parsedProof.s === 'string' && /[+/=]/.test(parsedProof.s)) {
+                        try {
+                            console.log("🔄 [AUTH] Detected legacy Base64 signature in proof. Converting to Base62 for verification...");
+                            const base64 = parsedProof.s.replace(/-/g, '+').replace(/_/g, '/');
+                            const buf = Buffer.from(base64, 'base64');
+                            parsedProof.s = bufToB62Fixed(new Uint8Array(buf), 86);
+                            console.log(`✨ [AUTH] Successfully converted legacy signature to Base62: ${parsedProof.s.slice(0, 10)}...`);
+                        } catch (err: any) {
+                            console.error("❌ [AUTH] Failed to convert legacy signature to Base62:", err.message);
+                        }
+                    }
                 }
 
                 // Diagnostic logs
@@ -889,4 +905,26 @@ export function decryptZenPrivHelper(encrypted: string, secret: string): any {
         decrypted += decipher.final("utf8");
         return JSON.parse(decrypted);
     }
+}
+
+const BASE62_ALPHA = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+/**
+ * Converts a byte buffer into a fixed-length Base62 string.
+ */
+export function bufToB62Fixed(buf: Uint8Array, len: number): string {
+    let hex = "";
+    for (let i = 0; i < buf.length; i++) {
+        hex += ("0" + buf[i].toString(16)).slice(-2);
+    }
+    let n = BigInt("0x" + (hex || "0"));
+    let out = "";
+    while (n > 0n) {
+        out = BASE62_ALPHA[Number(n % 62n)] + out;
+        n = n / 62n;
+    }
+    while (out.length < len) {
+        out = "0" + out;
+    }
+    return out;
 }
