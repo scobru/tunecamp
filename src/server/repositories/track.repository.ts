@@ -1,21 +1,10 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
 import type { Track } from "../core/database.types.js";
-import { VisibilityProfile } from "../common/visibility.js";
+import { VisibilityProfile, ViewerContext, VisibilityGuardian, getContextFromProfile } from "../common/visibility.js";
 
 export class TrackRepository extends BaseRepository {
     private getTrackStmt: Statement;
-    private getAllTracksStmt: Statement;
-    private getAllPublicTracksStmt: Statement;
-    private getTracksByAlbumStmt: Statement;
-    private getPublicTracksByAlbumStmt: Statement;
-
-    // Centralized visibility SQL fragments
-    public static readonly PUBLIC_CONDITION = `
-        (album_status = 'released' AND album_visibility IN ('public', 'unlisted'))
-        OR EXISTS (SELECT 1 FROM release_tracks rt JOIN v_releases r ON rt.release_id = r.id WHERE rt.track_id = v_tracks.id AND r.visibility IN ('public', 'unlisted') AND r.status = 'released')
-        OR (album_id IS NULL AND (1=1)) -- External/Floating tracks default to public stage if not restricted
-    `;
 
     constructor(db: DatabaseType) {
         super(db);
@@ -23,40 +12,6 @@ export class TrackRepository extends BaseRepository {
         const baseSelect = `SELECT * FROM v_tracks`;
 
         this.getTrackStmt = this.db.prepare(`${baseSelect} WHERE id = ?`);
-        
-        this.getAllTracksStmt = this.db.prepare(`
-            ${baseSelect}
-            ORDER BY artist_name, album_title, track_num
-        `);
-
-        this.getAllPublicTracksStmt = this.db.prepare(`
-            ${baseSelect}
-            WHERE ${TrackRepository.PUBLIC_CONDITION}
-            ORDER BY artist_name, album_title, track_num
-        `);
-
-        this.getTracksByAlbumStmt = this.db.prepare(`
-            ${baseSelect}
-            WHERE album_id = ? ORDER BY track_num
-        `);
-
-        this.getPublicTracksByAlbumStmt = this.db.prepare(`
-            ${baseSelect}
-            WHERE album_id = ? AND (${TrackRepository.PUBLIC_CONDITION})
-            ORDER BY track_num
-        `);
-    }
-
-    private getVisibilityFilter(profile: VisibilityProfile): string {
-        switch (profile) {
-            case VisibilityProfile.ALL_ACCESS:
-                return "1=1";
-            case VisibilityProfile.OWNER_SCOPED:
-                return TrackRepository.PUBLIC_CONDITION;
-            case VisibilityProfile.PUBLIC_STAGE:
-            default:
-                return TrackRepository.PUBLIC_CONDITION;
-        }
     }
 
     getByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined {
@@ -126,8 +81,10 @@ export class TrackRepository extends BaseRepository {
         return results;
     }
 
-    getAll(profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE, limit?: number, offset?: number): Track[] {
-        let sql = (profile === VisibilityProfile.ALL_ACCESS) ? this.getAllTracksStmt.source : this.getAllPublicTracksStmt.source;
+    getAll(profile?: VisibilityProfile | ViewerContext, limit?: number, offset?: number): Track[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
+        let sql = `SELECT * FROM v_tracks WHERE ${filter.sql} ORDER BY artist_name, album_title, track_num`;
         
         if (limit !== undefined) {
             sql += ` LIMIT ${Number(limit)}`;
@@ -139,23 +96,26 @@ export class TrackRepository extends BaseRepository {
             sql += " LIMIT 5000";
         }
 
-        const rows = this.db.prepare(sql).all();
+        const rows = this.db.prepare(sql).all(...filter.params);
         return rows.map(row => this.mapTrack(row));
     }
 
-    getByAlbumId(albumId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Track[] {
-        const stmt = (profile === VisibilityProfile.ALL_ACCESS) ? this.getTracksByAlbumStmt : this.getPublicTracksByAlbumStmt;
-        const rows = stmt.all(albumId);
+    getByAlbumId(albumId: number, profile?: VisibilityProfile | ViewerContext): Track[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
+        const sql = `SELECT * FROM v_tracks WHERE album_id = ? AND (${filter.sql}) ORDER BY track_num`;
+        const rows = this.db.prepare(sql).all(albumId, ...filter.params);
         return rows.map(row => this.mapTrack(row));
     }
 
-    getByArtist(artistId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE, artistName?: string): Track[] {
-        const visibilityFilter = this.getVisibilityFilter(profile);
+    getByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Track[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
         const condition = artistName 
             ? `(artist_id = ? OR artist_name = ? OR (artist_id IS NULL AND (artist_id = ? OR artist_name = ?)))`
             : `(artist_id = ? OR (artist_id IS NULL AND artist_id = ?))`;
 
-        const sql = `SELECT * FROM v_tracks WHERE ${condition} AND (${visibilityFilter}) ORDER BY album_title, track_num`;
+        const sql = `SELECT * FROM v_tracks WHERE ${condition} AND (${filter.sql}) ORDER BY album_title, track_num`;
         
         const params: (number | string)[] = [artistId];
         if (artistName) {
@@ -165,13 +125,15 @@ export class TrackRepository extends BaseRepository {
         } else {
             params.push(artistId);
         }
+        params.push(...filter.params);
 
         const rows = this.db.prepare(sql).all(...params);
         return rows.map(row => this.mapTrack(row));
     }
 
-    getByOwner(ownerId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Track[] {
-        const visibilityFilter = this.getVisibilityFilter(profile);
+    getByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Track[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
         const condition = `
             (owner_id = ? 
              OR (owner_id IS NULL AND effective_owner_id = ?) 
@@ -179,11 +141,10 @@ export class TrackRepository extends BaseRepository {
              OR EXISTS (SELECT 1 FROM album_ownership ao_ WHERE ao_.album_id = album_id AND ao_.owner_id = ?))
         `;
 
-        const sql = profile === VisibilityProfile.ALL_ACCESS
-            ? `SELECT * FROM v_tracks WHERE ${condition} ORDER BY album_title, track_num`
-            : `SELECT * FROM v_tracks WHERE ${condition} AND (${visibilityFilter}) ORDER BY album_title, track_num`;
+        const sql = `SELECT * FROM v_tracks WHERE ${condition} AND (${filter.sql}) ORDER BY album_title, track_num`;
+        const params = [ownerId, ownerId, ownerId, ownerId, ...filter.params];
 
-        const rows = this.db.prepare(sql).all(ownerId, ownerId, ownerId, ownerId);
+        const rows = this.db.prepare(sql).all(...params);
         return rows.map(row => this.mapTrack(row));
     }
 

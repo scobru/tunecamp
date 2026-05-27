@@ -1,7 +1,7 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
 import type { Album, Release } from "../core/database.types.js";
-import { VisibilityProfile } from "../common/visibility.js";
+import { VisibilityProfile, ViewerContext, VisibilityGuardian, getContextFromProfile } from "../common/visibility.js";
 
 export class AlbumRepository extends BaseRepository {
     // Centralized visibility SQL fragments
@@ -11,21 +11,6 @@ export class AlbumRepository extends BaseRepository {
 
     constructor(db: DatabaseType) {
         super(db);
-    }
-
-    private getVisibilityFilter(profile: VisibilityProfile, tableAlias?: string): string {
-        const prefix = tableAlias ? `${tableAlias}.` : "";
-        switch (profile) {
-            case VisibilityProfile.ALL_ACCESS:
-                return "1=1"; // No filter
-            case VisibilityProfile.OWNER_SCOPED:
-                // Note: Ownership filter should be handled by specific owner_id queries or by caller
-                // In general repository methods, we default to Public Stage unless owner is explicitly checked
-                return AlbumRepository.PUBLIC_CONDITION;
-            case VisibilityProfile.PUBLIC_STAGE:
-            default:
-                return AlbumRepository.PUBLIC_CONDITION;
-        }
     }
 
     getByTitle(title: string, artistId?: number): Album | undefined {
@@ -94,11 +79,12 @@ export class AlbumRepository extends BaseRepository {
         return this.mapAlbum(row);
     }
 
-    getLibraryAlbums(profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE, limit?: number, offset?: number): Album[] {
-        const visibilityFilter = this.getVisibilityFilter(profile);
+    getLibraryAlbums(profile?: VisibilityProfile | ViewerContext, limit?: number, offset?: number): Album[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, 'v_albums');
         let sql = `
             SELECT * FROM v_albums 
-            WHERE ${AlbumRepository.LIBRARY_FILTER} AND (${visibilityFilter})
+            WHERE ${AlbumRepository.LIBRARY_FILTER} AND (${filter.sql})
             ORDER BY title
         `;
         
@@ -109,12 +95,13 @@ export class AlbumRepository extends BaseRepository {
             sql += " LIMIT 1000";
         }
 
-        const rows = this.db.prepare(sql).all();
+        const rows = this.db.prepare(sql).all(...filter.params);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 
-    getWithStats(profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): (Album & { songCount: number; duration: number })[] {
-        const visibilityFilter = this.getVisibilityFilter(profile, "a");
+    getWithStats(profile?: VisibilityProfile | ViewerContext): (Album & { songCount: number; duration: number })[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "a");
         const sql = `
             SELECT
                 a.*, 
@@ -122,11 +109,11 @@ export class AlbumRepository extends BaseRepository {
                 SUM(IFNULL(t.duration, 0)) as duration
             FROM v_albums a
             LEFT JOIN tracks t ON t.album_id = a.id
-            WHERE ${AlbumRepository.LIBRARY_FILTER.replace("is_release", "a.is_release")} AND (${visibilityFilter})
+            WHERE ${AlbumRepository.LIBRARY_FILTER.replace("is_release", "a.is_release")} AND (${filter.sql})
             GROUP BY a.id
             ORDER BY a.date DESC
         `;
-        const rows = this.db.prepare(sql).all();
+        const rows = this.db.prepare(sql).all(...filter.params);
         return rows.map(row => this.mapAlbum(row)) as any[];
     }
 
@@ -157,15 +144,17 @@ export class AlbumRepository extends BaseRepository {
         return results;
     }
 
-    getReleases(profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Release[] {
-        const visibilityFilter = this.getVisibilityFilter(profile);
-        const sql = `SELECT * FROM v_releases WHERE ${visibilityFilter} ORDER BY date DESC`;
-        const rows = this.db.prepare(sql).all();
+    getReleases(profile?: VisibilityProfile | ViewerContext): Release[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "v_releases");
+        const sql = `SELECT * FROM v_releases WHERE ${filter.sql} ORDER BY date DESC`;
+        const rows = this.db.prepare(sql).all(...filter.params);
         return rows.map((row: any) => ({ ...row, is_release: 1 })) as any[];
     }
 
-    getByArtist(artistId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE, artistName?: string): Album[] {
-        const visibilityFilter = this.getVisibilityFilter(profile, "v_albums");
+    getByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Album[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "v_albums");
         const condition = artistName 
             ? `(artist_id = ? OR artist_name = ? OR title LIKE ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = v_albums.id AND (t.artist_id = ? OR t.artist_name = ?)))`
             : `(artist_id = ? OR EXISTS (SELECT 1 FROM tracks t WHERE t.album_id = v_albums.id AND t.artist_id = ?))`;
@@ -173,7 +162,7 @@ export class AlbumRepository extends BaseRepository {
         const sql = `SELECT * FROM v_albums 
                WHERE ${condition}
                AND ${AlbumRepository.LIBRARY_FILTER} 
-               AND (${visibilityFilter})
+               AND (${filter.sql})
                ORDER BY date DESC`;
         
         const params: (number | string)[] = [artistId];
@@ -185,20 +174,22 @@ export class AlbumRepository extends BaseRepository {
         } else {
             params.push(artistId);
         }
+        params.push(...filter.params);
         
         const rows = this.db.prepare(sql).all(...params);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 
-    getReleasesByArtist(artistId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE, artistName?: string): Release[] {
-        const visibilityFilter = this.getVisibilityFilter(profile, "v_releases");
+    getReleasesByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Release[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "v_releases");
         const condition = artistName
             ? `(artist_id = ? OR artist_name = ? OR EXISTS (SELECT 1 FROM release_tracks rt WHERE rt.release_id = v_releases.id AND rt.artist_name = ?))`
             : `(artist_id = ?)`;
 
         const sql = `SELECT * FROM v_releases
                WHERE ${condition}
-               AND (${visibilityFilter})
+               AND (${filter.sql})
                ORDER BY date DESC`;
         
         const params: (number | string)[] = [artistId];
@@ -206,32 +197,29 @@ export class AlbumRepository extends BaseRepository {
             params.push(artistName);
             params.push(artistName);
         }
+        params.push(...filter.params);
 
         const rows = this.db.prepare(sql).all(...params);
         return rows.map((row: any) => ({ ...row, is_release: 1 })) as any[];
     }
 
-    getByOwner(ownerId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Album[] {
-        const visibilityFilter = this.getVisibilityFilter(profile, "a");
-        const sql = profile === VisibilityProfile.ALL_ACCESS
-            ? `SELECT a.* FROM v_albums a
+    getByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Album[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "a");
+        const sql = `SELECT a.* FROM v_albums a
                JOIN album_ownership ao ON a.id = ao.album_id
-               WHERE ao.owner_id = ? AND a.is_release = 0 ORDER BY a.date DESC`
-            : `SELECT a.* FROM v_albums a
-               JOIN album_ownership ao ON a.id = ao.album_id
-               WHERE ao.owner_id = ? AND a.is_release = 0 AND (${visibilityFilter}) ORDER BY a.date DESC`;
+               WHERE ao.owner_id = ? AND a.is_release = 0 AND (${filter.sql}) ORDER BY a.date DESC`;
 
-        const rows = this.db.prepare(sql).all(ownerId);
+        const rows = this.db.prepare(sql).all(ownerId, ...filter.params);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 
-    getReleasesByOwner(ownerId: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Release[] {
-        const visibilityFilter = this.getVisibilityFilter(profile);
-        const sql = profile === VisibilityProfile.ALL_ACCESS
-            ? `SELECT * FROM v_releases WHERE owner_id = ? ORDER BY date DESC`
-            : `SELECT * FROM v_releases WHERE owner_id = ? AND (${visibilityFilter}) ORDER BY date DESC`;
+    getReleasesByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Release[] {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "v_releases");
+        const sql = `SELECT * FROM v_releases WHERE owner_id = ? AND (${filter.sql}) ORDER BY date DESC`;
 
-        const rows = this.db.prepare(sql).all(ownerId);
+        const rows = this.db.prepare(sql).all(ownerId, ...filter.params);
         return rows as any[];
     }
 
@@ -250,14 +238,13 @@ export class AlbumRepository extends BaseRepository {
         return this.db.prepare(`SELECT artist_id, count(*) as count FROM albums WHERE is_release = 0 GROUP BY artist_id`).all() as any[];
     }
 
-    search(query: string, limit: number, profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Album[] {
+    search(query: string, limit: number, profile?: VisibilityProfile | ViewerContext): Album[] {
         const likeQuery = `%${query}%`;
-        const visibilityFilter = this.getVisibilityFilter(profile);
-        const sql = `SELECT * FROM v_albums WHERE ${AlbumRepository.RELEASE_FILTER} AND (${visibilityFilter}) AND (title LIKE ? OR artist_name LIKE ?) LIMIT ?`;
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getAlbumFilter(context, "v_albums");
+        const sql = `SELECT * FROM v_albums WHERE ${AlbumRepository.RELEASE_FILTER} AND (${filter.sql}) AND (title LIKE ? OR artist_name LIKE ?) LIMIT ?`;
         
-        // If profile is ALL_ACCESS, we might want to include non-releases in search? 
-        // Current implementation kept RELEASE_FILTER for search.
-        const rows = this.db.prepare(sql).all(likeQuery, likeQuery, limit);
+        const rows = this.db.prepare(sql).all(...filter.params, likeQuery, likeQuery, limit);
         return rows.map(row => this.mapAlbum(row)) as Album[];
     }
 

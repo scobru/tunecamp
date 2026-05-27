@@ -3,7 +3,7 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import { TrackRepository } from "../repositories/track.repository.js";
 import { AlbumRepository } from "../repositories/album.repository.js";
 import { ArtistRepository } from "../repositories/artist.repository.js";
-import { VisibilityProfile } from "../common/visibility.js";
+import { VisibilityProfile, ViewerContext, UserRole, getContextFromProfile, VisibilityGuardian } from "../common/visibility.js";
 import { ReleaseTrackRepository } from "../repositories/release-track.repository.js";
 import { SocialRepository } from "../repositories/social.repository.js";
 import { RemoteActorRepository } from "../repositories/remote-actor.repository.js";
@@ -658,7 +658,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         getOAuthLink: (p: string, s: string) => db.prepare("SELECT * FROM oauth_links WHERE provider = ? AND subject = ?").get(p, s) as any,
 
         // Artists
-        getArtists: (p = VisibilityProfile.PUBLIC_STAGE) => artistRepository.getAll(p),
+        getArtists: (p?: VisibilityProfile | ViewerContext) => artistRepository.getAll(p),
         getArtist: (id: number) => artistRepository.getById(id),
         getArtistSimple: (id: number) => artistRepository.getByIdSimple(id),
         getArtistBySlug: (s: string) => artistRepository.getBySlug(s),
@@ -679,12 +679,12 @@ export function createDatabase(dbPath: string): DatabaseService {
         isArtistLinkedToUserBySlug: (s: string) => artistRepository.isLinkedToUserBySlug(s),
 
         // Releases
-        getReleases: (p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.getReleases(p),
+        getReleases: (p?: VisibilityProfile | ViewerContext) => albumRepository.getReleases(p),
         getRelease: (id: number) => albumRepository.getById(id) as any,
         getReleaseBySlug: (s: string) => albumRepository.getBySlug(s) as any,
         getRecentReleaseByMetadata: (t: string, aid: number | null, s: number) => db.prepare("SELECT * FROM releases WHERE title = ? AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL)) AND created_at >= datetime('now', ?) ORDER BY created_at DESC LIMIT 1").get(t, aid, aid, `-${s} seconds`) as any,
-        getReleasesByArtist: (id: number, p = VisibilityProfile.PUBLIC_STAGE, n?: string) => albumRepository.getReleasesByArtist(id, p, n),
-        getReleasesByOwner: (id: number, p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.getReleasesByOwner(id, p),
+        getReleasesByArtist: (id: number, p?: VisibilityProfile | ViewerContext, n?: string) => albumRepository.getReleasesByArtist(id, p, n),
+        getReleasesByOwner: (id: number, p?: VisibilityProfile | ViewerContext) => albumRepository.getReleasesByOwner(id, p),
         createRelease: (r: any) => albumRepository.createRelease(r),
         updateRelease: (id: number, d: any) => albumRepository.update(id, d),
         getReleaseTracks: (id: number) => releaseTrackRepository.getByReleaseId(id),
@@ -695,9 +695,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteReleasesBatch: (ids: number[]) => { ids.forEach(id => albumRepository.delete(id)); },
 
         // Albums
-        getAlbums: (p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.getLibraryAlbums(p),
-        getAlbumsWithStats: (p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.getWithStats(p),
-        getLibraryAlbums: (p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.getLibraryAlbums(p),
+        getAlbums: (p?: VisibilityProfile | ViewerContext) => albumRepository.getLibraryAlbums(p),
+        getAlbumsWithStats: (p?: VisibilityProfile | ViewerContext) => albumRepository.getWithStats(p),
+        getLibraryAlbums: (p?: VisibilityProfile | ViewerContext) => albumRepository.getLibraryAlbums(p),
         getAlbum: (id: number) => albumRepository.getById(id),
         getAlbumsByIds: (ids: number[]) => albumRepository.getByIds(ids),
         getAlbumBySlug: (s: string) => albumRepository.getBySlug(s),
@@ -705,8 +705,8 @@ export function createDatabase(dbPath: string): DatabaseService {
         getAlbumByExternalId: (e: string) => albumRepository.getByExternalId(e) as any,
         getArtistAlbumCounts: () => albumRepository.getArtistAlbumCounts(),
         getArtistCovers: (id: number) => albumRepository.getCovers(id),
-        getAlbumsByArtist: (id: number, p = VisibilityProfile.PUBLIC_STAGE, n?: string) => albumRepository.getByArtist(id, p, n),
-        getAlbumsByOwner: (id: number, p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.getByOwner(id, p),
+        getAlbumsByArtist: (id: number, p?: VisibilityProfile | ViewerContext, n?: string) => albumRepository.getByArtist(id, p, n),
+        getAlbumsByOwner: (id: number, p?: VisibilityProfile | ViewerContext) => albumRepository.getByOwner(id, p),
         createAlbum: (a: any) => { const aid = albumRepository.create(a); if (a.owner_id) albumRepository.addOwner(aid, a.owner_id); return aid; },
         updateAlbumVisibility: (id: number, v: any) => { const ip = v === 'public' || v === 'unlisted'; albumRepository.update(id, { visibility: v, is_public: ip, published_at: ip ? new Date().toISOString() : null }); },
         updateAlbumStatus: (id: number, s: any) => albumRepository.update(id, { status: s }),
@@ -726,15 +726,15 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteAlbum: (id: number, k = false) => albumRepository.delete(id, k),
         deleteAlbumsBatch: (ids: number[], k = false) => { ids.forEach(id => albumRepository.delete(id, k)); },
         updateAlbumsVisibilityBatch: (ids: number[], v: any) => { ids.forEach(id => service.updateAlbumVisibility(id, v)); },
-        searchAlbums: (q: string, l: number, p = VisibilityProfile.PUBLIC_STAGE) => albumRepository.search(q, l, p),
+        searchAlbums: (q: string, l: number, p?: VisibilityProfile | ViewerContext) => albumRepository.search(q, l, p),
         addAlbumOwner: (aid: number, oid: number) => { albumRepository.addOwner(aid, oid); },
 
         // Tracks
-        getTracks: (aid?: number, p = VisibilityProfile.PUBLIC_STAGE) => aid ? trackRepository.getByAlbumId(aid, p) : trackRepository.getAll(p),
-        getTracksByAlbum: (aid: number, p = VisibilityProfile.PUBLIC_STAGE) => trackRepository.getByAlbumId(aid, p),
-        getTracksByArtist: (aid: number, p = VisibilityProfile.PUBLIC_STAGE, n?: string) => trackRepository.getByArtist(aid, p, n),
+        getTracks: (aid?: number, p?: VisibilityProfile | ViewerContext) => aid ? trackRepository.getByAlbumId(aid, p) : trackRepository.getAll(p),
+        getTracksByAlbum: (aid: number, p?: VisibilityProfile | ViewerContext) => trackRepository.getByAlbumId(aid, p),
+        getTracksByArtist: (aid: number, p?: VisibilityProfile | ViewerContext, n?: string) => trackRepository.getByArtist(aid, p, n),
         repairArtistLinks(aid: number, n: string) { return db.transaction(() => ({ tracks: db.prepare("UPDATE tracks SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND (artist_name LIKE ? OR artist_name = ?)").run(aid, n, aid, `%${n}%`, n).changes, albums: db.prepare("UPDATE albums SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND (title = ? OR title LIKE ?)").run(aid, n, aid, n, `%${n}%`).changes }))(); },
-        getTracksByOwner: (oid: number, p = VisibilityProfile.PUBLIC_STAGE) => trackRepository.getByOwner(oid, p),
+        getTracksByOwner: (oid: number, p?: VisibilityProfile | ViewerContext) => trackRepository.getByOwner(oid, p),
         getTrack: (id: number) => trackRepository.getById(id),
         getTracksByIds: (ids: number[]) => trackRepository.getByIds(ids),
         getTrackByPath: (p: string) => trackRepository.getByPath(p),
@@ -794,8 +794,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         },
 
         // Playlists
-        getPlaylists(u?: string, profile = VisibilityProfile.PUBLIC_STAGE): Playlist[] {
-            const po = profile === VisibilityProfile.PUBLIC_STAGE;
+        getPlaylists(u?: string, profile?: VisibilityProfile | ViewerContext): Playlist[] {
+            const context = getContextFromProfile(profile);
+            const po = context.role === UserRole.GUEST;
             let sql = po ? "SELECT id, name, username, description, is_public as isPublic, cover_path as coverPath, created_at as createdAt FROM playlists WHERE is_public = 1" : "SELECT id, name, username, description, is_public as isPublic, cover_path as coverPath, created_at as createdAt FROM playlists";
             if (u) sql += po ? " AND username = ?" : " WHERE username = ?";
             return (u ? db.prepare(sql).all(u) : db.prepare(sql).all()) as any[];
@@ -838,7 +839,11 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteBookmark: (u: string, id: string) => { db.prepare("DELETE FROM bookmarks WHERE username = ? AND track_id = ?").run(u, id); },
 
         // Posts
-        getPostsByArtist: (aid: number, pr = VisibilityProfile.PUBLIC_STAGE) => db.prepare(pr === VisibilityProfile.PUBLIC_STAGE ? "SELECT * FROM posts WHERE artist_id = ? AND visibility = 'public' ORDER BY created_at DESC" : "SELECT * FROM posts WHERE artist_id = ? ORDER BY created_at DESC").all(aid) as any[],
+        getPostsByArtist: (aid: number, pr?: VisibilityProfile | ViewerContext) => {
+            const context = getContextFromProfile(pr);
+            const po = context.role === UserRole.GUEST;
+            return db.prepare(po ? "SELECT * FROM posts WHERE artist_id = ? AND visibility = 'public' ORDER BY created_at DESC" : "SELECT * FROM posts WHERE artist_id = ? ORDER BY created_at DESC").all(aid) as any[];
+        },
         getPublicPosts: () => db.prepare(`
             SELECT p.*, a.name AS artist_name, a.slug AS artist_slug, a.photo_path AS artist_photo
             FROM posts p
@@ -870,9 +875,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             }; 
         },
         getPublicTracksCount: () => trackRepository.getAll(VisibilityProfile.PUBLIC_STAGE).length,
-        getGenres(p = VisibilityProfile.PUBLIC_STAGE): string[] {
-            const visibilityFilter = p === VisibilityProfile.ALL_ACCESS ? "1=1" : TrackRepository.PUBLIC_CONDITION;
-            const rows = db.prepare(`SELECT DISTINCT genre FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${visibilityFilter})`).all() as any[];
+        getGenres(p?: VisibilityProfile | ViewerContext): string[] {
+            const context = getContextFromProfile(p);
+            const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
+            const rows = db.prepare(`SELECT DISTINCT genre FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${filter.sql})`).all(...filter.params) as any[];
             const genreSet = new Set<string>();
             rows.forEach(r => {
                 r.genre.split(',').forEach((g: string) => {
@@ -882,15 +888,17 @@ export function createDatabase(dbPath: string): DatabaseService {
             });
             return Array.from(genreSet).sort();
         },
-        getTracksByGenre(g: string, p = VisibilityProfile.PUBLIC_STAGE): Track[] {
-            const visibilityFilter = p === VisibilityProfile.ALL_ACCESS ? "1=1" : TrackRepository.PUBLIC_CONDITION;
+        getTracksByGenre(g: string, p?: VisibilityProfile | ViewerContext): Track[] {
+            const context = getContextFromProfile(p);
+            const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
             // Use LIKE to find tracks that have the genre in a comma-separated list
-            const rows = db.prepare(`SELECT * FROM v_tracks WHERE (genre = ? OR genre LIKE ? OR genre LIKE ? OR genre LIKE ?) AND (${visibilityFilter}) ORDER BY artist_name, album_title, track_num`).all(g, `${g},%`, `%, ${g},%`, `%, ${g}`);
+            const rows = db.prepare(`SELECT * FROM v_tracks WHERE (genre = ? OR genre LIKE ? OR genre LIKE ? OR genre LIKE ?) AND (${filter.sql}) ORDER BY artist_name, album_title, track_num`).all(g, `${g},%`, `%, ${g},%`, `%, ${g}`, ...filter.params);
             return rows.map(r => (trackRepository as any).mapTrack(r));
         },
-        getGenreTrackCounts(p = VisibilityProfile.PUBLIC_STAGE): Map<string, number> {
-            const visibilityFilter = p === VisibilityProfile.ALL_ACCESS ? "1=1" : TrackRepository.PUBLIC_CONDITION;
-            const rows = db.prepare(`SELECT genre, COUNT(*) as count FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${visibilityFilter}) GROUP BY genre`).all() as any[];
+        getGenreTrackCounts(p?: VisibilityProfile | ViewerContext): Map<string, number> {
+            const context = getContextFromProfile(p);
+            const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
+            const rows = db.prepare(`SELECT genre, COUNT(*) as count FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${filter.sql}) GROUP BY genre`).all(...filter.params) as any[];
             const counts = new Map<string, number>();
             rows.forEach(r => {
                 r.genre.split(',').forEach((g: string) => {
@@ -975,7 +983,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         getAllPluginsState: () => db.prepare("SELECT * FROM system_plugins").all(),
 
         // Search
-        search: (q: string, p = VisibilityProfile.PUBLIC_STAGE) => ({ 
+        search: (q: string, p?: VisibilityProfile | ViewerContext) => ({ 
             artists: artistRepository.getAll(p).filter(a => a.name.toLowerCase().includes(q.toLowerCase())), 
             albums: albumRepository.search(q, 10, p), 
             tracks: trackRepository.getAll(p).filter(t => t.title.toLowerCase().includes(q.toLowerCase())) 

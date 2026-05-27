@@ -48,4 +48,42 @@ describe("VisibilityGuardian", () => {
       expect(context.role).toBe(UserRole.GUEST);
     });
   });
+
+  describe("SQL Filters", () => {
+    test("getTrackFilter should return correct SQL for Guest", () => {
+      const filter = VisibilityGuardian.getTrackFilter({ role: UserRole.GUEST });
+      expect(filter.sql).toContain("album_status = 'released'");
+      expect(filter.params).toHaveLength(0);
+    });
+
+    test("getTrackFilter should return correct SQL for User", () => {
+      const filter = VisibilityGuardian.getTrackFilter({ role: UserRole.NORMAL_USER, userId: 42 });
+      expect(filter.sql).toContain("effective_owner_id = ?");
+      expect(filter.params).toEqual([42]);
+    });
+
+    test("getTrackFilter should return 1=1 for Admin", () => {
+      const filter = VisibilityGuardian.getTrackFilter({ role: UserRole.ADMIN });
+      expect(filter.sql).toBe("1=1");
+      expect(filter.params).toHaveLength(0);
+    });
+
+    test("getAlbumFilter should return correct SQL for Guest", () => {
+      const filter = VisibilityGuardian.getAlbumFilter({ role: UserRole.GUEST });
+      expect(filter.sql).toContain("status = 'released'");
+      expect(filter.params).toHaveLength(0);
+    });
+
+    test("getAlbumFilter should return correct SQL for User", () => {
+      const filter = VisibilityGuardian.getAlbumFilter({ role: UserRole.NORMAL_USER, userId: 42 });
+      expect(filter.sql).toContain("owner_id = ?");
+      expect(filter.params).toEqual([42, 42]);
+    });
+
+    test("getAlbumFilter should return 1=1 for Admin", () => {
+      const filter = VisibilityGuardian.getAlbumFilter({ role: UserRole.ADMIN });
+      expect(filter.sql).toBe("1=1");
+      expect(filter.params).toHaveLength(0);
+    });
+  });
 });

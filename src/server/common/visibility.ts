@@ -36,6 +36,11 @@ export interface ViewerContext {
   isActive?: boolean;
 }
 
+export interface SqlFilter {
+  sql: string;
+  params: any[];
+}
+
 export class VisibilityGuardian {
   /**
    * Translates a ViewerContext into a database access profile.
@@ -152,6 +157,68 @@ export class VisibilityGuardian {
   }
 
   /**
+   * Generates a secure SQL filter clause for tracks based on the viewer context.
+   */
+  static getTrackFilter(context: ViewerContext, tableAlias = 'v_tracks'): SqlFilter {
+    const role = context.role;
+    const userId = context.userId;
+
+    // 1. Admins and Super Users see all tracks
+    if ([UserRole.ROOT_ADMIN, UserRole.ADMIN, UserRole.SUPER_USER].includes(role)) {
+      return { sql: '1=1', params: [] };
+    }
+
+    // 2. Logged-in users see public tracks + tracks they own
+    if (userId) {
+      return {
+        sql: `(
+          (${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted'))
+          OR ${tableAlias}.album_id IS NULL
+          OR ${tableAlias}.effective_owner_id = ?
+        )`,
+        params: [userId]
+      };
+    }
+
+    // 3. Guests see only public tracks
+    return {
+      sql: `(${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted')) OR (${tableAlias}.album_id IS NULL)`,
+      params: []
+    };
+  }
+
+  /**
+   * Generates a secure SQL filter clause for albums based on the viewer context.
+   */
+  static getAlbumFilter(context: ViewerContext, tableAlias = 'v_albums'): SqlFilter {
+    const role = context.role;
+    const userId = context.userId;
+
+    // 1. Admins and Super Users see all albums
+    if ([UserRole.ROOT_ADMIN, UserRole.ADMIN, UserRole.SUPER_USER].includes(role)) {
+      return { sql: '1=1', params: [] };
+    }
+
+    // 2. Logged-in users see public albums + albums they own
+    if (userId) {
+      return {
+        sql: `(
+          (${tableAlias}.status = 'released' AND ${tableAlias}.visibility IN ('public', 'unlisted'))
+          OR ${tableAlias}.owner_id = ?
+          OR EXISTS (SELECT 1 FROM album_ownership ao WHERE ao.album_id = ${tableAlias}.id AND ao.owner_id = ?)
+        )`,
+        params: [userId, userId]
+      };
+    }
+
+    // 3. Guests see only public albums
+    return {
+      sql: `(${tableAlias}.status = 'released' AND ${tableAlias}.visibility IN ('public', 'unlisted'))`,
+      params: []
+    };
+  }
+
+  /**
    * Checks if a specific item should be visible to the viewer.
    * Centralizes the logic for Public Stage vs Private Library + Approval Status.
    */
@@ -189,4 +256,11 @@ export class VisibilityGuardian {
     const isVisibleToPublic = artist.visibility === 'public' || artist.visibility === 'unlisted';
     return isVisibleToPublic && hasFormalRelease;
   }
+}
+
+export function getContextFromProfile(profile?: VisibilityProfile | ViewerContext): ViewerContext {
+    if (!profile) return { role: UserRole.GUEST };
+    if (typeof profile === 'object' && 'role' in profile) return profile as ViewerContext;
+    if (profile === VisibilityProfile.ALL_ACCESS) return { role: UserRole.ROOT_ADMIN };
+    return { role: UserRole.GUEST };
 }

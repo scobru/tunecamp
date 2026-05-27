@@ -133,4 +133,12 @@ Chronological log of completed tasks and significant architectural decisions.
 - **Localization Service Process Fix**: Resolved a mysterious `yt-dlp: error: no such option: --binary` error in `LocalizationService` caused by the `youtube-dl-exec` wrapper's faulty argument mapping in its `v3.x` layer. Replaced the wrapper with direct `yt-dlp` execution via `child_process.execFile` for improved reliability and precision.
 - **Bot Detection Resilience**: Synchronized `LocalizationService` parameters with `YouTubeProvider` to use the most resilient client configurations (mweb/android).
 
+### 2026-05-27: Database Consolidation & WebTorrent Compilation Fix
+- **Database Consolidation**: Fused physical `releases` and `release_tracks` tables into `albums` and `tracks` tables respectively, completely removing row-copying duplication on album promotion.
+- **Backward-Compatible SQL Views**: Established `releases` and `release_tracks` as SQL views, ensuring zero breakage for existing API and database consumers.
+- **Repository Optimization**: Refactored `AlbumRepository`, `ReleaseTrackRepository`, and `TrackRepository` to remove all copy synchronization logic, updating links directly.
+- **Startup Maintenance Repair**: Cleaned up `maintenance.startup.ts` to execute updates directly on the `albums` table rather than attempting to update read-only SQL views on startup.
+- **WebTorrent Build Fix**: Resolved a compiler block in `torrent.service.ts` by adding `await` to the async `client.get()` call.
+- **Verification**: Verified 100% test suite coverage success (57/57 suites, 408/408 tests passed).
+
 

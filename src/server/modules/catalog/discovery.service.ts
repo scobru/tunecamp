@@ -92,7 +92,6 @@ export class DiscoveryService {
     }
 
     // --- User-Scoped Retrieval ---
-
     async getTracksForUser(user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }, options: { mineOnly?: boolean } = {}): Promise<TrackDTO[]> {
         const context = VisibilityGuardian.deriveContext({
             userId: user.userId,
@@ -101,44 +100,13 @@ export class DiscoveryService {
             isActive: user.isActive
         });
 
-        const profile = VisibilityGuardian.getProfile(context);
         const username = user.username;
         let tracks: Track[] = [];
 
-        if (profile === VisibilityProfile.ALL_ACCESS) {
-            if (options.mineOnly && context.userId !== undefined && context.userId !== null) {
-                tracks = this.database.getTracksByOwner(context.userId, profile);
-            } else {
-                tracks = this.database.getTracks(undefined, profile);
-            }
-        } else if (profile === VisibilityProfile.OWNER_SCOPED && context.userId) {
-            const publicTracks = this.database.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
-            const myTracks = this.database.getTracksByOwner(context.userId, VisibilityProfile.ALL_ACCESS);
-            
-            const seen = new Set();
-            tracks = [...publicTracks, ...myTracks].filter(t => {
-                if (seen.has(t.id)) return false;
-                seen.add(t.id);
-                return true;
-            });
+        if (options.mineOnly && context.userId !== undefined && context.userId !== null) {
+            tracks = this.database.getTracksByOwner(context.userId, context);
         } else {
-            const publicTracks = this.database.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
-            let starredTracks: Track[] = [];
-            
-            if (username) {
-                const starredIds = this.database.getStarredItems(username, 'track').map(i => i.item_id);
-                const validIds = starredIds.filter(id => /^\d+$/.test(id)).map(id => parseInt(id, 10));
-                if (validIds.length > 0) {
-                    starredTracks = this.database.getTracksByIds(validIds);
-                }
-            }
-
-            const seen = new Set();
-            tracks = [...publicTracks, ...starredTracks].filter(t => {
-                if (seen.has(t.id)) return false;
-                seen.add(t.id);
-                return true;
-            });
+            tracks = this.database.getTracks(undefined, context);
         }
 
         return tracks.map(t => mapTrackDTO(t, this.database, username));

@@ -1,7 +1,7 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
 import { BaseRepository } from "./base.repository.js";
 import type { Artist } from "../core/database.types.js";
-import { VisibilityProfile } from "../common/visibility.js";
+import { VisibilityProfile, ViewerContext, UserRole, getContextFromProfile } from "../common/visibility.js";
 
 export class ArtistRepository extends BaseRepository {
     private getArtistStmt: Statement;
@@ -75,8 +75,9 @@ export class ArtistRepository extends BaseRepository {
         return this.mapArtist(row);
     }
 
-    getAll(profile: VisibilityProfile = VisibilityProfile.PUBLIC_STAGE): Artist[] {
-        const publicOnly = profile === VisibilityProfile.PUBLIC_STAGE;
+    getAll(profile?: VisibilityProfile | ViewerContext): Artist[] {
+        const context = getContextFromProfile(profile);
+        const publicOnly = context.role === UserRole.GUEST;
         const baseSql = `
             SELECT a.*, a.wallet_address as walletAddress,
             (CASE WHEN EXISTS (SELECT 1 FROM admin WHERE artist_id = a.id)

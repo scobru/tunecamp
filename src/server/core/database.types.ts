@@ -3,7 +3,7 @@
  * All domain model interfaces used across the server codebase.
  */
 import type { Database as DatabaseType } from "better-sqlite3";
-import { VisibilityProfile } from "../common/visibility.js";
+import { VisibilityProfile, ViewerContext } from "../common/visibility.js";
 
 export interface OAuthClient {
     id?: number;
@@ -367,7 +367,7 @@ export interface DatabaseService {
     getOAuthLink(provider: string, subject: string): OAuthLink | undefined;
 
     // Artists
-    getArtists(profile?: VisibilityProfile): Artist[];
+    getArtists(profile?: VisibilityProfile | ViewerContext): Artist[];
     getArtist(id: number): Artist | undefined;
     getArtistSimple(id: number): Artist | undefined;
     getArtistBySlug(slug: string): Artist | undefined;
@@ -388,12 +388,12 @@ export interface DatabaseService {
     isArtistLinkedToUserBySlug(slug: string): boolean;
 
     // Releases (New watertight compartment)
-    getReleases(profile?: VisibilityProfile): Release[];
+    getReleases(profile?: VisibilityProfile | ViewerContext): Release[];
     getRelease(id: number): Release | undefined;
     getReleaseBySlug(slug: string): Release | undefined;
     getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined;
-    getReleasesByArtist(artistId: number, profile?: VisibilityProfile, artistName?: string): Release[];
-    getReleasesByOwner(ownerId: number, profile?: VisibilityProfile): Release[];
+    getReleasesByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Release[];
+    getReleasesByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Release[];
     createRelease(release: Omit<Release, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateRelease(id: number, data: Partial<Release>): void;
     getReleaseTracks(releaseId: number): ReleaseTrack[];
@@ -404,9 +404,9 @@ export interface DatabaseService {
     deleteReleasesBatch(ids: number[]): void;
 
     // Legacy/Library Albums
-    getAlbums(profile?: VisibilityProfile): Album[];
-    getAlbumsWithStats(profile?: VisibilityProfile): (Album & { songCount: number; duration: number })[];
-    getLibraryAlbums(profile?: VisibilityProfile): Album[]; // is_release=0
+    getAlbums(profile?: VisibilityProfile | ViewerContext): Album[];
+    getAlbumsWithStats(profile?: VisibilityProfile | ViewerContext): (Album & { songCount: number; duration: number })[];
+    getLibraryAlbums(profile?: VisibilityProfile | ViewerContext): Album[]; // is_release=0
     getAlbum(id: number): Album | undefined;
     getAlbumsByIds(ids: number[]): Album[];
     getAlbumBySlug(slug: string): Album | undefined;
@@ -414,8 +414,8 @@ export interface DatabaseService {
     getAlbumByExternalId(externalId: string): Album | undefined;
     getArtistAlbumCounts(): { artist_id: number, count: number }[];
     getArtistCovers(artistId: number): string[];
-    getAlbumsByArtist(artistId: number, profile?: VisibilityProfile, artistName?: string): Album[];
-    getAlbumsByOwner(ownerId: number, profile?: VisibilityProfile): Album[];
+    getAlbumsByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Album[];
+    getAlbumsByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Album[];
     createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
     updateAlbumVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     updateAlbumStatus(id: number, status: string): void;
@@ -435,15 +435,15 @@ export interface DatabaseService {
     deleteAlbum(id: number, keepTracks?: boolean): void;
     deleteAlbumsBatch(ids: number[], keepTracks?: boolean): void;
     updateAlbumsVisibilityBatch(ids: number[], visibility: Album['visibility']): void;
-    searchAlbums(query: string, limit: number, profile?: VisibilityProfile): Album[];
+    searchAlbums(query: string, limit: number, profile?: VisibilityProfile | ViewerContext): Album[];
     addAlbumOwner(aid: number, oid: number): void;
 
     // Tracks
-    getTracks(albumId?: number, profile?: VisibilityProfile): Track[];
-    getTracksByAlbum(albumId: number, profile?: VisibilityProfile): Track[];
-    getTracksByArtist(artistId: number, profile?: VisibilityProfile, artistName?: string): Track[];
+    getTracks(albumId?: number, profile?: VisibilityProfile | ViewerContext): Track[];
+    getTracksByAlbum(albumId: number, profile?: VisibilityProfile | ViewerContext): Track[];
+    getTracksByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Track[];
     repairArtistLinks(artistId: number, artistName: string): { tracks: number, albums: number };
-    getTracksByOwner(ownerId: number, profile?: VisibilityProfile): Track[];
+    getTracksByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Track[];
     getTrack(id: number): Track | undefined;
     getTracksByIds(ids: number[]): Track[];
     getTrackByPath(path: string): Track | undefined;
@@ -499,7 +499,7 @@ export interface DatabaseService {
     iterateTracks(whereClause?: string, params?: any[]): IterableIterator<Track>;
 
     // Playlists
-    getPlaylists(username?: string, profile?: VisibilityProfile): Playlist[];
+    getPlaylists(username?: string, profile?: VisibilityProfile | ViewerContext): Playlist[];
     getPlaylist(id: number): Playlist | undefined;
     createPlaylist(name: string, username: string, description?: string, isPublic?: boolean): number;
     updatePlaylistVisibility(id: number, isPublic: boolean): void;
@@ -538,7 +538,7 @@ export interface DatabaseService {
     deleteBookmark(user: string, id: string): void;
 
     // Posts
-    getPostsByArtist(artistId: number, profile?: VisibilityProfile): Post[];
+    getPostsByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext): Post[];
     getPublicPosts(): Post[];
     getPost(id: number): Post | undefined;
     getPostBySlug(slug: string): Post | undefined;
@@ -550,9 +550,9 @@ export interface DatabaseService {
     // Stats
     getStats(artistId?: number, ownerId?: number): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number; genresCount: number; genres: string[] }>;
     getPublicTracksCount(): number;
-    getGenres(profile?: VisibilityProfile): string[];
-    getTracksByGenre(genre: string, profile?: VisibilityProfile): Track[];
-    getGenreTrackCounts(profile?: VisibilityProfile): Map<string, number>;
+    getGenres(profile?: VisibilityProfile | ViewerContext): string[];
+    getTracksByGenre(genre: string, profile?: VisibilityProfile | ViewerContext): Track[];
+    getGenreTrackCounts(profile?: VisibilityProfile | ViewerContext): Map<string, number>;
     getListeningStats(): ListeningStats;
 
     // ActivityPub Metadata
@@ -626,7 +626,7 @@ export interface DatabaseService {
     getAllPluginsState(): any[];
 
     // Search
-    search(query: string, profile?: VisibilityProfile): { artists: Artist[]; albums: Album[]; tracks: Track[] };
+    search(query: string, profile?: VisibilityProfile | ViewerContext): { artists: Artist[]; albums: Album[]; tracks: Track[] };
 
     // Maintenance
     getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[];
