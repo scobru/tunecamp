@@ -315,6 +315,31 @@ export class AlbumRepository extends BaseRepository {
     }
 
     update(id: number, album: Partial<Album>): void {
+        // Map camelCase keys to snake_case database column names
+        const normalizedAlbum: any = {};
+        const keyMap: { [key: string]: string } = {
+            artistId: 'artist_id',
+            ownerId: 'owner_id',
+            coverPath: 'cover_path',
+            externalLinks: 'external_links',
+            externalId: 'external_id',
+            isPublic: 'is_public',
+            isRelease: 'is_release',
+            publishedAt: 'published_at',
+            publishedToGunDB: 'published_to_gundb',
+            publishedToAP: 'published_to_ap',
+            albumArtist: 'album_artist',
+            useNft: 'use_nft',
+            priceUsdc: 'price_usdc',
+            priceUsdt: 'price_usdt'
+        };
+
+        for (const [key, value] of Object.entries(album)) {
+            const normalizedKey = keyMap[key] || key;
+            normalizedAlbum[normalizedKey] = value;
+        }
+        album = normalizedAlbum;
+
         const fields: string[] = [];
         const values: any[] = [];
 

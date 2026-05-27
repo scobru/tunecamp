@@ -255,6 +255,28 @@ export class TrackRepository extends BaseRepository {
     }
 
     update(id: number, track: Partial<Track>): void {
+        // Map camelCase keys to snake_case database column names
+        const normalizedTrack: any = {};
+        const keyMap: { [key: string]: string } = {
+            artistId: 'artist_id',
+            albumId: 'album_id',
+            ownerId: 'owner_id',
+            trackNum: 'track_num',
+            filePath: 'file_path',
+            sampleRate: 'sample_rate',
+            priceUsdc: 'price_usdc',
+            priceUsdt: 'price_usdt',
+            losslessPath: 'lossless_path',
+            externalArtwork: 'external_artwork',
+            externalId: 'external_id'
+        };
+
+        for (const [key, value] of Object.entries(track)) {
+            const normalizedKey = keyMap[key] || key;
+            normalizedTrack[normalizedKey] = value;
+        }
+        track = normalizedTrack;
+
         const fields: string[] = [];
         const values: any[] = [];
         for (const [key, value] of Object.entries(track)) {
