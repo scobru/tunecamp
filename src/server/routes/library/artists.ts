@@ -36,7 +36,19 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 publicReleases.map(r => r.artist_id).filter(id => id !== null)
             );
 
-            // 2. Determine which artists are STARRED by the user
+            // 2. Determine which artists have PUBLIC library albums
+            const publicAlbums = database.getAlbums(VisibilityProfile.PUBLIC_STAGE);
+            const publicAlbumArtistIds = new Set(
+                publicAlbums.map(a => a.artist_id).filter(id => id !== null)
+            );
+
+            // 3. Determine which artists have PUBLIC tracks
+            const publicTracks = database.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
+            const publicTrackArtistIds = new Set(
+                publicTracks.map(t => t.artist_id).filter(id => id !== null)
+            );
+
+            // 4. Determine which artists are STARRED by the user
             const starredItems = username ? database.getStarredItems(username, 'artist') : [];
             const starredArtistIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
 
@@ -44,6 +56,8 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 if (isAdmin) return true;
                 if (req.artistId && artist.id === req.artistId) return true;
                 if (formalReleaseArtistIds.has(artist.id)) return true;
+                if (publicAlbumArtistIds.has(artist.id)) return true;
+                if (publicTrackArtistIds.has(artist.id)) return true;
                 if (starredArtistIds.has(artist.id)) return true;
                 return false;
             });

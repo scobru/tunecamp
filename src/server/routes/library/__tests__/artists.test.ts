@@ -14,13 +14,17 @@ describe('Artists Routes', () => {
             getArtists: jest.fn().mockReturnValue([
                 { id: 1, name: 'Artist with Release', slug: 'artist-1', visibility: 'public' },
                 { id: 2, name: 'Artist with Album', slug: 'artist-2', visibility: 'public' },
-                { id: 3, name: 'Private Artist', slug: 'artist-3', visibility: 'private' }
+                { id: 3, name: 'Artist with Track', slug: 'artist-3', visibility: 'public' },
+                { id: 4, name: 'Private Artist', slug: 'artist-4', visibility: 'private' }
             ]),
             getReleases: jest.fn().mockImplementation((publicOnly) => {
                 return publicOnly ? [{ id: 101, artist_id: 1, title: 'Release 1' }] : [];
             }),
             getAlbums: jest.fn().mockImplementation((publicOnly) => {
                 return publicOnly ? [{ id: 201, artist_id: 2, title: 'Album 1' }] : [];
+            }),
+            getTracks: jest.fn().mockImplementation((albumId, publicOnly) => {
+                return publicOnly ? [{ id: 301, artist_id: 3, title: 'Track 1' }] : [];
             }),
             isStarred: jest.fn().mockReturnValue(false),
             getItemRating: jest.fn().mockReturnValue(0),
@@ -61,32 +65,37 @@ describe('Artists Routes', () => {
                 .set('x-is-admin', 'true');
 
             expect(response.status).toBe(200);
-            expect(response.body).toHaveLength(3);
+            expect(response.body).toHaveLength(4);
         });
 
-        test('only returns artists with formal releases for non-admin', async () => {
+        test('only returns artists with public formal releases, albums, or tracks for non-admin', async () => {
             const response = await request(app)
                 .get('/api/artists')
                 .set('x-is-admin', 'false');
 
             expect(response.status).toBe(200);
-            // Artist 1 has a release. Artist 2 only has an album. Artist 3 is private.
-            expect(response.body).toHaveLength(1);
-            expect(response.body[0].id).toBe(1);
+            // Artist 1 has a release. Artist 2 has a public album. Artist 3 has a public track. Artist 4 is private.
+            expect(response.body).toHaveLength(3);
+            const ids = response.body.map((a: any) => a.id);
+            expect(ids).toContain(1);
+            expect(ids).toContain(2);
+            expect(ids).toContain(3);
         });
 
         test('returns own artist profile even if no formal release', async () => {
             const response = await request(app)
                 .get('/api/artists')
                 .set('x-is-admin', 'false')
-                .set('x-artist-id', '2'); // Artist 2 is requesting
+                .set('x-artist-id', '4'); // Artist 4 is requesting
 
             expect(response.status).toBe(200);
-            // Artist 1 (public release) and Artist 2 (self)
-            expect(response.body).toHaveLength(2);
+            // Artist 1 (public release), Artist 2 (public album), Artist 3 (public track), and Artist 4 (self)
+            expect(response.body).toHaveLength(4);
             const ids = response.body.map((a: any) => a.id);
             expect(ids).toContain(1);
             expect(ids).toContain(2);
+            expect(ids).toContain(3);
+            expect(ids).toContain(4);
         });
     });
 
