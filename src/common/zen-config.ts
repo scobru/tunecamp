@@ -9,7 +9,8 @@ export const DEFAULT_ZEN_PEERS = [
 
 export const ZEN_CONFIG_DEFAULTS = {
     localStorage: false,
-    radisk: true,
+    radisk: false,
     axe: false,
-    file: "./radata"
+    file: false as any
 };
+

@@ -10,7 +10,8 @@ import v8 from 'v8';
 let zenInstance: any = null;
 
 // Memory budget for ZEN graph (MB). The built-in evictor uses 80% of this as threshold.
-const ZEN_MEMORY_LIMIT_MB = parseInt(process.env.TUNECAMP_ZEN_MEMORY_LIMIT || '256', 10);
+const ZEN_MEMORY_LIMIT_MB = parseInt(process.env.TUNECAMP_ZEN_MEMORY_LIMIT || '128', 10);
+
 
 interface ZenOptions {
     peers?: string[];
@@ -126,11 +127,13 @@ class ServerZenUser {
 /**
  * Aggressive memory evictor for ZEN graph.
  * The built-in evict.js only removes 1% of nodes per check — too slow when
- * public relays flood us with ~2GB in 80 seconds. This evictor runs every 3s
- * and drops 20% of nodes when heap exceeds the budget.
+ * public relays flood us with ~2GB in 80 seconds. This evictor runs every 1s,
+ * triggers at 50% of memory budget, and has an emergency 90% threshold that 
+ * wipes the graph (except protected keys) and disconnects peers.
  */
 function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
-    const thresholdBytes = memoryLimitMB * 0.7 * 1024 * 1024; // 70% of budget
+    const thresholdBytes = memoryLimitMB * 0.5 * 1024 * 1024; // 50% of budget
+    const emergencyBytes = memoryLimitMB * 0.9 * 1024 * 1024; // 90% of budget
     let evicting = false;
 
     const interval = setInterval(() => {
@@ -147,14 +150,82 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
 
         const souls = Object.keys(root.graph);
         const nodeCount = souls.length;
-        // Drop 20% of nodes — much more aggressive than the built-in 1%
-        const toDrop = Math.max(Math.ceil(nodeCount * 0.20), 100);
+
+        // Check if we hit the emergency memory ceiling (90%+)
+        if (heapUsed >= emergencyBytes) {
+            console.warn(`🚨 [ZEN-Evictor] EMERGENCY PURGE TRIGGERED | Heap: ${Math.round(heapUsed / 1e6)}MB (limit: ${memoryLimitMB}MB, nodes: ${nodeCount})`);
+            
+            // 1. Temporarily disconnect peers to stop the incoming flood
+            try {
+                const opt = root.opt || {};
+                const peers = opt.peers || {};
+                const axePeers = root.axe?.up || {};
+                const meshPeers = opt.mesh?.peers || {};
+
+                const closePeer = (p: any) => {
+                    if (!p) return;
+                    const conn = p.wire || p.socket || p.conn;
+                    if (conn && typeof conn.close === 'function') {
+                        try { conn.close(); } catch (e) {}
+                    }
+                    if (p && typeof p.close === 'function') {
+                        try { p.close(); } catch (e) {}
+                    }
+                };
+
+                Object.values(peers).forEach(closePeer);
+                Object.values(axePeers).forEach(closePeer);
+                Object.values(meshPeers).forEach(closePeer);
+                console.warn("🚨 [ZEN-Evictor] All peer connections closed to stop flood.");
+            } catch (e: any) {
+                console.error("🚨 [ZEN-Evictor] Peer disconnect error:", e.message);
+            }
+
+            // 2. Wipe the entire graph except protected keys
+            let wipedCount = 0;
+            for (let i = 0; i < souls.length; i++) {
+                const soul = souls[i];
+                if (soul.startsWith('~') || soul === 'shogun' || soul.includes('tunecamp')) continue;
+                try {
+                    delete root.graph[soul];
+                    if (root.next && root.next[soul]) {
+                        delete root.next[soul];
+                    }
+                    wipedCount++;
+                } catch (e) {}
+            }
+
+            // Clean up dedup tracker
+            if (root.dup && root.dup.s) {
+                try {
+                    if (root.dup.s instanceof Map) {
+                        root.dup.s.clear();
+                    } else {
+                        const keys = Object.keys(root.dup.s);
+                        for (const k of keys) {
+                            delete root.dup.s[k];
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (global.gc) global.gc();
+            
+            const heapAfter = v8.getHeapStatistics().used_heap_size;
+            console.warn(`🚨 [ZEN-Evictor] Wiped ${wipedCount}/${nodeCount} nodes. Heap: ${Math.round(heapUsed / 1e6)}MB → ${Math.round(heapAfter / 1e6)}MB`);
+            evicting = false;
+            return;
+        }
+
+        // Standard Aggressive Eviction (heap > 50% budget)
+        // Drop 50% of nodes — much more aggressive than 20%
+        const toDrop = Math.max(Math.ceil(nodeCount * 0.50), 100);
         let dropped = 0;
 
         for (let i = 0; i < souls.length && dropped < toDrop; i++) {
             const soul = souls[i];
             // Never evict our own user-space or registry keys we actively use
-            if (soul.startsWith('~') || soul === 'shogun') continue;
+            if (soul.startsWith('~') || soul === 'shogun' || soul.includes('tunecamp')) continue;
             try {
                 delete root.graph[soul];
                 // Also clean up the "next" tracking object if it exists
@@ -184,11 +255,12 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
         const heapAfter = v8.getHeapStatistics().used_heap_size;
         console.warn(`🧹 [ZEN-Evictor] Dropped ${dropped}/${nodeCount} nodes | Heap: ${Math.round(heapUsed / 1e6)}MB → ${Math.round(heapAfter / 1e6)}MB (limit: ${memoryLimitMB}MB)`);
         evicting = false;
-    }, 3000);
+    }, 1000); // Check every 1 second
 
     interval.unref();
-    console.log(`🛡️ [ZEN-Evictor] Aggressive evictor started (threshold: ${Math.round(thresholdBytes / 1e6)}MB, limit: ${memoryLimitMB}MB)`);
+    console.log(`🛡️ [ZEN-Evictor] Redesigned aggressive evictor started (threshold: ${Math.round(thresholdBytes / 1e6)}MB, emergency: ${Math.round(emergencyBytes / 1e6)}MB, limit: ${memoryLimitMB}MB)`);
 }
+
 
 /**
  * Shared Zen instance for the server
@@ -218,8 +290,51 @@ export function getZen(options?: ZenOptions): any {
         console.log(`📡 [ZEN] Initializing shared singleton with ${initializationOptions.peers.length} peers (memory limit: ${ZEN_MEMORY_LIMIT_MB}MB)...`);
         zenInstance = new ZEN(initializationOptions);
         
+        // Rate-limit incoming messages to throttle inbound traffic if it exceeds a certain threshold
+        let incomingCount = 0;
+        let droppedCount = 0;
+        
+        setInterval(() => {
+            if (incomingCount > 0 || droppedCount > 0) {
+                console.log(`📊 [ZEN-Traffic] Incoming: ${incomingCount}/5s | Dropped (throttled): ${droppedCount}/5s`);
+                incomingCount = 0;
+                droppedCount = 0;
+            }
+        }, 5000).unref();
+
+        zenInstance.on('in', function(this: any, msg: any) {
+            incomingCount++;
+            
+            if (msg && msg.put) {
+                const heapUsed = v8.getHeapStatistics().used_heap_size;
+                const limitBytes = ZEN_MEMORY_LIMIT_MB * 1024 * 1024;
+                
+                // Throttling: if heap is above 65% of budget, or we are flooded (incoming count > 250 in 5s, i.e. 50/s)
+                const isCongested = heapUsed > (limitBytes * 0.65) || incomingCount > 250;
+                
+                if (isCongested) {
+                    let hasProtectedKey = false;
+                    for (const soul of Object.keys(msg.put)) {
+                        if (soul.startsWith('~') || soul === 'shogun' || soul.includes('tunecamp')) {
+                            hasProtectedKey = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hasProtectedKey) {
+                        droppedCount++;
+                        // Throttle/drop the message by bypassing the rest of the Gun/Zen event chain
+                        return;
+                    }
+                }
+            }
+            
+            this.to.next(msg);
+        });
+
         // Start our aggressive evictor as a safety net on top of the built-in one
         startAggressiveEvictor(zenInstance, ZEN_MEMORY_LIMIT_MB);
+
 
         // --- COMPATIBILITY SHIM ---
         // ZEN does not have a native .user() instance like GunDB. 
