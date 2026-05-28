@@ -164,7 +164,7 @@ RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefo
 # Add a more lenient healthcheck
 # to avoid restart loops during heavy maintenance/discovery
 HEALTHCHECK --interval=60s --timeout=30s --start-period=180s --retries=5 \
-    CMD curl -f http://localhost:1970/health || exit 1
+    CMD curl -f http://127.0.0.1:1970/health || exit 1
 
 # Default command: start server directly
 CMD ["node", "--max-old-space-size=6144", "--expose-gc", "dist/index.js"]
