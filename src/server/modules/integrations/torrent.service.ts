@@ -27,46 +27,63 @@ export class TorrentService {
             });
             console.log("✅ [TorrentService] WebTorrent client initialized (TCP-only, deferred)");
             
-            // Resume existing torrents
+            // Resume existing torrents sequentially with a delay to prevent CPU/memory OOM spikes from concurrent hashing
             const torrents = this.database.getTorrents();
-            for (const t of torrents) {
-                if (t.status === 'downloading' || t.status === 'metadata') {
-                    this.addTorrent(t.magnet_uri, t.owner_id);
-                } else if (t.status === 'seeding' && t.path) {
-                    // Resume seeding if we have the local files
-                    this.resumeSeeding(t);
+            (async () => {
+                for (const t of torrents) {
+                    try {
+                        if (t.status === 'downloading' || t.status === 'metadata') {
+                            await this.addTorrent(t.magnet_uri, t.owner_id);
+                        } else if (t.status === 'seeding' && t.path) {
+                            await this.resumeSeeding(t);
+                        }
+                        // Pause briefly between torrents to allow V8 to run GC
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        if (global.gc) global.gc();
+                    } catch (err: any) {
+                        console.error(`🚨 [TorrentService] Error resuming torrent:`, err.message);
+                    }
                 }
-            }
+            })();
         } catch (e) {
             console.error("🚨 [TorrentService] Failed to initialize WebTorrent:", e);
         }
     }
 
-    private async resumeSeeding(t: Torrent) {
+    private async resumeSeeding(t: Torrent): Promise<boolean> {
         if (!t.path || !await fs.pathExists(t.path)) {
             console.warn(`⚠️ [TorrentService] Cannot resume seeding for ${t.name}, path missing: ${t.path}`);
             this.database.updateTorrentStatus(t.info_hash, 'error');
-            return;
+            return false;
         }
 
-        try {
-            // Find all files in the directory if it's a directory
-            const stats = await fs.stat(t.path);
-            let files: string[] = [];
-            if (stats.isDirectory()) {
-                const entries = await fs.readdir(t.path);
-                files = entries.map(e => path.join(t.path!, e));
-            } else {
-                files = [t.path];
+        return new Promise(async (resolve) => {
+            try {
+                // Find all files in the directory if it's a directory
+                const stats = await fs.stat(t.path);
+                let files: string[] = [];
+                if (stats.isDirectory()) {
+                    const entries = await fs.readdir(t.path);
+                    files = entries.map(e => path.join(t.path!, e));
+                } else {
+                    files = [t.path];
+                }
+
+                if (!this.client) {
+                    resolve(false);
+                    return;
+                }
+
+                this.client.seed(files, { name: t.name || undefined } as any, (torrent) => {
+                    console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${torrent.infoHash})`);
+                    this.setupTorrentEvents(torrent, t.owner_id);
+                    resolve(true);
+                });
+            } catch (err) {
+                console.error(`❌ [TorrentService] Failed to resume seeding ${t.info_hash}:`, err);
+                resolve(false);
             }
-
-            this.client?.seed(files, { name: t.name || undefined } as any, (torrent) => {
-                console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${torrent.infoHash})`);
-                this.setupTorrentEvents(torrent, t.owner_id);
-            });
-        } catch (err) {
-            console.error(`❌ [TorrentService] Failed to resume seeding ${t.info_hash}:`, err);
-        }
+        });
     }
 
     public async seedFiles(filePaths: string[], name: string, ownerId: number | null): Promise<string> {
