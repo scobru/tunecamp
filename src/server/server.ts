@@ -250,7 +250,15 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/torrents", authMiddleware.requireManager, express.json(), createTorrentRoutes(database, torrentService, authService));
     app.use("/api/admin/torrent-search", authMiddleware.requireManager, express.json(), createTorrentSearchRouter(database, torrentService as any, authService));
 
-    app.use(integrateFederation(federation, () => undefined));
+    // Health endpoint MUST be before fedify middleware to avoid blocking
+    app.get("/health", (req, res) => {
+        res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+    });
+
+    // Scope fedify to federation paths only — global use() was blocking ALL requests
+    app.use("/.well-known", integrateFederation(federation, () => undefined));
+    app.use("/users", integrateFederation(federation, () => undefined));
+    app.use("/ap", integrateFederation(federation, () => undefined));
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
 
     const webappPath = path.join(__dirname, "..", "..", "webapp");
@@ -307,9 +315,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     app.use("/rest", createSubsonicRouter({ db: database, auth: authService, musicDir: config.musicDir, zendbService, scrobbleService, mediaEngine }));
 
-    app.get("/health", (req, res) => {
-        res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
-    });
+    // Health endpoint moved before fedify middleware (see above)
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
     app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(
