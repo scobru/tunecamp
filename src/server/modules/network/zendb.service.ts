@@ -408,11 +408,11 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 .get(REGISTRY_NAMESPACE)
                 .get("sites")
                 .map()
-                .on(async (directoryData: any, siteId: string, _msg: any, ev: any) => {
+                .on((directoryData: any, siteId: string, _msg: any, ev: any) => {
                     if (!handlerActive) return; 
 
                     if (ev && typeof ev.off === 'function') {
-                        setTimeout(() => { try { ev.off(); } catch (e) { } }, 5000);
+                        setTimeout(() => { try { ev.off(); } catch (e) { } }, 1000);
                     }
 
                     if (!directoryData || siteId === "_") return;
@@ -431,62 +431,17 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                         }
                     }
 
-                    if (directoryData.pub) {
-                        const registerPub = directoryData.pub;
-
-                        await new Promise(r => setTimeout(r, 100 + Math.random() * 400));
-
-                        zen.get(REGISTRY_ROOT)
-                            .get(REGISTRY_NAMESPACE)
-                            .get("content")
-                            .get(registerPub)
-                            .get("profile")
-                            .once(async (signedData: any) => {
-                                if (signedData) {
-                                    const profileData = await (Zen as any).verify(signedData, registerPub);
-                                    if (profileData && profileData.type === "tunecamp-site") {
-                                        sites.push({
-                                            ...profileData,
-                                            id: siteId,
-                                            name: profileData.title || profileData.name || directoryData.title || "Untitled",
-                                            lastSeen: profileData.lastSeen || directoryData.lastSeen || Date.now(),
-                                            _secure: true,
-                                            _verified: true
-                                        });
-                                        return;
-                                    }
-                                }
-
-                                // FALLBACK
-                                zen.user(registerPub)
-                                    .get('tunecamp')
-                                    .get('profile')
-                                    .once((profileData: any) => {
-                                        if (profileData) {
-                                            sites.push({
-                                                ...profileData,
-                                                id: siteId,
-                                                name: profileData.title || profileData.name || directoryData.title || "Untitled",
-                                                lastSeen: profileData.lastSeen || directoryData.lastSeen || Date.now(),
-                                                _secure: true
-                                            });
-                                        } else {
-                                            sites.push({
-                                                id: siteId,
-                                                ...directoryData,
-                                                name: directoryData.title || directoryData.name || "Untitled",
-                                                lastSeen: directoryData.lastSeen || Date.now(),
-                                                _secure: false
-                                            });
-                                        }
-                                    });
-                            });
-                    } else {
+                    if (directoryData.url) {
                         sites.push({
                             id: siteId,
-                            ...directoryData,
-                            name: directoryData.title || directoryData.name || "Untitled",
-                            lastSeen: directoryData.lastSeen || Date.now()
+                            url: directoryData.url,
+                            title: directoryData.title || "Untitled",
+                            artistName: directoryData.artistName || "",
+                            name: directoryData.title || "Untitled",
+                            lastSeen: directoryData.lastSeen || Date.now(),
+                            pub: directoryData.pub || "",
+                            _secure: true,
+                            _verified: true
                         });
                     }
                 });
@@ -515,7 +470,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 }
 
                 resolve(sites);
-            }, 7000); 
+            }, 3000); 
         });
     }
 

@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch & npm run watch:css",
-    "start": "node --max-old-space-size=4096 --expose-gc dist/index.js",
+    "start": "node --expose-gc dist/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "migrate:dedupe": "node dist/tools/migrate-dedupe.js",
     "migrate:visibility": "node dist/tools/migrate-visibility.js",
