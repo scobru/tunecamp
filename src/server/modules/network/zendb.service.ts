@@ -228,8 +228,8 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 const peerCount = getPeerCount();
                 const root = zen._ || (zen as any)._graph?._;
                 const nodeCount = root?.graph ? Object.keys(root.graph).length : 0;
-                console.log(`[Diag] Heap: ${Math.round(used.heapUsed / 1e6)} MB | ZEN Peers: ${peerCount} | nodes: ${nodeCount}`);
-            }, 60_000);
+                console.log(`[Diag] RSS: ${Math.round(used.rss / 1e6)}MB | HeapTotal: ${Math.round(used.heapTotal / 1e6)}MB | HeapUsed: ${Math.round(used.heapUsed / 1e6)}MB | Ext: ${Math.round(used.external / 1e6)}MB | ArrayBuf: ${Math.round((used as any).arrayBuffers / 1e6)}MB | ZEN Peers: ${peerCount} | nodes: ${nodeCount}`);
+            }, 5000);
 
             return true;
         } catch (error) {
