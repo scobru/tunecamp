@@ -12,16 +12,20 @@ export class TorrentService {
         private scanner: Scanner,
         private musicDir: string
     ) {
-        this.init();
+        // Defer WebTorrent initialization to prevent event loop block or crashes during initial server startup
+        setTimeout(() => {
+            this.init();
+        }, 5000);
     }
 
     private init() {
         try {
-            this.client = new WebTorrent();
+            // Disable uTP (UDP) to prevent native utp-native library crashes/segfaults on Alpine Linux (Docker)
+            this.client = new WebTorrent({ utp: false });
             this.client.on('error', (err) => {
                 console.error("🚨 [TorrentService] WebTorrent error:", err);
             });
-            console.log("✅ [TorrentService] WebTorrent client initialized");
+            console.log("✅ [TorrentService] WebTorrent client initialized (TCP-only, deferred)");
             
             // Resume existing torrents
             const torrents = this.database.getTorrents();
