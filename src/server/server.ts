@@ -233,9 +233,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const scannerService = await initScannerService(database, scanner);
 
     const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));
-    const slskUser = database.getSetting("soulseek_username");
-    const slskPass = database.getSetting("soulseek_password");
-    soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
     
     const torrentService = new TorrentService(database, scanner, config.musicDir);
 
@@ -245,7 +242,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     console.log(`🔌 [Integrations] TorrentSearch initialized with PublicScraper provider`);
 
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
-    telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
 
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(database, scanner, config.musicDir, publishingService, storage, authService));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
@@ -511,6 +507,13 @@ export async function startServer(config: ServerConfig): Promise<void> {
         console.log(`🎶 TuneCamp Server running at http://localhost:${config.port}`);
         server.keepAliveTimeout = 300000;
         server.headersTimeout = 301000;
+
+        // Async Background integrations start after the HTTP server is bound!
+        const slskUser = database.getSetting("soulseek_username");
+        const slskPass = database.getSetting("soulseek_password");
+        soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
+        
+        telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
 
         const dbPublicUrl = database.getSetting("publicUrl");
         const publicUrl = (dbPublicUrl || config.publicUrl || "").trim().replace(/\/$/, "");
