@@ -51,8 +51,9 @@ export class TorrentService {
     }
 
     private async resumeSeeding(t: Torrent): Promise<boolean> {
-        if (!t.path || !await fs.pathExists(t.path)) {
-            console.warn(`⚠️ [TorrentService] Cannot resume seeding for ${t.name}, path missing: ${t.path}`);
+        const torrentPath = t.path;
+        if (!torrentPath || !await fs.pathExists(torrentPath)) {
+            console.warn(`⚠️ [TorrentService] Cannot resume seeding for ${t.name}, path missing: ${torrentPath}`);
             this.database.updateTorrentStatus(t.info_hash, 'error');
             return false;
         }
@@ -60,13 +61,13 @@ export class TorrentService {
         return new Promise(async (resolve) => {
             try {
                 // Find all files in the directory if it's a directory
-                const stats = await fs.stat(t.path);
+                const stats = await fs.stat(torrentPath);
                 let files: string[] = [];
                 if (stats.isDirectory()) {
-                    const entries = await fs.readdir(t.path);
-                    files = entries.map(e => path.join(t.path!, e));
+                    const entries = await fs.readdir(torrentPath);
+                    files = entries.map(e => path.join(torrentPath, e));
                 } else {
-                    files = [t.path];
+                    files = [torrentPath];
                 }
 
                 if (!this.client) {
