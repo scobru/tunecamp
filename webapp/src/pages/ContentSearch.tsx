@@ -7,6 +7,15 @@ import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play
 import clsx from 'clsx';
 import type { TorrentSearchResult, Track } from '../types';
 
+const getPathSegments = (pathStr: string) => {
+    if (!pathStr) return { filename: 'Unknown File', folder: '' };
+    const cleanPath = pathStr.replace(/\\/g, '/');
+    const segments = cleanPath.split('/');
+    const filename = segments[segments.length - 1] || 'Unknown File';
+    const folder = segments.slice(0, -1).join(' \\ ');
+    return { filename, folder };
+};
+
 const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'streaming' | 'downloads'>('soulseek');
@@ -314,30 +323,45 @@ const ContentSearch: React.FC = () => {
                                     <p className="opacity-40 font-medium">Ready to search the network...</p>
                                 </div>
                             )}
-
-                            {results.map((res: any, i: number) => (
-                                <div key={i} className="group card bg-base-200/50 hover:bg-base-200 border border-base-300/50 hover:border-primary/30 transition-all duration-200">
-                                    <div className="card-body p-4 flex-row justify-between items-center overflow-hidden">
-                                        <div className="flex-1 min-w-0 pr-4 overflow-hidden">
-                                            <h3 className="font-bold truncate text-sm lg:text-base group-hover:text-primary transition-colors w-full" title={res.title || res.name || res.file}>
-                                                {res.title || res.name || res.file}
-                                            </h3>
-                                            <div className="text-xs opacity-50 flex flex-wrap gap-x-4 gap-y-1 mt-1 font-medium truncate">
-                                                <span className="flex items-center gap-1">User: {res.user}</span>
-                                                <span className="flex items-center gap-1">{(res.size / 1024 / 1024).toFixed(2)} MB</span>
-                                                <span className="flex items-center gap-1">{(res.speed / 1024).toFixed(0)} KB/s</span>
+                             {results.map((res: any, i: number) => {
+                                const fullPath = res.title || res.name || res.file || '';
+                                const { filename, folder } = getPathSegments(fullPath);
+                                return (
+                                    <div key={i} className="group card bg-base-200/50 hover:bg-base-200 border border-base-300/50 hover:border-primary/30 transition-all duration-200">
+                                        <div className="card-body p-4 flex-row justify-between items-center overflow-hidden">
+                                            <div className="flex-1 min-w-0 pr-4 overflow-hidden">
+                                                <h3 className="font-bold truncate text-sm lg:text-base text-base-content group-hover:text-primary transition-colors w-full" title={fullPath}>
+                                                    {filename}
+                                                </h3>
+                                                {folder && (
+                                                    <div className="text-[11px] opacity-45 font-mono mt-1 w-full truncate flex items-center gap-1" title={fullPath}>
+                                                        <span className="flex-shrink-0">📁</span>
+                                                        <span className="truncate">{folder}</span>
+                                                    </div>
+                                                )}
+                                                <div className="text-[11px] opacity-75 flex flex-wrap gap-2 mt-2.5 font-medium">
+                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-[10px] text-base-content/80 flex items-center gap-1">
+                                                        <span>👤</span> {res.user}
+                                                    </span>
+                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-[10px] text-base-content/80 flex items-center gap-1">
+                                                        <span>💾</span> {(res.size / 1024 / 1024).toFixed(2)} MB
+                                                    </span>
+                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-[10px] text-base-content/80 flex items-center gap-1">
+                                                        <span>⚡</span> {(res.speed / 1024).toFixed(0)} KB/s
+                                                    </span>
+                                                </div>
                                             </div>
+                                            <button 
+                                                onClick={() => handleSoulseekDownload(res)}
+                                                className="btn btn-circle btn-sm btn-ghost hover:bg-primary hover:text-primary-content transition-all flex-shrink-0"
+                                                title="Download"
+                                            >
+                                                <Download size={18} />
+                                            </button>
                                         </div>
-                                        <button 
-                                            onClick={() => handleSoulseekDownload(res)}
-                                            className="btn btn-circle btn-sm btn-ghost hover:bg-primary hover:text-primary-content transition-all flex-shrink-0"
-                                            title="Download"
-                                        >
-                                            <Download size={18} />
-                                        </button>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -590,55 +614,63 @@ const ContentSearch: React.FC = () => {
                                     <td colSpan={5} className="text-center py-20 opacity-40 font-medium">No recent transfers.</td>
                                 </tr>
                             )}
-                            {downloads.map((dl: any) => (
-                                <tr key={dl.id} className="hover:bg-base-300/30 transition-colors">
-                                    <td className="max-w-[12rem] lg:max-w-md">
-                                        <div className="truncate font-semibold text-base-content min-w-0" title={dl.filename}>
-                                            {dl.filename}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`badge badge-sm px-3 h-6 font-bold uppercase tracking-tighter ${
-                                            dl.status === 'completed' ? 'badge-success text-success-content' : 
-                                            dl.status === 'failed' ? 'badge-error text-error-content' : 
-                                            'badge-info text-info-content'
-                                        }`}>
-                                            {dl.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="flex items-center gap-3">
-                                            <progress 
-                                                className={`progress w-16 lg:w-24 ${dl.status === 'completed' ? 'progress-success' : 'progress-primary'}`} 
-                                                value={dl.progress * 100} 
-                                                max="100"
-                                            ></progress>
-                                            <span className="text-[10px] font-mono opacity-50">{(dl.progress * 100).toFixed(0)}%</span>
-                                        </div>
-                                    </td>
-                                    <td className="text-[10px] uppercase opacity-40 font-bold">{new Date(dl.added_at).toLocaleDateString()}</td>
-                                    <td className="text-right">
-                                        <div className="flex justify-end gap-1">
-                                            {dl.status === 'completed' && (
-                                                <button 
-                                                    onClick={() => handleSyncSoulseek(dl.id)}
-                                                    className="btn btn-ghost btn-xs text-primary gap-1 font-bold"
-                                                    title="Sync to Library"
-                                                >
-                                                    <RefreshCw size={14} /> Sync
-                                                </button>
+                            {downloads.map((dl: any) => {
+                                const { filename, folder } = getPathSegments(dl.filename);
+                                return (
+                                    <tr key={dl.id} className="hover:bg-base-300/30 transition-colors">
+                                        <td className="max-w-[12rem] lg:max-w-md">
+                                            <div className="truncate font-semibold text-base-content min-w-0" title={dl.filename}>
+                                                {filename}
+                                            </div>
+                                            {folder && (
+                                                <div className="text-[10px] opacity-40 font-mono truncate mt-0.5" title={dl.filename}>
+                                                    📁 {folder}
+                                                </div>
                                             )}
-                                            <button 
-                                                onClick={() => handleDeleteSoulseek(dl.id)}
-                                                className="btn btn-ghost btn-xs text-error hover:bg-error/10"
-                                                title="Remove Transfer"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td>
+                                            <span className={`badge badge-sm px-3 h-6 font-bold uppercase tracking-tighter ${
+                                                dl.status === 'completed' ? 'badge-success text-success-content' : 
+                                                dl.status === 'failed' ? 'badge-error text-error-content' : 
+                                                'badge-info text-info-content'
+                                            }`}>
+                                                {dl.status}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="flex items-center gap-3">
+                                                <progress 
+                                                    className={`progress w-16 lg:w-24 ${dl.status === 'completed' ? 'progress-success' : 'progress-primary'}`} 
+                                                    value={dl.progress * 100} 
+                                                    max="100"
+                                                ></progress>
+                                                <span className="text-[10px] font-mono opacity-50">{(dl.progress * 100).toFixed(0)}%</span>
+                                            </div>
+                                        </td>
+                                        <td className="text-[10px] uppercase opacity-40 font-bold">{new Date(dl.added_at).toLocaleDateString()}</td>
+                                        <td className="text-right">
+                                            <div className="flex justify-end gap-1">
+                                                {dl.status === 'completed' && (
+                                                    <button 
+                                                        onClick={() => handleSyncSoulseek(dl.id)}
+                                                        className="btn btn-ghost btn-xs text-primary gap-1 font-bold"
+                                                        title="Sync to Library"
+                                                    >
+                                                        <RefreshCw size={14} /> Sync
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => handleDeleteSoulseek(dl.id)}
+                                                    className="btn btn-ghost btn-xs text-error hover:bg-error/10"
+                                                    title="Remove Transfer"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
