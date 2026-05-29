@@ -9,7 +9,6 @@ if (window.location.protocol.startsWith('http') && !window.location.hostname.inc
     REGISTRY_PEERS = [localPeer];
 } else {
     REGISTRY_PEERS = [
-        "wss://sudorecords.scobrudot.dev/zen",
         "wss://shogun-relay.scobrudot.dev/zen",
         "wss://zen.akao.io:8420/zen",
         "wss://zen0.akao.io:8420/zen",
