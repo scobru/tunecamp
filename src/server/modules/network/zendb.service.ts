@@ -310,7 +310,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             return new Promise(async (resolve) => {
                 const signedSite = await (Zen as any).sign(siteRecord, serverPair);
 
-                const contentRef = zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/content/${serverPair.pub}/profile`);
+                const contentRef = zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/content/${serverPair.pub}`).get("profile");
 
                 contentRef.put(signedSite, async (ack: any) => {
                     if (ack.err) {
@@ -321,7 +321,8 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
 
                     console.log(`📝 Registering public reference for Site ID: ${siteId}`);
                     zen
-                        .get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites/${siteId}`)
+                        .get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`)
+                        .get(siteId)
                         .put({
                             id: siteId,
                             pub: serverPair.pub,
@@ -471,7 +472,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getDownloadCount(releaseSlug: string): Promise<number> {
         if (!initialized || !zen) return 0;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/downloads`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}`).get("downloads")
                 .once((data: any) => { resolve(data ? parseInt(data, 10) || 0 : 0); });
             setTimeout(() => resolve(0), 3000);
         });
@@ -482,7 +483,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         const currentCount = await getDownloadCount(releaseSlug);
         const newCount = currentCount + 1;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/downloads`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}`).get("downloads")
                 .put(newCount, (ack: any) => { resolve(ack.err ? currentCount : newCount); });
             setTimeout(() => resolve(newCount), 2000);
         });
@@ -491,7 +492,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getTrackPlayCount(releaseSlug: string, trackId: string): Promise<number> {
         if (!initialized || !zen) return 0;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/plays`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("plays")
                 .once((data: any) => {
                     resolve(data ? parseInt(data, 10) || 0 : 0);
                 });
@@ -504,7 +505,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         const currentCount = await getTrackPlayCount(releaseSlug, trackId);
         const newCount = currentCount + 1;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/plays`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("plays")
                 .put(newCount, (ack: any) => {
                     resolve(ack.err ? currentCount : newCount);
                 });
@@ -515,7 +516,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getTrackDownloadCount(releaseSlug: string, trackId: string): Promise<number> {
         if (!initialized || !zen) return 0;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/downloads`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("downloads")
                 .once((data: any) => {
                     resolve(data ? parseInt(data, 10) || 0 : 0);
                 });
@@ -528,7 +529,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         const currentCount = await getTrackDownloadCount(releaseSlug, trackId);
         const newCount = currentCount + 1;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/downloads`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("downloads")
                 .put(newCount, (ack: any) => {
                     resolve(ack.err ? currentCount : newCount);
                 });
@@ -539,7 +540,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getTrackLikeCount(releaseSlug: string, trackId: string): Promise<number> {
         if (!initialized || !zen) return 0;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/likes`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("likes")
                 .once((data: any) => {
                     resolve(data ? parseInt(data, 10) || 0 : 0);
                 });
@@ -552,7 +553,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         const currentCount = await getTrackLikeCount(releaseSlug, trackId);
         const newCount = currentCount + 1;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/likes`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("likes")
                 .put(newCount, (ack: any) => {
                     resolve(ack.err ? currentCount : newCount);
                 });
@@ -565,7 +566,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         const currentCount = await getTrackLikeCount(releaseSlug, trackId);
         const newCount = Math.max(0, currentCount - 1);
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}/likes`)
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/releases/${releaseSlug}/tracks/${trackId}`).get("likes")
                 .put(newCount, (ack: any) => {
                     resolve(ack.err ? currentCount : newCount);
                 });
@@ -576,7 +577,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function setTrackRating(releaseSlug: string, trackId: string, rating: number): Promise<void> {
         if (!initialized || !zen || !serverPair) return;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/ratings/${serverPair.pub}/releases/${releaseSlug}/tracks/${trackId}`).put(rating, (ack: any) => {
+            zen.get(`${REGISTRY_ROOT}/${STATS_NAMESPACE}/ratings/${serverPair.pub}/releases/${releaseSlug}`).get(trackId).put(rating, (ack: any) => {
                     if (ack.err) console.error("Error setting track rating:", ack.err);
                     resolve();
                 });
@@ -599,7 +600,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         };
 
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byPubKey/${pubKey}`)
+            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byPubKey`).get(pubKey)
                 .put(userRecord, (ack: any) => {
                     if (ack.err) {
                         console.warn("Failed to register user:", ack.err);
@@ -607,7 +608,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                     }
                 });
 
-            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byUsername/${username.toLowerCase()}`)
+            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byUsername`).get(username.toLowerCase())
                 .put({ pubKey, username }, (ack: any) => {
                     if (ack.err) {
                         resolve(false);
@@ -624,7 +625,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getUser(pubKey: string): Promise<UserProfile | null> {
         if (!initialized || !zen) return null;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byPubKey/${pubKey}`)
+            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byPubKey`).get(pubKey)
                 .once((data: any) => {
                     if (data && data.username) {
                         resolve({
@@ -644,7 +645,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getUserByUsername(username: string): Promise<UserProfile | null> {
         if (!initialized || !zen) return null;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byUsername/${username.toLowerCase()}`)
+            zen.get(`${REGISTRY_ROOT}/${USERS_NAMESPACE}/byUsername`).get(username.toLowerCase())
                 .once(async (data: any) => {
                     if (data && data.pubKey) {
                         const user = await getUser(data.pubKey);
@@ -682,7 +683,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
 
         return new Promise((resolve) => {
             let handled = false;
-            zen.get(`${REGISTRY_ROOT}/${COMMENTS_NAMESPACE}/track-${trackId}/${commentId}`)
+            zen.get(`${REGISTRY_ROOT}/${COMMENTS_NAMESPACE}/track-${trackId}`).get(commentId)
                 .put(comment, (ack: any) => {
                     if (handled) return;
                     handled = true;
@@ -748,7 +749,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function getFingerprintMetadata(fingerprint: string): Promise<any | null> {
         if (!initialized || !zen) return null;
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${FINGERPRINTS_NAMESPACE}/fp/${fingerprint}`).once((data: any) => {
+            zen.get(`${REGISTRY_ROOT}/${FINGERPRINTS_NAMESPACE}/fp`).get(fingerprint).once((data: any) => {
                 if (data && data.title) {
                     resolve(data);
                 } else {
@@ -776,7 +777,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         };
 
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${FINGERPRINTS_NAMESPACE}/fp/${fingerprint}`).put(record, (ack: any) => {
+            zen.get(`${REGISTRY_ROOT}/${FINGERPRINTS_NAMESPACE}/fp`).get(fingerprint).put(record, (ack: any) => {
                 if (ack.err) console.warn("Failed to share fingerprint:", ack.err);
                 resolve();
             });
@@ -790,14 +791,14 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         const trackId = parts[0];
 
         return new Promise((resolve) => {
-            zen.get(`${REGISTRY_ROOT}/${COMMENTS_NAMESPACE}/track-${trackId}/${commentId}`)
+            zen.get(`${REGISTRY_ROOT}/${COMMENTS_NAMESPACE}/track-${trackId}`).get(commentId)
                 .once((data: any) => {
                     if (!data || data.pubKey !== pubKey) {
                         resolve(false);
                         return;
                     }
 
-                    zen.get(`${REGISTRY_ROOT}/${COMMENTS_NAMESPACE}/track-${trackId}/${commentId}`)
+                    zen.get(`${REGISTRY_ROOT}/${COMMENTS_NAMESPACE}/track-${trackId}`).get(commentId)
                         .put(null, (ack: any) => {
                             if (ack.err) {
                                 resolve(false);
@@ -846,7 +847,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                     if (!siteData || siteId === "_") return;
                     if (siteData.pub === serverPair.pub && siteId !== currentSiteId) {
                         console.log(`🧹 Removing stale site registration: ${siteId}`);
-                        zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites/${siteId}`).put(null);
+                        zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).get(siteId).put(null);
                     }
                 });
 
@@ -1029,7 +1030,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function pruneSite(siteId: string): Promise<void> {
         return new Promise((resolve) => {
             if (!zen) return resolve();
-            zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites/${siteId}`)
+            zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).get(siteId)
                 .put(null, (ack: any) => {
                     resolve();
                 });
