@@ -140,7 +140,7 @@
     <script type="module" src="zen.js"></script>
     <script type="module" src="gun-init.js"></script>
     <script type="module">
-        const REGISTRY_ROOT = 'shogun';
+        const REGISTRY_ROOT = 'tunecamp';
         const REGISTRY_NAMESPACE = 'tunecamp-community';
 
         const zen = getZen();
@@ -205,7 +205,7 @@
         async function initDiscovery() {
             const processedSites = new Set();
 
-            zen.get(REGISTRY_ROOT).get(REGISTRY_NAMESPACE).get('sites').map().on((directoryData, siteId) => {
+            zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).map().on((directoryData, siteId) => {
                 if (!directoryData || siteId === "_" || processedSites.has(siteId)) return;
                 const siteUrl = directoryData.url ? directoryData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;
                 if (!siteUrl) return;

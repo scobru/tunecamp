@@ -176,7 +176,7 @@
     <script type="module" src="gun-init.js"></script>
 
     <script type="module">
-        const REGISTRY_ROOT = 'shogun';
+        const REGISTRY_ROOT = 'tunecamp';
         const REGISTRY_NAMESPACE = 'tunecamp-community';
 
         let zen;
@@ -252,7 +252,7 @@
             const artistsSet = new Set();
             const processedSites = new Set();
 
-            zen.get(REGISTRY_ROOT).get(REGISTRY_NAMESPACE).get('sites').map().on((siteData, siteId) => {
+            zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).map().on((siteData, siteId) => {
                 if (!siteData || siteId === "_" || processedSites.has(siteId)) return;
                 const siteUrl = siteData.url ? siteData.url.replace(/\/zen$/, "").replace(/\/$/, "") : null;
                 if (!siteUrl) return;

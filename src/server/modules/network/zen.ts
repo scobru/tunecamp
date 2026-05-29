@@ -17,8 +17,8 @@ const V8_HEAP_LIMIT_MB = Math.round(v8.getHeapStatistics().heap_size_limit / 102
 
 /** Souls that must never be evicted from graph, next, or dup */
 function isProtectedSoul(soul: string): boolean {
-    // Protect shogun root
-    if (soul === 'shogun') return true;
+    // Protect tunecamp root
+    if (soul === 'tunecamp') return true;
     
     // Protect user profiles/namespaces (must start with ~ and not contain slashes/subpaths)
     if (soul.startsWith('~') && !soul.includes('/')) return true;
