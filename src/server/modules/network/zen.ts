@@ -340,12 +340,17 @@ export function getZen(options?: ZenOptions): any {
                 const subscribedSouls = Object.keys(next);
 
                 const souls = Object.keys(msg.put);
+                if (incomingCount <= 5) {
+                    console.log(`[Diagnostic] Incoming msg #${incomingCount} has ${souls.length} souls. First 3: ${souls.slice(0, 3).join(', ')} | Subscribed in next: ${subscribedSouls.length}. First 3: ${subscribedSouls.slice(0, 3).join(', ')}`);
+                }
+
                 for (const soul of souls) {
                     // We keep the soul if:
                     // 1. It is explicitly in isProtectedSoul (shogun root, local user profile keys)
                     // 2. We have an active subscription for it in root.next
                     // 3. Or it is a child of an active subscription (starts with subscribed soul + '/')
                     let keep = isProtectedSoul(soul) || !!next[soul];
+                    let keepReason = keep ? (isProtectedSoul(soul) ? 'protected' : 'next') : 'none';
                     
                     if (!keep) {
                         for (const sub of subscribedSouls) {
@@ -356,9 +361,14 @@ export function getZen(options?: ZenOptions): any {
 
                             if (soul.startsWith(sub + '/')) {
                                 keep = true;
+                                keepReason = `wildcard(${sub})`;
                                 break;
                             }
                         }
+                    }
+
+                    if (incomingCount <= 5 && souls.indexOf(soul) < 3) {
+                        console.log(`[Diagnostic] Soul '${soul}': keep=${keep} (reason: ${keepReason})`);
                     }
 
                     if (!keep) {
@@ -389,6 +399,10 @@ export function getZen(options?: ZenOptions): any {
                         droppedCount++;
                         return;
                     }
+                }
+            } else if (msg) {
+                if (incomingCount <= 5) {
+                    console.log(`[Diagnostic] Incoming msg #${incomingCount} is NOT put. Keys: ${Object.keys(msg).join(', ')} | dam: ${msg.dam} | get: ${msg.get ? JSON.stringify(msg.get) : 'no'}`);
                 }
             }
             
