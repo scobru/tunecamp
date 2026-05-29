@@ -17,7 +17,16 @@ const V8_HEAP_LIMIT_MB = Math.round(v8.getHeapStatistics().heap_size_limit / 102
 
 /** Souls that must never be evicted from graph, next, or dup */
 function isProtectedSoul(soul: string): boolean {
-    return soul.startsWith('~') || soul === 'shogun' || soul.includes('tunecamp');
+    // Protect shogun root
+    if (soul === 'shogun') return true;
+    
+    // Protect user profiles/namespaces (must start with ~ and not contain slashes/subpaths)
+    if (soul.startsWith('~') && !soul.includes('/')) return true;
+    
+    // Protect explicit system nodes we use
+    if (soul === 'tunecamp-playlists' || soul === 'tunecamp-public-playlists') return true;
+
+    return false;
 }
 
 
@@ -326,45 +335,55 @@ export function getZen(options?: ZenOptions): any {
             incomingCount++;
             
             if (msg && msg.put) {
-                const souls = Object.keys(msg.put);
-                
-                // Classify souls
-                let protectedSouls: string[] = [];
-                let unprotectedSouls: string[] = [];
-                for (const soul of souls) {
-                    if (isProtectedSoul(soul)) {
-                        protectedSouls.push(soul);
-                    } else {
-                        unprotectedSouls.push(soul);
-                    }
-                }
+                const root = zenInstance._ || zenInstance._graph?._;
+                const next = root ? root.next || {} : {};
+                const subscribedSouls = Object.keys(next);
 
-                // Case 1: No protected souls at all → always drop if too many unprotected
-                if (protectedSouls.length === 0 && unprotectedSouls.length > MAX_UNPROTECTED_SOULS) {
-                    droppedCount++;
-                    return;
-                }
-                
-                // Case 2: Mixed message → strip unprotected souls to keep only what we need
-                if (unprotectedSouls.length > MAX_UNPROTECTED_SOULS) {
-                    for (const soul of unprotectedSouls) {
+                const souls = Object.keys(msg.put);
+                for (const soul of souls) {
+                    // We keep the soul if:
+                    // 1. It is explicitly in isProtectedSoul (shogun root, local user profile keys)
+                    // 2. We have an active subscription for it in root.next
+                    // 3. Or it is a child of an active subscription (starts with subscribed soul + '/')
+                    let keep = isProtectedSoul(soul) || !!next[soul];
+                    
+                    if (!keep) {
+                        for (const sub of subscribedSouls) {
+                            if (soul.startsWith(sub + '/')) {
+                                keep = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!keep) {
                         delete msg.put[soul];
                         strippedCount++;
                     }
-                    // If nothing left after stripping, drop entirely
-                    if (Object.keys(msg.put).length === 0) {
+                }
+                
+                // If nothing left after stripping, drop entirely
+                if (Object.keys(msg.put).length === 0) {
+                    droppedCount++;
+                    return;
+                }
+                
+                // Emergency heap check: if we are extremely low on memory, drop everything non-critical
+                const heapUsed = v8.getHeapStatistics().used_heap_size;
+                const emergencyBytes = V8_HEAP_LIMIT_MB * 0.75 * 1024 * 1024;
+                if (heapUsed > emergencyBytes) {
+                    // Under extreme heap pressure, drop any incoming message that isn't a critical local user profile
+                    let hasCritical = false;
+                    for (const soul of Object.keys(msg.put)) {
+                        if (soul.startsWith('~') && !soul.includes('/')) {
+                            hasCritical = true;
+                            break;
+                        }
+                    }
+                    if (!hasCritical) {
                         droppedCount++;
                         return;
                     }
-                }
-
-                // Case 3: Emergency heap check — even small messages get dropped
-                // when we're critically low on memory
-                const heapUsed = v8.getHeapStatistics().used_heap_size;
-                const emergencyBytes = V8_HEAP_LIMIT_MB * 0.70 * 1024 * 1024;
-                if (heapUsed > emergencyBytes && protectedSouls.length === 0) {
-                    droppedCount++;
-                    return;
                 }
             }
             
