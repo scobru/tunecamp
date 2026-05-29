@@ -296,19 +296,29 @@ export function getZen(options?: ZenOptions): any {
         console.log(`📡 [ZEN] Initializing shared singleton with ${initializationOptions.peers.length} peers (memory limit: ${ZEN_MEMORY_LIMIT_MB}MB)...`);
         zenInstance = new ZEN(initializationOptions);
         
-        // Rate-limit incoming messages to throttle inbound traffic.
-        // Thresholds are based on the REAL v8 heap limit, not the 128MB ZEN budget.
-        const heapLimitBytes = V8_HEAP_LIMIT_MB * 1024 * 1024;
-        const throttleThreshold = heapLimitBytes * 0.40; // Start throttling at 40% of real limit
-        const hardDropThreshold = heapLimitBytes * 0.60;  // Drop ALL non-protected at 60%
+        // ── Inbound message filter ──────────────────────────────────────────
+        // The relay sends its ENTIRE graph state (hundreds of souls per message)
+        // when a peer connects. 39 such messages in 5 seconds = 400MB+ of retained
+        // memory from root.next chains, dup tracker, and closure contexts.
+        //
+        // Heap-based throttling FAILED because ZEN processes message payloads
+        // asynchronously via its turn queue — the heap is still low at receipt time,
+        // but explodes during async expansion.
+        //
+        // Fix: filter by PAYLOAD SIZE, not heap pressure. Only let through souls
+        // that Tunecamp actually uses. Everything else is relay gossip noise.
+        const MAX_UNPROTECTED_SOULS = 3; // Max non-protected souls per message before stripping
         let incomingCount = 0;
         let droppedCount = 0;
+        let strippedCount = 0;
         
         setInterval(() => {
-            if (incomingCount > 0 || droppedCount > 0) {
-                console.log(`📊 [ZEN-Traffic] Incoming: ${incomingCount}/5s | Dropped: ${droppedCount}/5s | Heap: ${Math.round(v8.getHeapStatistics().used_heap_size / 1e6)}MB/${V8_HEAP_LIMIT_MB}MB`);
+            if (incomingCount > 0 || droppedCount > 0 || strippedCount > 0) {
+                const heap = Math.round(v8.getHeapStatistics().used_heap_size / 1e6);
+                console.log(`📊 [ZEN-Traffic] In: ${incomingCount}/5s | Dropped: ${droppedCount}/5s | Stripped: ${strippedCount}/5s | Heap: ${heap}MB/${V8_HEAP_LIMIT_MB}MB`);
                 incomingCount = 0;
                 droppedCount = 0;
+                strippedCount = 0;
             }
         }, 5000).unref();
 
@@ -316,35 +326,45 @@ export function getZen(options?: ZenOptions): any {
             incomingCount++;
             
             if (msg && msg.put) {
-                const heapUsed = v8.getHeapStatistics().used_heap_size;
+                const souls = Object.keys(msg.put);
                 
-                // Hard drop: above 60% of real heap limit, drop everything non-protected
-                if (heapUsed > hardDropThreshold) {
-                    let hasProtectedKey = false;
-                    for (const soul of Object.keys(msg.put)) {
-                        if (isProtectedSoul(soul)) {
-                            hasProtectedKey = true;
-                            break;
-                        }
+                // Classify souls
+                let protectedSouls: string[] = [];
+                let unprotectedSouls: string[] = [];
+                for (const soul of souls) {
+                    if (isProtectedSoul(soul)) {
+                        protectedSouls.push(soul);
+                    } else {
+                        unprotectedSouls.push(soul);
                     }
-                    if (!hasProtectedKey) {
+                }
+
+                // Case 1: No protected souls at all → always drop if too many unprotected
+                if (protectedSouls.length === 0 && unprotectedSouls.length > MAX_UNPROTECTED_SOULS) {
+                    droppedCount++;
+                    return;
+                }
+                
+                // Case 2: Mixed message → strip unprotected souls to keep only what we need
+                if (unprotectedSouls.length > MAX_UNPROTECTED_SOULS) {
+                    for (const soul of unprotectedSouls) {
+                        delete msg.put[soul];
+                        strippedCount++;
+                    }
+                    // If nothing left after stripping, drop entirely
+                    if (Object.keys(msg.put).length === 0) {
                         droppedCount++;
                         return;
                     }
                 }
-                // Soft throttle: above 40% of real heap limit OR rate > 50/s
-                else if (heapUsed > throttleThreshold || incomingCount > 250) {
-                    let hasProtectedKey = false;
-                    for (const soul of Object.keys(msg.put)) {
-                        if (isProtectedSoul(soul)) {
-                            hasProtectedKey = true;
-                            break;
-                        }
-                    }
-                    if (!hasProtectedKey) {
-                        droppedCount++;
-                        return;
-                    }
+
+                // Case 3: Emergency heap check — even small messages get dropped
+                // when we're critically low on memory
+                const heapUsed = v8.getHeapStatistics().used_heap_size;
+                const emergencyBytes = V8_HEAP_LIMIT_MB * 0.70 * 1024 * 1024;
+                if (heapUsed > emergencyBytes && protectedSouls.length === 0) {
+                    droppedCount++;
+                    return;
                 }
             }
             
