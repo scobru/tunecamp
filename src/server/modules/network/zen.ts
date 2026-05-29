@@ -349,6 +349,11 @@ export function getZen(options?: ZenOptions): any {
                     
                     if (!keep) {
                         for (const sub of subscribedSouls) {
+                            // Ignore broad root / top-level categories (e.g. 'shogun' or 'shogun/tunecamp-community')
+                            // to prevent matching everything under the sun and flooding the memory.
+                            // Only allow specific leaf subscriptions (>= 3 segments) as wildcard prefixes.
+                            if (sub.split('/').length < 3) continue;
+
                             if (soul.startsWith(sub + '/')) {
                                 keep = true;
                                 break;
