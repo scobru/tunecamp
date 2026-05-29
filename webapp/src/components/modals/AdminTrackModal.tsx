@@ -453,6 +453,11 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
             setAlbumTitle(updated.album_title || updated.albumName || "");
             setArtworkUrl(updated.coverUrl || updated.cover_path || null);
             setHasCustomArtwork(!!(updated as any).external_artwork || !!updated.cover_path);
+            setGenre(updated.genre || "");
+            setYear(updated.year ? String(updated.year) : "");
+            if (updated.lyrics) {
+              setLyrics(updated.lyrics);
+            }
             setCurrentTrackData((prev: any) => ({ ...prev, ...updated }));
             onTrackUpdated();
             setShowMetadataModal(false);

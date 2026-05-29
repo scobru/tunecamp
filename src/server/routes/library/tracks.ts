@@ -421,13 +421,15 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const isRoot = req.isRootAdmin;
         if (!isRoot && !req.isAdmin && track.owner_id !== req.artistId) throw new ForbiddenError("Access denied");
 
-        const { title, artist, albumTitle, coverUrl } = req.body;
+        const { title, artist, albumTitle, coverUrl, genre, year } = req.body;
         try {
             await catalogService.updateTrack(track.id, {
                 title,
                 artist,
                 album: albumTitle,
-                externalArtwork: coverUrl
+                externalArtwork: coverUrl,
+                genre,
+                year: year ? parseInt(year) : undefined
             });
 
             const updated = database.getTrack(track.id);

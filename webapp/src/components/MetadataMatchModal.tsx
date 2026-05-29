@@ -62,7 +62,9 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
           albumTitle: match.albumTitle,
           coverUrl: match.coverUrl,
           mbid: match.id,
-          source: match.source
+          source: match.source,
+          genre: match.genre,
+          year: match.year || (match.date ? match.date.substring(0, 4) : undefined)
         };
 
         if (match.source !== "discogs") {
