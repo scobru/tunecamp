@@ -174,7 +174,9 @@ export const Sidebar = () => {
               {isRoot && (
                 <NavItem to="/browser" icon={Folder} label="Files" />
               )}
-              <NavItem to="/my-music" icon={Upload} label="My Music" />
+              {(isAdmin || !!user?.artistId) && (
+                <NavItem to="/my-music" icon={Upload} label="My Music" />
+              )}
               {(user?.artistId || isRoot) && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}

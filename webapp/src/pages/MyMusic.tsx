@@ -33,12 +33,13 @@ export const MyMusic = () => {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!isAuthenticated) {
+    const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin' || user?.isRootAdmin;
+    if (!isAuthenticated || (!isAdmin && !user?.artistId)) {
       navigate("/");
       return;
     }
     loadStats();
-  }, [isAuthenticated, user, isLoading]);
+  }, [isAuthenticated, user, isLoading, role]);
 
   const loadStats = async () => {
     try {
