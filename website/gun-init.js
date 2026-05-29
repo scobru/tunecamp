@@ -2,21 +2,19 @@
  * Shared GunDB / ZEN initialization for Tunecamp Website
  */
 
-// Default peers
-const REGISTRY_PEERS = [
-    "wss://sudorecords.scobrudot.dev/zen",
-"wss://shogun-relay.scobrudot.dev/zen",
-"wss://zen.akao.io:8420/zen",
-"wss://zen0.akao.io:8420/zen",
-"wss://zen1.akao.io:8420/zen"
-];
+let REGISTRY_PEERS = [];
 
-// Add current origin as a peer if we are running on a Tunecamp instance
 if (window.location.protocol.startsWith('http') && !window.location.hostname.includes('vercel.app')) {
     const localPeer = `${window.location.origin}/zen`.replace('http://', 'ws://').replace('https://', 'wss://');
-    if (!REGISTRY_PEERS.includes(localPeer)) {
-        REGISTRY_PEERS.push(localPeer);
-    }
+    REGISTRY_PEERS = [localPeer];
+} else {
+    REGISTRY_PEERS = [
+        "wss://sudorecords.scobrudot.dev/zen",
+        "wss://shogun-relay.scobrudot.dev/zen",
+        "wss://zen.akao.io:8420/zen",
+        "wss://zen0.akao.io:8420/zen",
+        "wss://zen1.akao.io:8420/zen"
+    ];
 }
 
 // Singleton instance
