@@ -9,15 +9,6 @@
     {
       "path": "../shogun-relay",
     },
-    {
-      "path": "../../ai-trader",
-    },
-    {
-      "path": "../scobru-website",
-    },
-    {
-      "path": "../llm-wiki",
-    },
   ],
   "settings": {},
 }
