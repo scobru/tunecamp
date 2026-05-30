@@ -6,7 +6,6 @@ import { usePlayerStore } from "../stores/usePlayerStore";
 import {
   Music,
   Play,
-  MoreHorizontal,
   Clock,
   Trash2,
   Globe,
@@ -228,27 +227,13 @@ const PlaylistDetails = () => {
                   </td>
                   <td>
                     {isAdminAuthenticated && !id?.startsWith("genre:") && (
-                      <div className="dropdown dropdown-end dropdown-hover opacity-0 group-hover:opacity-100">
-                        <label
-                          tabIndex={0}
-                          className="btn btn-ghost btn-xs btn-circle"
-                        >
-                          <MoreHorizontal size={16} />
-                        </label>
-                        <ul
-                          tabIndex={0}
-                          className="dropdown-content z-[50] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-base-content/10"
-                        >
-                          <li>
-                            <button
-                              className="text-error"
-                              onClick={() => handleRemoveTrack(String(track.id))}
-                            >
-                              <Trash2 size={16} /> Remove
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
+                      <button
+                        onClick={() => handleRemoveTrack(String(track.id))}
+                        className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove Track"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     )}
                   </td>
                 </tr>

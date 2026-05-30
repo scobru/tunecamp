@@ -12,7 +12,6 @@ import {
   Plus,
   Heart,
   ArrowLeft,
-  MoreHorizontal,
   Unlock,
   Lock,
   Download,
@@ -368,35 +367,22 @@ const MyPlaylistDetails = () => {
                   </td>
                   <td className="w-12 text-right">
                     {isOwner && (
-                      <div className="dropdown dropdown-end dropdown-hover opacity-0 group-hover:opacity-100">
-                        <label
-                          tabIndex={0}
-                          className="btn btn-ghost btn-xs btn-circle"
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a
+                          href={API.getTrackDownloadUrl(track.id)}
+                          target="_blank"
+                          className="btn btn-ghost btn-xs btn-circle text-success flex items-center justify-center"
+                          title="Download Track"
                         >
-                          <MoreHorizontal size={16} />
-                        </label>
-                        <ul
-                          tabIndex={0}
-                          className="dropdown-content z-[1] menu p-2 shadow bg-base-300 rounded-box w-52 text-sm border border-base-content/10"
+                          <Download size={16} />
+                        </a>
+                        <button
+                          className="btn btn-ghost btn-xs btn-circle text-error"
+                          onClick={() => handleRemoveTrack(track.id)}
+                          title="Remove Track"
                         >
-                          <li>
-                            {isOwner && (
-                              <a
-                                href={API.getTrackDownloadUrl(track.id)}
-                                target="_blank"
-                                className="text-success font-bold"
-                              >
-                                <Download size={16} /> Download
-                              </a>
-                            )}
-                            <button
-                              className="text-error"
-                              onClick={() => handleRemoveTrack(track.id)}
-                            >
-                              <Trash2 size={16} /> Remove
-                            </button>
-                          </li>
-                        </ul>
+                          <Trash2 size={16} />
+                        </button>
                       </div>
                     )}
                   </td>

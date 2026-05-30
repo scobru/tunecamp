@@ -3,7 +3,6 @@ import API from "../services/api";
 import {
   Play,
   Heart,
-  MoreHorizontal,
   Search,
   CheckCircle2,
   Download,
@@ -192,6 +191,7 @@ const Tracks = () => {
                   <button 
                     onClick={() => playTrack(track, filteredTracks)}
                     className="btn btn-ghost btn-sm btn-circle text-primary"
+                    title="Play Track"
                   >
                     <Play size={16} fill="currentColor" />
                   </button>
@@ -199,47 +199,51 @@ const Tracks = () => {
                   <button 
                     onClick={() => handleLike(track)}
                     className={clsx("btn btn-ghost btn-sm btn-circle", isLiked && "text-primary")}
+                    title={isLiked ? "Unlike Track" : "Like Track"}
                   >
                     <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
                   </button>
 
-                  <div className="dropdown dropdown-end">
-                    <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-circle">
-                      <MoreHorizontal size={16} />
-                    </div>
-                    <ul tabIndex={0} className="dropdown-content z-[50] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-52 border border-base-content/10 mt-2">
-                      {purchased && (
-                        <li>
-                          <a 
-                            className="text-success font-bold"
-                            onClick={() => window.open(API.getTrackDownloadUrl(track.id), "_blank")}
-                          >
-                            <CheckCircle2 size={16} /> Download
-                          </a>
-                        </li>
-                      )}
-                      {!purchased && track.albumDownload === "free" && (
-                        <li>
-                          <a href={`/api/albums/${String(track.albumId)}/download`} target="_blank" rel="noreferrer">
-                             <Download size={16} /> Free Download
-                          </a>
-                        </li>
-                      )}
-                      <li>
-                        <a onClick={() => handleShare(track)}>
-                          <Share2 size={16} /> Share Track
-                        </a>
-                      </li>
-                      <li>
-                        <a onClick={() => {
-                          if (!isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
-                          document.dispatchEvent(new CustomEvent("open-playlist-modal", { detail: { trackId: track.id } }));
-                        }}>
-                          <ListMusic size={16} /> Add to Playlist
-                        </a>
-                      </li>
-                    </ul>
-                  </div>
+                  {purchased && (
+                    <button 
+                      onClick={() => window.open(API.getTrackDownloadUrl(track.id), "_blank")}
+                      className="btn btn-ghost btn-sm btn-circle text-success"
+                      title="Download Track"
+                    >
+                      <CheckCircle2 size={16} />
+                    </button>
+                  )}
+
+                  {!purchased && track.albumDownload === "free" && (
+                    <a 
+                      href={`/api/albums/${String(track.albumId)}/download`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="btn btn-ghost btn-sm btn-circle text-success flex items-center justify-center"
+                      title="Free Download"
+                    >
+                      <Download size={16} />
+                    </a>
+                  )}
+
+                  <button 
+                    onClick={() => handleShare(track)}
+                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content"
+                    title="Share Track"
+                  >
+                    <Share2 size={16} />
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      if (!isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
+                      document.dispatchEvent(new CustomEvent("open-playlist-modal", { detail: { trackId: track.id } }));
+                    }}
+                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content"
+                    title="Add to Playlist"
+                  >
+                    <ListMusic size={16} />
+                  </button>
                 </div>
               </div>
             );
