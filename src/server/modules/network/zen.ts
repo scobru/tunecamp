@@ -1,8 +1,7 @@
 // @ts-ignore
-import ZEN from 'zen';
+import ZEN from 'zen/zen.js';
 // @ts-ignore
 import 'zen/lib/yson.js'; // Fix: JSON blocking CPU warning
-import 'zen/lib/multicast.js';
 import 'zen/lib/evict.js'; // Enable automatic memory eviction to prevent OOM
 import { DEFAULT_ZEN_PEERS, ZEN_CONFIG_DEFAULTS } from '../../../common/zen-config.js';
 import v8 from 'v8';
