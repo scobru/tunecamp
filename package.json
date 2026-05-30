@@ -16,7 +16,8 @@
     "migrate:dedupe": "node dist/tools/migrate-dedupe.js",
     "migrate:visibility": "node dist/tools/migrate-visibility.js",
     "build:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css",
-    "watch:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css --watch"
+    "watch:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css --watch",
+    "postinstall": "node scripts/patch-ffmpeg.js"
   },
   "keywords": [
     "music",
