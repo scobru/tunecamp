@@ -140,23 +140,6 @@ export class LibrarySync {
   ): Promise<number | null> {
     if (overrideId) return overrideId;
 
-    // Folder-based check first (to prevent duplicate tag-based albums)
-    const relativeDir = this.normalizePath(dir, musicDir);
-    const isRoot = relativeDir === "." || relativeDir === "";
-    if (!isRoot) {
-      if (relativeDir.startsWith("releases/")) {
-        const pathParts = relativeDir.split("/");
-        if (pathParts.length === 2 && pathParts[0] === "releases") {
-          const releaseSlug = pathParts[1];
-          const formalRelease = this.database.getReleaseBySlug(releaseSlug) || this.database.getAlbumBySlug(releaseSlug);
-          if (formalRelease) return formalRelease.id;
-        }
-      }
-      const folderSlug = slugify("lib-" + relativeDir);
-      const folderAlbum = this.database.getAlbumBySlug(folderSlug) || this.database.getReleaseBySlug(folderSlug);
-      if (folderAlbum) return folderAlbum.id;
-    }
-
     // Hint Priority
     if (hints?.album) {
       let album = this.database.getAlbumByTitle(hints.album, artistId);
@@ -209,6 +192,23 @@ export class LibrarySync {
         is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
         published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
       });
+    }
+
+    // Folder-based check last (to prevent duplicate tag-based albums but allow overrides)
+    const relativeDir = this.normalizePath(dir, musicDir);
+    const isRoot = relativeDir === "." || relativeDir === "";
+    if (!isRoot) {
+      if (relativeDir.startsWith("releases/")) {
+        const pathParts = relativeDir.split("/");
+        if (pathParts.length === 2 && pathParts[0] === "releases") {
+          const releaseSlug = pathParts[1];
+          const formalRelease = this.database.getReleaseBySlug(releaseSlug) || this.database.getAlbumBySlug(releaseSlug);
+          if (formalRelease) return formalRelease.id;
+        }
+      }
+      const folderSlug = slugify("lib-" + relativeDir);
+      const folderAlbum = this.database.getAlbumBySlug(folderSlug) || this.database.getReleaseBySlug(folderSlug);
+      if (folderAlbum) return folderAlbum.id;
     }
 
     return null; // Fallback to folder-based handled by Scanner for now
