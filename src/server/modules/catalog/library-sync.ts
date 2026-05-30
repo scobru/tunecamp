@@ -140,10 +140,30 @@ export class LibrarySync {
   ): Promise<number | null> {
     if (overrideId) return overrideId;
 
+    // Folder-based check first (to prevent duplicate tag-based albums)
+    const relativeDir = this.normalizePath(dir, musicDir);
+    const isRoot = relativeDir === "." || relativeDir === "";
+    if (!isRoot) {
+      if (relativeDir.startsWith("releases/")) {
+        const pathParts = relativeDir.split("/");
+        if (pathParts.length === 2 && pathParts[0] === "releases") {
+          const releaseSlug = pathParts[1];
+          const formalRelease = this.database.getReleaseBySlug(releaseSlug) || this.database.getAlbumBySlug(releaseSlug);
+          if (formalRelease) return formalRelease.id;
+        }
+      }
+      const folderSlug = slugify("lib-" + relativeDir);
+      const folderAlbum = this.database.getAlbumBySlug(folderSlug) || this.database.getReleaseBySlug(folderSlug);
+      if (folderAlbum) return folderAlbum.id;
+    }
+
     // Hint Priority
     if (hints?.album) {
+      let album = this.database.getAlbumByTitle(hints.album, artistId);
       const slug = slugify("hint-" + artistId + "-" + hints.album);
-      let album = this.database.getAlbumBySlug(slug);
+      if (!album) {
+        album = this.database.getAlbumBySlug(slug);
+      }
       if (album) return album.id;
 
       return this.database.createAlbum({
@@ -166,8 +186,11 @@ export class LibrarySync {
 
     // Tag Priority
     if (common.album) {
+      let album = this.database.getAlbumByTitle(common.album, artistId);
       const slug = slugify("tag-" + artistId + "-" + common.album);
-      let album = this.database.getAlbumBySlug(slug);
+      if (!album) {
+        album = this.database.getAlbumBySlug(slug);
+      }
       if (album) return album.id;
 
       return this.database.createAlbum({

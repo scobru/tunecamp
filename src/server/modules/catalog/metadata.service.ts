@@ -207,7 +207,7 @@ export class MetadataService {
 
                 // Recalculate hash after tag write so scanner doesn't re-process it
                 const newHash = await getFastFileHash(fullPath);
-                if (relPath === track.file_path) {
+                if (relPath === track.file_path || relPath === track.lossless_path) {
                     database.updateTrackHash(track.id, newHash);
                 }
             } catch (err) { 

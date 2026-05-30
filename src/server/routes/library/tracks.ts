@@ -577,7 +577,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
         if (!track) throw new NotFoundError("Track not found");
         const isRoot = req.isRootAdmin;
-        const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
+        const isOwner = isRoot || req.isAdmin || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
         if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
 
         if (!req.body || typeof req.body !== "object") throw new BadRequestError("Request body is required");
@@ -601,7 +601,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         }
         if (!track) throw new NotFoundError("Track not found");
         const isRoot = req.isRootAdmin;
-        const isOwner = isRoot || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
+        const isOwner = isRoot || req.isAdmin || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
         if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
 
         const deleteFile = req.query.deleteFile === "true";

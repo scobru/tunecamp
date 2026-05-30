@@ -154,7 +154,7 @@ export class TrackRepository extends BaseRepository {
     }
 
     getByPath(filePath: string): Track | undefined {
-        const row = this.db.prepare(`SELECT * FROM v_tracks WHERE file_path = ?`).get(filePath);
+        const row = this.db.prepare(`SELECT * FROM v_tracks WHERE file_path = ? OR lossless_path = ?`).get(filePath, filePath);
         return row ? this.mapTrack(row) : undefined;
     }
 
@@ -257,7 +257,12 @@ export class TrackRepository extends BaseRepository {
     }
 
     updateOwner(id: number, ownerId: number | null): void {
-        this.db.prepare("UPDATE tracks SET owner_id = ? WHERE id = ?").run(ownerId, id);
+        this.db.transaction(() => {
+            this.db.prepare("UPDATE tracks SET owner_id = ? WHERE id = ?").run(ownerId, id);
+            if (ownerId !== null) {
+                this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) VALUES (?, ?)").run(id, ownerId);
+            }
+        })();
     }
 
     updateOrder(id: number, trackNum: number): void {
