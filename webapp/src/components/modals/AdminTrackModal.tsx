@@ -173,25 +173,32 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
 
       if (matchedArtist) {
         payload.artistId = String(matchedArtist.id);
+      } else if (
+        currentTrackData &&
+        (artistName.trim() === (currentTrackData.artist_name || "").trim() ||
+         artistName.trim() === (currentTrackData.artistName || "").trim() ||
+         artistName.trim() === (currentTrackData.artist || "").trim()) &&
+        (currentTrackData.artist_id || currentTrackData.artistId)
+      ) {
+        payload.artistId = String(currentTrackData.artist_id || currentTrackData.artistId);
       } else {
         payload.artist = artistName.trim();
-        if (!artistName.trim()) {
-          payload.artistId = null;
-        } else {
-          // If name doesn't match a profile, clear artistId so it uses the string name
-          payload.artistId = null;
-        }
+        payload.artistId = null;
       }
 
       if (matchedAlbum) {
         payload.albumId = String(matchedAlbum.id);
+      } else if (
+        currentTrackData &&
+        (albumTitle.trim() === (currentTrackData.album_title || "").trim() ||
+         albumTitle.trim() === (currentTrackData.albumName || "").trim() ||
+         albumTitle.trim() === (currentTrackData.album || "").trim()) &&
+        (currentTrackData.album_id || currentTrackData.albumId)
+      ) {
+        payload.albumId = String(currentTrackData.album_id || currentTrackData.albumId);
       } else {
         payload.album = albumTitle.trim();
-        if (!albumTitle.trim()) {
-          payload.albumId = null;
-        } else {
-          payload.albumId = null;
-        }
+        payload.albumId = null;
       }
 
       const matchedOwner = admins.find(a => a.username.toLowerCase() === ownerName.trim().toLowerCase());

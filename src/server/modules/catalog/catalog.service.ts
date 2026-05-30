@@ -138,6 +138,17 @@ export class CatalogService {
 
         // Resolve Album
         let finalAlbumId = albumId !== undefined ? albumId : track.album_id;
+        
+        // If an explicit album title is provided without an explicit albumId,
+        // check if it differs from the track's current album title. If it differs, or if the track has no album,
+        // we must resolve/create the album for this title.
+        if (albumId === undefined && typeof albumName === "string") {
+            const currentAlbum = track.album_id ? (this.database.getAlbum(track.album_id) || (this.database as any).getRelease?.(track.album_id)) : null;
+            if (!currentAlbum || currentAlbum.title.trim().toLowerCase() !== albumName.trim().toLowerCase()) {
+                finalAlbumId = null; // Force resolution below
+            }
+        }
+
         if ((finalAlbumId === null || finalAlbumId === undefined) && typeof albumName === "string" && albumName.trim() !== "") {
             const trimmedAlbum = albumName.trim();
             const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, "-");
