@@ -264,11 +264,22 @@ export function createAlbumsRoutes(
                 album = database.getAlbumBySlug(param) || database.getReleaseBySlug(param);
             }
             
-            if (album && album.cover_path) {
-                if (album.cover_path.startsWith('http')) {
-                    return res.redirect(album.cover_path);
+            let albumCoverPath = album?.cover_path;
+            
+            // Fallback: if the album doesn't have an explicit cover_path, check if any of its tracks has one
+            if (album && !albumCoverPath) {
+                const albumTracks = database.getTracksByAlbum(album.id);
+                const trackWithCover = albumTracks.find(t => t.external_artwork || (t as any).externalArtwork);
+                if (trackWithCover) {
+                    albumCoverPath = trackWithCover.external_artwork || (trackWithCover as any).externalArtwork;
                 }
-                const coverPath = path.join(musicDir, album.cover_path);
+            }
+
+            if (albumCoverPath) {
+                if (albumCoverPath.startsWith('http')) {
+                    return res.redirect(albumCoverPath);
+                }
+                const coverPath = path.join(musicDir, albumCoverPath);
                 if (await fs.pathExists(coverPath)) {
                     return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });
                 }

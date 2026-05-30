@@ -213,11 +213,22 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
             releaseId = parseInt(param, 10);
             const release = database.getRelease(releaseId) || database.getAlbum(releaseId);
             
-            if (release && release.cover_path) {
-                if (release.cover_path.startsWith('http')) {
-                    return res.redirect(release.cover_path);
+            let releaseCoverPath = release?.cover_path;
+            
+            // Fallback: if the release doesn't have an explicit cover_path, check if any of its tracks has one
+            if (release && !releaseCoverPath) {
+                const releaseTracks = (database as any).getReleaseTracks ? database.getReleaseTracks(release.id) : database.getTracksByAlbum(release.id);
+                const trackWithCover = releaseTracks.find((t: any) => t.external_artwork || t.externalArtwork);
+                if (trackWithCover) {
+                    releaseCoverPath = trackWithCover.external_artwork || (trackWithCover as any).externalArtwork;
                 }
-                const coverPath = path.join(musicDir, release.cover_path);
+            }
+
+            if (releaseCoverPath) {
+                if (releaseCoverPath.startsWith('http')) {
+                    return res.redirect(releaseCoverPath);
+                }
+                const coverPath = path.join(musicDir, releaseCoverPath);
                 if (await fs.pathExists(coverPath)) {
                     return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });
                 }

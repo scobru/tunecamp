@@ -243,8 +243,37 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             const id = parseInt(req.params.id);
             const artist = database.getArtist(id);
             
-            if (artist && artist.photo_path) {
-                const photoPath = path.join(musicDir, artist.photo_path);
+            let photoPathToUse = artist?.photo_path;
+            
+            // Fallback: If no custom artist photo, try to find cover art from their releases, albums, or tracks
+            if (artist && !photoPathToUse) {
+                // 1. Try formal releases
+                const releases = database.getReleasesByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
+                const releaseWithCover = releases.find(r => r.cover_path);
+                if (releaseWithCover) {
+                    photoPathToUse = releaseWithCover.cover_path;
+                } else {
+                    // 2. Try library albums
+                    const albums = database.getAlbumsByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
+                    const albumWithCover = albums.find(a => a.cover_path);
+                    if (albumWithCover) {
+                        photoPathToUse = albumWithCover.cover_path;
+                    } else {
+                        // 3. Try tracks
+                        const tracks = database.getTracksByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
+                        const trackWithCover = tracks.find(t => t.external_artwork);
+                        if (trackWithCover) {
+                            photoPathToUse = trackWithCover.external_artwork;
+                        }
+                    }
+                }
+            }
+            
+            if (photoPathToUse) {
+                if (photoPathToUse.startsWith('http')) {
+                    return res.redirect(photoPathToUse);
+                }
+                const photoPath = path.join(musicDir, photoPathToUse);
                 if (fs.existsSync(photoPath)) {
                     return res.sendFile(path.resolve(photoPath), { maxAge: 86400000 });
                 }
