@@ -9,6 +9,7 @@ jest.mock('fs-extra', () => ({
     pathExists: jest.fn().mockResolvedValue(true as never),
     readdir: jest.fn().mockResolvedValue([] as never),
     readFile: jest.fn().mockResolvedValue('' as never),
+    existsSync: jest.fn().mockReturnValue(true as never),
 }));
 
 // Mock database.js
