@@ -644,8 +644,8 @@ export function createAuthService(
                 db.prepare("DELETE FROM track_ownership WHERE owner_id = ?").run(id);
                 db.prepare("DELETE FROM album_ownership WHERE owner_id = ?").run(id);
                 
-                // 4. Delete OAuth tokens
-                db.prepare("DELETE FROM oauth_tokens WHERE user_id = ?").run(id);
+                // 4. Delete storage accounts (OAuth tokens)
+                db.prepare("DELETE FROM storage_accounts WHERE user_id = ?").run(id);
                 
                 // 5. Delete soulseek downloads
                 db.prepare("DELETE FROM soulseek_downloads WHERE user_id = ?").run(id);

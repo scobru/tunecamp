@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs-extra";
 import chokidar, { type FSWatcher } from "chokidar";
 import { parseFile } from "music-metadata";
 import { parse } from "yaml";
@@ -777,8 +778,58 @@ export class Scanner implements ScannerService {
                 if (count % 100 === 0 && (global as any).gc) (global as any).gc();
             }
             if (deleted > 0) await this.librarySync.cleanupEmptyEntities();
+            
+            // Clean up empty directories bottom-up
+            await this.cleanupEmptyFolders(musicDir);
+            
             return { success, failed, skipped, deleted };
         } finally { this.isConsolidating = false; }
+    }
+
+    private async cleanupEmptyFolders(musicDir: string): Promise<void> {
+        const IGNORED_FILES = new Set(['.ds_store', 'thumbs.db', '.gitkeep', '.jwt-secret']);
+        
+        const getDirectoryTree = async (dirPath: string): Promise<string[]> => {
+            const subdirs: string[] = [];
+            try {
+                const entries = await fs.readdir(dirPath, { withFileTypes: true });
+                for (const entry of entries) {
+                    if (entry.isDirectory()) {
+                        const fullPath = path.join(dirPath, entry.name);
+                        subdirs.push(fullPath);
+                        const nested = await getDirectoryTree(fullPath);
+                        subdirs.push(...nested);
+                    }
+                }
+            } catch (e) {}
+            return subdirs;
+        };
+
+        const isDirEmptyOrDead = async (dirPath: string): Promise<boolean> => {
+            try {
+                if (!await fs.pathExists(dirPath)) return true;
+                const entries = await fs.readdir(dirPath);
+                const validEntries = entries.filter(e => !IGNORED_FILES.has(e.toLowerCase()));
+                return validEntries.length === 0;
+            } catch (e) {
+                return false;
+            }
+        };
+
+        try {
+            const allDirs = await getDirectoryTree(musicDir);
+            // Sort deepest first
+            const sortedDirs = allDirs.sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
+            for (const dir of sortedDirs) {
+                const isEmpty = await isDirEmptyOrDead(dir);
+                if (isEmpty) {
+                    console.log(`🗑️ [Consolidate Cleanup] Removing empty folder: ${path.relative(musicDir, dir)}`);
+                    await fs.remove(dir);
+                }
+            }
+        } catch (e: any) {
+            console.error("⚠️ [Consolidate Cleanup] Error cleaning empty folders:", e.message);
+        }
     }
 }
 
