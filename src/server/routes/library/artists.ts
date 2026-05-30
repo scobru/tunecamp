@@ -25,9 +25,10 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
     router.get("/", (req: AuthenticatedRequest, res) => {
         try {
             const isAdmin = req.isAdmin || req.isSuperUser;
-            const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
             
-            const allArtists = database.getArtists(profile);
+            // Fetch all artists so that we can check if they have public content
+            // even if their default visibility in the artists table is 'private' (default from scanner)
+            const allArtists = database.getArtists(VisibilityProfile.ALL_ACCESS);
             const username = req.username;
 
             // 1. Determine which artists have PUBLIC formal releases
@@ -55,6 +56,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             const filtered = allArtists.filter(artist => {
                 if (isAdmin) return true;
                 if (req.artistId && artist.id === req.artistId) return true;
+                if (artist.visibility === 'public' || artist.visibility === 'unlisted') return true;
                 if (formalReleaseArtistIds.has(artist.id)) return true;
                 if (publicAlbumArtistIds.has(artist.id)) return true;
                 if (publicTrackArtistIds.has(artist.id)) return true;

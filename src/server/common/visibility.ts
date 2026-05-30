@@ -173,7 +173,6 @@ export class VisibilityGuardian {
       return {
         sql: `(
           (${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted'))
-          OR ${tableAlias}.album_id IS NULL
           OR ${tableAlias}.effective_owner_id = ?
         )`,
         params: [userId]
@@ -182,7 +181,7 @@ export class VisibilityGuardian {
 
     // 3. Guests see only public tracks
     return {
-      sql: `(${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted')) OR (${tableAlias}.album_id IS NULL)`,
+      sql: `(${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted'))`,
       params: []
     };
   }
