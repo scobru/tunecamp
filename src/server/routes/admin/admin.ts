@@ -1266,17 +1266,17 @@ export function createAdminRoutes(
     router.delete("/system/users/:id", (req: AuthenticatedRequest, res: any) => {
         try {
             if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
-                return res.status(403).json({ error: "Only the primary admin can remove admins" });
+                return res.status(403).json({ error: "Only the primary admin can remove users" });
             }
             const id = parseInt(req.params.id, 10);
             authService.deleteAdmin(id);
-            res.json({ message: "Admin user deleted" });
+            res.json({ message: "User deleted successfully" });
         } catch (error: any) {
-            console.error("Error deleting admin:", error);
-            if (error.message.includes("last admin")) {
+            console.error("Error deleting user:", error);
+            if (error.message.includes("last admin") || error.message.includes("primary admin")) {
                 return res.status(400).json({ error: error.message });
             }
-            res.status(500).json({ error: "Failed to delete admin" });
+            res.status(500).json({ error: `Failed to delete user: ${error.message}` });
         }
     });
 

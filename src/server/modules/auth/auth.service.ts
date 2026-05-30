@@ -421,8 +421,8 @@ export function createAuthService(
                 // Check if an artist with the same name exists
                 let existingArtist = db.prepare("SELECT id FROM artists WHERE name = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
                 
-                if (!existingArtist && userRole === UserRole.SUPER_USER) {
-                    console.log(`🎨 Auto-creating artist profile for SUPER_USER: ${username}`);
+                if (!existingArtist && (userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN || userRole === UserRole.ADMIN)) {
+                    console.log(`🎨 Auto-creating artist profile for ${userRole}: ${username}`);
                     
                     const slug = username.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
                     let finalSlug = slug;
@@ -631,7 +631,31 @@ export function createAuthService(
             if (user?.role === 'admin' && adminCount <= 1) {
                 throw new Error("Cannot delete the last admin user");
             }
-            db.prepare("DELETE FROM admin WHERE id = ?").run(id);
+            
+            // Perform cleanups in a transaction to satisfy foreign key constraints
+            db.transaction(() => {
+                // 1. Re-assign tracks owned by this user to primary admin (id = 1)
+                db.prepare("UPDATE tracks SET owner_id = 1 WHERE owner_id = ?").run(id);
+                
+                // 2. Re-assign albums owned by this user to primary admin (id = 1)
+                db.prepare("UPDATE albums SET owner_id = 1 WHERE owner_id = ?").run(id);
+                
+                // 3. Clear explicit user ownerships
+                db.prepare("DELETE FROM track_ownership WHERE owner_id = ?").run(id);
+                db.prepare("DELETE FROM album_ownership WHERE owner_id = ?").run(id);
+                
+                // 4. Delete OAuth tokens
+                db.prepare("DELETE FROM oauth_tokens WHERE user_id = ?").run(id);
+                
+                // 5. Delete soulseek downloads
+                db.prepare("DELETE FROM soulseek_downloads WHERE user_id = ?").run(id);
+                
+                // 6. Reset torrent ownership
+                db.prepare("UPDATE torrents SET owner_id = NULL WHERE owner_id = ?").run(id);
+                
+                // 7. Finally, delete the user
+                db.prepare("DELETE FROM admin WHERE id = ?").run(id);
+            })();
         },
         deleteUsersBatch(ids: number[]): void {
             db.transaction(() => {

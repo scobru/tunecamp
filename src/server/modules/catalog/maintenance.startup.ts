@@ -107,6 +107,36 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 if (fixedArtistsCount > 0) {
                     console.log(`✅ [Maintenance] Auto-assigned ${fixedArtistsCount} albums to their track artists.`);
                 }
+
+                // 0.6 Auto-create and link artist profile for admins without one
+                const adminsWithoutArtist = database.db.prepare("SELECT id, username FROM admin WHERE artist_id IS NULL").all() as { id: number, username: string }[];
+                for (const adm of adminsWithoutArtist) {
+                    const artistName = adm.username;
+                    let existingArtist = database.getArtistByName(artistName);
+                    if (!existingArtist) {
+                        const slug = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
+                        let finalSlug = slug;
+                        let attempt = 0;
+                        while (attempt < 100) {
+                            try {
+                                const result = database.db.prepare("INSERT INTO artists (name, slug, visibility) VALUES (?, ?, 'public')").run(artistName, finalSlug);
+                                existingArtist = { id: Number(result.lastInsertRowid), name: artistName, slug: finalSlug } as any;
+                                break;
+                            } catch (e: any) {
+                                if (e.message && e.message.includes('UNIQUE constraint failed: artists.slug')) {
+                                    attempt++;
+                                    finalSlug = `${slug}-${attempt}`;
+                                    continue;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    if (existingArtist) {
+                        database.db.prepare("UPDATE admin SET artist_id = ? WHERE id = ?").run(existingArtist.id, adm.id);
+                        console.log(`✅ [Maintenance] Automatically linked admin '${adm.username}' to artist profile '${artistName}'.`);
+                    }
+                }
             } finally {
                 database.db.exec("PRAGMA foreign_keys = ON");
             }
