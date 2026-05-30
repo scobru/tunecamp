@@ -736,7 +736,7 @@ export class Scanner implements ScannerService {
                     
                     const newDir = subfolder 
                         ? path.join(subfolder, safeName, safeAlbum).replace(/\\/g, "/") 
-                        : path.join(safeName, safeAlbum).replace(/\\/g, "/");
+                        : path.join("tracks", safeName, safeAlbum).replace(/\\/g, "/");
                     const newP = path.join(newDir, `${base}${ext}`).replace(/\\/g, "/");
                     const fNew = path.join(musicDir, newP);
                     
