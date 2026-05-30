@@ -220,7 +220,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
                 const releaseTracks = (database as any).getReleaseTracks ? database.getReleaseTracks(release.id) : database.getTracksByAlbum(release.id);
                 const trackWithCover = releaseTracks.find((t: any) => t.external_artwork || t.externalArtwork);
                 if (trackWithCover) {
-                    releaseCoverPath = trackWithCover.external_artwork || (trackWithCover as any).externalArtwork;
+                    releaseCoverPath = (trackWithCover as any).external_artwork || (trackWithCover as any).externalArtwork;
                 }
             }
 
