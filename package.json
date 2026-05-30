@@ -17,7 +17,7 @@
     "migrate:visibility": "node dist/tools/migrate-visibility.js",
     "build:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css",
     "watch:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css --watch",
-    "postinstall": "node scripts/patch-ffmpeg.js"
+    "postinstall": "node -e \"const fs = require('fs'); if (fs.existsSync('./scripts/patch-ffmpeg.js')) { require('child_process').fork('./scripts/patch-ffmpeg.js'); } else { console.warn('⚠️ patch-ffmpeg.js not found, skipping patch.'); }\""
   },
   "keywords": [
     "music",

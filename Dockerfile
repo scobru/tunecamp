@@ -60,6 +60,7 @@ RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat unzip
 # Copy package files and local dependencies
 COPY package*.json ./
 COPY deps ./deps
+COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
 # Install all dependencies (including dev) for the entire workspace
@@ -111,6 +112,7 @@ RUN apk add --no-cache \
 # Copy package files, local dependencies and install production dependencies
 COPY package*.json ./
 COPY deps ./deps
+COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
 # Install build tools, run npm ci, and cleanup in one layer
