@@ -10,6 +10,7 @@ export const StoragePanel = () => {
     const [history, setHistory] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState<string | null>(null);
+    const [importingAll, setImportingAll] = useState(false);
 
     useEffect(() => {
         loadAccounts();
@@ -92,6 +93,22 @@ export const StoragePanel = () => {
         }
     };
 
+    const handleImportAllRecursive = async () => {
+        if (!confirm("Are you sure you want to recursively import all WAV/MP3 files from this folder and all its subfolders? This might take a few moments.")) return;
+        
+        setImportingAll(true);
+        try {
+            const res = await API.importGDriveFolderRecursive(currentFolder);
+            alert(res.message || `Successfully imported all files!`);
+            loadFiles(currentFolder);
+        } catch (e: any) {
+            console.error(e);
+            alert("Recursive import failed: " + e.message);
+        } finally {
+            setImportingAll(false);
+        }
+    };
+
     return (
         <div className="space-y-8">
             <div>
@@ -137,7 +154,18 @@ export const StoragePanel = () => {
 
                 <div className="md:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-bold uppercase opacity-50">File Browser</h3>
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-sm font-bold uppercase opacity-50">File Browser</h3>
+                            {accounts.length > 0 && files.length > 0 && (
+                                <button 
+                                    className="btn btn-xs btn-primary gap-1"
+                                    onClick={handleImportAllRecursive}
+                                    disabled={importingAll}
+                                >
+                                    {importingAll ? "Importing All..." : "Import All Recursively"}
+                                </button>
+                            )}
+                        </div>
                         {history.length > 0 && (
                             <button className="btn btn-ghost btn-xs" onClick={handleBack}>
                                 ← Back

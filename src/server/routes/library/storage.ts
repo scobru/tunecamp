@@ -135,6 +135,82 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
         }
     });
 
+    router.post("/gdrive/import-folder", authMiddleware.requireAdmin, async (req: AuthenticatedRequest, res) => {
+        try {
+            const userId = req.userId!;
+            const { folderId, artistId, albumId } = req.body;
+            if (!folderId) return res.status(400).send("No folderId provided");
+
+            // 1. List all audio files recursively
+            const audioFiles = await gdriveService.listAudioFilesRecursive(userId, folderId);
+            
+            if (audioFiles.length === 0) {
+                return res.json({ success: true, count: 0, message: "No audio files found in folder" });
+            }
+
+            // 2. Query already imported tracks to avoid duplicate imports
+            const fileIds = audioFiles.map(f => f.id);
+            const importedIds = new Set(
+                database.db.prepare(`SELECT external_id FROM tracks WHERE external_id IN (${fileIds.map(() => '?').join(',')}) AND service = 'google-drive'`)
+                    .all(...fileIds)
+                    .map((r: any) => r.external_id)
+            );
+
+            // Filter out already imported files
+            const filesToImport = audioFiles.filter(f => !importedIds.has(f.id));
+
+            let importedCount = 0;
+            
+            // 3. Batch insert the tracks inside a transaction
+            database.transaction(() => {
+                for (const file of filesToImport) {
+                    let title = file.name;
+                    if (file.name.includes(" - ")) {
+                        const parts = file.name.split(" - ");
+                        title = parts[1].replace(/\.[^/.]+$/, ""); // Remove extension
+                    } else {
+                        title = file.name.replace(/\.[^/.]+$/, "");
+                    }
+
+                    database.createTrack({
+                        title,
+                        artist_id: artistId || null,
+                        album_id: albumId || null,
+                        owner_id: userId,
+                        track_num: null,
+                        duration: 0,
+                        file_path: `gdrive://${file.id}`,
+                        format: file.mimeType.split("/")[1] || "mp3",
+                        bitrate: 0,
+                        sample_rate: 0,
+                        price: 0,
+                        price_usdc: 0,
+                        price_usdt: 0,
+                        currency: 'ETH',
+                        lossless_path: null,
+                        waveform: null,
+                        url: null,
+                        service: 'google-drive',
+                        external_artwork: null,
+                        lyrics: null,
+                        hash: null,
+                        external_id: file.id
+                    });
+                    importedCount++;
+                }
+            });
+
+            res.json({ 
+                success: true, 
+                count: importedCount, 
+                message: `Successfully imported ${importedCount} audio files (${audioFiles.length - filesToImport.length} skipped as already imported)` 
+            });
+        } catch (error: any) {
+            console.error("GDrive Recursive Import Error:", error.message);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     router.delete("/gdrive/accounts/:id", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
         const id = parseInt(req.params.id);
         const account = database.getStorageAccount(id);

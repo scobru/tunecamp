@@ -158,6 +158,33 @@ export class GoogleDriveService {
         return files;
     }
 
+    async listAudioFilesRecursive(userId: number, folderId = "root"): Promise<GoogleDriveFile[]> {
+        const audioFiles: GoogleDriveFile[] = [];
+        const queue: string[] = [folderId];
+        
+        while (queue.length > 0) {
+            const currentFolderId = queue.shift()!;
+            try {
+                const files = await this.listFiles(userId, currentFolderId);
+                for (const file of files) {
+                    if (file.mimeType === "application/vnd.google-apps.folder") {
+                        queue.push(file.id);
+                    } else {
+                        const isAudio = file.mimeType.startsWith("audio/") || 
+                                        /\.(mp3|wav|flac|m4a|ogg)$/i.test(file.name);
+                        if (isAudio) {
+                            audioFiles.push(file);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`[GDrive] Failed to list folder ${currentFolderId}:`, err);
+            }
+        }
+        
+        return audioFiles;
+    }
+
     async getFile(userId: number, fileId: string): Promise<GoogleDriveFile> {
         const token = await this.getValidToken(userId);
         const response = await axios.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
