@@ -111,21 +111,26 @@ export class CatalogService {
         }
 
         // Resolve Artist
-        let finalArtistId = artistId !== undefined ? (artistId === null || artistId === 'null' || artistId === '' ? null : Number(artistId)) : track.artist_id;
+        let finalArtistId = artistId !== undefined ? (artistId === null || artistId === 'null' || artistId === 'undefined' || artistId === '' ? null : Number(artistId)) : track.artist_id;
         let finalArtistName = typeof artistName === 'string' ? artistName.trim() : (track.artist_name || null);
 
-
-        if (typeof artistName === 'string' && artistName.trim() !== "") {
+        if (typeof artistName === 'string') {
             const trimmedName = artistName.trim();
-            const existingArtist = this.database.getArtistByName(trimmedName);
-            if (existingArtist) {
-                finalArtistId = existingArtist.id;
-                finalArtistName = existingArtist.name;
+            const lowerName = trimmedName.toLowerCase();
+            if (trimmedName === "" || lowerName === "null" || lowerName === "undefined") {
+                finalArtistId = null;
+                finalArtistName = null;
             } else {
-                finalArtistId = this.database.createArtist(trimmedName);
-                finalArtistName = trimmedName;
+                const existingArtist = this.database.getArtistByName(trimmedName);
+                if (existingArtist) {
+                    finalArtistId = existingArtist.id;
+                    finalArtistName = existingArtist.name;
+                } else {
+                    finalArtistId = this.database.createArtist(trimmedName);
+                    finalArtistName = trimmedName;
+                }
             }
-        } else if (artistName === null || artistName === "") {
+        } else if (artistName === null) {
             finalArtistId = null;
             finalArtistName = null;
         } else if (finalArtistId) {
@@ -137,7 +142,7 @@ export class CatalogService {
 
 
         // Resolve Album
-        let finalAlbumId = albumId !== undefined ? (albumId === null || albumId === 'null' || albumId === '' || albumId === 0 || albumId === '0' ? null : Number(albumId)) : track.album_id;
+        let finalAlbumId = albumId !== undefined ? (albumId === null || albumId === 'null' || albumId === 'undefined' || albumId === '' || albumId === 0 || albumId === '0' ? null : Number(albumId)) : track.album_id;
         
         // If an explicit album title is provided without an explicit albumId,
         // check if it differs from the track's current album title. If it differs, or if the track has no album,
@@ -149,37 +154,42 @@ export class CatalogService {
             }
         }
 
-        if ((finalAlbumId === null || finalAlbumId === undefined) && typeof albumName === "string" && albumName.trim() !== "") {
+        if ((finalAlbumId === null || finalAlbumId === undefined) && typeof albumName === "string") {
             const trimmedAlbum = albumName.trim();
-            const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, "-");
-            const existingAlbum = this.database.getAlbumBySlug(slug);
-            finalAlbumId = existingAlbum
-                ? existingAlbum.id
-                : this.database.createAlbum({
-                      title: trimmedAlbum,
-                      slug,
-                      artist_id: finalArtistId || track.artist_id,
-                      owner_id: finalOwnerId,
-                      date: null,
-                      cover_path: null,
-                      genre: "Library",
-                      description: "",
-                      type: "album",
-                      year: null,
-                      download: null,
-                      price: 0,
-                      price_usdc: 0,
-                      currency: "ETH",
-                      external_links: null,
-                      is_public: false,
-                      visibility: "private",
-                      is_release: false,
-                      published_at: null,
-                      published_to_gundb: false,
-                      published_to_ap: false,
-                      license: null,
-                      status: "draft",
-                  });
+            const lowerAlbum = trimmedAlbum.toLowerCase();
+            if (trimmedAlbum === "" || lowerAlbum === "null" || lowerAlbum === "undefined") {
+                finalAlbumId = null;
+            } else {
+                const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, "-");
+                const existingAlbum = this.database.getAlbumBySlug(slug);
+                finalAlbumId = existingAlbum
+                    ? existingAlbum.id
+                    : this.database.createAlbum({
+                          title: trimmedAlbum,
+                          slug,
+                          artist_id: finalArtistId || track.artist_id,
+                          owner_id: finalOwnerId,
+                          date: null,
+                          cover_path: null,
+                          genre: "Library",
+                          description: "",
+                          type: "album",
+                          year: null,
+                          download: null,
+                          price: 0,
+                          price_usdc: 0,
+                          currency: "ETH",
+                          external_links: null,
+                          is_public: false,
+                          visibility: "private",
+                          is_release: false,
+                          published_at: null,
+                          published_to_gundb: false,
+                          published_to_ap: false,
+                          license: null,
+                          status: "draft",
+                      });
+            }
         }
 
         // Handle File Rename
@@ -547,10 +557,15 @@ export class CatalogService {
         const { artist, artistId, ...rest } = data;
         let finalArtistId = artistId !== undefined ? artistId : undefined;
 
-        if (typeof artist === 'string' && artist.trim() !== "") {
+        if (typeof artist === 'string') {
             const artistName = artist.trim();
-            const existingArtist = this.database.getArtistByName(artistName);
-            finalArtistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
+            const lowerArtist = artistName.toLowerCase();
+            if (artistName === "" || lowerArtist === "null" || lowerArtist === "undefined") {
+                finalArtistId = null;
+            } else {
+                const existingArtist = this.database.getArtistByName(artistName);
+                finalArtistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
+            }
         }
 
         const updateData = { ...rest };

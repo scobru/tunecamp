@@ -122,7 +122,11 @@ export class LibrarySync {
 
   private async resolveArtist(tagArtist?: string, hintArtist?: string, overrideId?: number): Promise<number> {
     if (overrideId) return overrideId;
-    const name = hintArtist || tagArtist || "Unknown Artist";
+    let name = (hintArtist || tagArtist || "Unknown Artist").trim();
+    const lowerName = name.toLowerCase();
+    if (name === "" || lowerName === "null" || lowerName === "undefined") {
+      name = "Unknown Artist";
+    }
     const existing = this.database.getArtistByName(name);
     return existing ? existing.id : this.database.createArtist(name, undefined, undefined, undefined, undefined, undefined, 'private');
   }
@@ -142,56 +146,64 @@ export class LibrarySync {
 
     // Hint Priority
     if (hints?.album) {
-      let album = this.database.getAlbumByTitle(hints.album, artistId);
-      const slug = slugify("hint-" + artistId + "-" + hints.album);
-      if (!album) {
-        album = this.database.getAlbumBySlug(slug);
-      }
-      if (album) return album.id;
+      const albumTitle = hints.album.trim();
+      const lowerAlbum = albumTitle.toLowerCase();
+      if (albumTitle !== "" && lowerAlbum !== "null" && lowerAlbum !== "undefined") {
+        let album = this.database.getAlbumByTitle(albumTitle, artistId);
+        const slug = slugify("hint-" + artistId + "-" + albumTitle);
+        if (!album) {
+          album = this.database.getAlbumBySlug(slug);
+        }
+        if (album) return album.id;
 
-      return this.database.createAlbum({
-        title: hints.album,
-        slug: slug,
-        artist_id: artistId,
-        album_artist: albumArtist || null,
-        owner_id: ownerId || this.primaryAdminId || 1,
-        date: hints.year ? `${hints.year}-01-01` : null,
-        year: hints.year || null,
-        cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
-        genre: hints.genre || "Imported",
-        description: `Imported via metadata hint`,
-        type: 'album',
-        download: null, price: 0, price_usdc: 0, currency: 'ETH', external_links: null,
-        is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
-        published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
-      });
+        return this.database.createAlbum({
+          title: albumTitle,
+          slug: slug,
+          artist_id: artistId,
+          album_artist: albumArtist || null,
+          owner_id: ownerId || this.primaryAdminId || 1,
+          date: hints.year ? `${hints.year}-01-01` : null,
+          year: hints.year || null,
+          cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
+          genre: hints.genre || "Imported",
+          description: `Imported via metadata hint`,
+          type: 'album',
+          download: null, price: 0, price_usdc: 0, currency: 'ETH', external_links: null,
+          is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
+          published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
+        });
+      }
     }
 
     // Tag Priority
     if (common.album) {
-      let album = this.database.getAlbumByTitle(common.album, artistId);
-      const slug = slugify("tag-" + artistId + "-" + common.album);
-      if (!album) {
-        album = this.database.getAlbumBySlug(slug);
-      }
-      if (album) return album.id;
+      const albumTitle = common.album.trim();
+      const lowerAlbum = albumTitle.toLowerCase();
+      if (albumTitle !== "" && lowerAlbum !== "null" && lowerAlbum !== "undefined") {
+        let album = this.database.getAlbumByTitle(albumTitle, artistId);
+        const slug = slugify("tag-" + artistId + "-" + albumTitle);
+        if (!album) {
+          album = this.database.getAlbumBySlug(slug);
+        }
+        if (album) return album.id;
 
-      return this.database.createAlbum({
-        title: common.album,
-        slug: slug,
-        artist_id: artistId,
-        album_artist: albumArtist || common.artist || null,
-        owner_id: ownerId || this.primaryAdminId || 1,
-        date: common.year ? `${common.year}-01-01` : (common.date ? common.date : null),
-        year: common.year || (common.date ? new Date(common.date).getFullYear() : null),
-        cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
-        genre: common.genre ? common.genre.join(", ") : "Library",
-        description: `Imported from tags`,
-        type: 'album',
-        download: null, price: 0, price_usdc: 0, currency: 'ETH', external_links: null,
-        is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
-        published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
-      });
+        return this.database.createAlbum({
+          title: albumTitle,
+          slug: slug,
+          artist_id: artistId,
+          album_artist: albumArtist || common.artist || null,
+          owner_id: ownerId || this.primaryAdminId || 1,
+          date: common.year ? `${common.year}-01-01` : (common.date ? common.date : null),
+          year: common.year || (common.date ? new Date(common.date).getFullYear() : null),
+          cover_path: suggestedCoverPath ? this.normalizePath(suggestedCoverPath, musicDir) : null,
+          genre: common.genre ? common.genre.join(", ") : "Library",
+          description: `Imported from tags`,
+          type: 'album',
+          download: null, price: 0, price_usdc: 0, currency: 'ETH', external_links: null,
+          is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
+          published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
+        });
+      }
     }
 
     // Folder-based check last (to prevent duplicate tag-based albums but allow overrides)

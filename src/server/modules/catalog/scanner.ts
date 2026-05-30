@@ -723,12 +723,12 @@ export class Scanner implements ScannerService {
                     
                     const ext = path.extname(oldP).toLowerCase();
                     
-                    // Retain subfolder prefix (releases, downloads, tracks, import, localized, gdrive:, artwork, assets)
+                    // Retain subfolder prefix (releases, downloads, tracks, import, localized, cloud_imports, gdrive, artwork, assets)
                     const pathParts = oldP.split("/");
                     let subfolder = "";
                     if (pathParts.length > 1) {
                         const firstSegment = pathParts[0];
-                        const recognized = ["releases", "downloads", "tracks", "import", "localized", "gdrive:", "artwork", "assets"];
+                        const recognized = ["releases", "downloads", "tracks", "import", "localized", "cloud_imports", "gdrive", "artwork", "assets"];
                         if (recognized.includes(firstSegment)) {
                             subfolder = firstSegment;
                         }
