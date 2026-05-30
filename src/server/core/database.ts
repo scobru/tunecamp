@@ -524,10 +524,13 @@ export function createDatabase(dbPath: string): DatabaseService {
             t.price_usdc,
             t.price_usdt,
             t.currency,
+            t.lyrics,
+            t.waveform,
+            t.lossless_path,
             t.created_at
         FROM tracks t
         JOIN albums a ON t.album_id = a.id
-        WHERE a.status = 'released';
+        WHERE a.is_release = 1;
 
         CREATE VIEW v_releases AS
         SELECT

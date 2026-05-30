@@ -56,7 +56,7 @@ export class TrackRepository extends BaseRepository {
                 r.artist_name as artist_name,
                 r.artist_id as artist_id
             FROM release_tracks rt
-            JOIN v_releases r ON rt.release_id = r.id
+            JOIN v_albums r ON rt.release_id = r.id
             WHERE rt.id = ? OR rt.track_id = ?
             LIMIT 1
         `).get(id, id);
@@ -343,7 +343,7 @@ export class TrackRepository extends BaseRepository {
                 r.cover_path as album_cover_path,
                 ar.wallet_address as walletAddress
             FROM release_tracks rt
-            JOIN releases r ON rt.release_id = r.id
+            JOIN albums r ON rt.release_id = r.id
             LEFT JOIN tracks t ON rt.track_id = t.id
             LEFT JOIN artists ar ON r.artist_id = ar.id
             WHERE rt.release_id = ?

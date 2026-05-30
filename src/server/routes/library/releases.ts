@@ -210,8 +210,13 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
                 return res.send(svg);
             }
 
-            releaseId = parseInt(param, 10);
-            const release = database.getRelease(releaseId) || database.getAlbum(releaseId);
+            let release = null;
+            if (isNaN(parseInt(param, 10))) {
+                release = database.getReleaseBySlug(param) || database.getAlbumBySlug(param);
+            } else {
+                const releaseId = parseInt(param, 10);
+                release = database.getRelease(releaseId) || database.getAlbum(releaseId);
+            }
             
             let releaseCoverPath = release?.cover_path;
             
