@@ -183,11 +183,11 @@ export class MetadataService {
 
         const tags = {
             title: track.title,
-            artist: track.artist_name || undefined,
-            album: track.album_title || undefined,
-            trackNumber: track.track_num?.toString() || undefined,
-            genre: track.genre || undefined,
-            year: track.year?.toString() || undefined
+            artist: track.artist_name || "",
+            album: track.album_title || "",
+            trackNumber: track.track_num?.toString() || "",
+            genre: track.genre || "",
+            year: track.year?.toString() || ""
         };
 
         for (const relPath of pathsToUpdate) {

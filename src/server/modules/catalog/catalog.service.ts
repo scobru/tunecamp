@@ -137,7 +137,7 @@ export class CatalogService {
 
 
         // Resolve Album
-        let finalAlbumId = albumId !== undefined ? albumId : track.album_id;
+        let finalAlbumId = albumId !== undefined ? (albumId === null || albumId === 'null' || albumId === '' || albumId === 0 || albumId === '0' ? null : Number(albumId)) : track.album_id;
         
         // If an explicit album title is provided without an explicit albumId,
         // check if it differs from the track's current album title. If it differs, or if the track has no album,
