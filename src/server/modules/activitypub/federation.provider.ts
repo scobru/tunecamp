@@ -31,6 +31,7 @@ export interface FederationProvider {
   // Social
   getFollowers(artistId: number): Follower[];
   addFollower(artistId: number, actorUri: string, inboxUri: string): void;
+  acceptFollower(artistId: number, actorUri: string): void;
 
   // AP Notes
   createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number;
