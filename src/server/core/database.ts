@@ -681,6 +681,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         getArtistsByIds: (ids: number[]) => artistRepository.getByIds(ids),
         getFollowers: (id: number) => socialRepository.getFollowers(id),
         addFollower: (id: number, u: string, i: string, si?: string) => socialRepository.addFollower(id, u, i, si),
+        acceptFollower: (artistId: number, actorUri: string) => socialRepository.acceptFollower(artistId, actorUri),
         removeFollower: (id: number, u: string) => socialRepository.removeFollower(id, u),
         unfollowActor: (u: string) => { db.prepare("UPDATE remote_actors SET is_followed = 0 WHERE uri = ?").run(u); },
         createArtist: (n: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v: any = 'private', e?: string) => artistRepository.create(n, b, p, l, pp, w, v, e),
