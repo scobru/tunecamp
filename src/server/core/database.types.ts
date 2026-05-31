@@ -223,6 +223,7 @@ export interface Follower {
     inbox_uri: string;
     shared_inbox_uri: string | null;
     created_at: string;
+    status: 'pending' | 'accepted' | 'rejected';
 }
 
 export interface LikeEntry {
