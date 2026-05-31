@@ -5,8 +5,10 @@ console.log("CWD:", process.cwd());
 
 const dbPaths = [
   'tunecamp.db',
+  'library.db',
   'data/tunecamp.db',
   'D:\\shogun-2\\tunecamp\\tunecamp.db',
+  'D:\\shogun-2\\tunecamp\\library.db',
   'D:\\shogun-2\\tunecamp\\data\\tunecamp.db'
 ];
 
