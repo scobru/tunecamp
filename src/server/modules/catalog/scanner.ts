@@ -800,6 +800,67 @@ export class Scanner implements ScannerService {
                     console.warn(`⚠️ [Consolidate] Failed to move leftover files in ${oldDir}:`, (err as any).message);
                 }
             }
+            // Sweep root directory for leftover artist folders (including those already consolidated in the past)
+            try {
+                const rootEntries = await this.storage.readdir(musicDir, { withFileTypes: true });
+                const recognized = ["releases", "downloads", "tracks", "import", "localized", "cloud_imports", "gdrive", "artwork", "assets"];
+                
+                for (const entry of rootEntries) {
+                    if (entry.isDirectory() && !recognized.includes(entry.name.toLowerCase())) {
+                        const artistDir = path.join(musicDir, entry.name);
+                        const safeArtistName = entry.name.replace(/[^a-zA-Z0-9\s._-]/g, "_").trim();
+                        
+                        const albumEntries = await this.storage.readdir(artistDir, { withFileTypes: true });
+                        for (const albumEntry of albumEntries) {
+                            if (albumEntry.isDirectory()) {
+                                const albumDir = path.join(artistDir, albumEntry.name);
+                                const safeAlbumTitle = albumEntry.name.replace(/[^a-zA-Z0-9\s._-]/g, "_").trim();
+                                
+                                // Determine the target directory under tracks/
+                                const targetDir = path.join(musicDir, "tracks", safeArtistName, safeAlbumTitle);
+                                
+                                // If the target directory already exists (meaning it was consolidated in the past or present)
+                                if (await this.storage.pathExists(targetDir)) {
+                                    // Move all files from albumDir to targetDir
+                                    const files = await this.storage.readdir(albumDir);
+                                    for (const file of files) {
+                                        const srcFile = path.join(albumDir, file);
+                                        const destFile = path.join(targetDir, file);
+                                        try {
+                                            const stat = await fs.stat(srcFile);
+                                            if (stat.isFile() && !await this.storage.pathExists(destFile)) {
+                                                console.log(`🚚 [Sweep Cleanup] Migrating leftover file: ${file} -> ${path.relative(musicDir, destFile)}`);
+                                                await this.storage.move(srcFile, destFile);
+                                            }
+                                        } catch (fileErr) {}
+                                    }
+                                }
+                            }
+                        }
+
+                        // Also check for any files directly inside the artist folder (e.g. cover.jpg)
+                        const targetUnknownDir = path.join(musicDir, "tracks", safeArtistName, "Unknown Album");
+                        if (await this.storage.pathExists(targetUnknownDir)) {
+                            const files = await this.storage.readdir(artistDir);
+                            for (const file of files) {
+                                const srcFile = path.join(artistDir, file);
+                                try {
+                                    const stat = await fs.stat(srcFile);
+                                    if (stat.isFile()) {
+                                        const destFile = path.join(targetUnknownDir, file);
+                                        if (!await this.storage.pathExists(destFile)) {
+                                            console.log(`🚚 [Sweep Cleanup] Migrating leftover artist-level file: ${file} -> ${path.relative(musicDir, destFile)}`);
+                                            await this.storage.move(srcFile, destFile);
+                                        }
+                                    }
+                                } catch (fileErr) {}
+                            }
+                        }
+                    }
+                }
+            } catch (sweepErr: any) {
+                console.warn("⚠️ [Consolidate Sweep] Error sweeping root directory:", sweepErr.message);
+            }
 
             if (deleted > 0) await this.librarySync.cleanupEmptyEntities();
             
