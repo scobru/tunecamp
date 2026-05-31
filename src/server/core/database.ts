@@ -494,6 +494,15 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE remote_actors ADD COLUMN public_key TEXT");
             }
         }
+
+        const followersExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='followers'").get();
+        if (followersExists) {
+            const cols = db.prepare("PRAGMA table_info(followers)").all() as any[];
+            if (!cols.some(col => col.name === 'status')) {
+                console.log("📦 [Database] Migrating followers table: adding status column...");
+                db.exec("ALTER TABLE followers ADD COLUMN status TEXT DEFAULT 'pending'");
+            }
+        }
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic
