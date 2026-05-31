@@ -376,6 +376,7 @@ export interface DatabaseService {
     getArtistsByIds(ids: number[]): Artist[];
     getFollowers(artistId: number): Follower[];
     addFollower(artistId: number, actorUri: string, inboxUrl: string, sharedInboxUrl?: string): void;
+    acceptFollower(artistId: number, actorUri: string): void;
     removeFollower(artistId: number, actorUri: string): void;
     unfollowActor(actorUri: string): void;
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
