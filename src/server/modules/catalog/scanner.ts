@@ -694,6 +694,7 @@ export class Scanner implements ScannerService {
         try {
             let success = 0, failed = 0, skipped = 0, deleted = 0, count = 0;
             const cache = new Map<string, any>();
+            const migratedDirsMap = new Map<string, string>();
             const iter = Array.from(this.database.iterateTracks("file_path IS NOT NULL"));
             for (const t of iter) {
                 try {
@@ -760,6 +761,7 @@ export class Scanner implements ScannerService {
                         await this.storage.ensureDir(path.dirname(fNew));
                         await this.storage.move(fOld, fNew, { overwrite: true });
                         this.database.updateTrackPath(t.id, newP, t.album_id);
+                        migratedDirsMap.set(path.dirname(fOld), path.dirname(fNew));
                         if (t.lossless_path) {
                             const oldLossless = path.join(musicDir, t.lossless_path);
                             const losslessExt = path.extname(t.lossless_path);
@@ -777,6 +779,28 @@ export class Scanner implements ScannerService {
                 count++;
                 if (count % 100 === 0 && (global as any).gc) (global as any).gc();
             }
+
+            // Migrate remaining non-audio files (covers, artwork, info files)
+            for (const [oldDir, newDir] of migratedDirsMap.entries()) {
+                try {
+                    if (await this.storage.pathExists(oldDir)) {
+                        const files = await this.storage.readdir(oldDir);
+                        for (const file of files) {
+                            const oldFile = path.join(oldDir, file);
+                            const newFile = path.join(newDir, file);
+                            const stat = await fs.stat(oldFile);
+                            if (stat.isFile() && !await this.storage.pathExists(newFile)) {
+                                console.log(`🚚 [Consolidate] Moving remaining non-audio file: ${file} -> ${path.relative(musicDir, newFile)}`);
+                                await this.storage.ensureDir(newDir);
+                                await this.storage.move(oldFile, newFile);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`⚠️ [Consolidate] Failed to move leftover files in ${oldDir}:`, (err as any).message);
+                }
+            }
+
             if (deleted > 0) await this.librarySync.cleanupEmptyEntities();
             
             // Clean up empty directories bottom-up
