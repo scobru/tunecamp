@@ -523,13 +523,26 @@ export class ActivityPubService {
             return;
         }
 
-        // Store follow request as pending (status defaults to 'pending' in addFollower)
+        // Store follow request as pending
         this.db.addFollower(artist.id, actorUri, inboxUri);
-        console.log(`📥 Received follow request from ${actorUri} for ${artist.name} (pending)`);
+
+        // Immediately accept it and notify the actor
+        this.db.acceptFollower(artist.id, actorUri);
+        console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);
+
+        const acceptActivity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
+            type: "Accept",
+            actor: `${this.getBaseUrl()}/users/${artist.slug}`,
+            object: activity
+        };
+
+        await this.sendActivity(artist, inboxUri, acceptActivity);
     }
 
-    /** Accept a pending follow request and notify the actor */
-    public async acceptFollowRequest(artist: Artist, actorUri: string): Promise<void> {
+    /** Accept a pending follow request and notify the actor (legacy method) */
+    public async acceptFollowRequest(artist: Artist, actorUri: string, activityObject: any = `https://www.w3.org/ns/activitystreams#Follow`): Promise<void> {
         const inboxUri = await this.getInboxFromActor(actorUri);
         if (!inboxUri) {
             console.error(`❌ Could not find inbox for actor: ${actorUri}`);
@@ -544,7 +557,7 @@ export class ActivityPubService {
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Accept",
             actor: `${this.getBaseUrl()}/users/${artist.slug}`,
-            object: `https://www.w3.org/ns/activitystreams#Follow`
+            object: activityObject
         };
 
         await this.sendActivity(artist, inboxUri, acceptActivity);

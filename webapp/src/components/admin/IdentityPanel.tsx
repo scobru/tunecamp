@@ -90,9 +90,8 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
       } else if (!isRootAdmin) {
         artistsToShow = [];
       } else {
-        // Root admin without an associated artist should see no artist identities here,
-        // they still see the Site Identity if it exists.
-        artistsToShow = [];
+        // Root admin without an associated artist should see all artist identities.
+        artistsToShow = allArtists;
       }
 
       // Load RSA keys for each artist
