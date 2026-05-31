@@ -725,12 +725,12 @@ export class Scanner implements ScannerService {
                     
                     const ext = path.extname(oldP).toLowerCase();
                     
-                    // Retain subfolder prefix (releases, downloads, tracks, import, localized, cloud_imports, gdrive, artwork, assets)
+                    // Retain subfolder prefix (releases, downloads, tracks, import, localized, cloud_imports, gdrive, gdrive:, artwork, assets, artists)
                     const pathParts = oldP.split("/");
                     let subfolder = "";
                     if (pathParts.length > 1) {
                         const firstSegment = pathParts[0];
-                        const recognized = ["releases", "downloads", "tracks", "import", "localized", "cloud_imports", "gdrive", "artwork", "assets"];
+                        const recognized = ["releases", "downloads", "tracks", "import", "localized", "cloud_imports", "gdrive", "gdrive:", "artwork", "assets", "artists"];
                         if (recognized.includes(firstSegment)) {
                             subfolder = firstSegment;
                         }
@@ -803,7 +803,7 @@ export class Scanner implements ScannerService {
             // Sweep root directory for leftover artist folders (including those already consolidated in the past)
             try {
                 const rootEntries = await this.storage.readdir(musicDir, { withFileTypes: true });
-                const recognized = ["releases", "downloads", "tracks", "import", "localized", "cloud_imports", "gdrive", "artwork", "assets"];
+                const recognized = ["releases", "downloads", "tracks", "import", "localized", "cloud_imports", "gdrive", "gdrive:", "artwork", "assets", "artists"];
                 
                 for (const entry of rootEntries) {
                     if (entry.isDirectory() && !recognized.includes(entry.name.toLowerCase())) {
