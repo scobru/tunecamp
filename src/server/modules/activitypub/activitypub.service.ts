@@ -523,15 +523,28 @@ export class ActivityPubService {
             return;
         }
 
+        // Store follow request as pending (status defaults to 'pending' in addFollower)
         this.db.addFollower(artist.id, actorUri, inboxUri);
-        console.log(`➕ Added follower ${actorUri} for ${artist.name}`);
+        console.log(`📥 Received follow request from ${actorUri} for ${artist.name} (pending)`);
+    }
+
+    /** Accept a pending follow request and notify the actor */
+    public async acceptFollowRequest(artist: Artist, actorUri: string): Promise<void> {
+        const inboxUri = await this.getInboxFromActor(actorUri);
+        if (!inboxUri) {
+            console.error(`❌ Could not find inbox for actor: ${actorUri}`);
+            return;
+        }
+
+        this.db.acceptFollower(artist.id, actorUri);
+        console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);
 
         const acceptActivity = {
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Accept",
             actor: `${this.getBaseUrl()}/users/${artist.slug}`,
-            object: activity
+            object: `https://www.w3.org/ns/activitystreams#Follow`
         };
 
         await this.sendActivity(artist, inboxUri, acceptActivity);
@@ -569,6 +582,7 @@ export class ActivityPubService {
             cc: [`${artistActorUrl}/followers`]
         };
 
+        // Get only accepted followers
         const followers = this.db.getFollowers(artist.id);
         const inboxes = followers.map(f => f.inbox_uri);
 

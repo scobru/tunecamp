@@ -26,7 +26,7 @@ import clsx from "clsx";
 
 const Profile = () => {
   const { user, isAuthenticated, role, isInitializing } = useAuthStore();
-  const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
+  const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin' || user?.isRootAdmin;
   const { address, externalAddress, useExternalWallet, isExternalConnected } = useWalletStore();
   const activeAddress = useExternalWallet && isExternalConnected ? externalAddress : address;
   const { loading: purchasesLoading, isPurchased } = usePurchases();
@@ -36,12 +36,12 @@ const Profile = () => {
     "settings" | "collection" | "artist"
   >("settings");
 
-  // Ensure active tab is valid if user is not an artist/admin
+  // Ensure active tab is valid if user is not an artist
   useEffect(() => {
-    if ((!user?.artistId || !isAdmin) && activeTab === "artist") {
+    if (!user?.artistId && activeTab === "artist") {
       setActiveTab("settings");
     }
-  }, [user?.artistId, isAdmin, activeTab]);
+  }, [user?.artistId, activeTab]);
   const [artistData, setArtistData] = useState<any>(null);
   const [artistLoading, setArtistLoading] = useState(false);
   const [alias, setAlias] = useState(user?.zenProfile?.alias || "");
@@ -70,8 +70,8 @@ const Profile = () => {
         })
         .finally(() => setLoadingTracks(false));
 
-      // Load artist data if user is linked to an artist AND is admin
-      if (user?.artistId && isAdmin) {
+      // Load artist data if user is linked to an artist
+      if (user?.artistId) {
         setArtistLoading(true);
         API.getArtist(user.artistId)
           .then(setArtistData)
@@ -79,7 +79,7 @@ const Profile = () => {
           .finally(() => setArtistLoading(false));
       }
     }
-  }, [isAuthenticated, user?.artistId, isAdmin]);
+  }, [isAuthenticated, user?.artistId]);
 
   const { ownedNFTs } = useOwnedNFTs(activeAddress);
 

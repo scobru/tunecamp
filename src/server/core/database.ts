@@ -243,6 +243,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             inbox_uri TEXT NOT NULL,
             shared_inbox_uri TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'pending',
             UNIQUE(artist_id, actor_uri)
         );
 

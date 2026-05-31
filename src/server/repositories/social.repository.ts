@@ -11,8 +11,23 @@ export class SocialRepository extends BaseRepository {
 
     addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void {
         this.db.prepare(
-            "INSERT OR IGNORE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri) VALUES (?, ?, ?, ?)"
+            "INSERT OR IGNORE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status) VALUES (?, ?, ?, ?, 'pending')"
         ).run(artistId, actorUri, inboxUri, sharedInboxUri || null);
+    }
+
+    /** Get pending followers for an artist */
+    getPendingFollowers(artistId: number): Follower[] {
+        return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND status = 'pending'").all(artistId) as Follower[];
+    }
+
+    /** Accept a follower request */
+    acceptFollower(artistId: number, actorUri: string): void {
+        this.db.prepare("UPDATE followers SET status = 'accepted' WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
+    }
+
+    /** Reject a follower request */
+    rejectFollower(artistId: number, actorUri: string): void {
+        this.db.prepare("UPDATE followers SET status = 'rejected' WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
     }
 
     removeFollower(artistId: number, actorUri: string): void {
@@ -20,7 +35,7 @@ export class SocialRepository extends BaseRepository {
     }
 
     getFollowers(artistId: number): Follower[] {
-        return this.db.prepare("SELECT * FROM followers WHERE artist_id = ?").all(artistId) as Follower[];
+        return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND status = 'accepted'").all(artistId) as Follower[];
     }
 
     getFollower(artistId: number, actorUri: string): Follower | undefined {

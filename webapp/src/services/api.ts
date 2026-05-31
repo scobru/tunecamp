@@ -197,6 +197,10 @@ const API = {
     getTopArtists: (limit = 10, days = 30, filter: 'all' | 'library' | 'releases' = 'all') => handleResponse(api.get<any[]>(`stats/library/top-artists?limit=${limit}&days=${days}&filter=${filter}`)),
 
     // --- Community / ActivityPub ---
+    getPendingFollowers: (artistId: string | number) => handleResponse(api.get<any[]>(`ap/followers/pending/${artistId}`)),
+    acceptFollower: (artistId: string | number, actorUri: string) => handleResponse(api.post(`ap/followers/accept`, { artistId, actorUri })),
+    rejectFollower: (artistId: string | number, actorUri: string) => handleResponse(api.post(`ap/followers/reject`, { artistId, actorUri })),
+    getArtistPosts: (idOrSlug: string) => handleResponse(api.get<Post[]>(`artists/${idOrSlug}/posts`)),
     getArtistPosts: (idOrSlug: string) => handleResponse(api.get<Post[]>(`artists/${idOrSlug}/posts`)),
     getPostBySlug: (slug: string) => handleResponse(api.get<Post>(`posts/${slug}`)),
     createPost: (artistId: number, content: string, visibility: string) => handleResponse(api.post('admin/posts', { artistId, content, visibility })),
