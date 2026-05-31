@@ -1,7 +1,7 @@
 import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { MetadataService } from "./metadata.service.js";
-import { VisibilityGuardian, VisibilityProfile, UserRole, Capability } from "../../common/visibility.js";
+import { VisibilityGuardian, VisibilityProfile, UserRole, Capability, type ViewerContext } from "../../common/visibility.js";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
 
 /**
@@ -17,11 +17,20 @@ export class DiscoveryService {
 
     // --- Query & Recommendation Operations ---
 
-    async getAiRecommendations(trackId: number, limit: number = 5) {
+    async getAiRecommendations(trackId: number, limit: number = 5, context?: ViewerContext) {
         const targetTrack = this.database.getTrack(trackId);
         if (!targetTrack) throw new Error("Track not found");
 
-        const candidates = this.database.getRandomTracks(50).filter(t => t.id !== trackId);
+        if (!this.openRouter.isEnabled()) {
+            return [];
+        }
+
+        const effectiveContext = context || { role: UserRole.GUEST };
+        const allVisibleTracks = this.database.getTracks(undefined, effectiveContext);
+        const filtered = allVisibleTracks.filter(t => t.id !== trackId);
+
+        const shuffled = filtered.sort(() => 0.5 - Math.random());
+        const candidates = shuffled.slice(0, 50);
 
         const recommendedIds = await this.openRouter.suggestRelatedTracks(targetTrack, candidates);
         
@@ -33,7 +42,10 @@ export class DiscoveryService {
         }
 
         const recommendedTracks = this.database.getTracksByIds(recommendedIds);
-        return recommendedTracks.map(t => mapTrackDTO(t, this.database));
+        const allowedIds = new Set(filtered.map(t => t.id));
+        const safeRecommendedTracks = recommendedTracks.filter(t => allowedIds.has(t.id));
+
+        return safeRecommendedTracks.map(t => mapTrackDTO(t, this.database));
     }
 
     async getOverview(isAdmin: boolean, username?: string) {

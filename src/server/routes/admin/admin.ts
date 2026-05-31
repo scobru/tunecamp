@@ -92,9 +92,19 @@ export function createAdminRoutes(
             if (showMine) {
                 // "My Releases" view: always show ONLY formal releases owned by this user.
                 // Library albums (scanned content) are never shown here, regardless of role.
-                releases = req.userId
+                let owned = req.userId
                     ? database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }))
                     : [];
+                if (req.userId && req.artistId) {
+                    const artistReleases = database.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                    const existingIds = new Set(owned.map(r => r.id));
+                    for (const r of artistReleases) {
+                        if (!existingIds.has(r.id)) {
+                            owned.push(r);
+                        }
+                    }
+                }
+                releases = owned;
             } else if (canSeeAll) {
                 // Admin/SuperUser global view: all formal releases
                 const formalReleases = database.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
@@ -109,7 +119,16 @@ export function createAdminRoutes(
                 }
             } else if (req.userId) {
                 // Non-admin artist: their formal releases + library albums they submitted for promotion
-                const ownedFormalReleases = database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                let ownedFormalReleases = database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                if (req.artistId) {
+                    const artistReleases = database.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                    const existingIds = new Set(ownedFormalReleases.map(r => r.id));
+                    for (const r of artistReleases) {
+                        if (!existingIds.has(r.id)) {
+                            ownedFormalReleases.push(r);
+                        }
+                    }
+                }
                 const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, VisibilityProfile.ALL_ACCESS)
                     .filter(a => a.status && a.status !== 'draft')
                     .map(a => ({ ...a, is_formal_release: false }));
@@ -162,9 +181,10 @@ export function createAdminRoutes(
 
             // Permission Check
             const ownerId = release ? release.owner_id : album?.owner_id;
-            const canManageAll = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            const isAssociatedArtist = req.artistId !== undefined && req.artistId !== null && item.artist_id !== undefined && item.artist_id !== null && Number(item.artist_id) === Number(req.artistId);
+            const canSeeAll = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
             
-            if (req.userId !== undefined && !canManageAll && ownerId !== req.userId) {
+            if (req.userId !== undefined && !canSeeAll && ownerId !== req.userId && !isAssociatedArtist) {
                 return res.status(403).json({ error: "Access denied: You can only manage your own content" });
             }
 
@@ -691,11 +711,12 @@ export function createAdminRoutes(
             const owners = database.getAlbumOwners(id);
             const primaryOwnerId = release ? release.owner_id : album?.owner_id;
             const isOwner = req.userId !== undefined && (primaryOwnerId === req.userId || owners.includes(req.userId));
+            const isAssociatedArtist = req.artistId !== undefined && req.artistId !== null && item.artist_id !== undefined && item.artist_id !== null && Number(item.artist_id) === Number(req.artistId);
             
             const isPrivileged = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
             const canManagePrivate = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
             
-            if (!isPrivileged && !isOwner && !canManagePrivate) {
+            if (!isPrivileged && !isOwner && !canManagePrivate && !isAssociatedArtist) {
                 console.warn(`⛔ [Debug] Access Denied for user ${req.username} on item ${id}. Owners: ${owners}, PrimaryOwner: ${primaryOwnerId}, Request UserId: ${req.userId}`);
                 return res.status(403).json({ error: "Access denied: Insufficient permissions to modify this item" });
             }

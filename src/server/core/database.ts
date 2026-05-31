@@ -256,6 +256,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             icon_url TEXT,
             inbox_url TEXT,
             outbox_url TEXT,
+            public_key TEXT,
             is_followed INTEGER DEFAULT 0,
             last_seen TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -481,6 +482,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'fingerprint')) {
                 console.log("📦 [Database] Migrating tracks table: adding fingerprint column...");
                 db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
+            }
+        }
+
+        const remoteActorsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='remote_actors'").get();
+        if (remoteActorsExists) {
+            const cols = db.prepare("PRAGMA table_info(remote_actors)").all() as any[];
+            if (!cols.some(col => col.name === 'public_key')) {
+                console.log("📦 [Database] Migrating remote_actors table: adding public_key column...");
+                db.exec("ALTER TABLE remote_actors ADD COLUMN public_key TEXT");
             }
         }
     })();

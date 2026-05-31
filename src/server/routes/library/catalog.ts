@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { CatalogService } from "../../modules/catalog/catalog.service.js";
 import { DiscoveryService } from "../../modules/catalog/discovery.service.js";
+import { UserRole } from "../../common/visibility.js";
 
 /**
  * Catalog Routes — Handles public and private library discovery.
@@ -66,10 +67,11 @@ export function createCatalogRoutes(catalogService: CatalogService, discoverySer
     /**
      * GET /api/catalog/recommendations/:id
      */
-    router.get("/recommendations/:id", async (req, res) => {
+    router.get("/recommendations/:id", async (req: any, res) => {
         const trackId = parseInt(req.params.id);
+        const context = req.context || { role: UserRole.GUEST };
         try {
-            const related = await discoveryService.getAiRecommendations(trackId);
+            const related = await discoveryService.getAiRecommendations(trackId, 5, context);
             res.json(related);
         } catch (error) {
             console.error("Error getting AI recommendations:", error);
@@ -81,11 +83,12 @@ export function createCatalogRoutes(catalogService: CatalogService, discoverySer
      * GET /api/catalog/tracks/:id/related
      * Alias for recommendations, matching common frontend naming
      */
-    router.get("/tracks/:id/related", async (req, res) => {
+    router.get("/tracks/:id/related", async (req: any, res) => {
         const trackId = parseInt(req.params.id);
         const limit = parseInt(req.query.limit as string) || 5;
+        const context = req.context || { role: UserRole.GUEST };
         try {
-            const related = await discoveryService.getAiRecommendations(trackId, limit);
+            const related = await discoveryService.getAiRecommendations(trackId, limit, context);
             res.json(related);
         } catch (error) {
             console.error("Error getting related tracks:", error);

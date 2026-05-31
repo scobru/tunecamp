@@ -149,7 +149,11 @@ export class AlbumRepository extends BaseRepository {
         const filter = VisibilityGuardian.getAlbumFilter(context, "v_releases");
         const sql = `SELECT * FROM v_releases WHERE ${filter.sql} ORDER BY date DESC`;
         const rows = this.db.prepare(sql).all(...filter.params);
-        return rows.map((row: any) => ({ ...row, is_release: 1 })) as any[];
+        return rows.map((row: any) => {
+            const mapped = this.mapAlbum(row);
+            if (mapped) mapped.is_release = true;
+            return mapped;
+        }).filter(Boolean) as any[];
     }
 
     getByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Album[] {
@@ -200,7 +204,11 @@ export class AlbumRepository extends BaseRepository {
         params.push(...filter.params);
 
         const rows = this.db.prepare(sql).all(...params);
-        return rows.map((row: any) => ({ ...row, is_release: 1 })) as any[];
+        return rows.map((row: any) => {
+            const mapped = this.mapAlbum(row);
+            if (mapped) mapped.is_release = true;
+            return mapped;
+        }).filter(Boolean) as any[];
     }
 
     getByOwner(ownerId: number, profile?: VisibilityProfile | ViewerContext): Album[] {
@@ -220,7 +228,11 @@ export class AlbumRepository extends BaseRepository {
         const sql = `SELECT * FROM v_releases WHERE owner_id = ? AND (${filter.sql}) ORDER BY date DESC`;
 
         const rows = this.db.prepare(sql).all(ownerId, ...filter.params);
-        return rows as any[];
+        return rows.map((row: any) => {
+            const mapped = this.mapAlbum(row);
+            if (mapped) mapped.is_release = true;
+            return mapped;
+        }).filter(Boolean) as any[];
     }
 
     getCovers(artistId: number): string[] {

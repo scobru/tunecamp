@@ -18,10 +18,10 @@ const V8_HEAP_LIMIT_MB = Math.round(v8.getHeapStatistics().heap_size_limit / 102
 function isProtectedSoul(soul: string): boolean {
     // Protect tunecamp root
     if (soul === 'tunecamp') return true;
-    
+
     // Protect user profiles/namespaces (must start with ~ and not contain slashes/subpaths)
     if (soul.startsWith('~') && !soul.includes('/')) return true;
-    
+
     // Protect explicit system nodes we use
     if (soul === 'tunecamp-playlists' || soul === 'tunecamp-public-playlists') return true;
 
@@ -189,7 +189,7 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
             try {
                 delete graph[soul];
                 graphDropped++;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // ── 2. Evict root.next listener chains (PRIMARY leak source) ──────
@@ -206,7 +206,7 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
                 }
                 delete next[soul];
                 nextDropped++;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // ── 3. Purge the dedup tracker ────────────────────────────────────
@@ -231,7 +231,7 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
                     clearTimeout(root.dup.to);
                     root.dup.to = null;
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // ── 4. Emergency: disconnect all peers to stop the flood ──────────
@@ -246,10 +246,10 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
                     if (!p) return;
                     const conn = p.wire || p.socket || p.conn;
                     if (conn && typeof conn.close === 'function') {
-                        try { conn.close(); } catch (e) {}
+                        try { conn.close(); } catch (e) { }
                     }
                     if (p && typeof p.close === 'function') {
-                        try { p.close(); } catch (e) {}
+                        try { p.close(); } catch (e) { }
                     }
                 };
 
@@ -303,7 +303,7 @@ export function getZen(options?: ZenOptions): any {
 
         console.log(`📡 [ZEN] Initializing shared singleton with ${initializationOptions.peers.length} peers (memory limit: ${ZEN_MEMORY_LIMIT_MB}MB)...`);
         zenInstance = new ZEN(initializationOptions);
-        
+
         // ── Inbound message filter ──────────────────────────────────────────
         // The relay sends its ENTIRE graph state (hundreds of souls per message)
         // when a peer connects. 39 such messages in 5 seconds = 400MB+ of retained
@@ -319,7 +319,7 @@ export function getZen(options?: ZenOptions): any {
         let incomingCount = 0;
         let droppedCount = 0;
         let strippedCount = 0;
-        
+
         setInterval(() => {
             if (incomingCount > 0 || droppedCount > 0 || strippedCount > 0) {
                 const heap = Math.round(v8.getHeapStatistics().used_heap_size / 1e6);
@@ -330,9 +330,9 @@ export function getZen(options?: ZenOptions): any {
             }
         }, 5000).unref();
 
-        zenInstance.on('in', function(this: any, msg: any) {
+        zenInstance.on('in', function (this: any, msg: any) {
             incomingCount++;
-            
+
             if (msg && msg.put) {
                 const root = zenInstance._ || zenInstance._graph?._;
                 const next = root ? root.next || {} : {};
@@ -350,7 +350,7 @@ export function getZen(options?: ZenOptions): any {
                     // 3. Or it is a child of an active subscription (starts with subscribed soul + '/')
                     let keep = isProtectedSoul(soul) || !!next[soul];
                     let keepReason = keep ? (isProtectedSoul(soul) ? 'protected' : 'next') : 'none';
-                    
+
                     if (!keep) {
                         for (const sub of subscribedSouls) {
                             // Ignore broad root / top-level categories (e.g. 'shogun' or 'shogun/tunecamp-community')
@@ -375,13 +375,13 @@ export function getZen(options?: ZenOptions): any {
                         strippedCount++;
                     }
                 }
-                
+
                 // If nothing left after stripping, drop entirely
                 if (Object.keys(msg.put).length === 0) {
                     droppedCount++;
                     return;
                 }
-                
+
                 // Emergency heap check: if we are extremely low on memory, drop everything non-critical
                 const heapUsed = v8.getHeapStatistics().used_heap_size;
                 const emergencyBytes = V8_HEAP_LIMIT_MB * 0.75 * 1024 * 1024;
@@ -404,7 +404,7 @@ export function getZen(options?: ZenOptions): any {
                     console.log(`[Diagnostic] Incoming msg #${incomingCount} is NOT put. Keys: ${Object.keys(msg).join(', ')} | dam: ${msg.dam} | get: ${msg.get ? JSON.stringify(msg.get) : 'no'}`);
                 }
             }
-            
+
             this.to.next(msg);
         });
 
@@ -417,9 +417,9 @@ export function getZen(options?: ZenOptions): any {
         // We attach this shim to provide compatibility with Tunecamp's existing 
         // authentication and user-space data patterns (e.g., zen.user().auth()).
         const userShim = new ServerZenUser(zenInstance);
-        
+
         Object.defineProperty(zenInstance, 'user', {
-            value: function(pub?: string) {
+            value: function (pub?: string) {
                 // If a pubkey is provided, return the public namespace node
                 if (pub) return (zenInstance as any).get('~' + pub);
                 // Otherwise return the authenticated user shim
@@ -430,7 +430,7 @@ export function getZen(options?: ZenOptions): any {
         });
 
         // Initialize internal graph state
-        (zenInstance as any)._graph; 
+        (zenInstance as any)._graph;
     } else if (options?.peers) {
         // Update existing instance if new options provided (peers)
         if (options.peers) {
@@ -448,7 +448,7 @@ export function getZen(options?: ZenOptions): any {
     if (typeof zenInstance.user !== 'function') {
         console.error("🚨 [ZEN] FATAL: zenInstance.user is STILL not a function after initialization!");
     }
-    
+
     return zenInstance;
 }
 

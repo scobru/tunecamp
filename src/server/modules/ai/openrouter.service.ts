@@ -18,6 +18,12 @@ export class OpenRouterService {
         private config: ServerConfig
     ) {}
 
+    public isEnabled(): boolean {
+        const pluginState = this.database.getPluginState("openrouter");
+        const isPluginEnabled = pluginState ? pluginState.enabled : true;
+        return isPluginEnabled && !!this.getApiKey();
+    }
+
     private getApiKey(): string | undefined {
         return this.database.getSetting("openrouter_api_key") || this.config.openrouterApiKey;
     }
