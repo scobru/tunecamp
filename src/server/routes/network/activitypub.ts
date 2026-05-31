@@ -427,8 +427,8 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
         
-        // Security: Non-admin users can only see their own artist's data
-        if (!request.isAdmin && request.artistId !== Number(artistId)) {
+        // Non-owners, including admins, cannot access other artists' content
+        if ((request.isAdmin || request.isRootAdmin) && request.artistId !== Number(artistId)) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to access AP published content for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
@@ -442,8 +442,8 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
 
-        // Security: Non-admin users can only see their own artist's data
-        if (!request.isAdmin && request.artistId !== Number(artistId)) {
+        // Non-owners cannot view other artists' followers
+        if ((request.isAdmin || request.isRootAdmin) && request.artistId !== Number(artistId)) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to access AP followers for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
@@ -471,8 +471,8 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
         
-        // Security: Non-admin users can only sync their own data
-        if (!request.isAdmin && request.artistId !== Number(artistId)) {
+        // Only the owning artist or root admin can sync
+        if ((request.isAdmin || request.isRootAdmin) && request.artistId !== Number(artistId)) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to sync AP for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
