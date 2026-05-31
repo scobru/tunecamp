@@ -110,7 +110,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
             }
         }
 
-        const slug = body.title.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
+        const slug = body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "release";
         
         let newReleaseId: number;
 
