@@ -187,6 +187,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         unfollowActor: (uri) => database.unfollowActor(uri),
         getFollowers: (id) => database.getFollowers(id),
         addFollower: (id, actor, inbox) => database.addFollower(id, actor, inbox),
+        acceptFollower: (id, actor) => database.acceptFollower(id, actor),
         createApNote: (aid, nid, type, cid, slug, title) => database.createApNote(aid, nid, type, cid, slug, title),
         getApNotes: (id, del) => database.getApNotes(id, del),
         getApNote: (id) => database.getApNote(id),
