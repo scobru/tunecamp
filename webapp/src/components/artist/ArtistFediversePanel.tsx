@@ -38,11 +38,6 @@ interface MockComment {
     time: string;
 }
 
-const DEFAULT_COMMENTS: MockComment[] = [
-    { id: '1', authorName: 'Elena V.', authorHandle: '@elena@mastodon.social', content: 'Incredible sound design! Keep it up! 🎧🚀', time: '1h ago' },
-    { id: '2', authorName: 'AudioCrafter', authorHandle: '@audiocrafter@resonate.cafe', content: 'This is brilliant. Added to my weekend playlist.', time: '30m ago' }
-];
-
 export const ArtistFediversePanel = () => {
     const { adminUser, user, role } = useAuthStore();
     const [notes, setNotes] = useState<ApNote[]>([]);
