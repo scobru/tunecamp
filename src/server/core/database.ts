@@ -218,6 +218,8 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+            title TEXT,
+            summary TEXT,
             content TEXT NOT NULL,
             slug TEXT NOT NULL UNIQUE,
             visibility TEXT DEFAULT 'public',
@@ -516,6 +518,19 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'follow_id')) {
                 console.log("📦 [Database] Migrating followers table: adding follow_id column...");
                 db.exec("ALTER TABLE followers ADD COLUMN follow_id TEXT");
+            }
+        }
+
+        const postsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='posts'").get();
+        if (postsExists) {
+            const cols = db.prepare("PRAGMA table_info(posts)").all() as any[];
+            if (!cols.some(col => col.name === 'title')) {
+                console.log("📦 [Database] Migrating posts table: adding title column...");
+                db.exec("ALTER TABLE posts ADD COLUMN title TEXT");
+            }
+            if (!cols.some(col => col.name === 'summary')) {
+                console.log("📦 [Database] Migrating posts table: adding summary column...");
+                db.exec("ALTER TABLE posts ADD COLUMN summary TEXT");
             }
         }
     })();
@@ -1164,7 +1179,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         `).all() as any[],
         getPost: (id: number) => db.prepare("SELECT * FROM posts WHERE id = ?").get(id) as any,
         getPostBySlug: (s: string) => db.prepare("SELECT * FROM posts WHERE slug = ?").get(s) as any,
-        createPost(aid: number, c: string, v: any = 'public') {
+        createPost(aid: number, c: string, v: any = 'public', t?: string | null, s?: string | null) {
             if (aid === -1) {
                 const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
                 if (!hasSiteActor) {
@@ -1175,9 +1190,28 @@ export function createDatabase(dbPath: string): DatabaseService {
                       .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
                 }
             }
-            return Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at) VALUES (?, ?, ?, ?, ?)").run(aid, c, c.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 8), v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null).lastInsertRowid);
+            const baseSlug = t ? t : c;
+            const generatedSlug = baseSlug.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 8);
+            return Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at, title, summary) VALUES (?, ?, ?, ?, ?, ?, ?)").run(aid, c, generatedSlug, v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null, t || null, s || null).lastInsertRowid);
         },
-        updatePost: (id: number, c: string, v?: any) => { db.prepare("UPDATE posts SET content = ?, visibility = COALESCE(?, visibility) WHERE id = ?").run(c, v || null, id); },
+        updatePost(id: number, c: string, v?: any, t?: string | null, s?: string | null) {
+            const updates: string[] = ["content = ?"];
+            const params: any[] = [c];
+            if (v !== undefined) {
+                updates.push("visibility = ?");
+                params.push(v);
+            }
+            if (t !== undefined) {
+                updates.push("title = ?");
+                params.push(t);
+            }
+            if (s !== undefined) {
+                updates.push("summary = ?");
+                params.push(s);
+            }
+            params.push(id);
+            db.prepare(`UPDATE posts SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+        },
         updatePostVisibility: (id: number, v: any) => { db.prepare("UPDATE posts SET visibility = ? WHERE id = ?").run(v, id); },
         deletePost: (id: number) => { db.prepare("DELETE FROM posts WHERE id = ?").run(id); },
 

@@ -1406,7 +1406,7 @@ export function createAdminRoutes(
     router.put("/posts/:id", async (req: AuthenticatedRequest, res: any) => {
         try {
             const id = parseInt(req.params.id, 10);
-            const { content, visibility } = req.body;
+            const { content, visibility, title, summary } = req.body;
 
             if (!req.isAdmin && !req.isActive) {
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to modify posts" });
@@ -1423,7 +1423,7 @@ export function createAdminRoutes(
             }
 
             const oldVisibility = post.visibility;
-            database.updatePost(id, content, visibility);
+            database.updatePost(id, content, visibility, title, summary);
             const updatedPost = database.getPost(id);
 
             if (updatedPost) {
@@ -1444,7 +1444,7 @@ export function createAdminRoutes(
      */
     router.post("/posts", async (req: AuthenticatedRequest, res: any) => {
         try {
-            const { artistId, content, visibility } = req.body;
+            const { artistId, content, visibility, title, summary } = req.body;
 
             if (!req.isAdmin && !req.isActive) {
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to create posts" });
@@ -1459,7 +1459,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "You can only post for your assign artist" });
             }
 
-            const postId = database.createPost(artistId, content, visibility || 'public');
+            const postId = database.createPost(artistId, content, visibility || 'public', title, summary);
             const post = database.getPost(postId);
 
             if (post) {

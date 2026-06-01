@@ -109,12 +109,19 @@ export class ActivityPubRenderer {
         const published = post.published_at || post.created_at;
         const sentTime = published ? new Date(published).getTime() : 0;
 
+        let contentHtml = `<p>${post.content}</p>`;
+        if (post.title) {
+            contentHtml = `<h2>${post.title}</h2>` + 
+                (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") + 
+                contentHtml;
+        }
+
         return {
             "@context": "https://www.w3.org/ns/activitystreams",
             type: "Note",
             id: `${this.baseUrl}/api/ap/note/post/${post.slug}/${sentTime}`,
             attributedTo: userUrl,
-            content: `<p>${post.content}</p>`,
+            content: contentHtml,
             url: postUrl,
             published: published,
             to: ["https://www.w3.org/ns/activitystreams#Public"],

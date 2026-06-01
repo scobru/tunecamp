@@ -194,6 +194,8 @@ export interface Playlist {
 export interface Post {
     id: number;
     artist_id: number;
+    title?: string | null;
+    summary?: string | null;
     content: string;
     slug: string;
     visibility: 'public' | 'private' | 'unlisted';
@@ -613,8 +615,8 @@ export interface DatabaseService {
     getPublicPosts(): Post[];
     getPost(id: number): Post | undefined;
     getPostBySlug(slug: string): Post | undefined;
-    createPost(artistId: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): number;
-    updatePost(id: number, content: string, visibility?: 'public' | 'private' | 'unlisted'): void;
+    createPost(artistId: number, content: string, visibility?: 'public' | 'private' | 'unlisted', title?: string | null, summary?: string | null): number;
+    updatePost(id: number, content: string, visibility?: 'public' | 'private' | 'unlisted', title?: string | null, summary?: string | null): void;
     updatePostVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     deletePost(id: number): void;
 

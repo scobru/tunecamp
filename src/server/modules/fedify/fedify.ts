@@ -238,6 +238,12 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             for (const post of posts) {
                 const published = post.published_at || post.created_at;
+                let contentHtml = `<p>${post.content}</p>`;
+                if (post.title) {
+                    contentHtml = `<h2>${post.title}</h2>` + 
+                        (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") + 
+                        contentHtml;
+                }
                 activities.push(new Create({
                     id: new URL(`/ap/activity/post/${post.slug}`, baseUrl),
                     actor: new URL(`/users/${artist.slug}`, baseUrl),
@@ -245,7 +251,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                     object: new Note({
                         id: new URL(`/ap/note/post/${post.slug}`, baseUrl),
-                        content: `<p>${post.content}</p>`,
+                        content: contentHtml,
                         url: new URL(`/artists/${artist.slug}?post=${post.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                         attribution: new URL(`/users/${artist.slug}`, baseUrl),
