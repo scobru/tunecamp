@@ -133,7 +133,7 @@ export const ArtistFediversePanel = () => {
                 const boostCount = (seedId * 3) % 6;
                 initialFavs[seedId] = { active: false, count: favCount };
                 initialBoosts[seedId] = { active: false, count: boostCount };
-                initialReplies[seedId] = [...DEFAULT_COMMENTS];
+                initialReplies[seedId] = [];
             });
 
             setFavorites(prev => ({ ...initialFavs, ...prev }));

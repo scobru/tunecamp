@@ -1114,10 +1114,17 @@ export function createAdminRoutes(
                 return res.status(404).json({ error: "Artist not found" });
             }
 
+            // Generate keys on-the-fly if they don't exist
+            if (!artist.public_key || !artist.private_key) {
+                await apService.ensureArtistKeys(artistId);
+            }
+
+            const updatedArtist = database.getArtist(artistId) || artist;
+
             // Return keys (even if null/empty, let frontend handle it)
             res.json({
-                publicKey: artist.public_key,
-                privateKey: artist.private_key
+                publicKey: updatedArtist.public_key,
+                privateKey: updatedArtist.private_key
             });
         } catch (error) {
             console.error("Error getting artist identity:", error);

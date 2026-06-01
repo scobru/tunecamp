@@ -125,7 +125,7 @@ export class ActivityPubService {
             }
 
             // Check for self-follow
-            if (resolvedActorUri === baseUrl || resolvedActorUri === `${baseUrl}/` || resolvedActorUri === `${baseUrl}/users/site`) {
+            if (resolvedActorUri === baseUrl || resolvedActorUri === `${baseUrl}/` || resolvedActorUri === `${baseUrl}/api/ap/users/site`) {
                 console.warn(`🛑 Self-following is disabled: ${resolvedActorUri}`);
                 return;
             }
@@ -148,7 +148,7 @@ export class ActivityPubService {
                 console.warn(`⚠️ Invalid actor URL during resolution: ${resolvedActorUri}`);
             }
 
-            const followerId = new URL(`/users/${followerHandle}`, baseUrl);
+            const followerId = new URL(`/api/ap/users/${followerHandle}`, baseUrl);
 
             // Resolve inbox from final actor URI
             console.log(`🔍 Resolving inbox for actor: ${finalActorUri}`);
@@ -224,7 +224,7 @@ export class ActivityPubService {
         try {
             console.log(`📡 Attempting to unfollow remote actor: ${actorUri} as ${followerHandle}`);
             const baseUrl = this.getBaseUrl();
-            const followerId = new URL(`/users/${followerHandle}`, baseUrl);
+            const followerId = new URL(`/api/ap/users/${followerHandle}`, baseUrl);
 
             // Resolve inbox 
             const inboxUri = await this.getInboxFromActor(actorUri);
@@ -541,7 +541,7 @@ export class ActivityPubService {
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Accept",
-            actor: `${this.getBaseUrl()}/users/${artist.slug}`,
+            actor: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`,
             object: activity
         };
 
@@ -600,16 +600,16 @@ export class ActivityPubService {
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Accept",
-            actor: `${this.getBaseUrl()}/users/${artist.slug}`,
+            actor: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`,
             object: activityObject || (followId ? {
                 id: followId,
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/users/${artist.slug}`
+                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
             } : {
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/users/${artist.slug}`
+                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
             })
         };
 
@@ -635,16 +635,16 @@ export class ActivityPubService {
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Reject",
-            actor: `${this.getBaseUrl()}/users/${artist.slug}`,
+            actor: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`,
             object: followId ? {
                 id: followId,
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/users/${artist.slug}`
+                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
             } : {
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/users/${artist.slug}`
+                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
             }
         };
 
@@ -668,7 +668,7 @@ export class ActivityPubService {
         console.log(`📢 Broadcasting release "${album.title}" to followers`);
 
         const baseUrl = this.getBaseUrl();
-        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
 
         const tracks = this.db.getTracksByReleaseId(album.id);
         const note = this.generateNote(album, artist, tracks);
@@ -724,7 +724,7 @@ export class ActivityPubService {
         console.log(`📢 Broadcasting post "${post.slug}" to ${followers.length} followers`);
 
         const baseUrl = this.getBaseUrl();
-        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        const artistActorUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
 
         const activity = {
             "@context": "https://www.w3.org/ns/activitystreams",
@@ -771,7 +771,7 @@ export class ActivityPubService {
                 "@context": "https://www.w3.org/ns/activitystreams",
                 id: `${this.getBaseUrl()}/activity/${crypto.randomUUID()}`,
                 type: "Delete",
-                actor: `${baseUrl}/users/${artist.slug}`,
+                actor: `${baseUrl}/api/ap/users/${artist.slug}`,
                 object: { id: noteId, type: "Note", atomUri: noteId },
                 to: ["https://www.w3.org/ns/activitystreams#Public"]
             };
@@ -812,7 +812,7 @@ export class ActivityPubService {
                 "@context": "https://www.w3.org/ns/activitystreams",
                 id: `${baseUrl}/activity/${crypto.randomUUID()}`,
                 type: "Delete",
-                actor: `${baseUrl}/users/${artist.slug}`,
+                actor: `${baseUrl}/api/ap/users/${artist.slug}`,
                 object: { id: noteId, type: "Note", atomUri: noteId },
                 to: ["https://www.w3.org/ns/activitystreams#Public"]
             };

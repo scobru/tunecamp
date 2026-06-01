@@ -10,14 +10,14 @@ export class ActivityPubRenderer {
                 {
                     rel: "self",
                     type: "application/activity+json",
-                    href: `${this.baseUrl}/users/${artist.slug}`
+                    href: `${this.baseUrl}/api/ap/users/${artist.slug}`
                 }
             ]
         };
     }
 
     public renderActor(artist: Artist | { slug: string, name: string, bio?: string, photo_path?: string, public_key?: string }): any {
-        const userUrl = `${this.baseUrl}/users/${artist.slug}`;
+        const userUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         return {
             "@context": [
                 "https://www.w3.org/ns/activitystreams",
@@ -44,7 +44,7 @@ export class ActivityPubRenderer {
     }
 
     public renderNote(album: Album, artist: Artist, tracks: Track[]): any {
-        const userUrl = `${this.baseUrl}/users/${artist.slug}`;
+        const userUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         const apiUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         const albumUrl = `${this.baseUrl}/releases/${album.slug}`;
         const published = album.published_at || album.created_at;
@@ -103,7 +103,7 @@ export class ActivityPubRenderer {
     }
 
     public renderPostNote(post: Post, artist: Artist): any {
-        const userUrl = `${this.baseUrl}/users/${artist.slug}`;
+        const userUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         const apiUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         const postUrl = `${this.baseUrl}/artists/${artist.slug}?post=${post.slug}`;
         const published = post.published_at || post.created_at;
