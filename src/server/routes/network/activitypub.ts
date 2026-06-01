@@ -426,13 +426,22 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
         
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId)) {
+            return res.status(400).json({ error: "Invalid artist ID" });
+        }
+
+        if (parsedArtistId === -1) {
+            return res.json([]);
+        }
+
         // Non-owners, including admins, cannot access other artists' content
-        if (!request.isRootAdmin && request.artistId !== Number(artistId)) {
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to access AP published content for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
         
-        const notes = db.getApNotes(Number(artistId));
+        const notes = db.getApNotes(parsedArtistId);
         res.json(notes);
     });
 
@@ -441,13 +450,22 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
 
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId)) {
+            return res.status(400).json({ error: "Invalid artist ID" });
+        }
+
+        if (parsedArtistId === -1) {
+            return res.json([]);
+        }
+
         // Non-owners cannot view other artists' followers
-        if (!request.isRootAdmin && request.artistId !== Number(artistId)) {
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to access AP followers for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
 
-        const followers = db.getFollowers(Number(artistId));
+        const followers = db.getFollowers(parsedArtistId);
 
         const enrichedFollowers = followers.map(f => {
             const actor = db.getRemoteActor(f.actor_uri);
@@ -470,12 +488,21 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
 
-        if (!request.isRootAdmin && request.artistId !== Number(artistId)) {
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId)) {
+            return res.status(400).json({ error: "Invalid artist ID" });
+        }
+
+        if (parsedArtistId === -1) {
+            return res.json([]);
+        }
+
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to access AP pending followers for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
 
-        const pending = db.getPendingFollowers ? db.getPendingFollowers(Number(artistId)) : [];
+        const pending = db.getPendingFollowers ? db.getPendingFollowers(parsedArtistId) : [];
         const enrichedFollowers = pending.map(f => {
             const actor = db.getRemoteActor(f.actor_uri);
             return {
@@ -497,13 +524,18 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId, actorUri } = req.body;
         const request = req as AuthenticatedRequest;
 
-        if (!request.isRootAdmin && request.artistId !== Number(artistId)) {
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId) || parsedArtistId === -1) {
+            return res.status(400).json({ error: "Invalid artist ID" });
+        }
+
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to accept follower for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
 
         try {
-            const artist = db.getArtist(Number(artistId));
+            const artist = db.getArtist(parsedArtistId);
             if (!artist) return res.status(404).json({ error: "Artist not found" });
 
             await apService.acceptFollowRequest(artist, actorUri);
@@ -519,13 +551,18 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId, actorUri } = req.body;
         const request = req as AuthenticatedRequest;
 
-        if (!request.isRootAdmin && request.artistId !== Number(artistId)) {
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId) || parsedArtistId === -1) {
+            return res.status(400).json({ error: "Invalid artist ID" });
+        }
+
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to reject follower for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
 
         try {
-            const artist = db.getArtist(Number(artistId));
+            const artist = db.getArtist(parsedArtistId);
             if (!artist) return res.status(404).json({ error: "Artist not found" });
 
             await apService.rejectFollowRequest(artist, actorUri);
@@ -541,14 +578,23 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
         
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId)) {
+            return res.status(400).json({ error: "Invalid artist ID" });
+        }
+
+        if (parsedArtistId === -1) {
+            return res.json({ message: "ActivityPub synchronization complete", notes: 0 });
+        }
+
         // Only the owning artist or root admin can sync
-        if (!request.isRootAdmin && request.artistId !== Number(artistId)) {
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
             console.warn(`⛔ Access Denied: User ${request.username} tried to sync AP for Artist ${artistId}`);
             return res.status(403).json({ error: "Access denied" });
         }
         
         try {
-            const result = await apService.syncArtistContent(Number(artistId));
+            const result = await apService.syncArtistContent(parsedArtistId);
             res.json({ message: "ActivityPub synchronization complete", ...result });
         } catch (e: any) {
             console.error("Failed to sync AP for artist:", e);

@@ -867,6 +867,10 @@ export class ActivityPubService {
     }
 
     public async syncArtistContent(artistId: number): Promise<{ notes: number }> {
+        if (isNaN(artistId) || artistId === -1) {
+            return { notes: 0 };
+        }
+
         const artist = this.db.getArtist(artistId);
         if (!artist) throw new Error("Artist not found");
 
