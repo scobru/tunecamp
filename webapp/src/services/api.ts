@@ -202,8 +202,8 @@ const API = {
     rejectFollower: (artistId: string | number, actorUri: string) => handleResponse(api.post(`ap/followers/reject`, { artistId, actorUri })),
     getArtistPosts: (idOrSlug: string) => handleResponse(api.get<Post[]>(`artists/${idOrSlug}/posts`)),
     getPostBySlug: (slug: string) => handleResponse(api.get<Post>(`posts/${slug}`)),
-    createPost: (artistId: number, content: string, visibility: string) => handleResponse(api.post('admin/posts', { artistId, content, visibility })),
-    updatePost: (id: number, content: string, visibility: string) => handleResponse(api.put(`admin/posts/${id}`, { content, visibility })),
+    createPost: (artistId: number, content: string, visibility: string, title?: string, summary?: string) => handleResponse(api.post('admin/posts', { artistId, content, visibility, title, summary })),
+    updatePost: (id: number, content: string, visibility: string, title?: string, summary?: string) => handleResponse(api.put(`admin/posts/${id}`, { content, visibility, title, summary })),
     deletePost: (id: number) => handleResponse(api.delete(`admin/posts/${id}`)),
 
     // --- ActivityPub Notes ---
