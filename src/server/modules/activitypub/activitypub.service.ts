@@ -596,20 +596,24 @@ export class ActivityPubService {
         this.db.acceptFollower(artist.id, actorUri);
         console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);
 
+        const targetObjectUrl = (followId && followId.includes('/api/ap/')) 
+            ? `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
+            : `${this.getBaseUrl()}/users/${artist.slug}`;
+
         const acceptActivity = {
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Accept",
-            actor: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`,
+            actor: targetObjectUrl,
             object: activityObject || (followId ? {
                 id: followId,
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
+                object: targetObjectUrl
             } : {
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
+                object: targetObjectUrl
             })
         };
 
@@ -631,20 +635,24 @@ export class ActivityPubService {
         this.db.rejectFollower ? this.db.rejectFollower(artist.id, actorUri) : this.db.removeFollower(artist.id, actorUri);
         console.log(`❌ Rejected follower request ${actorUri} for ${artist.name}`);
 
+        const targetObjectUrl = (followId && followId.includes('/api/ap/')) 
+            ? `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
+            : `${this.getBaseUrl()}/users/${artist.slug}`;
+
         const rejectActivity = {
             "@context": "https://www.w3.org/ns/activitystreams",
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Reject",
-            actor: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`,
+            actor: targetObjectUrl,
             object: followId ? {
                 id: followId,
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
+                object: targetObjectUrl
             } : {
                 type: "Follow",
                 actor: actorUri,
-                object: `${this.getBaseUrl()}/api/ap/users/${artist.slug}`
+                object: targetObjectUrl
             }
         };
 

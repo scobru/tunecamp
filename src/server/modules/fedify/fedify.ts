@@ -14,12 +14,14 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         kv,
     });
 
-    federation.setNodeInfoDispatcher("/nodeinfo/2.1", async (_ctx) => {
+    federation.setNodeInfoDispatcher("/nodeinfo/2.1", async (ctx) => {
+        const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl;
+        const baseUrl = publicUrl ? new URL(publicUrl) : ctx.url;
         return {
             software: {
                 name: "tunecamp",
                 version: { major: 2, minor: 0, patch: 1 },
-                homepage: new URL("https://tunecamp.app/"),
+                homepage: new URL("/", baseUrl),
             },
             protocols: ["activitypub"],
             usage: {
@@ -264,6 +266,26 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         };
     });
 
+    // Followers dispatcher
+    federation.setFollowersDispatcher("/users/{handle}/followers", async (ctx, handle, cursor) => {
+        const artist = dbService.getArtistBySlug(handle);
+        if (!artist) return null;
+        const followers = dbService.getFollowers(artist.id);
+        return {
+            items: followers.map(f => ({
+                id: new URL(f.actor_uri),
+                inboxId: new URL(f.inbox_uri)
+            })),
+        };
+    });
+
+    // Following dispatcher (always empty for artists)
+    federation.setFollowingDispatcher("/users/{handle}/following", async (ctx, handle, cursor) => {
+        return {
+            items: [],
+        };
+    });
+
     // Inbox listeners for handling Follow/Unfollow activities
     federation
         .setInboxListeners("/users/{handle}/inbox", "/inbox")
@@ -308,8 +330,9 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             if (!followerUri || !followerInbox) return;
 
-            // Store the follower in the database
+            // Store the follower in the database and immediately accept (artists are fully public)
             dbService.addFollower(artist.id, followerUri, followerInbox, sharedInbox);
+            dbService.acceptFollower(artist.id, followerUri);
             console.log(`📥 New follower for ${artist.name}: ${followerUri}`);
 
             // Send Accept activity back to the follower

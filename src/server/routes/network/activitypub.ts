@@ -65,7 +65,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         try {
             if (hasType(activity.type, "Follow")) {
                 const targetActor = artist || { id: -1, slug: "site", name: "Site" } as any;
-                await apService.receiveFollowRequest(targetActor, activity);
+                await apService.acceptFollow(targetActor, activity);
                 return res.status(202).send("Accepted");
             } else if (hasType(activity.type, "Undo")) {
                 const object = activity.object;
