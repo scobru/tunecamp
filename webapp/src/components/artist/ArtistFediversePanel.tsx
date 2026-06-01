@@ -44,7 +44,7 @@ const DEFAULT_COMMENTS: MockComment[] = [
 ];
 
 export const ArtistFediversePanel = () => {
-    const { adminUser, user } = useAuthStore();
+    const { adminUser, user, role } = useAuthStore();
     const [notes, setNotes] = useState<ApNote[]>([]);
     const [followers, setFollowers] = useState<Follower[]>([]);
     const [posts, setPosts] = useState<Post[]>([]);
@@ -69,8 +69,11 @@ export const ArtistFediversePanel = () => {
     const [repliesList, setRepliesList] = useState<Record<number, MockComment[]>>({});
     const [newReplyTexts, setNewReplyTexts] = useState<Record<number, string>>({});
 
+    const isRoot = user?.isRootAdmin || role === 'root_admin';
     const rawArtistId = adminUser?.artistId ?? user?.artistId;
-    const artistId: string | undefined = rawArtistId && rawArtistId !== 'null' && rawArtistId !== 'undefined' ? String(rawArtistId) : undefined;
+    const artistId: string | undefined = isRoot && (!rawArtistId || rawArtistId === 'null') 
+        ? "-1" 
+        : (rawArtistId && rawArtistId !== 'null' && rawArtistId !== 'undefined' ? String(rawArtistId) : undefined);
 
     const handleSync = async () => {
         if (!artistId) return; 

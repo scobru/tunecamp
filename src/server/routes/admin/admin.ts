@@ -419,6 +419,18 @@ export function createAdminRoutes(
                 console.log(`🌐 Re-registered site on Zen with updated settings: ${currentPublicUrl}`);
             }
 
+            if (settingsChanged) {
+                try {
+                    const finalName = database.getSetting("siteName") || config.siteName || "TuneCamp Instance";
+                    const finalBio = database.getSetting("siteDescription") || config.siteDescription || "Welcome to our TuneCamp community hub!";
+                    const finalPhoto = database.getSetting("siteLogo") || undefined;
+                    database.updateArtist(-1, finalName, finalBio, finalPhoto);
+                    console.log("📡 [Settings] Synchronized Site Actor in artists table");
+                } catch (e) {
+                    console.error("❌ [Settings] Failed to sync Site Actor in artists table:", e);
+                }
+            }
+
             res.json({ message: "Settings updated" });
         } catch (error) {
             console.error("Error updating settings:", error);
@@ -1200,11 +1212,12 @@ export function createAdminRoutes(
     router.get("/system/me", (req: AuthenticatedRequest, res: any) => {
         try {
             const username = req.username || "";
+            const dbUser = username ? authService.getUserByUsername(username) : null;
             res.json({ 
                 username, 
-                isAdmin: !!req.isAdmin,
-                isRootAdmin: !!req.isRootAdmin, 
-                artistId: req.artistId 
+                isAdmin: dbUser ? (dbUser.role === 'admin' || dbUser.role === 'super_user' || dbUser.role === 'root_admin') : !!req.isAdmin,
+                isRootAdmin: dbUser ? dbUser.is_root : !!req.isRootAdmin, 
+                artistId: dbUser ? dbUser.artist_id : req.artistId 
             });
         } catch (error) {
             console.error("Error getting current admin:", error);

@@ -459,6 +459,16 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
                 db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
             }
+            
+            // Site Actor Initialization (id = -1, slug = 'site')
+            const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+            if (!hasSiteActor) {
+                console.log("📡 [Database] Creating virtual artist record for Site Actor (@site)...");
+                const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
+                const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
+                db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                  .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+            }
         }
 
         const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
