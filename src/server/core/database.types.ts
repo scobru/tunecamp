@@ -224,6 +224,7 @@ export interface Follower {
     shared_inbox_uri: string | null;
     created_at: string;
     status: 'pending' | 'accepted' | 'rejected';
+    follow_id?: string | null;
 }
 
 export interface LikeEntry {
@@ -344,10 +345,75 @@ export interface GunCacheEntry {
     expires_at: number;
 }
 
+export interface IdentityManager {
+    getUser(id: number): User | undefined;
+    getUserByUsername(username: string): User | undefined;
+    getUserByArtistId(artistId: number): User | undefined;
+    createUser(username: string, passwordHash: string, artistId?: number | null, role?: string): number;
+    updateUser(id: number, data: Partial<User>): void;
+    getAllUsers(): User[];
+    deleteUser(id: number): void;
+    getAdmins(): User[];
+    getSetting(key: string): string | undefined;
+    setSetting(key: string, value: string): void;
+    getAllSettings(): { [key: string]: string };
+}
+
+export interface LibraryManager {
+    getArtist(id: number): Artist | undefined;
+    getArtistSimple(id: number): Artist | undefined;
+    getArtistBySlug(slug: string): Artist | undefined;
+    getArtistBySlugSimple(slug: string): Artist | undefined;
+    getArtistByName(name: string): Artist | undefined;
+    createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: any, externalId?: string): number;
+    updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: any): void;
+    
+    getTrack(id: number): Track | undefined;
+    createTrack(track: Omit<Track, "id" | "album_title" | "created_at">): number;
+    updateTrack(id: number, data: Partial<Track>): void;
+    
+    updateTrackDeep(
+        trackId: number,
+        data: any,
+        primaryAdminId: number | null
+    ): {
+        track: Track;
+        fileChanges?: {
+            oldPath: string;
+            newPath: string;
+            oldLossless?: string;
+            newLossless?: string;
+        };
+        requiresTagSync: boolean;
+        requiresPublishingSync: boolean;
+    };
+    
+    getAlbum(id: number): Album | undefined;
+    getAlbumBySlug(slug: string): Album | undefined;
+    createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
+    
+    consolidateLibrary(): void;
+}
+
+export interface SocialManager {
+    getFollowers(artistId: number): Follower[];
+    getPendingFollowers(artistId: number): Follower[];
+    getFollower(artistId: number, actorUri: string): Follower | undefined;
+    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void;
+    acceptFollower(artistId: number, actorUri: string): void;
+    rejectFollower(artistId: number, actorUri: string): void;
+    removeFollower(artistId: number, actorUri: string): void;
+    unfollowActor(uri: string): void;
+}
+
 export interface DatabaseService {
     db: DatabaseType;
     consolidateDatabase(): void;
     transaction<T>(fn: () => T): T;
+    
+    identity: IdentityManager;
+    library: LibraryManager;
+    social: SocialManager;
 
     // Users
     getUser(id: number): User | undefined;
@@ -376,8 +442,11 @@ export interface DatabaseService {
     getArtistByName(name: string): Artist | undefined;
     getArtistsByIds(ids: number[]): Artist[];
     getFollowers(artistId: number): Follower[];
-    addFollower(artistId: number, actorUri: string, inboxUrl: string, sharedInboxUrl?: string): void;
+    getPendingFollowers(artistId: number): Follower[];
+    getFollower(artistId: number, actorUri: string): Follower | undefined;
+    addFollower(artistId: number, actorUri: string, inboxUrl: string, sharedInboxUrl?: string, followId?: string): void;
     acceptFollower(artistId: number, actorUri: string): void;
+    rejectFollower(artistId: number, actorUri: string): void;
     removeFollower(artistId: number, actorUri: string): void;
     unfollowActor(actorUri: string): void;
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;

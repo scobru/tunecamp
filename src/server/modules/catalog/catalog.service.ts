@@ -77,200 +77,63 @@ export class CatalogService {
     }
 
     async updateTrack(trackId: number, data: any, options?: { skipSync?: boolean, skipTagWrite?: boolean }): Promise<Track | undefined> {
-        const track = this.database.getTrack(trackId);
-        if (!track) throw new Error("Track not found");
-
-        // Normalize input data to handle both DTO (camelCase) and DB (snake_case) formats
-        const title = data.title;
-        const artistName = data.artistName ?? data.artist_name ?? data.artist;
-        const artistId = data.artistId ?? data.artist_id;
-        const albumName = data.albumName ?? data.album_name ?? data.album;
-        const albumId = data.albumId ?? data.album_id;
-        const ownerId = data.ownerId ?? data.owner_id;
-        const trackNumber = data.trackNumber ?? data.track_num ?? data.track_number;
-        const genre = data.genre;
-        const year = data.year;
-        const price = data.price;
-        const priceUsdc = data.priceUsdc ?? data.price_usdc;
-        const priceUsdt = data.priceUsdt ?? data.price_usdt;
-        const currency = data.currency;
-        const lyrics = data.lyrics;
+        const skipSync = options?.skipSync ?? data.skipSync;
+        const skipTagWrite = options?.skipTagWrite ?? data.skipTagWrite;
+        
+        // Execute atomic deep database transaction
+        const primaryAdminId = this.database.getPrimaryAdminId();
+        const result = this.database.library.updateTrackDeep(trackId, { ...data, skipSync, skipTagWrite }, primaryAdminId);
+        
+        const track = result.track;
+        const fileChanges = result.fileChanges;
+        
+        // Post-transaction physical file renames
+        if (fileChanges && track.file_path) {
+            try {
+                const fullOldPath = path.join(this.musicDir, fileChanges.oldPath);
+                const fullNewPath = path.join(this.musicDir, fileChanges.newPath);
+                if (await this.storage.pathExists(fullOldPath)) {
+                    await this.storage.move(fullOldPath, fullNewPath);
+                }
+                if (fileChanges.oldLossless && fileChanges.newLossless) {
+                    const fullOldLossless = path.join(this.musicDir, fileChanges.oldLossless);
+                    const fullNewLossless = path.join(this.musicDir, fileChanges.newLossless);
+                    if (await this.storage.pathExists(fullOldLossless)) {
+                        await this.storage.move(fullOldLossless, fullNewLossless);
+                    }
+                }
+            } catch (err: any) {
+                console.error(`[CatalogService] Post-transaction physical rename failed for track ${trackId}:`, err.message);
+            }
+        }
+        
+        // Post-transaction remote artwork downloading (async)
         const externalArtwork = data.externalArtwork ?? data.external_artwork;
-        const fileName = data.fileName ?? data.filename ?? data.file_path;
-        const duration = data.duration;
-
-        // Resolve Owner
-        let finalOwnerId = ownerId !== undefined ? ownerId : track.owner_id;
-        if (finalOwnerId) {
-            const isValidAdmin = (this.database as any).db.prepare("SELECT 1 FROM admin WHERE id = ?").get(finalOwnerId);
-            if (!isValidAdmin) {
-                finalOwnerId = this.database.getPrimaryAdminId();
-            }
-        } else {
-            finalOwnerId = this.database.getPrimaryAdminId();
-        }
-
-        // Resolve Artist
-        let finalArtistId = artistId !== undefined ? (artistId === null || artistId === 'null' || artistId === 'undefined' || artistId === '' ? null : Number(artistId)) : track.artist_id;
-        let finalArtistName = typeof artistName === 'string' ? artistName.trim() : (track.artist_name || null);
-
-        if (typeof artistName === 'string') {
-            const trimmedName = artistName.trim();
-            const lowerName = trimmedName.toLowerCase();
-            if (trimmedName === "" || lowerName === "null" || lowerName === "undefined") {
-                finalArtistId = null;
-                finalArtistName = null;
-            } else {
-                const existingArtist = this.database.getArtistByName(trimmedName);
-                if (existingArtist) {
-                    finalArtistId = existingArtist.id;
-                    finalArtistName = existingArtist.name;
-                } else {
-                    finalArtistId = this.database.createArtist(trimmedName);
-                    finalArtistName = trimmedName;
-                }
-            }
-        } else if (artistName === null) {
-            finalArtistId = null;
-            finalArtistName = null;
-        } else if (finalArtistId) {
-            const existingArtist = this.database.getArtist(finalArtistId);
-            if (existingArtist) {
-                finalArtistName = existingArtist.name;
-            }
-        }
-
-
-        // Resolve Album
-        let finalAlbumId = albumId !== undefined ? (albumId === null || albumId === 'null' || albumId === 'undefined' || albumId === '' || albumId === 0 || albumId === '0' ? null : Number(albumId)) : track.album_id;
-        
-        // If an explicit album title is provided without an explicit albumId,
-        // check if it differs from the track's current album title. If it differs, or if the track has no album,
-        // we must resolve/create the album for this title.
-        if (albumId === undefined && typeof albumName === "string") {
-            const currentAlbum = track.album_id ? (this.database.getAlbum(track.album_id) || (this.database as any).getRelease?.(track.album_id)) : null;
-            if (!currentAlbum || currentAlbum.title.trim().toLowerCase() !== albumName.trim().toLowerCase()) {
-                finalAlbumId = null; // Force resolution below
-            }
-        }
-
-        if ((finalAlbumId === null || finalAlbumId === undefined) && typeof albumName === "string") {
-            const trimmedAlbum = albumName.trim();
-            const lowerAlbum = trimmedAlbum.toLowerCase();
-            if (trimmedAlbum === "" || lowerAlbum === "null" || lowerAlbum === "undefined") {
-                finalAlbumId = null;
-            } else {
-                const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, "-");
-                const existingAlbum = this.database.getAlbumBySlug(slug);
-                finalAlbumId = existingAlbum
-                    ? existingAlbum.id
-                    : this.database.createAlbum({
-                          title: trimmedAlbum,
-                          slug,
-                          artist_id: finalArtistId || track.artist_id,
-                          owner_id: finalOwnerId,
-                          date: null,
-                          cover_path: null,
-                          genre: "Library",
-                          description: "",
-                          type: "album",
-                          year: null,
-                          download: null,
-                          price: 0,
-                          price_usdc: 0,
-                          currency: "ETH",
-                          external_links: null,
-                          is_public: false,
-                          visibility: "private",
-                          is_release: false,
-                          published_at: null,
-                          published_to_gundb: false,
-                          published_to_ap: false,
-                          license: null,
-                          status: "draft",
-                      });
-            }
-        }
-
-        // Handle File Rename
-        if (track.file_path && fileName && typeof fileName === 'string') {
-            const oldPath = track.file_path;
-            const oldDir = path.dirname(oldPath);
-            const oldExt = path.extname(oldPath);
-            let sanitizedName = path.parse(fileName).name.replace(/[^a-z0-9_\-]/gi, '_');
-            const newPath = path.posix.join(oldDir, sanitizedName + oldExt);
-
-            if (newPath !== oldPath) {
-                const fullOldPath = path.join(this.musicDir, oldPath);
-                const fullNewPath = path.join(this.musicDir, newPath);
-                try {
-                    if (await this.storage.pathExists(fullOldPath)) {
-                        await this.storage.move(fullOldPath, fullNewPath);
-                        this.database.updateTrackPath(trackId, newPath, track.album_id);
-                    }
-                    if (track.lossless_path) {
-                        const losslessExt = path.extname(track.lossless_path);
-                        const newLosslessPath = path.posix.join(path.dirname(track.lossless_path), sanitizedName + losslessExt);
-                        const fullOldLossless = path.join(this.musicDir, track.lossless_path);
-                        const fullNewLossless = path.join(this.musicDir, newLosslessPath);
-                        if (await this.storage.pathExists(fullOldLossless)) {
-                            await this.storage.move(fullOldLossless, fullNewLossless);
-                            this.database.updateTrackLosslessPath(trackId, newLosslessPath);
-                        }
-                    }
-                } catch (err: any) {
-                    console.error(`[CatalogService] Rename failed for track ${trackId}:`, err.message);
-                }
-            }
-        }
-
-        // Apply Updates to DB
-        if (title !== undefined) this.database.updateTrackTitle(trackId, title);
-        
-        this.database.updateTrackArtistInfo(trackId, finalArtistId, finalArtistName);
-
-        if (finalAlbumId !== undefined) this.database.updateTrackAlbum(trackId, finalAlbumId);
-        if (ownerId !== undefined) this.database.updateTrackOwner(trackId, finalOwnerId);
-        if (trackNumber !== undefined) this.database.updateTrackNumber(trackId, trackNumber);
-        if (duration !== undefined) this.database.updateTrackDuration(trackId, parseFloat(duration));
-        
-        if (price !== undefined || priceUsdc !== undefined || priceUsdt !== undefined) {
-            this.database.updateTrackPrice(trackId, price ?? track.price, priceUsdc ?? track.price_usdc, currency ?? track.currency);
-            if (priceUsdt !== undefined) {
-                (this.database as any).db.prepare("UPDATE tracks SET price_usdt = ? WHERE id = ?").run(priceUsdt, trackId);
-            }
-        }
-        
-        if (lyrics !== undefined) this.database.updateTrackLyrics(trackId, lyrics);
-        if (genre !== undefined) this.database.updateTrackGenre(trackId, genre);
-        if (year !== undefined) this.database.updateTrackYear(trackId, year ? Number(year) : null);
-        
-        if (externalArtwork !== undefined) {
-            let finalArtwork = externalArtwork;
-            if (typeof externalArtwork === 'string' && externalArtwork.startsWith('http')) {
+        if (externalArtwork && typeof externalArtwork === 'string' && externalArtwork.startsWith('http')) {
+            try {
                 const relDir = track.file_path ? path.dirname(track.file_path) : "artwork/tracks";
                 const localPath = await this.downloadRemoteImage(externalArtwork, relDir, `artwork-tr${trackId}`);
                 if (localPath) {
-                    finalArtwork = localPath;
+                    // Update database with downloaded local artwork
+                    this.database.library.updateTrack(trackId, { external_artwork: localPath });
+                    track.external_artwork = localPath;
                 }
+            } catch (err: any) {
+                console.error(`[CatalogService] Remote artwork download failed for track ${trackId}:`, err.message);
             }
-            this.database.updateTrackExternalArtwork(trackId, finalArtwork);
         }
         
-        if (data.service !== undefined) this.database.updateTrackService(trackId, data.service);
-        if (data.url !== undefined) this.database.updateTrackUrl(trackId, data.url);
-        if (data.external_id !== undefined || data.externalId !== undefined) {
-            this.database.updateTrackExternalId(trackId, data.external_id ?? data.externalId);
+        // Post-transaction metadata tag synchronization (audio files)
+        if (result.requiresTagSync && track.file_path) {
+            await this.metadataService.syncPhysicalTags(track, this.database, this.storage, this.musicDir);
         }
-
-        const updatedTrack = this.database.getTrack(trackId);
-        if (!options?.skipTagWrite && updatedTrack && updatedTrack.file_path) {
-            await this.metadataService.syncPhysicalTags(updatedTrack, this.database, this.storage, this.musicDir);
+        
+        // Post-transaction publishing synchronization (cloud)
+        if (result.requiresPublishingSync && track.album_id) {
+            await this.publishing.syncRelease(track.album_id).catch(e => console.error(`[CatalogService] Sync failed:`, e));
         }
-        if (!options?.skipSync && updatedTrack && updatedTrack.album_id) {
-            await this.publishing.syncRelease(updatedTrack.album_id).catch(e => console.error(`[CatalogService] Sync failed:`, e));
-        }
-        return updatedTrack;
+        
+        return track;
     }
 
     async batchUpdateTracks(trackIds: number[], data: any, user: { userId?: number, artistId?: number, isAdmin: boolean, username?: string }): Promise<any> {

@@ -9,10 +9,17 @@ export class SocialRepository extends BaseRepository {
 
     // --- Followers ---
 
-    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string): void {
-        this.db.prepare(
-            "INSERT OR IGNORE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status) VALUES (?, ?, ?, ?, 'pending')"
-        ).run(artistId, actorUri, inboxUri, sharedInboxUri || null);
+    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void {
+        const hasFollowIdCol = this.db.prepare("PRAGMA table_info(followers)").all().some((c: any) => c.name === 'follow_id');
+        if (hasFollowIdCol) {
+            this.db.prepare(
+                "INSERT OR REPLACE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status, follow_id) VALUES (?, ?, ?, ?, 'pending', ?)"
+            ).run(artistId, actorUri, inboxUri, sharedInboxUri || null, followId || null);
+        } else {
+            this.db.prepare(
+                "INSERT OR REPLACE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status) VALUES (?, ?, ?, ?, 'pending')"
+            ).run(artistId, actorUri, inboxUri, sharedInboxUri || null);
+        }
     }
 
     /** Get pending followers for an artist */

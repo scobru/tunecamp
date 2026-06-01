@@ -53,6 +53,13 @@ export class ActivityPubService {
         const artist = this.db.getArtist(artistId);
         if (!artist) return;
 
+        // ONLY generate AP keys if the artist is linked to a user!
+        const isLinked = this.db.isArtistLinkedToUser(artistId);
+        if (!isLinked) {
+            console.log(`ℹ️ Skipping key generation for artist "${artist.name}" (no associated user account)`);
+            return;
+        }
+
         if (!artist.public_key || !artist.private_key) {
             console.log(`🔑 Generating ActivityPub keys for artist: ${artist.name}`);
             const { publicKey, privateKey } = await this.generateKeyPair();
@@ -524,7 +531,7 @@ export class ActivityPubService {
         }
 
         // Store follow request as pending
-        this.db.addFollower(artist.id, actorUri, inboxUri);
+        this.db.addFollower(artist.id, actorUri, inboxUri, undefined, activity.id);
 
         // Immediately accept it and notify the actor
         this.db.acceptFollower(artist.id, actorUri);
@@ -541,13 +548,50 @@ export class ActivityPubService {
         await this.sendActivity(artist, inboxUri, acceptActivity);
     }
 
-    /** Accept a pending follow request and notify the actor (legacy method) */
-    public async acceptFollowRequest(artist: Artist, actorUri: string, activityObject: any = `https://www.w3.org/ns/activitystreams#Follow`): Promise<void> {
+    public async receiveFollowRequest(artist: Artist, activity: any): Promise<void> {
+        const actorUri = activity.actor;
+        const inboxUri = await this.getInboxFromActor(actorUri);
+
+        if (!inboxUri) {
+            console.error(`❌ Could not find inbox for actor: ${actorUri}`);
+            return;
+        }
+
+        // Fetch remote actor details so we can render their profile nicely
+        try {
+            const res = await this.fetchWithSignature(actorUri);
+            if (res.ok) {
+                const actorData = await res.json() as any;
+                this.db.upsertRemoteActor({
+                    uri: actorUri,
+                    type: typeof actorData.type === 'string' ? actorData.type : (Array.isArray(actorData.type) ? actorData.type[0] : 'Person'),
+                    username: this.getString(actorData.preferredUsername),
+                    name: this.getString(actorData.name),
+                    summary: this.getString(actorData.summary),
+                    icon_url: this.getString(actorData.icon),
+                    inbox_url: this.getString(actorData.inbox),
+                    outbox_url: this.getString(actorData.outbox),
+                } as any);
+            }
+        } catch (e) {
+            console.warn(`⚠️ Failed to pre-fetch remote actor metadata for: ${actorUri}`, e);
+        }
+
+        // Store follow request as pending
+        this.db.addFollower(artist.id, actorUri, inboxUri, undefined, activity.id);
+        console.log(`📥 Follow request from ${actorUri} is pending approval for artist: ${artist.name}`);
+    }
+
+    /** Accept a pending follow request and notify the actor */
+    public async acceptFollowRequest(artist: Artist, actorUri: string, activityObject: any = null): Promise<void> {
         const inboxUri = await this.getInboxFromActor(actorUri);
         if (!inboxUri) {
             console.error(`❌ Could not find inbox for actor: ${actorUri}`);
             return;
         }
+
+        const follower = this.db.getFollower ? this.db.getFollower(artist.id, actorUri) : undefined;
+        const followId = follower?.follow_id;
 
         this.db.acceptFollower(artist.id, actorUri);
         console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);
@@ -557,10 +601,54 @@ export class ActivityPubService {
             id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
             type: "Accept",
             actor: `${this.getBaseUrl()}/users/${artist.slug}`,
-            object: activityObject
+            object: activityObject || (followId ? {
+                id: followId,
+                type: "Follow",
+                actor: actorUri,
+                object: `${this.getBaseUrl()}/users/${artist.slug}`
+            } : {
+                type: "Follow",
+                actor: actorUri,
+                object: `${this.getBaseUrl()}/users/${artist.slug}`
+            })
         };
 
         await this.sendActivity(artist, inboxUri, acceptActivity);
+    }
+
+    /** Reject a pending follow request and notify the actor */
+    public async rejectFollowRequest(artist: Artist, actorUri: string): Promise<void> {
+        const inboxUri = await this.getInboxFromActor(actorUri);
+        if (!inboxUri) {
+            console.error(`❌ Could not find inbox for actor: ${actorUri}`);
+            return;
+        }
+
+        const follower = this.db.getFollower ? this.db.getFollower(artist.id, actorUri) : undefined;
+        const followId = follower?.follow_id;
+
+        // Reject deletes or marks the follower request as rejected
+        this.db.rejectFollower ? this.db.rejectFollower(artist.id, actorUri) : this.db.removeFollower(artist.id, actorUri);
+        console.log(`❌ Rejected follower request ${actorUri} for ${artist.name}`);
+
+        const rejectActivity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${this.getBaseUrl()}/${crypto.randomUUID()}`,
+            type: "Reject",
+            actor: `${this.getBaseUrl()}/users/${artist.slug}`,
+            object: followId ? {
+                id: followId,
+                type: "Follow",
+                actor: actorUri,
+                object: `${this.getBaseUrl()}/users/${artist.slug}`
+            } : {
+                type: "Follow",
+                actor: actorUri,
+                object: `${this.getBaseUrl()}/users/${artist.slug}`
+            }
+        };
+
+        await this.sendActivity(artist, inboxUri, rejectActivity);
     }
 
     public async broadcastRelease(album: Album, force: boolean = false): Promise<void> {

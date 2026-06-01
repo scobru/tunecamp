@@ -37,11 +37,7 @@ export function createBrowserRoutes(musicDir: string, database: DatabaseService)
 
             const entries = await fs.readdir(absPath, { withFileTypes: true });
 
-            // Hide internal system folders from the Root list to keep the UI clean and premium
-            const SYSTEM_FOLDERS = ["artists", "artwork", "assets", "cloud_imports", "gdrive", "gdrive:", "localized", "import"];
-            const filteredEntries = relPath === "" || relPath === "/"
-                ? entries.filter(e => !SYSTEM_FOLDERS.includes(e.name.toLowerCase()))
-                : entries;
+            const filteredEntries = entries;
 
             // Bolt ⚡: Optimized to fetch stats in parallel
             const results = await Promise.all(filteredEntries.map(async (entry) => {

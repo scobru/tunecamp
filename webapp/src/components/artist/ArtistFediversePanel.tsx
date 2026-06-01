@@ -51,6 +51,7 @@ export const ArtistFediversePanel = () => {
     const [artist, setArtist] = useState<Artist | null>(null);
     const [loading, setLoading] = useState(false);
     const [processingId, setProcessingId] = useState<number | null>(null);
+    const [pendingRequests, setPendingRequests] = useState<any[]>([]);
     
     // Inline Composer States
     const [composerContent, setComposerContent] = useState('');
@@ -104,16 +105,21 @@ export const ArtistFediversePanel = () => {
     const loadData = async (id: string) => {
         setLoading(true);
         try {
-            const [notesData, followersData, postsData, artistData] = await Promise.all([
+            const [notesData, followersData, postsData, artistData, pendingData] = await Promise.all([
                 API.getPublishedContent(id),
                 API.getArtistFollowers(id),
                 API.getArtistPosts(id),
-                API.getArtist(id)
+                API.getArtist(id),
+                API.getPendingFollowers(id).catch(err => {
+                    console.error("Failed to load pending follow requests", err);
+                    return [];
+                })
             ]);
             setNotes(notesData);
             setFollowers(followersData);
             setPosts(postsData);
             setArtist(artistData);
+            setPendingRequests(pendingData);
 
             // Initialize random counts for mock likes and boosts to feel realistic
             const initialFavs: Record<number, { active: boolean, count: number }> = {};
@@ -210,6 +216,28 @@ export const ArtistFediversePanel = () => {
             ...prev,
             [uri]: !prev[uri]
         }));
+    };
+
+    const handleAcceptRequest = async (actorUri: string) => {
+        if (!artistId) return;
+        try {
+            await API.acceptFollower(artistId, actorUri);
+            loadData(artistId);
+        } catch (e: any) {
+            console.error(e);
+            alert("Failed to accept follower: " + e.message);
+        }
+    };
+
+    const handleRejectRequest = async (actorUri: string) => {
+        if (!artistId) return;
+        try {
+            await API.rejectFollower(artistId, actorUri);
+            loadData(artistId);
+        } catch (e: any) {
+            console.error(e);
+            alert("Failed to reject follower: " + e.message);
+        }
     };
 
     const handleAddMockComment = (noteId: number) => {
@@ -418,6 +446,58 @@ export const ArtistFediversePanel = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Follow Requests (Pending) */}
+                    {pendingRequests.length > 0 && (
+                        <div className="card-m3 bg-warning/5 border border-warning/10 rounded-2xl shadow-md p-6 mb-6">
+                            <h3 className="font-bold text-lg flex items-center gap-2 mb-4 text-warning">
+                                <Users size={18} /> Follow Requests ({pendingRequests.length})
+                            </h3>
+                            <div className="grid gap-3">
+                                {pendingRequests.map(req => (
+                                    <div key={req.uri} className="flex items-center justify-between gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-warning/20 transition-all duration-short-4">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="avatar placeholder flex-shrink-0">
+                                                <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content shadow-sm overflow-hidden">
+                                                    {req.actor?.icon_url ? (
+                                                        <img 
+                                                            src={req.actor.icon_url} 
+                                                            alt={req.actor.name} 
+                                                            onError={(e) => {
+                                                                e.currentTarget.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-semibold">{req.actor?.name?.[0] || '?'}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <div className="font-bold text-xs truncate text-base-content">{req.actor?.name || 'Anonymous listener'}</div>
+                                                <div className="text-[10px] opacity-50 truncate font-mono" title={req.uri}>
+                                                    @{req.actor?.username || 'unknown'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1.5 flex-shrink-0">
+                                            <button 
+                                                className="btn btn-xs btn-success rounded-full text-[10px] font-bold px-3 border-none hover:opacity-90"
+                                                onClick={() => handleAcceptRequest(req.uri)}
+                                            >
+                                                Accept
+                                            </button>
+                                            <button 
+                                                className="btn btn-xs btn-error btn-outline rounded-full text-[10px] font-bold px-3 hover:bg-error hover:text-error-content"
+                                                onClick={() => handleRejectRequest(req.uri)}
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Followers Card */}
                     <div className="card-m3 bg-base-200/40 border border-base-content/5 rounded-2xl shadow-md p-6">

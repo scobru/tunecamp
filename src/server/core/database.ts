@@ -18,7 +18,8 @@ export type {
 
 import type {
     Album, Artist, Track, Release, Post, Playlist,
-    DatabaseService
+    DatabaseService,
+    IdentityManager, LibraryManager, SocialManager
 } from "./database.types.js";
 
 export function createDatabase(dbPath: string): DatabaseService {
@@ -502,6 +503,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating followers table: adding status column...");
                 db.exec("ALTER TABLE followers ADD COLUMN status TEXT DEFAULT 'pending'");
             }
+            if (!cols.some(col => col.name === 'follow_id')) {
+                console.log("📦 [Database] Migrating followers table: adding follow_id column...");
+                db.exec("ALTER TABLE followers ADD COLUMN follow_id TEXT");
+            }
         }
     })();
 
@@ -637,11 +642,268 @@ export function createDatabase(dbPath: string): DatabaseService {
     const remoteActorRepository = new RemoteActorRepository(db);
     const remoteContentRepository = new RemoteContentRepository(db);
 
+    const identity: IdentityManager = {
+        getUser: (id: number) => db.prepare("SELECT * FROM admin WHERE id = ?").get(id) as any,
+        getUserByUsername: (u: string) => db.prepare("SELECT * FROM admin WHERE username = ?").get(u) as any,
+        getUserByArtistId: (aid: number) => db.prepare("SELECT * FROM admin WHERE artist_id = ?").get(aid) as any,
+        createUser(u: string, p: string, aid?: number | null, r = 'admin'): number {
+            return Number(db.prepare("INSERT INTO admin (username, password_hash, artist_id, role) VALUES (?, ?, ?, ?)").run(u, p, aid || null, r).lastInsertRowid);
+        },
+        updateUser(id: number, data: any): void {
+            const f = Object.keys(data).map(k => `${k} = ?`).join(", ");
+            db.prepare(`UPDATE admin SET ${f} WHERE id = ?`).run(...Object.values(data), id);
+        },
+        getAllUsers: () => db.prepare("SELECT * FROM admin").all() as any[],
+        deleteUser: (id: number) => { db.prepare("DELETE FROM admin WHERE id = ?").run(id); },
+        getAdmins: () => db.prepare("SELECT * FROM admin WHERE role IN ('admin', 'super_user', 'root_admin')").all() as any[],
+        getSetting(key: string): string | undefined {
+            const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as any;
+            return row ? row.value : undefined;
+        },
+        setSetting(key: string, value: string): void {
+            db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, value);
+        },
+        getAllSettings(): { [key: string]: string } {
+            const rows = db.prepare("SELECT key, value FROM settings").all() as any[];
+            const settings: { [key: string]: string } = {};
+            for (const r of rows) {
+                settings[r.key] = r.value;
+            }
+            return settings;
+        }
+    };
+
+    const library: LibraryManager = {
+        getArtist: (id: number) => artistRepository.getById(id),
+        getArtistSimple: (id: number) => artistRepository.getByIdSimple(id),
+        getArtistBySlug: (s: string) => artistRepository.getBySlug(s),
+        getArtistBySlugSimple: (s: string) => artistRepository.getBySlug(s) as any,
+        getArtistByName: (n: string) => artistRepository.getByName(n),
+        createArtist: (n: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v: any = 'private', e?: string) => artistRepository.create(n, b, p, l, pp, w, v, e),
+        updateArtist: (id: number, n?: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v?: any) => artistRepository.update(id, n, b, p, l, pp, w, v),
+        
+        getTrack: (id: number) => trackRepository.getById(id),
+        createTrack: (track: any) => trackRepository.create(track),
+        updateTrack: (id: number, data: any) => trackRepository.update(id, data),
+        
+        getAlbum: (id: number) => albumRepository.getById(id),
+        getAlbumBySlug: (slug: string) => albumRepository.getBySlug(slug),
+        createAlbum: (album: any) => albumRepository.create(album),
+        
+        consolidateLibrary(): void {
+            db.transaction(() => {
+                db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
+                db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
+                db.prepare("DELETE FROM artists WHERE id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
+            })();
+        },
+
+        updateTrackDeep(trackId: number, data: any, primaryAdminId: number | null): any {
+            return db.transaction(() => {
+                const track = trackRepository.getById(trackId);
+                if (!track) throw new Error("Track not found");
+
+                const title = data.title;
+                const artistName = data.artistName ?? data.artist_name ?? data.artist;
+                const artistId = data.artistId ?? data.artist_id;
+                const albumName = data.albumName ?? data.album_name ?? data.album;
+                const albumId = data.albumId ?? data.album_id;
+                const ownerId = data.ownerId ?? data.owner_id;
+                const trackNumber = data.trackNumber ?? data.track_num ?? data.track_number;
+                const genre = data.genre;
+                const year = data.year;
+                const price = data.price;
+                const priceUsdc = data.priceUsdc ?? data.price_usdc;
+                const priceUsdt = data.priceUsdt ?? data.price_usdt;
+                const currency = data.currency;
+                const lyrics = data.lyrics;
+                const externalArtwork = data.externalArtwork ?? data.external_artwork;
+                const fileName = data.fileName ?? data.filename ?? data.file_path;
+                const duration = data.duration;
+
+                // 1. Resolve Owner
+                let finalOwnerId = ownerId !== undefined ? ownerId : track.owner_id;
+                if (finalOwnerId) {
+                    const isValidAdmin = db.prepare("SELECT 1 FROM admin WHERE id = ?").get(finalOwnerId);
+                    if (!isValidAdmin) {
+                        finalOwnerId = primaryAdminId;
+                    }
+                } else {
+                    finalOwnerId = primaryAdminId;
+                }
+
+                // 2. Resolve Artist
+                let finalArtistId = artistId !== undefined ? (artistId === null || artistId === 'null' || artistId === 'undefined' || artistId === '' ? null : Number(artistId)) : track.artist_id;
+                let finalArtistName = typeof artistName === 'string' ? artistName.trim() : (track.artist_name || null);
+
+                if (typeof artistName === 'string') {
+                    const trimmedName = artistName.trim();
+                    const lowerName = trimmedName.toLowerCase();
+                    if (trimmedName === "" || lowerName === "null" || lowerName === "undefined") {
+                        finalArtistId = null;
+                        finalArtistName = null;
+                    } else {
+                        const existingArtist = artistRepository.getByName(trimmedName);
+                        if (existingArtist) {
+                            finalArtistId = existingArtist.id;
+                            finalArtistName = existingArtist.name;
+                        } else {
+                            finalArtistId = artistRepository.create(trimmedName);
+                            finalArtistName = trimmedName;
+                        }
+                    }
+                } else if (artistName === null) {
+                    finalArtistId = null;
+                    finalArtistName = null;
+                } else if (finalArtistId) {
+                    const existingArtist = artistRepository.getById(finalArtistId);
+                    if (existingArtist) {
+                        finalArtistName = existingArtist.name;
+                    }
+                }
+
+                // 3. Resolve Album
+                let finalAlbumId = albumId !== undefined ? (albumId === null || albumId === 'null' || albumId === 'undefined' || albumId === '' || albumId === 0 || albumId === '0' ? null : Number(albumId)) : track.album_id;
+                
+                if (albumId === undefined && typeof albumName === "string") {
+                    const currentAlbum = track.album_id ? albumRepository.getById(track.album_id) : null;
+                    if (!currentAlbum || currentAlbum.title.trim().toLowerCase() !== albumName.trim().toLowerCase()) {
+                        finalAlbumId = null; // Force resolution
+                    }
+                }
+
+                if ((finalAlbumId === null || finalAlbumId === undefined) && typeof albumName === "string") {
+                    const trimmedAlbum = albumName.trim();
+                    const lowerAlbum = trimmedAlbum.toLowerCase();
+                    if (trimmedAlbum === "" || lowerAlbum === "null" || lowerAlbum === "undefined") {
+                        finalAlbumId = null;
+                    } else {
+                        const slug = "lib-" + trimmedAlbum.toLowerCase().replace(/[^a-z0-9]/g, "-");
+                        const existingAlbum = albumRepository.getBySlug(slug);
+                        finalAlbumId = existingAlbum
+                            ? existingAlbum.id
+                            : albumRepository.create({
+                                  title: trimmedAlbum,
+                                  slug,
+                                  artist_id: finalArtistId || track.artist_id,
+                                  owner_id: finalOwnerId,
+                                  date: null,
+                                  cover_path: null,
+                                  genre: "Library",
+                                  description: "",
+                                  type: "album",
+                                  year: null,
+                                  download: null,
+                                  price: 0,
+                                  price_usdc: 0,
+                                  currency: "ETH",
+                                  external_links: null,
+                                  is_public: false,
+                                  visibility: "private",
+                                  is_release: false,
+                                  published_at: null,
+                                  published_to_gundb: false,
+                                  published_to_ap: false,
+                                  license: null,
+                                  status: "draft",
+                              });
+                    }
+                }
+
+                // 4. File renaming plan
+                let fileChanges: any = undefined;
+                if (track.file_path && fileName && typeof fileName === 'string') {
+                    const oldPath = track.file_path;
+                    const oldDir = oldPath.includes("/") ? oldPath.substring(0, oldPath.lastIndexOf("/")) : "";
+                    const oldExt = oldPath.includes(".") ? oldPath.substring(oldPath.lastIndexOf(".")) : "";
+                    let sanitizedName = fileName.replace(/[^a-z0-9_\-]/gi, '_');
+                    const newPath = oldDir ? `${oldDir}/${sanitizedName}${oldExt}` : `${sanitizedName}${oldExt}`;
+
+                    if (newPath !== oldPath) {
+                        fileChanges = {
+                            oldPath,
+                            newPath,
+                        };
+                        trackRepository.update(trackId, { file_path: newPath, album_id: finalAlbumId });
+
+                        if (track.lossless_path) {
+                            const losslessPath = track.lossless_path;
+                            const losslessExt = losslessPath.includes(".") ? losslessPath.substring(losslessPath.lastIndexOf(".")) : "";
+                            const losslessDir = losslessPath.includes("/") ? losslessPath.substring(0, losslessPath.lastIndexOf("/")) : "";
+                            const newLosslessPath = losslessDir ? `${losslessDir}/${sanitizedName}${losslessExt}` : `${sanitizedName}${losslessExt}`;
+                            fileChanges.oldLossless = losslessPath;
+                            fileChanges.newLossless = newLosslessPath;
+                            trackRepository.update(trackId, { lossless_path: newLosslessPath });
+                        }
+                    }
+                }
+
+                // 5. Build dynamic updates
+                const updates: any = {};
+                if (title !== undefined) updates.title = title;
+                updates.artist_id = finalArtistId;
+                updates.artist_name = finalArtistName;
+
+                if (finalAlbumId !== undefined) updates.album_id = finalAlbumId;
+                if (ownerId !== undefined) updates.owner_id = finalOwnerId;
+                if (trackNumber !== undefined) updates.track_num = trackNumber ? Number(trackNumber) : null;
+                if (duration !== undefined) updates.duration = parseFloat(duration);
+
+                if (price !== undefined || priceUsdc !== undefined || priceUsdt !== undefined) {
+                    updates.price = price ?? track.price;
+                    updates.price_usdc = priceUsdc ?? track.price_usdc;
+                    updates.currency = currency ?? track.currency;
+                    if (priceUsdt !== undefined) {
+                        updates.price_usdt = priceUsdt;
+                    }
+                }
+
+                if (lyrics !== undefined) updates.lyrics = lyrics;
+                if (genre !== undefined) updates.genre = genre;
+                if (year !== undefined) updates.year = year ? Number(year) : null;
+
+                if (externalArtwork !== undefined) {
+                    updates.external_artwork = externalArtwork;
+                }
+
+                if (data.service !== undefined) updates.service = data.service;
+                if (data.url !== undefined) updates.url = data.url;
+                if (data.external_id !== undefined || data.externalId !== undefined) {
+                    updates.external_id = data.external_id ?? data.externalId;
+                }
+
+                // Apply update
+                trackRepository.update(trackId, updates);
+
+                // Fetch the updated track row
+                const updatedTrack = trackRepository.getById(trackId)!;
+
+                return {
+                    track: updatedTrack,
+                    fileChanges,
+                    requiresTagSync: !data.skipTagWrite,
+                    requiresPublishingSync: !data.skipSync
+                };
+            })();
+        }
+    };
+
+    const social: SocialManager = {
+        getFollowers: (id: number) => socialRepository.getFollowers(id),
+        getPendingFollowers: (id: number) => socialRepository.getPendingFollowers(id),
+        getFollower: (artistId: number, actorUri: string) => socialRepository.getFollower(artistId, actorUri),
+        addFollower: (id: number, u: string, i: string, si?: string, fid?: string) => socialRepository.addFollower(id, u, i, si, fid),
+        acceptFollower: (artistId: number, actorUri: string) => socialRepository.acceptFollower(artistId, actorUri),
+        rejectFollower: (artistId: number, actorUri: string) => socialRepository.rejectFollower(artistId, actorUri),
+        removeFollower: (id: number, u: string) => socialRepository.removeFollower(id, u),
+        unfollowActor: (u: string) => { db.prepare("UPDATE remote_actors SET is_followed = 0 WHERE uri = ?").run(u); }
+    };
+
     const service: DatabaseService = {
-        // Enforce private-like access to db through closure. 
-        // We'll keep the 'db' property in the interface for now to avoid massive breakages,
-        // but the goal is to phase it out.
         db,
+        identity,
+        library,
+        social,
 
         transaction<T>(fn: () => T): T {
             return db.transaction(fn)();
@@ -689,8 +951,11 @@ export function createDatabase(dbPath: string): DatabaseService {
         getArtistByName: (n: string) => artistRepository.getByName(n),
         getArtistsByIds: (ids: number[]) => artistRepository.getByIds(ids),
         getFollowers: (id: number) => socialRepository.getFollowers(id),
-        addFollower: (id: number, u: string, i: string, si?: string) => socialRepository.addFollower(id, u, i, si),
+        getPendingFollowers: (id: number) => socialRepository.getPendingFollowers(id),
+        getFollower: (artistId: number, actorUri: string) => socialRepository.getFollower(artistId, actorUri),
+        addFollower: (id: number, u: string, i: string, si?: string, fid?: string) => socialRepository.addFollower(id, u, i, si, fid),
         acceptFollower: (artistId: number, actorUri: string) => socialRepository.acceptFollower(artistId, actorUri),
+        rejectFollower: (artistId: number, actorUri: string) => socialRepository.rejectFollower(artistId, actorUri),
         removeFollower: (id: number, u: string) => socialRepository.removeFollower(id, u),
         unfollowActor: (u: string) => { db.prepare("UPDATE remote_actors SET is_followed = 0 WHERE uri = ?").run(u); },
         createArtist: (n: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v: any = 'private', e?: string) => artistRepository.create(n, b, p, l, pp, w, v, e),

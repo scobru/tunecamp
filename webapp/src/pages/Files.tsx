@@ -160,23 +160,23 @@ const Files = () => {
                                         {item.mtime ? new Date(item.mtime).toLocaleDateString() : '-'}
                                     </td>
                                     <td>
-                                        <div className="dropdown dropdown-end group-hover:opacity-100 focus-within:opacity-100 opacity-0 transition-[opacity,z-index] focus-within:z-50 group-hover:z-50">
-                                            <label tabIndex={0} aria-label="More options" className="btn btn-ghost btn-xs btn-circle" onClick={e => e.stopPropagation()}>
+                                        <details className="dropdown dropdown-end group-hover:opacity-100 focus-within:opacity-100 opacity-0 transition-[opacity,z-index] focus-within:z-50 group-hover:z-50" onClick={e => e.stopPropagation()}>
+                                            <summary className="btn btn-ghost btn-xs btn-circle list-none flex items-center justify-center" style={{ listStyle: 'none' }}>
                                                 <MoreHorizontal size={16}/>
-                                            </label>
-                                            <ul tabIndex={0} className="dropdown-content z-[50] menu p-2 shadow bg-base-300 rounded-box w-52 border border-base-content/10">
+                                            </summary>
+                                            <ul className="dropdown-content z-[50] menu p-2 shadow bg-base-300 rounded-box w-52 border border-base-content/10">
                                                 <li>
-                                                    <button type="button" onMouseDown={(e) => handleRename(e, item)} className="text-left">
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleRename(e, item); }} className="text-left">
                                                         <Edit2 size={16}/> Rename
                                                     </button>
                                                 </li>
                                                 <li>
-                                                    <button type="button" onMouseDown={(e) => handleDelete(e, item)} className="text-error text-left">
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(e, item); }} className="text-error text-left">
                                                         <Trash2 size={16}/> Delete
                                                     </button>
                                                 </li>
                                             </ul>
-                                        </div>
+                                        </details>
                                     </td>
                                 </tr>
                             ))}

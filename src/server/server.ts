@@ -62,7 +62,6 @@ import { createMetadataRoutes } from "./routes/admin/metadata.js";
 import { createUnlockRoutes } from "./routes/api/unlock.js";
 import { createPaymentsRoutes } from "./routes/api/payments.js";
 import { ActivityPubService, createActivityPubService } from "./modules/activitypub/activitypub.service.js";
-import type { FederationProvider } from "./modules/activitypub/federation.provider.js";
 import { createActivityPubRoutes } from "./routes/network/activitypub.js";
 import { createPublishingService } from "./modules/publishing/publishing.service.js";
 import { LifecycleService } from "./modules/catalog/lifecycle.service.js";
@@ -170,31 +169,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const federation = createFedify(database, config);
 
-    const federationProvider: FederationProvider = {
-        getSetting: (key) => database.getSetting(key),
-        setSetting: (key, val) => database.setSetting(key, val),
-        getArtist: (id) => database.getArtist(id),
-        getArtistBySlug: (slug) => database.getArtistBySlug(slug),
-        getArtists: () => database.getArtists(),
-        updateArtistKeys: (id, pub, priv) => database.updateArtistKeys(id, pub, priv),
-        getReleases: () => database.getReleases(),
-        getReleasesByArtist: (id) => database.getReleasesByArtist(id),
-        getTracksByReleaseId: (id) => database.getTracksByReleaseId(id),
-        getPostsByArtist: (id) => database.getPostsByArtist(id),
-        getRemoteActor: (uri) => database.getRemoteActor(uri),
-        upsertRemoteActor: (actor) => database.upsertRemoteActor(actor as any),
-        upsertRemoteContent: (content) => database.upsertRemoteContent(content as any),
-        unfollowActor: (uri) => database.unfollowActor(uri),
-        getFollowers: (id) => database.getFollowers(id),
-        addFollower: (id, actor, inbox) => database.addFollower(id, actor, inbox),
-        acceptFollower: (id, actor) => database.acceptFollower(id, actor),
-        createApNote: (aid, nid, type, cid, slug, title) => database.createApNote(aid, nid, type, cid, slug, title),
-        getApNotes: (id, del) => database.getApNotes(id, del),
-        getApNote: (id) => database.getApNote(id),
-        markApNoteDeleted: (id) => database.markApNoteDeleted(id)
-    };
-
-    const apService = createActivityPubService(federationProvider, config, federation);
+    const apService = createActivityPubService(database as any, config, federation);
     await apService.generateKeysForAllArtists();
 
     await initFederationService(database, zendbService, apService);
