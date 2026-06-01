@@ -31,7 +31,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     });
 
     // Validates actor handles: @slug@domain
-    federation.setActorDispatcher("/api/ap/users/{handle}", async (ctx, handle) => {
+    federation.setActorDispatcher("/users/{handle}", async (ctx, handle) => {
         let name: string | null = null;
         let summary: string | null = null;
         let publicKey: string | null = null;
@@ -75,14 +75,14 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         }
 
         const actorOptions = {
-            id: new URL(`/api/ap/users/${slug}`, baseUrl),
+            id: new URL(`/users/${slug}`, baseUrl),
             preferredUsername: slug,
             name: name,
             summary: summary,
-            inbox: new URL(`/api/ap/users/${slug}/inbox`, baseUrl),
-            outbox: new URL(`/api/ap/users/${slug}/outbox`, baseUrl),
-            followers: new URL(`/api/ap/users/${slug}/followers`, baseUrl),
-            following: new URL(`/api/ap/users/${slug}/following`, baseUrl),
+            inbox: new URL(`/users/${slug}/inbox`, baseUrl),
+            outbox: new URL(`/users/${slug}/outbox`, baseUrl),
+            followers: new URL(`/users/${slug}/followers`, baseUrl),
+            following: new URL(`/users/${slug}/following`, baseUrl),
             icon: new Image({ url: new URL(handle !== "site" ? `/api/artists/${slug}/cover` : `/vite.svg`, baseUrl) }),
             image: new Image({ url: new URL(handle !== "site" ? `/api/artists/${slug}/cover` : `/vite.svg`, baseUrl) }),
             url: new URL(handle === "site" ? "/" : `/@${slug}`, baseUrl),
@@ -138,7 +138,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         });
 
     // Object Dispatcher for Audio - provides structured track metadata
-    federation.setObjectDispatcher(Audio, "/api/ap/audio/{id}", async (ctx, { id }) => {
+    federation.setObjectDispatcher(Audio, "/audio/{id}", async (ctx, { id }) => {
         const track = dbService.getTrack(Number(id));
         if (!track) return null;
         
@@ -161,7 +161,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     });
 
     // Outbox Dispatcher - allows other instances to fetch historical content
-    federation.setOutboxDispatcher("/api/ap/users/{handle}/outbox", async (ctx, handle, cursor) => {
+    federation.setOutboxDispatcher("/users/{handle}/outbox", async (ctx, handle, cursor) => {
         const isSite = handle === "site";
         const artist = isSite ? null : dbService.getArtistBySlug(handle);
         if (!artist && !isSite) return null;
@@ -199,8 +199,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (tracks.length > 0) {
                     const mainTrack = tracks[0];
                     activities.push(new Create({
-                        id: new URL(`/api/ap/activity/release/${release.slug}`, baseUrl),
-                        actor: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                        id: new URL(`/ap/activity/release/${release.slug}`, baseUrl),
+                        actor: new URL(`/ap/users/${artist.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                         to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                         object: new Audio({
@@ -209,7 +209,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                             duration: mainTrack.duration ? Temporal.Duration.from({ seconds: Math.floor(mainTrack.duration) }) : undefined,
                             url: new URL(`/api/tracks/${mainTrack.id}/stream`, baseUrl),
                             mediaType: "audio/mpeg",
-                            attribution: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                            attribution: new URL(`/ap/users/${artist.slug}`, baseUrl),
                             icon: new Image({
                                 url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
                                 mediaType: "image/jpeg"
@@ -219,16 +219,16 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 } else {
                     // Fallback to Note if no tracks found
                     activities.push(new Create({
-                        id: new URL(`/api/ap/activity/release/${release.slug}`, baseUrl),
-                        actor: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                        id: new URL(`/ap/activity/release/${release.slug}`, baseUrl),
+                        actor: new URL(`/ap/users/${artist.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                         to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                         object: new Note({
-                            id: new URL(`/api/ap/note/release/${release.slug}`, baseUrl),
+                            id: new URL(`/ap/note/release/${release.slug}`, baseUrl),
                             content: `<p>New release available: <a href="${albumUrl}">${release.title}</a></p>`,
                             url: albumUrl,
                             published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                            attribution: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                            attribution: new URL(`/ap/users/${artist.slug}`, baseUrl),
                         })
                     }));
                 }
@@ -237,16 +237,16 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             for (const post of posts) {
                 const published = post.published_at || post.created_at;
                 activities.push(new Create({
-                    id: new URL(`/api/ap/activity/post/${post.slug}`, baseUrl),
-                    actor: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                    id: new URL(`/ap/activity/post/${post.slug}`, baseUrl),
+                    actor: new URL(`/ap/users/${artist.slug}`, baseUrl),
                     published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                     to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                     object: new Note({
-                        id: new URL(`/api/ap/note/post/${post.slug}`, baseUrl),
+                        id: new URL(`/ap/note/post/${post.slug}`, baseUrl),
                         content: `<p>${post.content}</p>`,
                         url: new URL(`/artists/${artist.slug}?post=${post.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                        attribution: new URL(`/api/ap/users/${artist.slug}`, baseUrl),
+                        attribution: new URL(`/ap/users/${artist.slug}`, baseUrl),
                     })
                 }));
             }
@@ -266,7 +266,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
     // Inbox listeners for handling Follow/Unfollow activities
     federation
-        .setInboxListeners("/api/ap/users/{handle}/inbox", "/api/ap/inbox")
+        .setInboxListeners("/users/{handle}/inbox", "/inbox")
         .on(Follow, async (ctx, follow) => {
             // Get the target (who is being followed)
             if (follow.objectId == null) return;
