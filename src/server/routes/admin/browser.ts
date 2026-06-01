@@ -46,7 +46,7 @@ export function createBrowserRoutes(musicDir: string, database: DatabaseService)
                     const entryStats = await fs.stat(entryPath);
                     const itemRelPath = path.relative(musicDir, entryPath).replace(/\\/g, "/");
 
-                    if (entry.isDirectory()) {
+                    if (entryStats.isDirectory()) {
                         return {
                             type: 'directory',
                             data: {
@@ -70,13 +70,14 @@ export function createBrowserRoutes(musicDir: string, database: DatabaseService)
                             return { type: 'file', data: { ...item, type: "file" } };
                         } else if (IMAGE_EXTENSIONS.includes(ext)) {
                             return { type: 'image', data: { ...item, type: "image" } };
+                        } else {
+                            return { type: 'file', data: { ...item, type: "file" } };
                         }
                     }
                 } catch (e) {
                     // File might have been deleted or inaccessible
                     return null;
                 }
-                return null;
             }));
 
             const validResults = results.filter((r): r is NonNullable<typeof r> => r !== null);

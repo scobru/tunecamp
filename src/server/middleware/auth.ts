@@ -50,21 +50,31 @@ export function createAuthMiddleware(authService: AuthService) {
                 return res.status(403).json({ error: "Access denied: Admin only" });
             }
 
-            const context = VisibilityGuardian.deriveContext(payload);
+            let context = VisibilityGuardian.deriveContext(payload);
+            let userRole = context.role;
             
+            const dbUser = payload.username ? authService.getUserByUsername(payload.username) : undefined;
+            if (dbUser) {
+                userRole = dbUser.role;
+                context = VisibilityGuardian.deriveContext({
+                    ...payload,
+                    role: dbUser.role
+                });
+            }
+
             // Check if user has administrative view capabilities
             if (!VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY)) {
                 return res.status(403).json({ error: "Access denied: Admin only" });
             }
 
-            req.isAdmin = VisibilityGuardian.isAdminRole(context.role);
-            req.isSuperUser = context.role === UserRole.SUPER_USER;
+            req.isAdmin = VisibilityGuardian.isAdminRole(userRole);
+            req.isSuperUser = userRole === UserRole.SUPER_USER;
             req.username = payload.username;
-            req.artistId = payload.artistId;
-            req.role = context.role;
-            req.isActive = payload.isActive;
+            req.role = userRole;
+            req.isActive = dbUser ? dbUser.is_active === 1 : (payload.isActive ?? true);
             req.userId = payload.userId;
-            req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+            req.isRootAdmin = dbUser ? authService.isRootAdmin(payload.username) : (userRole === UserRole.ROOT_ADMIN);
+            req.artistId = dbUser ? dbUser.artist_id : payload.artistId;
             req.context = context;
             next();
         },
@@ -83,16 +93,26 @@ export function createAuthMiddleware(authService: AuthService) {
                 return res.status(401).json({ error: "No token provided" });
             }
 
-            const context = VisibilityGuardian.deriveContext(payload);
+            let context = VisibilityGuardian.deriveContext(payload);
+            let userRole = context.role;
 
-            req.isAdmin = VisibilityGuardian.isAdminRole(context.role);
-            req.isSuperUser = context.role === UserRole.SUPER_USER;
+            const dbUser = payload.username ? authService.getUserByUsername(payload.username) : undefined;
+            if (dbUser) {
+                userRole = dbUser.role;
+                context = VisibilityGuardian.deriveContext({
+                    ...payload,
+                    role: dbUser.role
+                });
+            }
+
+            req.isAdmin = VisibilityGuardian.isAdminRole(userRole);
+            req.isSuperUser = userRole === UserRole.SUPER_USER;
             req.username = payload.username;
-            req.artistId = payload.artistId;
-            req.role = context.role;
-            req.isActive = payload.isActive;
+            req.role = userRole;
+            req.isActive = dbUser ? dbUser.is_active === 1 : (payload.isActive ?? true);
             req.userId = payload.userId;
-            req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+            req.isRootAdmin = dbUser ? authService.isRootAdmin(payload.username) : (userRole === UserRole.ROOT_ADMIN);
+            req.artistId = dbUser ? dbUser.artist_id : payload.artistId;
             req.context = context;
             next();
         },
@@ -108,15 +128,26 @@ export function createAuthMiddleware(authService: AuthService) {
             const payload = await extractPayload(req);
 
             if (payload) {
-                const context = VisibilityGuardian.deriveContext(payload);
-                req.isAdmin = VisibilityGuardian.isAdminRole(context.role);
-                req.isSuperUser = context.role === UserRole.SUPER_USER;
+                let context = VisibilityGuardian.deriveContext(payload);
+                let userRole = context.role;
+                
+                const dbUser = payload.username ? authService.getUserByUsername(payload.username) : undefined;
+                if (dbUser) {
+                    userRole = dbUser.role;
+                    context = VisibilityGuardian.deriveContext({
+                        ...payload,
+                        role: dbUser.role
+                    });
+                }
+
+                req.isAdmin = VisibilityGuardian.isAdminRole(userRole);
+                req.isSuperUser = userRole === UserRole.SUPER_USER;
                 req.username = payload.username;
-                req.artistId = payload.artistId;
-                req.role = context.role;
-                req.isActive = payload.isActive;
+                req.role = userRole;
+                req.isActive = dbUser ? dbUser.is_active === 1 : (payload.isActive ?? true);
                 req.userId = payload.userId;
-                req.isRootAdmin = context.role === UserRole.ROOT_ADMIN;
+                req.isRootAdmin = dbUser ? authService.isRootAdmin(payload.username) : (userRole === UserRole.ROOT_ADMIN);
+                req.artistId = dbUser ? dbUser.artist_id : payload.artistId;
                 req.context = context;
             } else {
                 req.isAdmin = false;

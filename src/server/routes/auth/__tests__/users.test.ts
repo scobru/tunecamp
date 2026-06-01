@@ -32,7 +32,8 @@ describe('Users Routes', () => {
             verifyZenSignature: (jest.fn() as any).mockResolvedValue(true),
             updateZenPair: jest.fn(),
             getStorageInfo: jest.fn().mockReturnValue({ storage_used: 123456 }),
-            verifyToken: jest.fn<any>().mockResolvedValue({ username: 'testuser', role: UserRole.NORMAL_USER, isActive: true, userId: 10 })
+            verifyToken: jest.fn<any>().mockResolvedValue({ username: 'testuser', role: UserRole.NORMAL_USER, isActive: true, userId: 10 }),
+            isRootAdmin: jest.fn().mockReturnValue(false)
         };
 
         mockAPService = {};

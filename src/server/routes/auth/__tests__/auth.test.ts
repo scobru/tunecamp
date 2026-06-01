@@ -17,7 +17,8 @@ describe('Auth Routes', () => {
             isRootAdmin: jest.fn().mockReturnValue(false),
             isDefaultPassword: (jest.fn() as any).mockResolvedValue(false),
             createAdmin: (jest.fn() as any).mockResolvedValue({ id: 1 }),
-            getUserPair: jest.fn().mockReturnValue(null)
+            getUserPair: jest.fn().mockReturnValue(null),
+            getUserByUsername: jest.fn()
         };
 
         mockAuthMiddleware = {
