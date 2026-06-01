@@ -232,9 +232,21 @@ export async function startServer(config: ServerConfig): Promise<void> {
     });
 
     // Scope fedify to federation paths only — global use() was blocking ALL requests
-    app.use("/.well-known", integrateFederation(federation, () => undefined));
-    app.use("/users", integrateFederation(federation, () => undefined));
-    app.use("/ap", integrateFederation(federation, () => undefined));
+    const fedifyMiddleware = integrateFederation(federation, () => undefined);
+    app.use((req, res, next) => {
+        const p = req.path;
+        if (
+            p === "/.well-known" || p.startsWith("/.well-known/") ||
+            p === "/users" || p.startsWith("/users/") ||
+            p === "/ap" || p.startsWith("/ap/") ||
+            p === "/audio" || p.startsWith("/audio/") ||
+            p === "/nodeinfo" || p.startsWith("/nodeinfo/") ||
+            p === "/inbox"
+        ) {
+            return fedifyMiddleware(req, res, next);
+        }
+        next();
+    });
     app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
 
     const webappPath = path.join(__dirname, "..", "..", "webapp");

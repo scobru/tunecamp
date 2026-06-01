@@ -90,8 +90,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 sharedInbox: new URL("/inbox", baseUrl)
             }),
             publicKey: cryptoKey ? new CryptographicKey({
-                id: new URL(`/api/ap/users/${slug}#main-key`, baseUrl),
-                owner: new URL(`/api/ap/users/${slug}`, baseUrl),
+                id: new URL(`/users/${slug}#main-key`, baseUrl),
+                owner: new URL(`/users/${slug}`, baseUrl),
                 publicKey: cryptoKey
             }) : undefined
         };
@@ -152,7 +152,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             duration: track.duration ? Temporal.Duration.from({ seconds: Math.floor(track.duration) }) : undefined,
             url: new URL(`/api/tracks/${track.id}/stream`, baseUrl),
             mediaType: "audio/mpeg",
-            attribution: artist ? new URL(`/api/ap/users/${artist.slug}`, baseUrl) : undefined,
+            attribution: artist ? new URL(`/users/${artist.slug}`, baseUrl) : undefined,
             icon: artist ? new Image({
                 url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
                 mediaType: "image/jpeg"
@@ -200,7 +200,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     const mainTrack = tracks[0];
                     activities.push(new Create({
                         id: new URL(`/ap/activity/release/${release.slug}`, baseUrl),
-                        actor: new URL(`/ap/users/${artist.slug}`, baseUrl),
+                        actor: new URL(`/users/${artist.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                         to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                         object: new Audio({
@@ -209,7 +209,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                             duration: mainTrack.duration ? Temporal.Duration.from({ seconds: Math.floor(mainTrack.duration) }) : undefined,
                             url: new URL(`/api/tracks/${mainTrack.id}/stream`, baseUrl),
                             mediaType: "audio/mpeg",
-                            attribution: new URL(`/ap/users/${artist.slug}`, baseUrl),
+                            attribution: new URL(`/users/${artist.slug}`, baseUrl),
                             icon: new Image({
                                 url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
                                 mediaType: "image/jpeg"
@@ -220,7 +220,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     // Fallback to Note if no tracks found
                     activities.push(new Create({
                         id: new URL(`/ap/activity/release/${release.slug}`, baseUrl),
-                        actor: new URL(`/ap/users/${artist.slug}`, baseUrl),
+                        actor: new URL(`/users/${artist.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                         to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                         object: new Note({
@@ -228,7 +228,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                             content: `<p>New release available: <a href="${albumUrl}">${release.title}</a></p>`,
                             url: albumUrl,
                             published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                            attribution: new URL(`/ap/users/${artist.slug}`, baseUrl),
+                            attribution: new URL(`/users/${artist.slug}`, baseUrl),
                         })
                     }));
                 }
@@ -238,7 +238,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const published = post.published_at || post.created_at;
                 activities.push(new Create({
                     id: new URL(`/ap/activity/post/${post.slug}`, baseUrl),
-                    actor: new URL(`/ap/users/${artist.slug}`, baseUrl),
+                    actor: new URL(`/users/${artist.slug}`, baseUrl),
                     published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                     to: new URL("https://www.w3.org/ns/activitystreams#Public"),
                     object: new Note({
@@ -246,7 +246,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                         content: `<p>${post.content}</p>`,
                         url: new URL(`/artists/${artist.slug}?post=${post.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
-                        attribution: new URL(`/ap/users/${artist.slug}`, baseUrl),
+                        attribution: new URL(`/users/${artist.slug}`, baseUrl),
                     })
                 }));
             }
