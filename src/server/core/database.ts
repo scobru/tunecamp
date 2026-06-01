@@ -704,7 +704,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.transaction(() => {
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
-                db.prepare("DELETE FROM artists WHERE id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
+                db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
             })();
         },
 
@@ -902,7 +902,19 @@ export function createDatabase(dbPath: string): DatabaseService {
         getFollowers: (id: number) => socialRepository.getFollowers(id),
         getPendingFollowers: (id: number) => socialRepository.getPendingFollowers(id),
         getFollower: (artistId: number, actorUri: string) => socialRepository.getFollower(artistId, actorUri),
-        addFollower: (id: number, u: string, i: string, si?: string, fid?: string) => socialRepository.addFollower(id, u, i, si, fid),
+        addFollower(id: number, u: string, i: string, si?: string, fid?: string) {
+            if (id === -1) {
+                const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+                if (!hasSiteActor) {
+                    console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
+                    const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
+                    const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
+                    db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                      .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+                }
+            }
+            socialRepository.addFollower(id, u, i, si, fid);
+        },
         acceptFollower: (artistId: number, actorUri: string) => socialRepository.acceptFollower(artistId, actorUri),
         rejectFollower: (artistId: number, actorUri: string) => socialRepository.rejectFollower(artistId, actorUri),
         removeFollower: (id: number, u: string) => socialRepository.removeFollower(id, u),
@@ -923,7 +935,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.transaction(() => {
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
-                db.prepare("DELETE FROM artists WHERE id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
+                db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
             })();
         },
 
@@ -1152,7 +1164,19 @@ export function createDatabase(dbPath: string): DatabaseService {
         `).all() as any[],
         getPost: (id: number) => db.prepare("SELECT * FROM posts WHERE id = ?").get(id) as any,
         getPostBySlug: (s: string) => db.prepare("SELECT * FROM posts WHERE slug = ?").get(s) as any,
-        createPost: (aid: number, c: string, v: any = 'public') => Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at) VALUES (?, ?, ?, ?, ?)").run(aid, c, c.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 8), v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null).lastInsertRowid),
+        createPost(aid: number, c: string, v: any = 'public') {
+            if (aid === -1) {
+                const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+                if (!hasSiteActor) {
+                    console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
+                    const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
+                    const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
+                    db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                      .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+                }
+            }
+            return Number(db.prepare("INSERT INTO posts (artist_id, content, slug, visibility, published_at) VALUES (?, ?, ?, ?, ?)").run(aid, c, c.slice(0, 20).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 8), v, (v === 'public' || v === 'unlisted') ? new Date().toISOString() : null).lastInsertRowid);
+        },
         updatePost: (id: number, c: string, v?: any) => { db.prepare("UPDATE posts SET content = ?, visibility = COALESCE(?, visibility) WHERE id = ?").run(c, v || null, id); },
         updatePostVisibility: (id: number, v: any) => { db.prepare("UPDATE posts SET visibility = ? WHERE id = ?").run(v, id); },
         deletePost: (id: number) => { db.prepare("DELETE FROM posts WHERE id = ?").run(id); },
