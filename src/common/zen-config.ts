@@ -4,7 +4,7 @@
  */
 
 export const DEFAULT_ZEN_PEERS = [
-    "wss://shogun-relay.scobrudot.dev/zen",
+    "wss://delay.scobrudot.dev/zen",
 ];
 
 export const ZEN_CONFIG_DEFAULTS = {

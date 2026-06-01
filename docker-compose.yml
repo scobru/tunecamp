@@ -33,8 +33,8 @@ services:
       - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
       - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}
       # ZEN Relay peer - must use /zen WebSocket path
-      - TUNECAMP_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://shogun-relay.scobrudot.dev/zen}
-      - VITE_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://shogun-relay.scobrudot.dev/zen}
+      - TUNECAMP_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://delay.scobrudot.dev/zen}
+      - VITE_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://delay.scobrudot.dev/zen}
       # Telegram Integration
       - TUNECAMP_TELEGRAM_BOT_TOKEN=
       - TUNECAMP_TELEGRAM_MASTER_ID=
