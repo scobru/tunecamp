@@ -288,15 +288,115 @@ export class CatalogService {
         const fileId = track.file_path.substring(9);
         const ownerId = track.owner_id || this.database.getPrimaryAdminId() || 1;
         const { stream, headers } = await gdriveService.getFileStream(ownerId, fileId);
+        
+        // Initial fallback extension and directory
         const ext = headers['content-type'] === 'audio/flac' ? '.flac' : (headers['content-type'] === 'audio/mpeg' ? '.mp3' : (headers['content-type'] === 'audio/wav' ? '.wav' : '.mp3'));
-        const sanitizedTitle = (track.title || "Untitled").replace(/[^a-z0-9_\-]/gi, '_');
-        const sanitizedArtist = (track.artist_name || "Unknown").replace(/[^a-z0-9_\-]/gi, '_');
-        const relativePath = path.posix.join("cloud_imports", `${sanitizedArtist} - ${sanitizedTitle}${ext}`);
-        const fullPath = path.join(this.musicDir, relativePath);
+        
+        const tempFilename = `temp-localize-${trackId}-${Date.now()}${ext}`;
+        const tempPath = path.join(this.musicDir, "cloud_imports", tempFilename);
 
-        await this.storage.ensureDir(path.dirname(fullPath));
-        await this.storage.writeFileStream(fullPath, stream);
+        await this.storage.ensureDir(path.dirname(tempPath));
+        await this.storage.writeFileStream(tempPath, stream);
+
+        // 1. Scan metadata from downloaded file
+        let artistId = track.artist_id;
+        let albumId = track.album_id;
+        let title = track.title || "Untitled";
+        let trackNum = track.track_num;
+        let genre = track.genre;
+        let year = track.year;
+        let duration = track.duration;
+
+        try {
+            const { parseFile } = await import("music-metadata");
+            const metadata = await parseFile(tempPath, { skipCovers: true });
+            const common = metadata?.common || {};
+            const format = metadata?.format || {};
+
+            if (common.title) title = common.title.trim();
+            if (common.track?.no) trackNum = common.track.no;
+            if (common.genre) genre = common.genre.join(", ");
+            if (common.year) year = common.year;
+            if (format.duration) duration = format.duration;
+
+            // Resolve Artist
+            const artistName = (common.artist || "").trim();
+            if (!artistId && artistName && artistName.toLowerCase() !== "unknown" && artistName.toLowerCase() !== "unknown artist") {
+                const existingArtist = this.database.getArtistByName(artistName);
+                artistId = existingArtist ? existingArtist.id : this.database.createArtist(artistName);
+            }
+
+            // Resolve Album
+            const albumTitle = (common.album || "").trim();
+            if (!albumId && albumTitle && albumTitle.toLowerCase() !== "unknown" && albumTitle.toLowerCase() !== "unknown album" && artistId) {
+                let album = this.database.getAlbumByTitle(albumTitle, artistId);
+                if (!album) {
+                    const slug = "lib-" + artistId + "-" + albumTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                    album = this.database.getAlbumBySlug(slug);
+                    if (!album) {
+                        albumId = this.database.createAlbum({
+                            title: albumTitle,
+                            slug: slug,
+                            artist_id: artistId,
+                            album_artist: common.albumartist || common.artist || null,
+                            owner_id: ownerId,
+                            date: common.year ? `${common.year}-01-01` : null,
+                            year: common.year || null,
+                            cover_path: null,
+                            genre: common.genre ? common.genre.join(", ") : "Library",
+                            description: `Imported from Google Drive tags`,
+                            type: 'album',
+                            download: null, price: 0, price_usdc: 0, currency: 'ETH', external_links: null,
+                            is_public: false, visibility: 'private', is_release: false, published_at: new Date().toISOString(),
+                            published_to_gundb: false, published_to_ap: false, license: null, status: 'draft',
+                        });
+                    } else {
+                        albumId = album.id;
+                    }
+                } else {
+                    albumId = album.id;
+                }
+            }
+        } catch (e: any) {
+            console.warn(`[CatalogService] music-metadata parse failed for localized track ${trackId}:`, e.message);
+        }
+
+        // 2. Build perfect path hierarchy Artist/Album/Track
+        let finalArtistName = "Unknown";
+        if (artistId) {
+            const artistObj = this.database.getArtist(artistId);
+            if (artistObj) finalArtistName = artistObj.name;
+        } else if (track.artist_name) {
+            finalArtistName = track.artist_name;
+        }
+
+        let finalAlbumTitle = "Unknown Album";
+        if (albumId) {
+            const albumObj = this.database.getAlbum(albumId);
+            if (albumObj) finalAlbumTitle = albumObj.title;
+        }
+
+        const safeArtist = finalArtistName.replace(/[<>:"/\\|?*]/g, '_').trim();
+        const safeAlbum = finalAlbumTitle.replace(/[<>:"/\\|?*]/g, '_').trim();
+        const safeTitle = title.replace(/[<>:"/\\|?*]/g, '_').trim();
+        const trackPrefix = trackNum ? String(trackNum).padStart(2, '0') + " - " : "";
+
+        const relativePath = path.posix.join("cloud_imports", safeArtist, safeAlbum, `${trackPrefix}${safeTitle}${ext}`);
+        const finalPath = path.join(this.musicDir, relativePath);
+
+        // Move from temp path to final hierarchy path
+        await this.storage.ensureDir(path.dirname(finalPath));
+        await this.storage.move(tempPath, finalPath, { overwrite: true });
+
+        // Update database with final metadata, format, path, etc.
         this.database.updateTrack(trackId, { 
+            title,
+            artist_id: artistId,
+            album_id: albumId,
+            track_num: trackNum,
+            duration,
+            genre,
+            year,
             file_path: relativePath, 
             service: 'local' 
         });

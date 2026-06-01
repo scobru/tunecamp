@@ -156,9 +156,23 @@ export class LocalizationService {
             }
 
             const actualExt = path.extname(downloadedFile).substring(1); // e.g. 'opus', 'm4a', 'webm'
-            const sanitizedTitle = (track.title || "Untitled").replace(/[^a-z0-9_\-]/gi, '_');
-            const sanitizedArtist = (track.artist_name || "Unknown").replace(/[^a-z0-9_\-]/gi, '_');
-            const relativePath = path.posix.join("localized", `${sanitizedArtist} - ${sanitizedTitle}.${actualExt}`);
+            
+            let finalAlbumTitle = "Unknown Album";
+            if (track.album_id) {
+                const album = this.database.getAlbum(track.album_id);
+                if (album) {
+                    finalAlbumTitle = album.title;
+                }
+            } else if (track.album_title) {
+                finalAlbumTitle = track.album_title;
+            }
+
+            const safeArtist = (track.artist_name || 'Unknown').replace(/[<>:"/\\|?*]/g, '_').trim();
+            const safeAlbum = finalAlbumTitle.replace(/[<>:"/\\|?*]/g, '_').trim();
+            const safeTitle = (track.title || 'Untitled').replace(/[<>:"/\\|?*]/g, '_').trim();
+            const trackPrefix = track.track_num ? String(track.track_num).padStart(2, '0') + " - " : "";
+
+            const relativePath = path.posix.join("localized", safeArtist, safeAlbum, `${trackPrefix}${safeTitle}.${actualExt}`);
             const finalPath = path.join(this.musicDir, relativePath);
 
             await fs.ensureDir(path.dirname(finalPath));

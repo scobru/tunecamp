@@ -97,16 +97,24 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
             
             // Basic filename parsing: "Artist - Title.mp3"
             let title = file.name;
+            let parsedArtistId = artistId || null;
+
             if (file.name.includes(" - ")) {
                 const parts = file.name.split(" - ");
-                title = parts[1].replace(/\.[^/.]+$/, ""); // Remove extension
+                const artistName = parts[0].trim();
+                title = parts[1].replace(/\.[^/.]+$/, "").trim(); // Remove extension
+
+                if (!parsedArtistId && artistName) {
+                    const existingArtist = database.getArtistByName(artistName);
+                    parsedArtistId = existingArtist ? existingArtist.id : database.createArtist(artistName);
+                }
             } else {
-                title = file.name.replace(/\.[^/.]+$/, "");
+                title = file.name.replace(/\.[^/.]+$/, "").trim();
             }
 
             const trackId = database.createTrack({
                 title,
-                artist_id: artistId || null,
+                artist_id: parsedArtistId,
                 album_id: albumId || null,
                 owner_id: userId,
                 track_num: null,
@@ -165,16 +173,24 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
             database.transaction(() => {
                 for (const file of filesToImport) {
                     let title = file.name;
+                    let parsedArtistId = artistId || null;
+
                     if (file.name.includes(" - ")) {
                         const parts = file.name.split(" - ");
-                        title = parts[1].replace(/\.[^/.]+$/, ""); // Remove extension
+                        const artistName = parts[0].trim();
+                        title = parts[1].replace(/\.[^/.]+$/, "").trim(); // Remove extension
+
+                        if (!parsedArtistId && artistName) {
+                            const existingArtist = database.getArtistByName(artistName);
+                            parsedArtistId = existingArtist ? existingArtist.id : database.createArtist(artistName);
+                        }
                     } else {
-                        title = file.name.replace(/\.[^/.]+$/, "");
+                        title = file.name.replace(/\.[^/.]+$/, "").trim();
                     }
 
                     database.createTrack({
                         title,
-                        artist_id: artistId || null,
+                        artist_id: parsedArtistId,
                         album_id: albumId || null,
                         owner_id: userId,
                         track_num: null,
