@@ -206,10 +206,10 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
         // 1.5. Deduplicate tracks by file_path
         console.log(`📦 [Maintenance] Checking for duplicate tracks by file path...`);
         const duplicates = database.db.prepare(`
-            SELECT file_path, COUNT(*) as count 
-            FROM tracks 
-            WHERE file_path IS NOT NULL 
-            GROUP BY file_path 
+            SELECT file_path, COUNT(*) as count
+            FROM tracks
+            WHERE file_path IS NOT NULL
+            GROUP BY file_path
             HAVING count > 1
         `).all() as { file_path: string, count: number }[];
 
@@ -217,24 +217,37 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
             console.log(`📦 [Maintenance] Found ${duplicates.length} duplicate file paths. Cleaning up...`);
             let removedCount = 0;
             for (const dup of duplicates) {
-                const tracks = database.db.prepare("SELECT id, album_id, duration FROM tracks WHERE file_path = ?").all(dup.file_path) as any[];
-                // Sort by: 1. has album_id, 2. has duration, 3. lowest ID (oldest)
+                const tracks = database.db.prepare(`
+                    SELECT id, album_id, duration, fingerprint, external_id, lyrics, lossless_path
+                    FROM tracks WHERE file_path = ?
+                `).all(dup.file_path) as any[];
+                // Sort by richness — prefer tracks with album, duration, fingerprint, external_id, lyrics
                 tracks.sort((a, b) => {
-                    if (a.album_id && !b.album_id) return -1;
-                    if (!a.album_id && b.album_id) return 1;
-                    if (a.duration && !b.duration) return -1;
-                    if (!a.duration && b.duration) return 1;
+                    const score = (t: any) =>
+                        (t.album_id ? 8 : 0) +
+                        (t.duration ? 4 : 0) +
+                        (t.fingerprint ? 2 : 0) +
+                        (t.external_id ? 1 : 0) +
+                        (t.lyrics ? 1 : 0) +
+                        (t.lossless_path ? 1 : 0);
+                    const diff = score(b) - score(a);
+                    if (diff !== 0) return diff;
                     return a.id - b.id;
                 });
-                // Keep the first one, delete others
                 const keepId = tracks[0].id;
-                const deleteIds = tracks.slice(1).map(t => t.id);
-                for (const id of deleteIds) {
-                    database.db.prepare("DELETE FROM tracks WHERE id = ?").run(id);
-                    removedCount++;
+                const mergeIds = tracks.slice(1).map(t => t.id);
+                for (const id of mergeIds) {
+                    try {
+                        // Use mergeTracks so ownership/plays/bookmarks/ratings get transferred
+                        // and missing metadata gets carried over to the keeper.
+                        database.mergeTracks(id, keepId);
+                        removedCount++;
+                    } catch (err) {
+                        console.error(`❌ [Maintenance] Failed to merge duplicate track ${id} -> ${keepId}:`, err);
+                    }
                 }
             }
-            console.log(`✅ [Maintenance] Removed ${removedCount} duplicate track records.`);
+            console.log(`✅ [Maintenance] Merged ${removedCount} duplicate track records.`);
         }
 
         // 2. Relink Orphaned Files (Restore Lost Tracks)
@@ -242,12 +255,14 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
         const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: musicDir, posix: true });
         
         const dbPaths = new Set<string>();
-        // Use a selective query for paths only, and iterate
-        const pathIterator = database.db.prepare("SELECT file_path FROM tracks WHERE file_path IS NOT NULL").iterate() as IterableIterator<{file_path: string}>;
+        // Include BOTH file_path AND lossless_path so FLAC/WAV files referenced
+        // only as a lossless companion are not mistakenly treated as orphans.
+        const pathIterator = database.db.prepare(
+            "SELECT file_path, lossless_path FROM tracks WHERE file_path IS NOT NULL OR lossless_path IS NOT NULL"
+        ).iterate() as IterableIterator<{file_path: string | null, lossless_path: string | null}>;
         for (const t of pathIterator) {
-            // Normalize path to forward slashes for consistent comparison
-            const normalizedPath = t.file_path.replace(/\\/g, '/').toLowerCase();
-            dbPaths.add(normalizedPath);
+            if (t.file_path) dbPaths.add(t.file_path.replace(/\\/g, '/').toLowerCase());
+            if (t.lossless_path) dbPaths.add(t.lossless_path.replace(/\\/g, '/').toLowerCase());
         }
 
         const orphans = files.filter(f => {
@@ -356,19 +371,41 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
             }
 
             let mergeCount = 0;
-            for (const [name, ids] of artistMap.entries()) {
+            // Discover all tables with an artist_id column so the migration doesn't
+            // leave dangling references when the schema grows (posts, ap_notes,
+            // followers, assets, etc.). 'artists' is excluded as it's the target table.
+            const tablesWithArtistId = (database.db.prepare(
+                "SELECT m.name as tbl FROM sqlite_master m WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%'"
+            ).all() as { tbl: string }[])
+                .filter(r => {
+                    if (r.tbl === 'artists') return false;
+                    try {
+                        const cols = database.db.prepare(`PRAGMA table_info(${r.tbl})`).all() as { name: string }[];
+                        return cols.some(c => c.name === 'artist_id');
+                    } catch { return false; }
+                })
+                .map(r => r.tbl);
+
+            for (const [, ids] of artistMap.entries()) {
                 if (ids.length > 1) {
-                    // Pick the "best" ID (lowest ID, probably the first one created)
                     const keepId = Math.min(...ids);
                     const mergeIds = ids.filter(id => id !== keepId);
-                    
+
                     for (const fromId of mergeIds) {
                         try {
-                            // Merge associations
-                            database.db.prepare("UPDATE tracks SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
-                            database.db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
-                            database.db.prepare("UPDATE admin SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
-                            database.db.prepare("DELETE FROM artists WHERE id = ?").run(fromId);
+                            database.db.transaction(() => {
+                                // Re-point every artist_id reference across the schema.
+                                // followers/ap_notes have UNIQUE constraints — use UPDATE OR IGNORE then sweep leftovers.
+                                for (const tbl of tablesWithArtistId) {
+                                    try {
+                                        database.db.prepare(`UPDATE OR IGNORE ${tbl} SET artist_id = ? WHERE artist_id = ?`).run(keepId, fromId);
+                                        database.db.prepare(`DELETE FROM ${tbl} WHERE artist_id = ?`).run(fromId);
+                                    } catch (e) {
+                                        console.warn(`⚠️ [Maintenance] Could not re-point artist_id in ${tbl}:`, (e as any).message);
+                                    }
+                                }
+                                database.db.prepare("DELETE FROM artists WHERE id = ?").run(fromId);
+                            })();
                             mergeCount++;
                         } catch (err) {
                             console.error(`❌ [Maintenance] Failed to merge artist ${fromId} into ${keepId}:`, err);
@@ -377,7 +414,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 }
             }
             if (mergeCount > 0) {
-                console.log(`✅ [Maintenance] Deduplicated ${mergeCount} artists.`);
+                console.log(`✅ [Maintenance] Deduplicated ${mergeCount} artists across ${tablesWithArtistId.length} tables.`);
             }
 
         } catch (e) {
