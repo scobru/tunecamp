@@ -27,6 +27,15 @@ export class TorrentService {
                 console.error("⚠️ [TorrentService] sweep error:", err);
             }
         }, 60 * 1000);
+        // Don't keep the event loop alive solely for this timer
+        this.sweepInterval.unref?.();
+    }
+
+    public shutdown() {
+        if (this.sweepInterval) {
+            clearInterval(this.sweepInterval);
+            this.sweepInterval = null;
+        }
     }
 
     private init() {
@@ -164,7 +173,9 @@ export class TorrentService {
                 console.log(`ℹ️ [TorrentService] Torrent already active: ${active.infoHash}`);
                 return active.infoHash;
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn("⚠️ [TorrentService] client.get failed during addTorrent precheck:", e);
+        }
 
         return new Promise((resolve, reject) => {
             try {
@@ -211,9 +222,10 @@ export class TorrentService {
             const torrent = await this.client.get(infoHash);
             if (torrent && typeof (torrent as any).destroy === 'function') {
                 await new Promise<void>((resolve) => {
-                    (torrent as any).destroy({}, () => resolve());
-                    // Safety timeout in case destroy callback never fires
-                    setTimeout(() => resolve(), 3000);
+                    let done = false;
+                    const finish = () => { if (!done) { done = true; resolve(); } };
+                    const safety = setTimeout(finish, 3000);
+                    (torrent as any).destroy({}, () => { clearTimeout(safety); finish(); });
                 });
             }
         } catch (err) {
@@ -230,29 +242,46 @@ export class TorrentService {
     public sweepStuckMetadata(timeoutMs: number = 5 * 60 * 1000) {
         const now = Date.now();
         for (const [infoHash, startedAt] of this.metadataStartedAt.entries()) {
-            if (now - startedAt < timeoutMs) continue;
-            // If still no metadata in the live client, mark error
             const live = this.client?.torrents.find(t => t.infoHash === infoHash);
-            if (!live || !live.ready) {
-                console.warn(`⏱️ [TorrentService] Marking stuck-metadata torrent as error: ${infoHash}`);
-                this.database.updateTorrentStatus(infoHash, 'error');
+            // Live torrent is ready: metadata arrived, drop stale tracker
+            if (live && live.ready) {
                 this.metadataStartedAt.delete(infoHash);
+                continue;
             }
+            if (now - startedAt < timeoutMs) continue;
+            // Timed out without metadata: mark error
+            console.warn(`⏱️ [TorrentService] Marking stuck-metadata torrent as error: ${infoHash}`);
+            this.database.updateTorrentStatus(infoHash, 'error');
+            this.metadataStartedAt.delete(infoHash);
         }
     }
 
     /**
-     * Remove all torrents whose DB status is 'error' or stuck-on-metadata older than timeoutMs.
+     * Remove all torrents whose DB status is 'error'/'failed', or stuck on 'metadata'.
+     * Stuck-metadata means: not active+ready in client AND either tracked for >= timeoutMs
+     * or never tracked at all (e.g., persisted from a previous session).
      * Returns the list of removed info hashes.
      */
     public async purgeStuck(timeoutMs: number = 5 * 60 * 1000): Promise<string[]> {
         this.sweepStuckMetadata(timeoutMs);
         const all = this.database.getTorrents();
+        const now = Date.now();
         const removed: string[] = [];
         for (const t of all) {
-            const isStuckMetadata = t.status === 'metadata' && this.metadataStartedAt.has(t.info_hash)
-                && (Date.now() - (this.metadataStartedAt.get(t.info_hash) || 0)) >= timeoutMs;
-            if (t.status === 'error' || t.status === 'failed' || isStuckMetadata) {
+            let shouldPurge = t.status === 'error' || t.status === 'failed';
+            if (!shouldPurge && t.status === 'metadata') {
+                const live = this.client?.torrents.find(x => x.infoHash === t.info_hash);
+                if (!live) {
+                    // Not in client at all — stuck from prior session or init hasn't fired yet
+                    shouldPurge = true;
+                } else if (!live.ready) {
+                    const startedAt = this.metadataStartedAt.get(t.info_hash);
+                    // 0 peers → no source for metadata → stuck regardless of time elapsed
+                    const zeroPeers = (live.numPeers ?? 0) === 0;
+                    shouldPurge = zeroPeers || startedAt === undefined || (now - startedAt) >= timeoutMs;
+                }
+            }
+            if (shouldPurge) {
                 try {
                     await this.removeTorrent(t.info_hash);
                     removed.push(t.info_hash);
