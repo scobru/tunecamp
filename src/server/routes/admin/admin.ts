@@ -1513,7 +1513,7 @@ export function createAdminRoutes(
      * Check status of external APIs
      */
     router.get("/system/health", async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin) return res.status(403).json({ error: "Admin access required" });
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin access required" });
 
         const results: any = {};
 

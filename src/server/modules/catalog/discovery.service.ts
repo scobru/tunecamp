@@ -121,7 +121,9 @@ export class DiscoveryService {
             tracks = this.database.getTracks(undefined, context);
         }
 
-        return tracks.map(t => mapTrackDTO(t, this.database, username));
+        // Exclude non-audio files (images, PDFs, etc.) from the tracks listing
+        const audioTracks = tracks.filter(t => !t.mime_type || t.mime_type.startsWith('audio/'));
+        return audioTracks.map(t => mapTrackDTO(t, this.database, username));
     }
 
     async getAlbumForUser(albumIdOrSlug: string | number, user: { userId?: number, artistId?: number | null, role?: string, isActive?: boolean, username?: string }): Promise<AlbumDTO> {

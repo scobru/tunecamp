@@ -71,9 +71,17 @@ const AlbumDetails = () => {
       document.dispatchEvent(new CustomEvent("open-auth-modal"));
       return;
     }
-    
+
     const trackIdStr = String(track.id);
     const isCurrentlyLiked = likedTrackIds.has(trackIdStr);
+
+    // Optimistic update
+    setLikedTrackIds((prev) => {
+      const next = new Set(prev);
+      if (isCurrentlyLiked) next.delete(trackIdStr);
+      else next.add(trackIdStr);
+      return next;
+    });
 
     try {
       if (isAuthenticated && user?.zenProfile) {
@@ -87,15 +95,15 @@ const AlbumDetails = () => {
         if (isCurrentlyLiked) await API.unstarTrack(track.id);
         else await API.starTrack(track.id);
       }
-
-      setLikedTrackIds((prev) => {
-        const next = new Set(prev);
-        if (isCurrentlyLiked) next.delete(trackIdStr);
-        else next.add(trackIdStr);
-        return next;
-      });
     } catch (err) {
       console.error("Failed to toggle track like:", err);
+      // Rollback on failure
+      setLikedTrackIds((prev) => {
+        const next = new Set(prev);
+        if (isCurrentlyLiked) next.add(trackIdStr);
+        else next.delete(trackIdStr);
+        return next;
+      });
     }
   };
 
