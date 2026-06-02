@@ -1273,8 +1273,14 @@ export function createDatabase(dbPath: string): DatabaseService {
                     console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
                     const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
                     const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                    db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                    // INSERT OR IGNORE to avoid UNIQUE constraint failure if 'Instance Actor' name/slug exists with a different id
+                    db.prepare("INSERT OR IGNORE INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
                       .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+                    // Verify the actor now exists with id = -1; if not, the name/slug was taken by another row
+                    const nowExists = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+                    if (!nowExists) {
+                        throw new Error("Cannot create post as Site Actor: artist record with id=-1 could not be created (name or slug conflict)");
+                    }
                 }
             }
             const baseSlug = t ? t : c;
@@ -1441,8 +1447,14 @@ export function createDatabase(dbPath: string): DatabaseService {
         getTorrentsStatus: () => [], 
         createTorrent: (t: any) => {
             db.prepare(`
-                INSERT OR REPLACE INTO torrents (info_hash, magnet_uri, status, owner_id, name, path)
+                INSERT INTO torrents (info_hash, magnet_uri, status, owner_id, name, path)
                 VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(info_hash) DO UPDATE SET
+                    magnet_uri = excluded.magnet_uri,
+                    status = excluded.status,
+                    owner_id = COALESCE(excluded.owner_id, owner_id),
+                    name = COALESCE(excluded.name, name),
+                    path = COALESCE(excluded.path, path)
             `).run(
                 t.info_hash,
                 t.magnet_uri,

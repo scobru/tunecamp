@@ -66,21 +66,25 @@ export const ArtistFediversePanel = () => {
     const [repliesList, setRepliesList] = useState<Record<number, MockComment[]>>({});
     const [newReplyTexts, setNewReplyTexts] = useState<Record<number, string>>({});
 
-    const isRoot = user?.isRootAdmin || role === 'root_admin';
+    const isRoot = !!(user?.isRootAdmin || role === 'root_admin');
     const rawArtistId = adminUser?.artistId ?? user?.artistId;
-    const artistId: string | undefined = isRoot && (!rawArtistId || rawArtistId === 'null') 
-        ? "-1" 
-        : (rawArtistId && rawArtistId !== 'null' && rawArtistId !== 'undefined' ? String(rawArtistId) : undefined);
+    const validRaw = rawArtistId && rawArtistId !== 'null' && rawArtistId !== 'undefined' && rawArtistId !== '0';
+    // Root admin without an artist always posts as the SITE instance actor (id = -1)
+    const artistId: string | undefined = isRoot
+        ? (validRaw ? String(rawArtistId) : "-1")
+        : (validRaw ? String(rawArtistId) : undefined);
+    // Safe resolved id — guarantees root admin always has a value even if artistId is somehow unset
+    const effectiveArtistId: string = artistId || (isRoot ? "-1" : "");
 
     const handleSync = async () => {
-        if (!artistId) return; 
+        if (!effectiveArtistId) return;
         if (!confirm('This will re-broadcast all your public releases and posts to the Fediverse (Mastodon, etc) to ensure they are in sync. Continue?')) return;
         
         setLoading(true);
         try {
-            await API.syncArtistActivityPub(artistId);
+            await API.syncArtistActivityPub(effectiveArtistId);
             alert('Synchronization complete.');
-            loadData(artistId);
+            loadData(effectiveArtistId);
         } catch (e: any) {
             console.error(e);
             alert('Failed to synchronize: ' + e.message);
@@ -90,17 +94,17 @@ export const ArtistFediversePanel = () => {
     };
 
     useEffect(() => {
-        if (artistId) {
-            loadData(artistId);
+        if (effectiveArtistId) {
+            loadData(effectiveArtistId);
         }
 
         const handleRefresh = () => {
-            if (artistId) loadData(artistId);
+            if (effectiveArtistId) loadData(effectiveArtistId);
         };
 
         window.addEventListener('refresh-social-content', handleRefresh);
         return () => window.removeEventListener('refresh-social-content', handleRefresh);
-    }, [artistId]);
+    }, [effectiveArtistId]);
 
     const loadData = async (id: string) => {
         setLoading(true);
@@ -163,16 +167,16 @@ export const ArtistFediversePanel = () => {
 
     const handleCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!composerContent.trim() || composerContent.length > 500 || !artistId) return;
+        if (!composerContent.trim() || composerContent.length > 500 || !effectiveArtistId) return;
 
         setComposerLoading(true);
         try {
-            await API.createPost(Number(artistId), composerContent, composerVisibility, composerTitle || undefined, composerSummary || undefined);
+            await API.createPost(Number(effectiveArtistId), composerContent, composerVisibility, composerTitle || undefined, composerSummary || undefined);
             setComposerContent('');
             setComposerTitle('');
             setComposerSummary('');
             setIsComposerFocused(false);
-            await loadData(artistId);
+            await loadData(effectiveArtistId);
         } catch (e: any) {
             console.error("Failed to create post", e);
             alert("Failed to create post: " + e.message);
@@ -221,10 +225,10 @@ export const ArtistFediversePanel = () => {
     };
 
     const handleAcceptRequest = async (actorUri: string) => {
-        if (!artistId) return;
+        if (!effectiveArtistId) return;
         try {
-            await API.acceptFollower(artistId, actorUri);
-            loadData(artistId);
+            await API.acceptFollower(effectiveArtistId, actorUri);
+            loadData(effectiveArtistId);
         } catch (e: any) {
             console.error(e);
             alert("Failed to accept follower: " + e.message);
@@ -232,10 +236,10 @@ export const ArtistFediversePanel = () => {
     };
 
     const handleRejectRequest = async (actorUri: string) => {
-        if (!artistId) return;
+        if (!effectiveArtistId) return;
         try {
-            await API.rejectFollower(artistId, actorUri);
-            loadData(artistId);
+            await API.rejectFollower(effectiveArtistId, actorUri);
+            loadData(effectiveArtistId);
         } catch (e: any) {
             console.error(e);
             alert("Failed to reject follower: " + e.message);
@@ -330,7 +334,8 @@ export const ArtistFediversePanel = () => {
 
     const fediverseHandle = artist ? `@${artist.slug || artist.name.toLowerCase().replace(/\s+/g, '')}@${window.location.host}` : '';
 
-    if (!artistId || artistId === 'null') {
+    // Block only non-root users without an artist; root admin always posts as site actor
+    if (!effectiveArtistId && !isRoot) {
         return (
             <div className="text-center py-12 opacity-50">
                 <AlertTriangle className="mx-auto mb-2 opacity-50"/>
@@ -359,7 +364,7 @@ export const ArtistFediversePanel = () => {
                     </button>
                     <button 
                         className="btn btn-square btn-ghost"
-                        onClick={() => loadData(artistId)}
+                        onClick={() => loadData(effectiveArtistId)}
                         disabled={loading}
                         title="Refresh list"
                     >
