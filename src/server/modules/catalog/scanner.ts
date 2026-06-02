@@ -665,27 +665,39 @@ export class Scanner implements ScannerService {
 
     private async deduplicateLibraryTracks() {
         console.log("🧹 [Scanner] Running memory-efficient deduplication...");
-        const groups = new Map<string, number[]>();
+        const groups = new Map<string, { id: number, score: number }[]>();
         const tracksIter = this.database.iterateTracks();
-        
+
         for (const t of tracksIter) {
             const k = `${t.album_id}|${t.artist_id}|${t.title.toLowerCase().trim()}`;
+            // Score: prefer tracks with album, duration, fingerprint, external_id, lyrics, lossless
+            const score =
+                (t.album_id ? 16 : 0) +
+                (t.duration ? 8 : 0) +
+                ((t as any).fingerprint ? 4 : 0) +
+                ((t as any).external_id ? 2 : 0) +
+                ((t as any).lyrics ? 1 : 0) +
+                (t.lossless_path ? 1 : 0);
             if (!groups.has(k)) groups.set(k, []);
-            groups.get(k)!.push(t.id);
+            groups.get(k)!.push({ id: t.id, score });
         }
 
-        for (const [key, ids] of groups.entries()) {
-            if (ids.length <= 1) continue;
-            const primaryId = ids[0];
-            const primary = this.database.getTrack(primaryId);
-            if (!primary) continue;
+        for (const [, entries] of groups.entries()) {
+            if (entries.length <= 1) continue;
+            // Sort by richness desc, then by id asc (oldest)
+            entries.sort((a, b) => b.score - a.score || a.id - b.id);
+            const primaryId = entries[0].id;
 
-            for (let i = 1; i < ids.length; i++) {
-                const other = this.database.getTrack(ids[i]);
-                if (!other) continue;
-                const lossless = other.lossless_path || (path.extname(other.file_path || '').toLowerCase() === '.wav' ? other.file_path : null);
-                if (lossless && !primary.lossless_path) this.database.updateTrackLosslessPath(primary.id, lossless);
-                this.database.deleteTrack(other.id);
+            for (let i = 1; i < entries.length; i++) {
+                const otherId = entries[i].id;
+                try {
+                    // mergeTracks transfers ownership/plays/bookmarks/ratings/release_tracks
+                    // and carries over metadata fields the keeper is missing.
+                    // It also handles the lossless_path carry-over.
+                    this.database.mergeTracks(otherId, primaryId);
+                } catch (e) {
+                    console.error(`[Scanner] Dedup merge failed (${otherId} -> ${primaryId}):`, e);
+                }
             }
         }
     }
@@ -695,6 +707,7 @@ export class Scanner implements ScannerService {
         const tracksIter = this.database.iterateTracks();
         const toDelete: number[] = [];
         const toUpdateLossless: number[] = [];
+        const toPromoteLossless: { id: number, lossless: string }[] = [];
 
         for (const t of tracksIter) {
             if (!t.file_path) continue;
@@ -705,12 +718,27 @@ export class Scanner implements ScannerService {
             const pKey = t.file_path.toLowerCase();
             const pExists = knownFiles.has(pKey);
             const lExists = t.lossless_path ? knownFiles.has(t.lossless_path.toLowerCase()) : false;
-            if (!pExists && !lExists) toDelete.push(t.id);
-            else if (pExists && t.lossless_path && !lExists) toUpdateLossless.push(t.id);
+            if (!pExists && !lExists) {
+                toDelete.push(t.id);
+            } else if (pExists && t.lossless_path && !lExists) {
+                toUpdateLossless.push(t.id);
+            } else if (!pExists && lExists && t.lossless_path) {
+                // file_path is dead but the lossless companion still exists.
+                // Promote lossless_path to file_path so the dead pointer is replaced.
+                toPromoteLossless.push({ id: t.id, lossless: t.lossless_path });
+            }
         }
 
         for (const id of toDelete) this.database.deleteTrack(id);
         for (const id of toUpdateLossless) this.database.updateTrackLosslessPath(id, null);
+        for (const { id, lossless } of toPromoteLossless) {
+            try {
+                // Don't pass album_id (would null it out). Just update the path.
+                this.database.updateTrack(id, { file_path: lossless });
+            } catch (e) {
+                console.warn(`[Scanner] Could not promote lossless_path for track ${id}:`, (e as any).message);
+            }
+        }
     }
 
     public startWatching(dir: string): void {
@@ -795,15 +823,56 @@ export class Scanner implements ScannerService {
                     if (oldP === newP) { skipped++; count++; continue; }
                     if (await this.storage.pathExists(fOld)) {
                         await this.storage.ensureDir(path.dirname(fNew));
-                        await this.storage.move(fOld, fNew, { overwrite: true });
-                        this.database.updateTrackPath(t.id, newP, t.album_id);
-                        migratedDirsMap.set(path.dirname(fOld), path.dirname(fNew));
+                        // Pick a non-colliding destination if another track already lives at newP.
+                        // Overwriting would silently destroy a different track's file.
+                        let finalNewP = newP;
+                        let finalFNew = fNew;
+                        if (await this.storage.pathExists(finalFNew)) {
+                            const owner = this.database.getTrackByPath(finalNewP);
+                            if (owner && owner.id !== t.id) {
+                                const parsed = path.parse(newP);
+                                let attempt = 1;
+                                while (attempt < 1000) {
+                                    const candidate = path.join(parsed.dir, `${parsed.name} (${attempt})${parsed.ext}`).replace(/\\/g, "/");
+                                    const candidateAbs = path.join(musicDir, candidate);
+                                    if (!await this.storage.pathExists(candidateAbs)) {
+                                        finalNewP = candidate;
+                                        finalFNew = candidateAbs;
+                                        break;
+                                    }
+                                    attempt++;
+                                }
+                                console.warn(`⚠️ [Consolidate] Destination ${newP} owned by track ${owner.id}, renaming to ${finalNewP}`);
+                            }
+                        }
+                        await this.storage.move(fOld, finalFNew, { overwrite: true });
+                        this.database.updateTrackPath(t.id, finalNewP, t.album_id);
+                        migratedDirsMap.set(path.dirname(fOld), path.dirname(finalFNew));
                         if (t.lossless_path) {
                             const oldLossless = path.join(musicDir, t.lossless_path);
                             const losslessExt = path.extname(t.lossless_path);
-                            const newLosslessP = path.join(newDir, `${base}${losslessExt}`).replace(/\\/g, "/");
-                            const newLossless = path.join(musicDir, newLosslessP);
+                            const losslessBase = path.parse(finalNewP).name;
+                            let newLosslessP = path.join(path.dirname(finalNewP), `${losslessBase}${losslessExt}`).replace(/\\/g, "/");
+                            let newLossless = path.join(musicDir, newLosslessP);
                             if (await this.storage.pathExists(oldLossless) && oldLossless !== newLossless) {
+                                // Same collision check for lossless
+                                if (await this.storage.pathExists(newLossless)) {
+                                    const losslessOwner = this.database.getTrackByPath(newLosslessP);
+                                    if (losslessOwner && losslessOwner.id !== t.id) {
+                                        const parsed = path.parse(newLosslessP);
+                                        let attempt = 1;
+                                        while (attempt < 1000) {
+                                            const candidate = path.join(parsed.dir, `${parsed.name} (${attempt})${parsed.ext}`).replace(/\\/g, "/");
+                                            const candidateAbs = path.join(musicDir, candidate);
+                                            if (!await this.storage.pathExists(candidateAbs)) {
+                                                newLosslessP = candidate;
+                                                newLossless = candidateAbs;
+                                                break;
+                                            }
+                                            attempt++;
+                                        }
+                                    }
+                                }
                                 await this.storage.ensureDir(path.dirname(newLossless));
                                 await this.storage.move(oldLossless, newLossless, { overwrite: true });
                                 this.database.updateTrackLosslessPath(t.id, newLosslessP);

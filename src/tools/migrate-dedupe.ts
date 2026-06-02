@@ -179,12 +179,15 @@ Options:
     for (const item of migrationPlan) {
         const finalRelPath = item.canonical.replace(/\\/g, '/');
         let targetRelPath = finalRelPath;
+        // Track whether the canonical source still exists after this loop —
+        // if the destination already had a matching file, the source becomes redundant.
+        let canonicalAbsorbed = false;
 
         // Ensure the canonical file is in tracks/ if it wasn't already
         if (!finalRelPath.startsWith('tracks/')) {
             const fileName = path.basename(item.canonical);
             targetRelPath = `tracks/${fileName}`;
-            
+
             // Collision handling in tracks/
             if (!isDryRun) {
                 let counter = 1;
@@ -192,16 +195,20 @@ Options:
                 while (fs.existsSync(path.join(musicDir, targetRelPath))) {
                     try {
                         const existingHash = await getFileHash(path.join(musicDir, targetRelPath));
-                        if (existingHash === item.hash) break;
+                        if (existingHash === item.hash) {
+                            // Target already holds an identical file — keep target, source is now redundant.
+                            canonicalAbsorbed = true;
+                            break;
+                        }
                     } catch (e) {}
-                    
+
                     targetRelPath = `tracks/${nameParts.name}_${counter}${nameParts.ext}`;
                     counter++;
                 }
 
                 const oldAbs = path.join(musicDir, item.canonical);
                 const newAbs = path.join(musicDir, targetRelPath);
-                
+
                 if (oldAbs !== newAbs && !fs.existsSync(newAbs)) {
                     fs.moveSync(oldAbs, newAbs, { overwrite: false });
                     movedFiles++;
@@ -211,14 +218,17 @@ Options:
             }
         }
 
-        // Add actions for all paths sharing this hash
+        // Add actions for all paths sharing this hash. If the source was absorbed
+        // (target already had identical content), mark the canonical as redundant
+        // so its file gets removed from disk and not left as an orphan.
         const allOldPaths = [item.canonical, ...item.duplicates];
         for (const oldPath of allOldPaths) {
+            const isCanonical = oldPath === item.canonical;
             migrationActions.push({
                 oldPath,
                 newPath: targetRelPath,
-                isCanonical: oldPath === item.canonical,
-                isRedundant: oldPath !== item.canonical
+                isCanonical,
+                isRedundant: !isCanonical || canonicalAbsorbed
             });
         }
     }
