@@ -301,7 +301,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
         const artist = database.getArtist(id);
         if (!artist) return res.status(404).json({ error: "Artist not found" });
 
-        if (req.context && !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+        if (req.context && !VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
             const isPublic = artist.visibility === 'public' || artist.visibility === 'unlisted';
             // Also check if they have at least one formal release to be considered "Public Stage"
             const hasFormalRelease = database.getReleasesByArtist(artist.id).length > 0;

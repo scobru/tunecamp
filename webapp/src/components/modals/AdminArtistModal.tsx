@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { User, Image as ImageIcon, Globe, AlertTriangle, Search } from 'lucide-react';
+import type { User as DbUser, ArtistLink } from '../../types';
 
 interface AdminArtistModalProps {
     onArtistUpdated: () => void;
@@ -30,7 +31,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const [error, setError] = useState('');
     const [warning, setWarning] = useState('');
     const [loading, setLoading] = useState(false);
-    const [currentUser, setCurrentUser] = useState<import("../../types").User | null>(null);
+    const [currentUser, setCurrentUser] = useState<DbUser | null>(null);
     const [isLibraryOnly, setIsLibraryOnly] = useState(false);
 
     const isRootAdmin = !!currentUser?.isRootAdmin;
@@ -183,7 +184,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 token: mastodonToken
             } : null;
 
-            const allLinks: Array<import("../../types").ArtistLink> = socialLinks.map(l => ({ ...l, type: 'social' as const }));
+            const allLinks: Array<ArtistLink> = socialLinks.map(l => ({ ...l, type: 'social' as const }));
             if (donationUrl) {
                 allLinks.unshift({ platform: 'Donation', url: donationUrl, type: 'support' });
             }

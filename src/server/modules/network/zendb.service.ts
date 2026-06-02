@@ -26,14 +26,14 @@ export interface SiteInfo {
     coverImage?: string;
 }
 
-export interface UserProfile {
+interface UserProfile {
     pubKey: string;
     username: string;
     createdAt: number;
     avatar?: string;
 }
 
-export interface Comment {
+interface Comment {
     id: string;
     trackId: number;
     pubKey: string;

@@ -5,7 +5,7 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { VisibilityProfile, ViewerContext } from "../common/visibility.js";
 
-export interface OAuthClient {
+interface OAuthClient {
     id?: number;
     instance_url: string;
     client_id: string;
@@ -14,7 +14,7 @@ export interface OAuthClient {
     created_at?: string;
 }
 
-export interface OAuthLink {
+interface OAuthLink {
     provider: string;
     subject: string;
     gun_pub: string;
@@ -22,7 +22,7 @@ export interface OAuthLink {
     created_at: string;
 }
 
-export interface User {
+interface User {
     id: number;
     username: string;
     password_hash: string;
@@ -229,7 +229,7 @@ export interface Follower {
     follow_id?: string | null;
 }
 
-export interface LikeEntry {
+interface LikeEntry {
     id: number;
     remote_actor_fid: string;
     object_type: 'album' | 'track' | 'post';
@@ -286,7 +286,7 @@ export interface ArtistWithPlayCount extends Artist {
     playCount: number;
 }
 
-export interface ListeningStats {
+interface ListeningStats {
     totalPlays: number;
     uniqueTracks: number;
     totalListeningTime: number;
@@ -319,7 +319,7 @@ export interface Torrent {
 
 export type TorrentStatus = Torrent['status'];
 
-export interface SoulseekDownload {
+interface SoulseekDownload {
     id: number;
     user_id: number;
     file_path: string;
@@ -340,7 +340,7 @@ export interface StorageAccount {
     created_at: string;
 }
 
-export interface GunCacheEntry {
+interface GunCacheEntry {
     key: string;
     value: string;
     type: string;

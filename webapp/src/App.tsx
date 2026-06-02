@@ -21,7 +21,7 @@ const Playlists = lazy(() => import("./pages/Playlists"));
 const PlaylistDetails = lazy(() => import("./pages/PlaylistDetails"));
 const MyPlaylists = lazy(() => import("./pages/MyPlaylists"));
 const MyPlaylistDetails = lazy(() => import("./pages/MyPlaylistDetails"));
-const Post = lazy(() => import("./pages/Post").then(m => ({ default: m.PostPage }))); // Special case
+const Post = lazy(() => import("./pages/Post")); // Special case
 const Wallet = lazy(() => import("./pages/Wallet"));
 const Profile = lazy(() => import("./pages/Profile"));
 const MyMusic = lazy(() => import("./pages/MyMusic"));

@@ -559,14 +559,14 @@ const ContentSearch: React.FC = () => {
                                     <div className="p-8 text-center opacity-30 text-xs italic">No active downloads</div>
                                 )}
                                 {torrents.map((t: any) => (
-                                    <div key={t.info_hash} className="p-4 space-y-2">
+                                    <div key={t.infoHash || t.info_hash} className="p-4 space-y-2">
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="min-w-0 flex-1">
-                                                <div className="text-xs font-bold truncate" title={t.name}>{t.name || t.info_hash}</div>
-                                                <div className="text-[10px] opacity-40 font-mono truncate">{t.info_hash}</div>
+                                                <div className="text-xs font-bold truncate" title={t.name || t.infoHash || t.info_hash}>{t.name || t.infoHash || t.info_hash}</div>
+                                                <div className="text-[10px] opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
                                             </div>
                                             <button 
-                                                onClick={() => handleDeleteTorrent(t.info_hash)}
+                                                onClick={() => handleDeleteTorrent(t.infoHash || t.info_hash)}
                                                 className="btn btn-ghost btn-xs text-error p-0 h-auto min-h-0"
                                             >
                                                 <Trash2 size={12} />

@@ -7,9 +7,9 @@
  * Zero external dependencies — pure Node.js.
  */
 
-export type TaskStatus = 'running' | 'completed' | 'failed';
+type TaskStatus = 'running' | 'completed' | 'failed';
 
-export interface TaskEntry {
+interface TaskEntry {
     taskId: string;
     status: TaskStatus;
     startedAt: Date;
@@ -18,7 +18,7 @@ export interface TaskEntry {
     result: any;
 }
 
-export class TaskManager {
+class TaskManager {
     private tasks = new Map<string, TaskEntry & { promise: Promise<any> }>();
 
     /** Max completed/failed tasks to keep in history */

@@ -11,7 +11,7 @@ import { RemoteContentRepository } from "../repositories/remote-content.reposito
 
 // Re-export all types so consumers can continue to import from here
 export type {
-    Album, Artist, Track, Release, Post, Playlist,
+    Album, Artist, Track, Release, Post,
     DatabaseService,
     TrackDTO, AlbumDTO
 } from "./database.types.js";

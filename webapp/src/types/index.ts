@@ -46,7 +46,7 @@ export interface Track {
     year?: number;
 }
 
-export interface ReleaseTrack {
+interface ReleaseTrack {
     id: number;
     release_id: number;
     track_id: number | null;
@@ -301,15 +301,6 @@ export interface AdminStats {
     genres?: string[];
 }
 
-export interface ZenProfile {
-    pub: string;
-    alias: string;
-    epub: string;
-    profile?: {
-        avatar?: string;
-        bio?: string;
-    };
-}
 
 export interface UserPlaylistTrack {
     id: string;

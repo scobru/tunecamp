@@ -22,7 +22,7 @@ import { AdminTracksList } from "../components/admin/AdminTracksList";
 import { AdminArtistsList } from "../components/admin/AdminArtistsList";
 import { AdminAlbumsList } from "../components/admin/AdminAlbumsList";
 
-export const MyMusic = () => {
+const MyMusic = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const { bumpCacheBuster } = useConfigStore();
   const navigate = useNavigate();

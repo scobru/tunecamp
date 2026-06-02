@@ -31,7 +31,7 @@ interface PodcastConfig {
   explicit?: boolean;
 }
 
-export interface ArtistConfig {
+interface ArtistConfig {
   name: string;
   bio?: string;
   photo?: string;
@@ -101,7 +101,7 @@ interface TrackConfig {
   metadata?: Record<string, any>;
 }
 
-export interface Track {
+interface Track {
   id: string; // Required for store/player logic
   file?: string;
   url?: string;

@@ -20,7 +20,7 @@ interface QueuedTask {
     reject: (err: any) => void;
 }
 
-export class WorkerPool {
+class WorkerPool {
     private queue: QueuedTask[] = [];
     private activeWorkers = 0;
     private readonly maxWorkers: number;

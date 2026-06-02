@@ -16,7 +16,7 @@ import { ActivityPubPanel } from "../components/admin/ActivityPubPanel";
 import { CreatePostModal } from "../components/modals/CreatePostModal";
 import API from "../services/api";
 
-export const Social = () => {
+const Social = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<

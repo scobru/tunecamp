@@ -20,7 +20,7 @@ const SALT_ROUNDS = 10;
 const JWT_EXPIRES_IN = "7d";
 
 
-export enum AuthProvider {
+enum AuthProvider {
     MASTODON = "mastodon"
 }
 export interface TokenPayload {
@@ -936,7 +936,7 @@ const BASE62_ALPHA = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 /**
  * Converts a byte buffer into a fixed-length Base62 string.
  */
-export function bufToB62Fixed(buf: Uint8Array, len: number): string {
+function bufToB62Fixed(buf: Uint8Array, len: number): string {
     let hex = "";
     for (let i = 0; i < buf.length; i++) {
         hex += ("0" + buf[i].toString(16)).slice(-2);

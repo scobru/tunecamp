@@ -293,7 +293,7 @@ const TrackCard = memo(({
   );
 });
 
-export const Network = () => {
+const Network = () => {
   const [sites, setSites] = useState<NetworkSite[]>([]);
   const [tracks, setTracks] = useState<NetworkTrack[]>([]);
   const [loading, setLoading] = useState(true);

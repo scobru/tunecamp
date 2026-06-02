@@ -113,7 +113,7 @@ export function createAlbumsRoutes(
         const album = database.getAlbum(albumId) || database.getRelease(albumId);
         if (!album) throw new NotFoundError("Album not found");
         
-        if (req.context && !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+        if (req.context && !VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
             const isPublic = album.visibility === 'public' || album.visibility === 'unlisted' || album.is_release;
             if (!isPublic) throw new ForbiddenError("You can only favorite public albums");
         }

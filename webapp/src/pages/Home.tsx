@@ -5,7 +5,7 @@ import { Library } from "lucide-react";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import clsx from "clsx";
 
-export const Home = () => {
+const Home = () => {
   const navigate = useNavigate();
   const [recentAlbums, setRecentAlbums] = useState<any[]>([]);
   const [libraryAlbums, setLibraryAlbums] = useState<any[]>([]);

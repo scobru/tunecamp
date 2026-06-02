@@ -4,16 +4,14 @@
     ".": {
       "entry": [
         "src/index.ts",
-        "src/tools/*.ts"
+        "src/tools/*.ts",
+        "src/server/modules/workers/heavy-task.worker.ts"
       ],
       "project": [
         "src/**/*.ts",
         "!src/**/*.test.ts"
       ],
-      "ignore": [
-        "check_db.js",
-        "website/**/*"
-      ],
+      "ignore": [],
       "ignoreDependencies": [
         "daisyui",
         "tailwindcss",
@@ -28,13 +26,10 @@
       "ignore": [
         "src/types/color-thief-react.d.ts",
         "src/types/material-web.d.ts",
-        "src/zen.d.ts",
-        "src/stubs/empty.js"
+        "src/zen.d.ts"
       ],
       "ignoreDependencies": [
-        "autoprefixer",
-        "daisyui",
-        "tailwindcss"
+        "autoprefixer"
       ]
     }
   }

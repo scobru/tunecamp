@@ -4,7 +4,7 @@ import API from '../services/api';
 import { User, Clock, ArrowLeft, BookOpen, Share2 } from 'lucide-react';
 import type { Post } from '../types';
 
-export const PostPage = () => {
+const PostPage = () => {
     const { slug } = useParams<{ slug: string }>();
     const [post, setPost] = useState<Post | null>(null);
     const [loading, setLoading] = useState(true);

@@ -3,7 +3,7 @@ import API from "../../services/api";
 import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
-import { TuneCampFactory } from "shogun-contracts-sdk";
+import { TuneCampFactory, TuneCampCheckout } from "shogun-contracts-sdk";
 
 export const AdminSettingsPanel = () => {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -13,7 +13,6 @@ export const AdminSettingsPanel = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const { wallet, externalWallet, useExternalWallet, isExternalConnected, isWalletReady } = useWalletStore();
-  const { TuneCampCheckout } = (window as any).TuneCampSDK || {}; // Fallback if not directly importable or through sdk class
   const activeSigner = useExternalWallet ? externalWallet : wallet;
   const isReady = useExternalWallet ? isExternalConnected : isWalletReady;
 
