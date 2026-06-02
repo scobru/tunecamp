@@ -38,8 +38,9 @@ docker-compose up -d --build
 - 🖥️ **Streaming Server**: Personal streaming server with a modern, responsive web interface.
 - 🎨 **Customizable**: Theming, background images, cover images, site branding, and per-artist profiles.
 - 🔍 **Full-text Search**: Search across artists, albums, and tracks with fuzzy matching.
-- 🔊 **Smart Streaming**: Multi-provider fallback (YouTube, Bandcamp, SoundCloud, HiFi) with advanced bot-detection bypass for YouTube.
-- 📡 **HiFi Support**: Integration with community-hosted HiFi API instances for high-quality audio.
+- 📈 **Scrobbling**: Optional Last.fm and ListenBrainz scrobbling (configured per-user in settings).
+- 🧩 **Metadata Providers**: Discogs, MusicBrainz, iTunes, TheAudioDB, Spotify, Bandcamp, and SoundCloud for tagging and enrichment.
+- 🔊 **Smart Streaming**: Provider fallback for missing local files via SoundCloud and Bandcamp, with caching and automatic retries. Additional providers (e.g. YouTube) can be added through the [plugin system](docs/PLUGINS.md).
 
 ### Decentralization & Federation
 - 🔐 **Zen Identity**: Cryptographic keypairs (SEA) for signing, identity roaming across instances, and decentralized comments/stats.
@@ -54,22 +55,27 @@ docker-compose up -d --build
 
 ### Web3 & Monetization
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
+- 💳 **Fiat Payments**: Optional Stripe and PayPal checkout for non-crypto purchases.
 - 🏭 **Factory Contract**: Self-hosters deploy their own NFT + Checkout contract instances via EIP-1167 minimal proxies.
 - 🔑 **Unlock Codes**: Generate and distribute access codes for gated releases.
 - 👛 **Wallet Integration**: Client-side wallet derived from Zen credentials (no private key leaves the browser).
 
 ### Administration
-- 🛡️ **Role-Based Access (RBAC)**: Root Admin, Admin, and Artist/User roles with granular permissions. See [ROLES.md](ROLES.md).
+- 🛡️ **Role-Based Access (RBAC)**: Root Admin, Admin, and Artist/User roles with granular permissions. See [ROLES.md](docs/ROLES.md).
 - 📤 **Bulk Upload**: Multi-file upload with automatic metadata extraction and album assignment.
 - ✏️ **Batch Editing**: Edit cover art, metadata, and pricing across multiple tracks at once.
 - 📁 **File Browser**: Browse the server filesystem and attach files to the library.
-- 🤖 **Telegram Bot**: Rapid ingestion of music files and remote management. See [TELEGRAM.md](docs/TELEGRAM.md).
+- 🤖 **Telegram Bot**: Rapid ingestion of music files and remote management. See [telegram.md](docs/telegram.md).
+- 🧠 **AI Assistant (Linda)**: Optional OpenRouter-powered assistant for library tasks. See [linda-bot.md](docs/linda-bot.md).
+- 🧩 **Plugins**: Load custom providers (streaming, metadata, storage) from a plugins directory. See [PLUGINS.md](docs/PLUGINS.md).
 - 💾 **Backup & Restore**: Full database backup/restore via the admin panel or CLI.
 - 📊 **Statistics**: Play counts, listening time, top tracks/artists, and library stats.
 
 ### Content Acquisition
-- 🔎 **Content Search**: Search Soulseek from the admin panel with one-click import.
+- 🔎 **Soulseek Search**: Search Soulseek from the admin panel with one-click import.
+- 🧲 **Torrents**: BitTorrent search and download for catalog ingestion. See [torrents.md](docs/torrents.md).
 - 🏷️ **Discogs Metadata**: Match tracks against the Discogs database for accurate tagging.
+- ☁️ **Google Drive Storage**: Optional Google Drive backend for media storage. See [google-drive.md](docs/google-drive.md).
 
 ### Deployment
 - 📦 **Docker Ready**: Multi-stage Dockerfile with health checks, optimized for production.
@@ -123,22 +129,26 @@ cd webapp && npm run dev
 
 ### CLI Usage
 
-After building, the CLI is available:
+After building (`npm run build`), the server and maintenance tools run via Node. Paths and ports are configured through environment variables (see [Configuration](#configuration)), not flags.
 
 ```bash
 # Start the server
-npx tunecamp server ./music --port 1970 --db ./tunecamp.db
+npm start
 
-# Backup the database
-npx tunecamp backup ./backups --db ./tunecamp.db
+# Backup the database (writes tunecamp-<timestamp>.db into the target dir)
+node dist/tools/backup.js ./backups
 
-# Restore from a backup
-npx tunecamp restore ./backups/tunecamp-2026-01-01.db --db ./tunecamp.db --force
+# Restore from a backup (use --force to overwrite an existing database)
+node dist/tools/restore.js ./backups/tunecamp-2026-01-01.db --force
 ```
+
+See [backup-migration.md](docs/backup-migration.md) for more maintenance scripts.
 
 ### Configuration
 
 Configuration is managed via environment variables (or an `.env` file).
+
+**Core**
 
 | Variable | Description | Default |
 |:---------|:------------|:--------|
@@ -149,22 +159,53 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_ADMIN_USER` | Default admin username | `admin` |
 | `TUNECAMP_ADMIN_PASS` | Default admin password | `admin` |
 | `TUNECAMP_PUBLIC_URL` | Public HTTPS URL (required for ActivityPub federation) | — |
+| `TUNECAMP_SITE_NAME` | Human-readable instance name | `My TuneCamp Server` |
+| `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins | *all* |
+| `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads | `/data/downloads` |
+| `TUNECAMP_PLUGINS_DIR` | Directory to load provider plugins from | — |
+
+**Federation & Network**
+
+| Variable | Description | Default |
+|:---------|:------------|:--------|
+| `TUNECAMP_ZEN_PEERS` | Comma/space-separated Zen relay peer URLs | — |
+| `TUNECAMP_ZEN_MEMORY_LIMIT` | Memory limit (MB) for the Zen network worker | — |
+
+> ActivityPub relay broadcasting is configured at runtime via the admin panel (`relayUrl` setting), not an environment variable.
+
+**Integrations**
+
+| Variable | Description | Default |
+|:---------|:------------|:--------|
 | `TUNECAMP_TELEGRAM_BOT_TOKEN` | Telegram Bot API token for ingestion | — |
 | `TUNECAMP_TELEGRAM_MASTER_ID` | Telegram User ID of the master administrator | — |
-| `TUNECAMP_SITE_NAME` | Human-readable instance name | `My TuneCamp Server` |
-| `TUNECAMP_ZEN_PEERS` | Comma-separated Zen relay peer URLs | — |
-| `VITE_ZEN_PEERS` | Same as above, for the frontend build | — |
-| `TUNECAMP_RELAY_URL` | ActivityPub relay URL for broadcasting | — |
-| `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins | *all* |
-| `TUNECAMP_RPC_URL` | Base Network RPC endpoint (Web3) | `https://mainnet.base.org` |
-| `TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x833589...02913` |
-| `TUNECAMP_DOWNLOAD_DIR` | Directory for soulseek downloads | `/data/downloads` |
-| `DISCOGS_TOKEN` | Discogs API token for metadata matching | — |
-| `SPOTIFY_CLIENT_ID` | Spotify API client ID for metadata/playlist import | — |
-| `SPOTIFY_CLIENT_SECRET` | Spotify API client secret | — |
-| `YOUTUBE_COOKIES_PATH` | Path to JSON cookies file for YouTube bot bypass | — |
-| `LASTFM_API_KEY` | Last.fm API key for scrobbling | — |
-| `LISTENBRAINZ_TOKEN` | ListenBrainz token for scrobbling | — |
+| `OPENROUTER_API_KEY` | OpenRouter API key for the Linda AI assistant | — |
+| `OPENROUTER_MODEL` | OpenRouter model id | `openrouter/free` |
+| `DISCOGS_TOKEN` | Discogs API token for metadata matching (also settable in admin) | — |
+| `TUNECAMP_GDRIVE_CLIENT_ID` | Google Drive OAuth client ID for storage backend | — |
+| `TUNECAMP_GDRIVE_CLIENT_SECRET` | Google Drive OAuth client secret | — |
+
+> Last.fm and ListenBrainz scrobbling are configured per-user in the app settings (no environment variable needed).
+
+**Payments (Web3 & Fiat)**
+
+| Variable | Description | Default |
+|:---------|:------------|:--------|
+| `TUNECAMP_RPC_URL` | Base Network RPC endpoint (backend) | — |
+| `TUNECAMP_OWNER_ADDRESS` | Instance owner wallet address for payouts | — |
+| `STRIPE_SECRET_KEY` | Stripe secret key for fiat checkout | — |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | — |
+| `STRIPE_ONRAMP_SECRET_KEY` | Stripe key for crypto on-ramp (falls back to `STRIPE_SECRET_KEY`) | — |
+| `PAYPAL_CLIENT_ID` | PayPal client ID for fiat checkout | — |
+| `PAYPAL_CLIENT_SECRET` | PayPal client secret | — |
+| `PAYPAL_ENVIRONMENT` | PayPal environment (`sandbox` / `live`) | `sandbox` |
+
+**Frontend build (Vite — `VITE_*`)**
+
+| Variable | Description | Default |
+|:---------|:------------|:--------|
+| `VITE_TUNECAMP_RPC_URL` | Base RPC endpoint used by the in-browser wallet | `https://base.llamarpc.com` |
+| `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x8335...02913` |
 
 ## API & Integrations
 
@@ -224,7 +265,7 @@ Tunecamp uses a role-based access control (RBAC) system with tiered permissions:
 - **Curator (Super User)**: Advanced library management, metadata correction, and global content visibility.
 - **Listener (Standard User)**: Content upload, discography management, and personal profile interaction.
 
-See the [Roles & Permissions Guide →](ROLES.md)
+See the [Roles & Permissions Guide →](docs/ROLES.md)
 
 ## Contributing
 
