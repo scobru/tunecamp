@@ -6,6 +6,8 @@ import type { Scanner } from '../catalog/scanner.js';
 
 export class TorrentService {
     private client: WebTorrent.Instance | null = null;
+    private metadataStartedAt: Map<string, number> = new Map();
+    private sweepInterval: NodeJS.Timeout | null = null;
 
     constructor(
         private database: DatabaseService,
@@ -16,6 +18,15 @@ export class TorrentService {
         setTimeout(() => {
             this.init();
         }, 5000);
+
+        // Periodically mark stuck-on-metadata torrents as 'error' so the UI can flag/purge them
+        this.sweepInterval = setInterval(() => {
+            try {
+                this.sweepStuckMetadata();
+            } catch (err) {
+                console.error("⚠️ [TorrentService] sweep error:", err);
+            }
+        }, 60 * 1000);
     }
 
     private init() {
@@ -160,7 +171,7 @@ export class TorrentService {
                 // Call add() synchronously without ontorrent callback
                 const torrent = this.client!.add(magnetUri, { path: path.join(this.musicDir, "downloads", "torrents") });
                 console.log(`📥 [TorrentService] Added torrent synchronously: ${torrent.infoHash}`);
-                
+
                 // Save to database if not exists
                 const existing = this.database.getTorrent(torrent.infoHash);
                 if (!existing) {
@@ -173,8 +184,12 @@ export class TorrentService {
                     });
                 }
 
+                // Track when metadata fetching started so we can detect stuck torrents
+                this.metadataStartedAt.set(torrent.infoHash, Date.now());
+
                 torrent.on('metadata', () => {
                     console.log(`📡 [TorrentService] Metadata received for: ${torrent.name} (${torrent.infoHash})`);
+                    this.metadataStartedAt.delete(torrent.infoHash);
                     this.database.updateTorrentProgress(torrent.infoHash, 0, 'downloading', 0, 0, 0, torrent.length, torrent.path);
                     this.database.db.prepare("UPDATE torrents SET name = ? WHERE info_hash = ?").run(torrent.name, torrent.infoHash);
                 });
@@ -192,11 +207,61 @@ export class TorrentService {
 
     public async removeTorrent(infoHash: string) {
         if (!this.client) throw new Error("Torrent client not initialized");
-        const torrent = this.client.get(infoHash) as any;
-        if (torrent) {
-            if (typeof torrent.destroy === 'function') torrent.destroy();
+        try {
+            const torrent = await this.client.get(infoHash);
+            if (torrent && typeof (torrent as any).destroy === 'function') {
+                await new Promise<void>((resolve) => {
+                    (torrent as any).destroy({}, () => resolve());
+                    // Safety timeout in case destroy callback never fires
+                    setTimeout(() => resolve(), 3000);
+                });
+            }
+        } catch (err) {
+            console.warn(`⚠️ [TorrentService] Error destroying torrent ${infoHash}:`, err);
         }
+        this.metadataStartedAt.delete(infoHash);
         this.database.deleteTorrent(infoHash);
+    }
+
+    /**
+     * Mark stuck-on-metadata torrents as 'error' so the user can purge them.
+     * Called periodically.
+     */
+    public sweepStuckMetadata(timeoutMs: number = 5 * 60 * 1000) {
+        const now = Date.now();
+        for (const [infoHash, startedAt] of this.metadataStartedAt.entries()) {
+            if (now - startedAt < timeoutMs) continue;
+            // If still no metadata in the live client, mark error
+            const live = this.client?.torrents.find(t => t.infoHash === infoHash);
+            if (!live || !live.ready) {
+                console.warn(`⏱️ [TorrentService] Marking stuck-metadata torrent as error: ${infoHash}`);
+                this.database.updateTorrentStatus(infoHash, 'error');
+                this.metadataStartedAt.delete(infoHash);
+            }
+        }
+    }
+
+    /**
+     * Remove all torrents whose DB status is 'error' or stuck-on-metadata older than timeoutMs.
+     * Returns the list of removed info hashes.
+     */
+    public async purgeStuck(timeoutMs: number = 5 * 60 * 1000): Promise<string[]> {
+        this.sweepStuckMetadata(timeoutMs);
+        const all = this.database.getTorrents();
+        const removed: string[] = [];
+        for (const t of all) {
+            const isStuckMetadata = t.status === 'metadata' && this.metadataStartedAt.has(t.info_hash)
+                && (Date.now() - (this.metadataStartedAt.get(t.info_hash) || 0)) >= timeoutMs;
+            if (t.status === 'error' || t.status === 'failed' || isStuckMetadata) {
+                try {
+                    await this.removeTorrent(t.info_hash);
+                    removed.push(t.info_hash);
+                } catch (err) {
+                    console.error(`❌ [TorrentService] Failed to purge ${t.info_hash}:`, err);
+                }
+            }
+        }
+        return removed;
     }
 
     private updateDbProgress(torrent: WebTorrent.Torrent, overrideStatus?: TorrentStatus) {
@@ -218,7 +283,7 @@ export class TorrentService {
         if (!torrentRecord) throw new Error("Torrent not found in database");
 
         // 1. If active in client, process now
-        const active = (this.client?.get(infoHash) as any);
+        const active = this.client ? (await this.client.get(infoHash)) as any : null;
         if (active && active.done) {
             await this.processCompletedTorrent(active, torrentRecord.owner_id || 1);
             return { message: "Sync complete (active torrent processed)" };
@@ -296,6 +361,7 @@ export class TorrentService {
                 path: t.path,
                 timeRemaining: t.timeRemaining,
                 done: t.done,
+                ready: (t as any).ready === true,
                 files: includeFiles && t.files ? t.files.map(f => ({
                     name: f.name,
                     path: f.path,

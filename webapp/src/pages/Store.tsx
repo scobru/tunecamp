@@ -93,14 +93,12 @@ const AssetCard = ({ asset, hasSubscription, onBuy }: { asset: Asset; hasSubscri
 };
 
 const Store = () => {
-    const { user, isAuthenticated } = useAuthStore();
+    const { user } = useAuthStore();
     const [assets, setAssets] = useState<Asset[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'digital' | 'video' | 'membership'>('all');
     const [search, setSearch] = useState('');
     const [subscribed, setSubscribed] = useState(false);
-    const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-
     const hasSubscription = subscribed || !!(user as any)?.subscriptionStatus === true;
 
     useEffect(() => {

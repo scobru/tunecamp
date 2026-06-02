@@ -80,10 +80,8 @@ export function createAdminRoutes(
     router.get("/releases", (req: AuthenticatedRequest, res: any) => {
         try {
             const showMine = req.query.mine === 'true';
-            const isAdmin = req.isAdmin;
-            const isRoot = req.isRootAdmin;
             let releases: any[] = [];
-            
+
             const includeLibrary = req.query.includeLibrary === 'true';
             
             const canSeeAll = req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
@@ -1421,7 +1419,6 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied" });
             }
 
-            const oldVisibility = post.visibility;
             database.updatePost(id, content, visibility, title, summary);
             const updatedPost = database.getPost(id);
 

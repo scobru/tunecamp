@@ -193,6 +193,18 @@ const ContentSearch: React.FC = () => {
         }
     };
 
+    const handlePurgeStuck = async () => {
+        if (!confirm('Remove all torrents that are errored or stuck on metadata?')) return;
+        try {
+            const result = await API.purgeStuckTorrents();
+            fetchTorrents();
+            alert(`Purged ${result.count} stuck torrent(s).`);
+        } catch (err: any) {
+            console.error(`Failed to purge torrents: ${err.message}`);
+            alert(`Purge failed: ${err.message}`);
+        }
+    };
+
     const handleSoulseekDownload = async (result: any) => {
         try {
             await API.downloadSoulseek(result);
@@ -551,45 +563,67 @@ const ContentSearch: React.FC = () => {
 
                     <div className="space-y-6">
                         <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
-                            <div className="p-4 bg-base-300 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
-                                <Activity size={14} className="text-primary"/> Active Torrents
+                            <div className="p-4 bg-base-300 font-bold text-xs uppercase tracking-widest flex items-center justify-between gap-2">
+                                <span className="flex items-center gap-2">
+                                    <Activity size={14} className="text-primary"/> Active Torrents
+                                </span>
+                                {torrents.some((t: any) => t.status === 'metadata' || t.status === 'error' || t.status === 'failed') && (
+                                    <button
+                                        onClick={handlePurgeStuck}
+                                        className="btn btn-ghost btn-xs text-error gap-1 normal-case"
+                                        title="Remove all errored or stuck-on-metadata torrents"
+                                    >
+                                        <Trash2 size={12} /> Purge Stuck
+                                    </button>
+                                )}
                             </div>
                             <div className="divide-y divide-base-content/5">
                                 {torrents.length === 0 && (
                                     <div className="p-8 text-center opacity-30 text-xs italic">No active downloads</div>
                                 )}
-                                {torrents.map((t: any) => (
-                                    <div key={t.infoHash || t.info_hash} className="p-4 space-y-2">
-                                        <div className="flex justify-between items-start gap-2">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="text-xs font-bold truncate" title={t.name || t.infoHash || t.info_hash}>{t.name || t.infoHash || t.info_hash}</div>
-                                                <div className="text-[10px] opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
+                                {torrents.map((t: any) => {
+                                    const isMetadata = t.status === 'metadata' || t.ready === false;
+                                    const isStuck = isMetadata && (t.numPeers ?? 0) === 0;
+                                    const displayName = t.name && t.name !== 'Fetching metadata...' ? t.name : (isStuck ? 'Stuck — no peers found' : (isMetadata ? 'Fetching metadata…' : (t.infoHash || t.info_hash)));
+                                    return (
+                                        <div key={t.infoHash || t.info_hash} className="p-4 space-y-2">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-xs font-bold truncate" title={t.name || t.infoHash || t.info_hash}>{displayName}</div>
+                                                    <div className="text-[10px] opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteTorrent(t.infoHash || t.info_hash)}
+                                                    className="btn btn-ghost btn-xs text-error p-0 h-auto min-h-0"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
                                             </div>
-                                            <button 
-                                                onClick={() => handleDeleteTorrent(t.infoHash || t.info_hash)}
-                                                className="btn btn-ghost btn-xs text-error p-0 h-auto min-h-0"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <progress
+                                                    className={`progress h-1.5 flex-1 ${t.status === 'completed' ? 'progress-success' : isStuck ? 'progress-error' : 'progress-primary'}`}
+                                                    value={t.progress * 100}
+                                                    max="100"
+                                                ></progress>
+                                                <span className="text-[10px] font-mono opacity-50">{(t.progress * 100).toFixed(0)}%</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-[10px] font-bold uppercase gap-2">
+                                                <span className={clsx(
+                                                    t.status === 'completed' ? 'text-success' :
+                                                    t.status === 'failed' || t.status === 'error' ? 'text-error' :
+                                                    isStuck ? 'text-error' :
+                                                    'text-info'
+                                                )}>
+                                                    {isStuck ? 'Stuck' : t.status}
+                                                </span>
+                                                <span className="opacity-40 normal-case">
+                                                    {(t.numPeers ?? 0)} peer{(t.numPeers ?? 0) === 1 ? '' : 's'}
+                                                    {t.downloadSpeed ? ` · ${formatBytes(t.downloadSpeed)}/s` : ''}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <progress 
-                                                className={`progress h-1.5 flex-1 ${t.status === 'completed' ? 'progress-success' : 'progress-primary'}`} 
-                                                value={t.progress * 100} 
-                                                max="100"
-                                            ></progress>
-                                            <span className="text-[10px] font-mono opacity-50">{(t.progress * 100).toFixed(0)}%</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase">
-                                            <span className={clsx(
-                                                t.status === 'completed' ? 'text-success' : 
-                                                t.status === 'failed' ? 'text-error' : 
-                                                'text-info'
-                                            )}>{t.status}</span>
-                                            <span className="opacity-40">{t.downloadSpeed ? `${formatBytes(t.downloadSpeed)}/s` : ''}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

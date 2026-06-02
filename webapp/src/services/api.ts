@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile, Asset
+    StorageAccount, GoogleDriveFile
 } from '../types';
 
 const API_URL = '/api';
@@ -536,6 +536,7 @@ const API = {
     addTorrent: (magnetUri: string) => handleResponse(api.post('admin/torrents/add', { magnet: magnetUri })),
     seedTorrent: (filePaths: string[], name: string) => handleResponse(api.post<{ success: boolean, magnetUri: string }>('admin/torrents/seed', { filePaths, name })),
     deleteTorrent: (infoHash: string, deleteFiles = false) => handleResponse(api.delete(`admin/torrents/${infoHash}${deleteFiles ? '?deleteFiles=true' : ''}`)),
+    purgeStuckTorrents: (timeoutMs?: number) => handleResponse(api.post<{ success: boolean, removed: string[], count: number }>('admin/torrents/purge', timeoutMs !== undefined ? { timeoutMs } : {})),
     
     // --- Fingerprinting ---
     fingerprintLookup: (trackId: number) => handleResponse(api.post<any>(`metadata/maintenance/fingerprint/lookup/${trackId}`)),
