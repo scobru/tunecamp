@@ -16,10 +16,10 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
             const dbTorrents = database.getTorrents();
             const activeTorrents = torrentService.getTorrentsStatus() as any[];
 
-            const activeMap = new Map(activeTorrents.map(at => [at.infoHash, at]));
+            const activeMap = new Map(activeTorrents.map(at => [at.infoHash.toLowerCase(), at]));
 
             const results = dbTorrents.map(dt => {
-                const active = activeMap.get(dt.info_hash);
+                const active = activeMap.get(dt.info_hash.toLowerCase());
                 let status: string;
                 if (active) {
                     if (active.done) status = 'completed';
@@ -30,7 +30,7 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
                 }
                 return {
                     ...dt,
-                    infoHash: dt.info_hash,
+                    infoHash: dt.info_hash.toLowerCase(),
                     name: active ? active.name : dt.name,
                     status,
                     progress: active ? active.progress : dt.progress,
@@ -55,7 +55,10 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
      * Body: { timeoutMs?: number }
      */
     router.post("/purge", async (req: any, res) => {
-        const timeoutMs = req.body?.timeoutMs ?? 5 * 60 * 1000;
+        const raw = req.body?.timeoutMs;
+        const parsed = typeof raw === 'number' && Number.isFinite(raw) ? raw : 5 * 60 * 1000;
+        // Clamp: min 10s, max 24h
+        const timeoutMs = Math.max(10 * 1000, Math.min(24 * 60 * 60 * 1000, parsed));
         try {
             const removed = await torrentService.purgeStuck(timeoutMs);
             res.json({ success: true, removed, count: removed.length });

@@ -25,6 +25,7 @@ const Post = lazy(() => import("./pages/Post")); // Special case
 const Wallet = lazy(() => import("./pages/Wallet"));
 const Profile = lazy(() => import("./pages/Profile"));
 const MyMusic = lazy(() => import("./pages/MyMusic"));
+const Publish = lazy(() => import("./pages/Publish"));
 const Social = lazy(() => import("./pages/Social"));
 const About = lazy(() => import("./pages/About"));
 const SharePage = lazy(() => import("./pages/SharePage"));
@@ -156,6 +157,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/my-music" element={<MyMusic />} />
+            <Route path="/publish" element={<Publish />} />
             <Route path="/social" element={<Social />} />
             <Route path="/share/:id" element={<SharePage />} />
 

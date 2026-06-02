@@ -9,6 +9,12 @@ export class TorrentService {
     private metadataStartedAt: Map<string, number> = new Map();
     private sweepInterval: NodeJS.Timeout | null = null;
 
+    private parseInfoHashFromMagnet(magnetUri: string): string | null {
+        if (!magnetUri) return null;
+        const match = magnetUri.match(/xt=urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/i);
+        return match ? match[1].toLowerCase() : null;
+    }
+
     constructor(
         private database: DatabaseService,
         private scanner: Scanner,
@@ -74,7 +80,7 @@ export class TorrentService {
         const torrentPath = t.path;
         if (!torrentPath || !await fs.pathExists(torrentPath)) {
             console.warn(`⚠️ [TorrentService] Cannot resume seeding for ${t.name}, path missing: ${torrentPath}`);
-            this.database.updateTorrentStatus(t.info_hash, 'error');
+            this.database.updateTorrentStatus(t.info_hash.toLowerCase(), 'error');
             return false;
         }
 
@@ -96,12 +102,13 @@ export class TorrentService {
                 }
 
                 this.client.seed(files, { name: t.name || undefined } as any, (torrent) => {
-                    console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${torrent.infoHash})`);
+                    const infoHash = (torrent.infoHash || '').toLowerCase();
+                    console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${infoHash})`);
                     this.setupTorrentEvents(torrent, t.owner_id);
                     resolve(true);
                 });
             } catch (err) {
-                console.error(`❌ [TorrentService] Failed to resume seeding ${t.info_hash}:`, err);
+                console.error(`❌ [TorrentService] Failed to resume seeding ${t.info_hash.toLowerCase()}:`, err);
                 resolve(false);
             }
         });
@@ -117,14 +124,15 @@ export class TorrentService {
 
             const opts: any = { name };
             this.client!.seed(existingFiles, opts, (torrent) => {
-                console.log(`📡 [TorrentService] Started seeding: ${torrent.name} (${torrent.infoHash})`);
+                const infoHash = (torrent.infoHash || '').toLowerCase();
+                console.log(`📡 [TorrentService] Started seeding: ${torrent.name} (${infoHash})`);
                 
                 // Determine common base path
                 const commonPath = existingFiles.length === 1 ? existingFiles[0] : path.dirname(existingFiles[0]);
 
                 // Save to database
                 this.database.createTorrent({
-                    info_hash: torrent.infoHash,
+                    info_hash: infoHash,
                     magnet_uri: torrent.magnetURI,
                     owner_id: ownerId,
                     status: 'seeding',
@@ -158,7 +166,8 @@ export class TorrentService {
         });
 
         torrent.on('error', (err) => {
-            console.error(`❌ [TorrentService] Torrent ${torrent.infoHash} error:`, err);
+            const infoHash = (torrent.infoHash || '').toLowerCase();
+            console.error(`❌ [TorrentService] Torrent ${infoHash} error:`, err);
             this.updateDbProgress(torrent, 'error');
         });
     }
@@ -166,12 +175,15 @@ export class TorrentService {
     public async addTorrent(magnetUri: string, ownerId: number | null): Promise<string> {
         if (!this.client) throw new Error("Torrent client not initialized");
 
+        const parsedInfoHash = this.parseInfoHashFromMagnet(magnetUri);
+
         try {
             // Check if already active in client to prevent duplicate error
-            const active = await this.client.get(magnetUri);
+            const active = await this.client.get(parsedInfoHash || magnetUri);
             if (active) {
-                console.log(`ℹ️ [TorrentService] Torrent already active: ${active.infoHash}`);
-                return active.infoHash;
+                const activeInfoHash = (active.infoHash || parsedInfoHash || '').toLowerCase();
+                console.log(`ℹ️ [TorrentService] Torrent already active: ${activeInfoHash}`);
+                return activeInfoHash;
             }
         } catch (e) {
             console.warn("⚠️ [TorrentService] client.get failed during addTorrent precheck:", e);
@@ -181,13 +193,17 @@ export class TorrentService {
             try {
                 // Call add() synchronously without ontorrent callback
                 const torrent = this.client!.add(magnetUri, { path: path.join(this.musicDir, "downloads", "torrents") });
-                console.log(`📥 [TorrentService] Added torrent synchronously: ${torrent.infoHash}`);
+                const infoHash = (torrent.infoHash || parsedInfoHash || '').toLowerCase();
+                if (!infoHash) {
+                    throw new Error("Could not determine infoHash from torrent or magnet URI");
+                }
+                console.log(`📥 [TorrentService] Added torrent synchronously: ${infoHash}`);
 
                 // Save to database if not exists
-                const existing = this.database.getTorrent(torrent.infoHash);
+                const existing = this.database.getTorrent(infoHash);
                 if (!existing) {
                     this.database.createTorrent({
-                        info_hash: torrent.infoHash,
+                        info_hash: infoHash,
                         magnet_uri: magnetUri,
                         owner_id: ownerId,
                         status: 'metadata',
@@ -196,19 +212,20 @@ export class TorrentService {
                 }
 
                 // Track when metadata fetching started so we can detect stuck torrents
-                this.metadataStartedAt.set(torrent.infoHash, Date.now());
+                this.metadataStartedAt.set(infoHash, Date.now());
 
                 torrent.on('metadata', () => {
-                    console.log(`📡 [TorrentService] Metadata received for: ${torrent.name} (${torrent.infoHash})`);
-                    this.metadataStartedAt.delete(torrent.infoHash);
-                    this.database.updateTorrentProgress(torrent.infoHash, 0, 'downloading', 0, 0, 0, torrent.length, torrent.path);
-                    this.database.db.prepare("UPDATE torrents SET name = ? WHERE info_hash = ?").run(torrent.name, torrent.infoHash);
+                    const readyInfoHash = (torrent.infoHash || infoHash).toLowerCase();
+                    console.log(`📡 [TorrentService] Metadata received for: ${torrent.name} (${readyInfoHash})`);
+                    this.metadataStartedAt.delete(readyInfoHash);
+                    this.database.updateTorrentProgress(readyInfoHash, 0, 'downloading', 0, 0, 0, torrent.length, torrent.path);
+                    this.database.db.prepare("UPDATE torrents SET name = ? WHERE info_hash = ? COLLATE NOCASE").run(torrent.name, readyInfoHash);
                 });
 
                 this.setupTorrentEvents(torrent, ownerId);
 
                 // Resolve immediately so the HTTP request doesn't timeout while waiting for metadata
-                resolve(torrent.infoHash);
+                resolve(infoHash);
             } catch (err: any) {
                 console.error("❌ [TorrentService] Error adding torrent:", err);
                 reject(err);
@@ -218,8 +235,9 @@ export class TorrentService {
 
     public async removeTorrent(infoHash: string) {
         if (!this.client) throw new Error("Torrent client not initialized");
+        const lowerHash = infoHash.toLowerCase();
         try {
-            const torrent = await this.client.get(infoHash);
+            const torrent = await this.client.get(lowerHash);
             if (torrent && typeof (torrent as any).destroy === 'function') {
                 await new Promise<void>((resolve) => {
                     let done = false;
@@ -229,10 +247,10 @@ export class TorrentService {
                 });
             }
         } catch (err) {
-            console.warn(`⚠️ [TorrentService] Error destroying torrent ${infoHash}:`, err);
+            console.warn(`⚠️ [TorrentService] Error destroying torrent ${lowerHash}:`, err);
         }
-        this.metadataStartedAt.delete(infoHash);
-        this.database.deleteTorrent(infoHash);
+        this.metadataStartedAt.delete(lowerHash);
+        this.database.deleteTorrent(lowerHash);
     }
 
     /**
@@ -242,16 +260,17 @@ export class TorrentService {
     public sweepStuckMetadata(timeoutMs: number = 5 * 60 * 1000) {
         const now = Date.now();
         for (const [infoHash, startedAt] of this.metadataStartedAt.entries()) {
-            const live = this.client?.torrents.find(t => t.infoHash === infoHash);
+            const lowerHash = infoHash.toLowerCase();
+            const live = this.client?.torrents.find(t => (t.infoHash || '').toLowerCase() === lowerHash);
             // Live torrent is ready: metadata arrived, drop stale tracker
             if (live && live.ready) {
-                this.metadataStartedAt.delete(infoHash);
+                this.metadataStartedAt.delete(lowerHash);
                 continue;
             }
             if (now - startedAt < timeoutMs) continue;
             // Timed out without metadata: mark error
-            console.warn(`⏱️ [TorrentService] Marking stuck-metadata torrent as error: ${infoHash}`);
-            this.database.updateTorrentStatus(infoHash, 'error');
+            console.warn(`⏱️ [TorrentService] Marking stuck-metadata torrent as error: ${lowerHash}`);
+            this.database.updateTorrentStatus(lowerHash, 'error');
             this.metadataStartedAt.delete(infoHash);
         }
     }
@@ -268,14 +287,15 @@ export class TorrentService {
         const now = Date.now();
         const removed: string[] = [];
         for (const t of all) {
+            const lowerHash = t.info_hash.toLowerCase();
             let shouldPurge = t.status === 'error' || t.status === 'failed';
             if (!shouldPurge && t.status === 'metadata') {
-                const live = this.client?.torrents.find(x => x.infoHash === t.info_hash);
+                const live = this.client?.torrents.find(x => (x.infoHash || '').toLowerCase() === lowerHash);
                 if (!live) {
                     // Not in client at all — stuck from prior session or init hasn't fired yet
                     shouldPurge = true;
                 } else if (!live.ready) {
-                    const startedAt = this.metadataStartedAt.get(t.info_hash);
+                    const startedAt = this.metadataStartedAt.get(lowerHash);
                     // 0 peers → no source for metadata → stuck regardless of time elapsed
                     const zeroPeers = (live.numPeers ?? 0) === 0;
                     shouldPurge = zeroPeers || startedAt === undefined || (now - startedAt) >= timeoutMs;
@@ -283,10 +303,10 @@ export class TorrentService {
             }
             if (shouldPurge) {
                 try {
-                    await this.removeTorrent(t.info_hash);
-                    removed.push(t.info_hash);
+                    await this.removeTorrent(lowerHash);
+                    removed.push(lowerHash);
                 } catch (err) {
-                    console.error(`❌ [TorrentService] Failed to purge ${t.info_hash}:`, err);
+                    console.error(`❌ [TorrentService] Failed to purge ${lowerHash}:`, err);
                 }
             }
         }
@@ -295,8 +315,9 @@ export class TorrentService {
 
     private updateDbProgress(torrent: WebTorrent.Torrent, overrideStatus?: TorrentStatus) {
         const status = overrideStatus || (torrent.done ? 'completed' : 'downloading');
+        const infoHash = (torrent.infoHash || '').toLowerCase();
         this.database.updateTorrentProgress(
-            torrent.infoHash,
+            infoHash,
             torrent.progress,
             status,
             torrent.downloadSpeed,
@@ -308,11 +329,12 @@ export class TorrentService {
     }
 
     public async syncTorrentFiles(infoHash: string) {
-        const torrentRecord = this.database.getTorrent(infoHash);
+        const lowerHash = infoHash.toLowerCase();
+        const torrentRecord = this.database.getTorrent(lowerHash);
         if (!torrentRecord) throw new Error("Torrent not found in database");
 
         // 1. If active in client, process now
-        const active = this.client ? (await this.client.get(infoHash)) as any : null;
+        const active = this.client ? (await this.client.get(lowerHash)) as any : null;
         if (active && active.done) {
             await this.processCompletedTorrent(active, torrentRecord.owner_id || 1);
             return { message: "Sync complete (active torrent processed)" };
@@ -378,7 +400,7 @@ export class TorrentService {
         
         try {
             const status = this.client.torrents.map(t => ({
-                infoHash: t.infoHash,
+                infoHash: (t.infoHash || '').toLowerCase(),
                 name: t.name,
                 progress: t.progress,
                 downloadSpeed: t.downloadSpeed,

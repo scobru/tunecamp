@@ -1443,7 +1443,7 @@ export function createDatabase(dbPath: string): DatabaseService {
 
         // Torrents
         getTorrents: () => db.prepare("SELECT * FROM torrents").all() as any[],
-        getTorrent: (h: string) => db.prepare("SELECT * FROM torrents WHERE info_hash = ?").get(h) as any,
+        getTorrent: (h: string) => db.prepare("SELECT * FROM torrents WHERE info_hash = ? COLLATE NOCASE").get(h.toLowerCase()) as any,
         getTorrentsStatus: () => [], 
         createTorrent: (t: any) => {
             db.prepare(`
@@ -1456,7 +1456,7 @@ export function createDatabase(dbPath: string): DatabaseService {
                     name = COALESCE(excluded.name, name),
                     path = COALESCE(excluded.path, path)
             `).run(
-                t.info_hash,
+                t.info_hash.toLowerCase(),
                 t.magnet_uri,
                 t.status || 'metadata',
                 t.owner_id ?? null,
@@ -1464,9 +1464,9 @@ export function createDatabase(dbPath: string): DatabaseService {
                 t.path ?? null
             );
         },
-        updateTorrentProgress: (ih: string, p: number, s: any, ds: number, us: number, np: number, sz: number, path: string | null) => { db.prepare("UPDATE torrents SET progress = ?, status = ?, download_speed = ?, upload_speed = ?, num_peers = ?, size = ?, path = ? WHERE info_hash = ?").run(p, s, ds, us, np, sz, path, ih); },
-        updateTorrentStatus: (ih: string, s: any) => { db.prepare("UPDATE torrents SET status = ? WHERE info_hash = ?").run(s, ih); },
-        deleteTorrent: (h: string) => { db.prepare("DELETE FROM torrents WHERE info_hash = ?").run(h); },
+        updateTorrentProgress: (ih: string, p: number, s: any, ds: number, us: number, np: number, sz: number, path: string | null) => { db.prepare("UPDATE torrents SET progress = ?, status = ?, download_speed = ?, upload_speed = ?, num_peers = ?, size = ?, path = ? WHERE info_hash = ? COLLATE NOCASE").run(p, s, ds, us, np, sz, path, ih.toLowerCase()); },
+        updateTorrentStatus: (ih: string, s: any) => { db.prepare("UPDATE torrents SET status = ? WHERE info_hash = ? COLLATE NOCASE").run(s, ih.toLowerCase()); },
+        deleteTorrent: (h: string) => { db.prepare("DELETE FROM torrents WHERE info_hash = ? COLLATE NOCASE").run(h.toLowerCase()); },
 
         // Gun Cache
         getGunCache: (k: string) => db.prepare("SELECT * FROM gun_cache WHERE key = ?").get(k) as any,
