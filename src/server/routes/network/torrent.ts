@@ -15,20 +15,29 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
         try {
             const dbTorrents = database.getTorrents();
             const activeTorrents = torrentService.getTorrentsStatus() as any[];
-            
+
             const activeMap = new Map(activeTorrents.map(at => [at.infoHash, at]));
 
             const results = dbTorrents.map(dt => {
                 const active = activeMap.get(dt.info_hash);
+                let status: string;
+                if (active) {
+                    if (active.done) status = 'completed';
+                    else if (!active.ready) status = 'metadata';
+                    else status = 'downloading';
+                } else {
+                    status = dt.status;
+                }
                 return {
                     ...dt,
                     infoHash: dt.info_hash,
                     name: active ? active.name : dt.name,
-                    status: active ? (active.done ? 'completed' : 'downloading') : dt.status,
+                    status,
                     progress: active ? active.progress : dt.progress,
                     downloadSpeed: active ? active.downloadSpeed : 0,
                     uploadSpeed: active ? active.uploadSpeed : 0,
-                    numPeers: active ? active.numPeers : 0,
+                    numPeers: active ? active.numPeers : (dt.num_peers ?? 0),
+                    ready: active ? active.ready : (dt.status !== 'metadata'),
                     files: active ? active.files : []
                 };
             });
@@ -37,6 +46,21 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
         } catch (error) {
             console.error("Error listing torrents:", error);
             res.status(500).json({ error: "Failed to list torrents" });
+        }
+    });
+
+    /**
+     * POST /api/admin/torrents/purge
+     * Remove all torrents in 'error'/'failed' state or stuck on 'metadata' beyond timeoutMs.
+     * Body: { timeoutMs?: number }
+     */
+    router.post("/purge", async (req: any, res) => {
+        const timeoutMs = req.body?.timeoutMs ?? 5 * 60 * 1000;
+        try {
+            const removed = await torrentService.purgeStuck(timeoutMs);
+            res.json({ success: true, removed, count: removed.length });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message });
         }
     });
 
