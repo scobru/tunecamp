@@ -177,7 +177,10 @@ export const Sidebar = () => {
                 <NavItem to="/browser" icon={Folder} label="Files" />
               )}
               {(isAdmin || !!user?.artistId) && (
-                <NavItem to="/my-music" icon={Upload} label="My Music" />
+                <>
+                  <NavItem to="/publish" icon={Upload} label="Publish" />
+                  <NavItem to="/my-music" icon={Music} label="My Music" />
+                </>
               )}
               {(user?.artistId || isRoot) && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />

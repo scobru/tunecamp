@@ -11,6 +11,7 @@ import {
   User,
   Layout,
   Upload,
+  ShoppingBag,
 } from "lucide-react";
 import { AdminReleaseModal } from "../components/modals/AdminReleaseModal";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
@@ -21,13 +22,14 @@ import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminTracksList } from "../components/admin/AdminTracksList";
 import { AdminArtistsList } from "../components/admin/AdminArtistsList";
 import { AdminAlbumsList } from "../components/admin/AdminAlbumsList";
+import { AdminAssetsList } from "../components/admin/AdminAssetsList";
 
 const MyMusic = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const { bumpCacheBuster } = useConfigStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "overview" | "releases" | "albums" | "artists" | "tracks"
+    "overview" | "releases" | "albums" | "artists" | "tracks" | "store"
   >("overview");
   const [stats, setStats] = useState<any>(null);
 
@@ -136,6 +138,13 @@ const MyMusic = () => {
         >
           Tracks
         </a>
+        <a
+          role="tab"
+          className={`tab gap-2 ${activeTab === "store" ? "tab-active font-bold" : ""}`}
+          onClick={() => setActiveTab("store")}
+        >
+          <ShoppingBag size={16}/> Store Assets
+        </a>
       </div>
 
       <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
@@ -147,22 +156,10 @@ const MyMusic = () => {
                 <>
                   <button
                     className="btn btn-primary gap-2 shadow-lg shadow-primary/10 hover:scale-[1.02] transition-transform"
-                    onClick={() =>
-                      document.dispatchEvent(
-                        new CustomEvent("open-upload-tracks-modal"),
-                      )
-                    }
+                    onClick={() => navigate("/publish")}
                   >
-                    📤 Upload Tracks
+                    📤 Publish New Content
                   </button>
-                  {((user?.isAdmin || user?.isActive) && (role !== 'super_user' || user?.artistId)) && (
-                    <button
-                      className="btn btn-secondary gap-2 shadow-lg shadow-secondary/10 hover:scale-[1.02] transition-transform"
-                      onClick={() => navigate("/admin/release/new")}
-                    >
-                      💿 New Release
-                    </button>
-                  )}
                   <button
                     className="btn btn-outline gap-2 hover:scale-[1.02] transition-transform"
                     onClick={() => document.dispatchEvent(new CustomEvent("open-admin-artist-modal"))}
@@ -244,6 +241,7 @@ const MyMusic = () => {
         )}
 
         {activeTab === "tracks" && <AdminTracksList mine={true} />}
+        {activeTab === "store" && <AdminAssetsList />}
       </div>
 
       <AdminReleaseModal
