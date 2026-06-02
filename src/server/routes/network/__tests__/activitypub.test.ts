@@ -134,9 +134,9 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         expect(response.body).toHaveProperty("type", "Person");
         expect(response.body).toHaveProperty("preferredUsername", "homologo");
         expect(response.body).toHaveProperty("name", "Homologo");
-        expect(response.body).toHaveProperty("summary", "Electronic musician from Italy.");
-        expect(response.body.inbox).toContain("/api/ap/users/homologo/inbox");
-        expect(response.body.outbox).toContain("/api/ap/users/homologo/outbox");
+        expect(response.body.summary).toBe("Electronic musician from Italy.");
+        expect(response.body.inbox).toContain("/users/homologo/inbox");
+        expect(response.body.outbox).toContain("/users/homologo/outbox");
         expect(response.body.publicKey).toHaveProperty("publicKeyPem", "MOCK_PUBLIC_KEY");
     });
 
@@ -191,7 +191,7 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
             id: "https://livellosegreto.it/activities/follow-1",
             type: "Follow",
             actor: "https://livellosegreto.it/users/alice",
-            object: "https://sudorecords.scobrudot.dev/api/ap/users/homologo"
+            object: "https://sudorecords.scobrudot.dev/users/homologo"
         };
 
         const response = await request(app)
@@ -221,7 +221,7 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
                 id: "https://livellosegreto.it/activities/follow-1",
                 type: "Follow",
                 actor: "https://livellosegreto.it/users/alice",
-                object: "https://sudorecords.scobrudot.dev/api/ap/users/homologo"
+                object: "https://sudorecords.scobrudot.dev/users/homologo"
             }
         };
 

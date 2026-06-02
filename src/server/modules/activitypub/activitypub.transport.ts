@@ -120,7 +120,7 @@ export class ActivityPubTransport {
         signer.update(stringToSign);
         const signature = signer.sign(actor.private_key, "base64");
         
-        const keyId = `${this.baseUrl}/api/ap/users/${actor.slug}#main-key`;
+        const keyId = `${this.baseUrl}/users/${actor.slug}#main-key`;
         return `keyId="${keyId}",algorithm="rsa-sha256",headers="${headersList}",signature="${signature}"`;
     }
 }

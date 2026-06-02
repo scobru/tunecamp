@@ -346,6 +346,10 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             
             const mappedPosts = posts.map(p => ({
                 ...p,
+                artistId: p.artist_id,
+                createdAt: p.created_at,
+                publishedAt: p.published_at,
+                updatedAt: p.created_at, // fallback
                 artistName: artist.name,
                 artistSlug: artist.slug,
                 artistPhoto: artist.photo_path

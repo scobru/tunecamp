@@ -1168,13 +1168,17 @@ export function createDatabase(dbPath: string): DatabaseService {
         getPostsByArtist: (aid: number, pr?: VisibilityProfile | ViewerContext) => {
             const context = getContextFromProfile(pr);
             const po = context.role === UserRole.GUEST;
-            return db.prepare(po ? "SELECT * FROM posts WHERE artist_id = ? AND visibility = 'public' ORDER BY created_at DESC" : "SELECT * FROM posts WHERE artist_id = ? ORDER BY created_at DESC").all(aid) as any[];
+            return db.prepare(po 
+                ? "SELECT * FROM posts WHERE artist_id = ? AND visibility = 'public' AND id NOT IN (SELECT content_id FROM ap_notes WHERE note_type = 'post' AND deleted_at IS NOT NULL) ORDER BY created_at DESC" 
+                : "SELECT * FROM posts WHERE artist_id = ? ORDER BY created_at DESC"
+            ).all(aid) as any[];
         },
         getPublicPosts: () => db.prepare(`
             SELECT p.*, a.name AS artist_name, a.slug AS artist_slug, a.photo_path AS artist_photo
             FROM posts p
             LEFT JOIN artists a ON p.artist_id = a.id
             WHERE p.visibility = 'public'
+              AND p.id NOT IN (SELECT content_id FROM ap_notes WHERE note_type = 'post' AND deleted_at IS NOT NULL)
             ORDER BY p.created_at DESC
         `).all() as any[],
         getPost: (id: number) => db.prepare("SELECT * FROM posts WHERE id = ?").get(id) as any,

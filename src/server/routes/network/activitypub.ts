@@ -128,7 +128,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
 
         const baseUrl = apService.getBaseUrl();
         const userUrl = `${baseUrl}/users/${slug}`; // Actor ID
-        const apiUrl = `${baseUrl}/api/ap/users/${slug}`; // API Base
+        const apiUrl = `${baseUrl}/users/${slug}`; // API Base
 
         let orderedItems: any[] = [];
 
@@ -210,7 +210,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         if (!artist && !isSite) return res.status(404).send("Not found");
 
         const baseUrl = apService.getBaseUrl();
-        const userUrl = `${baseUrl}/api/ap/users/${slug}`;
+        const userUrl = `${baseUrl}/users/${slug}`;
         const followers = isSite ? [] : db.getFollowers(artist!.id);
 
         res.setHeader("Content-Type", "application/activity+json");
@@ -232,7 +232,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         if (!artist && !isSite) return res.status(404).send("Not found");
 
         const baseUrl = apService.getBaseUrl();
-        const userUrl = `${baseUrl}/api/ap/users/${slug}`;
+        const userUrl = `${baseUrl}/users/${slug}`;
 
         res.setHeader("Content-Type", "application/activity+json");
         res.json({
@@ -327,7 +327,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
 
         const baseUrl = apService.getBaseUrl();
         const userUrl = `${baseUrl}/users/${artist.slug}`;
-        const apiUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const apiUrl = `${baseUrl}/users/${artist.slug}`;
         const tracks = db.getTracks(album.id);
         const note = apService.generateNote(album, artist, tracks);
 
@@ -386,7 +386,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
 
         const baseUrl = apService.getBaseUrl();
         const userUrl = `${baseUrl}/users/${artist.slug}`;
-        const apiUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
+        const apiUrl = `${baseUrl}/users/${artist.slug}`;
         const article = apService.generatePostArticle(post, artist);
 
         res.setHeader("Content-Type", "application/activity+json");

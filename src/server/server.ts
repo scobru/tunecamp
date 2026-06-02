@@ -421,6 +421,33 @@ export async function startServer(config: ServerConfig): Promise<void> {
         } else res.status(404).send("Post not found");
     });
 
+    app.get("/api/posts/:slug", (req, res) => {
+        const { slug } = req.params;
+        const post = database.getPostBySlug(slug);
+        if (!post) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        // Exclude posts that are deleted from ActivityPub
+        const apNotes = database.getApNotes(post.artist_id, true);
+        const apNote = apNotes.find((n: any) => n.note_type === 'post' && n.content_id === post.id);
+        if (apNote && apNote.deleted_at) {
+            return res.status(404).json({ error: "Post not found" });
+        }
+
+        const artist = database.getArtist(post.artist_id);
+        res.json({
+            ...post,
+            artistId: post.artist_id,
+            artistName: artist ? artist.name : "Unknown Artist",
+            artistSlug: artist ? artist.slug : "",
+            artistPhoto: artist ? artist.photo_path : "",
+            createdAt: post.created_at,
+            publishedAt: post.published_at,
+            updatedAt: post.created_at
+        });
+    });
+
     app.get("/api/settings/background", async (_req, res) => {
         try {
             const assetsDir = path.join(config.musicDir, "assets");
