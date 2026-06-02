@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile, Asset
+    StorageAccount, GoogleDriveFile
 } from '../types';
 
 const API_URL = '/api';
