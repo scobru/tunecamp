@@ -16,31 +16,42 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
             const dbTorrents = database.getTorrents();
             const activeTorrents = torrentService.getTorrentsStatus() as any[];
 
-            const activeMap = new Map(activeTorrents.map(at => [at.infoHash.toLowerCase(), at]));
+            const activeMap = new Map(
+                activeTorrents
+                    .filter(at => typeof at?.infoHash === 'string' && at.infoHash.length > 0)
+                    .map(at => [at.infoHash.toLowerCase(), at])
+            );
 
-            const results = dbTorrents.map(dt => {
-                const active = activeMap.get(dt.info_hash.toLowerCase());
-                let status: string;
-                if (active) {
-                    if (active.done) status = 'completed';
-                    else if (!active.ready) status = 'metadata';
-                    else status = 'downloading';
-                } else {
-                    status = dt.status;
-                }
-                return {
-                    ...dt,
-                    infoHash: dt.info_hash.toLowerCase(),
-                    name: active ? active.name : dt.name,
-                    status,
-                    progress: active ? active.progress : dt.progress,
-                    downloadSpeed: active ? active.downloadSpeed : 0,
-                    uploadSpeed: active ? active.uploadSpeed : 0,
-                    numPeers: active ? active.numPeers : (dt.num_peers ?? 0),
-                    ready: active ? active.ready : (dt.status !== 'metadata'),
-                    files: active ? active.files : []
-                };
-            });
+            const results = dbTorrents
+                .filter(dt => {
+                    if (typeof dt?.info_hash === 'string' && dt.info_hash.length > 0) return true;
+                    console.warn('[torrents] Skipping DB row with null/invalid info_hash:', (dt as any)?.id ?? dt);
+                    return false;
+                })
+                .map(dt => {
+                    const infoHashLower = dt.info_hash.toLowerCase();
+                    const active = activeMap.get(infoHashLower);
+                    let status: string;
+                    if (active) {
+                        if (active.done) status = 'completed';
+                        else if (!active.ready) status = 'metadata';
+                        else status = 'downloading';
+                    } else {
+                        status = dt.status;
+                    }
+                    return {
+                        ...dt,
+                        infoHash: infoHashLower,
+                        name: active ? active.name : dt.name,
+                        status,
+                        progress: active ? active.progress : dt.progress,
+                        downloadSpeed: active ? active.downloadSpeed : 0,
+                        uploadSpeed: active ? active.uploadSpeed : 0,
+                        numPeers: active ? active.numPeers : (dt.num_peers ?? 0),
+                        ready: active ? active.ready : (dt.status !== 'metadata'),
+                        files: active ? active.files : []
+                    };
+                });
 
             res.json(results);
         } catch (error) {
