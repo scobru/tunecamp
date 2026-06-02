@@ -6,7 +6,7 @@ import { createAuthMiddleware, type AuthenticatedRequest } from "../../middlewar
 
 export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
     const router = Router();
-    router.use(json());
+    router.use(json({ type: ["application/json", "application/activity+json", "application/ld+json"] }));
 
     // Actor Endpoint
     router.get("/users/:slug", async (req, res) => {

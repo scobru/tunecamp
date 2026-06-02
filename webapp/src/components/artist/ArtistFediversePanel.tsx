@@ -271,12 +271,16 @@ export const ArtistFediversePanel = () => {
             let postContent = '';
             let matchedVisibility: 'public' | 'private' | 'unlisted' = 'public';
             let releaseData: any = null;
+            let postTitle = '';
+            let postSummary = '';
 
             if (note.note_type === 'post') {
                 const post = posts.find(p => String(p.id) === String(note.content_id));
                 if (post) {
                     postContent = post.content;
                     matchedVisibility = post.visibility || (post.isPublic ? 'public' : 'private');
+                    postTitle = post.title || '';
+                    postSummary = post.summary || '';
                 } else {
                     postContent = note.content_title || '';
                 }
@@ -291,6 +295,8 @@ export const ArtistFediversePanel = () => {
             return {
                 ...note,
                 postContent,
+                postTitle,
+                postSummary,
                 visibility: matchedVisibility,
                 releaseData
             };
@@ -815,11 +821,44 @@ export const ArtistFediversePanel = () => {
                                                 {/* Post Content Body */}
                                                 <div className="space-y-3 pl-0 sm:pl-14">
                                                     
-                                                    {/* If simple post */}
+                                                    {/* If simple post or premium Article */}
                                                     {note.note_type === 'post' && (
-                                                        <p className="text-base leading-relaxed text-base-content/90 whitespace-pre-wrap">
-                                                            {note.postContent}
-                                                        </p>
+                                                        note.postTitle ? (
+                                                            <div className="p-5 rounded-2xl bg-gradient-to-br from-base-300/40 to-base-200/10 border border-primary/10 space-y-3 shadow-inner hover:border-primary/20 transition-all duration-300">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold uppercase tracking-wider text-[9px] rounded-full">
+                                                                        Article
+                                                                    </span>
+                                                                </div>
+                                                                <h4 className="text-xl font-serif font-black text-prominent hover:text-primary transition-colors leading-snug">
+                                                                    <a href={`#/post/${note.content_slug}`} className="hover:underline">
+                                                                        {note.postTitle}
+                                                                    </a>
+                                                                </h4>
+                                                                {note.postSummary && (
+                                                                    <p className="text-sm italic opacity-75 border-l-2 border-primary/40 pl-3 font-serif py-0.5 leading-relaxed">
+                                                                        {note.postSummary}
+                                                                    </p>
+                                                                )}
+                                                                <div 
+                                                                    className="text-sm opacity-90 line-clamp-3 leading-relaxed font-serif pt-1 prose prose-sm prose-invert max-w-none"
+                                                                    dangerouslySetInnerHTML={{ __html: note.postContent }}
+                                                                />
+                                                                <div className="pt-2">
+                                                                    <a 
+                                                                        href={`#/post/${note.content_slug}`}
+                                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-hover font-bold hover:underline"
+                                                                    >
+                                                                        <span>Read Full Article</span>
+                                                                        <ExternalLink size={12} />
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-base leading-relaxed text-base-content/90 whitespace-pre-wrap">
+                                                                {note.postContent}
+                                                            </p>
+                                                        )
                                                     )}
 
                                                     {/* If release (Embedded premium card) */}

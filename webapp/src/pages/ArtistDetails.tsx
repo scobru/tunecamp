@@ -202,36 +202,81 @@ const ArtistDetails = () => {
                     </div>
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {posts.map(post => (
-                            <div key={post.id} className="card bg-base-200 border border-base-content/5 p-6 space-y-4 relative group">
-                                <div className="flex items-center justify-between gap-3 mb-2">
-                                    <div className="flex items-center gap-3">
-                                        <div className="avatar placeholder">
-                                            <div className="bg-neutral text-neutral-content rounded-full w-8">
-                                                <span>{artist?.name[0]}</span>
+                            post.title ? (
+                                /* Dedicated Premium Article Card Visualizer */
+                                <div key={post.id} className="card bg-gradient-to-br from-base-200/95 to-base-300/30 border border-primary/15 hover:border-primary/45 p-6 space-y-4 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 relative group flex flex-col justify-between">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="avatar placeholder">
+                                                    <div className="bg-neutral text-neutral-content rounded-full w-8 shadow-sm">
+                                                        <span>{artist?.name[0]}</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-sm flex items-center gap-1.5 text-base-content">
+                                                        {artist?.name}
+                                                        {post.visibility === 'private' && <Shield size={12} className="text-warning"/>}
+                                                    </div>
+                                                    <div className="text-xs opacity-50 font-medium">{new Date(post.createdAt).toLocaleDateString()}</div>
+                                                </div>
                                             </div>
+                                            <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold uppercase tracking-wider text-[9px] rounded-full">
+                                                Article
+                                            </span>
                                         </div>
-                                        <div>
-                                            <div className="font-bold text-sm flex items-center gap-2">
-                                                {artist?.name}
-                                                {post.visibility === 'private' && <Shield size={12} className="text-warning"/>}
+
+                                        <div className="space-y-2">
+                                            <h3 className="font-serif font-black text-xl leading-snug tracking-tight text-prominent hover:text-primary transition-colors">
+                                                <Link to={`/post/${post.slug}`} className="hover:underline">
+                                                    {post.title}
+                                                </Link>
+                                            </h3>
+                                            {post.summary && (
+                                                <p className="text-xs italic opacity-75 font-serif border-l-2 border-primary/40 pl-2 leading-relaxed">
+                                                    {post.summary}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        <div 
+                                            className="prose prose-sm max-w-none opacity-85 leading-relaxed font-serif line-clamp-4" 
+                                            dangerouslySetInnerHTML={{ __html: post.content }} 
+                                        />
+                                    </div>
+
+                                    <div className="pt-4 border-t border-base-content/5 mt-auto">
+                                        <Link 
+                                            to={`/post/${post.slug}`} 
+                                            className="btn btn-sm btn-ghost pl-0 hover:bg-transparent text-primary hover:text-primary-hover font-bold gap-1 group/btn"
+                                        >
+                                            <span>Read Article</span>
+                                            <span className="transition-transform duration-200 group-hover/btn:translate-x-1">→</span>
+                                        </Link>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Standard Micro-Post (Note) Visualizer */
+                                <div key={post.id} className="card bg-base-200 border border-base-content/5 p-6 space-y-4 rounded-xl relative group">
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="avatar placeholder">
+                                                <div className="bg-neutral text-neutral-content rounded-full w-8">
+                                                    <span>{artist?.name[0]}</span>
+                                                </div>
                                             </div>
-                                            <div className="text-xs opacity-50">{new Date(post.createdAt).toLocaleDateString()}</div>
+                                            <div>
+                                                <div className="font-bold text-sm flex items-center gap-2">
+                                                    {artist?.name}
+                                                    {post.visibility === 'private' && <Shield size={12} className="text-warning"/>}
+                                                </div>
+                                                <div className="text-xs opacity-50">{new Date(post.createdAt).toLocaleDateString()}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    
+                                    <div className="prose prose-sm max-w-none opacity-90 whitespace-pre-wrap text-base-content/95" dangerouslySetInnerHTML={{ __html: post.content }} />
                                 </div>
-                                {post.title && (
-                                    <h3 className="font-extrabold text-lg leading-snug tracking-tight text-prominent mb-1">
-                                        {post.title}
-                                    </h3>
-                                )}
-                                {post.summary && (
-                                    <p className="text-xs italic opacity-70 leading-relaxed mb-2 font-serif border-l-2 border-primary/30 pl-2">
-                                        {post.summary}
-                                    </p>
-                                )}
-                                <div className="prose prose-sm max-w-none opacity-90" dangerouslySetInnerHTML={{ __html: post.content }} />
-                            </div>
+                            )
                         ))}
                     </div>
                 </section>
