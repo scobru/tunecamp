@@ -34,6 +34,7 @@ const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Tools = lazy(() => import("./pages/Tools"));
+const Store = lazy(() => import("./pages/Store"));
 
 
 const LoadingSpinner = () => (
@@ -168,6 +169,9 @@ function App() {
             <Route path="/browser" element={<RootAdminGuard><Files /></RootAdminGuard>} />
 
             <Route path="/search/content" element={<ManagerOrRootGuard><ContentSearch /></ManagerOrRootGuard>} />
+
+            {/* Store */}
+            <Route path="/store" element={<Store />} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

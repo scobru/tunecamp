@@ -331,10 +331,31 @@ export function createDatabase(dbPath: string): DatabaseService {
             code TEXT NOT NULL UNIQUE,
             release_id INTEGER REFERENCES albums(id),
             track_id INTEGER REFERENCES tracks(id),
+            asset_id INTEGER REFERENCES assets(id),
             tx_hash TEXT,
             is_used INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             redeemed_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            description TEXT,
+            artist_id INTEGER REFERENCES artists(id),
+            owner_id INTEGER REFERENCES admin(id),
+            type TEXT NOT NULL DEFAULT 'digital',
+            file_path TEXT,
+            mime_type TEXT,
+            file_size INTEGER,
+            cover_path TEXT,
+            price REAL DEFAULT 0,
+            price_usdc REAL DEFAULT 0,
+            currency TEXT DEFAULT 'ETH',
+            visibility TEXT DEFAULT 'public',
+            requires_subscription INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS storage_accounts (
@@ -469,6 +490,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
             }
             
+            // Migrate unlock_codes: add asset_id column if missing
+            const ucCols = db.prepare("PRAGMA table_info(unlock_codes)").all() as any[];
+            if (!ucCols.some(col => col.name === 'asset_id')) {
+                db.exec("ALTER TABLE unlock_codes ADD COLUMN asset_id INTEGER REFERENCES assets(id)");
+            }
+
             // Site Actor Initialization (id = -1, slug = 'site')
             const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
             if (!hasSiteActor) {
@@ -1349,11 +1376,45 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteRemoteContent: (id: string) => { remoteContentRepository.deleteRemoteContent(id); },
 
         // Unlock Codes
-        createUnlockCode: (c: string, rid?: number, tid?: number, tx?: string) => { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id, tx_hash) VALUES (?, ?, ?, ?)").run(c, rid || null, tid || null, tx || null); },
-        validateUnlockCode: (c: string) => { const r = db.prepare("SELECT * FROM unlock_codes WHERE code = ?").get(c) as any; return r ? { valid: true, releaseId: r.release_id, trackId: r.track_id, isUsed: !!r.is_used } : { valid: false, isUsed: false }; },
+        createUnlockCode: (c: string, rid?: number, tid?: number, tx?: string, aid?: number) => { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id, tx_hash, asset_id) VALUES (?, ?, ?, ?, ?)").run(c, rid || null, tid || null, tx || null, aid || null); },
+        validateUnlockCode: (c: string) => { const r = db.prepare("SELECT * FROM unlock_codes WHERE code = ?").get(c) as any; return r ? { valid: true, releaseId: r.release_id, trackId: r.track_id, assetId: r.asset_id, isUsed: !!r.is_used } : { valid: false, isUsed: false }; },
         redeemUnlockCode: (c: string) => { db.prepare("UPDATE unlock_codes SET is_used = 1, redeemed_at = CURRENT_TIMESTAMP WHERE code = ?").run(c); },
         listUnlockCodes: (rid?: number) => rid ? db.prepare("SELECT * FROM unlock_codes WHERE release_id = ?").all(rid) : db.prepare("SELECT * FROM unlock_codes").all(),
         getUnlockCodeByTxHash: (tx: string) => db.prepare("SELECT * FROM unlock_codes WHERE tx_hash = ?").get(tx),
+
+        // Assets
+        getPublicAssets: () => db.prepare("SELECT a.*, ar.name as artist_name FROM assets a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.visibility = 'public' ORDER BY a.created_at DESC").all() as any[],
+        getAssetsByArtist: (artistId: number) => db.prepare("SELECT a.*, ar.name as artist_name FROM assets a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.artist_id = ? ORDER BY a.created_at DESC").all(artistId) as any[],
+        getAllAssets: () => db.prepare("SELECT a.*, ar.name as artist_name FROM assets a LEFT JOIN artists ar ON a.artist_id = ar.id ORDER BY a.created_at DESC").all() as any[],
+        getAsset: (id: number) => db.prepare("SELECT a.*, ar.name as artist_name FROM assets a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.id = ?").get(id) as any,
+        getAssetBySlug: (slug: string) => db.prepare("SELECT a.*, ar.name as artist_name FROM assets a LEFT JOIN artists ar ON a.artist_id = ar.id WHERE a.slug = ?").get(slug) as any,
+        createAsset(data: any): number {
+            const slug = (data.title as string).slice(0, 24).toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Math.random().toString(36).substring(2, 7);
+            return Number(db.prepare("INSERT INTO assets (title, slug, description, artist_id, owner_id, type, file_path, mime_type, file_size, cover_path, price, price_usdc, currency, visibility, requires_subscription) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                .run(data.title, slug, data.description || null, data.artist_id || null, data.owner_id || null, data.type || 'digital', data.file_path || null, data.mime_type || null, data.file_size || null, data.cover_path || null, data.price || 0, data.price_usdc || 0, data.currency || 'ETH', data.visibility || 'public', data.requires_subscription ? 1 : 0)
+                .lastInsertRowid);
+        },
+        updateAsset(id: number, data: any): void {
+            const fields: string[] = [];
+            const params: any[] = [];
+            if (data.title !== undefined) { fields.push("title = ?"); params.push(data.title); }
+            if (data.description !== undefined) { fields.push("description = ?"); params.push(data.description); }
+            if (data.artist_id !== undefined) { fields.push("artist_id = ?"); params.push(data.artist_id); }
+            if (data.type !== undefined) { fields.push("type = ?"); params.push(data.type); }
+            if (data.file_path !== undefined) { fields.push("file_path = ?"); params.push(data.file_path); }
+            if (data.mime_type !== undefined) { fields.push("mime_type = ?"); params.push(data.mime_type); }
+            if (data.file_size !== undefined) { fields.push("file_size = ?"); params.push(data.file_size); }
+            if (data.cover_path !== undefined) { fields.push("cover_path = ?"); params.push(data.cover_path); }
+            if (data.price !== undefined) { fields.push("price = ?"); params.push(data.price); }
+            if (data.price_usdc !== undefined) { fields.push("price_usdc = ?"); params.push(data.price_usdc); }
+            if (data.currency !== undefined) { fields.push("currency = ?"); params.push(data.currency); }
+            if (data.visibility !== undefined) { fields.push("visibility = ?"); params.push(data.visibility); }
+            if (data.requires_subscription !== undefined) { fields.push("requires_subscription = ?"); params.push(data.requires_subscription ? 1 : 0); }
+            if (!fields.length) return;
+            params.push(id);
+            db.prepare(`UPDATE assets SET ${fields.join(", ")} WHERE id = ?`).run(...params);
+        },
+        deleteAsset: (id: number) => { db.prepare("DELETE FROM assets WHERE id = ?").run(id); },
 
         // Storage
         getStorageAccounts: (uid?: number) => (uid ? db.prepare("SELECT * FROM storage_accounts WHERE user_id = ?").all(uid) : db.prepare("SELECT * FROM storage_accounts").all()) as any[],

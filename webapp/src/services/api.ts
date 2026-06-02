@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile
+    StorageAccount, GoogleDriveFile, Asset
 } from '../types';
 
 const API_URL = '/api';
@@ -205,6 +205,21 @@ const API = {
     createPost: (artistId: number, content: string, visibility: string, title?: string, summary?: string) => handleResponse(api.post('admin/posts', { artistId, content, visibility, title, summary })),
     updatePost: (id: number, content: string, visibility: string, title?: string, summary?: string) => handleResponse(api.put(`admin/posts/${id}`, { content, visibility, title, summary })),
     deletePost: (id: number) => handleResponse(api.delete(`admin/posts/${id}`)),
+
+    getOnrampConfig: () => handleResponse(api.get<any>('payments/onramp-config')),
+
+    // --- Assets ---
+    getPublicAssets: () => handleResponse(api.get<any[]>('assets')),
+    getAdminAssets: () => handleResponse(api.get<any[]>('admin/assets')),
+    getAssetBySlug: (slug: string) => handleResponse(api.get<any>(`assets/${slug}`)),
+    createAsset: (formData: FormData) => handleResponse(api.post('admin/assets', formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
+    updateAsset: (id: number, formData: FormData) => handleResponse(api.put(`admin/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
+    uploadAssetCover: (id: number, formData: FormData) => handleResponse(api.post(`admin/assets/${id}/cover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
+    deleteAsset: (id: number) => handleResponse(api.delete(`admin/assets/${id}`)),
+
+    // --- Subscription ---
+    createSubscriptionSession: (successUrl: string, cancelUrl: string, email?: string) => handleResponse(api.post('payments/stripe/create-subscription-session', { successUrl, cancelUrl, email })),
+    verifySubscription: (txHash: string) => handleResponse(api.post('payments/subscription/verify', { txHash })),
 
     // --- ActivityPub Notes ---
     getPublishedContent: (artistId: string | number) => handleResponse(api.get<any[]>(`ap/published/${artistId}`)),

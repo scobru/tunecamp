@@ -31,15 +31,17 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         return () => document.removeEventListener('open-create-post-modal', handleOpen);
     }, [user]);
 
+    const isRootAdminNoArtist = !!(user?.isRootAdmin && (!user.artistId || user.artistId === '0' || user.artistId === 'null' || user.artistId === 'undefined'));
+
     const loadArtists = async () => {
         try {
             const data = await API.getArtists();
             setArtists(data);
-            
-            // Priority:
-            // 1. Current user's artistId if set and valid
-            // 2. First artist in list if none
-            if (user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined') {
+
+            if (isRootAdminNoArtist) {
+                // Root admin without an artist posts as the SITE instance actor
+                setArtistId('-1');
+            } else if (user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined') {
                 setArtistId(String(user.artistId));
             } else if (data.length > 0) {
                 setArtistId(String(data[0].id));
@@ -75,8 +77,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         }
     };
 
-    // Bypasses the artist selection dropdown if the account has an associated artist profile
-    const isRestrictedArtist = !!(user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined');
+    const isRestrictedArtist = isRootAdminNoArtist || !!(user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined');
 
     // Circular progress metrics for character counter
     const charPercentage = Math.min((content.length / 500) * 100, 100);
@@ -102,9 +103,13 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                         <div className="bg-base-200/50 p-4 rounded-xl border border-base-content/5 flex items-center justify-between">
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-bold opacity-40 uppercase tracking-wide">Posting Identity</span>
-                                <span className="font-bold text-base-content mt-0.5">{selectedArtist?.name || 'Loading profile...'}</span>
+                                <span className="font-bold text-base-content mt-0.5">
+                                    {isRootAdminNoArtist ? 'Instance Actor' : (selectedArtist?.name || 'Loading profile...')}
+                                </span>
                             </div>
-                            <span className="badge badge-primary badge-outline badge-sm rounded-full font-bold px-3 py-2">Sovereign Account</span>
+                            <span className="badge badge-primary badge-outline badge-sm rounded-full font-bold px-3 py-2">
+                                {isRootAdminNoArtist ? 'SITE' : 'Sovereign Account'}
+                            </span>
                         </div>
                       ) : (
                         <div className="form-control w-full">
