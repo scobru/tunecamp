@@ -572,7 +572,7 @@ export class MaintenanceService {
      * Synchronizes all track tags in the filesystem with the current database metadata.
      * This makes the database the source of truth for file tags.
      */
-    async syncAllTagsFromDb(): Promise<{ success: number, failed: number }> {
+    async syncAllTagsFromDb(onProgress?: (processed: number, total: number) => void): Promise<{ success: number, failed: number }> {
         const tracks = this.db.getTracks();
         let success = 0;
         let failed = 0;
@@ -595,6 +595,10 @@ export class MaintenanceService {
                 }
             }));
             
+            if (onProgress) {
+                onProgress(Math.min(i + CHUNK_SIZE, tracks.length), tracks.length);
+            }
+
             if (i % 100 === 0 && i > 0) {
                 console.log(`[Maintenance] Synced ${i}/${tracks.length} tracks...`);
             }

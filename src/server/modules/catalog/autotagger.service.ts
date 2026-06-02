@@ -2,6 +2,7 @@ import type { DatabaseService, Track } from "../../core/database.js";
 import { metadataService } from "./metadata.service.js";
 import type { CatalogService } from "./catalog.service.ts";
 import type { OpenRouterService } from "../ai/openrouter.service.ts";
+import { taskManager } from "../workers/task-manager.js";
 
 export interface AuditResult {
     trackId: number;
@@ -61,9 +62,10 @@ export class AutoTaggerService {
         console.log(`[AutoTagger] Starting library audit for ${tracks.length} tracks...`);
 
         // Process in background
-        this.processBatch(tracks, options).catch(err => {
+        return this.processBatch(tracks, options).catch(err => {
             console.error("[AutoTagger] Batch processing failed:", err);
             this.status.isScanning = false;
+            throw err;
         });
     }
 
@@ -83,6 +85,14 @@ export class AutoTaggerService {
                     this.status.failedCount++;
                 }
 
+                // Update task manager progress
+                taskManager.updateProgress(
+                    'library-audit',
+                    this.status.processedTracks,
+                    this.status.totalTracks,
+                    `Audited ${this.status.processedTracks}/${this.status.totalTracks} tracks (Repaired: ${this.status.repairedCount}, Verified: ${this.status.verifiedCount}, Failed: ${this.status.failedCount})`
+                );
+
                 // Increased delay with jitter to avoid bot detection
                 const baseDelay = result.status === 'no_match' ? 1000 : 2500;
                 const jitter = Math.random() * 2000;
@@ -90,6 +100,12 @@ export class AutoTaggerService {
             } catch (err) {
                 console.error(`[AutoTagger] Error auditing track ${track.id}:`, err);
                 this.status.failedCount++;
+                taskManager.updateProgress(
+                    'library-audit',
+                    this.status.processedTracks,
+                    this.status.totalTracks,
+                    `Audited ${this.status.processedTracks}/${this.status.totalTracks} tracks (Repaired: ${this.status.repairedCount}, Verified: ${this.status.verifiedCount}, Failed: ${this.status.failedCount})`
+                );
             }
 
             if (!this.status.isScanning) break;

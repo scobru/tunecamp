@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, Shield, RefreshCw, Save, Zap } from "lucide-react";
@@ -18,6 +18,8 @@ export const AdminMaintenancePanel = () => {
     const [isAIProcessing, setIsAIProcessing] = useState(false);
     const [results, setResults] = useState<{ success: number, failed: number, skipped: number } | null>(null);
     const [auditStatus, setAuditStatus] = useState<any | null>(null);
+    const [runningTasks, setRunningTasks] = useState<any[]>([]);
+    const prevRunningIdsRef = useRef<string[]>([]);
 
     const [pickerTrack, setPickerTrack] = useState<any | null>(null);
     const [pickerArtist, setPickerArtist] = useState<any | null>(null);
@@ -66,6 +68,35 @@ export const AdminMaintenancePanel = () => {
         // Initial check
         API.getAuditStatus().then(setAuditStatus).catch(() => {});
     }, []);
+
+    useEffect(() => {
+        const fetchRunningTasks = async () => {
+            try {
+                const tasks = await API.getRunningTasks();
+                const currentTasks = tasks || [];
+                setRunningTasks(currentTasks);
+                
+                const currentIds = currentTasks.map((t: any) => t.taskId);
+                const prevIds = prevRunningIdsRef.current;
+                
+                // If any task was running but is no longer running, refresh UI lists
+                const finished = prevIds.filter(id => !currentIds.includes(id));
+                if (finished.length > 0) {
+                    if (mode === 'tracks') loadTracks();
+                    else if (mode === 'artists') loadArtists();
+                    else loadAlbums();
+                }
+                
+                prevRunningIdsRef.current = currentIds;
+            } catch (e) {
+                console.error("Failed to fetch running tasks:", e);
+            }
+        };
+
+        fetchRunningTasks();
+        const interval = setInterval(fetchRunningTasks, 2000);
+        return () => clearInterval(interval);
+    }, [mode]);
 
     const loadTracks = async () => {
         setIsLoading(true);
@@ -444,6 +475,73 @@ export const AdminMaintenancePanel = () => {
                     <CheckCircle2 />
                     <div className="text-sm">
                         Maintenance Finished. Success: {results.success}, Failed: {results.failed}, Skipped: {results.skipped}
+                    </div>
+                </div>
+            )}
+
+            {/* Running Background Tasks */}
+            {runningTasks && runningTasks.length > 0 && (
+                <div className="bg-base-300/40 border border-primary/20 rounded-xl p-4 space-y-3 shadow-md backdrop-blur-md">
+                    <div className="flex items-center gap-2 border-b border-base-content/5 pb-2">
+                        <Activity className="text-primary animate-pulse" size={18} />
+                        <h4 className="font-bold text-sm tracking-wider uppercase">Active Background Processes</h4>
+                        <span className="badge badge-primary badge-sm animate-pulse ml-auto">{runningTasks.length} running</span>
+                    </div>
+                    <div className="grid gap-3">
+                        {runningTasks.map(task => {
+                            let title = "Background Operation";
+                            let icon = <Loader2 className="animate-spin text-primary" size={16} />;
+                            let colorClass = "progress-primary";
+
+                            if (task.taskId === 'library-rescan') {
+                                title = "Library Rescan";
+                                icon = <RefreshCw className="animate-spin text-secondary" size={16} />;
+                                colorClass = "progress-secondary";
+                            } else if (task.taskId === 'library-audit') {
+                                title = "Library Audit & Repair";
+                                icon = <Cpu className="animate-pulse text-accent" size={16} />;
+                                colorClass = "progress-accent";
+                            } else if (task.taskId === 'tag-sync') {
+                                title = "Writing Database Tags to Files";
+                                icon = <Disc className="animate-spin text-info" size={16} />;
+                                colorClass = "progress-info";
+                            } else if (task.taskId === 'fingerprint-scan') {
+                                title = "Fingerprint Registry Identification";
+                                icon = <Fingerprint className="animate-pulse text-warning" size={16} />;
+                                colorClass = "progress-warning";
+                            }
+
+                            const hasProgress = task.progress && task.progress.total > 0;
+                            const percent = hasProgress ? Math.round((task.progress.current / task.progress.total) * 100) : 0;
+                            const progressMsg = task.progress?.message || "Running task in background...";
+
+                            return (
+                                <div key={task.taskId} className="bg-base-200/50 rounded-lg p-3 border border-base-content/5 space-y-2">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-semibold flex items-center gap-2">
+                                            {icon}
+                                            {title}
+                                        </span>
+                                        {hasProgress && (
+                                            <span className="font-bold opacity-80">{percent}%</span>
+                                        )}
+                                    </div>
+                                    {hasProgress ? (
+                                        <progress 
+                                            className={`progress ${colorClass} w-full h-2 shadow-inner`} 
+                                            value={task.progress.current} 
+                                            max={task.progress.total}
+                                        ></progress>
+                                    ) : (
+                                        <progress className={`progress ${colorClass} w-full h-2`} defaultValue={undefined}></progress>
+                                    )}
+                                    <div className="text-[10px] opacity-60 flex justify-between">
+                                        <span>{progressMsg}</span>
+                                        <span>Started {new Date(task.startedAt).toLocaleTimeString()}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}

@@ -130,7 +130,7 @@ export interface ScanResult {
 }
 
 export interface ScannerService {
-    scanDirectory(dir: string): Promise<ScanResult>;
+    scanDirectory(dir: string, onProgress?: (processed: number, total: number) => void): Promise<ScanResult>;
     startWatching(dir: string): void;
     stopWatching(): void;
     processAudioFile(filePath: string, musicDir: string, overrideArtistId?: number, ownerId?: number, overrideAlbumId?: number, suggestedCoverPath?: string, metadataHints?: { artist?: string, album?: string, year?: number, title?: string, genre?: string }): Promise<{ originalPath: string, success: boolean, message: string, convertedPath?: string, trackId?: number, queuedConversion?: boolean } | null>;
@@ -578,12 +578,12 @@ export class Scanner implements ScannerService {
         }
     }
 
-    public async scanDirectory(dir: string): Promise<ScanResult> {
+    public async scanDirectory(dir: string, onProgress?: (processed: number, total: number) => void): Promise<ScanResult> {
         if (this.isScanning) return this.pendingScan || Promise.resolve({ successful: [], failed: [] });
         this.musicDirectory = dir;
         this.isScanning = true;
         this.pendingScan = (async () => {
-            try { return await this.doScan(dir); } finally { this.isScanning = false; this.pendingScan = null; }
+            try { return await this.doScan(dir, onProgress); } finally { this.isScanning = false; this.pendingScan = null; }
         })();
         return this.pendingScan;
     }
@@ -609,7 +609,7 @@ export class Scanner implements ScannerService {
         }
     }
 
-    private async doScan(dir: string): Promise<ScanResult> {
+    private async doScan(dir: string, onProgress?: (processed: number, total: number) => void): Promise<ScanResult> {
         if (!(await this.storage.pathExists(dir))) return { successful: [], failed: [] };
         await this.mapFoldersToExistingAlbums();
         const audioFiles: string[] = [], yamlFiles: string[] = [];
@@ -647,6 +647,11 @@ export class Scanner implements ScannerService {
                     }
                 }
             }
+            
+            if (onProgress) {
+                onProgress(Math.min(i + batch.length, audioFiles.length), audioFiles.length);
+            }
+
             if (i % 100 === 0 && (global as any).gc) (global as any).gc();
         }
 

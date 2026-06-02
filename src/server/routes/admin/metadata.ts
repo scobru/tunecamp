@@ -395,8 +395,9 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     router.post("/maintenance/fingerprint/scan-all", async (req: AuthenticatedRequest, res) => {
         if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
         try {
-            // Runs in background with dedup protection
-            const started = taskManager.run('fingerprint-scan', () => maintenance.batchIdentifyTracks());
+            const started = taskManager.run('fingerprint-scan', () => maintenance.batchIdentifyTracks((processed, total) => {
+                taskManager.updateProgress('fingerprint-scan', processed, total, `Identifying tracks: ${processed}/${total}`);
+            }));
             
             if (!started) {
                 return res.status(409).json({ error: "Fingerprint scan is already in progress" });

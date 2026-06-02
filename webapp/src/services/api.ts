@@ -386,6 +386,8 @@ const API = {
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     consolidateDatabase: () => handleResponse(api.post<{ message: string }>('admin/system/consolidate-db')),
     syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),
+    getTasks: () => handleResponse(api.get<any[]>('admin/tasks')),
+    getRunningTasks: () => handleResponse(api.get<any[]>('admin/tasks/running')),
     uploadYouTubeCookies: (file: File) => {
         const formData = new FormData();
         formData.append('cookies', file);

@@ -9,13 +9,20 @@
 
 type TaskStatus = 'running' | 'completed' | 'failed';
 
-interface TaskEntry {
+export interface TaskProgress {
+    current: number;
+    total: number;
+    message?: string;
+}
+
+export interface TaskEntry {
     taskId: string;
     status: TaskStatus;
     startedAt: Date;
     completedAt: Date | null;
     error: string | null;
     result: any;
+    progress?: TaskProgress;
 }
 
 class TaskManager {
@@ -69,6 +76,16 @@ class TaskManager {
      */
     isRunning(taskId: string): boolean {
         return this.tasks.get(taskId)?.status === 'running';
+    }
+
+    /**
+     * Update the progress of a running task.
+     */
+    updateProgress(taskId: string, current: number, total: number, message?: string): void {
+        const existing = this.tasks.get(taskId);
+        if (existing && existing.status === 'running') {
+            existing.progress = { current, total, message };
+        }
     }
 
     /**

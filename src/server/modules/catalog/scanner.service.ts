@@ -42,10 +42,10 @@ export class ScannerService {
     /**
      * Proxies to the local scanner for backward compatibility with admin routes.
      */
-    async scanDirectory(dir: string): Promise<any> {
+    async scanDirectory(dir: string, onProgress?: (processed: number, total: number) => void): Promise<any> {
         const local = this.registry.get("local-fs") as any;
         if (local && local.scanner) {
-            return local.scanner.scanDirectory(dir);
+            return local.scanner.scanDirectory(dir, onProgress);
         }
         throw new Error("Local filesystem scanner not found");
     }

@@ -533,7 +533,9 @@ export function createAdminRoutes(
             const started = taskManager.run('library-rescan', async () => {
                 await runStartupMaintenance(database, config);
                 console.log(`🔍 [Admin] Starting manual library scan: ${musicDir}`);
-                const result = await scanner.scanDirectory(musicDir);
+                const result = await scanner.scanDirectory(musicDir, (processed, total) => {
+                    taskManager.updateProgress('library-rescan', processed, total, `Scanning library: ${processed}/${total} files`);
+                });
                 console.log(`✅ [Admin] Manual scan complete. Processed ${result.successful.length} files.`);
                 return { processed: result.successful.length, failed: result.failed.length };
             });
@@ -565,8 +567,9 @@ export function createAdminRoutes(
 
             console.log(`🏷️ [Admin] Full tag sync triggered by ${req.username}`);
 
-            // Run in background with dedup protection
-            const started = taskManager.run('tag-sync', () => maintenance.syncAllTagsFromDb());
+            const started = taskManager.run('tag-sync', () => maintenance.syncAllTagsFromDb((processed, total) => {
+                taskManager.updateProgress('tag-sync', processed, total, `Synchronizing tags: ${processed}/${total} tracks`);
+            }));
 
             if (!started) {
                 return res.status(409).json({ error: "Tag synchronization is already in progress" });
