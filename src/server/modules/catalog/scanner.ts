@@ -93,6 +93,7 @@ async function parseFileWithRetry(filePath: string, retries = 3, delay = 500): P
 }
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
+const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"];
 
 interface ArtistConfig {
     name: string;
@@ -483,7 +484,9 @@ export class Scanner implements ScannerService {
 
         const ext = path.extname(currentFilePath).toLowerCase();
         const dir = path.dirname(currentFilePath);
-        if (!AUDIO_EXTENSIONS.includes(ext)) return null;
+        const isAudio = AUDIO_EXTENSIONS.includes(ext);
+        const isGeneric = GENERIC_EXTENSIONS.includes(ext);
+        if (!isAudio && !isGeneric) return null;
 
         while (this.hashingSemaphore >= this.MAX_CONCURRENT_HASHING) {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -491,16 +494,44 @@ export class Scanner implements ScannerService {
 
         this.hashingSemaphore++;
         try {
-            // Get Metadata — use worker thread to keep main event loop free
+            // Get Metadata — use worker thread to keep main event loop free or create standard metadata for generic assets
             let metadata: any = null;
-            try {
-                metadata = await workerPool.runTask('parse-metadata', currentFilePath);
-            } catch (e) {
-                // Fallback to main-thread parsing if worker fails
+            if (isGeneric) {
+                const title = metadataHints?.title || path.basename(currentFilePath, ext);
+                let mimeType = 'application/octet-stream';
+                if (ext === '.zip') mimeType = 'application/zip';
+                else if (ext === '.pdf') mimeType = 'application/pdf';
+                else if (ext === '.epub') mimeType = 'application/epub+zip';
+                else if (ext === '.png') mimeType = 'image/png';
+                else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+                else if (ext === '.txt') mimeType = 'text/plain';
+
+                const stats = await fs.stat(currentFilePath);
+                
+                metadata = {
+                    common: {
+                        title: title,
+                        artist: metadataHints?.artist || "Library",
+                        album: metadataHints?.album || "Imported Assets",
+                        genre: [metadataHints?.genre || "Generic Asset"]
+                    },
+                    format: {
+                        duration: 0,
+                        codec: ext.substring(1),
+                        mimeType: mimeType,
+                        fileSize: stats.size
+                    }
+                };
+            } else {
                 try {
-                    metadata = await parseFileWithRetry(currentFilePath);
-                } catch (e2) {
-                    console.warn(`[Scanner] Metadata parse failed for ${currentFilePath}, using filename fallback.`);
+                    metadata = await workerPool.runTask('parse-metadata', currentFilePath);
+                } catch (e) {
+                    // Fallback to main-thread parsing if worker fails
+                    try {
+                        metadata = await parseFileWithRetry(currentFilePath);
+                    } catch (e2) {
+                        console.warn(`[Scanner] Metadata parse failed for ${currentFilePath}, using filename fallback.`);
+                    }
                 }
             }
 
@@ -522,12 +553,12 @@ export class Scanner implements ScannerService {
                 const track = this.database.getTrack(syncResult.trackId);
                 if (track) {
                     // Process Waveform if missing (separate queue, won't block conversions)
-                    if (!track.waveform) {
+                    if (!track.waveform && !isGeneric) {
                         processQueueWaveform(currentFilePath, track.id, track.duration || undefined, this.waveformQueue, this.database);
                     }
 
                     // Process Conversion if needed (separate queue, limited concurrency)
-                    if (syncResult.queuedConversion) {
+                    if (syncResult.queuedConversion && !isGeneric) {
                         this.conversionQueue.add(() => convertWavToMp3(currentFilePath));
                     }
                 }
@@ -589,7 +620,7 @@ export class Scanner implements ScannerService {
                 if (entry.isDirectory()) await walkDir(full);
                 else if (entry.isFile()) {
                     const ext = path.extname(entry.name).toLowerCase();
-                    if (AUDIO_EXTENSIONS.includes(ext)) audioFiles.push(full);
+                    if (AUDIO_EXTENSIONS.includes(ext) || GENERIC_EXTENSIONS.includes(ext)) audioFiles.push(full);
                     else if (ext === ".yaml" || ext === ".yml") yamlFiles.push(full);
                 }
             }

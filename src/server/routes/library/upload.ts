@@ -14,6 +14,7 @@ import { createAuthMiddleware } from "../../middleware/auth.js";
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+export const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"];
 
 /**
  * Configure multer storage - Use system temp dir to avoid scanner interference
@@ -37,7 +38,7 @@ function createTempStorage() {
 }
 
 /**
- * File filter for audio and images
+ * File filter for audio, images, and generic assets
  */
 function fileFilter(
     req: Express.Request,
@@ -48,8 +49,9 @@ function fileFilter(
     const ext = path.extname(file.originalname).toLowerCase();
     const isAudio = AUDIO_EXTENSIONS.includes(ext);
     const isImage = IMAGE_EXTENSIONS.includes(ext);
+    const isGeneric = GENERIC_EXTENSIONS.includes(ext);
 
-    if (isAudio || isImage) {
+    if (isAudio || isImage || isGeneric) {
         cb(null, true);
     } else {
         console.warn(`❌ [Debug] Multer rejected file type: ${ext}`);

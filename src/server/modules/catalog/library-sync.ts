@@ -275,6 +275,15 @@ export class LibrarySync {
         console.log(`⏱️ [LibrarySync] Updated existing track ${existing.id} duration to ${duration}s`);
     }
 
+    const format = metadata?.format || {};
+    // Update new multi-asset fields
+    this.database.updateTrack(existing.id, {
+        mime_type: format.mimeType || existing.mime_type,
+        file_size: format.fileSize || existing.file_size,
+        file_hash: hash || existing.file_hash,
+        version: metadataHints?.version || existing.version
+    } as any);
+
     return { trackId: existing.id, success: true, message: "Track updated.", action: 'updated' };
   }
 
@@ -300,7 +309,17 @@ export class LibrarySync {
         waveform: null,
         year: metadataHints?.year || common.year || (common.date ? new Date(common.date).getFullYear() : null),
         genre: metadataHints?.genre || (common.genre ? common.genre.join(", ") : null),
-        url: null, service: null, external_artwork: null, price: 0, price_usdc: 0, currency: 'ETH', hash: hash
+        url: null,
+        service: null,
+        external_artwork: null,
+        price: 0,
+        price_usdc: 0,
+        currency: 'ETH',
+        hash: hash,
+        mime_type: format.mimeType || (ext === '.mp3' ? 'audio/mpeg' : 'application/octet-stream'),
+        file_size: format.fileSize || 0,
+        file_hash: hash,
+        version: metadataHints?.version || null
     });
 
     if (this.autotagger) {

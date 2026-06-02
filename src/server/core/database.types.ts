@@ -22,7 +22,7 @@ interface OAuthLink {
     created_at: string;
 }
 
-interface User {
+export interface User {
     id: number;
     username: string;
     password_hash: string;
@@ -31,6 +31,8 @@ interface User {
     role: string;
     storage_quota?: number;
     storage_used?: number;
+    subscription_status?: string;
+    subscription_expires_at?: string | null;
 }
 
 export interface Artist {
@@ -83,6 +85,7 @@ export interface Album {
     created_at: string;
     external_id?: string | null;
     use_nft?: boolean | number;
+    product_type?: string;
     // View fields
     artist_name?: string;
     artist_slug?: string;
@@ -130,6 +133,10 @@ export interface Track {
     fingerprint?: string | null;
     visibility?: 'public' | 'private' | 'unlisted';
     created_at?: string;
+    mime_type?: string;
+    file_size?: number;
+    file_hash?: string | null;
+    version?: string | null;
     // View fields
     artist_slug?: string;
     artist_wallet_address?: string;
@@ -359,6 +366,8 @@ export interface IdentityManager {
     getSetting(key: string): string | undefined;
     setSetting(key: string, value: string): void;
     getAllSettings(): { [key: string]: string };
+    updateSubscription(userId: number, status: string, expiresAt: string): void;
+    getUserSubscription(userId: number): { status: string, expiresAt: string | null };
 }
 
 export interface LibraryManager {
@@ -428,6 +437,8 @@ export interface DatabaseService {
     getAdmins(): User[];
     syncZenUser(pub: string, epub: string, alias: string, avatar?: string): void;
     getZenUser(pub: string): { pub: string, epub: string, alias: string, avatar: string | null } | undefined;
+    updateSubscription(userId: number, status: string, expiresAt: string): void;
+    getUserSubscription(userId: number): { status: string, expiresAt: string | null };
 
     // Auth
     createOAuthClient(client: Omit<OAuthClient, "created_at">): void;

@@ -91,6 +91,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             gun_auth_mode TEXT NOT NULL DEFAULT 'local',
             is_active INTEGER DEFAULT 1,
             token_version INTEGER DEFAULT 0,
+            subscription_status TEXT DEFAULT 'none',
+            subscription_expires_at TEXT DEFAULT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             slsk_username TEXT,
@@ -104,7 +106,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             title TEXT NOT NULL,
             slug TEXT NOT NULL UNIQUE,
             artist_id INTEGER REFERENCES artists(id),
-            owner_id INTEGER REFERENCES admin(id),
+            owner_id REFERENCES admin(id),
             date TEXT,
             cover_path TEXT,
             genre TEXT,
@@ -128,6 +130,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             status TEXT DEFAULT 'draft',
             album_artist TEXT,
             use_nft INTEGER DEFAULT 1,
+            product_type TEXT DEFAULT 'music',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -136,7 +139,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             title TEXT NOT NULL,
             album_id INTEGER REFERENCES albums(id),
             artist_id INTEGER REFERENCES artists(id),
-            owner_id INTEGER REFERENCES admin(id),
+            owner_id REFERENCES admin(id),
             artist_name TEXT,
             track_num INTEGER,
             duration REAL,
@@ -159,6 +162,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             fingerprint TEXT,
             genre TEXT,
             year INTEGER,
+            mime_type TEXT DEFAULT 'audio/mpeg',
+            file_size INTEGER DEFAULT 0,
+            file_hash TEXT DEFAULT NULL,
+            version TEXT DEFAULT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -488,6 +495,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating albums table: adding use_nft column...");
                 db.exec("ALTER TABLE albums ADD COLUMN use_nft INTEGER DEFAULT 1");
             }
+            if (!cols.some(col => col.name === 'product_type')) {
+                console.log("📦 [Database] Migrating albums table: adding product_type column...");
+                db.exec("ALTER TABLE albums ADD COLUMN product_type TEXT DEFAULT 'music'");
+            }
         }
 
         const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
@@ -496,6 +507,35 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'fingerprint')) {
                 console.log("📦 [Database] Migrating tracks table: adding fingerprint column...");
                 db.exec("ALTER TABLE tracks ADD COLUMN fingerprint TEXT");
+            }
+            if (!cols.some(col => col.name === 'mime_type')) {
+                console.log("📦 [Database] Migrating tracks table: adding mime_type column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN mime_type TEXT DEFAULT 'audio/mpeg'");
+            }
+            if (!cols.some(col => col.name === 'file_size')) {
+                console.log("📦 [Database] Migrating tracks table: adding file_size column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN file_size INTEGER DEFAULT 0");
+            }
+            if (!cols.some(col => col.name === 'file_hash')) {
+                console.log("📦 [Database] Migrating tracks table: adding file_hash column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN file_hash TEXT");
+            }
+            if (!cols.some(col => col.name === 'version')) {
+                console.log("📦 [Database] Migrating tracks table: adding version column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN version TEXT");
+            }
+        }
+
+        const adminExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='admin'").get();
+        if (adminExists) {
+            const cols = db.prepare("PRAGMA table_info(admin)").all() as any[];
+            if (!cols.some(col => col.name === 'subscription_status')) {
+                console.log("📦 [Database] Migrating admin table: adding subscription_status column...");
+                db.exec("ALTER TABLE admin ADD COLUMN subscription_status TEXT DEFAULT 'none'");
+            }
+            if (!cols.some(col => col.name === 'subscription_expires_at')) {
+                console.log("📦 [Database] Migrating admin table: adding subscription_expires_at column...");
+                db.exec("ALTER TABLE admin ADD COLUMN subscription_expires_at TEXT DEFAULT NULL");
             }
         }
 
@@ -695,6 +735,16 @@ export function createDatabase(dbPath: string): DatabaseService {
                 settings[r.key] = r.value;
             }
             return settings;
+        },
+        updateSubscription(userId: number, status: string, expiresAt: string): void {
+            db.prepare("UPDATE admin SET subscription_status = ?, subscription_expires_at = ? WHERE id = ?").run(status, expiresAt, userId);
+        },
+        getUserSubscription(userId: number): { status: string, expiresAt: string | null } {
+            const row = db.prepare("SELECT subscription_status, subscription_expires_at FROM admin WHERE id = ?").get(userId) as any;
+            return {
+                status: row ? row.subscription_status : 'none',
+                expiresAt: row ? row.subscription_expires_at : null
+            };
         }
     };
 
@@ -972,6 +1022,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             db.prepare("INSERT OR REPLACE INTO gun_users (pub, epub, alias, avatar) VALUES (?, ?, ?, ?)").run(pub, epub, alias, avatar || null);
         },
         getZenUser: (pub: string) => db.prepare("SELECT * FROM gun_users WHERE pub = ?").get(pub) as any,
+        updateSubscription(userId: number, status: string, expiresAt: string): void {
+            identity.updateSubscription(userId, status, expiresAt);
+        },
+        getUserSubscription(userId: number): { status: string, expiresAt: string | null } {
+            return identity.getUserSubscription(userId);
+        },
 
         // Auth
         createOAuthClient(c: any): void { db.prepare("INSERT INTO oauth_clients (instance_url, client_id, client_secret, redirect_uri) VALUES (?, ?, ?, ?)").run(c.instance_url, c.client_id, c.client_secret, c.redirect_uri); },

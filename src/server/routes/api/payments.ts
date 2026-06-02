@@ -25,6 +25,26 @@ const CHECKOUT_ABI = [
     "function purchaseWithUSDC(uint256 trackId, uint8 role, uint256 quantity)"
 ];
 
+function getUserIdFromRequest(req: express.Request, jwtSecret: string): number | null {
+    let token: string | undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+    } else if (req.query && req.query.token) {
+        token = req.query.token as string;
+    } else if (req.body && req.body.token) {
+        token = req.body.token;
+    }
+    
+    if (!token) return null;
+    try {
+        const decoded = jwt.verify(token, jwtSecret) as any;
+        return decoded && typeof decoded.userId === 'number' ? decoded.userId : null;
+    } catch {
+        return null;
+    }
+}
+
 export function createPaymentsRoutes(database: DatabaseService, musicDir: string, config: ServerConfig): Router {
     const router = Router();
 
@@ -51,32 +71,39 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object as any;
             const metadata = session.metadata;
-            if (metadata && metadata.itemId && metadata.type) {
-                const itemId = parseInt(metadata.itemId, 10);
-                const itemType = metadata.type; // 'track' or 'album'
-                
-                // Generate unlock code
-                const code = Math.random().toString(36).substring(2, 12).toUpperCase();
-                let releaseId: number | undefined;
-                let trackId: number | undefined;
-                
-                if (itemType === 'track') {
-                    // Prefer albumId from metadata if present
-                    if (metadata.albumId) {
-                        releaseId = parseInt(metadata.albumId, 10);
+            if (metadata) {
+                if (metadata.type === 'subscription' && metadata.userId) {
+                    const userId = parseInt(metadata.userId, 10);
+                    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                    database.updateSubscription(userId, 'active', expiresAt);
+                    console.log(`✅ Stripe Subscription Success: User ${userId} is now active until ${expiresAt}`);
+                } else if (metadata.itemId && metadata.type) {
+                    const itemId = parseInt(metadata.itemId, 10);
+                    const itemType = metadata.type; // 'track' or 'album'
+                    
+                    // Generate unlock code
+                    const code = Math.random().toString(36).substring(2, 12).toUpperCase();
+                    let releaseId: number | undefined;
+                    let trackId: number | undefined;
+                    
+                    if (itemType === 'track') {
+                        // Prefer albumId from metadata if present
+                        if (metadata.albumId) {
+                            releaseId = parseInt(metadata.albumId, 10);
+                        } else {
+                            const track = database.getTrack(itemId);
+                            releaseId = track?.album_id || undefined;
+                        }
+                        trackId = itemId;
                     } else {
-                        const track = database.getTrack(itemId);
-                        releaseId = track?.album_id || undefined;
+                        releaseId = itemId;
                     }
-                    trackId = itemId;
-                } else {
-                    releaseId = itemId;
-                }
-                
-                if (releaseId || trackId) {
-                    database.createUnlockCode(code, releaseId, trackId);
-                    console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
-                    // Note: In a production app, we would also email this code to session.customer_details.email
+                    
+                    if (releaseId || trackId) {
+                        database.createUnlockCode(code, releaseId, trackId);
+                        console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
+                        // Note: In a production app, we would also email this code to session.customer_details.email
+                    }
                 }
             }
         }
@@ -212,7 +239,164 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
         }
     });
 
+    /**
+     * POST /api/payments/stripe/create-subscription-session
+     */
+    router.post("/stripe/create-subscription-session", async (req, res) => {
+        try {
+            const { successUrl, cancelUrl, email } = req.body;
+            const userId = getUserIdFromRequest(req, config.jwtSecret);
+            if (!userId) {
+                return res.status(401).json({ error: "Authentication required to purchase subscription" });
+            }
 
+            const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
+            if (!sKey) {
+                return res.status(501).json({ error: "Stripe not configured on this server." });
+            }
+
+            const stripe = new Stripe(sKey);
+            const session = await stripe.checkout.sessions.create({
+                payment_method_types: ['card'],
+                line_items: [{
+                    price_data: {
+                        currency: 'usd',
+                        product_data: {
+                            name: 'TuneCamp Monthly Subscription',
+                            description: 'Gain full access to all albums, tracks, and non-audio assets on this instance.'
+                        },
+                        unit_amount: 1000, // $10.00
+                    },
+                    quantity: 1,
+                }],
+                mode: 'payment',
+                success_url: successUrl,
+                cancel_url: cancelUrl,
+                customer_email: email,
+                metadata: {
+                    type: 'subscription',
+                    userId: userId.toString()
+                }
+            });
+
+            res.json({ id: session.id, url: session.url });
+        } catch (error: any) {
+            console.error("Stripe subscription session error:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    /**
+     * POST /api/payments/subscription/verify
+     * Verify a subscription transaction hash on-chain (Base Network).
+     * Accepts both Direct ETH or Direct USDC.
+     */
+    router.post("/subscription/verify", async (req, res) => {
+        try {
+            const { txHash } = req.body;
+            const userId = getUserIdFromRequest(req, config.jwtSecret);
+            if (!userId) {
+                return res.status(401).json({ error: "Authentication required to verify subscription" });
+            }
+
+            if (!txHash) {
+                return res.status(400).json({ error: "Missing transaction hash (txHash)" });
+            }
+
+            // Replay attack protection
+            const existingCode = database.getUnlockCodeByTxHash(txHash);
+            if (existingCode) {
+                console.warn(`[Verify Subscription] Replay attempt detected for txHash: ${txHash}`);
+                return res.status(400).json({ error: "This transaction hash has already been used." });
+            }
+
+            // Fetch transaction and receipt
+            const [tx, receipt] = await Promise.all([
+                provider.getTransaction(txHash),
+                provider.getTransactionReceipt(txHash)
+            ]);
+
+            if (!tx || !receipt) {
+                return res.status(404).json({ error: "Transaction not found on chain" });
+            }
+
+            if (receipt.status !== 1) {
+                return res.status(400).json({ error: "Transaction failed on chain" });
+            }
+
+            const adminTreasury = database.getSetting("adminTreasuryAddress") || process.env.TUNECAMP_OWNER_ADDRESS;
+            if (!adminTreasury) {
+                return res.status(501).json({ error: "Treasury address not configured on this server." });
+            }
+
+            let success = false;
+            let paidAmountDesc = "";
+
+            const toAddress = tx.to?.toLowerCase();
+
+            // Case A: USDC payment to Treasury
+            if (toAddress === USDC_ADDRESS.toLowerCase()) {
+                const iface = new ethers.Interface(ERC20_ABI);
+                const parsed = iface.parseTransaction({ data: tx.data });
+                
+                if (parsed && parsed.name === "transfer") {
+                    const recipient = parsed.args[0].toLowerCase();
+                    const amount = parsed.args[1];
+                    const paidUsdc = parseFloat(ethers.formatUnits(amount, 6)); // USDC on Base has 6 decimals
+
+                    if (recipient !== adminTreasury.toLowerCase()) {
+                        return res.status(400).json({ error: `USDC was sent to ${recipient}, but treasury address is ${adminTreasury}` });
+                    }
+
+                    if (paidUsdc < 9.9) { // 10 USDC price, 1% tolerance
+                        return res.status(400).json({ error: `Underpayment: paid ${paidUsdc} USDC, expected 10 USDC` });
+                    }
+
+                    success = true;
+                    paidAmountDesc = `${paidUsdc} USDC`;
+                } else {
+                    return res.status(400).json({ error: "Not a valid USDC transfer transaction" });
+                }
+            } 
+            // Case B: Direct ETH payment to Treasury
+            else if (toAddress === adminTreasury.toLowerCase()) {
+                const paidEth = parseFloat(ethers.formatEther(tx.value));
+                const rate = await getEthUsdRate();
+                const expectedEth = 10.0 / rate;
+                const margin = expectedEth * 0.05; // 5% tolerance
+
+                if (paidEth < expectedEth - margin) {
+                    return res.status(400).json({ error: `Underpayment: paid ${paidEth} ETH (~$${(paidEth * rate).toFixed(2)}), expected ~$10.00` });
+                }
+
+                success = true;
+                paidAmountDesc = `${paidEth} ETH`;
+            } else {
+                return res.status(400).json({ error: `Transaction recipient ${tx.to} does not match treasury wallet ${adminTreasury} or USDC token` });
+            }
+
+            if (success) {
+                // Generate and record unlock code to block replay attacks
+                const code = "SUB-" + Math.random().toString(36).substring(2, 12).toUpperCase();
+                database.createUnlockCode(code, undefined, undefined, txHash);
+
+                const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+                database.updateSubscription(userId, 'active', expiresAt);
+                console.log(`✅ Verified Crypto Subscription payment of ${paidAmountDesc} for User ${userId}. Expires: ${expiresAt}`);
+
+                return res.json({
+                    success: true,
+                    expiresAt,
+                    message: "Subscription activated successfully"
+                });
+            } else {
+                return res.status(400).json({ error: "Verification failed" });
+            }
+        } catch (error: any) {
+            console.error("Crypto subscription verification error:", error);
+            res.status(500).json({ error: "Internal server error: " + error.message });
+        }
+    });
 
     /**
      * POST /api/payments/verify
@@ -443,28 +627,54 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             const trackId = parseInt(req.params.trackId as string, 10);
             const code = req.query.code as string;
 
-            if (!code) {
-                return res.status(400).json({ error: "Unlock code required" });
+            let isUnlocked = false;
+
+            // 1. Check for Active Subscription
+            const userId = getUserIdFromRequest(req, config.jwtSecret);
+            if (userId !== null) {
+                const sub = database.getUserSubscription(userId);
+                if (sub && sub.status === 'active') {
+                    const isNotExpired = !sub.expiresAt || new Date(sub.expiresAt) > new Date();
+                    if (isNotExpired) {
+                        isUnlocked = true;
+                        console.log(`🔓 Subscriber Download: Active subscriber (User ID ${userId}) downloading track ${trackId}`);
+                    }
+                }
             }
 
-            // Validate unlock code
-            const validation = database.validateUnlockCode(code);
-            if (!validation.valid) {
-                return res.status(403).json({ error: "Invalid or expired unlock code" });
+            // 2. Fallback to Unlock Code
+            if (!isUnlocked) {
+                if (!code) {
+                    return res.status(400).json({ error: "Unlock code required or active subscription needed" });
+                }
+
+                // Validate unlock code
+                const validation = database.validateUnlockCode(code);
+                if (!validation.valid) {
+                    return res.status(403).json({ error: "Invalid or expired unlock code" });
+                }
+
+                // Get track
+                const track = database.getTrack(trackId);
+                if (!track) {
+                    return res.status(404).json({ error: "Track not found" });
+                }
+
+                // Verify code is for the correct album or track
+                const matchesTrack = validation.trackId === trackId;
+                const matchesAlbum = validation.releaseId && track.album_id && validation.releaseId === track.album_id;
+
+                if (!matchesTrack && !matchesAlbum) {
+                    return res.status(403).json({ error: "Unlock code is not valid for this track or its album" });
+                }
+                
+                isUnlocked = true;
             }
 
-            // Get track
+            // If we bypassed code check, we still need to fetch track and verify it exists
             const track = database.getTrack(trackId);
             if (!track) {
                 return res.status(404).json({ error: "Track not found" });
-            }
-
-            // Verify code is for the correct album or track
-            const matchesTrack = validation.trackId === trackId;
-            const matchesAlbum = validation.releaseId && track.album_id && validation.releaseId === track.album_id;
-
-            if (!matchesTrack && !matchesAlbum) {
-                return res.status(403).json({ error: "Unlock code is not valid for this track or its album" });
             }
 
             if (!track.file_path) {

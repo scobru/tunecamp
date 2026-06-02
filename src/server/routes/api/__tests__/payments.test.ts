@@ -79,7 +79,9 @@ describe('Payments Routes', () => {
             getTrackPriceFromRelease: jest.fn(),
             createUnlockCode: jest.fn(),
             validateUnlockCode: jest.fn(),
-            getUnlockCodeByTxHash: jest.fn().mockReturnValue(null)
+            getUnlockCodeByTxHash: jest.fn().mockReturnValue(null),
+            updateSubscription: jest.fn(),
+            getUserSubscription: jest.fn().mockReturnValue({ status: 'none', expiresAt: null })
         };
 
         mockConfig = {
@@ -87,7 +89,8 @@ describe('Payments Routes', () => {
             stripeWebhookSecret: 'whsec_123',
             stripeOnrampSecretKey: 'sk_onramp_123',
             publicUrl: 'https://site.com',
-            port: 3000
+            port: 3000,
+            jwtSecret: 'test-jwt-secret'
         };
 
         app = express();
@@ -334,6 +337,114 @@ describe('Payments Routes', () => {
 
             expect(res.status).toBe(200);
             expect(res.body.toString()).toBe('streaming-data');
+            expect(fs.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
+        });
+    });
+
+    describe('Subscription Payments and Downloads', () => {
+        let jwtToken: string;
+
+        beforeEach(async () => {
+            const jwtLib = (await import('jsonwebtoken')) as any;
+            jwtToken = jwtLib.default.sign({ userId: 42 }, 'test-jwt-secret');
+        });
+
+        test('POST /api/payments/stripe/create-subscription-session returns 401 if unauthenticated', async () => {
+            const res = await request(app)
+                .post('/api/payments/stripe/create-subscription-session')
+                .send({ successUrl: 'http://ok', cancelUrl: 'http://no' });
+
+            expect(res.status).toBe(401);
+        });
+
+        test('POST /api/payments/stripe/create-subscription-session creates Stripe session successfully', async () => {
+            mockStripe.checkout.sessions.create.mockResolvedValue({
+                id: 'sub_sess_123',
+                url: 'https://checkout.stripe.com/sub_sess_123'
+            });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-subscription-session')
+                .set('Authorization', `Bearer ${jwtToken}`)
+                .send({ successUrl: 'http://ok', cancelUrl: 'http://no', email: 'fan@test.com' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.id).toBe('sub_sess_123');
+            expect(res.body.url).toBe('https://checkout.stripe.com/sub_sess_123');
+        });
+
+        test('Stripe Webhook processes checkout.session.completed for a subscription', async () => {
+            const mockEvent = {
+                type: 'checkout.session.completed',
+                data: {
+                    object: {
+                        metadata: {
+                            type: 'subscription',
+                            userId: '42'
+                        }
+                    }
+                }
+            };
+            mockStripe.webhooks.constructEvent.mockReturnValue(mockEvent);
+
+            const res = await request(app)
+                .post('/api/payments/stripe/webhook')
+                .set('stripe-signature', 'valid-sig')
+                .send({ id: 'evt_sub_123' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.received).toBe(true);
+            expect(mockDatabase.updateSubscription).toHaveBeenCalledWith(
+                42,
+                'active',
+                expect.any(String)
+            );
+        });
+
+        test('POST /api/payments/subscription/verify returns 401 if unauthenticated', async () => {
+            const res = await request(app)
+                .post('/api/payments/subscription/verify')
+                .send({ txHash: '0xHash' });
+
+            expect(res.status).toBe(401);
+        });
+
+        test('POST /api/payments/subscription/verify rejects replay attempts', async () => {
+            mockDatabase.getUnlockCodeByTxHash.mockReturnValue({ code: 'SUB-ALREADY-USED' });
+
+            const res = await request(app)
+                .post('/api/payments/subscription/verify')
+                .set('Authorization', `Bearer ${jwtToken}`)
+                .send({ txHash: '0xReplay' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toContain('already been used');
+        });
+
+        test('GET /api/payments/download/:trackId allows direct download for active subscribers', async () => {
+            mockDatabase.getUserSubscription.mockReturnValue({
+                status: 'active',
+                expiresAt: new Date(Date.now() + 1000 * 3600).toISOString() // Future expiration
+            });
+            mockDatabase.getTrack.mockReturnValue({
+                id: 5,
+                file_path: 'artist/album/song.mp3'
+            });
+            (fs.pathExists as any).mockResolvedValue(true);
+            const mockStream = {
+                pipe: jest.fn().mockImplementation((res: any) => {
+                    res.write(Buffer.from('subscriber-data'));
+                    res.end();
+                })
+            };
+            (fs.createReadStream as any).mockReturnValue(mockStream);
+
+            const res = await request(app)
+                .get('/api/payments/download/5')
+                .set('Authorization', `Bearer ${jwtToken}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body.toString()).toBe('subscriber-data');
             expect(fs.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
         });
     });
