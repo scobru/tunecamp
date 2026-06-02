@@ -332,6 +332,31 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/users", createUsersRoutes(zendbService, database, authService, apService));
     app.use("/api/comments", createCommentsRoutes(zendbService));
     app.use("/api/unlock", createUnlockRoutes(database, authMiddleware));
+
+    // Public assets store
+    app.get("/api/assets", (_req: any, res: any) => {
+        try { res.json(database.getPublicAssets()); }
+        catch { res.status(500).json({ error: "Failed to fetch assets" }); }
+    });
+    app.get("/api/assets/:slug", (req: any, res: any) => {
+        try {
+            const asset = database.getAssetBySlug(req.params.slug);
+            if (!asset || asset.visibility !== 'public') return res.status(404).json({ error: "Not found" });
+            res.json(asset);
+        } catch { res.status(500).json({ error: "Failed to fetch asset" }); }
+    });
+
+    // Serve asset cover images by asset ID
+    app.get("/api/assets/cover/:id", async (req: any, res: any) => {
+        try {
+            const asset = database.getAsset(parseInt(req.params.id, 10));
+            if (!asset || !asset.cover_path) return res.status(404).json({ error: "Not found" });
+            if (!await import('fs-extra').then(fs => fs.pathExists(asset.cover_path))) {
+                return res.status(404).json({ error: "Cover file not found" });
+            }
+            res.sendFile(path.resolve(asset.cover_path));
+        } catch { res.status(500).json({ error: "Failed to serve cover" }); }
+    });
     app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(lifecycleService));
     app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(lifecycleService));
     app.use("/api/ap", createActivityPubRoutes(apService, database, authMiddleware));

@@ -258,6 +258,37 @@ export interface UnlockCode {
     createdAt: string;
 }
 
+export interface Asset {
+    id: number;
+    title: string;
+    slug: string;
+    description?: string;
+    artistId?: number;
+    artist_id?: number;
+    artistName?: string;
+    artist_name?: string;
+    ownerId?: number;
+    owner_id?: number;
+    type: 'digital' | 'video' | 'membership';
+    filePath?: string;
+    file_path?: string;
+    mimeType?: string;
+    mime_type?: string;
+    fileSize?: number;
+    file_size?: number;
+    coverPath?: string;
+    cover_path?: string;
+    price?: number;
+    priceUsdc?: number;
+    price_usdc?: number;
+    currency?: string;
+    visibility: 'public' | 'private' | 'unlisted';
+    requiresSubscription?: boolean;
+    requires_subscription?: number | boolean;
+    createdAt?: string;
+    created_at?: string;
+}
+
 export interface NetworkSite {
     url: string;
     name: string;

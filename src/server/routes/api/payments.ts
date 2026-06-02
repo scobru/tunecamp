@@ -79,15 +79,14 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                     console.log(`✅ Stripe Subscription Success: User ${userId} is now active until ${expiresAt}`);
                 } else if (metadata.itemId && metadata.type) {
                     const itemId = parseInt(metadata.itemId, 10);
-                    const itemType = metadata.type; // 'track' or 'album'
-                    
-                    // Generate unlock code
+                    const itemType = metadata.type; // 'track', 'album', or 'asset'
+
                     const code = Math.random().toString(36).substring(2, 12).toUpperCase();
                     let releaseId: number | undefined;
                     let trackId: number | undefined;
-                    
+                    let assetId: number | undefined;
+
                     if (itemType === 'track') {
-                        // Prefer albumId from metadata if present
                         if (metadata.albumId) {
                             releaseId = parseInt(metadata.albumId, 10);
                         } else {
@@ -95,14 +94,15 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                             releaseId = track?.album_id || undefined;
                         }
                         trackId = itemId;
+                    } else if (itemType === 'asset') {
+                        assetId = itemId;
                     } else {
                         releaseId = itemId;
                     }
-                    
-                    if (releaseId || trackId) {
-                        database.createUnlockCode(code, releaseId, trackId);
+
+                    if (releaseId || trackId || assetId) {
+                        database.createUnlockCode(code, releaseId, trackId, undefined, assetId);
                         console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
-                        // Note: In a production app, we would also email this code to session.customer_details.email
                     }
                 }
             }
@@ -183,11 +183,24 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                         amount = amount * rate;
                     }
                 }
+            } else if (type === 'asset') {
+                const asset = database.getAsset(parseInt(itemId, 10));
+                if (!asset) return res.status(404).json({ error: `Asset ${itemId} not found` });
+                name = asset.title;
+                if (asset.currency === 'USDC' || asset.currency === 'USD') {
+                    amount = Number(asset.price_usdc || asset.price || 0);
+                } else {
+                    amount = Number(asset.price || 0);
+                    if (asset.currency === 'ETH' || !asset.currency) {
+                        const rate = await getEthUsdRate();
+                        amount = amount * rate;
+                    }
+                }
             } else {
                 const album = database.getAlbum(parseInt(itemId, 10));                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
                 if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
-                
+
                 if (album.currency === 'USDC' || album.currency === 'USD') {
                     amount = Number(album.price_usdc || album.price || 0);
                 } else if (album.currency === 'USDT') {
@@ -694,6 +707,65 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
         } catch (error) {
             console.error("Payment download error:", error);
             res.status(500).json({ error: "Failed to download track" });
+        }
+    });
+
+    /**
+     * GET /api/payments/download/asset/:id
+     * Download a purchased asset using an unlock code or active subscription.
+     */
+    router.get("/download/asset/:id", async (req, res) => {
+        try {
+            const assetId = parseInt(req.params.id as string, 10);
+            const code = req.query.code as string;
+
+            const asset = database.getAsset(assetId);
+            if (!asset) return res.status(404).json({ error: "Asset not found" });
+            if (!asset.file_path) return res.status(400).json({ error: "Asset has no downloadable file" });
+
+            let isUnlocked = false;
+
+            // Free asset: always accessible
+            if (!asset.price && !asset.price_usdc && !asset.requires_subscription) {
+                isUnlocked = true;
+            }
+
+            // Active subscription
+            if (!isUnlocked) {
+                const userId = getUserIdFromRequest(req, config.jwtSecret);
+                if (userId !== null) {
+                    const sub = database.getUserSubscription(userId);
+                    if (sub && sub.status === 'active' && (!sub.expiresAt || new Date(sub.expiresAt) > new Date())) {
+                        isUnlocked = true;
+                    }
+                }
+            }
+
+            // Unlock code
+            if (!isUnlocked) {
+                if (!code) return res.status(400).json({ error: "Unlock code or active subscription required" });
+                const validation = database.validateUnlockCode(code);
+                if (!validation.valid || validation.assetId !== assetId) {
+                    return res.status(403).json({ error: "Invalid unlock code for this asset" });
+                }
+                isUnlocked = true;
+            }
+
+            if (!isUnlocked) return res.status(403).json({ error: "Purchase required" });
+
+            // Resolve file path: if absolute use as-is, otherwise join with musicDir
+            const filePath = path.isAbsolute(asset.file_path) ? asset.file_path : path.join(musicDir, asset.file_path);
+            if (!await fs.pathExists(filePath)) {
+                return res.status(404).json({ error: "Asset file not found on disk" });
+            }
+
+            const filename = path.basename(filePath);
+            res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+            res.setHeader("Content-Type", asset.mime_type || "application/octet-stream");
+            return fs.createReadStream(filePath).pipe(res);
+        } catch (error) {
+            console.error("Asset download error:", error);
+            res.status(500).json({ error: "Failed to download asset" });
         }
     });
 

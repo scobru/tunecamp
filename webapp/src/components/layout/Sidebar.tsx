@@ -20,7 +20,8 @@ import {
   Upload,
   MessageSquare,
   Library,
-  Wrench
+  Wrench,
+  ShoppingBag
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -138,6 +139,7 @@ export const Sidebar = () => {
             <NavItem to="/" icon={Home} label="Home" />
             <NavItem to="/search" icon={Search} label="Search" />
             <NavItem to="/network" icon={Globe} label="Network" />
+            <NavItem to="/store" icon={ShoppingBag} label="Store" />
           </ul>
         </div>
  

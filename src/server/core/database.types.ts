@@ -631,6 +631,16 @@ export interface DatabaseService {
     updatePostVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     deletePost(id: number): void;
 
+    // Assets
+    getPublicAssets(): any[];
+    getAssetsByArtist(artistId: number): any[];
+    getAllAssets(): any[];
+    getAsset(id: number): any | undefined;
+    getAssetBySlug(slug: string): any | undefined;
+    createAsset(data: any): number;
+    updateAsset(id: number, data: any): void;
+    deleteAsset(id: number): void;
+
     // Stats
     getStats(artistId?: number, ownerId?: number): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number; genresCount: number; genres: string[] }>;
     getPublicTracksCount(): number;
@@ -659,8 +669,8 @@ export interface DatabaseService {
     deleteRemoteContent(apId: string): void;
 
     // Unlock Codes
-    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string): void;
-    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; isUsed: boolean };
+    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string, assetId?: number): void;
+    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; assetId?: number; isUsed: boolean };
     redeemUnlockCode(code: string): void;
     listUnlockCodes(releaseId?: number): any[];
     getUnlockCodeByTxHash(txHash: string): any | undefined;

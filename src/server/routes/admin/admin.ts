@@ -17,7 +17,6 @@ import type { MaintenanceService } from "../../modules/catalog/maintenance.servi
 import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../../common/visibility.js";
 
 import multer from "multer";
-import { YouTubeCookieManager } from "../../utils/youtube-session.js";
 
 import type { LocalizationService } from "../../modules/catalog/localization.service.js";
 import { getDownloadService } from "../../modules/catalog/download.service.js";
@@ -1450,16 +1449,29 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to create posts" });
             }
 
-            if (!artistId || !content) {
-                return res.status(400).json({ error: "Missing artistId or content" });
+            if (!content) {
+                return res.status(400).json({ error: "Missing content" });
             }
 
-            // Permission Check
-            if (req.artistId && !req.isAdmin && req.artistId !== parseInt(artistId)) {
-                return res.status(403).json({ error: "You can only post for your assign artist" });
+            // Root admin without an artist association posts as the SITE instance actor (id = -1)
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            const resolvedArtistId = (artistId !== undefined && artistId !== null) ? parseInt(artistId) : (isSystemAdmin ? -1 : null);
+
+            if (!resolvedArtistId) {
+                return res.status(400).json({ error: "Missing artistId" });
             }
 
-            const postId = database.createPost(artistId, content, visibility || 'public', title, summary);
+            // Non-admin artists can only post for their own artist
+            if (req.artistId && !req.isAdmin && req.artistId !== resolvedArtistId) {
+                return res.status(403).json({ error: "You can only post for your assigned artist" });
+            }
+
+            // Only root admin can post as the SITE actor
+            if (resolvedArtistId === -1 && !isSystemAdmin) {
+                return res.status(403).json({ error: "Only root admin can post as instance actor" });
+            }
+
+            const postId = database.createPost(resolvedArtistId, content, visibility || 'public', title, summary);
             const post = database.getPost(postId);
 
             if (post) {
@@ -1505,6 +1517,166 @@ export function createAdminRoutes(
         } catch (error) {
             console.error("Error deleting post:", error);
             res.status(500).json({ error: "Failed to delete post" });
+        }
+    });
+
+    // ─── Assets (Store) ──────────────────────────────────────────────────────
+
+    /**
+     * GET /api/admin/assets
+     */
+    router.get("/assets", (req: AuthenticatedRequest, res: any) => {
+        try {
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            const assets = isSystemAdmin
+                ? database.getAllAssets()
+                : req.artistId
+                    ? database.getAssetsByArtist(req.artistId)
+                    : [];
+            res.json(assets);
+        } catch (error) {
+            console.error("Error fetching assets:", error);
+            res.status(500).json({ error: "Failed to fetch assets" });
+        }
+    });
+
+    /**
+     * POST /api/admin/assets
+     */
+    router.post("/assets", upload.single("file"), async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin && !req.isActive) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+            const { title, description, artist_id, type, price, price_usdc, currency, visibility, requires_subscription } = body;
+            if (!title) return res.status(400).json({ error: "Title required" });
+
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            const resolvedArtistId = artist_id ? parseInt(artist_id) : (req.artistId || null);
+            if (!isSystemAdmin && req.artistId && resolvedArtistId !== req.artistId) {
+                return res.status(403).json({ error: "Cannot create assets for another artist" });
+            }
+
+            const data: any = {
+                title, description, type: type || 'digital',
+                artist_id: resolvedArtistId,
+                owner_id: req.userId || null,
+                price: parseFloat(price) || 0,
+                price_usdc: parseFloat(price_usdc) || 0,
+                currency: currency || 'ETH',
+                visibility: visibility || 'public',
+                requires_subscription: requires_subscription === 'true' || requires_subscription === true,
+            };
+
+            if (req.file) {
+                data.file_path = req.file.path;
+                data.mime_type = req.file.mimetype;
+                data.file_size = req.file.size;
+            }
+
+            const id = database.createAsset(data);
+            res.status(201).json(database.getAsset(id));
+        } catch (error) {
+            console.error("Error creating asset:", error);
+            res.status(500).json({ error: "Failed to create asset" });
+        }
+    });
+
+    /**
+     * PUT /api/admin/assets/:id
+     */
+    router.put("/assets/:id", upload.single("file"), async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const asset = database.getAsset(id);
+            if (!asset) return res.status(404).json({ error: "Asset not found" });
+
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+            const updates: any = {};
+            if (body.title !== undefined) updates.title = body.title;
+            if (body.description !== undefined) updates.description = body.description;
+            if (body.type !== undefined) updates.type = body.type;
+            if (body.artist_id !== undefined) updates.artist_id = parseInt(body.artist_id);
+            if (body.price !== undefined) updates.price = parseFloat(body.price);
+            if (body.price_usdc !== undefined) updates.price_usdc = parseFloat(body.price_usdc);
+            if (body.currency !== undefined) updates.currency = body.currency;
+            if (body.visibility !== undefined) updates.visibility = body.visibility;
+            if (body.requires_subscription !== undefined) updates.requires_subscription = body.requires_subscription === 'true' || body.requires_subscription === true;
+            if (req.file) {
+                updates.file_path = req.file.path;
+                updates.mime_type = req.file.mimetype;
+                updates.file_size = req.file.size;
+            }
+
+            database.updateAsset(id, updates);
+            res.json(database.getAsset(id));
+        } catch (error) {
+            console.error("Error updating asset:", error);
+            res.status(500).json({ error: "Failed to update asset" });
+        }
+    });
+
+    /**
+     * POST /api/admin/assets/:id/cover
+     */
+    router.post("/assets/:id/cover", upload.single("cover"), async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const asset = database.getAsset(id);
+            if (!asset) return res.status(404).json({ error: "Asset not found" });
+            if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            // Move to musicDir/assets/covers/
+            const ext = path.extname(req.file.originalname || '.jpg');
+            const destDir = path.join(musicDir, "assets", "covers");
+            await fs.ensureDir(destDir);
+            const destPath = path.join(destDir, `asset-${id}${ext}`);
+            await fs.move(req.file.path, destPath, { overwrite: true });
+
+            database.updateAsset(id, { cover_path: destPath });
+            res.json({ cover_path: destPath });
+        } catch (error) {
+            console.error("Error uploading asset cover:", error);
+            res.status(500).json({ error: "Failed to upload cover" });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/assets/:id
+     */
+    router.delete("/assets/:id", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            const asset = database.getAsset(id);
+            if (!asset) return res.status(404).json({ error: "Asset not found" });
+
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            if (asset.file_path) {
+                fs.remove(asset.file_path).catch(() => {});
+            }
+            if (asset.cover_path) {
+                fs.remove(asset.cover_path).catch(() => {});
+            }
+            database.deleteAsset(id);
+            res.json({ message: "Asset deleted" });
+        } catch (error) {
+            console.error("Error deleting asset:", error);
+            res.status(500).json({ error: "Failed to delete asset" });
         }
     });
 

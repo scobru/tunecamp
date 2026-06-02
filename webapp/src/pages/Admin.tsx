@@ -15,6 +15,7 @@ import { CurationQueue } from "../components/admin/CurationQueue";
 import { IntegrationsPanel } from "../components/admin/IntegrationsPanel";
 import { BackupPanel } from "../components/admin/BackupPanel";
 import { StoragePanel } from "../components/admin/StoragePanel";
+import { AdminAssetsList } from "../components/admin/AdminAssetsList";
 
 const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
@@ -33,6 +34,7 @@ const Admin = () => {
     | "storage"
     | "maintenance"
     | "integrations"
+    | "store"
   >(isRootAdmin ? "users" : "releases");
   const [stats, setStats] = useState<any>(null);
 
@@ -175,6 +177,13 @@ const Admin = () => {
               Integrations
             </a>
         )}
+        <a
+          role="tab"
+          className={`tab ${activeTab === "store" ? "tab-active" : ""}`}
+          onClick={() => setActiveTab("store")}
+        >
+          Store
+        </a>
       </div>
 
       <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
@@ -224,6 +233,7 @@ const Admin = () => {
         {activeTab === "storage" && isAdmin && <StoragePanel />}
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
         {activeTab === "integrations" && isRootAdmin && <IntegrationsPanel />}
+        {activeTab === "store" && <AdminAssetsList />}
       </div>
 
       <AdminUserModal
