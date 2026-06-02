@@ -22,7 +22,7 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 
 - [**Guida allo Sviluppo**](./development-guide.md): Prerequisiti, installazione, esecuzione e test.
 - [**Configurazione API**](./api-setup-guide.md): Guida passo-passo per Stripe, Google Drive, AI e altro.
-- [**CONTRIBUTING.md**](../CONTRIBUTING.md): Linee guida per la contribuzione al codice.
+- [**CONTRIBUTING.md**](./CONTRIBUTING.md): Linee guida per la contribuzione al codice.
 
 ---
 
@@ -37,9 +37,9 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Smart Contracts](./smart-contracts.md): Guida tecnica ai contratti Solidity su Base.
 - [Backup & Migrazione](./backup-migration.md): Come salvaguardare e spostare la tua istanza.
 - [Linda Messaging](./linda-bot.md): Bridge decentralizzato per messaggistica Zen.
-- [Federazione](./federation.md): Dettagli sul protocollo ActivityPub in TuneCamp.
-- [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.
-- [Nginx](./nginx.md): Esempi di configurazione per reverse proxy.
+- [Federazione](./FEDERATION.md): Dettagli sul protocollo ActivityPub in TuneCamp.
+- [Subsonic](./SUBSONIC.md): Supporto al protocollo Subsonic per client esterni.
+- [Nginx](./NGINX.md): Esempi di configurazione per reverse proxy.
 - [Audio Fingerprinting](./audio-fingerprinting.md): Identificazione automatica e registro community.
 
 ---

@@ -59,7 +59,7 @@ ActivityPub allows Tunecamp to communicate with other platforms like Mastodon, P
 ### Configuration
 
 - `TUNECAMP_PUBLIC_URL`: Required for Federation.
-- `TUNECAMP_RELAY_URL`: (Optional) Connect to an ActivityPub relay to broadcast beyond followers.
+- **ActivityPub relay** (optional): To broadcast beyond direct followers, set the relay URL at runtime in the admin panel (stored as the `relayUrl` setting). This is **not** an environment variable.
 
 ---
 
