@@ -235,7 +235,7 @@ export class CatalogService {
         if (track.album_id) {
             const album = this.database.getAlbum(track.album_id) || this.database.getRelease(track.album_id);
             if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
-                (this.publishing as any).gundbService?.incrementTrackLikeCount(album.slug, String(trackId));
+                this.zendb?.incrementTrackLikeCount(album.slug, String(trackId));
             }
         }
     }
@@ -247,7 +247,7 @@ export class CatalogService {
         if (track.album_id) {
             const album = this.database.getAlbum(track.album_id) || this.database.getRelease(track.album_id);
             if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
-                (this.publishing as any).gundbService?.decrementTrackLikeCount(album.slug, String(trackId));
+                this.zendb?.decrementTrackLikeCount(album.slug, String(trackId));
             }
         }
     }
@@ -259,7 +259,7 @@ export class CatalogService {
         if (track.album_id) {
             const album = this.database.getAlbum(track.album_id) || this.database.getRelease(track.album_id);
             if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
-                (this.publishing as any).gundbService?.setTrackRating(album.slug, String(trackId), rating);
+                this.zendb?.setTrackRating(album.slug, String(trackId), rating);
             }
         }
     }

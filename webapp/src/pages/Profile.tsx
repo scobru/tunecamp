@@ -110,17 +110,45 @@ const Profile = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      setAvatar(base64);
-      setIsSaving(true);
-      try {
-        await ZenAuth.updateProfile({ avatar: base64 });
-      } catch (err) {
-        console.error("Failed to update avatar:", err);
-      } finally {
-        setIsSaving(false);
-      }
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement("canvas");
+        const max_size = 400;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > max_size) {
+            height *= max_size / width;
+            width = max_size;
+          }
+        } else {
+          if (height > max_size) {
+            width *= max_size / height;
+            height = max_size;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        const base64 = canvas.toDataURL("image/jpeg", 0.85);
+
+        setAvatar(base64);
+        setIsSaving(true);
+        try {
+          await ZenAuth.updateProfile({ avatar: base64 });
+          const profile = ZenAuth.getProfile();
+          if (profile) {
+            await API.syncGunUser(profile.pub, profile.epub, profile.alias, base64);
+          }
+        } catch (err) {
+          console.error("Failed to update avatar:", err);
+        } finally {
+          setIsSaving(false);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };

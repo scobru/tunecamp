@@ -456,7 +456,10 @@ export const ZenAuth = {
                 else {
                     const profile = ZenAuth.getProfile();
                     if (profile) {
-                        API.syncGunUser(profile.pub, profile.epub, newAlias).catch(console.error);
+                        user.get('profile').once((profileData: any) => {
+                            const avatar = profileData?.avatar;
+                            API.syncGunUser(profile.pub, profile.epub, newAlias, avatar).catch(console.error);
+                        });
                     }
                     resolve();
                 }

@@ -56,11 +56,31 @@ export class ArtistRepository extends BaseRepository {
     }
 
     getById(id: number): Artist | undefined {
+        if (id === -1) {
+            const hasSiteActor = this.db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+            if (!hasSiteActor) {
+                console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
+                const pubKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
+                const privKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
+                this.db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                  .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+            }
+        }
         const row = this.getArtistStmt.get(id);
         return this.mapArtist(row);
     }
 
     getByIdSimple(id: number): Artist | undefined {
+        if (id === -1) {
+            const hasSiteActor = this.db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+            if (!hasSiteActor) {
+                console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
+                const pubKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
+                const privKey = this.db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
+                this.db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                  .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+            }
+        }
         const row = this.getArtistSimpleStmt.get(id);
         return this.mapArtist(row);
     }

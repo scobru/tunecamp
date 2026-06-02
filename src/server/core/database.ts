@@ -1170,7 +1170,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             const po = context.role === UserRole.GUEST;
             return db.prepare(po 
                 ? "SELECT * FROM posts WHERE artist_id = ? AND visibility = 'public' AND id NOT IN (SELECT content_id FROM ap_notes WHERE note_type = 'post' AND deleted_at IS NOT NULL) ORDER BY created_at DESC" 
-                : "SELECT * FROM posts WHERE artist_id = ? ORDER BY created_at DESC"
+                : "SELECT * FROM posts WHERE artist_id = ? AND id NOT IN (SELECT content_id FROM ap_notes WHERE note_type = 'post' AND deleted_at IS NOT NULL) ORDER BY created_at DESC"
             ).all(aid) as any[];
         },
         getPublicPosts: () => db.prepare(`

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Folder, File, ArrowLeft, Music, Image as ImageIcon, Trash2, MoreHorizontal, Edit2 } from 'lucide-react';
+import { Folder, File, ArrowLeft, Music, Image as ImageIcon, Trash2, MoreHorizontal, Edit2, Move } from 'lucide-react';
 import { StringUtils } from '../utils/stringUtils';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -96,6 +96,24 @@ const Files = () => {
         }
     };
 
+    const handleMove = async (e: React.MouseEvent, item: any) => {
+        e.stopPropagation();
+        const targetDir = prompt("Enter target directory path (relative to root, or leave empty for Root):", item.path.split("/").slice(0, -1).join("/") || "/");
+        if (targetDir === null) return; // User cancelled
+
+        let cleanTarget = targetDir.trim().replace(/^\/+|\/+$/g, "");
+        const newPath = cleanTarget ? `${cleanTarget}/${item.name}` : item.name;
+
+        if (newPath === item.path) return;
+
+        try {
+            await API.renameBrowserPath(item.path, newPath);
+            loadData(currentPath);
+        } catch (err: any) {
+            alert("Failed to move: " + err.message);
+        }
+    };
+
     const handleDelete = async (e: React.MouseEvent, item: any) => {
         e.stopPropagation();
         if (!confirm(`Are you sure you want to delete ${item.name}?`)) return;
@@ -168,6 +186,11 @@ const Files = () => {
                                                 <li>
                                                     <button type="button" onClick={(e) => { e.stopPropagation(); handleRename(e, item); }} className="text-left">
                                                         <Edit2 size={16}/> Rename
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleMove(e, item); }} className="text-left">
+                                                        <Move size={16}/> Move
                                                     </button>
                                                 </li>
                                                 <li>

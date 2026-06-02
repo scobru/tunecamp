@@ -107,8 +107,11 @@ function App() {
   const { fetchStatus } = useConfigStore();
 
   useEffect(() => {
-    init();
-    fetchStatus();
+    init().then(() => {
+      if (useAuthStore.getState().isAdminAuthenticated) {
+        fetchStatus();
+      }
+    });
 
     const handleUnauthorized = () => {
       checkAuth(); // Re-check auth on 401

@@ -431,7 +431,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             return res.status(400).json({ error: "Invalid artist ID" });
         }
 
-        if (parsedArtistId === -1) {
+        if (parsedArtistId === -1 && !request.isRootAdmin) {
             return res.json([]);
         }
 
@@ -455,7 +455,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             return res.status(400).json({ error: "Invalid artist ID" });
         }
 
-        if (parsedArtistId === -1) {
+        if (parsedArtistId === -1 && !request.isRootAdmin) {
             return res.json([]);
         }
 
@@ -493,7 +493,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             return res.status(400).json({ error: "Invalid artist ID" });
         }
 
-        if (parsedArtistId === -1) {
+        if (parsedArtistId === -1 && !request.isRootAdmin) {
             return res.json([]);
         }
 
@@ -525,7 +525,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const request = req as AuthenticatedRequest;
 
         const parsedArtistId = Number(artistId);
-        if (isNaN(parsedArtistId) || parsedArtistId === -1) {
+        if (isNaN(parsedArtistId) || (parsedArtistId === -1 && !request.isRootAdmin)) {
             return res.status(400).json({ error: "Invalid artist ID" });
         }
 
@@ -552,7 +552,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const request = req as AuthenticatedRequest;
 
         const parsedArtistId = Number(artistId);
-        if (isNaN(parsedArtistId) || parsedArtistId === -1) {
+        if (isNaN(parsedArtistId) || (parsedArtistId === -1 && !request.isRootAdmin)) {
             return res.status(400).json({ error: "Invalid artist ID" });
         }
 

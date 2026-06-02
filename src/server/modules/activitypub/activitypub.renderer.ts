@@ -105,23 +105,36 @@ export class ActivityPubRenderer {
     public renderPostArticle(post: Post, artist: Artist): any {
         const userUrl = `${this.baseUrl}/users/${artist.slug}`;
         const apiUrl = `${this.baseUrl}/users/${artist.slug}`;
-        const postUrl = `${this.baseUrl}/artists/${artist.slug}?post=${post.slug}`;
         const published = post.published_at || post.created_at;
         const sentTime = published ? new Date(published).getTime() : 0;
 
         let contentHtml = `<p>${post.content}</p>`;
-        if (post.title) {
-            contentHtml = `<h2>${post.title}</h2>` + 
-                (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") + 
-                contentHtml;
+
+        if (!post.title) {
+            return {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                type: "Note",
+                id: `${this.baseUrl}/api/ap/note/post/${post.slug}/${sentTime}`,
+                attributedTo: userUrl,
+                content: contentHtml,
+                published: published,
+                to: ["https://www.w3.org/ns/activitystreams#Public"],
+                cc: [`${apiUrl}/followers`]
+            };
         }
+
+        contentHtml = `<h2>${post.title}</h2>` + 
+            (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") + 
+            contentHtml;
+
+        const postUrl = `${this.baseUrl}/post/${post.slug}`;
 
         return {
             "@context": "https://www.w3.org/ns/activitystreams",
             type: "Article",
             id: `${this.baseUrl}/api/ap/article/post/${post.slug}/${sentTime}`,
             attributedTo: userUrl,
-            name: post.title || undefined,
+            name: post.title,
             summary: post.summary || undefined,
             content: contentHtml,
             url: postUrl,
