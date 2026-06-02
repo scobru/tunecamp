@@ -177,15 +177,15 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
                     };
                 } else {
                     const post = entry.item as any;
-                    const note = apService.generatePostNote(post, artist);
+                    const article = apService.generatePostArticle(post, artist);
                     return {
                         type: "Create",
                         id: `${baseUrl}/api/ap/activity/post/${post.slug}`,
                         actor: userUrl,
-                        published: note.published,
+                        published: article.published,
                         to: ["https://www.w3.org/ns/activitystreams#Public"],
                         cc: [`${apiUrl}/followers`],
-                        object: note
+                        object: article
                     };
                 }
             });
@@ -387,7 +387,7 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const baseUrl = apService.getBaseUrl();
         const userUrl = `${baseUrl}/users/${artist.slug}`;
         const apiUrl = `${baseUrl}/api/ap/users/${artist.slug}`;
-        const note = apService.generatePostNote(post, artist);
+        const article = apService.generatePostArticle(post, artist);
 
         res.setHeader("Content-Type", "application/activity+json");
         res.json({
@@ -395,15 +395,15 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
             type: "Create",
             id: `${baseUrl}/api/ap/activity/post/${post.slug}`,
             actor: userUrl,
-            published: note.published,
+            published: article.published,
             to: ["https://www.w3.org/ns/activitystreams#Public"],
             cc: [`${apiUrl}/followers`],
-            object: note
+            object: article
         });
     });
 
-    // Resolve individual Object (Post Note)
-    router.get("/note/post/:slug/:timestamp?", async (req, res) => {
+    // Resolve individual Object (Post Article / Legacy Note)
+    router.get(["/article/post/:slug/:timestamp?", "/note/post/:slug/:timestamp?"], async (req, res) => {
         const { slug } = req.params;
         const post = db.getPostBySlug(slug);
 
@@ -412,12 +412,12 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
         const artist = db.getArtist(post.artist_id);
         if (!artist) return res.status(404).send("Artist not found");
 
-        const note = apService.generatePostNote(post, artist);
+        const article = apService.generatePostArticle(post, artist);
 
         res.setHeader("Content-Type", "application/activity+json");
         res.json({
             "@context": "https://www.w3.org/ns/activitystreams",
-            ...note
+            ...article
         });
     });
 

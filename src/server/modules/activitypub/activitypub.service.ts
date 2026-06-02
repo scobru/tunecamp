@@ -517,8 +517,8 @@ export class ActivityPubService {
         return this.renderer.renderNote(album, artist, tracks);
     }
 
-    public generatePostNote(post: Post, artist: Artist): any {
-        return this.renderer.renderPostNote(post, artist);
+    public generatePostArticle(post: Post, artist: Artist): any {
+        return this.renderer.renderPostArticle(post, artist);
     }
 
     public async acceptFollow(artist: Artist, activity: any): Promise<void> {
@@ -723,8 +723,8 @@ export class ActivityPubService {
             }
         }
 
-        const note = this.generatePostNote(post, artist);
-        this.db.createApNote(artist.id, note.id, 'post', post.id, post.slug, post.content.replace(/<[^>]*>?/gm, '').substring(0, 50) + (post.content.length > 50 ? '...' : ''));
+        const article = this.generatePostArticle(post, artist);
+        this.db.createApNote(artist.id, article.id, 'post', post.id, post.slug, post.content.replace(/<[^>]*>?/gm, '').substring(0, 50) + (post.content.length > 50 ? '...' : ''));
 
         const followers = this.db.getFollowers(artist.id);
         if (followers.length === 0) return;
@@ -739,7 +739,7 @@ export class ActivityPubService {
             id: `${baseUrl}/activity/${crypto.randomUUID()}`,
             type: "Create",
             actor: artistActorUrl,
-            object: note,
+            object: article,
             to: ["https://www.w3.org/ns/activitystreams#Public"],
             cc: [`${artistActorUrl}/followers`]
         };

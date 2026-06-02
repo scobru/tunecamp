@@ -60,9 +60,22 @@ export const PostPage = () => {
                     </div>
                 </div>
 
-                <div className="whitespace-pre-wrap leading-relaxed opacity-90 font-serif text-lg">
-                    {post.content}
-                </div>
+                {post.title && (
+                    <h1 className="text-4xl font-black tracking-tight text-prominent mb-2">
+                        {post.title}
+                    </h1>
+                )}
+
+                {post.summary && (
+                    <p className="text-lg italic opacity-70 leading-relaxed font-serif border-l-4 border-primary/30 pl-4 mb-6">
+                        {post.summary}
+                    </p>
+                )}
+
+                <div 
+                    className="whitespace-pre-wrap leading-relaxed opacity-95 font-serif text-lg prose prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: post.content }}
+                />
             </article>
         </div>
     );

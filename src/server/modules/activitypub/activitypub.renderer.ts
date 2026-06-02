@@ -102,7 +102,7 @@ export class ActivityPubRenderer {
         };
     }
 
-    public renderPostNote(post: Post, artist: Artist): any {
+    public renderPostArticle(post: Post, artist: Artist): any {
         const userUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         const apiUrl = `${this.baseUrl}/api/ap/users/${artist.slug}`;
         const postUrl = `${this.baseUrl}/artists/${artist.slug}?post=${post.slug}`;
@@ -118,9 +118,11 @@ export class ActivityPubRenderer {
 
         return {
             "@context": "https://www.w3.org/ns/activitystreams",
-            type: "Note",
-            id: `${this.baseUrl}/api/ap/note/post/${post.slug}/${sentTime}`,
+            type: "Article",
+            id: `${this.baseUrl}/api/ap/article/post/${post.slug}/${sentTime}`,
             attributedTo: userUrl,
+            name: post.title || undefined,
+            summary: post.summary || undefined,
             content: contentHtml,
             url: postUrl,
             published: published,

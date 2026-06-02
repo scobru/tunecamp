@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio } from "@fedify/fedify";
+import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio, Article } from "@fedify/fedify";
 import { BetterSqliteKvStore } from "./fedify-kv.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -9,6 +9,16 @@ import { VisibilityProfile } from "../../common/visibility.js";
 export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     const db = dbService.db;
     const kv = new BetterSqliteKvStore(db);
+
+    const getAuthenticatedLoader = async (ctx: any, localHandle?: string) => {
+        try {
+            const identifier = localHandle || "site";
+            return await ctx.getDocumentLoader({ identifier });
+        } catch (e: any) {
+            console.warn(`⚠️ Failed to get authenticated document loader for ${localHandle || "site"}:`, e.message);
+            return ctx.documentLoader;
+        }
+    };
 
     const federation = createFederation<void>({
         kv,
@@ -249,8 +259,10 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     actor: new URL(`/users/${artist.slug}`, baseUrl),
                     published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                     to: new URL("https://www.w3.org/ns/activitystreams#Public"),
-                    object: new Note({
-                        id: new URL(`/ap/note/post/${post.slug}`, baseUrl),
+                    object: new Article({
+                        id: new URL(`/ap/article/post/${post.slug}`, baseUrl),
+                        name: post.title || undefined,
+                        summary: post.summary || undefined,
                         content: contentHtml,
                         url: new URL(`/artists/${artist.slug}?post=${post.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
@@ -306,7 +318,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             // Handle site follow (relay or other instances)
             if (handle === "site") {
-                const follower = await follow.getActor(ctx);
+                const docLoader = await getAuthenticatedLoader(ctx, "site");
+                const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
                 if (!follower) return;
 
                 // For site follow, we just accept it and maybe store it as a peer
@@ -327,7 +340,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             if (!artist) return;
 
             // Get the follower actor
-            const follower = await follow.getActor(ctx);
+            const docLoader = await getAuthenticatedLoader(ctx, handle);
+            const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
             if (follower == null) return;
 
             const followerUri = follower.id?.toString();
@@ -353,7 +367,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         })
         .on(Accept, async (ctx, accept) => {
             // Handle Accept from a Relay
-            const actor = await accept.getActor(ctx);
+            const docLoader = await getAuthenticatedLoader(ctx, "site");
+            const actor = await accept.getActor({ documentLoader: docLoader }).catch(() => null) || await accept.getActor(ctx).catch(() => null);
             if (!actor) return;
 
             console.log(`✅ Received Accept from: ${actor.id?.toString()}`);
@@ -373,10 +388,11 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         .on(Announce, async (ctx, announce) => {
             // This is where "Discovery" happens via Relay or Federating Instances
             try {
-                const object = await announce.getObject(ctx);
+                const docLoader = await getAuthenticatedLoader(ctx, "site");
+                const object = await announce.getObject({ documentLoader: docLoader }).catch(() => null) || await announce.getObject(ctx).catch(() => null);
                 if (!(object instanceof Note) && !(object instanceof Audio)) return;
 
-                const author = await (object as any).getAttribution(ctx);
+                const author = await (object as any).getAttribution({ documentLoader: docLoader }).catch(() => null) || await (object as any).getAttribution(ctx).catch(() => null);
                 if (!author) return;
 
                 // Extract metadata (Tunecamp specific mapping)
@@ -463,7 +479,9 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 return;
             }
 
-            const actor = await like.getActor(ctx);
+            const artist = note.artist_id ? dbService.getArtist(note.artist_id) : null;
+            const docLoader = await getAuthenticatedLoader(ctx, artist?.slug || "site");
+            const actor = await like.getActor({ documentLoader: docLoader }).catch(() => null) || await like.getActor(ctx).catch(() => null);
             if (!actor || !actor.id) return;
             const actorUri = actor.id.toString();
 
@@ -483,7 +501,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             });
         })
         .on(Undo, async (ctx, undo) => {
-            const object = await undo.getObject(ctx);
+            const docLoader = await getAuthenticatedLoader(ctx, "site");
+            const object = await undo.getObject({ documentLoader: docLoader }).catch(() => null) || await undo.getObject(ctx).catch(() => null);
 
             if (object instanceof Follow) {
                 const follow = object;
@@ -494,14 +513,17 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
                 const handle = parsed.identifier;
                 if (handle === "site") {
-                    console.log(`📥 Site unfollowed by: ${(await undo.getActor(ctx))?.id?.toString()}`);
+                    const docLoaderFollow = await getAuthenticatedLoader(ctx, "site");
+                    const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
+                    console.log(`📥 Site unfollowed by: ${unfollower?.id?.toString()}`);
                     return;
                 }
 
                 const artist = dbService.getArtistBySlug(handle);
                 if (!artist) return;
 
-                const unfollower = await undo.getActor(ctx);
+                const docLoaderFollow = await getAuthenticatedLoader(ctx, handle);
+                const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
                 const unfollowerUri = unfollower?.id?.toString();
 
                 if (!unfollowerUri) return;
@@ -516,7 +538,9 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const note = dbService.getApNote(objectUri);
                 if (!note) return;
 
-                const actor = await undo.getActor(ctx);
+                const artist = note.artist_id ? dbService.getArtist(note.artist_id) : null;
+                const docLoaderLike = await getAuthenticatedLoader(ctx, artist?.slug || "site");
+                const actor = await undo.getActor({ documentLoader: docLoaderLike }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
                 const actorUri = actor?.id?.toString();
                 if (!actorUri) return;
 

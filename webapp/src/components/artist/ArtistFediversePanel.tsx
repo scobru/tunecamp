@@ -50,6 +50,8 @@ export const ArtistFediversePanel = () => {
     
     // Inline Composer States
     const [composerContent, setComposerContent] = useState('');
+    const [composerTitle, setComposerTitle] = useState('');
+    const [composerSummary, setComposerSummary] = useState('');
     const [composerVisibility, setComposerVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
     const [composerLoading, setComposerLoading] = useState(false);
     const [isComposerFocused, setIsComposerFocused] = useState(false);
@@ -165,8 +167,10 @@ export const ArtistFediversePanel = () => {
 
         setComposerLoading(true);
         try {
-            await API.createPost(Number(artistId), composerContent, composerVisibility);
+            await API.createPost(Number(artistId), composerContent, composerVisibility, composerTitle || undefined, composerSummary || undefined);
             setComposerContent('');
+            setComposerTitle('');
+            setComposerSummary('');
             setIsComposerFocused(false);
             await loadData(artistId);
         } catch (e: any) {
@@ -573,7 +577,25 @@ export const ArtistFediversePanel = () => {
                                 </div>
 
                                 {/* Textarea Wrapper */}
-                                <div className="flex-grow">
+                                <div className="flex-grow space-y-2">
+                                    {isComposerFocused && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in pb-1">
+                                            <input 
+                                                type="text"
+                                                className="input input-sm input-bordered w-full rounded-xl bg-base-200/50 border-base-content/10 focus:outline-none focus:border-primary px-3 py-1.5 text-xs font-semibold"
+                                                placeholder="Article Title (Optional)"
+                                                value={composerTitle}
+                                                onChange={e => setComposerTitle(e.target.value)}
+                                            />
+                                            <input 
+                                                type="text"
+                                                className="input input-sm input-bordered w-full rounded-xl bg-base-200/50 border-base-content/10 focus:outline-none focus:border-primary px-3 py-1.5 text-xs font-semibold"
+                                                placeholder="Article Summary (Optional)"
+                                                value={composerSummary}
+                                                onChange={e => setComposerSummary(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
                                     <textarea
                                         ref={composerTextareaRef}
                                         className="textarea border-none bg-transparent w-full p-0 pt-1 text-base placeholder:text-base-content/40 focus:outline-none focus:ring-0 resize-none min-h-[64px] scrollbar-thin"

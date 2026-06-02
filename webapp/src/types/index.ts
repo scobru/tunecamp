@@ -235,6 +235,8 @@ export interface SiteSettings {
 export interface Post {
     id: string;
     slug: string;
+    title?: string;
+    summary?: string;
     content: string; // HTML/Markdown
     artistId: string;
     artistName?: string;

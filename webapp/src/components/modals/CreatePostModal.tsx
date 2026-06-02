@@ -8,6 +8,8 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const dialogRef = useRef<HTMLDialogElement>(null);
     const { user } = useAuthStore();
     const [content, setContent] = useState('');
+    const [title, setTitle] = useState('');
+    const [summary, setSummary] = useState('');
     const [artistId, setArtistId] = useState('');
     const [artists, setArtists] = useState<Artist[]>([]);
     const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
@@ -18,6 +20,8 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         const handleOpen = () => {
              loadArtists();
              setContent('');
+             setTitle('');
+             setSummary('');
              setVisibility('public');
              setError('');
              dialogRef.current?.showModal();
@@ -61,7 +65,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         setError('');
 
         try {
-            await API.createPost(Number(artistId), content, visibility);
+            await API.createPost(Number(artistId), content, visibility, title || undefined, summary || undefined);
             if (onPostCreated) onPostCreated();
             dialogRef.current?.close();
         } catch (e: any) {
@@ -119,6 +123,34 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                             </select>
                         </div>
                       )}
+
+                    {/* Optional Title & Summary for federated articles */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text font-bold text-xs opacity-60">Article Title (Optional)</span>
+                            </label>
+                            <input 
+                                type="text"
+                                className="input input-bordered w-full rounded-xl bg-base-200/30 border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 text-sm"
+                                value={title}
+                                onChange={e => setTitle(e.target.value)}
+                                placeholder="E.g. TuneCamp Platform Updates"
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text font-bold text-xs opacity-60">Article Summary (Optional)</span>
+                            </label>
+                            <input 
+                                type="text"
+                                className="input input-bordered w-full rounded-xl bg-base-200/30 border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 text-sm"
+                                value={summary}
+                                onChange={e => setSummary(e.target.value)}
+                                placeholder="E.g. A quick overview of our new features..."
+                            />
+                        </div>
+                    </div>
 
                     {/* Content text editor */}
                     <div className="form-control">

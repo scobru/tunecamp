@@ -220,7 +220,17 @@ const ArtistDetails = () => {
                                     </div>
                                     
                                 </div>
-                                <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+                                {post.title && (
+                                    <h3 className="font-extrabold text-lg leading-snug tracking-tight text-prominent mb-1">
+                                        {post.title}
+                                    </h3>
+                                )}
+                                {post.summary && (
+                                    <p className="text-xs italic opacity-70 leading-relaxed mb-2 font-serif border-l-2 border-primary/30 pl-2">
+                                        {post.summary}
+                                    </p>
+                                )}
+                                <div className="prose prose-sm max-w-none opacity-90" dangerouslySetInnerHTML={{ __html: post.content }} />
                             </div>
                         ))}
                     </div>
