@@ -419,7 +419,7 @@ export interface SocialManager {
 
 export interface DatabaseService {
     db: DatabaseType;
-    consolidateDatabase(): void;
+    pruneOrphans(): void;
     transaction<T>(fn: () => T): T;
     
     identity: IdentityManager;

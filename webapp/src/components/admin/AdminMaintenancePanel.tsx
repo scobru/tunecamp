@@ -255,10 +255,10 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleOptimizeDB = async () => {
-        if (!confirm("This will optimize the database and remove orphan records. Continue?")) return;
+        if (!confirm("This will remove orphaned albums and artists (records with no tracks) from the database. Continue?")) return;
         setIsProcessing(true);
         try {
-            const res = await API.consolidateDatabase();
+            const res = await API.pruneOrphans();
             alert(res.message);
         } catch (e: any) {
             alert("Optimization failed: " + e.message);

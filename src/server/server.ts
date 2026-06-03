@@ -82,7 +82,6 @@ import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
-import { runStartupMaintenance } from "./modules/catalog/maintenance.startup.js";
 import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { createTorrentSearchRouter } from "./routes/admin/torrent-search.js";

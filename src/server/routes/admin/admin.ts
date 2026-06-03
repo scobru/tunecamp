@@ -585,22 +585,22 @@ export function createAdminRoutes(
 
 
     /**
-     * POST /api/admin/system/consolidate-db
-     * Deep clean database by removing empty/orphaned records (Any Admin)
+     * POST /api/admin/system/prune-orphans
+     * Remove empty/orphaned albums and artists from the database (Any Admin)
      */
-    router.post("/system/consolidate-db", async (req: AuthenticatedRequest, res: any) => {
+    router.post("/system/prune-orphans", async (req: AuthenticatedRequest, res: any) => {
         try {
             if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
-                return res.status(403).json({ error: "Only admin can trigger database consolidation" });
+                return res.status(403).json({ error: "Only admin can prune orphan records" });
             }
-            
-            console.log(`🧹 [Admin] Manual database consolidation triggered by ${req.username}`);
-            database.consolidateDatabase();
 
-            res.json({ message: "Database consolidation completed" });
+            console.log(`🧹 [Admin] Orphan prune triggered by ${req.username}`);
+            database.pruneOrphans();
+
+            res.json({ message: "Orphan records pruned" });
         } catch (error) {
-            console.error("Error consolidating database:", error);
-            res.status(500).json({ error: "Failed to consolidate database" });
+            console.error("Error pruning orphan records:", error);
+            res.status(500).json({ error: "Failed to prune orphan records" });
         }
     });
 
