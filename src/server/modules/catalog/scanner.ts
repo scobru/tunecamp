@@ -230,7 +230,11 @@ export class Scanner implements ScannerService {
         let album = this.database.getAlbumBySlug(slug);
 
         if (album) {
-            if (!album.cover_path || forcedCoverPath) {
+            // Re-scan for cover if: no cover, forced cover, OR existing cover_path points to a missing file
+            const existingCoverMissing = album.cover_path
+                ? !(await this.storage.pathExists(path.resolve(path.resolve(musicDir), album.cover_path)))
+                : false;
+            if (!album.cover_path || existingCoverMissing || forcedCoverPath) {
                 let coverPath = forcedCoverPath ? this.normalizePath(forcedCoverPath, musicDir) : null;
                 if (!coverPath) {
                     const coverNames = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork/cover.jpg", "artwork/cover.png", "artwork.jpg", "artwork.png"];
@@ -968,12 +972,103 @@ export class Scanner implements ScannerService {
             }
 
             if (deleted > 0) await this.librarySync.cleanupEmptyEntities();
-            
+
+            // Repair stale cover_paths caused by file moves.
+            // For every album/artist whose cover/photo no longer exists on disk,
+            // look at where the album's tracks now live and re-scan for cover images.
+            await this.repairStaleCoverPaths(musicDir);
+
             // Clean up empty directories bottom-up
             await this.cleanupEmptyFolders(musicDir);
-            
+
             return { success, failed, skipped, deleted };
         } finally { this.isConsolidating = false; }
+    }
+
+    /**
+     * After consolidation (or any bulk file move), some albums/artists may have
+     * cover_path / photo_path values pointing to files that were moved.
+     * This pass locates the track-based directory for each album and re-discovers
+     * a cover image there, updating the DB record so covers reappear immediately.
+     */
+    private async repairStaleCoverPaths(musicDir: string): Promise<void> {
+        const absMusic = path.resolve(musicDir);
+        const COVER_NAMES = ["cover.jpg", "cover.png", "folder.jpg", "folder.png", "artwork.jpg", "artwork.png", "artwork/cover.jpg", "artwork/cover.png"];
+
+        console.log(`🖼️ [Consolidate] Repairing stale album cover paths...`);
+        let repairedAlbums = 0;
+        let repairedArtists = 0;
+
+        // --- Albums ---
+        const albums = this.database.db.prepare("SELECT id, cover_path FROM albums WHERE cover_path IS NOT NULL").all() as { id: number, cover_path: string }[];
+        for (const album of albums) {
+            const absPath = path.join(absMusic, album.cover_path);
+            if (await this.storage.pathExists(absPath)) continue; // still valid
+
+            // Cover is gone — find any track in this album to locate the new directory
+            const row = this.database.db.prepare(
+                "SELECT file_path FROM tracks WHERE album_id = ? AND file_path IS NOT NULL LIMIT 1"
+            ).get(album.id) as { file_path: string } | undefined;
+            if (!row) continue;
+
+            const trackDir = path.join(absMusic, path.dirname(row.file_path));
+            let found = false;
+            for (const name of COVER_NAMES) {
+                const candidate = path.join(trackDir, name);
+                if (await this.storage.pathExists(candidate)) {
+                    const relCandidate = path.relative(absMusic, candidate).replace(/\\/g, "/");
+                    this.database.updateAlbumCover(album.id, relCandidate);
+                    repairedAlbums++;
+                    found = true;
+                    break;
+                }
+            }
+            // If no cover found on disk, null out the stale path so placeholder shows cleanly
+            if (!found) {
+                this.database.updateAlbumCover(album.id, null as any);
+            }
+        }
+
+        // --- Artists ---
+        const artists = this.database.db.prepare("SELECT id, photo_path FROM artists WHERE photo_path IS NOT NULL").all() as { id: number, photo_path: string }[];
+        for (const artist of artists) {
+            const absPath = path.join(absMusic, artist.photo_path);
+            if (await this.storage.pathExists(absPath)) continue; // still valid
+
+            // Artist photo moved — find any track by this artist to get the directory
+            const row = this.database.db.prepare(
+                "SELECT file_path FROM tracks WHERE artist_id = ? AND file_path IS NOT NULL LIMIT 1"
+            ).get(artist.id) as { file_path: string } | undefined;
+            if (!row) continue;
+
+            // Look for artist photo files in the artist directory (one level up from the album dir)
+            const trackDir = path.join(absMusic, path.dirname(row.file_path));
+            const artistDir = path.dirname(trackDir);
+            const photoNames = ["artist.jpg", "artist.png", "photo.jpg", "photo.png", "avatar.jpg", "avatar.png", "folder.jpg", "folder.png"];
+            let artistPhotoFixed = false;
+            outer: for (const searchDir of [trackDir, artistDir]) {
+                for (const name of photoNames) {
+                    const candidate = path.join(searchDir, name);
+                    if (await this.storage.pathExists(candidate)) {
+                        const relCandidate = path.relative(absMusic, candidate).replace(/\\/g, "/");
+                        this.database.db.prepare("UPDATE artists SET photo_path = ? WHERE id = ?").run(relCandidate, artist.id);
+                        repairedArtists++;
+                        artistPhotoFixed = true;
+                        break outer;
+                    }
+                }
+            }
+            // Null out stale path if no photo found on disk
+            if (!artistPhotoFixed) {
+                this.database.db.prepare("UPDATE artists SET photo_path = NULL WHERE id = ?").run(artist.id);
+            }
+        }
+
+        if (repairedAlbums > 0 || repairedArtists > 0) {
+            console.log(`✅ [Consolidate] Repaired ${repairedAlbums} album covers, ${repairedArtists} artist photos.`);
+        } else {
+            console.log(`✨ [Consolidate] All cover paths are up to date.`);
+        }
     }
 
     private async cleanupEmptyFolders(musicDir: string): Promise<void> {
