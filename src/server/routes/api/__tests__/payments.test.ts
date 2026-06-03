@@ -167,7 +167,9 @@ describe('Payments Routes', () => {
             expect(mockDatabase.createUnlockCode).toHaveBeenCalledWith(
                 expect.any(String),
                 10,
-                5
+                5,
+                undefined,
+                undefined
             );
         });
     });

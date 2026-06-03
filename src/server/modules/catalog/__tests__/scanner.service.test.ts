@@ -62,7 +62,7 @@ describe('ScannerService', () => {
         const result = await scannerService.scanDirectory('/music/folder');
         
         expect(result.added).toBe(1);
-        expect(mockScanner.scanDirectory).toHaveBeenCalledWith('/music/folder');
+        expect(mockScanner.scanDirectory).toHaveBeenCalledWith('/music/folder', undefined);
     });
 
     test('processAudioFile should proxy to local scanner', async () => {

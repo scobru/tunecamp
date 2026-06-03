@@ -26,6 +26,7 @@ const mockDbService = {
     createTrack: jest.fn(),
     updateTrackLosslessPath: jest.fn(),
     deleteTrack: jest.fn(),
+    mergeTracks: jest.fn(),
     getArtistByName: jest.fn(),
     getAlbumBySlug: jest.fn(),
     getAlbum: jest.fn(),
@@ -88,8 +89,10 @@ describe('Scanner Core Logic', () => {
         // @ts-ignore
         await scanner.deduplicateLibraryTracks();
 
-        expect(mockDbService.updateTrackLosslessPath).toHaveBeenCalledWith(1, 'tracks/track1.wav');
-        expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
+        // Dedup now delegates the keep/merge decision to database.mergeTracks,
+        // which carries over lossless_path and deletes the redundant row.
+        // Equal richness -> lowest id (track 1) is the keeper, track 2 merges into it.
+        expect(mockDbService.mergeTracks).toHaveBeenCalledWith(2, 1);
     });
 
     test('cleanupStaleLibraryTracks should remove missing files', async () => {
