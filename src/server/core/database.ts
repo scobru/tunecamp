@@ -1125,7 +1125,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateAlbumArtist: (id: number, aid: number) => albumRepository.update(id, { artist_id: aid }),
         updateAlbumOwner: (id: number, oid: number) => albumRepository.update(id, { owner_id: oid }),
         updateAlbumTitle: (id: number, t: string) => albumRepository.update(id, { title: t }),
-        updateAlbumCover: (id: number, p: string) => albumRepository.update(id, { cover_path: p }),
+        updateAlbumCover: (id: number, p: string | null) => albumRepository.update(id, { cover_path: p }),
         updateAlbumGenre: (id: number, g: string | null) => albumRepository.update(id, { genre: g }),
         updateAlbumYear: (id: number, y: any) => albumRepository.update(id, { year: Number(y) }),
         updateAlbumDownload: (id: number, d: string | null) => albumRepository.update(id, { download: d }),

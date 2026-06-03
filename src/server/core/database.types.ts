@@ -509,7 +509,7 @@ export interface DatabaseService {
     updateAlbumArtist(id: number, artistId: number): void;
     updateAlbumOwner(id: number, ownerId: number): void;
     updateAlbumTitle(id: number, title: string): void;
-    updateAlbumCover(id: number, coverPath: string): void;
+    updateAlbumCover(id: number, coverPath: string | null): void;
     updateAlbumGenre(id: number, genre: string | null): void;
     updateAlbumYear(id: number, year: number | string | null): void;
     updateAlbumDownload(id: number, download: string | null): void;
