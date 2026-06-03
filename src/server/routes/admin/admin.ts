@@ -614,8 +614,8 @@ export function createAdminRoutes(
             if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only super root admin can force sync" });
             }
-            await zendbService.syncNetwork();
-            res.json({ message: "Network sync completed" });
+            zendbService.syncNetwork().catch((err: any) => console.error("[Admin] Background ZenDB sync error:", err));
+            res.json({ message: "Network sync triggered in background" });
         } catch (error) {
             console.error("Error syncing network:", error);
             res.status(500).json({ error: "Failed to sync network" });
@@ -633,11 +633,17 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Only super root admin can trigger file consolidation" });
             }
 
-            const result = await scanner.consolidateFiles(musicDir);
-            res.json({ 
-                message: "File consolidation completed",
-                ...result
+            const started = taskManager.run('file-consolidate', async () => {
+                const result = await scanner.consolidateFiles(musicDir);
+                console.log(`✅ [Admin] File consolidation complete. success=${result.success} failed=${result.failed} skipped=${result.skipped} deleted=${result.deleted}`);
+                return result;
             });
+
+            if (!started) {
+                return res.status(409).json({ error: "File consolidation is already in progress" });
+            }
+
+            res.json({ message: "File consolidation started in background" });
         } catch (error) {
             console.error("Error consolidating files:", error);
             res.status(500).json({ error: "Failed to consolidate files" });
@@ -655,12 +661,9 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Only super root admin can trigger global network cleanup" });
             }
 
-            // This can take a while, so we don't await it here if we want to return immediately,
-            // but for a cleanup triggered by a button, it's probably better to await or return status.
-            // Awaiting for now to provide better feedback to the admin.
-            await zendbService.cleanupGlobalNetwork();
+            zendbService.cleanupGlobalNetwork().catch((err: any) => console.error("[Admin] Background network cleanup error:", err));
 
-            res.json({ message: "Global network cleanup completed" });
+            res.json({ message: "Global network cleanup triggered in background" });
         } catch (error) {
             console.error("Error in global network cleanup:", error);
             res.status(500).json({ error: "Global cleanup failed" });
