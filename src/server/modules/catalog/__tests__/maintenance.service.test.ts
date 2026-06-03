@@ -30,19 +30,12 @@ const mockDb = {
 const mockCatalogService = {
     updateTrack: jest.fn(),
     updateAlbum: jest.fn(),
-    analyzeFingerprint: jest.fn(),
 };
 
 const mockOpenRouter = {
     enrichMetadata: jest.fn(),
     identifyArtist: jest.fn(),
     identifyAlbum: jest.fn(),
-};
-
-const mockFingerprinting = {};
-const mockZendb = {
-    getFingerprintMetadata: jest.fn(),
-    shareFingerprint: jest.fn(),
 };
 
 const mockAutotagger = {
@@ -67,8 +60,6 @@ describe('MaintenanceService', () => {
             mockDb as any,
             mockCatalogService as any,
             mockOpenRouter as any,
-            mockFingerprinting as any,
-            mockZendb as any,
             mockAutotagger as any
         );
     });
@@ -111,32 +102,5 @@ describe('MaintenanceService', () => {
 
         expect(result.skipped).toBe(1);
         expect(mockCatalogService.updateTrack).not.toHaveBeenCalled();
-    });
-
-    test('fingerprintLookup should return metadata from ZenDB', async () => {
-        const trackId = 1;
-        const track = { id: 1, fingerprint: 'f123' };
-        (mockDb.getTrack as any).mockReturnValue(track);
-        (mockZendb.getFingerprintMetadata as any).mockResolvedValue({ title: 'Matched' });
-
-        const result = await maintenanceService.fingerprintLookup(trackId);
-
-        expect(result.title).toBe('Matched');
-        expect(mockZendb.getFingerprintMetadata).toHaveBeenCalledWith('f123');
-    });
-
-    test('batchIdentifyTracks should process in chunks', async () => {
-        const tracks = [
-            { id: 1, file_path: 'p1' },
-            { id: 2, file_path: 'p2' }
-        ];
-        (mockDb.getTracks as any).mockReturnValue(tracks);
-        (mockCatalogService.analyzeFingerprint as any).mockResolvedValue('f');
-        (mockZendb.getFingerprintMetadata as any).mockResolvedValue(null);
-
-        const result = await maintenanceService.batchIdentifyTracks();
-
-        expect(result.processed).toBe(2);
-        expect(mockCatalogService.analyzeFingerprint).toHaveBeenCalledTimes(2);
     });
 });

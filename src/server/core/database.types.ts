@@ -419,7 +419,7 @@ export interface SocialManager {
 
 export interface DatabaseService {
     db: DatabaseType;
-    consolidateDatabase(): void;
+    pruneOrphans(): void;
     transaction<T>(fn: () => T): T;
     
     identity: IdentityManager;
@@ -558,11 +558,9 @@ export interface DatabaseService {
     updateTrackService(id: number, service: string | null): void;
     updateTrackUrl(id: number, url: string | null): void;
     updateTrackExternalId(id: number, externalId: string | null): void;
-    updateTrackFingerprint(id: number, fingerprint: string): void;
     updateTrackHash(id: number, hash: string): void;
     updateTrackPathsPrefix(oldPrefix: string, newPrefix: string): void;
     getTrackByExternalId(externalId: string): Track | undefined;
-    getTrackByFingerprint(fingerprint: string): Track | undefined;
     getTrackByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined;
     getRemoteTracks(): RemoteContent[];
     getRemotePosts(): RemoteContent[];

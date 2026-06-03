@@ -79,11 +79,9 @@ import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
 import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
-import { FingerprintService } from "./modules/media/fingerprint.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
 import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
-import { runStartupMaintenance } from "./modules/catalog/maintenance.startup.js";
 import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { createTorrentSearchRouter } from "./routes/admin/torrent-search.js";
@@ -178,9 +176,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const lifecycleService = new LifecycleService(database, publishingService, apService);
 
-    const fingerprintService = new FingerprintService();
-
-    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, fingerprintService, openRouterService, metadataService);
+    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, openRouterService, metadataService);
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
 
     const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
@@ -200,7 +196,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     }
 
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
-    const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, fingerprintService, zendbService, autotaggerService);
+    const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, autotaggerService);
     
     const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService);
     const subsonicService = new SubsonicService(database);

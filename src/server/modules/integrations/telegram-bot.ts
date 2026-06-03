@@ -293,10 +293,10 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                     if (!this.isAuthorized(ctx)) {
                         return this.safeReply(ctx, "⚠️ Unauthorized. Only admins can trigger a rescan.");
                     }
-                    await this.safeReply(ctx, "🔍 Starting library consolidation and rescan...");
+                    await this.safeReply(ctx, "🔍 Starting library rescan...");
                     try {
-                        const result = await this.scanner.consolidateFiles(this.musicDir);
-                        return this.safeReply(ctx, `✅ Rescan complete!\nSuccess: ${result.success}\nFailed: ${result.failed}\nSkipped: ${result.skipped}`);
+                        const result = await this.scanner.scanDirectory(this.musicDir);
+                        return this.safeReply(ctx, `✅ Rescan complete!\nProcessed: ${result.successful.length}\nFailed: ${result.failed.length}`);
                     } catch (e) {
                         return this.safeReply(ctx, `❌ Rescan failed: ${e}`);
                     }

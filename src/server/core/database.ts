@@ -1023,7 +1023,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             return db.transaction(fn)();
         },
 
-        consolidateDatabase(): void {
+        pruneOrphans(): void {
             db.transaction(() => {
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
@@ -1174,11 +1174,9 @@ export function createDatabase(dbPath: string): DatabaseService {
         updateTrackService: (id: number, s: string | null) => trackRepository.update(id, { service: s }),
         updateTrackUrl: (id: number, u: string | null) => trackRepository.update(id, { url: u }),
         updateTrackExternalId: (id: number, eid: string | null) => trackRepository.update(id, { external_id: eid }),
-        updateTrackFingerprint: (id: number, f: string) => trackRepository.update(id, { fingerprint: f }),
         updateTrackHash: (id: number, h: string) => trackRepository.update(id, { hash: h }),
         updateTrackPathsPrefix: (o: string, n: string) => trackRepository.updatePathsPrefix(o, n),
         getTrackByExternalId: (e: string) => trackRepository.getByExternalId(e) as any,
-        getTrackByFingerprint: (f: string) => trackRepository.getByFingerprint(f) as any,
         getTrackByMetadata: (t: string, aid: number | null, albid: number | null) => trackRepository.getByMetadata(t, aid, albid),
         getRemoteTracks: () => remoteContentRepository.getRemoteTracks(),
         getRemotePosts: () => remoteContentRepository.getRemotePosts(),

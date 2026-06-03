@@ -13,7 +13,6 @@ describe('Catalog Track Artist Update Synchronization', () => {
         const mockPublishing: any = { syncRelease: (jest.fn() as any).mockResolvedValue(undefined) };
         const mockZendb: any = {};
         const mockStorage: any = {};
-        const mockFingerprinting: any = {};
         const mockOpenRouter: any = {};
         const mockMetadataService: any = { syncPhysicalTags: (jest.fn() as any).mockResolvedValue(undefined) };
 
@@ -23,7 +22,6 @@ describe('Catalog Track Artist Update Synchronization', () => {
             mockZendb,
             mockStorage,
             'musicDir',
-            mockFingerprinting,
             mockOpenRouter,
             mockMetadataService
         );

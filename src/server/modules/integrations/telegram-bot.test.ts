@@ -21,7 +21,7 @@ describe('TelegramBotService', () => {
         };
         mockScanner = {
             processAudioFile: jest.fn(),
-            consolidateFiles: jest.fn()
+            scanDirectory: jest.fn()
         };
         const configMock = {
             musicDir: '/tmp/music',

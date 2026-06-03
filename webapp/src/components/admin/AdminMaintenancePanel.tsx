@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, Shield, RefreshCw, Save, Zap } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Shield, RefreshCw, Zap } from "lucide-react";
 
 import { MetadataMatchModal } from "../MetadataMatchModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
@@ -219,67 +219,6 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
-    const handleFingerprintLookup = async (trackId: number) => {
-        setIsProcessing(true);
-        try {
-            const metadata = await API.fingerprintLookup(trackId);
-            if (metadata) {
-                if (confirm(`✨ Community Match Found!\n\nTitle: ${metadata.title}\nArtist: ${metadata.artist}\nAlbum: ${metadata.album}\n\nApply this metadata?`)) {
-                    await API.applyTrackMetadata(trackId, {
-                        genre: metadata.genre,
-                        year: metadata.year,
-                        albumTitle: metadata.album
-                    });
-                    loadTracks();
-                }
-            }
-        } catch (e: any) {
-            alert(e.status === 404 ? "No community match found for this audio signature." : "Fingerprint lookup failed: " + e.message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-    
-    const handleShareFingerprint = async (trackId: number) => {
-
-        setIsProcessing(true);
-        try {
-            await API.shareFingerprint(trackId);
-            alert("🚀 Track shared with the community registry!");
-        } catch (e: any) {
-            alert("Sharing failed: " + e.message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleBulkFingerprintMatch = async (ids: number[]) => {
-        if (ids.length === 0) return;
-        setIsProcessing(true);
-        let foundCount = 0;
-        try {
-            for (const id of ids) {
-                try {
-                    const metadata = await API.fingerprintLookup(id);
-                    if (metadata) {
-                        await API.applyTrackMetadata(id, {
-                            genre: metadata.genre,
-                            year: metadata.year,
-                            albumTitle: metadata.album
-                        });
-                        foundCount++;
-                    }
-                } catch (e) {
-                    // Silently continue for bulk
-                }
-            }
-            alert(`✅ Community Match Processed!\n\nFound and applied metadata for ${foundCount} tracks.`);
-            loadTracks();
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     const handleRepairArtistLinks = async (artistId: number) => {
         if (!confirm("This will attempt to relink orphaned tracks and albums to this artist by matching names. Continue?")) return;
         setIsProcessing(true);
@@ -289,19 +228,6 @@ export const AdminMaintenancePanel = () => {
             loadArtists();
         } catch (e: any) {
             alert(`❌ Repair failed: ${e.message}`);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleScanAllFingerprints = async () => {
-        if (!confirm("Start mass fingerprint scan for the entire library? This will process tracks without fingerprints in the background.")) return;
-        setIsProcessing(true);
-        try {
-            const res = await API.scanAllFingerprints();
-            alert(res.message);
-        } catch (e: any) {
-            alert("Scan failed: " + e.message);
         } finally {
             setIsProcessing(false);
         }
@@ -329,10 +255,10 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleOptimizeDB = async () => {
-        if (!confirm("This will optimize the database and remove orphan records. Continue?")) return;
+        if (!confirm("This will remove orphaned albums and artists (records with no tracks) from the database. Continue?")) return;
         setIsProcessing(true);
         try {
-            const res = await API.consolidateDatabase();
+            const res = await API.pruneOrphans();
             alert(res.message);
         } catch (e: any) {
             alert("Optimization failed: " + e.message);
@@ -362,19 +288,6 @@ export const AdminMaintenancePanel = () => {
             alert("Network cleanup finished successfully.");
         } catch (e: any) {
             alert("Cleanup failed: " + e.message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleOrganizeFiles = async () => {
-        if (!confirm("Are you sure you want to organize physical files? This will move files to an 'Artist / Album / Track' structure and rename them based on database tags.")) return;
-        setIsProcessing(true);
-        try {
-            const res = await API.consolidateFiles();
-            alert(`File organization finished. Success: ${res.success}, Failed: ${res.failed}, Skipped: ${res.skipped}`);
-        } catch (e: any) {
-            alert("Organization failed: " + e.message);
         } finally {
             setIsProcessing(false);
         }
@@ -505,10 +418,6 @@ export const AdminMaintenancePanel = () => {
                                 title = "Writing Database Tags to Files";
                                 icon = <Disc className="animate-spin text-info" size={16} />;
                                 colorClass = "progress-info";
-                            } else if (task.taskId === 'fingerprint-scan') {
-                                title = "Fingerprint Registry Identification";
-                                icon = <Fingerprint className="animate-pulse text-warning" size={16} />;
-                                colorClass = "progress-warning";
                             }
 
                             const hasProgress = task.progress && task.progress.total > 0;
@@ -550,25 +459,6 @@ export const AdminMaintenancePanel = () => {
             {mode === 'tracks' && (
                 <div className="space-y-6">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="card card-m3 bg-base-300/30 border border-base-content/5">
-                            <div className="card-body p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Save className="text-primary" size={18} />
-                                    <h2 className="card-title text-sm font-bold uppercase tracking-wider">File Organization</h2>
-                                </div>
-                                <p className="opacity-70 text-xs mb-4">
-                                    Rename physical files to "Artist - Title" format based on database tags.
-                                </p>
-                                <button
-                                    className="btn btn-primary btn-outline btn-xs w-full"
-                                    onClick={handleOrganizeFiles}
-                                    disabled={isProcessing}
-                                >
-                                    Organize Files
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="card card-m3 bg-base-300/30 border border-base-content/5">
                             <div className="card-body p-4">
                                 <div className="flex items-center gap-2 mb-2">
@@ -680,16 +570,7 @@ export const AdminMaintenancePanel = () => {
                                 {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
                                 Autofill ({selectedIds.length})
                             </button>
-                            <button 
-                                className="btn btn-sm btn-outline btn-primary"
-                                onClick={handleScanAllFingerprints}
-                                disabled={isProcessing}
-                                title="Identify all tracks"
-                            >
-                                <Fingerprint size={18} />
-                                Identify
-                            </button>
-                            <button 
+                            <button
                                 className="btn btn-sm btn-outline btn-primary"
                                 onClick={handleSyncTags}
                                 disabled={isProcessing}
@@ -711,16 +592,6 @@ export const AdminMaintenancePanel = () => {
                             </button>
                         </div>
 
-                        <div className="flex gap-1 items-center bg-primary/10 p-1 rounded-lg border border-primary/20">
-                            <button 
-                                className="btn btn-sm btn-primary"
-                                disabled={selectedIds.length === 0 || isProcessing || isAIProcessing}
-                                onClick={() => handleBulkFingerprintMatch(selectedIds)}
-                            >
-                                <Fingerprint size={18} />
-                                Community Match ({selectedIds.length})
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -902,25 +773,7 @@ export const AdminMaintenancePanel = () => {
                                     )}
                                     <td className="text-right">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {mode === 'tracks' && (
-                                                <>
-                                                    <button 
-                                                        className="btn btn-xs btn-ghost text-primary"
-                                                        title="Community Match"
-                                                        onClick={() => handleFingerprintLookup(item.id)}
-                                                    >
-                                                        <Fingerprint size={12} />
-                                                    </button>
-                                                    <button 
-                                                        className="btn btn-xs btn-ghost text-secondary"
-                                                        title="Share with Community"
-                                                        onClick={() => handleShareFingerprint(item.id)}
-                                                    >
-                                                        <Share2 size={12} />
-                                                    </button>
-                                                </>
-                                            )}
-                                            <button 
+                                            <button
                                                 className="btn btn-xs btn-ghost"
                                                 onClick={() => {
                                                     if (mode === 'tracks') setPickerTrack(item);

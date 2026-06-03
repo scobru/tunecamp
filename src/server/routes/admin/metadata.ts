@@ -355,61 +355,6 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
     });
 
     /**
-     * POST /api/metadata/maintenance/fingerprint/lookup/:trackId
-     * Lookup metadata for a track using its fingerprint via ZenDB
-     */
-    router.post("/maintenance/fingerprint/lookup/:trackId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
-        const trackId = parseInt(req.params.trackId);
-        try {
-            const metadata = await maintenance.fingerprintLookup(trackId);
-            if (metadata) {
-                res.json(metadata);
-            } else {
-                res.status(404).json({ error: "No community fingerprint found for this track" });
-            }
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    /**
-     * POST /api/metadata/maintenance/fingerprint/share/:trackId
-     * Share track metadata with the community via ZenDB fingerprinting
-     */
-    router.post("/maintenance/fingerprint/share/:trackId", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
-        const trackId = parseInt(req.params.trackId);
-        try {
-            await maintenance.shareFingerprint(trackId);
-            res.json({ success: true });
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    /**
-     * POST /api/metadata/maintenance/fingerprint/scan-all
-     * Scans all tracks that don't have a fingerprint and identifies them.
-     */
-    router.post("/maintenance/fingerprint/scan-all", async (req: AuthenticatedRequest, res) => {
-        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
-        try {
-            const started = taskManager.run('fingerprint-scan', () => maintenance.batchIdentifyTracks((processed, total) => {
-                taskManager.updateProgress('fingerprint-scan', processed, total, `Identifying tracks: ${processed}/${total}`);
-            }));
-            
-            if (!started) {
-                return res.status(409).json({ error: "Fingerprint scan is already in progress" });
-            }
-            
-            res.json({ message: "Batch fingerprint identification started in background" });
-        } catch (e: any) {
-            res.status(500).json({ error: e.message });
-        }
-    });
-
-    /**
      * POST /api/metadata/maintenance/audit-all
      * Starts the background library audit/repair process
      */
