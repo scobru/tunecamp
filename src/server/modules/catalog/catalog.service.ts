@@ -4,7 +4,6 @@ import type { MetadataService } from "./metadata.service.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
-import type { FingerprintService } from "../media/fingerprint.service.js";
 import { VisibilityGuardian, Capability, VisibilityProfile, UserRole } from "../../common/visibility.js";
 import path from "path";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
@@ -23,7 +22,6 @@ export class CatalogService {
         private zendb: ZenDBService,
         private storage: StorageEngine,
         private musicDir: string,
-        private fingerprinting: FingerprintService,
         private openRouter: OpenRouterService,
         private metadataService: MetadataService
     ) {}
@@ -403,41 +401,9 @@ export class CatalogService {
         
         const updatedTrack = this.database.getTrack(trackId);
         if (updatedTrack) {
-            this.autoIdentify(trackId).catch(err => console.error(`[CatalogService] autoIdentify failed:`, err));
             return updatedTrack;
         }
         throw new Error("Failed to localize track");
-    }
-
-    async analyzeFingerprint(trackId: number): Promise<string | null> {
-        const track = this.database.getTrack(trackId);
-        if (!track || !track.file_path) return null;
-        const fullPath = path.join(this.musicDir, track.file_path);
-        if (!(await this.storage.pathExists(fullPath))) {
-            console.warn(`[CatalogService] Cannot analyze fingerprint: File not found at ${fullPath}`);
-            return null;
-        }
-        const { fingerprint } = await this.fingerprinting.generate(fullPath);
-        this.database.updateTrackFingerprint(trackId, fingerprint);
-        return fingerprint;
-    }
-
-    async autoIdentify(trackId: number): Promise<void> {
-        try {
-            const track = this.database.getTrack(trackId);
-            if (!track) return;
-            let fingerprint = track.fingerprint;
-            if (!fingerprint) fingerprint = await this.analyzeFingerprint(trackId);
-            if (!fingerprint) return;
-            const metadata = await this.zendb.getFingerprintMetadata(fingerprint);
-            if (metadata) {
-                const updates: any = {};
-                if (!track.genre && metadata.genre) updates.genre = metadata.genre;
-                if (!track.year && metadata.year) updates.year = metadata.year;
-                if (!track.album_id && metadata.album) updates.album = metadata.album;
-                if (Object.keys(updates).length > 0) await this.updateTrack(trackId, updates);
-            }
-        } catch (err) { console.error(`[CatalogService] autoIdentify failed:`, err); }
     }
 
     // --- Helpers & Settings ---

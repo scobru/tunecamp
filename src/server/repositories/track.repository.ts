@@ -168,11 +168,6 @@ export class TrackRepository extends BaseRepository {
         return row ? this.mapTrack(row) : undefined;
     }
 
-    getByFingerprint(fingerprint: string): Track | undefined {
-        const row = this.db.prepare("SELECT * FROM v_tracks WHERE fingerprint = ?").get(fingerprint);
-        return row ? this.mapTrack(row) : undefined;
-    }
-
     create(track: Omit<Track, "id" | "created_at" | "album_title">): number {
         // Safeguard foreign keys to prevent "FOREIGN KEY constraint failed"
         let safeAlbumId = track.album_id;

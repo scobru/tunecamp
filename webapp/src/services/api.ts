@@ -538,11 +538,6 @@ const API = {
     seedTorrent: (filePaths: string[], name: string) => handleResponse(api.post<{ success: boolean, magnetUri: string }>('admin/torrents/seed', { filePaths, name })),
     deleteTorrent: (infoHash: string, deleteFiles = false) => handleResponse(api.delete(`admin/torrents/${infoHash}${deleteFiles ? '?deleteFiles=true' : ''}`)),
     purgeStuckTorrents: (timeoutMs?: number) => handleResponse(api.post<{ success: boolean, removed: string[], count: number }>('admin/torrents/purge', timeoutMs !== undefined ? { timeoutMs } : {})),
-    
-    // --- Fingerprinting ---
-    fingerprintLookup: (trackId: number) => handleResponse(api.post<any>(`metadata/maintenance/fingerprint/lookup/${trackId}`)),
-    shareFingerprint: (trackId: number) => handleResponse(api.post<{ success: boolean }>(`metadata/maintenance/fingerprint/share/${trackId}`)),
-    scanAllFingerprints: () => handleResponse(api.post<{ message: string }>('metadata/maintenance/fingerprint/scan-all')),
 
     startLibraryAudit: (options: { forceRepair?: boolean, useAI?: boolean }) => handleResponse(api.post('metadata/maintenance/audit-all', options)),
     getAuditStatus: () => handleResponse(api.get('metadata/maintenance/audit-status')),
