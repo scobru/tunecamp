@@ -671,7 +671,7 @@ export class Scanner implements ScannerService {
         console.log("🧹 [Scanner] Running memory-efficient deduplication...");
         const groups = new Map<string, number[]>();
         const tracksIter = this.database.iterateTracks();
-        
+
         for (const t of tracksIter) {
             const k = `${t.album_id}|${t.artist_id}|${t.title.toLowerCase().trim()}`;
             if (!groups.has(k)) groups.set(k, []);
@@ -689,6 +689,56 @@ export class Scanner implements ScannerService {
                 if (!other) continue;
                 const lossless = other.lossless_path || (path.extname(other.file_path || '').toLowerCase() === '.wav' ? other.file_path : null);
                 if (lossless && !primary.lossless_path) this.database.updateTrackLosslessPath(primary.id, lossless);
+                this.database.deleteTrack(other.id);
+            }
+        }
+
+        await this.softMergeUntaggedDuplicates();
+    }
+
+    /**
+     * Soft merge: collapse rows that share the same title (and duration, when known)
+     * but where one row carries full album/artist metadata and the others don't.
+     * Common cause: a file scanned without tags before a tagged copy was imported.
+     * The strict pass above never catches these because the keys differ on NULLs.
+     */
+    private async softMergeUntaggedDuplicates() {
+        const titleGroups = new Map<string, number[]>();
+        for (const t of this.database.iterateTracks()) {
+            if (!t.title) continue;
+            const title = t.title.toLowerCase().trim();
+            if (!title) continue;
+            const durBucket = t.duration ? Math.round(t.duration) : 'x';
+            const k = `${title}|${durBucket}`;
+            if (!titleGroups.has(k)) titleGroups.set(k, []);
+            titleGroups.get(k)!.push(t.id);
+        }
+
+        const score = (t: Track) => (t.album_id ? 2 : 0) + (t.artist_id ? 1 : 0);
+
+        for (const [, ids] of titleGroups.entries()) {
+            if (ids.length <= 1) continue;
+            const rows = ids
+                .map(id => this.database.getTrack(id))
+                .filter((t): t is Track => !!t);
+            if (rows.length <= 1) continue;
+
+            rows.sort((a, b) => score(b) - score(a));
+            const primary = rows[0];
+            const primaryScore = score(primary);
+            if (primaryScore === 0) continue; // nothing to enrich from
+
+            for (let i = 1; i < rows.length; i++) {
+                const other = rows[i];
+                // Only merge rows strictly less tagged than primary; leave equally-tagged
+                // entries alone (likely genuine alt versions on different albums).
+                if (score(other) >= primaryScore) continue;
+
+                const lossless = other.lossless_path
+                    || (path.extname(other.file_path || '').toLowerCase() === '.wav' ? other.file_path : null);
+                if (lossless && !primary.lossless_path) {
+                    this.database.updateTrackLosslessPath(primary.id, lossless);
+                }
                 this.database.deleteTrack(other.id);
             }
         }
