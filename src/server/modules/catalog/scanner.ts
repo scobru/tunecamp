@@ -886,9 +886,15 @@ export class Scanner implements ScannerService {
                             if (owner && owner.id !== t.id) {
                                 const parsed = path.parse(newP);
                                 let attempt = 1;
+                                let alreadyOptimal = false;
                                 while (attempt < 1000) {
                                     const candidate = path.join(parsed.dir, `${parsed.name} (${attempt})${parsed.ext}`).replace(/\\/g, "/");
                                     const candidateAbs = path.join(musicDir, candidate);
+                                    // Source file IS this (N) candidate: already at best non-colliding position
+                                    if (candidate === oldP) {
+                                        alreadyOptimal = true;
+                                        break;
+                                    }
                                     if (!await this.storage.pathExists(candidateAbs)) {
                                         finalNewP = candidate;
                                         finalFNew = candidateAbs;
@@ -896,6 +902,7 @@ export class Scanner implements ScannerService {
                                     }
                                     attempt++;
                                 }
+                                if (alreadyOptimal) { skipped++; count++; continue; }
                                 console.warn(`⚠️ [Consolidate] Destination ${newP} owned by track ${owner.id}, renaming to ${finalNewP}`);
                             }
                         }
@@ -918,6 +925,8 @@ export class Scanner implements ScannerService {
                                         while (attempt < 1000) {
                                             const candidate = path.join(parsed.dir, `${parsed.name} (${attempt})${parsed.ext}`).replace(/\\/g, "/");
                                             const candidateAbs = path.join(musicDir, candidate);
+                                            // Already at the best non-colliding lossless position
+                                            if (candidate === t.lossless_path) break;
                                             if (!await this.storage.pathExists(candidateAbs)) {
                                                 newLosslessP = candidate;
                                                 newLossless = candidateAbs;
