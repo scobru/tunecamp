@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, Shield, RefreshCw, Save, Zap } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Fingerprint, Share2, Shield, RefreshCw, Zap } from "lucide-react";
 
 import { MetadataMatchModal } from "../MetadataMatchModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
@@ -367,19 +367,6 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
-    const handleOrganizeFiles = async () => {
-        if (!confirm("Are you sure you want to organize physical files? This will move files to an 'Artist / Album / Track' structure and rename them based on database tags.")) return;
-        setIsProcessing(true);
-        try {
-            const res = await API.consolidateFiles();
-            alert(`File organization finished. Success: ${res.success}, Failed: ${res.failed}, Skipped: ${res.skipped}`);
-        } catch (e: any) {
-            alert("Organization failed: " + e.message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     const handleRescan = async () => {
         if (!confirm("Trigger a full library rescan? This deep scan finds new files and updates existing metadata.")) return;
         setIsProcessing(true);
@@ -550,25 +537,6 @@ export const AdminMaintenancePanel = () => {
             {mode === 'tracks' && (
                 <div className="space-y-6">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <div className="card card-m3 bg-base-300/30 border border-base-content/5">
-                            <div className="card-body p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Save className="text-primary" size={18} />
-                                    <h2 className="card-title text-sm font-bold uppercase tracking-wider">File Organization</h2>
-                                </div>
-                                <p className="opacity-70 text-xs mb-4">
-                                    Rename physical files to "Artist - Title" format based on database tags.
-                                </p>
-                                <button
-                                    className="btn btn-primary btn-outline btn-xs w-full"
-                                    onClick={handleOrganizeFiles}
-                                    disabled={isProcessing}
-                                >
-                                    Organize Files
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="card card-m3 bg-base-300/30 border border-base-content/5">
                             <div className="card-body p-4">
                                 <div className="flex items-center gap-2 mb-2">

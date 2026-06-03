@@ -382,7 +382,6 @@ const API = {
     // --- Admin: System ---
     getListeningStats: () => handleResponse(api.get<any>('stats/library/overview')),
     cleanupNetwork: () => handleResponse(api.post('admin/network/cleanup')),
-    consolidateFiles: () => handleResponse(api.post<{ message: string, success: number, failed: number, skipped: number }>('admin/system/consolidate')),
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     consolidateDatabase: () => handleResponse(api.post<{ message: string }>('admin/system/consolidate-db')),
     syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),

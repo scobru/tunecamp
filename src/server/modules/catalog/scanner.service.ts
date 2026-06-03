@@ -53,17 +53,6 @@ export class ScannerService {
     /**
      * Proxies to the local scanner for backward compatibility with admin routes.
      */
-    async consolidateFiles(dir: string): Promise<any> {
-        const local = this.registry.get("local-fs") as any;
-        if (local && local.scanner) {
-            return local.scanner.consolidateFiles(dir);
-        }
-        throw new Error("Local filesystem scanner not found");
-    }
-
-    /**
-     * Proxies to the local scanner for backward compatibility with admin routes.
-     */
     async processAudioFile(filePath: string, musicDir: string, overrideArtistId?: number, ownerId?: number, overrideAlbumId?: number, suggestedCoverPath?: string, metadataHints?: any): Promise<any> {
         const local = this.registry.get("local-fs") as any;
         if (local && local.scanner) {

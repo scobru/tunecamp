@@ -3,7 +3,6 @@ import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globa
 // Mock dependencies
 const mockScanner = {
     scanDirectory: jest.fn().mockImplementation(() => Promise.resolve({ successful: [{ originalPath: 'file1.mp3' }], failed: [] } as any)),
-    consolidateFiles: jest.fn(),
     processAudioFile: jest.fn(),
     clearCaches: jest.fn(),
 };

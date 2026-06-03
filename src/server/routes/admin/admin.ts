@@ -623,34 +623,6 @@ export function createAdminRoutes(
     });
 
     /**
-     * POST /api/admin/system/consolidate
-     * Consolidate files in the filesystem based on DB tags (Any Admin)
-     */
-    router.post("/system/consolidate", async (req: AuthenticatedRequest, res: any) => {
-        try {
-            // Only super root admin can trigger consolidation
-            if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only super root admin can trigger file consolidation" });
-            }
-
-            const started = taskManager.run('file-consolidate', async () => {
-                const result = await scanner.consolidateFiles(musicDir);
-                console.log(`✅ [Admin] File consolidation complete. success=${result.success} failed=${result.failed} skipped=${result.skipped} deleted=${result.deleted}`);
-                return result;
-            });
-
-            if (!started) {
-                return res.status(409).json({ error: "File consolidation is already in progress" });
-            }
-
-            res.json({ message: "File consolidation started in background" });
-        } catch (error) {
-            console.error("Error consolidating files:", error);
-            res.status(500).json({ error: "Failed to consolidate files" });
-        }
-    });
-
-    /**
      * POST /api/admin/network/cleanup
      * Force global cleanup of unreachable sites in Zen network (Any Admin)
      */
