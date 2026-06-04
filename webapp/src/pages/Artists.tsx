@@ -4,9 +4,11 @@ import { Link } from 'react-router-dom';
 import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucide-react';
 import type { Artist, User as AppUser } from '../types';
 import { PageHeader } from '../components/ui/PageHeader';
+import { useConfigStore } from '../stores/useConfigStore';
 import clsx from 'clsx';
 
 const Artists = () => {
+    const { cacheBuster } = useConfigStore();
     const [artists, setArtists] = useState<Artist[]>([]);
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
     const [loading, setLoading] = useState(true);
@@ -181,7 +183,7 @@ const Artists = () => {
                             )}>
                                 {artist.coverImage ? (
                                     <img
-                                        src={API.getArtistCoverUrl(artist.id)}
+                                        src={API.getArtistCoverUrl(artist.id, cacheBuster)}
                                         alt={artist.name}
                                         className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                                         onError={(e) => {
