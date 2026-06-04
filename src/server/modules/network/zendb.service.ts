@@ -8,6 +8,7 @@ import { normalizeUrl, slugify } from "../../../utils/audioUtils.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import fs from "fs-extra";
 import path from "path";
+import { monitorEventLoopDelay } from "perf_hooks";
 
 // Public Zen peers for the community registry
 const REGISTRY_PEERS = [
@@ -219,13 +220,21 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             initialized = true;
             console.log("🌐 ZEN Relay initialized (signaling + identity + stats)");
 
+            // Track event-loop delay so we can see the loop stalling before a
+            // health-check failure / Swarm restart (manual full GC removed: it was a
+            // stop-the-world freeze every 30s; let V8 manage GC itself).
+            const loopDelay = monitorEventLoopDelay({ resolution: 20 });
+            loopDelay.enable();
+
             setInterval(() => {
-                if (global.gc) global.gc();
                 const used = process.memoryUsage();
                 const peerCount = getPeerCount();
                 const root = zen._ || (zen as any)._graph?._;
                 const nodeCount = root?.graph ? Object.keys(root.graph).length : 0;
-                console.log(`[Diag] RSS: ${Math.round(used.rss / 1e6)}MB | HeapTotal: ${Math.round(used.heapTotal / 1e6)}MB | HeapUsed: ${Math.round(used.heapUsed / 1e6)}MB | Ext: ${Math.round(used.external / 1e6)}MB | ArrayBuf: ${Math.round((used as any).arrayBuffers / 1e6)}MB | ZEN Peers: ${peerCount} | nodes: ${nodeCount}`);
+                const lagMean = Math.round(loopDelay.mean / 1e6);
+                const lagMax = Math.round(loopDelay.max / 1e6);
+                loopDelay.reset();
+                console.log(`[Diag] RSS: ${Math.round(used.rss / 1e6)}MB | HeapTotal: ${Math.round(used.heapTotal / 1e6)}MB | HeapUsed: ${Math.round(used.heapUsed / 1e6)}MB | Ext: ${Math.round(used.external / 1e6)}MB | ArrayBuf: ${Math.round((used as any).arrayBuffers / 1e6)}MB | ZEN Peers: ${peerCount} | nodes: ${nodeCount} | LoopLag: ${lagMean}ms avg / ${lagMax}ms max`);
             }, 30000);
 
             return true;
