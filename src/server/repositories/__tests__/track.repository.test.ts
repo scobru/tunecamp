@@ -1,0 +1,163 @@
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { createDatabase } from '../../core/database.js';
+import { TrackRepository } from '../track.repository.js';
+import { ArtistRepository } from '../artist.repository.js';
+import { UserRole } from '../../common/visibility.js';
+
+const ADMIN_CTX = { role: UserRole.ROOT_ADMIN };
+
+// Minimal valid track payload; callers override what they care about.
+function trackInput(overrides: Record<string, any> = {}) {
+    return {
+        title: 'Track',
+        album_id: null,
+        artist_id: null,
+        owner_id: null,
+        artist_name: 'An Artist',
+        track_num: 1,
+        duration: 200,
+        file_path: 'tracks/track.mp3',
+        format: 'mp3',
+        bitrate: 320,
+        sample_rate: 44100,
+        price: 0,
+        currency: 'ETH',
+        lossless_path: null,
+        waveform: null,
+        hash: null,
+        ...overrides
+    } as any;
+}
+
+describe('TrackRepository', () => {
+    let db: any;
+    let repo: TrackRepository;
+    let artists: ArtistRepository;
+
+    beforeEach(() => {
+        db = createDatabase(':memory:');
+        repo = new TrackRepository(db.db);
+        artists = new ArtistRepository(db.db);
+    });
+
+    afterEach(() => {
+        if (db && db.db) db.db.close();
+    });
+
+    describe('create', () => {
+        test('creates a track and returns its id', () => {
+            const id = repo.create(trackInput({ title: 'Hello', hash: 'h1' }));
+            expect(typeof id).toBe('number');
+            const t = repo.getById(id);
+            expect(t?.title).toBe('Hello');
+            expect(t?.currency).toBe('ETH');
+        });
+
+        test('keeps a valid artist_id foreign key', () => {
+            const artistId = artists.create('Real Artist');
+            const id = repo.create(trackInput({ artist_id: artistId, hash: 'h2' }));
+            expect(repo.getById(id)?.artist_id).toBe(artistId);
+        });
+
+        test('nulls out an invalid artist_id (FK safeguard)', () => {
+            const id = repo.create(trackInput({ artist_id: 424242, hash: 'h3' }));
+            expect(repo.getById(id)?.artist_id).toBeNull();
+        });
+
+        test('nulls out an invalid album_id (FK safeguard)', () => {
+            const id = repo.create(trackInput({ album_id: 999999, hash: 'h4' }));
+            expect(repo.getById(id)?.album_id).toBeNull();
+        });
+    });
+
+    describe('lookups', () => {
+        test('getByHash finds the track', () => {
+            repo.create(trackInput({ title: 'Hashed', hash: 'unique-hash' }));
+            expect(repo.getByHash('unique-hash')?.title).toBe('Hashed');
+            expect(repo.getByHash('missing')).toBeUndefined();
+        });
+
+        test('getByExternalId finds the track', () => {
+            repo.create(trackInput({ title: 'Ext', hash: 'h5', external_id: 'spotify:track:1' }));
+            expect(repo.getByExternalId('spotify:track:1')?.title).toBe('Ext');
+            expect(repo.getByExternalId('nope')).toBeUndefined();
+        });
+
+        test('getByPath finds the track by its file path', () => {
+            repo.create(trackInput({ title: 'Pathed', hash: 'h6', file_path: 'tracks/special.flac' }));
+            expect(repo.getByPath('tracks/special.flac')?.title).toBe('Pathed');
+        });
+
+        test('getByIds returns matching tracks and [] for empty input', () => {
+            const a = repo.create(trackInput({ title: 'A', hash: 'ha' }));
+            const b = repo.create(trackInput({ title: 'B', hash: 'hb' }));
+            const rows = repo.getByIds([a, b]);
+            expect(rows.map(r => r.id).sort()).toEqual([a, b].sort());
+            expect(repo.getByIds([])).toEqual([]);
+        });
+
+        test('missing track returns undefined', () => {
+            expect(repo.getById(999999)).toBeUndefined();
+        });
+    });
+
+    describe('update', () => {
+        test('updates fields and maps camelCase keys to columns', () => {
+            const id = repo.create(trackInput({ title: 'Before', hash: 'h7' }));
+            repo.update(id, { title: 'After', trackNum: 5 } as any);
+            const t = repo.getById(id);
+            expect(t?.title).toBe('After');
+            expect(t?.track_num).toBe(5);
+        });
+    });
+
+    describe('ownership', () => {
+        test('addOwner/getTrackOwners/removeOwner manage owners (valid admin id)', () => {
+            const ownerId = Number(db.db.prepare('INSERT INTO admin (username, password_hash) VALUES (?, ?)').run('owner', 'hash').lastInsertRowid);
+            const id = repo.create(trackInput({ title: 'Owned', hash: 'h8' }));
+
+            repo.addOwner(id, ownerId);
+            expect(repo.getTrackOwners(id)).toContain(ownerId);
+
+            repo.removeOwner(id, ownerId);
+            expect(repo.getTrackOwners(id)).not.toContain(ownerId);
+        });
+
+        test('addOwner skips an invalid (non-admin) owner id', () => {
+            const id = repo.create(trackInput({ title: 'NoOwner', hash: 'h9' }));
+            repo.addOwner(id, 777777);
+            expect(repo.getTrackOwners(id)).toEqual([]);
+        });
+    });
+
+    describe('delete', () => {
+        test('deletes the track and its ownership rows', () => {
+            const id = repo.create(trackInput({ title: 'Gone', hash: 'h10' }));
+            expect(repo.getById(id)).toBeDefined();
+            repo.delete(id);
+            expect(repo.getById(id)).toBeUndefined();
+        });
+    });
+
+    describe('counts and paths', () => {
+        test('getCount reflects created tracks', () => {
+            const before = repo.getCount();
+            repo.create(trackInput({ title: 'C1', hash: 'c1' }));
+            repo.create(trackInput({ title: 'C2', hash: 'c2' }));
+            expect(repo.getCount()).toBe(before + 2);
+        });
+
+        test('getPaths returns file paths', () => {
+            repo.create(trackInput({ title: 'P1', hash: 'p1', file_path: 'tracks/one.mp3' }));
+            expect(repo.getPaths()).toContain('tracks/one.mp3');
+        });
+    });
+
+    describe('getAll', () => {
+        test('returns created tracks for an admin context', () => {
+            repo.create(trackInput({ title: 'Visible', hash: 'v1' }));
+            const titles = repo.getAll(ADMIN_CTX).map(t => t.title);
+            expect(titles).toContain('Visible');
+        });
+    });
+});
