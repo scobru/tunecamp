@@ -5,10 +5,9 @@ import { streamingService } from "../modules/streaming/streaming.service.js";
 import { getScannerService } from "../modules/catalog/scanner.service.js";
 import { getDownloadService } from "../modules/catalog/download.service.js";
 import { storageService } from "../modules/storage/storage.service.js";
-import { federationService } from "../modules/activitypub/federation.service.js";
 import { aiService } from "../modules/ai/ai.service.js";
 
-import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, FederationProvider, AIProvider } from "./provider.js";
+import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider } from "./provider.js";
 
 const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
 
@@ -107,12 +106,6 @@ export async function loadPlugins(pluginsDir?: string): Promise<void> {
             if (typeof instance.upload === "function" && typeof instance.getUrl === "function") {
                 storageService.getRegistry().register(instance as StorageProvider);
                 console.log(`[PluginLoader] ✅ Registered as StorageProvider: ${instance.name}`);
-                registered = true;
-            }
-
-            if (typeof instance.publish === "function" && typeof instance.discover === "function") {
-                federationService.getRegistry().register(instance as FederationProvider);
-                console.log(`[PluginLoader] ✅ Registered as FederationProvider: ${instance.name}`);
                 registered = true;
             }
 

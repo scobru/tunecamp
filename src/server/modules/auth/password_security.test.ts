@@ -55,8 +55,7 @@ app.use('/api/admin', adminMiddleware, createAdminRoutes(
     {} as any, // soulseekService
     {} as any, // lindaBotService
     {} as any, // metadataService
-    {} as any, // streamingService
-    {} as any  // federationService
+    {} as any  // streamingService
 ));
 
 

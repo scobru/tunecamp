@@ -53,7 +53,6 @@ import { metadataService } from "./modules/catalog/metadata.service.js";
 import { initDownloadService } from "./modules/catalog/download.service.js";
 import { loadPlugins } from "./core/plugin-loader.js";
 import { storageService, initStorageService } from "./modules/storage/storage.service.js";
-import { federationService, initFederationService } from "./modules/activitypub/federation.service.js";
 import { aiService, initAIService } from "./modules/ai/ai.service.js";
 import { createZenDBService } from "./modules/network/zendb.service.js";
 import { createLibraryStatsRoutes } from "./routes/admin/library-stats.js";
@@ -169,8 +168,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const apService = createActivityPubService(database as any, config, federation);
     await apService.generateKeysForAllArtists();
-
-    await initFederationService(database, zendbService, apService);
 
     const publishingService = createPublishingService(database, zendbService, apService, config, storage);
 
@@ -303,7 +300,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
     app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(
-        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, metadataService, streamingService, federationService, gdriveService, playlistService, scrobbleService, maintenanceService, localizationService
+        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, metadataService, streamingService, gdriveService, playlistService, scrobbleService, maintenanceService, localizationService
     ));
     app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService, discoveryService));
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir, metadataService, catalogService, discoveryService));
@@ -365,7 +362,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
             metadata:    metadataService.getRegistry().getRegistryInfo(),
             scanner:     scannerService.getRegistry().getRegistryInfo(),
             streaming:   streamingService.getRegistry().getRegistryInfo(),
-            federation:  federationService.getRegistry().getRegistryInfo(),
             playlist:    playlistService.getRegistry().getRegistryInfo(),
         });
     });
