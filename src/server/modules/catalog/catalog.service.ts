@@ -138,10 +138,13 @@ export class CatalogService {
         const results = { success: 0, failed: 0, errors: [] as string[] };
         const affectedAlbums = new Set<number>();
         const updatedTracks: Track[] = [];
-        const tracks = this.database.getTracksByIds(trackIds);
+        // Normalize ids to numbers: the API receives them as strings, but track.id
+        // (and thus the Map key) is numeric, so a string lookup would always miss.
+        const ids = trackIds.map(Number);
+        const tracks = this.database.getTracksByIds(ids);
         const trackMap = new Map(tracks.map(t => [t.id, t]));
 
-        for (const id of trackIds) {
+        for (const id of ids) {
             try {
                 const track = trackMap.get(id);
                 if (!track) { results.failed++; results.errors.push(`Track ${id} not found`); continue; }
@@ -211,7 +214,7 @@ export class CatalogService {
 
     async batchDeleteTracks(trackIds: number[], deleteFiles: boolean, user: { userId?: number, artistId?: number, isAdmin: boolean }): Promise<any> {
         const results = { success: 0, failed: 0, errors: [] as string[] };
-        const tracks = this.database.getTracksByIds(trackIds);
+        const tracks = this.database.getTracksByIds(trackIds.map(Number));
         for (const track of tracks) {
             try {
                 const isOwner = track.owner_id === user.userId || (track.owner_id === null && track.artist_id === user.artistId);
