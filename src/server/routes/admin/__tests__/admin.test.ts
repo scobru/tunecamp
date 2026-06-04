@@ -120,7 +120,6 @@ describe('Admin Routes Vulnerability Check', () => {
             {} as any, // soulseekService
             {} as any, // metadataService
             {} as any, // streamingService
-            {} as any, // federationService
             undefined, // gdriveService
             undefined, // playlistService
             undefined, // scrobbleService

@@ -307,21 +307,6 @@ export interface StorageProvider extends TuneCampProvider {
 }
 
 /**
- * Provider for federated network discovery (Zen P2P, ActivityPub, Nostr, etc.)
- * Handles announcing and discovering music from other instances.
- */
-export interface FederationProvider extends TuneCampProvider {
-    /** Announces a release/track to the network */
-    publish(content: { type: 'track' | 'album' | 'artist'; id: number; data: any }): Promise<void>;
-
-    /** Discovers content from the network for a given query */
-    discover(query: string): Promise<any[]>;
-
-    /** Returns the connection status of the federation network */
-    getStatus(): Promise<{ connected: boolean; peers: number; info?: string }>;
-}
-
-/**
  * Provider for AI/LLM services (OpenRouter, Ollama, local models, etc.)
  * Used for generating metadata, descriptions, tags, and recommendations.
  */
