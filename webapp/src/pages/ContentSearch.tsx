@@ -3,7 +3,7 @@ import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause } from 'lucide-react';
+import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause, Upload, Copy } from 'lucide-react';
 import clsx from 'clsx';
 import type { TorrentSearchResult, Track } from '../types';
 
@@ -18,7 +18,7 @@ const getPathSegments = (pathStr: string) => {
 
 const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'streaming' | 'downloads'>('soulseek');
+    const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'seeding' | 'streaming' | 'downloads'>('soulseek');
     const [results, setResults] = useState<any[]>([]);
     const [torrentResults, setTorrentResults] = useState<TorrentSearchResult[]>([]);
     const [streamingResults, setStreamingResults] = useState<any[]>([]);
@@ -27,6 +27,10 @@ const ContentSearch: React.FC = () => {
     const [torrents, setTorrents] = useState<any[]>([]);
     const [magnetUri, setMagnetUri] = useState('');
     const [searchError, setSearchError] = useState<string | null>(null);
+    const [seedFilePaths, setSeedFilePaths] = useState('');
+    const [seedName, setSeedName] = useState('');
+    const [seedingResult, setSeedingResult] = useState<string | null>(null);
+    const [seedLoading, setSeedLoading] = useState(false);
     const { user, isAuthenticated, isLoading: authLoading, role } = useAuthStore();
     const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
     const navigate = useNavigate();
@@ -63,7 +67,7 @@ const ContentSearch: React.FC = () => {
             fetchDownloads();
             const interval = setInterval(fetchDownloads, 5000);
             return () => clearInterval(interval);
-        } else if (activeTab === 'torrents') {
+        } else if (activeTab === 'torrents' || activeTab === 'seeding') {
             fetchTorrents();
             const interval = setInterval(fetchTorrents, 5000);
             return () => clearInterval(interval);
@@ -193,6 +197,25 @@ const ContentSearch: React.FC = () => {
         }
     };
 
+    const handleSeedFiles = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const paths = seedFilePaths.split('\n').map(p => p.trim()).filter(Boolean);
+        if (paths.length === 0 || !seedName) return;
+        setSeedLoading(true);
+        setSeedingResult(null);
+        try {
+            const res = await API.seedTorrent(paths, seedName);
+            setSeedingResult(res.magnetUri);
+            setSeedFilePaths('');
+            setSeedName('');
+            fetchTorrents();
+        } catch (err: any) {
+            alert(`Seeding failed: ${err.message}`);
+        } finally {
+            setSeedLoading(false);
+        }
+    };
+
     const handlePurgeStuck = async () => {
         if (!confirm('Remove all torrents that are errored or stuck on metadata?')) return;
         try {
@@ -284,7 +307,13 @@ const ContentSearch: React.FC = () => {
                 >
                     <RefreshCw className="mr-2" size={16} /> WebTorrent
                 </button>
-                <button 
+                <button
+                    className={`tab flex-1 transition-all ${activeTab === 'seeding' ? 'tab-active bg-success text-success-content shadow-lg' : ''}`}
+                    onClick={() => setActiveTab('seeding')}
+                >
+                    <Upload className="mr-2" size={16} /> Seeding
+                </button>
+                <button
                     className={`tab flex-1 transition-all ${activeTab === 'streaming' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
                     onClick={() => setActiveTab('streaming')}
                 >
@@ -386,6 +415,114 @@ const ContentSearch: React.FC = () => {
                             <p className="text-xs opacity-70 leading-relaxed">
                                 Soulseek is a peer-to-peer network specifically for music. It is often more reliable than torrents for finding rare albums and lossless tracks.
                             </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'seeding' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="card bg-base-200 border border-base-300 shadow-sm p-6">
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Upload size={20} className="text-success" /> Seed Files
+                            </h2>
+                            <form onSubmit={handleSeedFiles} className="space-y-4">
+                                <div>
+                                    <label className="label pb-1"><span className="label-text font-bold text-xs uppercase">Torrent Name</span></label>
+                                    <input
+                                        type="text"
+                                        className="input input-bordered w-full"
+                                        placeholder="My Album Title"
+                                        value={seedName}
+                                        onChange={e => setSeedName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="label pb-1"><span className="label-text font-bold text-xs uppercase">File Paths (one per line)</span></label>
+                                    <textarea
+                                        className="textarea textarea-bordered w-full font-mono text-xs h-40 leading-relaxed"
+                                        placeholder={"/music/Artist/Album/01 - Track.flac\n/music/Artist/Album/02 - Track.flac"}
+                                        value={seedFilePaths}
+                                        onChange={e => setSeedFilePaths(e.target.value)}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="btn btn-success gap-2 w-full"
+                                    disabled={seedLoading || !seedFilePaths.trim() || !seedName.trim()}
+                                >
+                                    {seedLoading ? <span className="loading loading-spinner loading-xs"></span> : <Upload size={18} />}
+                                    Start Seeding
+                                </button>
+                            </form>
+                            {seedingResult && (
+                                <div className="mt-4 alert alert-success gap-3 items-start">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-xs mb-1">Seeding started — share this magnet:</p>
+                                        <code className="text-[10px] font-mono break-all">{seedingResult}</code>
+                                    </div>
+                                    <button
+                                        className="btn btn-ghost btn-xs flex-shrink-0"
+                                        onClick={() => navigator.clipboard.writeText(seedingResult!)}
+                                    >
+                                        <Copy size={12} /> Copy
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="card bg-primary/5 border border-primary/20 p-5">
+                            <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
+                                <Upload size={16} /> How seeding works
+                            </h3>
+                            <p className="text-xs opacity-70 leading-relaxed">
+                                Enter the absolute server-side file paths and a torrent name. The server will create a torrent and start seeding immediately via WebTorrent. Share the generated magnet URI so others can download from you.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
+                            <div className="p-4 bg-base-300 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+                                <Upload size={14} className="text-success" /> Active Seeds
+                            </div>
+                            <div className="divide-y divide-base-content/5">
+                                {torrents.filter((t: any) => t.status === 'seeding').length === 0 && (
+                                    <div className="p-8 text-center opacity-30 text-xs italic">No active seeds</div>
+                                )}
+                                {torrents.filter((t: any) => t.status === 'seeding').map((t: any) => (
+                                    <div key={t.infoHash || t.info_hash} className="p-4 space-y-2">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-xs font-bold truncate" title={t.name}>{t.name || t.infoHash || t.info_hash}</div>
+                                                <div className="text-[10px] opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
+                                            </div>
+                                            <div className="flex gap-1 flex-shrink-0">
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(t.magnet_uri || '')}
+                                                    className="btn btn-ghost btn-xs text-success p-0 h-auto min-h-0"
+                                                    title="Copy magnet URI"
+                                                >
+                                                    <Copy size={12} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteTorrent(t.infoHash || t.info_hash)}
+                                                    className="btn btn-ghost btn-xs text-error p-0 h-auto min-h-0"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase gap-2">
+                                            <span className="text-success">seeding</span>
+                                            <span className="opacity-40 normal-case">
+                                                {(t.numPeers ?? 0)} peer{(t.numPeers ?? 0) === 1 ? '' : 's'}
+                                                {t.uploadSpeed ? ` · ↑ ${formatBytes(t.uploadSpeed)}/s` : ''}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -610,6 +747,7 @@ const ContentSearch: React.FC = () => {
                                             <div className="flex justify-between items-center text-[10px] font-bold uppercase gap-2">
                                                 <span className={clsx(
                                                     t.status === 'completed' ? 'text-success' :
+                                                    t.status === 'seeding' ? 'text-success' :
                                                     t.status === 'failed' || t.status === 'error' ? 'text-error' :
                                                     isStuck ? 'text-error' :
                                                     'text-info'
@@ -618,7 +756,8 @@ const ContentSearch: React.FC = () => {
                                                 </span>
                                                 <span className="opacity-40 normal-case">
                                                     {(t.numPeers ?? 0)} peer{(t.numPeers ?? 0) === 1 ? '' : 's'}
-                                                    {t.downloadSpeed ? ` · ${formatBytes(t.downloadSpeed)}/s` : ''}
+                                                    {t.status === 'seeding' && t.uploadSpeed ? ` · ↑ ${formatBytes(t.uploadSpeed)}/s` : ''}
+                                                    {t.status !== 'seeding' && t.downloadSpeed ? ` · ↓ ${formatBytes(t.downloadSpeed)}/s` : ''}
                                                 </span>
                                             </div>
                                         </div>
