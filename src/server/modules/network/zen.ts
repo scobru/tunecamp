@@ -158,12 +158,20 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
     const heapLimitMB = V8_HEAP_LIMIT_MB;
     const thresholdBytes = heapLimitMB * 0.50 * 1024 * 1024; // 50% of real heap limit
     const emergencyBytes = heapLimitMB * 0.75 * 1024 * 1024; // 75% — well before OOM
+
+    // External/ArrayBuffer thresholds (off-heap — the actual crash driver).
+    // Baseline is ~16MB at startup; crashes occur around 52MB.
+    // 30MB = early warning, 45MB = emergency (disconnect peers).
+    const extThresholdBytes = 30 * 1024 * 1024;
+    const extEmergencyBytes = 45 * 1024 * 1024;
+
     let evicting = false;
 
     const interval = setInterval(() => {
         if (evicting) return;
         const heapUsed = v8.getHeapStatistics().used_heap_size;
-        if (heapUsed < thresholdBytes) return;
+        const { external: extUsed } = process.memoryUsage();
+        if (heapUsed < thresholdBytes && extUsed < extThresholdBytes) return;
 
         evicting = true;
         const root = zen._ || (zen as any)._graph?._;
@@ -176,10 +184,10 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
         const next = root.next || {};
         const graphSouls = Object.keys(graph);
         const nextSouls = Object.keys(next);
-        const isEmergency = heapUsed >= emergencyBytes;
+        const isEmergency = heapUsed >= emergencyBytes || extUsed >= extEmergencyBytes;
 
         if (isEmergency) {
-            console.warn(`🚨 [ZEN-Evictor] EMERGENCY at ${Math.round(heapUsed / 1e6)}MB / ${heapLimitMB}MB | graph: ${graphSouls.length}, next: ${nextSouls.length}`);
+            console.warn(`🚨 [ZEN-Evictor] EMERGENCY — Heap: ${Math.round(heapUsed / 1e6)}MB / ${heapLimitMB}MB | Ext: ${Math.round(extUsed / 1e6)}MB / ${Math.round(extEmergencyBytes / 1e6)}MB | graph: ${graphSouls.length}, next: ${nextSouls.length}`);
         }
 
         // ── 1. Evict root.graph nodes (the original target) ────────────────
@@ -266,13 +274,14 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
         if (global.gc) global.gc();
 
         const heapAfter = v8.getHeapStatistics().used_heap_size;
+        const extAfter = process.memoryUsage().external;
         const tag = isEmergency ? '🚨' : '🧹';
-        console.warn(`${tag} [ZEN-Evictor] graph:-${graphDropped} next:-${nextDropped} dup:-${dupCleared} | Heap: ${Math.round(heapUsed / 1e6)}MB → ${Math.round(heapAfter / 1e6)}MB (limit: ${heapLimitMB}MB)`);
+        console.warn(`${tag} [ZEN-Evictor] graph:-${graphDropped} next:-${nextDropped} dup:-${dupCleared} | Heap: ${Math.round(heapUsed / 1e6)}MB → ${Math.round(heapAfter / 1e6)}MB | Ext: ${Math.round(extUsed / 1e6)}MB → ${Math.round(extAfter / 1e6)}MB`);
         evicting = false;
     }, 1000);
 
     interval.unref();
-    console.log(`🛡️ [ZEN-Evictor] Started (threshold: ${Math.round(thresholdBytes / 1e6)}MB, emergency: ${Math.round(emergencyBytes / 1e6)}MB, v8 limit: ${heapLimitMB}MB, zen budget: ${memoryLimitMB}MB)`);
+    console.log(`🛡️ [ZEN-Evictor] Started (heap threshold: ${Math.round(thresholdBytes / 1e6)}MB, ext threshold: ${Math.round(extThresholdBytes / 1e6)}MB, emergency heap: ${Math.round(emergencyBytes / 1e6)}MB, emergency ext: ${Math.round(extEmergencyBytes / 1e6)}MB, v8 limit: ${heapLimitMB}MB)`);
 }
 
 
