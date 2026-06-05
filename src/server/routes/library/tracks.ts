@@ -263,7 +263,13 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         if (req.context && !VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
             const releases = database.getReleasesByTrackId(trackId);
-            const isPublic = track.visibility === 'public' || track.visibility === 'unlisted' || releases.length > 0;
+            let isPublic = track.visibility === 'public' || track.visibility === 'unlisted' || releases.length > 0;
+            // Standalone release tracks have null visibility and no library track_id link;
+            // check their parent album's visibility instead
+            if (!isPublic && !track.visibility && (track as any).album_id) {
+                const parentAlbum = database.getRelease((track as any).album_id) || database.getAlbum((track as any).album_id);
+                if (parentAlbum && parentAlbum.visibility !== 'private') isPublic = true;
+            }
             if (!isPublic) throw new ForbiddenError("You can only favorite public tracks");
         }
 
