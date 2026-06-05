@@ -582,8 +582,11 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                         console.log(`[TelegramBot] No hashtags found. Attempting AI parsing for: "${caption.substring(0, 100)}..."`);
                         const aiMetadata = await this.ai.parseMetadataFromText(caption);
                         if (aiMetadata) {
-                            console.log(`[TelegramBot] AI successfully parsed metadata:`, aiMetadata);
-                            metadataHints = { ...metadataHints, ...aiMetadata };
+                            const meta = Array.isArray(aiMetadata) ? aiMetadata[0] : aiMetadata;
+                            if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+                                console.log(`[TelegramBot] AI successfully parsed metadata:`, meta);
+                                metadataHints = { ...metadataHints, ...meta };
+                            }
                         }
                     }
 
@@ -661,6 +664,12 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
             const result = await this.scanner.processAudioFile(filePath, this.musicDir, undefined, primaryAdminId || undefined, undefined, suggestedCoverPath, metadataHints);
 
             if (result?.success) {
+                if (result.trackId) {
+                    const allAdmins = this.database.getAdmins();
+                    for (const admin of allAdmins) {
+                        this.database.addTrackOwner(result.trackId, admin.id);
+                    }
+                }
                 await this.safeReply(ctx, `✅ UPLOADED TO TUNECAMP!\n\n${result.message}`);
             } else {
                 await this.safeReply(ctx, `❌ Import failed: ${result?.message || 'Unknown error'}`);

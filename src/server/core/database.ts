@@ -600,6 +600,31 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE posts ADD COLUMN summary TEXT");
             }
         }
+
+        const apNotesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='ap_notes'").get();
+        if (apNotesExists) {
+            const cols = db.prepare("PRAGMA table_info(ap_notes)").all() as any[];
+            if (!cols.some(col => col.name === 'likes_count')) {
+                console.log("📦 [Database] Migrating ap_notes table: adding likes_count column...");
+                db.exec("ALTER TABLE ap_notes ADD COLUMN likes_count INTEGER DEFAULT 0");
+            }
+            if (!cols.some(col => col.name === 'announces_count')) {
+                console.log("📦 [Database] Migrating ap_notes table: adding announces_count column...");
+                db.exec("ALTER TABLE ap_notes ADD COLUMN announces_count INTEGER DEFAULT 0");
+            }
+        }
+
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS ap_interactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                note_id TEXT NOT NULL,
+                actor_uri TEXT NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('like', 'announce')),
+                activity_id TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(note_id, actor_uri, type)
+            )
+        `);
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic
@@ -1376,6 +1401,24 @@ export function createDatabase(dbPath: string): DatabaseService {
         getApNote: (nid: string) => db.prepare("SELECT * FROM ap_notes WHERE note_id = ?").get(nid) as any,
         markApNoteDeleted: (nid: string) => { db.prepare("UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE note_id = ?").run(nid); },
         deleteApNote: (nid: string) => { db.prepare("DELETE FROM ap_notes WHERE note_id = ?").run(nid); },
+        addApInteraction: (noteId: string, actorUri: string, type: 'like' | 'announce', activityId?: string): boolean => {
+            const result = db.prepare("INSERT OR IGNORE INTO ap_interactions (note_id, actor_uri, type, activity_id) VALUES (?, ?, ?, ?)").run(noteId, actorUri, type, activityId ?? null);
+            if (result.changes > 0) {
+                const col = type === 'like' ? 'likes_count' : 'announces_count';
+                db.prepare(`UPDATE ap_notes SET ${col} = MAX(0, ${col} + 1) WHERE note_id = ?`).run(noteId);
+                return true;
+            }
+            return false;
+        },
+        removeApInteraction: (noteId: string, actorUri: string, type: 'like' | 'announce'): boolean => {
+            const result = db.prepare("DELETE FROM ap_interactions WHERE note_id = ? AND actor_uri = ? AND type = ?").run(noteId, actorUri, type);
+            if (result.changes > 0) {
+                const col = type === 'like' ? 'likes_count' : 'announces_count';
+                db.prepare(`UPDATE ap_notes SET ${col} = MAX(0, ${col} - 1) WHERE note_id = ?`).run(noteId);
+                return true;
+            }
+            return false;
+        },
 
         // Remote Content
         getRemoteActor: (u: string) => remoteActorRepository.getRemoteActor(u),
