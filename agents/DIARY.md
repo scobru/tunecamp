@@ -156,4 +156,9 @@ Chronological log of completed tasks and significant architectural decisions.
 - **Files Modified**: `src/server/modules/integrations/torrent.service.ts`, `src/server/modules/network/zen.ts`, `.env.example`, `src/server/routes/auth/__tests__/auth.test.ts`.
 - **Verification**: Verified successfully with `npm run build` and `npm test` (all 559 tests passed).
 
+### 3. Cleanup of Deprecated Environment / Build Configs
+**Summary**: Purged deprecated and unused environment/build variables (`COINBASE_`, `MOONPAY_`, `SPOTIFY_`, `PAYPAL_`) from configuration files to keep them clean for deployment.
+- **Files Modified**: `Dockerfile`, `docker-compose.yml`, `.env.example`.
+- **Result**: Pushed all alignment, optimization, and cleanup changes successfully to `main` branch on origin.
+
 
