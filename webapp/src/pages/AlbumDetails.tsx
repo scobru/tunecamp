@@ -50,7 +50,7 @@ const AlbumDetails = () => {
           setIsAlbumLiked(!!data.starred);
           if (data.tracks) {
             const backendLiked = new Set(data.tracks.filter((t: any) => t && t.starred).map((t: any) => String(t.id)));
-            const allAlbumTrackIds = new Set(data.tracks.filter((t: any) => t).map((t: any) => String(t.id)));
+            const allAlbumTrackIds = new Set<string>(data.tracks.filter((t: any) => t).map((t: any) => String(t.id)));
             // Smart merge: apply backend truth for tracks in this album, preserve other state
             setLikedTrackIds(prev => {
               const next = new Set(prev);
