@@ -79,6 +79,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 } catch (e) { }
             }
 
+            // Seed profile.avatar from SQLite so it's visible immediately,
+            // before the GunDB subscription fires (which may take several seconds).
+            if (zenProfile && (status as any).avatar) {
+                zenProfile = { ...zenProfile, profile: { ...(zenProfile.profile || {}), avatar: (status as any).avatar } };
+            }
+
             if (zenProfile) {
                 try {
                     // Subscribe to profile changes

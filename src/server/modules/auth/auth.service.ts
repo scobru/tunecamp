@@ -84,6 +84,8 @@ export interface AuthService {
     // Default password check
     isDefaultPassword(username: string): Promise<boolean>;
     init(): Promise<void>;
+    /** Returns the avatar stored in gun_users for this username, or null. */
+    getZenAvatar(username: string): string | null;
 }
 
 export function createAuthService(
@@ -605,9 +607,18 @@ export function createAuthService(
             };
         },
 
+        getZenAvatar(username: string): string | null {
+            const row = db.prepare(`
+                SELECT gu.avatar FROM admin a
+                JOIN gun_users gu ON a.gun_pub = gu.pub
+                WHERE a.username = ? COLLATE NOCASE
+            `).get(username) as { avatar: string | null } | undefined;
+            return row?.avatar ?? null;
+        },
+
         listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean }[] {
             const rows = db.prepare(`
-                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, ar.name as artist_name 
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, ar.name as artist_name
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 ORDER BY a.username

@@ -59,8 +59,8 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
             setError('Please select an artist');
             return;
         }
-        if (content.length > 500) {
-            setError('Content exceeds 500 characters limit');
+        if (content.length > 5000) {
+            setError('Content exceeds 5000 characters limit');
             return;
         }
         setLoading(true);
@@ -80,7 +80,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const isRestrictedArtist = isRootAdminNoArtist || !!(user?.artistId && user.artistId !== '0' && user.artistId !== 'null' && user.artistId !== 'undefined');
 
     // Circular progress metrics for character counter
-    const charPercentage = Math.min((content.length / 500) * 100, 100);
+    const charPercentage = Math.min((content.length / 5000) * 100, 100);
     const radius = 14;
     const stroke = 3;
     const normalizedRadius = radius - stroke * 2;
@@ -168,7 +168,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder="What's new in the community? Share releases, updates, thoughts..."
-                                maxLength={550}
+                                maxLength={5500}
                                 required
                             />
                         </div>
@@ -234,7 +234,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                                         cy={radius}
                                     />
                                     <circle
-                                        stroke={content.length > 500 ? 'var(--color-error)' : content.length > 420 ? 'var(--color-warning)' : 'var(--color-primary)'}
+                                        stroke={content.length > 5000 ? 'var(--color-error)' : content.length > 4200 ? 'var(--color-warning)' : 'var(--color-primary)'}
                                         fill="transparent"
                                         strokeWidth={stroke}
                                         strokeDasharray={circumference + ' ' + circumference}
@@ -244,20 +244,20 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                                         cy={radius}
                                     />
                                 </svg>
-                                
-                                {content.length >= 450 && (
-                                    <span className={`absolute text-[8px] font-bold ${content.length > 500 ? 'text-error' : 'text-base-content'}`}>
-                                        {500 - content.length}
+
+                                {content.length >= 4500 && (
+                                    <span className={`absolute text-[8px] font-bold ${content.length > 5000 ? 'text-error' : 'text-base-content'}`}>
+                                        {5000 - content.length}
                                     </span>
                                 )}
                             </div>
 
                             <div className="flex gap-2">
                                 <button type="button" className="btn btn-sm btn-ghost rounded-full px-4" onClick={() => dialogRef.current?.close()}>Cancel</button>
-                                <button 
-                                    type="submit" 
-                                    className="btn btn-sm btn-primary rounded-full px-5 gap-1.5 shadow-md" 
-                                    disabled={loading || content.trim().length === 0 || content.length > 500}
+                                <button
+                                    type="submit"
+                                    className="btn btn-sm btn-primary rounded-full px-5 gap-1.5 shadow-md"
+                                    disabled={loading || content.trim().length === 0 || content.length > 5000}
                                 >
                                     {loading ? (
                                         <span className="loading loading-spinner loading-xs"/>
