@@ -100,10 +100,13 @@ const PostPage = () => {
                         <div className="avatar">
                             <div className="w-14 h-14 rounded-full border-2 border-primary/20 shadow-md overflow-hidden bg-base-300">
                                  {post.artistId ? (
-                                    <img 
-                                        src={API.getArtistCoverUrl(post.artistId)} 
-                                        alt={post.artistName} 
+                                    <img
+                                        src={API.getArtistCoverUrl(post.artistId)}
+                                        alt={post.artistName}
                                         className="object-cover w-full h-full"
+                                        onError={(e) => {
+                                            (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(post.artistName || 'TC')}`;
+                                        }}
                                     />
                                  ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-neutral text-neutral-content">

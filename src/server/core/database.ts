@@ -1046,7 +1046,13 @@ export function createDatabase(dbPath: string): DatabaseService {
         deleteUser: (id: number) => { db.prepare("DELETE FROM admin WHERE id = ?").run(id); },
         getAdmins: () => db.prepare("SELECT * FROM admin WHERE role IN ('admin', 'super_user', 'root_admin')").all() as any[],
         syncZenUser(pub: string, epub: string, alias: string, avatar?: string): void {
-            db.prepare("INSERT OR REPLACE INTO gun_users (pub, epub, alias, avatar) VALUES (?, ?, ?, ?)").run(pub, epub, alias, avatar || null);
+            db.prepare(`
+                INSERT INTO gun_users (pub, epub, alias, avatar) VALUES (?, ?, ?, ?)
+                ON CONFLICT(pub) DO UPDATE SET
+                    epub = excluded.epub,
+                    alias = excluded.alias,
+                    avatar = COALESCE(excluded.avatar, gun_users.avatar)
+            `).run(pub, epub, alias, avatar || null);
         },
         getZenUser: (pub: string) => db.prepare("SELECT * FROM gun_users WHERE pub = ?").get(pub) as any,
         updateSubscription(userId: number, status: string, expiresAt: string): void {

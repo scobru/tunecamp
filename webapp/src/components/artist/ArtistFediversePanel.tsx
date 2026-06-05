@@ -167,7 +167,7 @@ export const ArtistFediversePanel = () => {
 
     const handleCreatePost = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!composerContent.trim() || composerContent.length > 500 || !effectiveArtistId) return;
+        if (!composerContent.trim() || composerContent.length > 5000 || !effectiveArtistId) return;
 
         setComposerLoading(true);
         try {
@@ -325,7 +325,7 @@ export const ArtistFediversePanel = () => {
     };
 
     // Circular progress metrics for character counter
-    const charPercentage = Math.min((composerContent.length / 500) * 100, 100);
+    const charPercentage = Math.min((composerContent.length / 5000) * 100, 100);
     const radius = 14;
     const stroke = 3;
     const normalizedRadius = radius - stroke * 2;
@@ -398,9 +398,11 @@ export const ArtistFediversePanel = () => {
                             <div className="avatar">
                                 <div className="w-20 h-20 rounded-full border-4 border-base-100 shadow-xl overflow-hidden bg-base-300 relative group/avatar">
                                     {artist ? (
-                                        <img 
-                                            src={API.getArtistCoverUrl(artist.id)} 
-                                            alt={artist.name} 
+                                        <img
+                                            src={(artist as any).photo_path
+                                                ? API.getArtistCoverUrl(artist.id)
+                                                : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name)}`}
+                                            alt={artist.name}
                                             className="object-cover w-full h-full transition-transform duration-medium-4 group-hover/avatar:scale-110"
                                             onError={(e) => {
                                                 (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name)}`;
@@ -577,9 +579,13 @@ export const ArtistFediversePanel = () => {
                                 {/* Small Avatar */}
                                 <div className="avatar flex-shrink-0">
                                     <div className="w-10 h-10 rounded-full border border-base-content/5 bg-base-300">
-                                        <img 
-                                            src={artist ? API.getArtistCoverUrl(artist.id) : ''} 
-                                            alt={artist?.name} 
+                                        <img
+                                            src={artist
+                                                ? ((artist as any).photo_path
+                                                    ? API.getArtistCoverUrl(artist.id)
+                                                    : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name || 'TC')}`)
+                                                : `https://api.dicebear.com/7.x/initials/svg?seed=TC`}
+                                            alt={artist?.name}
                                             onError={(e) => {
                                                 (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist?.name || 'TC')}`;
                                             }}
@@ -614,7 +620,7 @@ export const ArtistFediversePanel = () => {
                                         value={composerContent}
                                         onChange={e => setComposerContent(e.target.value)}
                                         onFocus={() => setIsComposerFocused(true)}
-                                        maxLength={550}
+                                        maxLength={5500}
                                         required
                                     />
                                 </div>
@@ -680,7 +686,7 @@ export const ArtistFediversePanel = () => {
                                                     cy={radius}
                                                 />
                                                 <circle
-                                                    stroke={composerContent.length > 500 ? 'var(--color-error)' : composerContent.length > 420 ? 'var(--color-warning)' : 'var(--color-primary)'}
+                                                    stroke={composerContent.length > 5000 ? 'var(--color-error)' : composerContent.length > 4200 ? 'var(--color-warning)' : 'var(--color-primary)'}
                                                     fill="transparent"
                                                     strokeWidth={stroke}
                                                     strokeDasharray={circumference + ' ' + circumference}
@@ -690,19 +696,19 @@ export const ArtistFediversePanel = () => {
                                                     cy={radius}
                                                 />
                                             </svg>
-                                            
+
                                             {/* Numeric fallback or indicators */}
-                                            {composerContent.length >= 450 && (
-                                                <span className={`absolute text-[8px] font-bold ${composerContent.length > 500 ? 'text-error' : 'text-base-content'}`}>
-                                                    {500 - composerContent.length}
+                                            {composerContent.length >= 4500 && (
+                                                <span className={`absolute text-[8px] font-bold ${composerContent.length > 5000 ? 'text-error' : 'text-base-content'}`}>
+                                                    {5000 - composerContent.length}
                                                 </span>
                                             )}
                                         </div>
 
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             className="btn btn-sm btn-primary rounded-full px-4 gap-1.5 shadow-md"
-                                            disabled={composerLoading || composerContent.trim().length === 0 || composerContent.length > 500}
+                                            disabled={composerLoading || composerContent.trim().length === 0 || composerContent.length > 5000}
                                         >
                                             {composerLoading ? (
                                                 <span className="loading loading-spinner loading-xs" />
@@ -773,9 +779,13 @@ export const ArtistFediversePanel = () => {
                                                         {/* Circular Avatar */}
                                                         <div className="avatar flex-shrink-0">
                                                             <div className="w-11 h-11 rounded-full border border-base-content/5 bg-base-300 shadow-inner">
-                                                                <img 
-                                                                    src={artist ? API.getArtistCoverUrl(artist.id) : ''} 
-                                                                    alt={artist?.name} 
+                                                                <img
+                                                                    src={artist
+                                                                        ? ((artist as any).photo_path
+                                                                            ? API.getArtistCoverUrl(artist.id)
+                                                                            : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name || 'TC')}`)
+                                                                        : `https://api.dicebear.com/7.x/initials/svg?seed=TC`}
+                                                                    alt={artist?.name}
                                                                     onError={(e) => {
                                                                         (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist?.name || 'TC')}`;
                                                                     }}

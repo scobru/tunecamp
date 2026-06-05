@@ -183,6 +183,7 @@ export function createAuthRoutes(authService: AuthService, authMiddleware: any):
             role: dbUser ? dbUser.role : (req.role || null),
             isActive: dbUser ? dbUser.is_active === 1 : (req.isActive !== false),
             pair: username ? authService.getUserPair(username) : null,
+            avatar: username ? authService.getZenAvatar(username) : null,
             firstRun: authService.isFirstRun(),
             mustChangePassword: username ? await authService.isDefaultPassword(username) : false
         });
