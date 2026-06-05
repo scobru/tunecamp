@@ -223,6 +223,8 @@ export interface ApNote {
     content_title: string;
     published_at: string;
     deleted_at: string | null;
+    likes_count: number;
+    announces_count: number;
 }
 
 export interface Follower {
@@ -653,6 +655,8 @@ export interface DatabaseService {
     getApNote(noteId: string): ApNote | undefined;
     markApNoteDeleted(noteId: string): void;
     deleteApNote(noteId: string): void;
+    addApInteraction(noteId: string, actorUri: string, type: 'like' | 'announce', activityId?: string): boolean;
+    removeApInteraction(noteId: string, actorUri: string, type: 'like' | 'announce'): boolean;
 
     // Remote Content (Fedify/AP)
     getRemoteActor(uri: string): RemoteActor | undefined;

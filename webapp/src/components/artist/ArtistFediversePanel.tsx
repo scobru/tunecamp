@@ -125,19 +125,14 @@ export const ArtistFediversePanel = () => {
             setArtist(artistData);
             setPendingRequests(pendingData);
 
-            // Initialize random counts for mock likes and boosts to feel realistic
             const initialFavs: Record<number, { active: boolean, count: number }> = {};
             const initialBoosts: Record<number, { active: boolean, count: number }> = {};
             const initialReplies: Record<number, MockComment[]> = {};
 
             notesData.forEach(note => {
-                const seedId = note.id;
-                // Deterministic random numbers based on note id
-                const favCount = (seedId * 7) % 12;
-                const boostCount = (seedId * 3) % 6;
-                initialFavs[seedId] = { active: false, count: favCount };
-                initialBoosts[seedId] = { active: false, count: boostCount };
-                initialReplies[seedId] = [];
+                initialFavs[note.id] = { active: false, count: note.likes_count ?? 0 };
+                initialBoosts[note.id] = { active: false, count: note.announces_count ?? 0 };
+                initialReplies[note.id] = [];
             });
 
             setFavorites(prev => ({ ...initialFavs, ...prev }));
