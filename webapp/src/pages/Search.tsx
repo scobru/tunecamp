@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Music, Disc, User, Globe, Play, Heart, Plus } from 'lucide-react';
+import { Search as SearchIcon, Music, Disc, User, Play, Heart, Plus } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -13,10 +13,10 @@ const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
     const [inputValue, setInputValue] = useState(query);
-    const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[], external?: any[], streaming?: any[] } | null>(null);
+    const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[] } | null>(null);
     const [loading, setLoading] = useState(false);
     const { playTrack } = usePlayerStore();
-    const { user, role } = useAuthStore();
+    const { user } = useAuthStore();
     const [starredTracks, setStarredTracks] = useState<Set<string>>(new Set());
     const [starredAlbums, setStarredAlbums] = useState<Set<string>>(new Set());
     const [starredArtists, setStarredArtists] = useState<Set<string>>(new Set());
@@ -54,9 +54,7 @@ const Search = () => {
                 tracks: data.local.tracks || [],
                 albums: data.local.albums || [],
                 artists: data.local.artists || [],
-                external: data.external || [],
-                streaming: data.streaming || []
-            } as any);
+            });
         } catch (e) {
             console.error(e);
         } finally {
@@ -202,7 +200,7 @@ const Search = () => {
             {/* Standardized Header */}
             <PageHeader 
                 title="Search" 
-                subtitle="Explore and find music across the network" 
+                subtitle="Search tracks, albums and artists in TuneCamp"
                 icon={SearchIcon}
                 iconColor="text-primary"
             />
@@ -236,7 +234,7 @@ const Search = () => {
             {loading ? (
                 <div className="text-center opacity-50 py-12 flex flex-col items-center gap-4">
                     <div className="loading loading-spinner loading-lg text-primary"></div>
-                    <p className="text-lg">Searching local and external providers...</p>
+                    <p className="text-lg">Searching TuneCamp library...</p>
                 </div>
             ) : results ? (
                 <div className="space-y-8">
@@ -426,136 +424,14 @@ const Search = () => {
                         </section>
                     )}
 
-                    {/* External & Streaming Results */}
-                    {((role === 'admin' || role === 'root_admin') && ((results as any).external?.length > 0 || (results as any).streaming?.length > 0)) && (
-                        <section>
-                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-secondary">
-                                <Globe size={20}/> Discover (External & Streaming)
-                            </h2>
-                            <div className="flex flex-col gap-1">
-                                {[
-                                    ...((results as any).streaming || []),
-                                    ...((results as any).external || [])
-                                ].map((rawItem: any) => {
-                                    const isStreaming = !!rawItem.isStreaming;
-                                    const trackId = isStreaming ? `ext:${rawItem.source}:${rawItem.id}` : `ext:search:${rawItem.artist} - ${rawItem.title}`;
-                                    const item = { ...rawItem, id: trackId, originalId: rawItem.id };
-                                    
-                                    return (
-                                        <div key={`${item.source}:${item.originalId}`} className="flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group">
-                                        <button
-                                            onClick={() => {
-                                                 const virtualTrack: any = {
-                                                     id: trackId,
-                                                     streamUrl: `/api/tracks/${trackId}/stream`,
-                                                    title: item.title,
-                                                    artistName: item.artist,
-                                                    albumName: item.albumTitle || 'External Release',
-                                                    duration: item.duration || 0, 
-                                                    coverImage: item.coverUrl || item.thumbnail,
-                                                    isExternal: true,
-                                                    source: item.source
-                                                };
-                                                playTrack(virtualTrack, []);
-                                            }}
-                                            className="relative w-10 h-10 shrink-0"
-                                        >
-                                             {(item.coverUrl || item.thumbnail) ? (
-                                                 <img 
-                                                    src={item.coverUrl || item.thumbnail} 
-                                                    alt="" 
-                                                    className="w-full h-full rounded object-cover" 
-                                                    onError={(e) => {
-                                                        const target = e.target as HTMLImageElement;
-                                                        target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik05IDE4VjVsMTItMi43VjE0Ij48L3BhdGg+PGNpcmNsZSBjeD0iNiIgY3k9IjE4IiByPSIzIj48L2NpcmNsZT48Y2lyY2xlIGN4PSIxOCIgY3k9IjE2IiByPSIzIj48L2NpcmNsZT48L3N2Zz4='; // Music icon placeholder
-                                                        target.className = "w-full h-full rounded object-cover opacity-30 p-2 bg-neutral";
-                                                    }}
-                                                 />
-                                             ) : (
-                                                 <div className="w-full h-full bg-neutral rounded flex items-center justify-center">
-                                                     <Music size={16} />
-                                                 </div>
-                                             )}
-                                             <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                 <Play size={16} fill="currentColor" />
-                                             </div>
-                                        </button>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-bold truncate">{item.title}</div>
-                                            <div className="text-xs opacity-60 truncate">
-                                                {item.artist} • <span className={clsx(
-                                                    "uppercase font-bold",
-                                                    item.source === 'spotify' ? 'text-[#1DB954]' :
-                                                    item.source === 'soundcloud' ? 'text-[#FF3300]' :
-                                                    item.source === 'deezer' ? 'text-[#EF5466]' :
-                                                    item.source === 'bandcamp' ? 'text-[#629aa9]' :
-                                                    item.source === 'youtube' ? 'text-[#FF0000]' :
-                                                    'text-primary opacity-50'
-                                                )}>{item.source}</span>
-                                                {item.isStreaming && <span className="ml-2 badge badge-ghost badge-xs">Streaming</span>}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {item.url && (
-                                                <a 
-                                                    href={item.url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer" 
-                                                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 flex items-center gap-1"
-                                                    title="Open source link"
-                                                >
-                                                    <Globe size={12}/> Link
-                                                </a>
-                                            )}
-
-                                            <div className="dropdown dropdown-end">
-                                                <button 
-                                                    className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
-                                                    onClick={() => setActivePlaylistMenu(item.id)}
-                                                >
-                                                    <Plus size={14}/> Add
-                                                </button>
-                                                {activePlaylistMenu === item.id && (
-                                                    <ul className="dropdown-content z-[50] menu p-2 shadow bg-base-200 rounded-box w-52 mt-1 border border-base-300 animate-in fade-in zoom-in duration-100">
-                                                        <li className="menu-title text-xs uppercase opacity-50">Your Playlists</li>
-                                                        {playlists.length === 0 ? (
-                                                            <li className="disabled text-xs p-2">No playlists found</li>
-                                                        ) : (
-                                                            playlists.map(p => (
-                                                                <li key={p.id}>
-                                                                    <button 
-                                                                        className="flex justify-between items-center text-sm"
-                                                                        onClick={() => handleAddToPlaylist(item, String(p.id))}
-                                                                    >
-                                                                        {p.name}
-                                                                        <Plus size={12} className="opacity-50"/>
-                                                                    </button>
-                                                                </li>
-                                                            ))
-                                                        )}
-                                                        <div className="divider my-1"></div>
-                                                        <li>
-                                                            <Link to="/library?tab=playlists" className="text-xs opacity-50 justify-center">Manage Playlists</Link>
-                                                        </li>
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            </div>
-                        </section>
-                    )}
-                    
-                    {!results.artists?.length && !results.albums?.length && !results.tracks?.length && !(results as any).external?.length && (
+                    {!results.artists?.length && !results.albums?.length && !results.tracks?.length && (
                         <div className="text-center opacity-50">No results found for "{query}"</div>
                     )}
                 </div>
             ) : (
                 <div className="text-center opacity-30 py-12 flex flex-col items-center gap-4">
-                    <Globe size={64}/>
-                    <p className="text-xl">Search the TuneCamp Universe</p>
+                    <Music size={64}/>
+                    <p className="text-xl">Search TuneCamp</p>
                 </div>
             )}
         </div>

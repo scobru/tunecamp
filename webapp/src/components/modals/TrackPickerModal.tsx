@@ -14,6 +14,7 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
     const dialogRef = useRef<HTMLDialogElement>(null);
     const [tracks, setTracks] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [selectedTracks, setSelectedTracks] = useState<any[]>([]);
 
@@ -22,6 +23,7 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
             dialogRef.current?.showModal();
             loadTracks();
             setSelectedTracks([]);
+            setError(null);
         } else {
             dialogRef.current?.close();
         }
@@ -29,13 +31,14 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
 
     const loadTracks = async () => {
         setLoading(true);
+        setError(null);
         try {
             const data = await API.getTracks();
-            // Filter out already added tracks if needed
             const available = data.filter((t: any) => !excludeTrackIds.includes(parseInt(t.id)));
             setTracks(available);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            setError(e?.message || 'Failed to load tracks');
         } finally {
             setLoading(false);
         }
@@ -86,8 +89,19 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
                 <div className="flex-1 overflow-y-auto p-4">
                     {loading ? (
                         <div className="text-center py-8 opacity-50">Loading tracks...</div>
+                    ) : error ? (
+                        <div className="text-center py-8 text-error">
+                            <div className="font-bold mb-1">Error loading tracks</div>
+                            <div className="text-xs opacity-70">{error}</div>
+                            <button className="btn btn-sm btn-ghost mt-3" onClick={loadTracks}>Retry</button>
+                        </div>
+                    ) : filteredTracks.length === 0 && search ? (
+                        <div className="text-center py-8 opacity-50">No tracks match your search.</div>
                     ) : filteredTracks.length === 0 ? (
-                        <div className="text-center py-8 opacity-50">No tracks found.</div>
+                        <div className="text-center py-8 opacity-50">
+                            <div className="mb-1">No tracks in your library.</div>
+                            <div className="text-xs">Upload tracks from the Library section first.</div>
+                        </div>
                     ) : (
                         <div className="grid gap-2">
                             {filteredTracks.map(track => {
