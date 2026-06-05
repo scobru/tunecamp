@@ -250,6 +250,49 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
             console.log(`✅ [Maintenance] Merged ${removedCount} duplicate track records.`);
         }
 
+        // 1.6. Merge bare tracks (no artist, no album) into rich duplicates with same title
+        console.log(`📦 [Maintenance] Checking for bare tracks duplicating titled tracks...`);
+        const bareTracks = database.db.prepare(`
+            SELECT t.id, LOWER(TRIM(t.title)) as norm_title
+            FROM tracks t
+            WHERE (t.artist_id IS NULL OR t.artist_id = 0)
+              AND (t.artist_name IS NULL OR t.artist_name = '')
+              AND (t.album_id IS NULL OR t.album_id = 0)
+              AND t.title IS NOT NULL AND TRIM(t.title) != ''
+        `).all() as { id: number, norm_title: string }[];
+
+        if (bareTracks.length > 0) {
+            let mergedBareCount = 0;
+            for (const bare of bareTracks) {
+                const richMatch = database.db.prepare(`
+                    SELECT id, album_id, duration, fingerprint, external_id, lyrics, lossless_path, artist_id, artist_name
+                    FROM tracks
+                    WHERE LOWER(TRIM(title)) = ?
+                      AND id != ?
+                      AND (artist_id IS NOT NULL AND artist_id != 0 OR (artist_name IS NOT NULL AND artist_name != ''))
+                    ORDER BY
+                        (CASE WHEN album_id IS NOT NULL AND album_id != 0 THEN 8 ELSE 0 END) +
+                        (CASE WHEN duration IS NOT NULL AND duration != 0 THEN 4 ELSE 0 END) +
+                        (CASE WHEN fingerprint IS NOT NULL THEN 2 ELSE 0 END) +
+                        (CASE WHEN external_id IS NOT NULL THEN 1 ELSE 0 END) +
+                        (CASE WHEN lyrics IS NOT NULL THEN 1 ELSE 0 END) DESC
+                    LIMIT 1
+                `).get(bare.norm_title, bare.id) as any;
+
+                if (richMatch) {
+                    try {
+                        database.mergeTracks(bare.id, richMatch.id);
+                        mergedBareCount++;
+                    } catch (err) {
+                        console.error(`❌ [Maintenance] Failed to merge bare track ${bare.id} -> ${richMatch.id}:`, err);
+                    }
+                }
+            }
+            if (mergedBareCount > 0) {
+                console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records into their rich counterparts.`);
+            }
+        }
+
         // 2. Relink Orphaned Files (Restore Lost Tracks)
         console.log(`📦 [Maintenance] Scanning for orphaned music files in ${musicDir}...`);
         const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: musicDir, posix: true });
