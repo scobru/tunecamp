@@ -133,7 +133,7 @@ const Store = () => {
                 currency: asset.currency,
                 _assetType: true,
             };
-            document.dispatchEvent(new CustomEvent('open-checkout-modal', { detail: checkoutItem }));
+            window.dispatchEvent(new CustomEvent('open-checkout-modal', { detail: { track: checkoutItem } }));
         }
     };
 
