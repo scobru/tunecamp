@@ -35,6 +35,9 @@ services:
       # ZEN Relay peer - must use /zen WebSocket path
       - TUNECAMP_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://delay.scobrudot.dev/zen}
       - VITE_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://delay.scobrudot.dev/zen}
+      - TUNECAMP_ZEN_MEMORY_LIMIT=${TUNECAMP_ZEN_MEMORY_LIMIT:-128}
+      - TUNECAMP_ZEN_EXT_THRESHOLD_MB=${TUNECAMP_ZEN_EXT_THRESHOLD_MB:-30}
+      - TUNECAMP_ZEN_EXT_EMERGENCY_MB=${TUNECAMP_ZEN_EXT_EMERGENCY_MB:-45}
       # Telegram Integration
       - TUNECAMP_TELEGRAM_BOT_TOKEN=
       - TUNECAMP_TELEGRAM_MASTER_ID=
@@ -45,15 +48,6 @@ services:
       - STRIPE_SECRET_KEY=
       - STRIPE_WEBHOOK_SECRET=
       - STRIPE_ONRAMP_SECRET_KEY=
-      # Payments: PayPal
-      - PAYPAL_CLIENT_ID=
-      - PAYPAL_CLIENT_SECRET=
-      - PAYPAL_ENVIRONMENT=sandbox
-      # Payments: MoonPay
-      - MOONPAY_API_KEY=
-      # Spotify Integration
-      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID:-}
-      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET:-}
       # YouTube Bot Detection Bypass
       - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
       # Scrobbling
