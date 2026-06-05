@@ -118,10 +118,11 @@ export class TorrentService {
         if (!this.client) throw new Error("Torrent client not initialized");
 
         return new Promise((resolve, reject) => {
-            // Filter only existing files
-            const existingFiles = filePaths.filter(p => fs.existsSync(p));
-            if (existingFiles.length === 0) return reject(new Error("No valid files to seed"));
-
+            const missingFiles = filePaths.filter(p => !fs.existsSync(p));
+            if (missingFiles.length > 0) {
+                return reject(new Error(`The following paths do not exist: ${missingFiles.join(', ')}`));
+            }
+            const existingFiles = filePaths;
             const opts: any = { name };
             this.client!.seed(existingFiles, opts, (torrent) => {
                 const infoHash = (torrent.infoHash || '').toLowerCase();

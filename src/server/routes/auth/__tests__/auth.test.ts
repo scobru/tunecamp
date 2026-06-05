@@ -18,7 +18,8 @@ describe('Auth Routes', () => {
             isDefaultPassword: (jest.fn() as any).mockResolvedValue(false),
             createAdmin: (jest.fn() as any).mockResolvedValue({ id: 1 }),
             getUserPair: jest.fn().mockReturnValue(null),
-            getUserByUsername: jest.fn()
+            getUserByUsername: jest.fn(),
+            getZenAvatar: jest.fn().mockReturnValue(null)
         };
 
         mockAuthMiddleware = {

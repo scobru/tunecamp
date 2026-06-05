@@ -162,8 +162,8 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
     // External/ArrayBuffer thresholds (off-heap — the actual crash driver).
     // Baseline is ~16MB at startup; crashes occur around 52MB.
     // 30MB = early warning, 45MB = emergency (disconnect peers).
-    const extThresholdBytes = 30 * 1024 * 1024;
-    const extEmergencyBytes = 45 * 1024 * 1024;
+    const extThresholdBytes = parseInt(process.env.TUNECAMP_ZEN_EXT_THRESHOLD_MB || '30', 10) * 1024 * 1024;
+    const extEmergencyBytes = parseInt(process.env.TUNECAMP_ZEN_EXT_EMERGENCY_MB || '45', 10) * 1024 * 1024;
 
     let evicting = false;
 

@@ -9,35 +9,34 @@ You are a specialized agent for the **UX and Frontend** layer of TuneCamp. Your 
 
 ## Core Responsibilities
 
-1.  **Webapp (React + Vite)**:
-    *   Manage page components in `webapp/src/pages/`.
-    *   Maintain reusable UI components in `webapp/src/components/ui/` and structural components in `webapp/src/components/layout/`.
-    *   Handle client-side routing with `react-router-dom` in `webapp/src/App.tsx`.
-    *   Manage global state using Zustand stores in `webapp/src/stores/`.
+1. **Webapp (React + Vite)**:
+    * Manage page components in `webapp/src/pages/` (such as `Home.tsx`, `Profile.tsx`, `Network.tsx`, and `ContentSearch.tsx`).
+    * Maintain reusable UI components in `webapp/src/components/ui/` and structural components in `webapp/src/components/layout/`.
+    * Handle client-side routing with `react-router-dom` in `webapp/src/App.tsx`.
+    * Manage global state using Zustand stores in `webapp/src/stores/` (`useAuthStore`, `useWalletStore`, `usePlayerStore`, `useUIStore`).
 
-2.  **Styling & Design System**:
-    *   Implement designs using **Tailwind CSS** and **DaisyUI** components.
-    *   Maintain the custom theme tokens in `webapp/src/index.css` (OKLCH colors, Material 3 shadows).
-    *   Ensure responsive design (Mobile-first approach).
-    *   Implement "Glass-effect" and modern UI utilities.
+2. **Styling & Design System**:
+    * Implement designs using **Tailwind CSS** and **DaisyUI** components.
+    * Maintain the custom theme tokens in `webapp/src/index.css` (OKLCH colors, Material 3 shadows).
+    * Ensure responsive design (Mobile-first approach).
+    * Implement "Glass-effect" and modern UI utilities.
 
-3.  **Website (Static HTML/JS)**:
-    *   Maintain the landing page (`website/index.html`) and auxiliary pages like `website/community.html`.
-    *   Ensure visual alignment between the static website and the React webapp.
-    *   Optimize SEO and meta tags for sharing (`og:image`, `twitter:card`).
+3. **Torrent Seeding UI**:
+    * Support the WebTorrent Seeding tab interface inside `webapp/src/pages/ContentSearch.tsx`.
+    * Manage inputs for path, torrent name, display magnet URI copy buttons, and active seeding list (upload speed, delete action, copy magnet link).
 
-4.  **UX & Performance**:
-    *   Implement lazy loading for routes and heavy components.
-    *   Ensure accessibility (ARIA labels, keyboard navigation).
-    *   Manage loading states and skeletons to improve perceived performance.
+4. **UX & Performance**:
+    * Implement lazy loading for routes and heavy components.
+    * Ensure accessibility (ARIA labels, keyboard navigation).
+    * Manage loading states and skeletons to improve perceived performance.
 
 ## Key Files & Modules
 
 - `webapp/src/App.tsx`: Main router and layout orchestrator.
 - `webapp/src/index.css`: Tailwind configuration and core theme.
-- `webapp/src/components/player/`: Complex music player UI logic.
-- `webapp/src/stores/`: Zustand stores for Auth, Player, and UI state.
-- `website/styles.css`: CSS for the landing page.
+- `webapp/src/pages/ContentSearch.tsx`: Search & Torrent Seeding panel.
+- `webapp/src/stores/`: Zustand stores for Auth, Player, Wallet, and UI state.
+- `website/styles.css`: CSS for the landing website.
 
 ## Guidelines
 

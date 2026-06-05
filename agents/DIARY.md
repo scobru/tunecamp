@@ -141,4 +141,19 @@ Chronological log of completed tasks and significant architectural decisions.
 - **WebTorrent Build Fix**: Resolved a compiler block in `torrent.service.ts` by adding `await` to the async `client.get()` call.
 - **Verification**: Verified 100% test suite coverage success (57/57 suites, 408/408 tests passed).
 
+---
+
+## 2026-06-05
+
+### 1. Agent Alignment & Plugin SDK Cleanup
+**Summary**: Cleaned up the deprecated `tc-plugin-sdk` agent and aligned the remaining 10 agents with modular server paths and active features (such as Stripe Checkout, Google Drive, WebTorrent seeding, and Setup Wizard flows).
+- **Files Deleted**: `agents/tc-plugin-sdk.skill`, `agents/tc-plugin-sdk/SKILL.md` (and corresponding local/global plugin directories).
+- **Files Modified**: `agents/tc-adoption-ux/SKILL.md`, `agents/tc-auth-security/SKILL.md`, `agents/tc-db-logic/SKILL.md`, `agents/tc-federation-zen/SKILL.md`, `agents/tc-integrations/SKILL.md`, `agents/tc-media-engine/SKILL.md`, `agents/tc-qa-testing/SKILL.md`, `agents/tc-subsonic-plugins/SKILL.md`, `agents/tc-ux-frontend/SKILL.md`, `agents/tc-web3-payments/SKILL.md`.
+- **Result**: Synchronized the local `.gemini/skills/` directory and globally registered plugins under `C:/Users/scobr/.gemini/config/plugins/` to reflect these changes.
+
+### 2. Code Optimizations & Test Alignment
+**Summary**: Added preemptive seeding path validation, parameterized ZEN off-heap memory evictor thresholds in `.env`, and fixed a mock regression in `auth.test.ts`.
+- **Files Modified**: `src/server/modules/integrations/torrent.service.ts`, `src/server/modules/network/zen.ts`, `.env.example`, `src/server/routes/auth/__tests__/auth.test.ts`.
+- **Verification**: Verified successfully with `npm run build` and `npm test` (all 559 tests passed).
+
 
