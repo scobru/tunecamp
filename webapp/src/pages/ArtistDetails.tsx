@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart } from 'lucide-react';
+import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart, ShoppingBag } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useConfigStore } from '../stores/useConfigStore';
 import { formatDuration } from '../utils/format';
-import type { Artist, Album, Post, Track, Release } from '../types';
+import type { Artist, Album, Post, Track, Release, Asset } from '../types';
+import { AssetCard, AssetViewerModal } from './Store';
+import { SubscriptionModal } from '../components/modals/SubscriptionModal';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
     const p = platform.toLowerCase();
@@ -27,21 +29,51 @@ const ArtistDetails = () => {
     const [libraryAlbums, setLibraryAlbums] = useState<Album[]>([]);
     const [looseTracks, setLooseTracks] = useState<Track[]>([]);
     const [posts, setPosts] = useState<Post[]>([]);
+    const [assets, setAssets] = useState<Asset[]>([]);
+    const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
     const [loading, setLoading] = useState(true);
     const { playTrack } = usePlayerStore();
-    const { isAdminAuthenticated } = useAuthStore();
+    const { isAdminAuthenticated, user } = useAuthStore();
     const [starred, setStarred] = useState(false);
+    const hasSubscription = !!(user as any)?.subscriptionStatus === true;
+
+    const openSubscription = () => document.dispatchEvent(new CustomEvent('open-subscription-modal'));
+
+    const handleBuy = (asset: Asset) => {
+        const isFreeWithSub = !!(asset.requires_subscription || asset.requiresSubscription);
+        if (isFreeWithSub) {
+            openSubscription();
+        } else {
+            // Dispatch checkout event reusing CheckoutModal
+            const checkoutItem = {
+                id: String(asset.id),
+                title: asset.title,
+                artist: asset.artist_name || asset.artistName || '',
+                price: asset.price,
+                priceUsdc: asset.price_usdc || asset.priceUsdc,
+                currency: asset.currency,
+                _assetType: true,
+            };
+            window.dispatchEvent(new CustomEvent('open-checkout-modal', { detail: { track: checkoutItem } }));
+        }
+    };
 
     const loadData = () => {
         if (!idOrSlug) return;
         setLoading(true);
         Promise.all([
             API.getArtist(idOrSlug),
-            API.getArtistPosts(idOrSlug)
-        ]).then(([artistData, artistPosts]) => {
+            API.getArtistPosts(idOrSlug),
+            API.getPublicAssets()
+        ]).then(([artistData, artistPosts, allAssets]) => {
             setArtist(artistData);
             setStarred(!!artistData.starred);
             
+            // Map assets for this artist
+            const artistId = artistData.id;
+            const artistAssets = allAssets.filter(a => a.artist_id === artistId || a.artistId === artistId);
+            setAssets(artistAssets);
+
             // Map formal releases
             if (artistData.releases) {
                 setFormalReleases(artistData.releases);
@@ -351,6 +383,27 @@ const ArtistDetails = () => {
                      </div>
                  </section>
               )}
+
+               {/* Store & Digital Assets */}
+               {assets.length > 0 && (
+                  <section>
+                      <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
+                          <ShoppingBag size={20} className="text-primary" />
+                          <h2 className="text-xl font-bold">Store & Digital Assets</h2>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {assets.map(asset => (
+                              <AssetCard
+                                  key={asset.id}
+                                  asset={asset}
+                                  hasSubscription={hasSubscription}
+                                  onBuy={handleBuy}
+                                  onPreview={setPreviewAsset}
+                              />
+                          ))}
+                      </div>
+                  </section>
+               )}
  
               {/* Loose Tracks */}
               {looseTracks.length > 0 && (
@@ -393,12 +446,10 @@ const ArtistDetails = () => {
                      </div>
                  </section>
               )}
+              <SubscriptionModal />
+              {previewAsset && <AssetViewerModal asset={previewAsset} onClose={() => setPreviewAsset(null)} />}
         </div>
     );
 };
 
-
-
-
 export default ArtistDetails;
-

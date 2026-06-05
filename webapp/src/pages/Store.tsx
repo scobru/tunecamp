@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Crown, FileText, Video, Star, Download, CreditCard, Lock } from 'lucide-react';
+import { ShoppingBag, Crown, FileText, Video, Star, Download, CreditCard, Lock, Eye } from 'lucide-react';
 import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { SubscriptionModal } from '../components/modals/SubscriptionModal';
@@ -17,7 +17,74 @@ const TYPE_LABEL: Record<string, string> = {
     membership: 'Membership',
 };
 
-const AssetCard = ({ asset, hasSubscription, onBuy }: { asset: Asset; hasSubscription: boolean; onBuy: (asset: Asset) => void }) => {
+export const AssetViewerModal = ({ asset, onClose }: { asset: Asset | null; onClose: () => void }) => {
+    if (!asset) return null;
+
+    const inlineUrl = API.getAssetDownloadUrl(asset.id, true);
+    
+    // Check type / file extension
+    const isVideo = asset.type === 'video' || asset.mime_type?.startsWith('video/') || asset.file_path?.endsWith('.mp4') || asset.file_path?.endsWith('.webm') || asset.file_path?.endsWith('.mov');
+    const isPdf = asset.mime_type === 'application/pdf' || asset.file_path?.endsWith('.pdf');
+    const isImage = asset.mime_type?.startsWith('image/') || asset.file_path?.endsWith('.png') || asset.file_path?.endsWith('.jpg') || asset.file_path?.endsWith('.jpeg') || asset.file_path?.endsWith('.gif') || asset.file_path?.endsWith('.webp');
+
+    return (
+        <dialog className="modal modal-open">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-4xl rounded-2xl shadow-2xl p-6 relative">
+                <button 
+                    className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 rounded-full"
+                    onClick={onClose}
+                >
+                    ✕
+                </button>
+
+                <h3 className="font-bold text-xl mb-4 text-prominent">{asset.title}</h3>
+                
+                <div className="bg-neutral/5 rounded-xl border border-base-content/5 overflow-hidden flex items-center justify-center p-2 min-h-[300px]">
+                    {isVideo ? (
+                        <video controls src={inlineUrl} className="w-full max-h-[70vh] rounded-lg shadow-sm" autoPlay />
+                    ) : isPdf ? (
+                        <iframe src={inlineUrl} className="w-full h-[65vh] rounded-lg border-0" title={asset.title} />
+                    ) : isImage ? (
+                        <img src={inlineUrl} alt={asset.title} className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-sm" />
+                    ) : (
+                        <div className="text-center py-12 space-y-4">
+                            <FileText size={48} className="mx-auto opacity-30" />
+                            <p className="text-sm opacity-60 font-medium">This file type ({asset.mime_type || 'digital'}) cannot be previewed directly in the browser.</p>
+                            <a 
+                                href={API.getAssetDownloadUrl(asset.id, false)} 
+                                className="btn btn-primary rounded-full gap-2"
+                                download
+                            >
+                                <Download size={16} /> Download File
+                            </a>
+                        </div>
+                    )}
+                </div>
+
+                <div className="modal-action flex items-center justify-between border-t border-base-content/5 pt-4 mt-4">
+                    <p className="text-xs opacity-50 truncate max-w-md">
+                        {asset.description || 'No description provided.'}
+                    </p>
+                    <div className="flex gap-2">
+                        <button className="btn btn-sm btn-ghost rounded-full" onClick={onClose}>Close</button>
+                        {(isVideo || isPdf || isImage) && (
+                            <a 
+                                href={API.getAssetDownloadUrl(asset.id, false)} 
+                                className="btn btn-sm btn-success rounded-full gap-1"
+                                download
+                            >
+                                <Download size={14} /> Download
+                            </a>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="modal-backdrop bg-black/40" onClick={onClose}></div>
+        </dialog>
+    );
+};
+
+export const AssetCard = ({ asset, hasSubscription, onBuy, onPreview }: { asset: Asset; hasSubscription: boolean; onBuy: (asset: Asset) => void; onPreview: (asset: Asset) => void }) => {
     const Icon = TYPE_ICON[asset.type] || FileText;
     const isFreeWithSub = !!(asset.requires_subscription || asset.requiresSubscription);
     const isFree = !asset.price && !asset.price_usdc && !asset.priceUsdc && !isFreeWithSub;
@@ -35,7 +102,7 @@ const AssetCard = ({ asset, hasSubscription, onBuy }: { asset: Asset; hasSubscri
 
     const handleAction = () => {
         if (isUnlocked || isFree) {
-            window.open(`/api/payments/download/asset/${asset.id}`, '_blank');
+            window.open(API.getAssetDownloadUrl(asset.id, false), '_blank');
         } else {
             onBuy(asset);
         }
@@ -75,17 +142,27 @@ const AssetCard = ({ asset, hasSubscription, onBuy }: { asset: Asset; hasSubscri
                     )}
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1.5">
                     <span className={`font-bold text-sm ${isFree || isUnlocked ? 'text-success' : 'text-primary'}`}>
                         {priceLabel}
                     </span>
-                    <button
-                        className={`btn btn-xs rounded-full gap-1 ${isUnlocked || isFree ? 'btn-success' : 'btn-primary'}`}
-                        onClick={handleAction}
-                    >
-                        {isUnlocked || isFree ? <Download size={11} /> : isFreeWithSub ? <Lock size={11} /> : <CreditCard size={11} />}
-                        {isUnlocked || isFree ? 'Download' : isFreeWithSub ? 'Subscribe' : 'Buy'}
-                    </button>
+                    <div className="flex gap-1.5">
+                        {(isUnlocked || isFree) && (
+                            <button
+                                className="btn btn-xs btn-outline btn-success rounded-full gap-1"
+                                onClick={() => onPreview(asset)}
+                            >
+                                <Eye size={11} /> Preview
+                            </button>
+                        )}
+                        <button
+                            className={`btn btn-xs rounded-full gap-1 ${isUnlocked || isFree ? 'btn-success' : 'btn-primary'}`}
+                            onClick={handleAction}
+                        >
+                            {isUnlocked || isFree ? <Download size={11} /> : isFreeWithSub ? <Lock size={11} /> : <CreditCard size={11} />}
+                            {isUnlocked || isFree ? 'Download' : isFreeWithSub ? 'Subscribe' : 'Buy'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -99,6 +176,7 @@ const Store = () => {
     const [filter, setFilter] = useState<'all' | 'digital' | 'video' | 'membership'>('all');
     const [search, setSearch] = useState('');
     const [subscribed, setSubscribed] = useState(false);
+    const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
     const hasSubscription = subscribed || !!(user as any)?.subscriptionStatus === true;
 
     useEffect(() => {
@@ -218,12 +296,14 @@ const Store = () => {
                             asset={asset}
                             hasSubscription={hasSubscription}
                             onBuy={handleBuy}
+                            onPreview={setPreviewAsset}
                         />
                     ))}
                 </div>
             )}
 
             <SubscriptionModal onSubscribed={() => setSubscribed(true)} />
+            {previewAsset && <AssetViewerModal asset={previewAsset} onClose={() => setPreviewAsset(null)} />}
         </div>
     );
 };

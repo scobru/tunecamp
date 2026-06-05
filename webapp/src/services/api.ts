@@ -219,6 +219,15 @@ const API = {
     updateAsset: (id: number, formData: FormData) => handleResponse(api.put(`admin/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
     uploadAssetCover: (id: number, formData: FormData) => handleResponse(api.post(`admin/assets/${id}/cover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
     deleteAsset: (id: number) => handleResponse(api.delete(`admin/assets/${id}`)),
+    getAssetDownloadUrl: (id: string | number, inline = false) => {
+        const url = `/api/payments/download/asset/${id}`;
+        const token = localStorage.getItem('tunecamp_token');
+        const params = new URLSearchParams();
+        if (token) params.set('token', token);
+        if (inline) params.set('inline', 'true');
+        const queryString = params.toString();
+        return queryString ? `${url}?${queryString}` : url;
+    },
 
     // --- Subscription ---
     createSubscriptionSession: (successUrl: string, cancelUrl: string, email?: string) => handleResponse(api.post('payments/stripe/create-subscription-session', { successUrl, cancelUrl, email })),

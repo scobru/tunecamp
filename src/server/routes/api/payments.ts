@@ -760,7 +760,11 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             }
 
             const filename = path.basename(filePath);
-            res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+            if (req.query.inline === "true") {
+                res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+            } else {
+                res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+            }
             res.setHeader("Content-Type", asset.mime_type || "application/octet-stream");
             return fs.createReadStream(filePath).pipe(res);
         } catch (error) {
