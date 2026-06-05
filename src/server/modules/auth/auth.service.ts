@@ -550,7 +550,7 @@ export function createAuthService(
 
         updateAdmin(id: number, artistId: number | null, role?: UserRole): void {
             if (role) {
-                if (id === 1 && role !== 'admin') {
+                if (id === 1 && role !== 'admin' && role !== 'root_admin') {
                     throw new Error("Cannot demote the primary admin");
                 }
                 db.prepare("UPDATE admin SET artist_id = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(artistId, role, id);
