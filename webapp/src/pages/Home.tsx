@@ -164,7 +164,7 @@ const Home = () => {
               <button
                 key={genre}
                 className="btn btn-xs md:btn-sm btn-ghost border border-base-content/10 hover:bg-primary hover:text-primary-content hover:border-primary transition-all rounded-full lowercase"
-                onClick={() => navigate(`/search?q=${encodeURIComponent(genre)}`)}
+                onClick={() => navigate(`/playlists/genre:${encodeURIComponent(genre)}`)}
               >
                 {genre}
               </button>

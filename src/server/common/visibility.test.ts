@@ -59,7 +59,14 @@ describe("VisibilityGuardian", () => {
     test("getTrackFilter should return correct SQL for User", () => {
       const filter = VisibilityGuardian.getTrackFilter({ role: UserRole.NORMAL_USER, userId: 42 });
       expect(filter.sql).toContain("effective_owner_id = ?");
-      expect(filter.params).toEqual([42]);
+      expect(filter.params).toEqual([42, 42, 42]);
+    });
+
+    test("getTrackFilter should return correct SQL for User with artistId", () => {
+      const filter = VisibilityGuardian.getTrackFilter({ role: UserRole.NORMAL_USER, userId: 42, artistId: 10 });
+      expect(filter.sql).toContain("effective_owner_id = ?");
+      expect(filter.sql).toContain("artist_id = ?");
+      expect(filter.params).toEqual([42, 42, 42, 10]);
     });
 
     test("getTrackFilter should return 1=1 for Admin", () => {
@@ -78,6 +85,13 @@ describe("VisibilityGuardian", () => {
       const filter = VisibilityGuardian.getAlbumFilter({ role: UserRole.NORMAL_USER, userId: 42 });
       expect(filter.sql).toContain("owner_id = ?");
       expect(filter.params).toEqual([42, 42]);
+    });
+
+    test("getAlbumFilter should return correct SQL for User with artistId", () => {
+      const filter = VisibilityGuardian.getAlbumFilter({ role: UserRole.NORMAL_USER, userId: 42, artistId: 10 });
+      expect(filter.sql).toContain("owner_id = ?");
+      expect(filter.sql).toContain("artist_id = ?");
+      expect(filter.params).toEqual([42, 42, 10]);
     });
 
     test("getAlbumFilter should return 1=1 for Admin", () => {

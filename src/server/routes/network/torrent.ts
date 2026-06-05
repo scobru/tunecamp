@@ -33,7 +33,8 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
                     const active = activeMap.get(infoHashLower);
                     let status: string;
                     if (active) {
-                        if (active.done) status = 'completed';
+                        if (dt.status === 'seeding') status = 'seeding';
+                        else if (active.done) status = 'completed';
                         else if (!active.ready) status = 'metadata';
                         else status = 'downloading';
                     } else {

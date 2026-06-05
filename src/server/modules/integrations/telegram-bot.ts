@@ -666,8 +666,12 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
             if (result?.success) {
                 if (result.trackId) {
                     const allAdmins = this.database.getAdmins();
+                    const track = this.database.getTrack(result.trackId);
                     for (const admin of allAdmins) {
                         this.database.addTrackOwner(result.trackId, admin.id);
+                        if (track?.album_id) {
+                            this.database.addAlbumOwner(track.album_id, admin.id);
+                        }
                     }
                 }
                 await this.safeReply(ctx, `✅ UPLOADED TO TUNECAMP!\n\n${result.message}`);

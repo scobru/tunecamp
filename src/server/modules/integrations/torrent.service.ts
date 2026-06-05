@@ -161,7 +161,11 @@ export class TorrentService {
         });
 
         torrent.on('done', () => {
-            if (torrent.progress < 1) { // If it was a download that finished
+            const infoHash = (torrent.infoHash || '').toLowerCase();
+            const tRecord = this.database.getTorrent(infoHash);
+            const isSeeding = tRecord && tRecord.status === 'seeding';
+
+            if (!isSeeding) { // If it was a download that finished
                 console.log(`✅ [TorrentService] Torrent complete: ${torrent.name}`);
                 this.updateDbProgress(torrent, 'completed');
                 this.processCompletedTorrent(torrent, ownerId || 1);
@@ -319,8 +323,11 @@ export class TorrentService {
     }
 
     private updateDbProgress(torrent: WebTorrent.Torrent, overrideStatus?: TorrentStatus) {
-        const status = overrideStatus || (torrent.done ? 'completed' : 'downloading');
         const infoHash = (torrent.infoHash || '').toLowerCase();
+        const tRecord = this.database.getTorrent(infoHash);
+        const isSeeding = tRecord && tRecord.status === 'seeding';
+
+        const status = overrideStatus || (isSeeding ? 'seeding' : (torrent.done ? 'completed' : 'downloading'));
         this.database.updateTorrentProgress(
             infoHash,
             torrent.progress,

@@ -170,12 +170,22 @@ export class VisibilityGuardian {
 
     // 2. Logged-in users see public tracks + tracks they own
     if (userId) {
+      const sqlParts = [
+        `(${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted'))`,
+        `${tableAlias}.effective_owner_id = ?`,
+        `EXISTS (SELECT 1 FROM track_ownership to_ WHERE to_.track_id = ${tableAlias}.id AND to_.owner_id = ?)`,
+        `EXISTS (SELECT 1 FROM album_ownership ao WHERE ao.album_id = ${tableAlias}.album_id AND ao.owner_id = ?)`
+      ];
+      const params = [userId, userId, userId];
+
+      if (context.artistId) {
+        sqlParts.push(`${tableAlias}.artist_id = ?`);
+        params.push(context.artistId);
+      }
+
       return {
-        sql: `(
-          (${tableAlias}.album_status = 'released' AND ${tableAlias}.album_visibility IN ('public', 'unlisted'))
-          OR ${tableAlias}.effective_owner_id = ?
-        )`,
-        params: [userId]
+        sql: `(${sqlParts.join(' OR ')})`,
+        params
       };
     }
 
@@ -200,13 +210,21 @@ export class VisibilityGuardian {
 
     // 2. Logged-in users see public albums + albums they own
     if (userId) {
+      const sqlParts = [
+        `(${tableAlias}.status = 'released' AND ${tableAlias}.visibility IN ('public', 'unlisted'))`,
+        `${tableAlias}.owner_id = ?`,
+        `EXISTS (SELECT 1 FROM album_ownership ao WHERE ao.album_id = ${tableAlias}.id AND ao.owner_id = ?)`
+      ];
+      const params = [userId, userId];
+
+      if (context.artistId) {
+        sqlParts.push(`${tableAlias}.artist_id = ?`);
+        params.push(context.artistId);
+      }
+
       return {
-        sql: `(
-          (${tableAlias}.status = 'released' AND ${tableAlias}.visibility IN ('public', 'unlisted'))
-          OR ${tableAlias}.owner_id = ?
-          OR EXISTS (SELECT 1 FROM album_ownership ao WHERE ao.album_id = ${tableAlias}.id AND ao.owner_id = ?)
-        )`,
-        params: [userId, userId]
+        sql: `(${sqlParts.join(' OR ')})`,
+        params
       };
     }
 
