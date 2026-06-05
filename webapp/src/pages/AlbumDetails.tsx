@@ -49,8 +49,17 @@ const AlbumDetails = () => {
           setAlbum(data);
           setIsAlbumLiked(!!data.starred);
           if (data.tracks) {
-            const backendLiked = data.tracks.filter((t: any) => t && t.starred).map((t: any) => String(t.id));
-            setLikedTrackIds(new Set(backendLiked));
+            const backendLiked = new Set(data.tracks.filter((t: any) => t && t.starred).map((t: any) => String(t.id)));
+            const allAlbumTrackIds = new Set(data.tracks.filter((t: any) => t).map((t: any) => String(t.id)));
+            // Smart merge: apply backend truth for tracks in this album, preserve other state
+            setLikedTrackIds(prev => {
+              const next = new Set(prev);
+              allAlbumTrackIds.forEach(id => {
+                if (backendLiked.has(id)) next.add(id);
+                else next.delete(id);
+              });
+              return next;
+            });
           }
         })
         .catch(console.error)
@@ -60,6 +69,13 @@ const AlbumDetails = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
+      // Load starred tracks from backend as authoritative source
+      if (API.getToken()) {
+        API.getStarredTracks().then((starredIds: string[]) => {
+          setLikedTrackIds(prev => new Set([...Array.from(prev), ...starredIds]));
+        }).catch(console.error);
+      }
+      // Merge Zen liked tracks on top
       ZenSocial.getLikedTracks().then((liked) => {
         setLikedTrackIds((prev) => new Set([...Array.from(prev), ...liked.filter((t: any) => t && t.id).map((t: any) => String(t.id))]));
       });

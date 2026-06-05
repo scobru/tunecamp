@@ -117,12 +117,16 @@ export class TorrentService {
     public async seedFiles(filePaths: string[], name: string, ownerId: number | null): Promise<string> {
         if (!this.client) throw new Error("Torrent client not initialized");
 
+        // Resolve relative paths (stored as relative to musicDir in the DB) to absolute.
+        // This keeps existence checks and stored seed paths consistent regardless of CWD.
+        const resolvedFiles = filePaths.map(p => path.isAbsolute(p) ? p : path.join(this.musicDir, p));
+
         return new Promise((resolve, reject) => {
-            const missingFiles = filePaths.filter(p => !fs.existsSync(p));
+            const missingFiles = resolvedFiles.filter(p => !fs.existsSync(p));
             if (missingFiles.length > 0) {
                 return reject(new Error(`The following paths do not exist: ${missingFiles.join(', ')}`));
             }
-            const existingFiles = filePaths;
+            const existingFiles = resolvedFiles;
             const opts: any = { name };
             this.client!.seed(existingFiles, opts, (torrent) => {
                 const infoHash = (torrent.infoHash || '').toLowerCase();
