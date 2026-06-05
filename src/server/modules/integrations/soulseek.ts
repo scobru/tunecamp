@@ -144,6 +144,15 @@ export class SoulseekService {
         }
     }
 
+    disconnect(): void {
+        if (this.downloader) {
+            this.downloader = undefined;
+            this.currentUsername = null;
+            this.searchCache.clear();
+            console.log('[Soulseek] Disconnected');
+        }
+    }
+
     async checkStatus(): Promise<{ connected: boolean; username: string | null }> {
         return {
             connected: !!this.downloader && !!this.currentUsername,

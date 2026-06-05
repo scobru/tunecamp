@@ -6,7 +6,11 @@ import path from "path";
 import http from "http";
 import fs from "fs-extra";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { isNonFatalError } from "./common/errors.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../../package.json");
 
 // Global crash protection for async modules
 process.on('uncaughtException', (err: any) => {
@@ -43,6 +47,7 @@ import { createImportRoutes } from "./routes/library/import.js";
 import { createStatsRoutes } from "./routes/admin/stats.js";
 import { createUsersRoutes } from "./routes/auth/users.js";
 import { createCommentsRoutes } from "./routes/network/comments.js";
+import { createLobbyRoutes } from "./routes/network/lobby.js";
 import { Scanner } from "./modules/catalog/scanner.js";
 import { initScannerService } from "./modules/catalog/scanner.service.js";
 import { initStreamingService } from "./modules/streaming/streaming.service.js";
@@ -324,6 +329,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(database, config.musicDir, maintenanceService, catalogService));
     app.use("/api/users", createUsersRoutes(zendbService, database, authService, apService));
     app.use("/api/comments", createCommentsRoutes(zendbService));
+    app.use("/api/lobby", authMiddleware.requireUser, createLobbyRoutes(database));
     app.use("/api/unlock", createUnlockRoutes(database, authMiddleware));
 
     // Public assets store
@@ -395,7 +401,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         const stats = await database.getStats();
         res.json({
             version: "2.0",
-            software: { name: "tunecamp", version: "2.0.0" },
+            software: { name: "tunecamp", version: pkg.version },
             protocols: ["activitypub"],
             openRegistrations: false,
             usage: {
@@ -571,10 +577,41 @@ export async function startServer(config: ServerConfig): Promise<void> {
         loadPlugins().catch(() => {});
     });
 
-    process.on("SIGINT", () => {
-        database.db.close();
+    const gracefulShutdown = async (signal: string) => {
+        console.log(`\n🛑 [${signal}] Graceful shutdown initiated...`);
+        const timeout = setTimeout(() => {
+            console.error('⏰ Shutdown timed out after 15s, forcing exit.');
+            process.exit(1);
+        }, 15000);
+
+        try {
+            // 1. Stop accepting new connections
+            await new Promise<void>((resolve) => server.close(() => resolve()));
+            console.log('  ✓ HTTP server closed');
+        } catch (e) { console.warn('  ⚠ HTTP server close error:', e); }
+
+        try { telegramBotService.stop(); console.log('  ✓ Telegram bot stopped'); }
+        catch (e) { console.warn('  ⚠ Telegram stop error:', e); }
+
+        try { soulseekService.disconnect(); console.log('  ✓ Soulseek disconnected'); }
+        catch (e) { console.warn('  ⚠ Soulseek disconnect error:', e); }
+
+        try { torrentService.shutdown(); console.log('  ✓ TorrentService shut down'); }
+        catch (e) { console.warn('  ⚠ Torrent shutdown error:', e); }
+
+        try { database.db.close(); console.log('  ✓ Database closed'); }
+        catch (e) { console.warn('  ⚠ Database close error:', e); }
+
+        clearTimeout(timeout);
+        console.log('👋 Shutdown complete.');
         process.exit(0);
-    });
+    };
+
+    process.on("SIGINT", () => gracefulShutdown('SIGINT'));
+    process.on("SIGTERM", () => gracefulShutdown('SIGTERM'));
 }
 
-export async function stopServer(): Promise<void> {}
+export async function stopServer(): Promise<void> {
+    // Graceful shutdown is handled by SIGINT/SIGTERM handlers inside startServer.
+    // This export remains for API compatibility.
+}

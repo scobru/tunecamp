@@ -176,7 +176,7 @@ export class PublishingService {
             if (release.external_links) {
                 try {
                     config.links = JSON.parse(release.external_links);
-                } catch (e) {}
+                } catch (e) { console.warn(`[Publishing] Malformed external_links JSON for release ${release.id}`); }
             }
 
             const yamlContent = stringify(config);

@@ -432,6 +432,7 @@ export const ZenAuth = {
 
     logout: () => {
         user.leave();
+        ZenLobby.reset();
     },
 
     // Example crypto helpers (signing)
@@ -1020,6 +1021,109 @@ export const ZenPlaylists = {
                 }, 3000);
             });
         });
+    }
+};
+
+// ============================================================
+// Zen Lobby — Public multi-user chat encrypted with a shared token
+// ============================================================
+
+const LOBBY_NODE = 'tunecamp-lobby';
+
+export interface LobbyMessage {
+    id: string;
+    text: string;
+    alias: string;
+    pub: string;
+    ts: number;
+}
+
+/**
+ * Public lobby chat. Messages are encrypted with a shared symmetric token that
+ * the backend hands out only to authenticated users (see /api/lobby/token).
+ * Anyone without the token — unregistered users, random Zen peers — sees only
+ * opaque ciphertext on the graph.
+ *
+ * NOTE: this is shared-key encryption, not end-to-end. The server knows the
+ * token. It gates the room to registered users; it is not zero-knowledge.
+ */
+export const ZenLobby = {
+    _token: null as string | null,
+    _room: null as string | null,
+
+    /** Fetch (and cache) the shared token + room id from the backend. */
+    connect: async (): Promise<{ token: string; room: string }> => {
+        if (ZenLobby._token && ZenLobby._room) {
+            return { token: ZenLobby._token, room: ZenLobby._room };
+        }
+        const { token, room } = await API.getLobbyToken();
+        ZenLobby._token = token;
+        ZenLobby._room = room;
+        return { token, room };
+    },
+
+    /** Clear the cached token (e.g. on logout). */
+    reset: () => {
+        ZenLobby._token = null;
+        ZenLobby._room = null;
+    },
+
+    _node: () => zen.get(LOBBY_NODE).get(ZenLobby._room as string).get('messages'),
+
+    /** Encrypt and post a message to the lobby. */
+    send: async (text: string): Promise<void> => {
+        if (!user.is) throw new Error('Not logged in');
+        const trimmed = (text || '').trim();
+        if (!trimmed) return;
+        if (trimmed.length > 2000) throw new Error('Message too long (max 2000 chars)');
+
+        const { token } = await ZenLobby.connect();
+        const payload = JSON.stringify({
+            text: trimmed,
+            alias: user.is.alias || 'Anonymous',
+            pub: user.is.pub
+        });
+        const enc = await (ZEN as any).encrypt(payload, token);
+        const id = generateId();
+
+        return new Promise((resolve) => {
+            let done = false;
+            ZenLobby._node().get(id).put({ id, ts: Date.now(), enc }, (ack: any) => {
+                if (done) return;
+                done = true;
+                if (ack?.err) console.warn('Zen lobby send error (ignoring):', ack.err);
+                resolve();
+            });
+            setTimeout(() => { if (!done) { done = true; resolve(); } }, 3000);
+        });
+    },
+
+    /**
+     * Subscribe to incoming lobby messages. Returns an unsubscribe function.
+     * Messages that can't be decrypted with our token are silently skipped.
+     */
+    subscribe: async (onMessage: (msg: LobbyMessage) => void): Promise<() => void> => {
+        const { token } = await ZenLobby.connect();
+        const seen = new Set<string>();
+        const ref = ZenLobby._node().map().on(async (data: any, id: string) => {
+            if (!data || !data.enc || id === '_' || seen.has(id)) return;
+            seen.add(id);
+            try {
+                const dec = await (ZEN as any).decrypt(data.enc, token);
+                if (!dec) return;
+                const body = typeof dec === 'string' ? JSON.parse(dec) : dec;
+                onMessage({
+                    id: data.id || id,
+                    text: body.text || '',
+                    alias: body.alias || 'Anonymous',
+                    pub: body.pub || '',
+                    ts: data.ts || 0
+                });
+            } catch {
+                /* not decryptable with our token (other instance / tampered) — ignore */
+            }
+        });
+        return () => { if (ref && (ref as any).off) (ref as any).off(); };
     }
 };
 

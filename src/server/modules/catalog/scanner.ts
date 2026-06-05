@@ -331,7 +331,7 @@ export class Scanner implements ScannerService {
                     }
                     this.folderToArtistMap.set(rootDir, artistId);
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[Scanner] Failed to parse artist.yaml at ${artistPath}:`, (e as any).message); }
         }
 
         const catalogPath = path.join(rootDir, "catalog.yaml");
@@ -345,7 +345,7 @@ export class Scanner implements ScannerService {
                 if (config.donationLinks) {
                     this.database.setSetting("donationLinks", JSON.stringify(config.donationLinks));
                 }
-            } catch (e) {}
+            } catch (e) { console.warn(`[Scanner] Failed to parse catalog.yaml at ${catalogPath}:`, (e as any).message); }
         }
     }
 

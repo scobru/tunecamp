@@ -34,6 +34,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
 const Favorites = lazy(() => import("./pages/Favorites"));
+const Lobby = lazy(() => import("./pages/Lobby"));
 const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 
@@ -156,6 +157,7 @@ function App() {
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/lobby" element={<Lobby />} />
             <Route path="/my-music" element={<MyMusic />} />
             <Route path="/publish" element={<Publish />} />
             <Route path="/social" element={<Social />} />

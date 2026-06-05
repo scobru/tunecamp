@@ -703,6 +703,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_albums_artist ON albums(artist_id);
         CREATE INDEX IF NOT EXISTS idx_albums_public ON albums(is_public);
         CREATE INDEX IF NOT EXISTS idx_albums_release ON albums(is_release);
+        CREATE INDEX IF NOT EXISTS idx_albums_status ON albums(status);
         CREATE INDEX IF NOT EXISTS idx_track_ownership_owner ON track_ownership(owner_id);
         CREATE INDEX IF NOT EXISTS idx_album_ownership_owner ON album_ownership(owner_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));
@@ -794,9 +795,12 @@ export function createDatabase(dbPath: string): DatabaseService {
         
         consolidateLibrary(): void {
             db.transaction(() => {
+                // Remove library albums with no tracks
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
-                db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
-                db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
+                // Remove released albums with no tracks (queries tracks directly, not the release_tracks view)
+                db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 1").run();
+                // Remove orphan artists (except the Site Actor)
+                db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT DISTINCT artist_id FROM albums WHERE artist_id IS NOT NULL) AND id NOT IN (SELECT DISTINCT artist_id FROM tracks WHERE artist_id IS NOT NULL)").run();
             })();
         },
 

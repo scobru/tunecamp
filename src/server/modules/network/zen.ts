@@ -24,6 +24,7 @@ function isProtectedSoul(soul: string): boolean {
 
     // Protect explicit system nodes we use
     if (soul === 'tunecamp-playlists' || soul === 'tunecamp-public-playlists') return true;
+    if (soul === 'tunecamp-lobby') return true;
 
     return false;
 }

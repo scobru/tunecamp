@@ -469,10 +469,6 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
             });
             console.log('✅ Telegram Bot started');
             
-            // Handle graceful stop
-            process.once('SIGINT', () => this.stop());
-            process.once('SIGTERM', () => this.stop());
-            
         } catch (err) {
             console.error('[TelegramBot] Failed to start:', err);
         }

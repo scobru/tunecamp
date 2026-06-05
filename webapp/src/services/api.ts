@@ -76,6 +76,9 @@ const API = {
         API.setToken(null);
     },
 
+    // --- Lobby (encrypted public chat) ---
+    getLobbyToken: () => handleResponse(api.get<{ token: string; room: string }>('lobby/token')),
+
     // --- Catalog & Search ---
     getCatalog: () => handleResponse(api.get<any>('catalog')),
     getSiteSettings: () => handleResponse(api.get<SiteSettings>('catalog/settings')),

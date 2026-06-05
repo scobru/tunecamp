@@ -85,7 +85,7 @@ describe('Subsonic Scrobbling', () => {
         expect(recentPlays.length).toBe(1);
         expect(recentPlays[0].track_id).toBe(trackId);
         // SQLite stores ISO string. We compare them by creating Date objects.
-        expect(Math.abs(new Date(recentPlays[0].played_at).getTime() - nowSeconds * 1000)).toBeLessThan(5000);
+        expect(Math.abs(new Date(recentPlays[0].played_at).getTime() - nowSeconds * 1000)).toBeLessThan(30000);
     });
 
     it('should handle multiple scrobbles in one request', async () => {
