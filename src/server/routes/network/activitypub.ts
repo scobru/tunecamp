@@ -69,12 +69,43 @@ export function createActivityPubRoutes(apService: ActivityPubService, db: Datab
                 return res.status(202).send("Accepted");
             } else if (hasType(activity.type, "Undo")) {
                 const object = activity.object;
+                const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
                 if (object && hasType(object.type, "Follow") && artist) {
                     const follower = object.actor;
                     db.removeFollower(artist.id, follower);
                     console.log(`➖ Removed follower ${follower} for ${artist.name}`);
                     return res.status(200).send("OK");
+                } else if (object && hasType(object.type, "Like") && actorUri) {
+                    const targetId = typeof object.object === 'string' ? object.object : object.object?.id;
+                    if (targetId) {
+                        db.removeApInteraction(targetId, actorUri, 'like');
+                        console.log(`💔 Removed like from ${actorUri} on ${targetId}`);
+                    }
+                    return res.status(200).send("OK");
+                } else if (object && hasType(object.type, "Announce") && actorUri) {
+                    const targetId = typeof object.object === 'string' ? object.object : object.object?.id;
+                    if (targetId) {
+                        db.removeApInteraction(targetId, actorUri, 'announce');
+                        console.log(`🔁 Removed announce from ${actorUri} on ${targetId}`);
+                    }
+                    return res.status(200).send("OK");
                 }
+            } else if (hasType(activity.type, "Like")) {
+                const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
+                const targetId = typeof activity.object === 'string' ? activity.object : activity.object?.id;
+                if (actorUri && targetId) {
+                    db.addApInteraction(targetId, actorUri, 'like', activity.id);
+                    console.log(`❤️ Like from ${actorUri} on ${targetId}`);
+                }
+                return res.status(200).send("OK");
+            } else if (hasType(activity.type, "Announce")) {
+                const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
+                const targetId = typeof activity.object === 'string' ? activity.object : activity.object?.id;
+                if (actorUri && targetId) {
+                    db.addApInteraction(targetId, actorUri, 'announce', activity.id);
+                    console.log(`🔁 Announce from ${actorUri} on ${targetId}`);
+                }
+                return res.status(200).send("OK");
             } else if (hasType(activity.type, "Create")) {
                 const obj = activity.object;
                 // Parse Funkwhale/Music/Tunecamp objects (handles array types like ["Note", "MusicAlbum"])
