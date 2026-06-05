@@ -115,8 +115,16 @@ export class DiscoveryService {
         const username = user.username;
         let tracks: Track[] = [];
 
-        if (options.mineOnly && context.userId !== undefined && context.userId !== null) {
-            tracks = this.database.getTracksByOwner(context.userId, context);
+        if (options.mineOnly) {
+            const owned = context.userId != null
+                ? this.database.getTracksByOwner(context.userId, context)
+                : [];
+            const byArtist = user.artistId
+                ? this.database.getTracksByArtist(user.artistId, context)
+                : [];
+            const merged = new Map<number, Track>();
+            for (const t of [...owned, ...byArtist]) merged.set(t.id, t);
+            tracks = Array.from(merged.values());
         } else {
             tracks = this.database.getTracks(undefined, context);
         }
