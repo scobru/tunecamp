@@ -16,7 +16,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { usePurchases } from "../hooks/usePurchases";
 import { useWalletStore } from "../stores/useWalletStore";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
-import { ZenSocial } from "../services/zen";
+
 import { formatDuration } from "../utils/format";
 import { PageHeader } from "../components/ui/PageHeader";
 import type { Track } from "../types";
@@ -49,11 +49,7 @@ const Tracks = () => {
         setLoading(false);
       });
 
-    if (isAuthenticated) {
-      ZenSocial.getLikedTracks().then((liked) => {
-        setLikedTrackIds(prev => new Set([...Array.from(prev), ...liked.filter((t: any) => t && t.id).map((t: any) => String(t.id))]));
-      });
-    } else if (!isAdminAuthenticated) {
+    if (!isAuthenticated && !isAdminAuthenticated) {
       setLikedTrackIds(new Set());
     }
   }, [isAuthenticated, isAdminAuthenticated]);
@@ -80,19 +76,6 @@ const Tracks = () => {
     const isCurrentlyLiked = likedTrackIds.has(trackIdStr);
 
     try {
-      // Toggle in Zen if user is fully authenticated with Zen
-      if (isAuthenticated && user?.zenProfile) {
-        try {
-          if (isCurrentlyLiked) {
-            await ZenSocial.unlikeTrack(track.id);
-          } else {
-            await ZenSocial.likeTrack(track);
-          }
-        } catch (zenErr) {
-          console.warn("Zen like sync failed:", zenErr);
-        }
-      }
-
       // Toggle in Backend (SQLite) if user has a token
       if (API.getToken()) {
         if (isCurrentlyLiked) {
