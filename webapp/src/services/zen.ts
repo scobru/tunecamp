@@ -1044,9 +1044,6 @@ export interface PresenceUser {
     ts: number;
 }
 
-/** A user is considered online if their last heartbeat is within this window (ms). */
-export const LOBBY_ONLINE_WINDOW = 45000;
-export const LOBBY_HEARTBEAT_INTERVAL = 15000;
 
 /**
  * Public lobby chat. Messages are encrypted with a shared symmetric token that
