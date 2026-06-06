@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
-import { ZenPlaylists } from "../services/zen";
 import {
   Music,
   Play,
@@ -57,34 +56,10 @@ const MyPlaylistDetails = () => {
   const loadPlaylist = async (playlistId: string) => {
     setLoading(true);
     try {
-      console.log(`[Playlist] Loading ${playlistId}...`);
-      
-      // Try SQL API first for numeric IDs
-      if (/^\d+$/.test(playlistId)) {
-        const data = await API.getPlaylist(playlistId);
-        setPlaylist(data);
-      } else {
-        // Fallback to Zen for legacy/decentralized UUIDs
-        const data = await ZenPlaylists.getPlaylist(playlistId);
-        if (!data) {
-          console.warn(`[Playlist] Not found: ${playlistId}`);
-          navigate("/my-playlists");
-          return;
-        }
-        setPlaylist(data);
-      }
+      const data = await API.getPlaylist(playlistId);
+      setPlaylist(data);
     } catch (e) {
       console.error("[Playlist] Load error:", e);
-      // If SQL fails, try Zen as a last resort
-      try {
-          const data = await ZenPlaylists.getPlaylist(playlistId);
-          if (data) {
-              setPlaylist(data);
-              return;
-          }
-      } catch (inner) {
-          console.error("[Playlist] Zen fallback fail:", inner);
-      }
       navigate("/my-playlists");
     } finally {
       setLoading(false);
@@ -100,11 +75,7 @@ const MyPlaylistDetails = () => {
     )
       return;
     try {
-      if (/^\d+$/.test(String(playlist.id))) {
-        await API.deletePlaylist(String(playlist.id));
-      } else {
-        await ZenPlaylists.deletePlaylist(String(playlist.id));
-      }
+      await API.deletePlaylist(String(playlist.id));
       navigate("/my-playlists");
     } catch (e) {
       console.error(e);
@@ -116,11 +87,7 @@ const MyPlaylistDetails = () => {
     if (!playlist) return;
     if (!confirm("Remove track from playlist?")) return;
     try {
-      if (/^\d+$/.test(String(playlist.id))) {
-        await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
-      } else {
-        await ZenPlaylists.removeTrackFromPlaylist(String(playlist.id), String(trackId));
-      }
+      await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
       loadPlaylist(String(playlist.id));
     } catch (e) {
       console.error(e);
@@ -130,13 +97,7 @@ const MyPlaylistDetails = () => {
   const handleToggleVisibility = async () => {
     if (!playlist) return;
     try {
-      if (/^\d+$/.test(String(playlist.id))) {
-          await API.updatePlaylist(String(playlist.id), { isPublic: !playlist.isPublic });
-      } else {
-          await (ZenPlaylists as any).updatePlaylist(String(playlist.id), {
-            isPublic: !playlist.isPublic,
-          });
-      }
+      await API.updatePlaylist(String(playlist.id), { isPublic: !playlist.isPublic });
       setPlaylist({ ...playlist, isPublic: !playlist.isPublic });
     } catch (e) {
       console.error(e);
@@ -153,11 +114,7 @@ const MyPlaylistDetails = () => {
     );
     if (url === null) return; // cancelled
     try {
-      if (/^\d+$/.test(String(playlist.id))) {
-          await API.updatePlaylist(String(playlist.id), { coverPath: url });
-      } else {
-          await (ZenPlaylists as any).updatePlaylist(String(playlist.id), { coverUrl: url });
-      }
+      await API.updatePlaylist(String(playlist.id), { coverPath: url });
       setPlaylist({ ...playlist, coverUrl: url, coverPath: url } as any);
     } catch (e) {
       console.error(e);
@@ -178,10 +135,7 @@ const MyPlaylistDetails = () => {
     playTrack(allPlayable[0], allPlayable);
   };
 
-  const isOwner = isAuthenticated && (
-    (playlist && 'ownerPub' in playlist && user?.zenProfile?.pub === playlist.ownerPub) ||
-    (playlist && 'username' in playlist && user?.username === playlist.username)
-  );
+  const isOwner = isAuthenticated && playlist != null && 'username' in playlist && user?.username === playlist.username;
 
   if (loading || authLoading)
     return (

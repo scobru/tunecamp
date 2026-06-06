@@ -181,6 +181,8 @@ export interface User {
     userId?: number;
     mustChangePassword?: boolean;
     isActive?: boolean;
+    alias?: string | null;
+    avatar?: string | null;
 }
 
 export interface AuthStatus {

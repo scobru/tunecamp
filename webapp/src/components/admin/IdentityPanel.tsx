@@ -72,15 +72,6 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
       if (isRootAdmin) {
         setIdentity(results[1]);
         setSiteApIdentity(results[2]);
-      } else if (currentUser?.zenProfile) {
-        // Fallback: show the current logged-in user's ZEN identity if not root
-        setIdentity({
-          pub: currentUser.zenProfile.pub,
-          priv: (currentUser.zenProfile as any).priv || "********", 
-          epub: currentUser.zenProfile.epub,
-          epriv: (currentUser.zenProfile as any).epriv || "********",
-          alias: currentUser.zenProfile.alias
-        });
       }
 
       // Filter artists to only show the one associated with the current user

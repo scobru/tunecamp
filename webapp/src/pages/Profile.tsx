@@ -3,7 +3,6 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { useWalletStore } from "../stores/useWalletStore";
 import { usePurchases } from "../hooks/usePurchases";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
-import { ZenAuth } from "../services/zen";
 import {
   User,
   Settings,
@@ -44,8 +43,8 @@ const Profile = () => {
   }, [user?.artistId, activeTab]);
   const [artistData, setArtistData] = useState<any>(null);
   const [artistLoading, setArtistLoading] = useState(false);
-  const [alias, setAlias] = useState(user?.zenProfile?.alias || "");
-  const [avatar, setAvatar] = useState<string | null>(user?.zenProfile?.profile?.avatar || null);
+  const [alias, setAlias] = useState(user?.alias || "");
+  const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
   const [isSaving, setIsSaving] = useState(false);
   const [starredTracks, setStarredTracks] = useState<Track[]>([]);
   const [allTracks, setAllTracks] = useState<Track[]>([]);
@@ -53,8 +52,8 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
-      setAlias(user.zenProfile?.alias || "");
-      setAvatar(user.zenProfile?.profile?.avatar || null);
+      setAlias(user.alias || "");
+      setAvatar(user.avatar || null);
     }
   }, [user]);
 
@@ -95,8 +94,7 @@ const Profile = () => {
     if (!alias.trim()) return;
     setIsSaving(true);
     try {
-      await ZenAuth.updateAlias(alias);
-      // Force local store update or reload if necessary
+      await API.patchProfile({ alias: alias.trim() });
       window.location.reload();
     } catch (err) {
       console.error("Failed to update alias:", err);
@@ -137,11 +135,7 @@ const Profile = () => {
         setAvatar(base64);
         setIsSaving(true);
         try {
-          await ZenAuth.updateProfile({ avatar: base64 });
-          const profile = ZenAuth.getProfile();
-          if (profile) {
-            await API.syncGunUser(profile.pub, profile.epub, profile.alias, base64);
-          }
+          await API.patchProfile({ avatar: base64 });
         } catch (err) {
           console.error("Failed to update avatar:", err);
         } finally {
@@ -186,11 +180,11 @@ const Profile = () => {
             {avatar ? (
               <img
                 src={avatar}
-                alt={user?.zenProfile?.alias}
+                alt={user?.alias || user?.username}
                 className="w-full h-full object-cover"
               />
             ) : (
-              user?.zenProfile?.alias?.charAt(0).toUpperCase()
+              (user?.alias || user?.username)?.charAt(0).toUpperCase()
             )}
           </div>
           <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full">
@@ -206,10 +200,7 @@ const Profile = () => {
 
         <div className="text-center md:text-left flex-1">
           <h1 className="text-4xl font-black tracking-tight mb-2">
-            {user?.zenProfile?.alias || user?.username}
-            <span className="text-lg font-normal opacity-40 ml-3">
-              @{user?.zenProfile?.pub?.substring(0, 8)}
-            </span>
+            {user?.alias || user?.username}
           </h1>
           <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-4">
             <div className="badge badge-outline gap-2 py-3 px-4">
@@ -291,52 +282,16 @@ const Profile = () => {
                       isSaving && "loading",
                     )}
                     onClick={handleUpdateAlias}
-                    disabled={alias === user?.zenProfile?.alias || isSaving}
+                    disabled={alias === user?.alias || isSaving}
                   >
                     {!isSaving && <Check size={20} />}
                   </button>
                 </div>
                 <label className="label">
                   <span className="label-text-alt opacity-40 italic">
-                    This name is used across TuneCamp and Zen.
+                    This name is displayed across TuneCamp.
                   </span>
                 </label>
-              </div>
-
-              <div className="divider opacity-10"></div>
-              
-              <div className="form-control w-full">
-                  <label className="label">
-                      <span className="label-text opacity-60">Backup Account Pair (Zen)</span>
-                  </label>
-                  <p className="text-xs opacity-50 mb-2">
-                       This JSON contains your decentralized cryptographic keys. Save it somewhere safe. 
-                       You can use it to log into TuneCamp from another device if you forget your password.
-                  </p>
-                  
-                  {/* Since Zen.user()._.sea might not be typed easily, we access it dynamically */}
-                  { ZenAuth.user?.is && (ZenAuth.user as any)._?.sea ? (
-                      <div className="flex flex-col gap-2">
-                          <textarea 
-                              readOnly 
-                              className="textarea textarea-bordered font-mono text-xs h-24 w-full bg-base-200"
-                              value={JSON.stringify((ZenAuth.user as any)._?.sea, null, 2)}
-                          />
-                          <button 
-                              className="btn btn-sm btn-outline btn-secondary self-start gap-2"
-                              onClick={() => {
-                                  navigator.clipboard.writeText(JSON.stringify((ZenAuth.user as any)._?.sea));
-                                  alert('Pair copied to clipboard!');
-                              }}
-                          >
-                              Copy Backup Pair
-                          </button>
-                      </div>
-                  ) : (
-                      <div className="text-sm opacity-50 italic">
-                          Pair not available for this session. Log in again with password to reveal.
-                      </div>
-                  )}
               </div>
 
               <div className="divider opacity-10"></div>
@@ -344,8 +299,7 @@ const Profile = () => {
               <div className="alert alert-info bg-primary/10 border-primary/20 text-sm">
                 <Settings size={18} />
                 <span>
-                  Your account is decentralized. Updates are stored in Zen and
-                  synced across peers.
+                  Profile changes are saved on this server.
                 </span>
               </div>
             </div>
@@ -355,8 +309,7 @@ const Profile = () => {
                 <Camera size={20} className="text-secondary" /> Profile Visuals
               </h3>
               <p className="text-sm opacity-60">
-                Your profile picture is stored locally on your device and shared
-                via Zen. Larger images may take longer to sync.
+                Your profile picture is saved on the server. Square images work best (PNG/JPG, max 400px).
               </p>
 
               <div className="flex flex-col items-center gap-4 py-4">
@@ -475,7 +428,7 @@ const Profile = () => {
                         "Ascoltare la musica pubblica (Arena) e acquistare brani",
                         "Creare e gestire playlist personali e preferiti",
                         "Caricare e gestire la tua musica (se collegato ad un Artista)",
-                        "Personalizzare il tuo profilo, alias e avatar decentralizzati"
+                        "Personalizzare il tuo profilo, alias e avatar"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">
                           <Check size={16} className="text-success mt-0.5 flex-shrink-0" />

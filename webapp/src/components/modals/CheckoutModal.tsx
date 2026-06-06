@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useWalletStore } from "../../stores/useWalletStore";
-import { ZenAuth } from "../../services/zen";
 import { Wallet, Loader2, CheckCircle2, Download } from "lucide-react";
 import { ethers } from "ethers";
 import { TokenRole, DEPLOYMENTS } from "shogun-contracts-sdk";
@@ -331,20 +330,6 @@ export const CheckoutModal = () => {
         }
       } catch (verifyErr) {
         console.warn("Payment verification failed, purchase still recorded:", verifyErr);
-      }
-
-      const user = ZenAuth.user;
-      if (user.is) {
-        // @ts-ignore
-        user
-          .get("purchases")
-          .get(track.id)
-          .put({
-            txid: receipt.hash,
-            date: Date.now(),
-            price: finalPriceEth || 0,
-            code: code || "",
-          });
       }
 
       setTxHash(receipt.hash);
