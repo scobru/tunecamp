@@ -12,7 +12,7 @@ import type { OpenRouterService } from "./openrouter.service.js";
  * Strategy: use the first available provider. Falls back gracefully if
  * no provider is configured.
  */
-class AIService {
+export class AIService {
     private registry = new ProviderRegistry<AIProvider>();
 
     /**
