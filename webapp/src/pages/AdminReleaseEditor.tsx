@@ -87,9 +87,9 @@ export default function AdminReleaseEditor() {
   const [saving, setSaving] = useState(false);
   const [artists, setArtists] = useState<any[]>([]);
 
-  const { wallet, externalWallet, useExternalWallet, isExternalConnected, isWalletReady } = useWalletStore();
-  const activeSigner = useExternalWallet ? externalWallet : wallet;
-  const isReady = useExternalWallet ? isExternalConnected : isWalletReady;
+  const { signer, isConnected } = useWalletStore();
+  const activeSigner = signer;
+  const isReady = isConnected;
   const [isSyncingPrices, setIsSyncingPrices] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
 

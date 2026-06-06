@@ -1,136 +1,74 @@
 import { create } from 'zustand';
 import { ethers } from 'ethers';
-import { deriveTunecampWallet, WalletService } from '../services/wallet';
+import { WalletService } from '../services/wallet';
 
 interface WalletState {
-    wallet: ethers.Wallet | null;
+    provider: ethers.BrowserProvider | null;
+    signer: ethers.JsonRpcSigner | null;
     address: string | null;
     balanceEth: string | null;
     balanceUsdc: string | null;
-    isWalletReady: boolean;
-    isWalletLoading: boolean;
+    isConnected: boolean;
+    isConnecting: boolean;
     error: string | null;
 
-    // External Wallet (MetaMask)
-    externalProvider: ethers.BrowserProvider | null;
-    externalWallet: ethers.JsonRpcSigner | null;
-    externalAddress: string | null;
-    externalBalanceEth: string | null;
-    externalBalanceUsdc: string | null;
-    isExternalConnected: boolean;
-    useExternalWallet: boolean;
-
-    initWallet: () => Promise<void>;
+    connect: () => Promise<void>;
+    tryReconnect: () => Promise<void>;
+    disconnect: () => void;
     refreshBalances: () => Promise<void>;
     clearWallet: () => void;
-
-    // External Wallet actions
-    connectExternalWallet: () => Promise<void>;
-    disconnectExternalWallet: () => void;
-    setUseExternalWallet: (use: boolean) => void;
 }
 
 let ethListenersAttached = false;
 
+/**
+ * Wallet store backed exclusively by an external Web3 wallet (e.g. MetaMask).
+ * The legacy derived/local wallet has been removed — TuneCamp no longer holds
+ * any private keys; every signature is performed by the user's own wallet.
+ */
 export const useWalletStore = create<WalletState>((set, get) => ({
-    wallet: null,
+    provider: null,
+    signer: null,
     address: null,
     balanceEth: null,
     balanceUsdc: null,
-    isWalletReady: false,
-    isWalletLoading: false,
+    isConnected: false,
+    isConnecting: false,
     error: null,
 
-    externalProvider: null,
-    externalWallet: null,
-    externalAddress: null,
-    externalBalanceEth: null,
-    externalBalanceUsdc: null,
-    isExternalConnected: false,
-    useExternalWallet: false,
+    connect: async () => {
+        if (get().isConnecting) return;
 
-    initWallet: async () => {
-        if (get().isWalletLoading) return;
-        
-        // Zen-based wallet derivation has been removed; use external wallet (MetaMask) instead.
-        set({ isWalletLoading: false, isWalletReady: false });
-    },
-
-    refreshBalances: async () => {
-        const { wallet, address, externalAddress, externalProvider } = get();
-
-        try {
-            // Local Wallet Balances
-            if (wallet && address) {
-                // Get ETH Balance
-                const ethBalanceWei = await WalletService.provider.getBalance(address);
-                const balanceEth = ethers.formatEther(ethBalanceWei);
-
-                // Get USDC Balance
-                const usdcBalanceWei = await WalletService.getUsdcBalance(address);
-                const balanceUsdc = ethers.formatUnits(usdcBalanceWei, 6);
-
-                set({ balanceEth, balanceUsdc });
-            }
-
-            // External Wallet Balances
-            if (externalProvider && externalAddress) {
-                const ethBalanceWei = await externalProvider.getBalance(externalAddress);
-                const externalBalanceEth = ethers.formatEther(ethBalanceWei);
-
-                // For external, we use the same WalletService helper
-                const usdcBalanceWei = await WalletService.getUsdcBalance(externalAddress);
-                const externalBalanceUsdc = ethers.formatUnits(usdcBalanceWei, 6);
-
-                set({ externalBalanceEth, externalBalanceUsdc });
-            }
-        } catch (e: any) {
-            console.error("Failed to fetch balances:", e);
-        }
-    },
-
-    clearWallet: () => {
-        set({
-            wallet: null,
-            address: null,
-            balanceEth: null,
-            balanceUsdc: null,
-            isWalletReady: false,
-            error: null
-        });
-    },
-
-    connectExternalWallet: async () => {
         const eth = (window as any).ethereum;
         if (typeof eth === 'undefined') {
-            set({ error: "MetaMask is not installed" });
+            set({ error: 'No Web3 wallet detected. Please install MetaMask.' });
             return;
         }
 
+        set({ isConnecting: true, error: null });
         try {
             const provider = new ethers.BrowserProvider(eth);
-            await provider.send("eth_requestAccounts", []);
+            await provider.send('eth_requestAccounts', []);
             const signer = await provider.getSigner();
             const address = await signer.getAddress();
 
             set({
-                externalProvider: provider,
-                externalWallet: signer,
-                externalAddress: address,
-                isExternalConnected: true,
-                useExternalWallet: true,
-                error: null
+                provider,
+                signer,
+                address,
+                isConnected: true,
+                error: null,
             });
 
             await get().refreshBalances();
 
-            // Setup listeners once
+            // Attach account/chain change listeners once.
             if (!ethListenersAttached && eth.on) {
                 eth.on('accountsChanged', (accounts: string[]) => {
                     if (accounts.length === 0) {
-                        get().disconnectExternalWallet();
+                        get().disconnect();
                     } else {
-                        get().connectExternalWallet();
+                        get().connect();
                     }
                 });
                 eth.on('chainChanged', () => {
@@ -139,25 +77,63 @@ export const useWalletStore = create<WalletState>((set, get) => ({
                 ethListenersAttached = true;
             }
         } catch (e: any) {
-            console.error("Failed to connect external wallet:", e);
-            set({ error: e.message });
+            console.error('Failed to connect external wallet:', e);
+            set({ error: e.message || 'Failed to connect wallet' });
+        } finally {
+            set({ isConnecting: false });
         }
     },
 
-    disconnectExternalWallet: () => {
+    /**
+     * Silently restore a previously-authorized wallet connection without
+     * triggering a wallet popup. Safe to call on mount.
+     */
+    tryReconnect: async () => {
+        if (get().isConnected || get().isConnecting) return;
+        const eth = (window as any).ethereum;
+        if (typeof eth === 'undefined') return;
+        try {
+            const accounts: string[] = await eth.request({ method: 'eth_accounts' });
+            if (accounts && accounts.length > 0) {
+                // Already authorized — connect() won't prompt the user.
+                await get().connect();
+            }
+        } catch {
+            /* ignore — user simply isn't connected yet */
+        }
+    },
+
+    refreshBalances: async () => {
+        const { provider, address } = get();
+        if (!provider || !address) return;
+
+        try {
+            const ethBalanceWei = await provider.getBalance(address);
+            const balanceEth = ethers.formatEther(ethBalanceWei);
+
+            const usdcBalanceWei = await WalletService.getUsdcBalance(address);
+            const balanceUsdc = ethers.formatUnits(usdcBalanceWei, 6);
+
+            set({ balanceEth, balanceUsdc });
+        } catch (e: any) {
+            console.error('Failed to fetch balances:', e);
+        }
+    },
+
+    disconnect: () => {
         set({
-            externalProvider: null,
-            externalWallet: null,
-            externalAddress: null,
-            externalBalanceEth: null,
-            externalBalanceUsdc: null,
-            isExternalConnected: false,
-            useExternalWallet: false
+            provider: null,
+            signer: null,
+            address: null,
+            balanceEth: null,
+            balanceUsdc: null,
+            isConnected: false,
+            error: null,
         });
     },
 
-    setUseExternalWallet: (use: boolean) => {
-        set({ useExternalWallet: use });
-    }
+    // Kept for backwards compatibility with the auth store's logout flow.
+    clearWallet: () => {
+        get().disconnect();
+    },
 }));
-

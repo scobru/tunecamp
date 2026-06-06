@@ -8,42 +8,38 @@ export const WalletPill = () => {
   const {
     balanceEth,
     balanceUsdc,
-    isWalletReady,
-    isWalletLoading,
-    initWallet,
+    isConnected,
+    tryReconnect,
     refreshBalances,
-    error,
   } = useWalletStore();
 
-  // Re-initialize wallet when the component mounts if not ready
+  // Silently restore a previously-authorized connection on mount (no popup).
   useEffect(() => {
-    if (!isWalletReady && !isWalletLoading && !error) {
-      initWallet();
-    }
-  }, [isWalletReady, isWalletLoading, initWallet, error]);
+    tryReconnect();
+  }, [tryReconnect]);
 
-  // Periodically refresh balances
+  // Periodically refresh balances while connected.
   useEffect(() => {
-    if (!isWalletReady) return;
+    if (!isConnected) return;
 
     const interval = setInterval(() => {
       refreshBalances();
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [isWalletReady, refreshBalances]);
+  }, [isConnected, refreshBalances]);
 
-  if (isWalletLoading) {
+  if (!isConnected) {
     return (
-      <div className="flex bg-base-300 rounded-full px-3 py-1 items-center gap-2 animate-pulse mt-2 ring ring-primary/20">
-        <Wallet size={14} className="text-base-content/50" />
-        <span className="text-xs text-base-content/50">Loading...</span>
-      </div>
+      <Link
+        to="/wallet"
+        className="flex mt-2 bg-base-300 rounded-full px-3 py-1 items-center gap-2 border border-base-content/10 opacity-70 hover:opacity-100 transition-all hover:scale-105 tooltip tooltip-right z-50 cursor-pointer"
+        data-tip="Connect your wallet"
+      >
+        <Wallet size={12} className="text-base-content/50" />
+        <span className="text-xs text-base-content/70">Connect Wallet</span>
+      </Link>
     );
-  }
-
-  if (!isWalletReady) {
-    return null;
   }
 
   // Format ETH balance slightly (e.g. 0.005)
@@ -79,4 +75,3 @@ export const WalletPill = () => {
     </Link>
   );
 };
-
