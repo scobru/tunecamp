@@ -538,6 +538,35 @@ export const ZenSocial = {
     /**
      * Toggle like status for a track
      */
+    likeTrack: async (track: Track): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            if (!user.is) return reject(new Error('Not logged in'));
+            const likedTrackData = {
+                id: track.id,
+                title: track.title,
+                artistName: track.artistName || '',
+                albumName: track.albumName || '',
+                albumId: track.albumId || '',
+                duration: track.duration || 0,
+                likedAt: Date.now()
+            };
+            user.get('likes').get(String(track.id)).put(likedTrackData, (ack: any) => {
+                if (ack.err) reject(new Error(ack.err));
+                else resolve();
+            });
+        });
+    },
+
+    unlikeTrack: async (trackId: string | number): Promise<void> => {
+        return new Promise((resolve, reject) => {
+            if (!user.is) return reject(new Error('Not logged in'));
+            user.get('likes').get(String(trackId)).put(null as any, (ack: any) => {
+                if (ack.err) reject(new Error(ack.err));
+                else resolve();
+            });
+        });
+    },
+
     toggleLikeTrack: async (track: Track): Promise<boolean> => {
         return new Promise((resolve, reject) => {
             if (!user.is) return reject(new Error('Not logged in'));
