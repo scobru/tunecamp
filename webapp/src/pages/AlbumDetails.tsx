@@ -559,7 +559,6 @@ const AlbumDetails = () => {
       <div className="px-2">
         <Comments
           trackId={album.tracks?.[0]?.id ? String(album.tracks[0].id) : undefined}
-          albumId={String(album.id)}
         />
       </div>
 
