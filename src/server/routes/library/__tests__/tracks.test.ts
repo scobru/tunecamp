@@ -107,7 +107,12 @@ describe('Tracks Routes', () => {
             next();
         });
 
-        const router = createTracksRoutes(mockDatabase, mockPublishingService, mockCatalogService, '/tmp/music');
+        const router = createTracksRoutes({
+            database: mockDatabase,
+            publishingService: mockPublishingService,
+            catalogService: mockCatalogService,
+            musicDir: '/tmp/music'
+        } as any);
         app.use('/tracks', router);
 
         // Simple error handler to catch ForbiddenError, etc.

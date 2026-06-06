@@ -80,7 +80,11 @@ describe('ActivityPub Security', () => {
         jest.clearAllMocks();
         app = express();
         app.use(express.json());
-        app.use('/ap', createActivityPubRoutes(mockApService, mockDb, mockAuthMiddleware as any));
+        app.use('/ap', createActivityPubRoutes({
+            apService: mockApService,
+            database: mockDb,
+            authMiddleware: mockAuthMiddleware as any
+        } as any));
     });
 
     test('DELETE /note should require authentication', async () => {

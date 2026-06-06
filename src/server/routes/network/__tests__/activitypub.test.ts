@@ -52,7 +52,11 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         jest.clearAllMocks();
         app = express();
         app.use(express.json());
-        app.use('/ap', createActivityPubRoutes(mockApService, mockDb, mockAuthMiddleware as any));
+        app.use('/ap', createActivityPubRoutes({
+            apService: mockApService,
+            database: mockDb,
+            authMiddleware: mockAuthMiddleware as any
+        } as any));
     });
 
     test('GET /ap/article/post/:slug should resolve standard-compliant Article objects', async () => {

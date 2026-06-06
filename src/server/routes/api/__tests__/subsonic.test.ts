@@ -34,11 +34,17 @@ describe('Subsonic Scrobbling', () => {
 
             app = express();
             app.use(express.json()); // Add JSON parser for testing
+            const mockScrobbleService = {
+                updateNowPlaying: jest.fn<any>().mockReturnValue(Promise.resolve()),
+                scrobble: jest.fn<any>().mockReturnValue(Promise.resolve())
+            };
+
             app.use('/rest', createSubsonicRouter({
                 database: database,
                 authService: authService,
                 musicDir: './music',
-                zendbService: mockZendbService
+                zendbService: mockZendbService,
+                scrobbleService: mockScrobbleService
             } as any));
         } catch (e) {
             console.error('FAILED beforeAll:', e);

@@ -79,15 +79,21 @@ function imageFileFilter(
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createUploadRoutes(container: ServiceContainer): Router {
-    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
-    const storage: ServiceContainer['storage'] = (container as any).storage || (container as any);
-    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (database as any).scannerService || database;
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (database as any).musicDir || database;
+    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (database as any).publishingService || database;
+    const storage: ServiceContainer['storage'] = (container as any).storage || (database as any).storage || database;
+    const authService: ServiceContainer['authService'] = (container as any).authService || (database as any).authService || database;
+    const identity: ServiceContainer['identity'] = (container as any).identity || (database as any).identity || database;
+    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
     const router = Router();
+
+    const safeRemove = async (filePath: string) => {
+        try {
+            await storage.remove(filePath);
+        } catch (err) {}
+    };
 
     if (authService) {
         const authMiddleware = createAuthMiddleware(authService);
@@ -155,7 +161,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             });
         } catch (error) {
             console.error(`${options.errorLabel} upload error:`, error);
-            if (req.file) await storage.remove(req.file.path).catch(() => { });
+            if (req.file) await safeRemove(req.file.path);
             res.status(500).json({ error: `${options.errorLabel.charAt(0).toUpperCase() + options.errorLabel.slice(1)} upload failed` });
         }
     }
@@ -238,7 +244,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
             if (!req.isAdmin && !req.isActive) {
                 if (files) {
-                    await Promise.all(files.map(file => storage.remove(file.path).catch(() => {})));
+                    await Promise.all(files.map(file => safeRemove(file.path)));
                 }
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to upload tracks" });
             }
@@ -272,7 +278,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
                 if (totalUploadSize > remaining) {
                     // Cleanup temp files
-                    await Promise.all(files.map(file => storage.remove(file.path).catch(() => {})));
+                    await Promise.all(files.map(file => safeRemove(file.path)));
                     const quotaMB = (currentUser.storage_quota / 1024 / 1024).toFixed(1);
                     const usedMB = (currentUsed / 1024 / 1024).toFixed(1);
                     const remainingMB = (remaining / 1024 / 1024).toFixed(1);
@@ -294,7 +300,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             if (release && !isAuthorized) {
                 console.warn(`⛔ Access Denied: User ${(req as any).username} (User ID ${req.userId}) tried to upload to release ${release.slug} (Owner ${release.owner_id})`);
                 // Cleanup temp files
-                await Promise.all(files.map(file => storage.remove(file.path).catch(() => {})));
+                await Promise.all(files.map(file => safeRemove(file.path)));
                 return res.status(403).json({ error: "Access denied: Cannot upload tracks to another artist's release" });
             }
 
@@ -357,7 +363,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
                 } catch (err) {
                     console.error(`❌ Failed to move or process uploaded file ${file.path}:`, err);
-                    await storage.remove(file.path).catch(() => { });
+                    await safeRemove(file.path);
                 }
             }
 
@@ -412,7 +418,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             }
 
             if (!req.isAdmin && !req.isActive) {
-                if (file) await storage.remove(file.path).catch(() => {});
+                if (file) await safeRemove(file.path);
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to upload covers" });
             }
 
@@ -513,7 +519,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("❌ Cover upload error:", error);
             // Try cleanup
-            if (req.file) await storage.remove(req.file.path).catch(() => { });
+            if (req.file) await safeRemove(req.file.path);
             res.status(500).json({ error: "Cover upload failed" });
         }
     });
@@ -533,7 +539,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             }
 
             if (!req.isAdmin && !req.isActive) {
-                if (file) await storage.remove(file.path).catch(() => {});
+                if (file) await safeRemove(file.path);
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to upload avatars" });
             }
 
@@ -586,7 +592,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             console.log(`✅ Avatar upload completed for artist ${artistId}`);
         } catch (error) {
             console.error("❌ Avatar upload error:", error);
-            if (req.file) await storage.remove(req.file.path).catch(() => { });
+            if (req.file) await safeRemove(req.file.path);
             res.status(500).json({ error: "Avatar upload failed" });
         }
     });
@@ -607,7 +613,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             if (!trackId) return res.status(400).json({ error: "Track ID required" });
 
             if (!req.isAdmin && !req.isActive) {
-                if (file) await storage.remove(file.path).catch(() => {});
+                if (file) await safeRemove(file.path);
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to upload track artwork" });
             }
 
@@ -644,7 +650,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             console.log(`✅ Track artwork upload completed for track ${trackId}`);
         } catch (error) {
             console.error("❌ Track artwork upload error:", error);
-            if (req.file) await storage.remove(req.file.path).catch(() => { });
+            if (req.file) await safeRemove(req.file.path);
             res.status(500).json({ error: "Track artwork upload failed" });
         }
     });

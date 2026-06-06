@@ -32,7 +32,10 @@ describe('Auth Routes', () => {
 
         app = express();
         app.use(express.json());
-        app.use('/api/auth', createAuthRoutes(mockAuthService, mockAuthMiddleware));
+        app.use('/api/auth', createAuthRoutes({
+            authService: mockAuthService,
+            authMiddleware: mockAuthMiddleware
+        } as any));
     });
 
     describe('POST /api/auth/login', () => {
@@ -174,7 +177,10 @@ describe('Auth Routes', () => {
                 req.role = UserRole.GUEST;
                 next();
             });
-            guestApp.use('/api/auth', createAuthRoutes(mockAuthService, mockAuthMiddleware));
+            guestApp.use('/api/auth', createAuthRoutes({
+                authService: mockAuthService,
+                authMiddleware: mockAuthMiddleware
+            } as any));
 
             const res = await request(guestApp).get('/api/auth/status');
 
@@ -193,7 +199,10 @@ describe('Auth Routes', () => {
                 req.isActive = true;
                 next();
             });
-            authApp.use('/api/auth', createAuthRoutes(mockAuthService, mockAuthMiddleware));
+            authApp.use('/api/auth', createAuthRoutes({
+                authService: mockAuthService,
+                authMiddleware: mockAuthMiddleware
+            } as any));
 
             mockAuthService.isFirstRun.mockReturnValue(false);
             mockAuthService.isDefaultPassword.mockResolvedValue(false);

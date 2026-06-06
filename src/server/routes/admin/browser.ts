@@ -11,8 +11,8 @@ import type { ServiceContainer } from "../../core/container.js";
 
 export function createBrowserRoutes(container: ServiceContainer): Router {
     const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
     const router = Router();
     router.use(json());
 

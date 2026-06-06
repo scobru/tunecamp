@@ -69,14 +69,14 @@ describe('Upload Routes - Authorization', () => {
             writeFile: jest.fn()
         };
 
-        const router = createUploadRoutes(
-            mockDatabase,
-            mockScanner,
-            tempMusicDir,
-            mockPublishingService,
-            mockStorageEngine as any,
-            mockAuthService
-        );
+        const router = createUploadRoutes({
+            database: mockDatabase,
+            scannerService: mockScanner,
+            musicDir: tempMusicDir,
+            publishingService: mockPublishingService,
+            storage: mockStorageEngine as any,
+            authService: mockAuthService
+        } as any);
         app.use('/upload', router);
     });
 

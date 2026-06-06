@@ -22,19 +22,19 @@ import type { ServiceContainer } from "../../core/container.js";
 
 
 export function createTracksRoutes(container: ServiceContainer): Router {
-    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
-    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
-    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (container as any);
-    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (container as any);
-    const localizationService: ServiceContainer['localizationService'] = (container as any).localizationService || (container as any);
-    const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (container as any);
-    const social: ServiceContainer['social'] = (container as any).social || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (database as any).publishingService || database;
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (database as any).catalogService || database;
+    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (database as any).discoveryService || database;
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (database as any).musicDir || database;
+    const authService: ServiceContainer['authService'] = (container as any).authService || (database as any).authService || database;
+    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (database as any).gdriveService || database;
+    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (database as any).streamingService || database;
+    const localizationService: ServiceContainer['localizationService'] = (container as any).localizationService || (database as any).localizationService || database;
+    const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (database as any).mediaEngine || database;
+    const social: ServiceContainer['social'] = (container as any).social || (database as any).social || database;
+    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
+    const integration: ServiceContainer['integration'] = (container as any).integration || (database as any).integration || database;
 
     const router = Router();
     router.use(express.json());

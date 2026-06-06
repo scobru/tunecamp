@@ -40,7 +40,12 @@ describe('Users Routes', () => {
 
         app = express();
         app.use(express.json());
-        app.use('/api/users', createUsersRoutes(mockZenDBService, mockDatabase, mockAuthService, mockAPService));
+        app.use('/api/users', createUsersRoutes({
+            zendbService: mockZenDBService,
+            database: mockDatabase,
+            authService: mockAuthService,
+            apService: mockAPService
+        } as any));
     });
 
     describe('POST /api/users/register', () => {
@@ -172,7 +177,12 @@ describe('Users Routes', () => {
                 req.isActive = true;
                 next();
             });
-            authApp.use('/api/users', createUsersRoutes(mockZenDBService, mockDatabase, mockAuthService, mockAPService));
+            authApp.use('/api/users', createUsersRoutes({
+                zendbService: mockZenDBService,
+                database: mockDatabase,
+                authService: mockAuthService,
+                apService: mockAPService
+            } as any));
 
             const res = await request(authApp)
                 .post('/api/users/sync-pair')
@@ -202,7 +212,12 @@ describe('Users Routes', () => {
                 req.isActive = true;
                 next();
             });
-            authApp.use('/api/users', createUsersRoutes(mockZenDBService, mockDatabase, mockAuthService, mockAPService));
+            authApp.use('/api/users', createUsersRoutes({
+                zendbService: mockZenDBService,
+                database: mockDatabase,
+                authService: mockAuthService,
+                apService: mockAPService
+            } as any));
 
             mockAuthService.getUserByUsername.mockReturnValue({
                 id: 10,

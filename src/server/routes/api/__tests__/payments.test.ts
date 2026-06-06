@@ -97,6 +97,9 @@ describe('Payments Routes', () => {
         // The stripe raw parser is handled by payments routes itself before router.use(json())
         app.use('/api/payments', createPaymentsRoutes({
             database: mockDatabase,
+            identity: mockDatabase,
+            library: mockDatabase,
+            integration: mockDatabase,
             musicDir: '/tmp/music',
             config: mockConfig
         } as any));
@@ -124,6 +127,9 @@ describe('Payments Routes', () => {
             const guestApp = express();
             guestApp.use('/api/payments', createPaymentsRoutes({
                 database: mockDatabase,
+                identity: mockDatabase,
+                library: mockDatabase,
+                integration: mockDatabase,
                 musicDir: '/tmp/music',
                 config: emptyConfig
             } as any));

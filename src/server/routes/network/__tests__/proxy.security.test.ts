@@ -29,7 +29,7 @@ jest.unstable_mockModule('node-fetch', () => ({
 const { createProxyRoutes } = await import('../proxy.js');
 
 const app = express();
-app.use('/api/proxy', createProxyRoutes());
+app.use('/api/proxy', createProxyRoutes({} as any));
 
 describe('Proxy Security (SSRF Protection)', () => {
     it('should reject requests without a URL', async () => {

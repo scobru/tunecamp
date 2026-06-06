@@ -8,9 +8,9 @@ import type { ServiceContainer } from "../../core/container.js";
 
 export function createUnlockRoutes(container: ServiceContainer): Router {
     const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
-    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (database as any).integration || database;
+    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
     const router = Router();
     router.post("/validate", (req, res) => {
         const { code } = req.body;

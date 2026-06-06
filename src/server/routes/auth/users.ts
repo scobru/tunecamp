@@ -15,8 +15,8 @@ export function createUsersRoutes(container: ServiceContainer): Router {
     const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (database as any).identity || database;
     const router = Router();
     router.use(json());
     const authMiddleware = createAuthMiddleware(authService);

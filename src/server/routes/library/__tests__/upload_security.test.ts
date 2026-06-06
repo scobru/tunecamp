@@ -47,14 +47,14 @@ describe('Upload Routes - Security Check', () => {
             writeFile: jest.fn().mockResolvedValue(undefined as never),
         };
 
-        const router = createUploadRoutes(
-            mockDatabase,
-            mockScanner,
-            tempMusicDir,
-            {} as any, // mock publishingService
-            mockStorageEngine as any, // mock storageEngine
-            {} as any  // mock authService
-        );
+        const router = createUploadRoutes({
+            database: mockDatabase,
+            scannerService: mockScanner,
+            musicDir: tempMusicDir,
+            publishingService: {} as any,
+            storage: mockStorageEngine as any,
+            authService: {} as any
+        } as any);
         app.use('/upload', router);
     });
 
