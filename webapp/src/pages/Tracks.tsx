@@ -83,7 +83,11 @@ const Tracks = () => {
       // Toggle in Zen if user is fully authenticated with Zen
       if (isAuthenticated && user?.zenProfile) {
         try {
-          await ZenSocial.toggleLikeTrack(track);
+          if (isCurrentlyLiked) {
+            await ZenSocial.unlikeTrack(track.id);
+          } else {
+            await ZenSocial.likeTrack(track);
+          }
         } catch (zenErr) {
           console.warn("Zen like sync failed:", zenErr);
         }
