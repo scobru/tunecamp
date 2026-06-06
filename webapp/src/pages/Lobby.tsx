@@ -6,7 +6,7 @@ import { MessagesSquare, Send, Lock, ShieldCheck } from "lucide-react";
 import clsx from "clsx";
 
 const Lobby = () => {
-  const { user, isAuthenticated, isInitializing } = useAuthStore();
+  const { isAuthenticated, isInitializing } = useAuthStore();
 
   const [messages, setMessages] = useState<LobbyMessage[]>([]);
   const [input, setInput] = useState("");

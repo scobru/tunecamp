@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
 import { Plus, Search, Music, Check } from "lucide-react";
-import type { Track, UserPlaylistTrack, NetworkTrack } from "../../types";
+import type { Track, NetworkTrack } from "../../types";
 
 export const AddTrackToUserPlaylistModal = ({
   playlistId,

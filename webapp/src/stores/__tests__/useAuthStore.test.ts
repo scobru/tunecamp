@@ -1,7 +1,6 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useAuthStore } from '../useAuthStore';
 import API from '../../services/api';
-import { ZenAuth } from '../../services/zen';
 
 
 vi.mock('../../services/api', () => ({
@@ -97,31 +96,7 @@ describe('useAuthStore', () => {
             username: 'testadmin',
             id: '1',
             isAdmin: true,
-            zenProfile: undefined,
         });
-    });
-
-    test('checkAuth handles Zen integration if pair exists', async () => {
-        const mockAuthStatus = {
-            authenticated: true,
-            role: 'user',
-            username: 'testuser',
-            artistId: 5,
-            pair: { pub: 'key' },
-        };
-
-        const mockZenProfile = { pub: 'key', alias: 'testuser', epub: 'epub-key' };
-
-        vi.mocked(API.getAuthStatus).mockResolvedValue(mockAuthStatus);
-        vi.mocked(ZenAuth.loginWithPair).mockResolvedValue(mockZenProfile);
-
-        const store = useAuthStore.getState();
-        await store.checkAuth();
-
-        const state = useAuthStore.getState();
-        expect(state.isAuthenticated).toBe(true);
-        expect(ZenAuth.loginWithPair).toHaveBeenCalledWith(mockAuthStatus.pair);
-        expect(state.user?.zenProfile).toEqual(mockZenProfile);
     });
 
     test('login authenticates user and sets token', async () => {
@@ -137,7 +112,7 @@ describe('useAuthStore', () => {
         await store.login('testuser', 'password123');
 
         const state = useAuthStore.getState();
-        expect(API.login).toHaveBeenCalledWith('testuser', 'password123', undefined, undefined);
+        expect(API.login).toHaveBeenCalledWith('testuser', 'password123');
         expect(API.setToken).toHaveBeenCalledWith('test-jwt-token');
         expect(state.isAuthenticated).toBe(true);
         expect(state.user?.username).toBe('testuser');
@@ -170,7 +145,6 @@ describe('useAuthStore', () => {
         expect(state.user).toBeNull();
         expect(state.isAuthenticated).toBe(false);
         expect(state.role).toBeNull();
-        expect(ZenAuth.logout).toHaveBeenCalled();
         expect(mockClearWallet).toHaveBeenCalled();
         expect(API.setToken).toHaveBeenCalledWith(null);
     });

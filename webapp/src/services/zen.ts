@@ -282,8 +282,6 @@ export const ZenAuth = {
                         alias: user.is.alias as string,
                         epub: (user.is as any).epub as string
                     };
-                    // Sync with backend (fire and forget/non-blocking)
-                    API.syncGunUser(profile.pub, profile.epub, profile.alias).catch(console.error);
                     resolve(profile);
                 } else {
                     resolve(null);
@@ -366,19 +364,14 @@ export const ZenAuth = {
                         alias: user.is!.alias as string,
                         epub: (user.is as any).epub as string
                     };
-                    // Sync with backend
-                    console.log(`📡 Syncing user with backend: ${profile.alias} (${profile.pub})`);
                     if (!profile.pub || !profile.epub) {
-                        console.error("❌ Zen Sync failed: Missing core cryptographic fields!", profile);
+                        console.error("❌ Zen auth failed: Missing core cryptographic fields!", profile);
                         return reject(new Error("Missing core cryptographic fields"));
                     }
                     if (!profile.alias) {
-                        console.warn("⚠️ Zen Sync: Alias is missing (peers might not be connected yet). Using default.");
+                        console.warn("⚠️ Zen auth: Alias is missing (peers might not be connected yet). Using default.");
                     }
 
-                    API.syncGunUser(profile.pub, profile.epub, profile.alias).catch(e => {
-                        console.error("❌ Backend sync failed:", e);
-                    });
                     resolve(profile);
                 }
             });
@@ -411,19 +404,14 @@ export const ZenAuth = {
                         alias: user.is!.alias as string,
                         epub: (user.is as any).epub as string
                     };
-                    // Sync with backend
-                    console.log(`📡 Syncing (pair) user with backend: ${profile.alias} (${profile.pub})`);
                     if (!profile.pub || !profile.epub) {
-                        console.error("❌ Zen Sync failed: Missing core cryptographic fields!", profile);
+                        console.error("❌ Zen auth failed: Missing core cryptographic fields!", profile);
                         return reject(new Error("Missing core cryptographic fields"));
                     }
                     if (!profile.alias) {
-                        console.warn("⚠️ Zen Sync: Alias is missing (peers might not be connected yet). Using default.");
+                        console.warn("⚠️ Zen auth: Alias is missing (peers might not be connected yet). Using default.");
                     }
 
-                    API.syncGunUser(profile.pub, profile.epub, profile.alias).catch(e => {
-                        console.error("❌ Backend (pair) sync failed:", e);
-                    });
                     resolve(profile);
                 }
             }, alias);
@@ -454,16 +442,7 @@ export const ZenAuth = {
             if (!user.is) return reject(new Error('Not logged in'));
             user.get('alias').put(newAlias, (ack: any) => {
                 if (ack.err) reject(new Error(ack.err));
-                else {
-                    const profile = ZenAuth.getProfile();
-                    if (profile) {
-                        user.get('profile').once((profileData: any) => {
-                            const avatar = profileData?.avatar;
-                            API.syncGunUser(profile.pub, profile.epub, newAlias, avatar).catch(console.error);
-                        });
-                    }
-                    resolve();
-                }
+                else resolve();
             });
         });
     },
