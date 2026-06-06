@@ -15,7 +15,6 @@ if (ffmpegPath) {
 }
 
 import { metadataService } from "../../modules/catalog/metadata.service.js";
-import { getStreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 import type { ServiceContainer } from "../../core/container.js";

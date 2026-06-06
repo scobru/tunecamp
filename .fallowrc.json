@@ -1,0 +1,59 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "src/index.ts",
+    "src/server/server.ts"
+  ],
+  "workspaces": {
+    "packages": [
+      "webapp"
+    ]
+  },
+  "duplicates": {
+    "ignore": ["**/*"]
+  },
+  "health": {
+    "ignore": ["**/*"]
+  },
+  "ignoreDependencies": [
+    "jest-util",
+    "autoprefixer"
+  ],
+  "ignoreExports": [
+    {
+      "file": "src/utils/fileUtils.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/server/modules/ai/ai.service.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/server/modules/catalog/download.service.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/server/modules/storage/storage.service.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/server/routes/library/upload.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "webapp/src/stubs/empty.js",
+      "exports": ["*"]
+    }
+  ],
+  "rules": {
+    "unused-files": "off",
+    "unused-exports": "error",
+    "unused-types": "off",
+    "unused-class-members": "off",
+    "unused-dependencies": "off",
+    "circular-dependencies": "off",
+    "boundary-violation": "off",
+    "unresolved-catalog-references": "off",
+    "duplicate-exports": "off"
+  }
+}

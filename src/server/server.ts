@@ -76,6 +76,7 @@ import { createFedify } from "./modules/fedify/fedify.js";
 import { createBackupRoutes } from "./routes/admin/backup.js";
 import { createSubsonicRouter } from "./routes/api/subsonic.js";
 import { createProxyRoutes } from "./routes/network/proxy.js";
+import { createMiscRoutes } from "./routes/api/misc.js";
 import { WaveformService } from "./modules/waveform/waveform.service.js";
 import { securityHeaders } from "./middleware/security.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -313,27 +314,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         res.status(404).json({ error: "manifest.json not found" });
     });
 
-    app.get("/api/waveform/:id(*)", async (req, res) => {
-        try {
-            const idParam = req.params.id;
-            const trackId = parseInt(idParam);
-            if (!isNaN(trackId) && trackId.toString() === idParam) {
-                const track = database.getTrack(trackId);
-                if (track && track.file_path) {
-                    const filePath = path.join(config.musicDir, track.file_path);
-                    const svg = await waveformService.getWaveformSVG(trackId, filePath);
-                    res.setHeader("Content-Type", "image/svg+xml");
-                    res.setHeader("Cache-Control", "public, max-age=31536000");
-                    return res.send(svg);
-                }
-            }
-            res.setHeader("Content-Type", "image/svg+xml");
-            res.setHeader("Cache-Control", "public, max-age=31536000");
-            return res.send('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="100" viewBox="0 0 800 100"><line x1="0" y1="50" x2="800" y2="50" stroke="#888" stroke-width="2"/></svg>');
-        } catch (e) {
-            res.status(500).send("Error generating waveform");
-        }
-    });
+    app.use("/", createMiscRoutes(container));
 
     app.use("/rest", createSubsonicRouter(container));
 
@@ -367,29 +348,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/unlock", createUnlockRoutes(container));
 
     // Public assets store
-    app.get("/api/assets", (_req: any, res: any) => {
-        try { res.json(database.getPublicAssets()); }
-        catch { res.status(500).json({ error: "Failed to fetch assets" }); }
-    });
-    app.get("/api/assets/:slug", (req: any, res: any) => {
-        try {
-            const asset = database.getAssetBySlug(req.params.slug);
-            if (!asset || asset.visibility !== 'public') return res.status(404).json({ error: "Not found" });
-            res.json(asset);
-        } catch { res.status(500).json({ error: "Failed to fetch asset" }); }
-    });
 
-    // Serve asset cover images by asset ID
-    app.get("/api/assets/cover/:id", async (req: any, res: any) => {
-        try {
-            const asset = database.getAsset(parseInt(req.params.id, 10));
-            if (!asset || !asset.cover_path) return res.status(404).json({ error: "Not found" });
-            if (!await import('fs-extra').then(fs => fs.pathExists(asset.cover_path))) {
-                return res.status(404).json({ error: "Cover file not found" });
-            }
-            res.sendFile(path.resolve(asset.cover_path));
-        } catch { res.status(500).json({ error: "Failed to serve cover" }); }
-    });
     app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(container));
     app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(container));
     app.use("/api/ap", createActivityPubRoutes(container));
@@ -397,143 +356,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
     app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
 
-    app.get("/api/plugins", authMiddleware.requireAdmin, (_req, res) => {
-        res.json({
-            metadata:    metadataService.getRegistry().getRegistryInfo(),
-            scanner:     scannerService.getRegistry().getRegistryInfo(),
-            streaming:   streamingService.getRegistry().getRegistryInfo(),
-            playlist:    playlistService.getRegistry().getRegistryInfo(),
-        });
-    });
 
-    app.get("/api/v1/federation/libraries", async (_req, res) => {
-        const publicUrl = (database.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
-        const stats = await database.getStats();
-        res.json({
-            count: 1,
-            results: [{
-                uuid: "tunecamp-library",
-                fid: `${publicUrl}/federation/libraries/tunecamp-library`,
-                name: database.getSetting("siteName") || config.siteName || "TuneCamp Library",
-                description: database.getSetting("siteDescription") || "Tunecamp music library",
-                privacy_level: "everyone",
-                creation_date: new Date().toISOString(),
-                uploads_count: stats.tracks,
-                size: 0,
-                actor: {
-                    fid: `${publicUrl}/users/site`,
-                    url: publicUrl,
-                    name: database.getSetting("siteName") || "TuneCamp",
-                    preferred_username: "site",
-                    domain: new URL(publicUrl).hostname,
-                }
-            }]
-        });
-    });
-
-    app.get("/api/v1/instance/nodeinfo/2.0", async (_req, res) => {
-        const stats = await database.getStats();
-        res.json({
-            version: "2.0",
-            software: { name: "tunecamp", version: pkg.version },
-            protocols: ["activitypub"],
-            openRegistrations: false,
-            usage: {
-                users: { total: stats.artists || 1, activeHalfyear: stats.artists || 1, activeMonth: stats.artists || 1 },
-                localPosts: stats.tracks + (stats.albums || 0),
-                localComments: 0,
-            },
-            metadata: {
-                nodeName: database.getSetting("siteName") || config.siteName || "TuneCamp",
-                library: { federationEnabled: true },
-            }
-        });
-    });
-
-    app.get("/@:slug", (req, res) => {
-        const { slug } = req.params;
-        const artist = database.getArtistBySlug(slug);
-        res.redirect(artist ? `/artists/${artist.slug}` : "/");
-    });
-
-    app.get("/artist/:slug", (req, res) => {
-        const { slug } = req.params;
-        const artist = database.getArtistBySlug(slug);
-        res.redirect(artist ? `/#/artist/${artist.slug}` : "/");
-    });
-
-    app.get("/note/release/:slug", (req, res) => {
-        const { slug } = req.params;
-        const album = database.getAlbumBySlug(slug);
-        if (album) res.redirect(`/#/album/${album.slug}`);
-        else res.status(404).send("Release not found");
-    });
-
-    app.get("/note/post/:slug", (req, res) => {
-        const { slug } = req.params;
-        const post = database.getPostBySlug(slug);
-        if (post) {
-            const artist = database.getArtist(post.artist_id);
-            res.redirect(artist ? `/artists/${artist.slug}?post=${post.slug}` : "/");
-        } else res.status(404).send("Post not found");
-    });
-
-    app.get("/api/posts/:slug", (req, res) => {
-        const { slug } = req.params;
-        const post = database.getPostBySlug(slug);
-        if (!post) {
-            return res.status(404).json({ error: "Post not found" });
-        }
-
-        // Exclude posts that are deleted from ActivityPub
-        const apNotes = database.getApNotes(post.artist_id, true);
-        const apNote = apNotes.find((n: any) => n.note_type === 'post' && n.content_id === post.id);
-        if (apNote && apNote.deleted_at) {
-            return res.status(404).json({ error: "Post not found" });
-        }
-
-        const artist = database.getArtist(post.artist_id);
-        res.json({
-            ...post,
-            artistId: post.artist_id,
-            artistName: artist ? artist.name : "Unknown Artist",
-            artistSlug: artist ? artist.slug : "",
-            artistPhoto: artist ? artist.photo_path : "",
-            createdAt: post.created_at,
-            publishedAt: post.published_at,
-            updatedAt: post.created_at
-        });
-    });
-
-    app.get("/api/settings/background", async (_req, res) => {
-        try {
-            const assetsDir = path.join(config.musicDir, "assets");
-            const files = await fs.readdir(assetsDir);
-            const bgFile = files.find((f) => f.startsWith("background."));
-            if (!bgFile) return res.status(404).json({ error: "Not found" });
-            res.sendFile(path.resolve(path.join(assetsDir, bgFile)));
-        } catch { res.status(404).json({ error: "Not found" }); }
-    });
-
-    app.get("/api/settings/logo", async (_req, res) => {
-        try {
-            const assetsDir = path.join(config.musicDir, "assets");
-            const files = await fs.readdir(assetsDir);
-            const logoFile = files.find((f) => f.startsWith("site-logo."));
-            if (!logoFile) return res.status(404).json({ error: "Not found" });
-            res.sendFile(path.resolve(path.join(assetsDir, logoFile)));
-        } catch { res.status(404).json({ error: "Not found" }); }
-    });
-
-    app.get("/api/settings/cover", async (_req, res) => {
-        try {
-            const assetsDir = path.join(config.musicDir, "assets");
-            const files = await fs.readdir(assetsDir);
-            const coverFile = files.find((f) => f.startsWith("site-cover."));
-            if (!coverFile) return res.status(404).json({ error: "Not found" });
-            res.sendFile(path.resolve(path.join(assetsDir, coverFile)));
-        } catch { res.status(404).json({ error: "Not found" }); }
-    });
 
 
 

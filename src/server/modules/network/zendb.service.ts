@@ -4,7 +4,7 @@ import { drainResponse } from "../../common/network.js";
 import { getHardwarePeerId, kprs } from "./zen-network.js";
 
 import type { DatabaseService } from "../../core/database.js";
-import { normalizeUrl, slugify } from "../../../utils/audioUtils.js";
+import { slugify } from "../../../utils/audioUtils.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import fs from "fs-extra";
 import path from "path";

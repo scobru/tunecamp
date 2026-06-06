@@ -175,6 +175,3 @@ export async function initStreamingService(db: DatabaseService): Promise<Streami
     return _streamingService;
 }
 
-export function getStreamingService(): StreamingService {
-    return _streamingService || streamingService;
-}

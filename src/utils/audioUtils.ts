@@ -45,13 +45,7 @@ export function sanitizeFilename(filename: string): string {
   return StringUtils.sanitizeFilename(filename);
 }
 
-/**
- * Normalizes a URL by removing trailing slash
- */
-export function normalizeUrl(url: string): string {
-  if (!url) return '';
-  return StringUtils.normalizeUrl(url);
-}
+
 
 /**
  * Validates username format

@@ -9,7 +9,7 @@ import { useConfigStore } from "../stores/useConfigStore";
 import { usePurchases } from "../hooks/usePurchases";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { useWalletStore } from "../stores/useWalletStore";
-import { ZenSocial } from "../services/zen";
+
 import { formatDuration } from "../utils/format";
 import type { Track } from "../types";
 import clsx from "clsx";
@@ -75,10 +75,6 @@ const AlbumDetails = () => {
           setLikedTrackIds(prev => new Set([...Array.from(prev), ...starredIds]));
         }).catch(console.error);
       }
-      // Merge Zen liked tracks on top
-      ZenSocial.getLikedTracks().then((liked) => {
-        setLikedTrackIds((prev) => new Set([...Array.from(prev), ...liked.filter((t: any) => t && t.id).map((t: any) => String(t.id))]));
-      });
     }
   }, [isAuthenticated]);
 
@@ -100,17 +96,6 @@ const AlbumDetails = () => {
     });
 
     try {
-      if (isAuthenticated && user?.zenProfile) {
-        try {
-          if (isCurrentlyLiked) {
-            await ZenSocial.unlikeTrack(track.id);
-          } else {
-            await ZenSocial.likeTrack(track);
-          }
-        } catch (zenErr) {
-          console.warn("Zen like sync failed:", zenErr);
-        }
-      }
       if (API.getToken()) {
         if (isCurrentlyLiked) await API.unstarTrack(track.id);
         else await API.starTrack(track.id);
