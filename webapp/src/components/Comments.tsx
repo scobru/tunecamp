@@ -1,22 +1,19 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { ZenAuth } from "../services/zen";
 import { MessageSquare, Trash2, Send } from "lucide-react";
 import { StringUtils } from "../utils/stringUtils";
 
 interface Comment {
-  id: string;
-  text: string;
+  id: number;
+  track_id: number;
   username: string;
-  pubKey?: string;
-  timestamp: number;
-  createdAt?: string; // Legacy API might differ
+  text: string;
+  created_at: string;
 }
 
 interface CommentsProps {
   trackId?: string;
-  albumId?: string; // Legacy seemed to focus on tracks, but maybe album comments too?
 }
 
 export const Comments = ({ trackId }: CommentsProps) => {
@@ -27,9 +24,7 @@ export const Comments = ({ trackId }: CommentsProps) => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (trackId) {
-      loadComments();
-    }
+    if (trackId) loadComments();
   }, [trackId]);
 
   const loadComments = async () => {
@@ -48,25 +43,15 @@ export const Comments = ({ trackId }: CommentsProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || !trackId) return;
+    if (!isAuthenticated) {
+      alert("Please log in to comment.");
+      return;
+    }
     setSubmitting(true);
     try {
-      // Ensure user is logged in via Zen
-      if (!user || !user.zenProfile?.pub) {
-        alert("Please log in to comment.");
-        return;
-      }
-
-      const signature = await ZenAuth.sign(newComment);
-
-      await API.postComment(trackId, {
-        text: newComment,
-        pubKey: user.zenProfile?.pub,
-        username: user.username || user.zenProfile?.alias || "Anonymous",
-        signature,
-      });
-
+      await API.postComment(trackId, { text: newComment.trim() });
       setNewComment("");
-      loadComments(); // Reload to see new comment
+      loadComments();
     } catch (e) {
       console.error(e);
       alert("Failed to post comment");
@@ -75,26 +60,18 @@ export const Comments = ({ trackId }: CommentsProps) => {
     }
   };
 
-  const handleDelete = async (commentId: string) => {
+  const handleDelete = async (commentId: number) => {
     if (!confirm("Delete this comment?")) return;
     try {
-      // If user is a Zen user, sign the delete request
-      let deleteData;
-      if (user && user.zenProfile?.pub) {
-        const signature = await ZenAuth.sign(commentId);
-        deleteData = {
-          pubKey: user.zenProfile.pub,
-          signature,
-        };
-      }
-
-      await API.deleteComment(commentId, deleteData);
-      loadComments();
+      await API.deleteComment(commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId));
     } catch (e) {
       console.error(e);
       alert("Failed to delete comment");
     }
   };
+
+  const canDelete = (c: Comment) => !!(user?.isAdmin || user?.username === c.username);
 
   if (!trackId) return null;
 
@@ -105,7 +82,6 @@ export const Comments = ({ trackId }: CommentsProps) => {
         <span className="badge badge-sm">{comments.length}</span>
       </h3>
 
-      {/* Comment Form */}
       {isAuthenticated ? (
         <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
           <input
@@ -124,12 +100,9 @@ export const Comments = ({ trackId }: CommentsProps) => {
           </button>
         </form>
       ) : (
-        <div className="text-sm opacity-50 mb-6 italic">
-          Log In to post comments.
-        </div>
+        <div className="text-sm opacity-50 mb-6 italic">Log in to post comments.</div>
       )}
 
-      {/* List */}
       <div className="space-y-4">
         {loading ? (
           <div className="opacity-50 text-sm">Loading comments...</div>
@@ -150,12 +123,12 @@ export const Comments = ({ trackId }: CommentsProps) => {
                 <div className="flex justify-between items-start">
                   <span className="font-bold text-sm">{c.username}</span>
                   <span className="text-xs opacity-40">
-                    {StringUtils.formatTimeAgo(0, c.timestamp || Date.now())}
+                    {StringUtils.formatTimeAgo(0, new Date(c.created_at).getTime())}
                   </span>
                 </div>
                 <p className="text-sm opacity-80 break-words">{c.text}</p>
               </div>
-              {(user?.isAdmin || (user?.zenProfile?.pub && user.zenProfile.pub === c.pubKey)) && (
+              {canDelete(c) && (
                 <button
                   className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity self-center"
                   onClick={() => handleDelete(c.id)}
@@ -170,4 +143,3 @@ export const Comments = ({ trackId }: CommentsProps) => {
     </div>
   );
 };
-

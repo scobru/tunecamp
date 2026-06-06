@@ -15,7 +15,7 @@ const Lobby = () => {
   const [error, setError] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const myPub = user?.zenProfile?.pub;
+  const myPub: string | undefined = undefined;
 
   const addMessage = useCallback((msg: LobbyMessage) => {
     setMessages((prev) => {

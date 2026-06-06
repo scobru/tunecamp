@@ -10,7 +10,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import { ZenAuth } from "../services/zen";
 import clsx from "clsx";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { TokenRole } from "shogun-contracts-sdk";
@@ -40,7 +39,6 @@ const Wallet = () => {
   const [copiedExternal, setCopiedExternal] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
   const [copiedPriv, setCopiedPriv] = useState(false);
-  const [copiedSEA, setCopiedSEA] = useState(false);
 
   const activeAddress = useExternalWallet && isExternalConnected ? externalAddress : address;
   const { ownedNFTs, loading: nftsLoading } = useOwnedNFTs(activeAddress);
@@ -374,9 +372,7 @@ const Wallet = () => {
               <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
                 <div className="text-xs uppercase tracking-wider opacity-50 mb-2 flex justify-between items-center">
                   <span>Integrated Wallet Private Key</span>
-                  <span className="text-[10px] opacity-40">
-                    Derived from Zen SEA
-                  </span>
+                  <span className="text-[10px] opacity-40">Integrated Wallet</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="font-mono text-xs break-all opacity-80 select-all">
@@ -400,34 +396,6 @@ const Wallet = () => {
                 </div>
               </div>
 
-              {/* Zen SEA Pair */}
-              <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
-                <div className="text-xs uppercase tracking-wider opacity-50 mb-2 flex justify-between items-center">
-                  <span>Zen SEA Pair (Account Export)</span>
-                  <span className="text-[10px] opacity-40">JSON Format</span>
-                </div>
-                <div className="flex items-start justify-between gap-4">
-                  <pre className="font-mono text-[10px] break-all opacity-80 whitespace-pre-wrap flex-1 max-h-32 overflow-y-auto select-all">
-                    {JSON.stringify((ZenAuth.user as any)._?.sea, null, 2)}
-                  </pre>
-                  <button
-                    className="btn btn-sm btn-ghost btn-circle shrink-0"
-                    onClick={() => {
-                      const sea = (ZenAuth.user as any)._?.sea;
-                      if (!sea) return;
-                      navigator.clipboard.writeText(JSON.stringify(sea));
-                      setCopiedSEA(true);
-                      setTimeout(() => setCopiedSEA(false), 2000);
-                    }}
-                  >
-                    {copiedSEA ? (
-                      <Check size={16} className="text-success" />
-                    ) : (
-                      <Copy size={16} />
-                    )}
-                  </button>
-                </div>
-              </div>
             </div>
           ) : (
             <p className="text-sm opacity-50 italic">

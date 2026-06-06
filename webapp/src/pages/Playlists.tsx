@@ -3,7 +3,6 @@ import API from "../services/api";
 import { Link } from "react-router-dom";
 import { ListMusic, Globe, Lock, Music, LayoutGrid, List, AlignJustify } from "lucide-react";
 import type { Playlist } from "../types";
-import { ZenPlaylists } from "../services/zen";
 import { PageHeader } from "../components/ui/PageHeader";
 import clsx from "clsx";
 
@@ -26,39 +25,13 @@ const Playlists = () => {
   const loadPlaylists = async () => {
     setLoading(true);
     try {
-      // Fetch both SQLite and Zen public playlists concurrently
-      const [apiData, zenData] = await Promise.all([
-        API.getPlaylists().catch(() => []),
-        ZenPlaylists.getPublicPlaylists().catch(() => [])
-      ]);
-
-      // Normalize SQLite playlists
-      const normalizedApi = apiData.filter(p => p.isPublic).map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description || "",
-        coverPath: p.coverPath,
-        isPublic: !!p.isPublic,
-        trackCount: (p as any).trackCount || 0,
+      const apiData = await API.getPlaylists().catch(() => []);
+      const normalized = apiData.filter(p => p.isPublic).map(p => ({
+        ...p,
         isUserPlaylist: false,
         createdAt: new Date((p as any).createdAt || (p as any).created_at || 0).getTime()
       }));
-
-      // Normalize Zen playlists
-      const normalizedZen = zenData.map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description || "",
-        coverPath: p.coverUrl,
-        isPublic: p.isPublic,
-        trackCount: p.trackCount || 0,
-        isUserPlaylist: true,
-        createdAt: p.createdAt || 0
-      }));
-
-      // Merge and sort
-      const merged = [...normalizedApi, ...normalizedZen].sort((a, b) => b.createdAt - a.createdAt);
-      setPlaylists(merged as any);
+      setPlaylists(normalized.sort((a, b) => (b as any).createdAt - (a as any).createdAt) as any);
     } catch (e) {
       console.error(e);
     } finally {

@@ -71,7 +71,7 @@ const MyPlaylists = () => {
     <div className="space-y-8 animate-fade-in">
       <PageHeader 
         title="My Playlists" 
-        subtitle={`${user?.zenProfile?.alias || user?.username}'s personal collection`}
+        subtitle={`${user?.alias || user?.username}'s personal collection`}
         icon={Heart}
         iconColor="text-pink-400"
         gradientFrom="from-pink-500/20"

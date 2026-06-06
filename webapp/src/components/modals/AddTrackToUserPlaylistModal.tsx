@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "../../stores/useAuthStore";
-import { ZenPlaylists } from "../../services/zen";
 import API from "../../services/api";
 import { Plus, Search, Music, Check } from "lucide-react";
 import type { Track, UserPlaylistTrack, NetworkTrack } from "../../types";
@@ -155,27 +154,8 @@ export const AddTrackToUserPlaylistModal = ({
       }
 
       if (options?.source === "network") {
-        // For network tracks, we still use Zen for metadata flexibility 
-        // or we could mirror them to local DB later.
-        const playlistTrack: UserPlaylistTrack = {
-          id: crypto.randomUUID
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          title: track.title,
-          artistName: track.artistName || "Unknown",
-          albumName: track.albumName,
-          albumId: track.albumId ? String(track.albumId) : undefined,
-          source: "network",
-          siteUrl: options?.siteUrl,
-          siteName: options?.siteName,
-          streamUrl,
-          coverUrl,
-          duration: track.duration,
-          addedAt: Date.now(),
-        };
-        await ZenPlaylists.addTrackToPlaylist(playlistId, playlistTrack);
+        throw new Error("Adding network tracks to playlists is not yet supported.");
       } else {
-        // For local tracks, use the reliable SQL API
         await API.addTrackToPlaylist(playlistId, String(track.id));
       }
 

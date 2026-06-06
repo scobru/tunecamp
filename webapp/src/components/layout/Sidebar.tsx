@@ -215,9 +215,9 @@ export const Sidebar = () => {
                 className="avatar placeholder"
               >
                 <div className="bg-neutral text-neutral-content rounded-xl w-10 ring-1 ring-base-content/10 cursor-pointer hover:ring-primary/50 transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] overflow-hidden">
-                  {user?.zenProfile?.profile?.avatar ? (
+                  {user?.avatar ? (
                     <img
-                      src={user.zenProfile.profile.avatar}
+                      src={user.avatar}
                       alt={user.username || ""}
                       className="w-full h-full object-cover"
                     />
