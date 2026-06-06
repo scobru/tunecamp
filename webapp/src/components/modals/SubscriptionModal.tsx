@@ -16,7 +16,7 @@ const SUBSCRIPTION_PRICE_USDC = 10; // $10/month
 export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void }) => {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const { user } = useAuthStore();
-    const { wallet, address, isWalletReady, useExternalWallet, externalAddress, isExternalConnected } = useWalletStore();
+    const { signer, address, isConnected, connect } = useWalletStore();
 
     const [tab, setTab] = useState<'crypto' | 'card'>('crypto');
     const [paymentMethod, setPaymentMethod] = useState<'ETH' | 'USDC'>('USDC');
@@ -27,7 +27,7 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
     const [treasuryAddress, setTreasuryAddress] = useState<string | null>(null);
     const [usdRate, setUsdRate] = useState<number | null>(null);
 
-    const activeAddress = useExternalWallet && isExternalConnected ? externalAddress : address;
+    const activeAddress = address;
 
     useEffect(() => {
         const handleOpen = () => {
@@ -52,24 +52,11 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
     }, []);
 
     const handleCryptoPayment = async () => {
-        if (!isWalletReady && !isExternalConnected) { setError('Connect wallet first'); return; }
+        if (!isConnected || !signer) { setError('Connect wallet first'); return; }
         if (!treasuryAddress) { setError('Treasury address not configured'); return; }
         setIsProcessing(true); setError('');
 
         try {
-            let provider: ethers.BrowserProvider | ethers.JsonRpcProvider;
-            let signer: ethers.Signer;
-
-            if (useExternalWallet && isExternalConnected && (window as any).ethereum) {
-                provider = new ethers.BrowserProvider((window as any).ethereum);
-                signer = await provider.getSigner();
-            } else if (wallet) {
-                provider = new ethers.JsonRpcProvider(process.env.TUNECAMP_RPC_URL || 'https://mainnet.base.org');
-                signer = new ethers.Wallet(wallet.privateKey || '', provider);
-            } else {
-                throw new Error('No wallet available');
-            }
-
             let hash: string;
 
             if (paymentMethod === 'USDC') {
@@ -182,14 +169,25 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
 
                                 {error && <p className="text-error text-xs font-bold bg-error/5 p-3 rounded-xl">{error}</p>}
 
-                                <button
-                                    className="btn btn-primary w-full rounded-full gap-2"
-                                    onClick={handleCryptoPayment}
-                                    disabled={isProcessing || !isWalletReady && !isExternalConnected}
-                                >
-                                    {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Wallet size={16} />}
-                                    {isProcessing ? 'Processing...' : 'Pay with Crypto'}
-                                </button>
+                                {!isConnected ? (
+                                    <button
+                                        className="btn btn-primary w-full rounded-full gap-2"
+                                        onClick={connect}
+                                        disabled={isProcessing}
+                                    >
+                                        <Wallet size={16} />
+                                        Connect Wallet
+                                    </button>
+                                ) : (
+                                    <button
+                                        className="btn btn-primary w-full rounded-full gap-2"
+                                        onClick={handleCryptoPayment}
+                                        disabled={isProcessing}
+                                    >
+                                        {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Wallet size={16} />}
+                                        {isProcessing ? 'Processing...' : 'Pay with Crypto'}
+                                    </button>
+                                )}
                             </div>
                         )}
 
