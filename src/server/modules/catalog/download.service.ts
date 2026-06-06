@@ -14,7 +14,7 @@ import type { TorrentService } from "../integrations/torrent.service.js";
  * The "waterfall" strategy: search all providers simultaneously, merge results.
  * The caller then picks a result and calls download() to retrieve the file.
  */
-export class DownloadService {
+class DownloadService {
     private registry = new ProviderRegistry<DownloadProvider>();
 
     /**

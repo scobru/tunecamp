@@ -12,7 +12,7 @@ import { GoogleDriveService } from "./google-drive.service.js";
  * The first available provider is used for upload/download.
  * Future: support per-user storage routing.
  */
-export class StorageService {
+class StorageService {
     private registry = new ProviderRegistry<StorageProvider>();
 
     async upload(localPath: string, remotePath: string): Promise<string> {

@@ -21,7 +21,7 @@ export async function getFileHash(filePath: string): Promise<string> {
 /**
  * Returns basic file stats (size, mtime) for fast comparison
  */
-export async function getFileStats(filePath: string) {
+async function getFileStats(filePath: string) {
   const stats = await fs.stat(filePath);
   return {
     size: stats.size,
@@ -71,7 +71,7 @@ export async function findAudioFiles(directory: string): Promise<string[]> {
   return files.sort();
 }
 
-export async function findImageFiles(directory: string, name?: string): Promise<string[]> {
+async function findImageFiles(directory: string, name?: string): Promise<string[]> {
   const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
   const pattern = name
     ? `**/${name}.{${imageExtensions.join(',')}}`
@@ -86,7 +86,7 @@ export async function findImageFiles(directory: string, name?: string): Promise<
   return files;
 }
 
-export async function findCover(directory: string): Promise<string | undefined> {
+async function findCover(directory: string): Promise<string | undefined> {
   const coverNames = [
     getStandardCoverFilename('jpg').replace('.jpg', ''),
     getStandardCoverFilename('png').replace('.png', ''),
@@ -118,25 +118,25 @@ export async function findCover(directory: string): Promise<string | undefined> 
   return images[0];
 }
 
-export async function ensureDir(dir: string): Promise<void> {
+async function ensureDir(dir: string): Promise<void> {
   await fs.ensureDir(dir);
 }
 
-export async function copyFile(src: string, dest: string): Promise<void> {
+async function copyFile(src: string, dest: string): Promise<void> {
   await fs.ensureDir(path.dirname(dest));
   await fs.copy(src, dest);
 }
 
-export async function readFile(filePath: string): Promise<string> {
+async function readFile(filePath: string): Promise<string> {
   return await fs.readFile(filePath, 'utf-8');
 }
 
-export async function writeFile(filePath: string, content: string): Promise<void> {
+async function writeFile(filePath: string, content: string): Promise<void> {
   await fs.ensureDir(path.dirname(filePath));
   await fs.writeFile(filePath, content, 'utf-8');
 }
 
-export async function fileExists(filePath: string): Promise<boolean> {
+async function fileExists(filePath: string): Promise<boolean> {
   try {
     await fs.access(filePath);
     return true;
@@ -145,14 +145,14 @@ export async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-export function createSlug(text: string): string {
+function createSlug(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 }
 
-export function getRelativePath(from: string, to: string): string {
+function getRelativePath(from: string, to: string): string {
   return path.relative(from, to).replace(/\\/g, '/');
 }
 
@@ -191,7 +191,7 @@ function isSafePath(resolvedRoot: string, absPath: string): boolean {
 /**
  * Executes an array of tasks in parallel with a concurrency limit
  */
-export async function parallel<T>(
+async function parallel<T>(
   items: T[],
   limit: number,
   fn: (item: T) => Promise<any>
