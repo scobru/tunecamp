@@ -119,11 +119,24 @@ export class DiscoveryService {
             const owned = context.userId != null
                 ? this.database.getTracksByOwner(context.userId, context)
                 : [];
+
+            // For admin users: also include tracks owned by the primary system admin
+            // (Telegram, torrent, and scanner-based imports always assign to primaryAdminId,
+            // which may differ from the currently logged-in admin's userId)
+            const isAdmin = [UserRole.ROOT_ADMIN, UserRole.ADMIN, UserRole.SUPER_USER].includes(context.role);
+            let systemOwned: Track[] = [];
+            if (isAdmin && context.userId != null) {
+                const primaryAdminId = this.database.getPrimaryAdminId();
+                if (primaryAdminId != null && primaryAdminId !== context.userId) {
+                    systemOwned = this.database.getTracksByOwner(primaryAdminId, context);
+                }
+            }
+
             const byArtist = user.artistId
                 ? this.database.getTracksByArtist(user.artistId, context)
                 : [];
             const merged = new Map<number, Track>();
-            for (const t of [...owned, ...byArtist]) merged.set(t.id, t);
+            for (const t of [...owned, ...systemOwned, ...byArtist]) merged.set(t.id, t);
             tracks = Array.from(merged.values());
         } else {
             tracks = this.database.getTracks(undefined, context);
