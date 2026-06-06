@@ -86,6 +86,10 @@ export interface AuthService {
     init(): Promise<void>;
     /** Returns the avatar stored in gun_users for this username, or null. */
     getZenAvatar(username: string): string | null;
+    /** Returns alias and avatar from the admin table. */
+    getUserProfile(username: string): { alias: string | null; avatar: string | null } | null;
+    /** Updates alias and/or avatar in the admin table. */
+    updateUserProfile(username: string, data: { alias?: string; avatar?: string }): void;
 }
 
 export function createAuthService(
@@ -614,6 +618,21 @@ export function createAuthService(
                 WHERE a.username = ? COLLATE NOCASE
             `).get(username) as { avatar: string | null } | undefined;
             return row?.avatar ?? null;
+        },
+
+        getUserProfile(username: string): { alias: string | null; avatar: string | null } | null {
+            const row = db.prepare("SELECT alias, avatar FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { alias: string | null; avatar: string | null } | undefined;
+            return row ?? null;
+        },
+
+        updateUserProfile(username: string, data: { alias?: string; avatar?: string }): void {
+            const parts: string[] = [];
+            const params: any[] = [];
+            if (data.alias !== undefined) { parts.push("alias = ?"); params.push(data.alias); }
+            if (data.avatar !== undefined) { parts.push("avatar = ?"); params.push(data.avatar); }
+            if (parts.length === 0) return;
+            params.push(username);
+            db.prepare(`UPDATE admin SET ${parts.join(", ")} WHERE username = ? COLLATE NOCASE`).run(...params);
         },
 
         listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean }[] {

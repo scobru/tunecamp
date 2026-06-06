@@ -178,6 +178,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     router.get("/status", async (req: AuthenticatedRequest, res) => {
         const username = req.username || "";
         const dbUser = username ? authService.getUserByUsername(username) : null;
+        const profile = username ? authService.getUserProfile(username) : null;
         res.json({
             authenticated: req.role !== UserRole.GUEST,
             username: username,
@@ -187,10 +188,29 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             role: dbUser ? dbUser.role : (req.role || null),
             isActive: dbUser ? dbUser.is_active === 1 : (req.isActive !== false),
             pair: username ? authService.getUserPair(username) : null,
-            avatar: username ? authService.getZenAvatar(username) : null,
+            alias: profile?.alias || null,
+            avatar: profile?.avatar || (username ? authService.getZenAvatar(username) : null),
             firstRun: authService.isFirstRun(),
             mustChangePassword: username ? await authService.isDefaultPassword(username) : false
         });
+    });
+
+    /**
+     * PATCH /api/auth/profile
+     * Update alias and/or avatar for the authenticated user.
+     */
+    router.patch("/profile", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
+        try {
+            const { alias, avatar } = req.body;
+            if (alias === undefined && avatar === undefined) {
+                return res.status(400).json({ error: "alias or avatar required" });
+            }
+            authService.updateUserProfile(req.username!, { alias, avatar });
+            res.json({ success: true });
+        } catch (err) {
+            console.error("Profile update error:", err);
+            res.status(500).json({ error: "Failed to update profile" });
+        }
     });
 
     return router;

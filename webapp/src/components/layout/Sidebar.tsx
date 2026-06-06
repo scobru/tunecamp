@@ -163,9 +163,6 @@ export const Sidebar = () => {
               <NavItem to="/favorites" icon={Heart} label="Favorites" />
             )}
             {isAuthenticated && (
-              <NavItem to="/lobby" icon={MessageSquare} label="Lobby" />
-            )}
-            {isAuthenticated && (
               <NavItem to="/my-playlists" icon={ListMusic} label="My Playlists" />
             )}
             <NavItem to="/stats" icon={BarChart2} label="Stats" />

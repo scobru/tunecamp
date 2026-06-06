@@ -118,6 +118,29 @@ export class SocialRepository extends BaseRepository {
         return new Map(rows.map(r => [r.item_id, r.rating]));
     }
 
+    // --- Comments ---
+
+    addComment(trackId: number, username: string, text: string): { id: number; track_id: number; username: string; text: string; created_at: string } {
+        const result = this.db.prepare(
+            "INSERT INTO comments (track_id, username, text) VALUES (?, ?, ?)"
+        ).run(trackId, username, text);
+        return this.db.prepare("SELECT * FROM comments WHERE id = ?").get(result.lastInsertRowid) as any;
+    }
+
+    getComments(trackId: number): { id: number; track_id: number; username: string; text: string; created_at: string }[] {
+        return this.db.prepare(
+            "SELECT * FROM comments WHERE track_id = ? ORDER BY created_at ASC"
+        ).all(trackId) as any[];
+    }
+
+    deleteComment(commentId: number, username: string, isAdmin: boolean): boolean {
+        const comment = this.db.prepare("SELECT username FROM comments WHERE id = ?").get(commentId) as { username: string } | undefined;
+        if (!comment) return false;
+        if (!isAdmin && comment.username !== username) return false;
+        this.db.prepare("DELETE FROM comments WHERE id = ?").run(commentId);
+        return true;
+    }
+
     // --- Play History & Stats ---
 
     recordPlay(trackId: number, playedAt?: string): void {

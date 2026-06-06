@@ -594,6 +594,11 @@ export interface SocialManager {
     savePlayQueue(username: string, trackIds: string[], current: string | null, positionMs: number): void;
     getPlayQueue(username: string): { trackIds: string[], current: string | null, positionMs: number };
 
+    // Comments
+    addComment(trackId: number, username: string, text: string): { id: number; track_id: number; username: string; text: string; created_at: string };
+    getComments(trackId: number): { id: number; track_id: number; username: string; text: string; created_at: string }[];
+    deleteComment(commentId: number, username: string, isAdmin: boolean): boolean;
+
     // Bookmarks
     createBookmark(user: string, id: string, pos: number, comment?: string): void;
     getBookmarks(user: string): any[];

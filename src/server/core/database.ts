@@ -422,6 +422,14 @@ export function createDatabase(dbPath: string): DatabaseService {
             value TEXT,
             expires_at INTEGER
         );
+
+        CREATE TABLE IF NOT EXISTS comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+            username TEXT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
     `);
 
     // Runtime Migrations (robust column checks)
@@ -567,6 +575,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'subscription_expires_at')) {
                 console.log("📦 [Database] Migrating admin table: adding subscription_expires_at column...");
                 db.exec("ALTER TABLE admin ADD COLUMN subscription_expires_at TEXT DEFAULT NULL");
+            }
+            if (!cols.some(col => col.name === 'alias')) {
+                db.exec("ALTER TABLE admin ADD COLUMN alias TEXT");
+            }
+            if (!cols.some(col => col.name === 'avatar')) {
+                db.exec("ALTER TABLE admin ADD COLUMN avatar TEXT");
             }
         }
 

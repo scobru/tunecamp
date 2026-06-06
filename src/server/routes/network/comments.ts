@@ -1,105 +1,57 @@
 import { Router, json } from "express";
-import type { ZenDBService } from "../../modules/network/zendb.service.js";
-
 import type { ServiceContainer } from "../../core/container.js";
+import type { AuthenticatedRequest } from "../../middleware/auth.js";
+import { wrapAsync } from "../../middleware/error-handling.js";
 
 export function createCommentsRoutes(container: ServiceContainer): Router {
-    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
+    const social: ServiceContainer['social'] = (container as any).social || (container as any);
+    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
     const router = Router();
     router.use(json());
 
     /**
      * GET /api/comments/track/:trackId
-     * Get all comments for a track
      */
-    router.get("/track/:trackId", async (req, res) => {
-        try {
-            const trackId = parseInt(req.params.trackId as string, 10);
-            if (isNaN(trackId)) {
-                return res.status(400).json({ error: "Invalid track ID" });
-            }
-
-            const comments = await zendbService.getComments(trackId);
-            res.json(comments);
-        } catch (error) {
-            console.error("Get comments error:", error);
-            res.status(500).json({ error: "Failed to get comments" });
-        }
-    });
+    router.get("/track/:trackId", wrapAsync(async (req, res) => {
+        const trackId = parseInt(req.params.trackId as string, 10);
+        if (isNaN(trackId)) return res.status(400).json({ error: "Invalid track ID" });
+        const comments = social.getComments(trackId);
+        res.json(comments);
+    }));
 
     /**
      * POST /api/comments/track/:trackId
-     * Post a new comment on a track
+     * Requires authentication (JWT).
      */
-    router.post("/track/:trackId", async (req, res) => {
-        try {
-            const trackId = parseInt(req.params.trackId as string, 10);
-            if (isNaN(trackId)) {
-                return res.status(400).json({ error: "Invalid track ID" });
-            }
+    router.post("/track/:trackId", authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res) => {
+        const trackId = parseInt(req.params.trackId as string, 10);
+        if (isNaN(trackId)) return res.status(400).json({ error: "Invalid track ID" });
 
-            const { pubKey, username, text, signature } = req.body;
-
-            if (!pubKey || !text) {
-                return res.status(400).json({ error: "Public key and text required" });
-            }
-
-            if (text.length > 500) {
-                return res.status(400).json({ error: "Comment too long (max 500 chars)" });
-            }
-
-            // Get username from profile if not provided
-            let displayName = username;
-            if (!displayName) {
-                const user = await zendbService.getUser(pubKey);
-                displayName = user?.username || pubKey.substring(0, 8) + "...";
-            }
-
-            const comment = await zendbService.addComment(trackId, {
-                pubKey,
-                username: displayName,
-                text,
-                signature
-            });
-
-            if (comment) {
-                res.json(comment);
-            } else {
-                res.status(500).json({ error: "Failed to post comment" });
-            }
-        } catch (error) {
-            console.error("Post comment error:", error);
-            res.status(500).json({ error: "Failed to post comment" });
+        const { text } = req.body;
+        if (!text || typeof text !== 'string' || !text.trim()) {
+            return res.status(400).json({ error: "text required" });
         }
-    });
+        if (text.length > 500) {
+            return res.status(400).json({ error: "Comment too long (max 500 chars)" });
+        }
+
+        const comment = social.addComment(trackId, req.username!, text.trim());
+        res.json(comment);
+    }));
 
     /**
      * DELETE /api/comments/:commentId
-     * Delete a comment (requires ownership proof)
+     * Requires authentication. Owner or admin only.
      */
-    router.delete("/:commentId", async (req, res) => {
-        try {
-            const { commentId } = req.params;
-            const { pubKey, signature } = req.body;
+    router.delete("/:commentId", authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res) => {
+        const commentId = parseInt(req.params.commentId as string, 10);
+        if (isNaN(commentId)) return res.status(400).json({ error: "Invalid comment ID" });
 
-            if (!pubKey) {
-                return res.status(400).json({ error: "Public key required" });
-            }
-
-            // Get the comment to verify ownership
-            const success = await zendbService.deleteComment(commentId, pubKey, signature);
-
-            if (success) {
-                res.json({ success: true });
-            } else {
-                res.status(403).json({ error: "Cannot delete this comment" });
-            }
-        } catch (error) {
-            console.error("Delete comment error:", error);
-            res.status(500).json({ error: "Failed to delete comment" });
-        }
-    });
+        const isAdmin = !!(req.isAdmin || req.isSuperUser || req.isRootAdmin);
+        const success = social.deleteComment(commentId, req.username!, isAdmin);
+        if (!success) return res.status(403).json({ error: "Cannot delete this comment" });
+        res.json({ success: true });
+    }));
 
     return router;
 }
-

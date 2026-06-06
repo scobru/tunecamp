@@ -55,6 +55,11 @@ export function createSocialManager(
         savePlayQueue: (u: string, ids: string[], c: string | null, p: number) => db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(`play_queue_${u}`, JSON.stringify({ trackIds: ids, current: c, positionMs: p })),
         getPlayQueue: (u: string) => { const r = db.prepare("SELECT value FROM settings WHERE key = ?").get(`play_queue_${u}`) as any; return r ? JSON.parse(r.value) : { trackIds: [], current: null, positionMs: 0 }; },
 
+        // Comments
+        addComment: (tid: number, u: string, t: string) => socialRepository.addComment(tid, u, t),
+        getComments: (tid: number) => socialRepository.getComments(tid),
+        deleteComment: (cid: number, u: string, isAdmin: boolean) => socialRepository.deleteComment(cid, u, isAdmin),
+
         // Bookmarks
         createBookmark: (u: string, id: string, p: number, c?: string) => { db.prepare("INSERT INTO bookmarks (username, track_id, position_ms, comment) VALUES (?, ?, ?, ?)").run(u, id, p, c || null); },
         getBookmarks: (u: string) => db.prepare("SELECT * FROM bookmarks WHERE username = ? ORDER BY updated_at DESC").all(u) as any[],

@@ -48,7 +48,6 @@ import { createImportRoutes } from "./routes/library/import.js";
 import { createStatsRoutes } from "./routes/admin/stats.js";
 import { createUsersRoutes } from "./routes/auth/users.js";
 import { createCommentsRoutes } from "./routes/network/comments.js";
-import { createLobbyRoutes } from "./routes/network/lobby.js";
 import { Scanner } from "./modules/catalog/scanner.js";
 import { initScannerService } from "./modules/catalog/scanner.service.js";
 import { initStreamingService } from "./modules/streaming/streaming.service.js";
@@ -344,7 +343,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
     app.use("/api/users", createUsersRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
-    app.use("/api/lobby", authMiddleware.requireUser, createLobbyRoutes(container));
     app.use("/api/unlock", createUnlockRoutes(container));
 
     // Public assets store

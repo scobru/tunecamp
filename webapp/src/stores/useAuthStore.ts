@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import API from '../services/api';
 import type { User } from '../types';
 import { useWalletStore } from './useWalletStore';
+import { ZenAuth } from '../services/zen';
 
 type UserRole = 'admin' | 'user' | 'super_user' | 'root_admin' | null;
 
@@ -54,6 +55,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     init: async () => {
         set({ isLoading: true });
+        try {
+            await ZenAuth.init();
+        } catch (e) {
+            console.warn("Failed to initialize ZenAuth:", e);
+        }
         await get().checkAuth();
     },
 
@@ -121,6 +127,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
             const result = await API.login(username, password);
             API.setToken(result.token);
+            if (password) {
+                try {
+                    await ZenAuth.login(username, password);
+                } catch (zenErr) {
+                    console.warn("Failed to login to Zen during auth login:", zenErr);
+                }
+            }
             await get().checkAuth();
         } catch (e: any) {
             set({ error: e.message, isLoading: false, isAuthenticating: false });
@@ -152,6 +165,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
             const result = await API.registerUser(username, password);
             API.setToken(result.token);
+            try {
+                await ZenAuth.register(username, password);
+            } catch (zenErr) {
+                console.warn("Failed to register ZenAuth:", zenErr);
+            }
             await get().checkAuth();
             set({ isLoading: false, isAuthenticating: false });
         } catch (e: any) {
@@ -165,6 +183,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     logout: () => {
         useWalletStore.getState().clearWallet();
         API.setToken(null);
+        try {
+            ZenAuth.logout();
+        } catch (e) {
+            console.warn("Failed to logout ZenAuth:", e);
+        }
         set({
             user: null,
             isAuthenticated: false,

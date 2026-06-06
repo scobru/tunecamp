@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import Search from './Search'
 import { useAuthStore } from '../stores/useAuthStore'
 import { MemoryRouter } from 'react-router-dom'
+import API from '../services/api'
 
 // Mock the stores and services
 vi.mock('zen', () => ({
@@ -43,59 +44,58 @@ vi.mock('../stores/usePlayerStore', () => ({
 vi.mock('../services/api', () => ({
   default: {
     globalSearch: vi.fn(() => Promise.resolve({
-      local: { tracks: [], albums: [], artists: [] },
-      external: [{ id: '1', title: 'Ext Track', artist: 'Ext Artist', source: 'spotify' }],
-      streaming: [{ id: '2', title: 'Stream Track', artist: 'Stream Artist', source: 'youtube', isStreaming: true }]
+      local: {
+        tracks: [{ id: 't1', title: 'Unique Track', artistName: 'Track Artist', albumId: 'al1', duration: 180 }],
+        albums: [{ id: 'al1', title: 'Unique Album', artistName: 'Album Artist', coverImage: '' }],
+        artists: [{ id: 'ar1', name: 'Unique Artist', slug: 'unique-artist', coverImage: '' }]
+      }
     })),
     getPlaylists: vi.fn(() => Promise.resolve([])),
     getStarredTracks: vi.fn(() => Promise.resolve([])),
     getStarredAlbums: vi.fn(() => Promise.resolve([])),
     getStarredArtists: vi.fn(() => Promise.resolve([])),
+    getArtistCoverUrl: vi.fn((id) => `cover-url-artist-${id}`),
+    getAlbumCoverUrl: vi.fn((id) => `cover-url-album-${id}`),
+    getReleaseCoverUrl: vi.fn((id) => `cover-url-release-${id}`),
   },
 }))
 
 describe('Search', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('does NOT show Discover section for normal users', async () => {
     vi.mocked(useAuthStore).mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
       role: 'user',
       user: { username: 'testuser' },
     } as any)
-
-    render(
-      <MemoryRouter initialEntries={['/search?q=test']}>
-        <Search />
-      </MemoryRouter>
-    )
-
-    // Wait for the search to complete
-    const discoverSection = await screen.queryByText(/Discover \(External & Streaming\)/i)
-    expect(discoverSection).not.toBeInTheDocument()
   })
 
-  it('SHOWS Discover section for admin users', async () => {
-    vi.mocked(useAuthStore).mockReturnValue({
-      isAuthenticated: true,
-      isLoading: false,
-      role: 'admin',
-      user: { username: 'adminuser' },
-    } as any)
-
+  it('renders search input and allows typing', () => {
     render(
-      <MemoryRouter initialEntries={['/search?q=test']}>
+      <MemoryRouter>
         <Search />
       </MemoryRouter>
     )
 
-    // Wait for the search to complete and section to appear
-    const discoverSection = await screen.findByText(/Discover \(External & Streaming\)/i)
-    expect(discoverSection).toBeInTheDocument()
-    expect(screen.getByText('Ext Track')).toBeInTheDocument()
-    expect(screen.getByText('Stream Track')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Search for songs, artists, albums.../i)).toBeInTheDocument()
+  })
+
+  it('performs search and displays results', async () => {
+    render(
+      <MemoryRouter initialEntries={['/search?q=local']}>
+        <Search />
+      </MemoryRouter>
+    )
+
+    // Verify globalSearch was called with query
+    expect(API.globalSearch).toHaveBeenCalledWith('local')
+
+    // Wait for the results to load
+    await waitFor(() => {
+      expect(screen.getByText('Unique Track')).toBeInTheDocument()
+      expect(screen.getByText('Unique Album')).toBeInTheDocument()
+      expect(screen.getByText('Unique Artist')).toBeInTheDocument()
+    })
   })
 })

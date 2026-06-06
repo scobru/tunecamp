@@ -105,8 +105,16 @@ describe('useAuthStore', () => {
             role: 'user',
             user: { username: 'testuser', id: '2', isAdmin: false },
         };
+        const mockAuthStatus = {
+            authenticated: true,
+            role: 'user',
+            user: { username: 'testuser', id: '2', isAdmin: false },
+            firstRun: false,
+            mustChangePassword: false,
+        };
 
         vi.mocked(API.login).mockResolvedValue(mockLoginResponse);
+        vi.mocked(API.getAuthStatus).mockResolvedValue(mockAuthStatus);
 
         const store = useAuthStore.getState();
         await store.login('testuser', 'password123');
