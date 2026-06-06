@@ -35,11 +35,11 @@ describe('Subsonic Scrobbling', () => {
             app = express();
             app.use(express.json()); // Add JSON parser for testing
             app.use('/rest', createSubsonicRouter({
-                db: database,
-                auth: authService,
+                database: database,
+                authService: authService,
                 musicDir: './music',
                 zendbService: mockZendbService
-            }));
+            } as any));
         } catch (e) {
             console.error('FAILED beforeAll:', e);
             throw e;
@@ -56,15 +56,15 @@ describe('Subsonic Scrobbling', () => {
     });
 
     it('should record a scrobble in the database and GunDB', async () => {
-        const artistId = database.createArtist('Test Artist');
-        const albumId = database.createAlbum({
+        const artistId = database.library.createArtist('Test Artist');
+        const albumId = database.library.createAlbum({
             title: 'Test Album',
             slug: 'test-album',
             artist_id: artistId,
             visibility: 'public',
             is_release: true
         } as any);
-        const trackId = database.createTrack({
+        const trackId = database.library.createTrack({
             title: 'Test Track',
             album_id: albumId,
             artist_id: artistId,
@@ -81,7 +81,7 @@ describe('Subsonic Scrobbling', () => {
 
         expect(response.status).toBe(200);
 
-        const recentPlays = database.getRecentPlays(1);
+        const recentPlays = database.social.getRecentPlays(1);
         expect(recentPlays.length).toBe(1);
         expect(recentPlays[0].track_id).toBe(trackId);
         // SQLite stores ISO string. We compare them by creating Date objects.
@@ -98,7 +98,7 @@ describe('Subsonic Scrobbling', () => {
 
         expect(response.status).toBe(200);
 
-        const recentPlays = database.getRecentPlays(5);
+        const recentPlays = database.social.getRecentPlays(5);
         // 1 from previous test + 2 from this test
         expect(recentPlays.length).toBeGreaterThanOrEqual(3);
     });
@@ -107,12 +107,12 @@ describe('Subsonic Scrobbling', () => {
         const trackId = 1;
         const authQuery = 'u=user&p=enc:70617373776f7264&v=1.16.1&c=test';
 
-        const playsBefore = database.getRecentPlays(100).length;
+        const playsBefore = database.social.getRecentPlays(100).length;
         const response = await request(app)
             .get(`/rest/scrobble.view?${authQuery}&id=tr_${trackId}&submission=false`);
 
         expect(response.status).toBe(200);
-        const playsAfter = database.getRecentPlays(100).length;
+        const playsAfter = database.social.getRecentPlays(100).length;
         expect(playsAfter).toBe(playsBefore);
     });
 

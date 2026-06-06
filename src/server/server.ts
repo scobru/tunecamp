@@ -8,6 +8,7 @@ import fs from "fs-extra";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { isNonFatalError } from "./common/errors.js";
+import type { ServiceContainer } from "./core/container.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json");
@@ -217,12 +218,47 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
 
-    app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(database, scanner, config.musicDir, publishingService, storage, authService));
-    app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(database, config, () => {
+    const container: ServiceContainer = {
+        database,
+        identity: database.identity,
+        library: database.library,
+        social: database.social,
+        integration: database.integration,
+        config,
+        musicDir: config.musicDir,
+        authService,
+        authMiddleware,
+        scanner,
+        scannerService,
+        catalogService,
+        discoveryService,
+        metadataService,
+        maintenanceService,
+        localizationService,
+        mediaEngine,
+        waveformService,
+        streamingService,
+        subsonicService,
+        scrobbleService,
+        playlistService,
+        publishingService,
+        apService,
+        zendbService,
+        lifecycleService,
+        telegramBotService,
+        soulseekService,
+        torrentService: torrentService as any,
+        gdriveService,
+        openRouterService,
+        storage
+    };
+
+    app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(container));
+    app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(container, () => {
         process.exit(0);
-    }, gdriveService));
-    app.use("/api/admin/torrents", authMiddleware.requireManager, express.json(), createTorrentRoutes(database, torrentService, authService));
-    app.use("/api/admin/torrent-search", authMiddleware.requireManager, express.json(), createTorrentSearchRouter(database, torrentService as any, authService));
+    }));
+    app.use("/api/admin/torrents", authMiddleware.requireManager, express.json(), createTorrentRoutes(container));
+    app.use("/api/admin/torrent-search", authMiddleware.requireManager, express.json(), createTorrentSearchRouter(container));
 
     // Health endpoint MUST be before fedify middleware to avoid blocking
     app.get("/health", (req, res) => {
@@ -245,7 +281,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
         next();
     });
-    app.use("/api/payments", createPaymentsRoutes(database, config.musicDir, config));
+    app.use("/api/payments", createPaymentsRoutes(container));
 
     const webappPath = path.join(__dirname, "..", "..", "webapp");
     const webappDistPath = path.join(webappPath, "dist");
@@ -299,38 +335,36 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
     });
 
-    app.use("/rest", createSubsonicRouter({ db: database, auth: authService, musicDir: config.musicDir, zendbService, scrobbleService, mediaEngine }));
+    app.use("/rest", createSubsonicRouter(container));
 
     // Health endpoint moved before fedify middleware (see above)
 
-    app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(authService, authMiddleware));
-    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(
-        database, scannerService, config.musicDir, zendbService, config, authService, publishingService, apService, telegramBotService, soulseekService, metadataService, streamingService, gdriveService, playlistService, scrobbleService, maintenanceService, localizationService
-    ));
-    app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(catalogService, discoveryService));
-    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(database, config.musicDir, metadataService, catalogService, discoveryService));
-    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(database, catalogService, discoveryService, config.musicDir));
-    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(database, publishingService, catalogService, discoveryService, config.musicDir, authService, gdriveService, streamingService, localizationService, mediaEngine));
-    app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(database, zendbService));
+    app.use("/api/auth", authMiddleware.optionalAuth, createAuthRoutes(container));
+    app.use("/api/admin", authMiddleware.requireUser, createAdminRoutes(container));
+    app.use("/api/catalog", authMiddleware.optionalAuth, createCatalogRoutes(container));
+    app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));
+    app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(container));
+    app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(container));
+    app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
 
 
     if (gdriveService) {
-        app.use("/api/storage", createStorageRouter(database, gdriveService, authMiddleware, catalogService, discoveryService));
+        app.use("/api/storage", createStorageRouter(container));
     }
 
-    app.use("/api/import", authMiddleware.requireUser, createImportRoutes());
+    app.use("/api/import", authMiddleware.requireUser, createImportRoutes(container));
 
-    const releaseRouter = createReleaseRouter(database, scannerService, publishingService, authService, config.musicDir);
+    const releaseRouter = createReleaseRouter(container);
     app.use("/api/releases", authMiddleware.optionalAuth, releaseRouter);
     app.use("/api/admin/releases", authMiddleware.requireUser, releaseRouter);
-    app.use("/api/stats", createStatsRoutes(zendbService, database, config));
-    app.use("/api/stats/library", createLibraryStatsRoutes(database));
-    app.use("/api/browser", authMiddleware.requireRootAdmin, createBrowserRoutes(config.musicDir, database));
-    app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(database, config.musicDir, maintenanceService, catalogService));
-    app.use("/api/users", createUsersRoutes(zendbService, database, authService, apService));
-    app.use("/api/comments", createCommentsRoutes(zendbService));
-    app.use("/api/lobby", authMiddleware.requireUser, createLobbyRoutes(database));
-    app.use("/api/unlock", createUnlockRoutes(database, authMiddleware));
+    app.use("/api/stats", createStatsRoutes(container));
+    app.use("/api/stats/library", createLibraryStatsRoutes(container));
+    app.use("/api/browser", authMiddleware.requireRootAdmin, createBrowserRoutes(container));
+    app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
+    app.use("/api/users", createUsersRoutes(container));
+    app.use("/api/comments", createCommentsRoutes(container));
+    app.use("/api/lobby", authMiddleware.requireUser, createLobbyRoutes(container));
+    app.use("/api/unlock", createUnlockRoutes(container));
 
     // Public assets store
     app.get("/api/assets", (_req: any, res: any) => {
@@ -356,12 +390,12 @@ export async function startServer(config: ServerConfig): Promise<void> {
             res.sendFile(path.resolve(asset.cover_path));
         } catch { res.status(500).json({ error: "Failed to serve cover" }); }
     });
-    app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(lifecycleService));
-    app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(lifecycleService));
-    app.use("/api/ap", createActivityPubRoutes(apService, database, authMiddleware));
-    app.use("/api/proxy", createProxyRoutes());
-    app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes());
-    app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(database, soulseekService, scannerService, metadataService, streamingService));
+    app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(container));
+    app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(container));
+    app.use("/api/ap", createActivityPubRoutes(container));
+    app.use("/api/proxy", createProxyRoutes(container));
+    app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
+    app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
 
     app.get("/api/plugins", authMiddleware.requireAdmin, (_req, res) => {
         res.json({

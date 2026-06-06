@@ -244,9 +244,9 @@ function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbB
     // 5. Keys (Artists and System)
     try {
         // Artists Keys
-        const artists = database.getArtists();
+        const artists = database.library.getArtists();
         const artistsKeys: any = {};
-        artists.forEach(a => {
+        artists.forEach((a: any) => {
             if (a.public_key && a.private_key) {
                 artistsKeys[a.slug] = {
                     id: a.id,
@@ -260,7 +260,7 @@ function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbB
         archive.append(JSON.stringify(artistsKeys, null, 2), { name: "keys/artists_keys.json" });
 
         // System Identity (Zen)
-        const systemKeys = database.getSetting("zenPair") || database.getSetting("gunPair");
+        const systemKeys = database.identity.getSetting("zenPair") || database.identity.getSetting("gunPair");
         if (systemKeys) {
             archive.append(systemKeys, { name: "keys/system_identity.json" });
         }
@@ -272,7 +272,14 @@ function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbB
     return archive;
 }
 
-export function createBackupRoutes(database: DatabaseService, config: ServerConfig, restartFn: () => void, gdriveService?: GoogleDriveService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createBackupRoutes(container: ServiceContainer, restartFn: () => void): Router {
+    const config: ServiceContainer['config'] = (container as any).config || (container as any);
+    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
 
     /**

@@ -6,7 +6,9 @@
 import { Router } from "express";
 import { taskManager } from "../../modules/workers/task-manager.js";
 
-export function createTaskRoutes(): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createTaskRoutes(container: ServiceContainer): Router {
     const router = Router();
 
     /**

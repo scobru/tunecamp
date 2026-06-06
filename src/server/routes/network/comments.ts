@@ -1,7 +1,10 @@
 import { Router, json } from "express";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
-export function createCommentsRoutes(zendbService: ZenDBService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createCommentsRoutes(container: ServiceContainer): Router {
+    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const router = Router();
     router.use(json());
 

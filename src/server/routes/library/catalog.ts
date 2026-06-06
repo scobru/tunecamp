@@ -3,11 +3,15 @@ import { CatalogService } from "../../modules/catalog/catalog.service.js";
 import { DiscoveryService } from "../../modules/catalog/discovery.service.js";
 import { UserRole } from "../../common/visibility.js";
 
+import type { ServiceContainer } from "../../core/container.js";
+
 /**
  * Catalog Routes — Handles public and private library discovery.
  * Refactored to separate Discovery (Read) from Catalog (Write).
  */
-export function createCatalogRoutes(catalogService: CatalogService, discoveryService: DiscoveryService): Router {
+export function createCatalogRoutes(container: ServiceContainer): Router {
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
+    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
     const router = Router();
 
     /**

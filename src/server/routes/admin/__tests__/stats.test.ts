@@ -53,7 +53,11 @@ describe('Stats Routes', () => {
 
         app = express();
         app.use(express.json());
-        app.use('/api/stats', createStatsRoutes(mockZenDBService, mockDbService, mockConfig));
+        app.use('/api/stats', createStatsRoutes({
+            zendbService: mockZenDBService,
+            database: mockDbService,
+            config: mockConfig
+        } as any));
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 

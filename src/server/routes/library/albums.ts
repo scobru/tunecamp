@@ -10,16 +10,18 @@ import { wrapAsync } from "../../middleware/error-handling.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../common/errors.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { VisibilityProfile, VisibilityGuardian, Capability } from "../../common/visibility.js";
+import type { ServiceContainer } from "../../core/container.js";
 
 /**
  * Albums Routes — Handles album and release discovery and management.
  */
-export function createAlbumsRoutes(
-    database: DatabaseService,
-    catalogService: CatalogService,
-    discoveryService: DiscoveryService,
-    musicDir: string
-): Router {
+export function createAlbumsRoutes(container: ServiceContainer): Router {
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
+    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const social: ServiceContainer['social'] = (container as any).social || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(express.json());
 
@@ -32,13 +34,13 @@ export function createAlbumsRoutes(
 
         const isAdmin = req.isAdmin || req.isSuperUser;
         if (isAdmin) {
-            albums = database.getAlbums(VisibilityProfile.ALL_ACCESS);
+            albums = library.getAlbums(VisibilityProfile.ALL_ACCESS);
         } else {
             // Artists and users see their own albums + public ones + starred ones
-            const owned = req.userId ? database.getAlbumsByOwner(req.userId!, VisibilityProfile.ALL_ACCESS) : [];
-            const publicAlbums = database.getAlbums(VisibilityProfile.PUBLIC_STAGE);
+            const owned = req.userId ? library.getAlbumsByOwner(req.userId!, VisibilityProfile.ALL_ACCESS) : [];
+            const publicAlbums = library.getAlbums(VisibilityProfile.PUBLIC_STAGE);
             
-            const starredItems = username ? database.getStarredItems(username, 'album') : [];
+            const starredItems = username ? social.getStarredItems(username, 'album') : [];
             const starredIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
             
             // Deduplicate
@@ -54,7 +56,7 @@ export function createAlbumsRoutes(
             
             // Add starred albums that might not be owned or public
             if (starredIds.size > 0) {
-                const starredAlbums = database.getAlbumsByIds(Array.from(starredIds));
+                const starredAlbums = library.getAlbumsByIds(Array.from(starredIds));
                 for (const a of starredAlbums) {
                     if (!seenIds.has(a.id)) {
                         albums.push(a);
@@ -67,8 +69,8 @@ export function createAlbumsRoutes(
         res.json(albums.map((a: Album) => ({
             ...a,
             coverImage: a.cover_path,
-            starred: username ? database.isStarred(username, 'album', String(a.id)) : false,
-            rating: username ? database.getItemRating(username, 'album', String(a.id)) : 0
+            starred: username ? social.isStarred(username, 'album', String(a.id)) : false,
+            rating: username ? social.getItemRating(username, 'album', String(a.id)) : 0
         })));
     }));
 
@@ -82,7 +84,7 @@ export function createAlbumsRoutes(
         
         const isAdmin = req.isAdmin || req.isSuperUser;
         const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
-        const albums = database.searchAlbums(query, limit, profile);
+        const albums = library.searchAlbums(query, limit, profile);
         res.json(albums.map((a: Album) => ({ ...a, coverImage: a.cover_path })));
     }));
 
@@ -96,7 +98,7 @@ export function createAlbumsRoutes(
 
         if (idParam.startsWith("ext:")) {
             // Check if we already have this external album linked
-            const existing = database.getAlbumByExternalId(idParam);
+            const existing = library.getAlbumByExternalId(idParam);
             if (existing) {
                 albumId = existing.id;
             } else {
@@ -110,7 +112,7 @@ export function createAlbumsRoutes(
 
         if (isNaN(albumId)) throw new BadRequestError("Invalid album ID");
 
-        const album = database.getAlbum(albumId) || database.getRelease(albumId);
+        const album = library.getAlbum(albumId) || library.getRelease(albumId);
         if (!album) throw new NotFoundError("Album not found");
         
         if (req.context && !VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
@@ -131,7 +133,7 @@ export function createAlbumsRoutes(
         let albumId: number;
 
         if (idParam.startsWith("ext:")) {
-            const existing = database.getAlbumByExternalId(idParam);
+            const existing = library.getAlbumByExternalId(idParam);
             if (!existing) return res.json({ success: true, starred: false });
             albumId = existing.id;
         } else {
@@ -151,7 +153,7 @@ export function createAlbumsRoutes(
         if (!req.isAdmin && !req.isSuperUser && !req.artistId) throw new ForbiddenError("Unauthorized");
 
         const id = parseInt(req.params.id as string, 10);
-        const album = database.getAlbum(id);
+        const album = library.getAlbum(id);
         if (!album) throw new NotFoundError("Album not found");
 
         if (!req.isAdmin && album.owner_id !== req.userId) throw new ForbiddenError("Access denied");
@@ -167,7 +169,7 @@ export function createAlbumsRoutes(
     router.get("/starred", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
         try {
-            const starredItems = database.getStarredItems(req.username, 'album');
+            const starredItems = social.getStarredItems(req.username, 'album');
             // Return IDs for easy lookup
             res.json(starredItems.map((i: any) => i.item_id));
         } catch (error) {
@@ -196,7 +198,7 @@ export function createAlbumsRoutes(
         const albumId = parseInt(idParam, 10);
         if (isNaN(albumId)) throw new BadRequestError("Invalid album ID");
 
-        const album = database.getAlbum(albumId) || database.getRelease(albumId);
+        const album = library.getAlbum(albumId) || library.getRelease(albumId);
         if (!album) throw new NotFoundError("Album not found");
 
         if (!req.isAdmin && album.owner_id !== req.userId) {
@@ -215,7 +217,7 @@ export function createAlbumsRoutes(
                 description
             });
 
-            const updatedAlbum = database.getAlbum(albumId) || database.getRelease(albumId);
+            const updatedAlbum = library.getAlbum(albumId) || library.getRelease(albumId);
             res.json({ message: "Metadata matched and synced", album: updatedAlbum });
         } catch (error: any) {
             console.error(`❌ [Metadata Match Error] Album ${albumId}:`, error);
@@ -258,17 +260,17 @@ export function createAlbumsRoutes(
             let album = null;
             albumId = parseInt(param, 10);
             if (!isNaN(albumId)) {
-                album = database.getAlbum(albumId) || database.getRelease(albumId);
+                album = library.getAlbum(albumId) || library.getRelease(albumId);
             }
             if (!album) {
-                album = database.getAlbumBySlug(param) || database.getReleaseBySlug(param);
+                album = library.getAlbumBySlug(param) || library.getReleaseBySlug(param);
             }
             
             let albumCoverPath = album?.cover_path;
             
             // Fallback: if the album doesn't have an explicit cover_path, check if any of its tracks has one
             if (album && !albumCoverPath) {
-                const albumTracks = database.getTracksByAlbum(album.id);
+                const albumTracks = library.getTracksByAlbum(album.id);
                 const trackWithCover = albumTracks.find(t => t.external_artwork || (t as any).externalArtwork);
                 if (trackWithCover) {
                     albumCoverPath = trackWithCover.external_artwork || (trackWithCover as any).externalArtwork;
@@ -299,7 +301,7 @@ export function createAlbumsRoutes(
      */
     router.get("/:id/download", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const id = parseInt(req.params.id as string, 10);
-        const album = database.getAlbum(id) || database.getRelease(id);
+        const album = library.getAlbum(id) || library.getRelease(id);
         if (!album) throw new NotFoundError("Album not found");
 
         const isAdmin = req.isAdmin || req.isSuperUser;
@@ -310,7 +312,7 @@ export function createAlbumsRoutes(
             if (!isRelease || album.visibility === 'private') throw new ForbiddenError("Access denied");
         }
 
-        const tracks = database.getTracksByAlbum(id);
+        const tracks = library.getTracksByAlbum(id);
         if (tracks.length === 0) throw new NotFoundError("No tracks found");
 
         res.setHeader('Content-Type', 'application/zip');

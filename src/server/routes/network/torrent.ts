@@ -3,7 +3,13 @@ import type { TorrentService } from "../../modules/integrations/torrent.service.
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 
-export function createTorrentRoutes(database: DatabaseService, torrentService: TorrentService, auth: AuthService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createTorrentRoutes(container: ServiceContainer): Router {
+    const torrentService: ServiceContainer['torrentService'] = (container as any).torrentService || (container as any);
+    const auth: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(express.json());
 
@@ -13,7 +19,7 @@ export function createTorrentRoutes(database: DatabaseService, torrentService: T
      */
     router.get("/", async (req: any, res) => {
         try {
-            const dbTorrents = database.getTorrents();
+            const dbTorrents = integration.getTorrents();
             const activeTorrents = torrentService.getTorrentsStatus() as any[];
 
             const activeMap = new Map(

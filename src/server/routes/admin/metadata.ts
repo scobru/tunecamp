@@ -11,7 +11,14 @@ import type { MaintenanceService } from "../../modules/catalog/maintenance.servi
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 
-export function createMetadataRoutes(database: DatabaseService, musicDir: string, maintenance: MaintenanceService, catalogService: CatalogService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createMetadataRoutes(container: ServiceContainer): Router {
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const maintenance: ServiceContainer['maintenanceService'] = (container as any).maintenanceService || (container as any);
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
@@ -49,7 +56,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         const { albumId, mbid, title, artist, date, coverUrl } = req.body;
 
         try {
-            const album = database.getAlbum(albumId) || database.getRelease(albumId);
+            const album = library.getAlbum(albumId) || library.getRelease(albumId);
             if (!album) return res.status(404).json({ error: "Album not found" });
 
             // Permission Check: Artist can only apply metadata to their own albums
@@ -319,7 +326,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
         if (!artistId || !metadata) return res.status(400).json({ error: "artistId and metadata required" });
 
         try {
-            const artist = database.getArtist(artistId);
+            const artist = library.getArtist(artistId);
             if (!artist) return res.status(404).json({ error: "Artist not found" });
 
             let photoPath = artist.photo_path;
@@ -339,7 +346,7 @@ export function createMetadataRoutes(database: DatabaseService, musicDir: string
             }
 
             // Update Database
-            database.updateArtist(
+            library.updateArtist(
                 artistId,
                 metadata.name || undefined,
                 metadata.bio || undefined,

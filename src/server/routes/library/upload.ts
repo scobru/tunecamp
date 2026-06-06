@@ -76,15 +76,17 @@ function imageFileFilter(
 }
 
 // Removed createBackgroundStorage in favor of createTempStorage
+import type { ServiceContainer } from "../../core/container.js";
 
-export function createUploadRoutes(
-    database: DatabaseService,
-    scanner: ScannerService,
-    musicDir: string,
-    publishingService: PublishingService,
-    storage: StorageEngine,
-    authService?: AuthService
-): Router {
+export function createUploadRoutes(container: ServiceContainer): Router {
+    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
+    const storage: ServiceContainer['storage'] = (container as any).storage || (container as any);
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
 
     if (authService) {
@@ -145,7 +147,7 @@ export function createUploadRoutes(
 
             await storage.move(file.path, targetPath, { overwrite: true });
 
-            database.setSetting(options.settingKey, options.apiUrl);
+            identity.setSetting(options.settingKey, options.apiUrl);
             res.json({
                 message: `${options.errorLabel.charAt(0).toUpperCase() + options.errorLabel.slice(1)} uploaded`,
                 url: options.apiUrl,
@@ -168,8 +170,8 @@ export function createUploadRoutes(
             const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle } = req.body;
 
             // Get release if applicable
-            const formalRelease = releaseSlug ? database.getReleaseBySlug(releaseSlug) : undefined;
-            const libraryAlbum = releaseSlug ? database.getAlbumBySlug(releaseSlug) : undefined;
+            const formalRelease = releaseSlug ? library.getReleaseBySlug(releaseSlug) : undefined;
+            const libraryAlbum = releaseSlug ? library.getAlbumBySlug(releaseSlug) : undefined;
             const release = formalRelease || libraryAlbum;
 
             // Determine the target artist ID for these tracks
@@ -185,8 +187,8 @@ export function createUploadRoutes(
                 // Name-based lookup/creation for admins or new active artists without a profile
                 const trimmedName = bodyArtistName.trim();
                 if (trimmedName) {
-                    const artist = database.getArtistByName(trimmedName);
-                    targetArtistId = artist ? artist.id : database.createArtist(trimmedName);
+                    const artist = library.getArtistByName(trimmedName);
+                    targetArtistId = artist ? artist.id : library.createArtist(trimmedName);
                 }
             } else if (!req.isAdmin) {
                 // Default to uploader's own artistId (for non-admin artists)
@@ -201,9 +203,9 @@ export function createUploadRoutes(
                 const trimmedTitle = bodyAlbumTitle.trim();
                 if (trimmedTitle) {
                     const slug = "lib-" + trimmedTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                    let album = database.getAlbumBySlug(slug);
+                    let album = library.getAlbumBySlug(slug);
                     if (!album) {
-                        const newAlbumId = database.createAlbum({
+                        const newAlbumId = library.createAlbum({
                             title: trimmedTitle,
                             slug: slug,
                             artist_id: targetArtistId || null,
@@ -228,7 +230,7 @@ export function createUploadRoutes(
                             license: 'copyright',
                             status: 'draft',
                         });
-                        album = database.getAlbum(newAlbumId);
+                        album = library.getAlbum(newAlbumId);
                     }
                     targetAlbumId = album?.id;
                 }
@@ -344,10 +346,10 @@ export function createUploadRoutes(
                         // Link to release if applicable
                         if (release) {
                             if (formalRelease) {
-                                database.addTrackToRelease(release.id, scanResult.trackId);
+                                library.addTrackToRelease(release.id, scanResult.trackId);
                                 console.log(`   🔗 Linked new track ${scanResult.trackId} to formal release ${release.title}`);
                             } else {
-                                database.updateTrackAlbum(scanResult.trackId, release.id);
+                                library.updateTrackAlbum(scanResult.trackId, release.id);
                                 console.log(`   🔗 Linked new track ${scanResult.trackId} to library album ${release.title}`);
                             }
                         }
@@ -419,8 +421,8 @@ export function createUploadRoutes(
             // If release slug provided, update release.yaml and database
             if (releaseSlug) {
                 // Permission Check
-                const release = database.getReleaseBySlug(releaseSlug);
-                const album = database.getAlbumBySlug(releaseSlug);
+                const release = library.getReleaseBySlug(releaseSlug);
+                const album = library.getAlbumBySlug(releaseSlug);
                 const targetItem = release || album;
 
                 if (!targetItem) {
@@ -470,10 +472,10 @@ export function createUploadRoutes(
                 // 4. Update database (relative to musicDir)
                 const dbPath = path.relative(musicDir, targetPath).replace(/\\/g, "/");
                 if (release) {
-                    database.updateRelease(release.id, { cover_path: dbPath });
+                    library.updateRelease(release.id, { cover_path: dbPath });
                     console.log(`📀 Updated cover for formal release ${release.title} -> ${dbPath}`);
                 } else if (album) {
-                    database.updateAlbumCover(album.id, dbPath);
+                    library.updateAlbumCover(album.id, dbPath);
                     console.log(`📀 Updated cover for library album ${album.title} -> ${dbPath}`);
                 }
 
@@ -564,12 +566,12 @@ export function createUploadRoutes(
             }
 
             // Update artist in database (relative path)
-            const artist = database.getArtist(artistId);
+            const artist = library.getArtist(artistId);
             if (artist) {
                 const dbPath = path.relative(musicDir, avatarPath).replace(/\\/g, "/");
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
-                database.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
+                library.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
             }
 
 
@@ -609,7 +611,7 @@ export function createUploadRoutes(
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to upload track artwork" });
             }
 
-            const track = database.getTrack(trackId);
+            const track = library.getTrack(trackId);
             if (!track) {
                 await storage.remove(file.path);
                 return res.status(404).json({ error: "Track not found" });
@@ -632,7 +634,7 @@ export function createUploadRoutes(
             await storage.move(file.path, targetPath, { overwrite: true });
 
             const dbPath = path.relative(musicDir, targetPath).replace(/\\/g, "/");
-            database.updateTrackExternalArtwork(trackId, dbPath);
+            library.updateTrackExternalArtwork(trackId, dbPath);
 
             res.json({
                 message: "Track artwork uploaded",
@@ -712,12 +714,12 @@ export function createUploadRoutes(
             await storage.writeFile(avatarPath, response.data);
 
             // Update artist in database (relative path)
-            const artist = database.getArtist(id);
+            const artist = library.getArtist(id);
             if (artist) {
                 const dbPath = path.relative(musicDir, avatarPath).replace(/\\/g, "/");
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
-                database.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
+                library.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
             }
 
 

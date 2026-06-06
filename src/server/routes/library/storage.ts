@@ -5,7 +5,18 @@ import { type AuthenticatedRequest } from "../../middleware/auth.js";
 import { type CatalogService } from "../../modules/catalog/catalog.service.js";
 import { type DiscoveryService } from "../../modules/catalog/discovery.service.js";
 
-export function createStorageRouter(database: DatabaseService, gdriveService: GoogleDriveService, authMiddleware: any, catalogService: CatalogService, discoveryService: DiscoveryService) {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createStorageRouter(container: ServiceContainer) {
+    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (container as any);
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
+    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
+    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    if (!gdriveService) throw new Error("GDriveService must be configured to use storage router");
+    
     const router = Router();
     router.use(json());
 
@@ -17,7 +28,7 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
     });
 
     router.get("/gdrive/accounts", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
-        const accounts = database.getStorageAccounts(req.userId);
+        const accounts = integration.getStorageAccounts(req.userId);
         res.json(accounts.filter(a => a.provider === "google"));
     });
 
@@ -31,7 +42,7 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
             
             // Fallback to primary admin only if no state was provided (legacy/direct call)
             if (!userId) {
-                userId = database.getPrimaryAdminId();
+                userId = integration.getPrimaryAdminId();
             }
             
             if (!userId) return res.status(500).send("No user context found for authentication");
@@ -105,14 +116,14 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
                 title = parts[1].replace(/\.[^/.]+$/, "").trim(); // Remove extension
 
                 if (!parsedArtistId && artistName) {
-                    const existingArtist = database.getArtistByName(artistName);
-                    parsedArtistId = existingArtist ? existingArtist.id : database.createArtist(artistName);
+                    const existingArtist = library.getArtistByName(artistName);
+                    parsedArtistId = existingArtist ? existingArtist.id : library.createArtist(artistName);
                 }
             } else {
                 title = file.name.replace(/\.[^/.]+$/, "").trim();
             }
 
-            const trackId = database.createTrack({
+            const trackId = library.createTrack({
                 title,
                 artist_id: parsedArtistId,
                 album_id: albumId || null,
@@ -181,14 +192,14 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
                         title = parts[1].replace(/\.[^/.]+$/, "").trim(); // Remove extension
 
                         if (!parsedArtistId && artistName) {
-                            const existingArtist = database.getArtistByName(artistName);
-                            parsedArtistId = existingArtist ? existingArtist.id : database.createArtist(artistName);
+                            const existingArtist = library.getArtistByName(artistName);
+                            parsedArtistId = existingArtist ? existingArtist.id : library.createArtist(artistName);
                         }
                     } else {
                         title = file.name.replace(/\.[^/.]+$/, "").trim();
                     }
 
-                    database.createTrack({
+                    library.createTrack({
                         title,
                         artist_id: parsedArtistId,
                         album_id: albumId || null,
@@ -229,9 +240,9 @@ export function createStorageRouter(database: DatabaseService, gdriveService: Go
 
     router.delete("/gdrive/accounts/:id", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
         const id = parseInt(req.params.id);
-        const account = database.getStorageAccount(id);
+        const account = integration.getStorageAccount(id);
         if (!account || account.user_id !== req.userId) return res.status(404).send("Account not found");
-        database.deleteStorageAccount(id);
+        integration.deleteStorageAccount(id);
         res.json({ success: true });
     });
 

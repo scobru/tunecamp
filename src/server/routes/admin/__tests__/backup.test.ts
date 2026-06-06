@@ -56,7 +56,10 @@ describe('Backup Routes (Chunked Upload)', () => {
             next();
         });
 
-        const router = createBackupRoutes(mockDatabase, mockConfig, mockRestartFn);
+        const router = createBackupRoutes({
+            database: mockDatabase,
+            config: mockConfig
+        } as any, mockRestartFn);
         app.use('/backup', router);
     });
 

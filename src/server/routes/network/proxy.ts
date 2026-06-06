@@ -2,7 +2,9 @@ import { Router } from "express";
 import fetch from "node-fetch";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 
-export function createProxyRoutes(): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createProxyRoutes(container: ServiceContainer): Router {
     const router = Router();
 
     /**

@@ -56,7 +56,10 @@ describe("Unlock Routes", () => {
         const mockAuthMiddleware = {
             requireUser: (req: any, res: any, next: any) => next()
         };
-        app.use("/api/unlock", createUnlockRoutes(mockDatabase, mockAuthMiddleware as any));
+        app.use("/api/unlock", createUnlockRoutes({
+            database: mockDatabase,
+            authMiddleware: mockAuthMiddleware
+        } as any));
     });
 
     describe("POST /api/unlock/admin/create", () => {

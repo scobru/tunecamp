@@ -21,16 +21,20 @@ const LOBBY_ROOM_FALLBACK = "public";
  *
  * Mount with `requireUser` so the token is never exposed to guests.
  */
-export function createLobbyRoutes(database: DatabaseService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createLobbyRoutes(container: ServiceContainer): Router {
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
     /** Lazily generate the shared lobby token on first request. */
     function getOrCreateToken(): string {
-        let token = database.getSetting(LOBBY_TOKEN_SETTING);
+        let token = identity.getSetting(LOBBY_TOKEN_SETTING);
         if (!token) {
             token = crypto.randomBytes(32).toString("base64url");
-            database.setSetting(LOBBY_TOKEN_SETTING, token);
+            identity.setSetting(LOBBY_TOKEN_SETTING, token);
             console.log("🔐 [Lobby] Generated new shared lobby token.");
         }
         return token;
@@ -38,7 +42,7 @@ export function createLobbyRoutes(database: DatabaseService): Router {
 
     /** Stable room id, scoped to this instance so instances don't collide on the global graph. */
     function getRoom(): string {
-        return database.getSetting("siteId") || LOBBY_ROOM_FALLBACK;
+        return identity.getSetting("siteId") || LOBBY_ROOM_FALLBACK;
     }
 
     /**

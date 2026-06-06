@@ -31,7 +31,10 @@ const app = express();
 app.use(express.json());
 
 // Auth routes
-app.use('/api/auth', createAuthRoutes(mockAuthService, { requireAdmin: (req: any, res: any, next: any) => next() }));
+app.use('/api/auth', createAuthRoutes({
+    authService: mockAuthService,
+    authMiddleware: { requireAdmin: (req: any, res: any, next: any) => next() }
+} as any));
 
 // Admin routes
 const adminMiddleware = (req: any, res: any, next: any) => {
@@ -42,21 +45,24 @@ const adminMiddleware = (req: any, res: any, next: any) => {
     next();
 };
 
-app.use('/api/admin', adminMiddleware, createAdminRoutes(
-    mockDatabase,
-    mockScanner,
-    '/tmp',
-    mockGunDB,
-    mockConfig,
-    mockAuthService,
-    {} as any, // publishingService
-    mockApService as any, // apService
-    {} as any, // telegramBotService
-    {} as any, // soulseekService
-    {} as any, // lindaBotService
-    {} as any, // metadataService
-    {} as any  // streamingService
-));
+app.use('/api/admin', adminMiddleware, createAdminRoutes({
+    database: mockDatabase,
+    scannerService: mockScanner,
+    musicDir: '/tmp',
+    config: mockConfig,
+    authService: mockAuthService,
+    publishingService: {} as any,
+    apService: mockApService,
+    telegramBotService: {} as any,
+    soulseekService: {} as any,
+    metadataService: {} as any,
+    streamingService: {} as any,
+    maintenanceService: {} as any,
+    library: mockDatabase.library || mockDatabase,
+    identity: mockDatabase.identity || mockDatabase,
+    social: mockDatabase.social || mockDatabase,
+    integration: mockDatabase.integration || mockDatabase
+} as any));
 
 
 describe('Password Security', () => {

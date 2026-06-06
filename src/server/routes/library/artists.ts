@@ -9,12 +9,20 @@ import type { MetadataService } from "../../modules/catalog/metadata.service.js"
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 import type { DiscoveryService } from "../../modules/catalog/discovery.service.js";
 import { BadRequestError, NotFoundError } from "../../common/errors.js";
+import type { ServiceContainer } from "../../core/container.js";
 
 /**
  * Artists Routes — Handles artist profile discovery and content listings.
  * Refactored to separate Discovery (Read) from Catalog (Write).
  */
-export function createArtistsRoutes(database: DatabaseService, musicDir: string, metadataService: MetadataService, catalogService: CatalogService, discoveryService: DiscoveryService): Router {
+export function createArtistsRoutes(container: ServiceContainer): Router {
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const metadataService: ServiceContainer['metadataService'] = (container as any).metadataService || (container as any);
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
+    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const social: ServiceContainer['social'] = (container as any).social || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
@@ -28,29 +36,29 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             
             // Fetch all artists so that we can check if they have public content
             // even if their default visibility in the artists table is 'private' (default from scanner)
-            const allArtists = database.getArtists(VisibilityProfile.ALL_ACCESS);
+            const allArtists = library.getArtists(VisibilityProfile.ALL_ACCESS);
             const username = req.username;
 
             // 1. Determine which artists have PUBLIC formal releases
-            const publicReleases = database.getReleases(VisibilityProfile.PUBLIC_STAGE);
+            const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE);
             const formalReleaseArtistIds = new Set(
                 publicReleases.map(r => r.artist_id).filter(id => id !== null)
             );
 
             // 2. Determine which artists have PUBLIC library albums
-            const publicAlbums = database.getAlbums(VisibilityProfile.PUBLIC_STAGE);
+            const publicAlbums = library.getAlbums(VisibilityProfile.PUBLIC_STAGE);
             const publicAlbumArtistIds = new Set(
                 publicAlbums.map(a => a.artist_id).filter(id => id !== null)
             );
 
             // 3. Determine which artists have PUBLIC tracks
-            const publicTracks = database.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
+            const publicTracks = library.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
             const publicTrackArtistIds = new Set(
                 publicTracks.map(t => t.artist_id).filter(id => id !== null)
             );
 
             // 4. Determine which artists are STARRED by the user
-            const starredItems = username ? database.getStarredItems(username, 'artist') : [];
+            const starredItems = username ? social.getStarredItems(username, 'artist') : [];
             const starredArtistIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
 
             const filtered = allArtists.filter(artist => {
@@ -67,8 +75,8 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             res.json(filtered.map(a => ({
                 ...a,
                 coverImage: `/api/artists/${a.id}/cover`,
-                starred: username ? database.isStarred(username, 'artist', String(a.id)) : false,
-                rating: username ? database.getItemRating(username, 'artist', String(a.id)) : 0
+                starred: username ? social.isStarred(username, 'artist', String(a.id)) : false,
+                rating: username ? social.getItemRating(username, 'artist', String(a.id)) : 0
             })));
         } catch (error) {
             console.error("Error getting artists:", error);
@@ -89,7 +97,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             if (!name) {
                 return res.status(400).json({ error: "Artist name is required" });
             }
-            const newArtistId = database.createArtist(name, bio, photoPath, walletAddress, externalLinks, status);
+            const newArtistId = library.createArtist(name, bio, photoPath, walletAddress, externalLinks, status);
             res.status(201).json({ id: newArtistId, name, bio });
         } catch (error) {
             console.error("Error creating artist:", error);
@@ -112,7 +120,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 return res.status(400).json({ error: "Invalid artist ID" });
             }
 
-            const artist = database.getArtist(id);
+            const artist = library.getArtist(id);
             if (!artist) {
                 return res.status(404).json({ error: "Artist not found" });
             }
@@ -126,7 +134,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
 
             const { name, bio, photoPath, links, postParams, walletAddress, visibility } = req.body;
 
-            database.updateArtist(
+            library.updateArtist(
                 id,
                 name,
                 bio,
@@ -137,7 +145,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 visibility
             );
 
-            const updated = database.getArtist(id);
+            const updated = library.getArtist(id);
             res.json(updated);
         } catch (error) {
             console.error("Error updating artist:", error);
@@ -152,7 +160,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
     router.get("/starred", async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) return res.status(401).json({ error: "Unauthorized" });
         try {
-            const starredItems = database.getStarredItems(req.username, 'artist');
+            const starredItems = social.getStarredItems(req.username, 'artist');
             // Return IDs for easy lookup
             res.json(starredItems.map((i: any) => i.item_id));
         } catch (error) {
@@ -170,9 +178,9 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             let artist;
             
             if (isNaN(parseInt(param))) {
-                artist = database.getArtistBySlug(param);
+                artist = library.getArtistBySlug(param);
             } else {
-                artist = database.getArtist(parseInt(param));
+                artist = library.getArtist(parseInt(param));
             }
 
             if (!artist) {
@@ -183,20 +191,20 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
              const username = req.username;
  
              // Get formal releases (visible to everyone if public)
-             const formalReleases = database.getReleasesByArtist(artist.id, isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE, artist.name);
+             const formalReleases = library.getReleasesByArtist(artist.id, isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE, artist.name);
              const publicFormalReleases = formalReleases.filter(r => r.visibility === 'public' || r.visibility === 'unlisted');
  
              // Get all library albums (non-formal releases) - fetch with ALL_ACCESS if we need to filter starred items, or just PUBLIC_STAGE otherwise
-             const allLibraryAlbums = database.getAlbumsByArtist(artist.id, VisibilityProfile.ALL_ACCESS, artist.name);
+             const allLibraryAlbums = library.getAlbumsByArtist(artist.id, VisibilityProfile.ALL_ACCESS, artist.name);
  
              // Get starred items for user to enable visibility override
-             const starredAlbums = username ? database.getStarredItems(username, 'album') : [];
+             const starredAlbums = username ? social.getStarredItems(username, 'album') : [];
              const starredAlbumIds = new Set(starredAlbums.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
  
-             const starredTracks = username ? database.getStarredItems(username, 'track') : [];
+             const starredTracks = username ? social.getStarredItems(username, 'track') : [];
              const starredTrackIds = new Set(starredTracks.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
  
-             const allArtistTracks = database.getTracksByArtist(artist.id, VisibilityProfile.ALL_ACCESS, artist.name);
+             const allArtistTracks = library.getTracksByArtist(artist.id, VisibilityProfile.ALL_ACCESS, artist.name);
              const starredTrackAlbumIds = new Set(
                  allArtistTracks.filter(t => starredTrackIds.has(t.id)).map(t => t.album_id).filter(id => id !== null)
              );
@@ -228,8 +236,8 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                  releases: publicFormalReleases.map(r => ({ ...r, coverImage: r.cover_path })),
                  albums: libraryAlbums.map(a => ({ ...a, coverImage: a.cover_path })),
                  tracks: looseTracks,
-                 starred: req.username ? database.isStarred(req.username, 'artist', String(artist.id)) : false,
-                 rating: req.username ? database.getItemRating(req.username, 'artist', String(artist.id)) : 0
+                 starred: req.username ? social.isStarred(req.username, 'artist', String(artist.id)) : false,
+                 rating: req.username ? social.getItemRating(req.username, 'artist', String(artist.id)) : 0
              });
          } catch (error) {
              console.error("Error getting artist:", error);
@@ -243,26 +251,26 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
     router.get("/:id/cover", (req, res) => {
         try {
             const id = parseInt(req.params.id);
-            const artist = database.getArtist(id);
+            const artist = library.getArtist(id);
             
             let photoPathToUse = artist?.photo_path;
             
             // Fallback: If no custom artist photo, try to find cover art from their releases, albums, or tracks
             if (artist && !photoPathToUse) {
                 // 1. Try formal releases
-                const releases = database.getReleasesByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
+                const releases = library.getReleasesByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
                 const releaseWithCover = releases.find(r => r.cover_path);
                 if (releaseWithCover) {
                     photoPathToUse = releaseWithCover.cover_path;
                 } else {
                     // 2. Try library albums
-                    const albums = database.getAlbumsByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
+                    const albums = library.getAlbumsByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
                     const albumWithCover = albums.find(a => a.cover_path);
                     if (albumWithCover) {
                         photoPathToUse = albumWithCover.cover_path;
                     } else {
                         // 3. Try tracks
-                        const tracks = database.getTracksByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
+                        const tracks = library.getTracksByArtist(artist.id, VisibilityProfile.ALL_ACCESS);
                         const trackWithCover = tracks.find(t => t.external_artwork);
                         if (trackWithCover) {
                             photoPathToUse = trackWithCover.external_artwork;
@@ -298,19 +306,19 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
         if (!req.username) return res.status(401).json({ error: "Unauthorized" });
         const id = parseInt(req.params.id);
         
-        const artist = database.getArtist(id);
+        const artist = library.getArtist(id);
         if (!artist) return res.status(404).json({ error: "Artist not found" });
 
         if (req.context && !VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
             const isPublic = artist.visibility === 'public' || artist.visibility === 'unlisted';
             // Also check if they have at least one formal release to be considered "Public Stage"
-            const hasFormalRelease = database.getReleasesByArtist(artist.id).length > 0;
+            const hasFormalRelease = library.getReleasesByArtist(artist.id).length > 0;
             if (!isPublic || !hasFormalRelease) {
                 return res.status(403).json({ error: "You can only favorite public artists" });
             }
         }
 
-        database.starItem(req.username, 'artist', String(id));
+        social.starItem(req.username, 'artist', String(id));
         res.json({ success: true, starred: true });
     });
 
@@ -320,7 +328,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
     router.delete("/:id/star", async (req: AuthenticatedRequest, res) => {
         if (!req.username) return res.status(401).json({ error: "Unauthorized" });
         const id = parseInt(req.params.id);
-        database.unstarItem(req.username, 'artist', String(id));
+        social.unstarItem(req.username, 'artist', String(id));
         res.json({ success: true, starred: false });
     });
 
@@ -333,16 +341,16 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
             let artist;
             
             if (isNaN(parseInt(param))) {
-                artist = database.getArtistBySlug(param);
+                artist = library.getArtistBySlug(param);
             } else {
-                artist = database.getArtist(parseInt(param));
+                artist = library.getArtist(parseInt(param));
             }
 
             if (!artist) return res.status(404).json({ error: "Artist not found" });
 
             const isAdmin = (req as any).isAdmin === true;
             const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
-            const posts = database.getPostsByArtist(artist.id, profile);
+            const posts = social.getPostsByArtist(artist.id, profile);
             
             const mappedPosts = posts.map(p => ({
                 ...p,
@@ -371,11 +379,11 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
         if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Forbidden" });
         
         const id = parseInt(req.params.id);
-        const artist = database.getArtist(id);
+        const artist = library.getArtist(id);
         if (!artist) return res.status(404).json({ error: "Artist not found" });
 
         console.log(`🔧 [Repair] Repairing links for artist: ${artist.name} (#${artist.id})`);
-        const results = database.repairArtistLinks(artist.id, artist.name);
+        const results = library.repairArtistLinks(artist.id, artist.name);
         
         res.json({ 
             success: true, 
@@ -392,14 +400,14 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
         if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Forbidden" });
         
         const id = parseInt(req.params.id);
-        const artist = database.getArtist(id);
+        const artist = library.getArtist(id);
         if (!artist) return res.status(404).json({ error: "Artist not found" });
 
         try {
             // Check if artist has releases, albums, or tracks
-            const libraryAlbums = database.getAlbumsByArtist(id, VisibilityProfile.ALL_ACCESS);
-            const formalReleases = database.getReleasesByArtist(id, VisibilityProfile.ALL_ACCESS);
-            const tracks = database.getTracksByArtist(id, VisibilityProfile.ALL_ACCESS);
+            const libraryAlbums = library.getAlbumsByArtist(id, VisibilityProfile.ALL_ACCESS);
+            const formalReleases = library.getReleasesByArtist(id, VisibilityProfile.ALL_ACCESS);
+            const tracks = library.getTracksByArtist(id, VisibilityProfile.ALL_ACCESS);
 
             if (libraryAlbums.length > 0 || formalReleases.length > 0 || tracks.length > 0) {
                 return res.status(400).json({ 
@@ -418,7 +426,7 @@ export function createArtistsRoutes(database: DatabaseService, musicDir: string,
                 console.error("Error checking user association:", e);
             }
 
-            database.deleteArtist(id);
+            library.deleteArtist(id);
             res.json({ success: true, message: `Artist ${artist.name} deleted` });
 
         } catch (error) {

@@ -4,7 +4,12 @@ import { VisibilityProfile } from "../../common/visibility.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 
-export function createActivityPubRoutes(apService: ActivityPubService, db: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createActivityPubRoutes(container: ServiceContainer): Router {
+    const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
+    const db: ServiceContainer['database'] = (container as any).database || (container as any);
+    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
     const router = Router();
     router.use(json({ type: ["application/json", "application/activity+json", "application/ld+json"] }));
 

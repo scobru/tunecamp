@@ -2,7 +2,9 @@ import { Router, json } from "express";
 import { getPlaylistService } from "../../modules/catalog/playlist.service.js";
 import { extractBandcampMetadata } from "../../utils/bandcamp.js";
 
-export function createImportRoutes() {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createImportRoutes(container: ServiceContainer) {
   const router = Router();
     router.use(json());
   const playlistService = getPlaylistService();

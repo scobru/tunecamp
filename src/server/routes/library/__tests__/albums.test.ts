@@ -84,7 +84,14 @@ describe('Albums Routes - Cache Optimization', () => {
             next();
         });
 
-        const router = createAlbumsRoutes(mockDatabase, mockCatalogService, mockDiscoveryService, tempMusicDir);
+        const router = createAlbumsRoutes({
+            database: mockDatabase,
+            library: mockDatabase.library || mockDatabase,
+            social: mockDatabase.social || mockDatabase,
+            catalogService: mockCatalogService,
+            discoveryService: mockDiscoveryService,
+            musicDir: tempMusicDir
+        } as any);
         app.use('/albums', router);
 
         // Simple error handler

@@ -11,23 +11,20 @@ import type { SubsonicService } from '../../modules/subsonic/subsonic.service.js
 import type { ZenDBService } from '../../modules/network/zendb.service.js';
 import { UserRole, VisibilityGuardian, VisibilityProfile } from '../../common/visibility.js';
 
-// Types for Subsonic
-interface SubsonicContext {
-    db: DatabaseService;
-    auth: AuthService;
-    musicDir: string;
-    zendbService?: ZenDBService;
-    scrobbleService?: any;
-    mediaEngine?: MediaEngine;
-    subsonicService?: SubsonicService;
-}
+import type { ServiceContainer } from '../../core/container.js';
 
 // In-memory cache for "Now Playing" to support Subsonic clients
 const nowPlayingCache = new Map<string, { trackId: number, timestamp: number }>();
 
-export const createSubsonicRouter = (context: SubsonicContext): Router => {
+export const createSubsonicRouter = (container: ServiceContainer): Router => {
     const router = Router();
-    const { db, auth, scrobbleService, subsonicService, mediaEngine } = context;
+    const db: ServiceContainer['database'] = (container as any).database || (container as any);
+    const auth: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const scrobbleService: ServiceContainer['scrobbleService'] = (container as any).scrobbleService || (container as any);
+    const subsonicService: ServiceContainer['subsonicService'] = (container as any).subsonicService || (container as any);
+    const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (container as any);
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
 
     // --- Helpers ---
 
@@ -286,9 +283,9 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
                 } catch (error) { console.error('Error proxying image:', error); }
             }
             const sanitizedImagePath = imagePath.replace(/^@@[a-z0-9]+\\?/, "").replace(/\\/g, "/").replace(/\/+/g, "/");
-            let fullPath = resolveSafePath(context.musicDir, sanitizedImagePath);
+            let fullPath = resolveSafePath(musicDir, sanitizedImagePath);
             if (!fullPath || !await fs.pathExists(fullPath)) {
-                const projectRoot = path.dirname(context.musicDir);
+                const projectRoot = path.dirname(musicDir);
                 const altPath = resolveSafePath(projectRoot, sanitizedImagePath);
                 if (altPath && await fs.pathExists(altPath)) fullPath = altPath;
             }
@@ -379,7 +376,7 @@ export const createSubsonicRouter = (context: SubsonicContext): Router => {
                     const track = db.getTrack(trackId);
                     if (track) {
                         scrobbleService.scrobble({
-                            artist: track.artist_name || "Unknown Artist", title: track.title, album: track.album_title, duration: track.duration
+                            artist: track.artist_name || "Unknown Artist", title: track.title, album: track.album_title, duration: track.duration ?? undefined
                         }).catch((e: any) => console.error("[Subsonic] ScrobbleService failure:", e));
                     }
                 }

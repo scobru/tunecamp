@@ -107,24 +107,28 @@ describe('Admin Routes Vulnerability Check', () => {
             next();
         });
 
-        const router = createAdminRoutes(
-            mockDatabase,
-            mockScanner,
-            '/tmp/music',
-            mockZenDBService,
-            mockConfig,
-            mockAuthService,
-            mockPublishingService as any,
-            {} as any, // apService
-            {} as any, // telegramBotService
-            {} as any, // soulseekService
-            {} as any, // metadataService
-            {} as any, // streamingService
-            undefined, // gdriveService
-            undefined, // playlistService
-            undefined, // scrobbleService
-            mockMaintenanceService
-        );
+        const router = createAdminRoutes({
+            database: mockDatabase,
+            library: mockDatabase.library || mockDatabase,
+            identity: mockDatabase.identity || mockDatabase,
+            social: mockDatabase.social || mockDatabase,
+            integration: mockDatabase.integration || mockDatabase,
+            scannerService: mockScanner,
+            musicDir: '/tmp/music',
+            zendbService: mockZenDBService,
+            config: mockConfig,
+            authService: mockAuthService,
+            publishingService: mockPublishingService,
+            apService: {} as any,
+            telegramBotService: {} as any,
+            soulseekService: {} as any,
+            metadataService: {} as any,
+            streamingService: {} as any,
+            gdriveService: undefined,
+            playlistService: undefined,
+            scrobbleService: undefined,
+            maintenanceService: mockMaintenanceService
+        } as any);
         app.use('/admin', router);
     });
 

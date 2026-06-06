@@ -9,12 +9,14 @@ import { UserRole } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 
-export function createUsersRoutes(
-    zendbService: ZenDBService,
-    database: DatabaseService,
-    authService: AuthService,
-    apService: ActivityPubService
-): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createUsersRoutes(container: ServiceContainer): Router {
+    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
     const authMiddleware = createAuthMiddleware(authService);
@@ -46,7 +48,7 @@ export function createUsersRoutes(
             }
 
             // Check if registration is enabled
-            const allowRegistration = database.getSetting("allowRegistration");
+            const allowRegistration = identity.getSetting("allowRegistration");
             if (allowRegistration === "false") {
                 return res.status(403).json({ error: "Registration is currently disabled" });
             }
@@ -162,7 +164,7 @@ export function createUsersRoutes(
             }
 
             const finalAlias = alias || "Anonymous";
-            database.syncZenUser(pub, epub, finalAlias, avatar);
+            identity.syncZenUser(pub, epub, finalAlias, avatar);
             res.json({ success: true });
         } catch (error) {
             console.error("User sync error:", error);

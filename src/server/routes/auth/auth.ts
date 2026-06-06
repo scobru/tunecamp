@@ -5,7 +5,11 @@ import { validatePassword } from "../../common/validators.js";
 import { UserRole } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 
-export function createAuthRoutes(authService: AuthService, authMiddleware: any): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createAuthRoutes(container: ServiceContainer): Router {
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
     const router = Router();
     router.use(json());
 

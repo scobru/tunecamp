@@ -1,17 +1,14 @@
-
 import { Router, json } from "express";
 import type { LifecycleService } from "../../modules/catalog/lifecycle.service.js";
 
 import { wrapAsync } from "../../middleware/error-handling.js";
 
-export function createLifecycleRoutes(lifecycleService: LifecycleService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createLifecycleRoutes(container: ServiceContainer): Router {
+    const lifecycleService: ServiceContainer['lifecycleService'] = (container as any).lifecycleService || (container as any);
     const router = Router();
     router.use(json());
-
-    /**
-     * POST /api/lifecycle/promote/:id
-     * Artist requests promotion of an album.
-     */
     router.post("/promote/:id", wrapAsync(async (req: any, res: any) => {
         const albumId = parseInt(req.params.id);
         await lifecycleService.requestPromotion(albumId, {

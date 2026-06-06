@@ -24,16 +24,16 @@ describe('Subsonic Security', () => {
         // 'password' in bcrypt: b0.Z.T1/R1S1y6G.G.G.G.G.G.G.G.G.G.G.G.G.G.G.G.G.G (abbreviated/mock)
         database.db.prepare("INSERT OR IGNORE INTO admin (username, password_hash) VALUES (?, ?)").run('user', '$2b0.Z.T1/R1S1y6G.G.G.G.G.G.G.G.G.G.G.G.G.G.G.G.G.G');
 
-        try { testArtistId = database.createArtist('Test Artist'); } catch (e) { testArtistId = database.db.prepare("SELECT id FROM artists WHERE name = 'Test Artist'").get().id; }
-        testAlbumId = database.createAlbum({ title: 'Test Album', artist_id: testArtistId });
+        try { testArtistId = database.library.createArtist('Test Artist'); } catch (e) { testArtistId = database.db.prepare("SELECT id FROM artists WHERE name = 'Test Artist'").get().id; }
+        testAlbumId = database.library.createAlbum({ title: 'Test Album', artist_id: testArtistId });
 
         app = express();
         app.use(express.json());
         app.use('/rest', createSubsonicRouter({
-            db: database,
-            auth: authService,
+            database: database,
+            authService: authService,
             musicDir: path.resolve('./music') // make it absolute for the test
-        }));
+        } as any));
     });
 
     afterAll(async () => {
@@ -81,7 +81,7 @@ describe('Subsonic Security', () => {
 
     it('should prevent path traversal in getCoverArt.view', async () => {
         // Create an album with a traversal path
-        const albumId = database.createAlbum({
+        const albumId = database.library.createAlbum({
             title: 'Malicious Album',
             artist_id: testArtistId,
             cover_path: '../package.json'
@@ -104,7 +104,7 @@ describe('Subsonic Security', () => {
 
     it('should prevent path traversal in stream.view', async () => {
         // Create a track with a traversal path
-        const trackId = database.createTrack({
+        const trackId = database.library.createTrack({
             title: 'Malicious Track',
             album_id: testAlbumId,
             artist_id: testArtistId,

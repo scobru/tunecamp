@@ -69,13 +69,14 @@ describe('Release Routes - Creation and Publishing', () => {
             next();
         });
 
-        const router = createReleaseRouter(
-            mockDatabase,
-            mockScanner,
-            mockPublishingService,
-            mockAuthService,
-            musicDir
-        );
+        const router = createReleaseRouter({
+            database: mockDatabase,
+            library: mockDatabase.library || mockDatabase,
+            scannerService: mockScanner,
+            publishingService: mockPublishingService,
+            authService: mockAuthService,
+            musicDir: musicDir
+        } as any);
         app.use('/releases', router);
     });
 

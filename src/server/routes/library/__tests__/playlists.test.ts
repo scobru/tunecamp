@@ -41,7 +41,10 @@ describe('Playlists Routes', () => {
             next();
         });
 
-        app.use('/api/playlists', createPlaylistsRoutes(mockDatabase as any));
+        app.use('/api/playlists', createPlaylistsRoutes({
+            database: mockDatabase,
+            library: mockDatabase
+        } as any));
     });
 
     describe('GET /api/playlists', () => {

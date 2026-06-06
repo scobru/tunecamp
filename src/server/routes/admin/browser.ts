@@ -7,7 +7,12 @@ import { resolveSafePath } from "../../../utils/fileUtils.js";
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
-export function createBrowserRoutes(musicDir: string, database: DatabaseService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createBrowserRoutes(container: ServiceContainer): Router {
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
@@ -178,7 +183,7 @@ export function createBrowserRoutes(musicDir: string, database: DatabaseService)
             // Reconstruct the normalized relative paths to update the DB consistently
             const normOld = path.relative(musicDir, absOldPath).replace(/\\/g, "/");
             const normNew = path.relative(musicDir, absNewPath).replace(/\\/g, "/");
-            database.updateTrackPathsPrefix(normOld, normNew);
+            library.updateTrackPathsPrefix(normOld, normNew);
             
             console.log(`✏️ Renamed via browser: ${normOld} -> ${normNew}`);
 

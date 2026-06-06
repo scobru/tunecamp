@@ -5,7 +5,8 @@ export default {
   testPathIgnorePatterns: [
     '/node_modules/',
     '<rootDir>/webapp/',
-    '<rootDir>/website/'
+    '<rootDir>/website/',
+    '<rootDir>/.claude/'
   ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',

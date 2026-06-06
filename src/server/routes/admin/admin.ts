@@ -2,48 +2,41 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { Router, json } from "express";
 import path from "path";
 import fs from "fs-extra";
-import type { DatabaseService } from "../../core/database.js";
-import type { ScannerService } from "../../modules/catalog/scanner.service.js";
-import type { ZenDBService } from "../../modules/network/zendb.service.js";
-import type { ServerConfig } from "../../core/config.js";
-import type { AuthService } from "../../modules/auth/auth.service.js";
+import type { ServiceContainer } from "../../core/container.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
 import { validatePassword } from "../../common/validators.js";
-import type { PublishingService } from "../../modules/publishing/publishing.service.js";
-import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
-import type { SoulseekService } from "../../modules/integrations/soulseek.js";
-import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
-import type { MaintenanceService } from "../../modules/catalog/maintenance.service.js";
 import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../../common/visibility.js";
 
 import multer from "multer";
 
-import type { LocalizationService } from "../../modules/catalog/localization.service.js";
 import { getDownloadService } from "../../modules/catalog/download.service.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 
 const upload = multer({ dest: "uploads/" });
 
-export function createAdminRoutes(
-    database: DatabaseService,
-    scanner: ScannerService,
-    musicDir: string,
-    zendbService: ZenDBService,
-    config: ServerConfig,
-    authService: AuthService,
-    publishingService: PublishingService,
-    apService: ActivityPubService,
-    telegramBotService: any,
-    soulseekService: SoulseekService,
-    metadataService: any,
-    streamingService: any,
-    gdriveService?: GoogleDriveService,
-    playlistService?: any,
-    scrobbleService?: any,
-    maintenance?: MaintenanceService,
-    localizationService?: LocalizationService
-): Router {
+export function createAdminRoutes(container: ServiceContainer): Router {
+    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
+    const config: ServiceContainer['config'] = (container as any).config || (container as any);
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
+    const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
+    const telegramBotService: ServiceContainer['telegramBotService'] = (container as any).telegramBotService || (container as any);
+    const soulseekService: ServiceContainer['soulseekService'] = (container as any).soulseekService || (container as any);
+    const metadataService: ServiceContainer['metadataService'] = (container as any).metadataService || (container as any);
+    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (container as any);
+    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (container as any);
+    const playlistService: ServiceContainer['playlistService'] = (container as any).playlistService || (container as any);
+    const scrobbleService: ServiceContainer['scrobbleService'] = (container as any).scrobbleService || (container as any);
+    const maintenance: ServiceContainer['maintenanceService'] = (container as any).maintenanceService || (container as any);
+    const localizationService: ServiceContainer['localizationService'] = (container as any).localizationService || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const social: ServiceContainer['social'] = (container as any).social || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
     const authMiddleware = createAuthMiddleware(authService);
@@ -89,10 +82,10 @@ export function createAdminRoutes(
                 // "My Releases" view: always show ONLY formal releases owned by this user.
                 // Library albums (scanned content) are never shown here, regardless of role.
                 let owned = req.userId
-                    ? database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }))
+                    ? library.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }))
                     : [];
                 if (req.userId && req.artistId) {
-                    const artistReleases = database.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                    const artistReleases = library.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
                     const existingIds = new Set(owned.map(r => r.id));
                     for (const r of artistReleases) {
                         if (!existingIds.has(r.id)) {
@@ -103,21 +96,21 @@ export function createAdminRoutes(
                 releases = owned;
             } else if (canSeeAll) {
                 // Admin/SuperUser global view: all formal releases
-                const formalReleases = database.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                const formalReleases = library.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
                 releases = [...formalReleases];
 
                 // Only include library albums in promotion pipeline if explicitly requested (Curation Queue)
                 if (includeLibrary) {
-                    const pendingAlbums = database.getAlbums(VisibilityProfile.ALL_ACCESS)
+                    const pendingAlbums = library.getAlbums(VisibilityProfile.ALL_ACCESS)
                         .filter(a => a.status !== 'draft')
                         .map(a => ({ ...a, is_formal_release: false }));
                     releases = [...releases, ...pendingAlbums];
                 }
             } else if (req.userId) {
                 // Non-admin artist: their formal releases + library albums they submitted for promotion
-                let ownedFormalReleases = database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                let ownedFormalReleases = library.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
                 if (req.artistId) {
-                    const artistReleases = database.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                    const artistReleases = library.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
                     const existingIds = new Set(ownedFormalReleases.map(r => r.id));
                     for (const r of artistReleases) {
                         if (!existingIds.has(r.id)) {
@@ -125,7 +118,7 @@ export function createAdminRoutes(
                         }
                     }
                 }
-                const ownedPendingAlbums = database.getAlbumsByOwner(req.userId, VisibilityProfile.ALL_ACCESS)
+                const ownedPendingAlbums = library.getAlbumsByOwner(req.userId, VisibilityProfile.ALL_ACCESS)
                     .filter(a => a.status && a.status !== 'draft')
                     .map(a => ({ ...a, is_formal_release: false }));
                 releases = [...ownedFormalReleases, ...ownedPendingAlbums];
@@ -158,8 +151,8 @@ export function createAdminRoutes(
             const { isPublic, visibility } = req.body;
 
             // Check both releases and albums
-            const release = database.getRelease(id);
-            const album = database.getAlbum(id);
+            const release = library.getRelease(id);
+            const album = library.getAlbum(id);
             const item = release || album;
 
             if (!item) {
@@ -188,14 +181,14 @@ export function createAdminRoutes(
 
             // Update visibility in DB
             if (release) {
-                database.updateRelease(id, { 
+                library.updateRelease(id, { 
                     visibility: newVisibility,
                     published_to_ap: isNowPublic,
                     published_to_gundb: isNowPublic
                 });
             } else {
-                database.updateAlbumVisibility(id, newVisibility);
-                database.updateAlbumFederationSettings(id, isNowPublic, isNowPublic);
+                library.updateAlbumVisibility(id, newVisibility);
+                library.updateAlbumFederationSettings(id, isNowPublic, isNowPublic);
             }
 
             // Use PublishingService to sync
@@ -217,7 +210,7 @@ export function createAdminRoutes(
             const artistId = (isPrivileged) && !showMine ? undefined : (req.artistId || undefined);
             const ownerId = (isPrivileged) && !showMine ? undefined : req.userId;
             
-            const stats = await database.getStats(artistId, ownerId);
+            const stats = await library.getStats(artistId, ownerId);
             res.json(stats);
         } catch (error) {
             console.error("Error getting stats:", error);
@@ -232,7 +225,7 @@ export function createAdminRoutes(
     router.get("/settings", (req: AuthenticatedRequest, res: any) => {
         if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) return res.status(403).json({ error: "Super Root access required" });
         try {
-            const settings = database.getAllSettings();
+            const settings = identity.getAllSettings();
             res.json({
                 ...settings,
                 jwtSecret: config.jwtSecret
@@ -274,111 +267,111 @@ export function createAdminRoutes(
             let settingsChanged = false;
 
             if (siteName !== undefined) {
-                database.setSetting("siteName", siteName);
+                identity.setSetting("siteName", siteName);
                 settingsChanged = true;
             }
             if (siteLogo !== undefined) {
-                database.setSetting("siteLogo", siteLogo);
+                identity.setSetting("siteLogo", siteLogo);
                 settingsChanged = true;
             }
             if (mode !== undefined) {
-                database.setSetting("mode", mode);
+                identity.setSetting("mode", mode);
                 settingsChanged = true;
             }
             if (siteDescription !== undefined) {
-                database.setSetting("siteDescription", siteDescription);
+                identity.setSetting("siteDescription", siteDescription);
                 settingsChanged = true;
             }
             if (publicUrl !== undefined) {
-                database.setSetting("publicUrl", publicUrl);
+                identity.setSetting("publicUrl", publicUrl);
                 settingsChanged = true;
             }
             if (artistName !== undefined) {
-                database.setSetting("artistName", artistName);
+                identity.setSetting("artistName", artistName);
                 settingsChanged = true;
             }
             if (coverImage !== undefined) {
-                database.setSetting("coverImage", coverImage);
+                identity.setSetting("coverImage", coverImage);
                 settingsChanged = true;
             }
             if (req.body.backgroundImage !== undefined) {
-                database.setSetting("backgroundImage", req.body.backgroundImage);
+                identity.setSetting("backgroundImage", req.body.backgroundImage);
             }
             if (themeFont !== undefined) {
-                database.setSetting("themeFont", themeFont);
+                identity.setSetting("themeFont", themeFont);
                 settingsChanged = true;
             }
             if (themeBlur !== undefined) {
-                database.setSetting("themeBlur", themeBlur);
+                identity.setSetting("themeBlur", themeBlur);
                 settingsChanged = true;
             }
             if (themeOverlayOpacity !== undefined) {
-                database.setSetting("themeOverlayOpacity", themeOverlayOpacity.toString());
+                identity.setSetting("themeOverlayOpacity", themeOverlayOpacity.toString());
                 settingsChanged = true;
             }
             if (zenPeers !== undefined) {
-                database.setSetting("zenPeers", zenPeers);
+                identity.setSetting("zenPeers", zenPeers);
                 settingsChanged = true;
             }
             if (web3_checkout_address !== undefined) {
-                database.setSetting("web3_checkout_address", web3_checkout_address);
+                identity.setSetting("web3_checkout_address", web3_checkout_address);
             }
             if (web3_nft_address !== undefined) {
-                database.setSetting("web3_nft_address", web3_nft_address);
+                identity.setSetting("web3_nft_address", web3_nft_address);
             }
 
             if (telegram_bot_token !== undefined) {
-                database.setSetting("telegram_bot_token", telegram_bot_token);
+                identity.setSetting("telegram_bot_token", telegram_bot_token);
                 settingsChanged = true;
             }
             if (telegram_allowed_channels !== undefined) {
-                database.setSetting("telegram_allowed_channels", telegram_allowed_channels);
+                identity.setSetting("telegram_allowed_channels", telegram_allowed_channels);
                 settingsChanged = true;
             }
             if (adminFeePercentage !== undefined) {
-                database.setSetting("adminFeePercentage", adminFeePercentage.toString());
+                identity.setSetting("adminFeePercentage", adminFeePercentage.toString());
             }
             if (adminTreasuryAddress !== undefined) {
-                database.setSetting("adminTreasuryAddress", adminTreasuryAddress);
+                identity.setSetting("adminTreasuryAddress", adminTreasuryAddress);
             }
             if (soulseek_username !== undefined) {
-                database.setSetting("soulseek_username", soulseek_username);
+                identity.setSetting("soulseek_username", soulseek_username);
             }
             if (soulseek_password !== undefined) {
-                database.setSetting("soulseek_password", soulseek_password);
+                identity.setSetting("soulseek_password", soulseek_password);
             }
             if (stripe_secret_key !== undefined) {
-                database.setSetting("stripe_secret_key", stripe_secret_key);
+                identity.setSetting("stripe_secret_key", stripe_secret_key);
             }
             if (stripe_webhook_secret !== undefined) {
-                database.setSetting("stripe_webhook_secret", stripe_webhook_secret);
+                identity.setSetting("stripe_webhook_secret", stripe_webhook_secret);
             }
 
             if (discogs_token !== undefined) {
-                database.setSetting("discogs_token", discogs_token);
+                identity.setSetting("discogs_token", discogs_token);
             }
 
             if (allowPublicRegistration !== undefined) {
-                database.setSetting("allowPublicRegistration", allowPublicRegistration ? "true" : "false");
+                identity.setSetting("allowPublicRegistration", allowPublicRegistration ? "true" : "false");
                 settingsChanged = true;
             }
 
             if (lastfm_api_key !== undefined) {
-                database.setSetting("lastfm_api_key", lastfm_api_key);
+                identity.setSetting("lastfm_api_key", lastfm_api_key);
             }
             if (lastfm_session_key !== undefined) {
-                database.setSetting("lastfm_session_key", lastfm_session_key);
+                identity.setSetting("lastfm_session_key", lastfm_session_key);
             }
 
             if (listenbrainz_token !== undefined) {
-                database.setSetting("listenbrainz_token", listenbrainz_token);
+                identity.setSetting("listenbrainz_token", listenbrainz_token);
             }
 
             if (google_drive_client_id !== undefined) {
-                database.setSetting("google_drive_client_id", google_drive_client_id);
+                identity.setSetting("google_drive_client_id", google_drive_client_id);
             }
             if (google_drive_client_secret !== undefined) {
-                database.setSetting("google_drive_client_secret", google_drive_client_secret);
+                identity.setSetting("google_drive_client_secret", google_drive_client_secret);
             }
 
             // Restart telegram bot if settings changed
@@ -388,27 +381,27 @@ export function createAdminRoutes(
 
             // Reconnect Soulseek if credentials changed
             if (soulseek_username !== undefined || soulseek_password !== undefined) {
-                const sUsername = soulseek_username !== undefined ? soulseek_username : database.getSetting("soulseek_username");
-                const sPassword = soulseek_password !== undefined ? soulseek_password : database.getSetting("soulseek_password");
+                const sUsername = soulseek_username !== undefined ? soulseek_username : identity.getSetting("soulseek_username");
+                const sPassword = soulseek_password !== undefined ? soulseek_password : identity.getSetting("soulseek_password");
                 if (sUsername && sPassword) {
                     soulseekService.connect(sUsername, sPassword).catch((err: any) => console.error("Failed to reconnect Soulseek:", err));
                 }
             }
 
             // Re-register on GunDB if settings changed and publicUrl is available
-            const currentPublicUrl = publicUrl !== undefined ? publicUrl : database.getSetting("publicUrl") || config.publicUrl;
+            const currentPublicUrl = publicUrl !== undefined ? publicUrl : identity.getSetting("publicUrl") || config.publicUrl;
 
             if (settingsChanged && currentPublicUrl) {
-                const currentSiteName = siteName !== undefined ? siteName : database.getSetting("siteName") || config.siteName || "TuneCamp Server";
-                const currentArtistName = artistName !== undefined ? artistName : database.getSetting("artistName") || "";
-                const effectiveArtistName = currentArtistName || (database.getArtists()[0]?.name || "");
+                const currentSiteName = siteName !== undefined ? siteName : identity.getSetting("siteName") || config.siteName || "TuneCamp Server";
+                const currentArtistName = artistName !== undefined ? artistName : identity.getSetting("artistName") || "";
+                const effectiveArtistName = currentArtistName || (library.getArtists()[0]?.name || "");
 
                 const siteInfo = {
                     url: currentPublicUrl,
                     title: currentSiteName,
-                    description: siteDescription !== undefined ? siteDescription : database.getSetting("siteDescription") || "",
+                    description: siteDescription !== undefined ? siteDescription : identity.getSetting("siteDescription") || "",
                     artistName: effectiveArtistName,
-                    coverImage: coverImage !== undefined ? coverImage : database.getSetting("coverImage") || ""
+                    coverImage: coverImage !== undefined ? coverImage : identity.getSetting("coverImage") || ""
                 };
 
                 await zendbService.registerSite(siteInfo);
@@ -417,10 +410,10 @@ export function createAdminRoutes(
 
             if (settingsChanged) {
                 try {
-                    const finalName = database.getSetting("siteName") || config.siteName || "TuneCamp Instance";
-                    const finalBio = database.getSetting("siteDescription") || config.siteDescription || "Welcome to our TuneCamp community hub!";
-                    const finalPhoto = database.getSetting("siteLogo") || undefined;
-                    database.updateArtist(-1, finalName, finalBio, finalPhoto);
+                    const finalName = identity.getSetting("siteName") || config.siteName || "TuneCamp Instance";
+                    const finalBio = identity.getSetting("siteDescription") || config.siteDescription || "Welcome to our TuneCamp community hub!";
+                    const finalPhoto = identity.getSetting("siteLogo") || undefined;
+                    library.updateArtist(-1, finalName, finalBio, finalPhoto);
                     console.log("📡 [Settings] Synchronized Site Actor in artists table");
                 } catch (e) {
                     console.error("❌ [Settings] Failed to sync Site Actor in artists table:", e);
@@ -484,8 +477,8 @@ export function createAdminRoutes(
             if (!req.isRootAdmin) {
                 return res.status(403).json({ error: "Only root admin can access site identity" });
             }
-            const publicKey = database.getSetting("site_public_key");
-            const privateKey = database.getSetting("site_private_key");
+            const publicKey = identity.getSetting("site_public_key");
+            const privateKey = identity.getSetting("site_private_key");
             res.json({ publicKey, privateKey });
         } catch (error) {
             console.error("Error getting site AP identity:", error);
@@ -594,7 +587,7 @@ export function createAdminRoutes(
             }
 
             console.log(`🧹 [Admin] Orphan prune triggered by ${req.username}`);
-            database.pruneOrphans();
+            library.pruneOrphans();
 
             res.json({ message: "Orphan records pruned" });
         } catch (error) {
@@ -683,8 +676,8 @@ export function createAdminRoutes(
 
 
             // Check both releases and albums
-            const release = database.getRelease(id);
-            const album = database.getAlbum(id);
+            const release = library.getRelease(id);
+            const album = library.getAlbum(id);
             const item = release || album;
 
             if (!item) {
@@ -694,7 +687,7 @@ export function createAdminRoutes(
 
             // Permission Check: Root Admin/Admin can edit anything. 
             // Others (Super Users/Managers) can edit if they own the item OR if they are in album_ownership table.
-            const owners = database.getAlbumOwners(id);
+            const owners = library.getAlbumOwners(id);
             const primaryOwnerId = release ? release.owner_id : album?.owner_id;
             const isOwner = req.userId !== undefined && (primaryOwnerId === req.userId || owners.includes(req.userId));
             const isAssociatedArtist = req.artistId !== undefined && req.artistId !== null && item.artist_id !== undefined && item.artist_id !== null && Number(item.artist_id) === Number(req.artistId);
@@ -774,25 +767,25 @@ export function createAdminRoutes(
                 if (Object.keys(updates).length > 0) {
                     if (release) {
                         console.log(`   - Updating formal release metadata:`, Object.keys(updates));
-                        database.updateRelease(id, updates);
+                        library.updateRelease(id, updates);
                     } else {
                         console.log(`   - Updating library album metadata:`, Object.keys(updates));
-                        if (updates.title) database.updateAlbumTitle(id, updates.title);
-                        if (updates.genre) database.updateAlbumGenre(id, updates.genre);
-                        if (updates.year) database.updateAlbumYear(id, updates.year);
-                        if (updates.visibility) database.updateAlbumVisibility(id, updates.visibility);
-                        if (updates.download !== undefined) database.updateAlbumDownload(id, updates.download);
+                        if (updates.title) library.updateAlbumTitle(id, updates.title);
+                        if (updates.genre) library.updateAlbumGenre(id, updates.genre);
+                        if (updates.year) library.updateAlbumYear(id, updates.year);
+                        if (updates.visibility) library.updateAlbumVisibility(id, updates.visibility);
+                        if (updates.download !== undefined) library.updateAlbumDownload(id, updates.download);
                         if (updates.price !== undefined || updates.price_usdc !== undefined) {
-                            const curr = database.getAlbum(id);
+                            const curr = library.getAlbum(id);
                             if (curr) {
                                 const p = updates.price !== undefined ? Number(updates.price) : (curr.price ?? 0);
                                 const pu = updates.price_usdc !== undefined ? Number(updates.price_usdc) : (curr.price_usdc ?? 0);
-                                database.updateAlbumPrice(id, p, pu, (updates.currency || curr.currency || 'ETH') as 'ETH' | 'USD');
+                                library.updateAlbumPrice(id, p, pu, (updates.currency || curr.currency || 'ETH') as 'ETH' | 'USD');
                             }
                         }
-                        if (updates.external_links) database.updateAlbumLinks(id, updates.external_links);
+                        if (updates.external_links) library.updateAlbumLinks(id, updates.external_links);
                         if (updates.published_to_gundb !== undefined || updates.published_to_ap !== undefined) {
-                            database.updateAlbumFederationSettings(id, !!updates.published_to_gundb, !!updates.published_to_ap);
+                            library.updateAlbumFederationSettings(id, !!updates.published_to_gundb, !!updates.published_to_ap);
                         }
                     }
                 }
@@ -808,13 +801,13 @@ export function createAdminRoutes(
                     database.transaction(() => {
                         // Atomic sync of tracks (wipe and re-add in order)
                         console.log(`     🔄 Performing atomic track sync for formal release ${id}`);
-                        database.syncReleaseTracks(id, newTrackIds);
+                        library.syncReleaseTracks(id, newTrackIds);
 
                         // If additional per-track metadata was provided (e.g. custom titles for this release)
                         if (body.tracks_data && Array.isArray(body.tracks_data)) {
                             console.log(`     📝 Updating track override metadata for formal release ${id}`);
                             for (const td of body.tracks_data) {
-                                database.updateReleaseTrackMetadata(id, td.id, {
+                                library.updateReleaseTrackMetadata(id, td.id, {
                                     title: td.title,
                                     price: td.price,
                                     price_usdc: td.priceUsdc,
@@ -826,7 +819,7 @@ export function createAdminRoutes(
                 } else if (album) {
                     database.transaction(() => {
                         // Update library album tracks (standard library logic)
-                        const existingTracks = database.getTracks(id);
+                        const existingTracks = library.getTracks(id);
                         const existingTrackIds = existingTracks.map(t => t.id);
                         
                         const toAdd = newTrackIds.filter((ntid: number) => !existingTrackIds.includes(ntid));
@@ -835,10 +828,10 @@ export function createAdminRoutes(
                         console.log(`   - Library Album Sync: toAdd=${toAdd.length}, toRemove=${toRemove.length}`);
 
                         if (toAdd.length > 0) {
-                            database.updateTracksAlbum(toAdd, id);
+                            library.updateTracksAlbum(toAdd, id);
                         }
                         if (toRemove.length > 0) {
-                            database.updateTracksAlbum(toRemove, null);
+                            library.updateTracksAlbum(toRemove, null);
                         }
 
                         // Update order in the library tracks table
@@ -846,7 +839,7 @@ export function createAdminRoutes(
                             id: trackId,
                             trackNum: index + 1
                         }));
-                        database.updateTracksOrder(trackOrders);
+                        library.updateTracksOrder(trackOrders);
                     });
                 }
             }
@@ -855,7 +848,7 @@ export function createAdminRoutes(
             // Sync changes
             publishingService.syncRelease(id).catch(e => console.error("❌ Failed to sync release update:", e));
 
-            const finalItem = release ? database.getRelease(id) : database.getAlbum(id);
+            const finalItem = release ? library.getRelease(id) : library.getAlbum(id);
             console.log(`✅ [Debug] PUT /api/admin/releases/${id} completed successfully`);
             res.json(finalItem || { message: "Updated successfully" });
 
@@ -872,7 +865,7 @@ export function createAdminRoutes(
     router.get("/releases/:id/folder", async (req: AuthenticatedRequest, res: any) => {
         try {
             const id = parseInt(req.params.id, 10);
-            const tracks = database.getTracksByReleaseId(id); // Use the more robust unified getter
+            const tracks = library.getTracksByReleaseId(id); // Use the more robust unified getter
             
             if (tracks.length === 0) return res.json({ folder: null, files: [] });
 
@@ -937,8 +930,8 @@ export function createAdminRoutes(
             const albumIds: number[] = [];
 
             for (const id of ids) {
-                const release = database.getRelease(id);
-                const album = database.getAlbum(id);
+                const release = library.getRelease(id);
+                const album = library.getAlbum(id);
 
                 if (!release && !album) continue;
 
@@ -968,7 +961,7 @@ export function createAdminRoutes(
 
             const allIds = [...releaseIds, ...albumIds];
             if (allIds.length > 0) {
-                database.deleteAlbumsBatch(allIds, !!keepFiles);
+                library.deleteAlbumsBatch(allIds, !!keepFiles);
             }
 
             res.json({ message: "Releases deleted successfully", count: allIds.length });
@@ -995,8 +988,8 @@ export function createAdminRoutes(
 
             const processedIds: number[] = [];
             for (const id of ids) {
-                const release = database.getRelease(id);
-                const album = database.getAlbum(id);
+                const release = library.getRelease(id);
+                const album = library.getAlbum(id);
                 if (!release && !album) continue;
 
                 // Permission Check
@@ -1009,7 +1002,7 @@ export function createAdminRoutes(
             }
 
             if (processedIds.length > 0) {
-                database.updateAlbumsVisibilityBatch(processedIds, visibility);
+                library.updateAlbumsVisibilityBatch(processedIds, visibility);
                 // Sync with publishing service
                 for (const id of processedIds) {
                     publishingService.syncRelease(id).catch(e => console.error(`Failed to sync batch visibility for ${id}:`, e));
@@ -1037,8 +1030,8 @@ export function createAdminRoutes(
             }
 
             // Check if it's a formal release or a library album
-            const release = database.getRelease(id);
-            const album = database.getAlbum(id);
+            const release = library.getRelease(id);
+            const album = library.getAlbum(id);
 
             if (!release && !album) {
                 return res.status(404).json({ error: "Release not found" });
@@ -1065,9 +1058,9 @@ export function createAdminRoutes(
                 } catch (e) {
                     console.error("Failed to unpublish formal release:", e);
                 }
-                database.deleteRelease(id);
+                library.deleteRelease(id);
             } else if (album) {
-                database.deleteAlbum(id, keepFiles);
+                library.deleteAlbum(id, keepFiles);
             }
 
             res.json({ message: "Release deleted successfully" });
@@ -1095,7 +1088,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied: Only the artist or root admin can access their identity keys" });
             }
 
-            const artist = database.getArtist(artistId);
+            const artist = library.getArtist(artistId);
             if (!artist) {
                 return res.status(404).json({ error: "Artist not found" });
             }
@@ -1105,7 +1098,7 @@ export function createAdminRoutes(
                 await apService.ensureArtistKeys(artistId);
             }
 
-            const updatedArtist = database.getArtist(artistId) || artist;
+            const updatedArtist = library.getArtist(artistId) || artist;
 
             // Return keys (even if null/empty, let frontend handle it)
             res.json({
@@ -1134,7 +1127,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied" });
             }
 
-            database.deleteArtistsBatch(ids);
+            library.deleteArtistsBatch(ids);
             res.json({ message: "Artists deleted successfully", count: ids.length });
         } catch (error) {
             console.error("Batch delete artists error:", error);
@@ -1167,7 +1160,7 @@ export function createAdminRoutes(
             }
 
             if (processedIds.length > 0) {
-                database.updateArtistsVisibilityBatch(processedIds, visibility);
+                library.updateArtistsVisibilityBatch(processedIds, visibility);
                 // Sync with publishing service (if artist sync exists, but artists are usually synced via updates)
                 // Note: Artist visibility might trigger Actor updates in AP
             }
@@ -1386,7 +1379,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to modify posts" });
             }
 
-            const post = database.getPost(id);
+            const post = social.getPost(id);
             if (!post) {
                 return res.status(404).json({ error: "Post not found" });
             }
@@ -1396,8 +1389,8 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied" });
             }
 
-            database.updatePost(id, content, visibility, title, summary);
-            const updatedPost = database.getPost(id);
+            social.updatePost(id, content, visibility, title, summary);
+            const updatedPost = social.getPost(id);
 
             if (updatedPost) {
                 // Use PublishingService
@@ -1445,8 +1438,8 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Only root admin can post as instance actor" });
             }
 
-            const postId = database.createPost(resolvedArtistId, content, visibility || 'public', title, summary);
-            const post = database.getPost(postId);
+            const postId = social.createPost(resolvedArtistId, content, visibility || 'public', title, summary);
+            const post = social.getPost(postId);
 
             if (post) {
                 // Use PublishingService
@@ -1472,7 +1465,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to delete posts" });
             }
 
-            const post = database.getPost(id);
+            const post = social.getPost(id);
             if (!post) {
                 return res.status(404).json({ error: "Post not found" });
             }
@@ -1482,7 +1475,7 @@ export function createAdminRoutes(
                 return res.status(403).json({ error: "Access denied" });
             }
 
-            database.deletePost(id);
+            social.deletePost(id);
 
             // Use PublishingService
             publishingService.unpublishPostFromAP(post).catch(e => console.error("Failed to sync post delete:", e));
@@ -1503,9 +1496,9 @@ export function createAdminRoutes(
         try {
             const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
             const assets = isSystemAdmin
-                ? database.getAllAssets()
+                ? integration.getAllAssets()
                 : req.artistId
-                    ? database.getAssetsByArtist(req.artistId)
+                    ? integration.getAssetsByArtist(req.artistId)
                     : [];
             res.json(assets);
         } catch (error) {
@@ -1549,8 +1542,8 @@ export function createAdminRoutes(
                 data.file_size = req.file.size;
             }
 
-            const id = database.createAsset(data);
-            res.status(201).json(database.getAsset(id));
+            const id = integration.createAsset(data);
+            res.status(201).json(integration.getAsset(id));
         } catch (error) {
             console.error("Error creating asset:", error);
             res.status(500).json({ error: "Failed to create asset" });
@@ -1563,7 +1556,7 @@ export function createAdminRoutes(
     router.put("/assets/:id", upload.single("file"), async (req: AuthenticatedRequest, res: any) => {
         try {
             const id = parseInt(req.params.id, 10);
-            const asset = database.getAsset(id);
+            const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
 
             const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
@@ -1588,8 +1581,8 @@ export function createAdminRoutes(
                 updates.file_size = req.file.size;
             }
 
-            database.updateAsset(id, updates);
-            res.json(database.getAsset(id));
+            integration.updateAsset(id, updates);
+            res.json(integration.getAsset(id));
         } catch (error) {
             console.error("Error updating asset:", error);
             res.status(500).json({ error: "Failed to update asset" });
@@ -1602,7 +1595,7 @@ export function createAdminRoutes(
     router.post("/assets/:id/cover", upload.single("cover"), async (req: AuthenticatedRequest, res: any) => {
         try {
             const id = parseInt(req.params.id, 10);
-            const asset = database.getAsset(id);
+            const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
             if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -1618,7 +1611,7 @@ export function createAdminRoutes(
             const destPath = path.join(destDir, `asset-${id}${ext}`);
             await fs.move(req.file.path, destPath, { overwrite: true });
 
-            database.updateAsset(id, { cover_path: destPath });
+            integration.updateAsset(id, { cover_path: destPath });
             res.json({ cover_path: destPath });
         } catch (error) {
             console.error("Error uploading asset cover:", error);
@@ -1632,7 +1625,7 @@ export function createAdminRoutes(
     router.delete("/assets/:id", async (req: AuthenticatedRequest, res: any) => {
         try {
             const id = parseInt(req.params.id, 10);
-            const asset = database.getAsset(id);
+            const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
 
             const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
@@ -1646,7 +1639,7 @@ export function createAdminRoutes(
             if (asset.cover_path) {
                 fs.remove(asset.cover_path).catch(() => {});
             }
-            database.deleteAsset(id);
+            integration.deleteAsset(id);
             res.json({ message: "Asset deleted" });
         } catch (error) {
             console.error("Error deleting asset:", error);
@@ -1696,7 +1689,7 @@ export function createAdminRoutes(
         }
 
         // 4. Discogs (Check if token is present)
-        const discogsToken = database.getSetting("discogs_token") || process.env.DISCOGS_TOKEN;
+        const discogsToken = identity.getSetting("discogs_token") || process.env.DISCOGS_TOKEN;
         results.discogs = { configured: !!discogsToken };
 
         // 5. Telegram
@@ -1708,26 +1701,26 @@ export function createAdminRoutes(
         }
 
         // 6. OpenRouter
-        const orKey = database.getSetting("openrouter_api_key") || config.openrouterApiKey;
+        const orKey = identity.getSetting("openrouter_api_key") || config.openrouterApiKey;
         results.openrouter = { 
             configured: !!orKey,
-            model: database.getSetting("openrouter_model") || config.openrouterModel || "openrouter/free"
+            model: identity.getSetting("openrouter_model") || config.openrouterModel || "openrouter/free"
         };
 
         // 7. Stripe
-        const stripeKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
-        const stripeWebhook = database.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
+        const stripeKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
+        const stripeWebhook = identity.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
         results.stripe = { 
             configured: !!stripeKey,
             webhookConfigured: !!stripeWebhook
         };
         
         // 8. PayPal
-        const ppId = database.getSetting("paypal_client_id") || config.paypalClientId;
-        const ppSecret = database.getSetting("paypal_client_secret") || config.paypalClientSecret;
+        const ppId = identity.getSetting("paypal_client_id") || config.paypalClientId;
+        const ppSecret = identity.getSetting("paypal_client_secret") || config.paypalClientSecret;
         results.paypal = { 
             configured: !!ppId && !!ppSecret,
-            environment: database.getSetting("paypal_environment") || config.paypalEnvironment || "sandbox"
+            environment: identity.getSetting("paypal_environment") || config.paypalEnvironment || "sandbox"
         };
 
         
@@ -1750,13 +1743,13 @@ export function createAdminRoutes(
 
         // 12. Last.fm
         results.lastfm = {
-            configured: !!(database.getSetting("lastfm_session_key") || database.getSetting("lastfm_api_key")),
+            configured: !!(identity.getSetting("lastfm_session_key") || identity.getSetting("lastfm_api_key")),
             online: true // Assume online if no specific check, or add one
         };
 
         // 13. ListenBrainz
         results.listenbrainz = {
-            configured: !!database.getSetting("listenbrainz_token"),
+            configured: !!identity.getSetting("listenbrainz_token"),
             online: true
         };
 
@@ -1788,7 +1781,7 @@ export function createAdminRoutes(
             if (!req.isAdmin) {
                 return res.status(403).json({ error: "Only admin can view peers" });
             }
-            const peers = database.getFollowedActors();
+            const peers = social.getFollowedActors();
             res.json(peers);
         } catch (error) {
             console.error("Error listing peers:", error);
@@ -1832,7 +1825,7 @@ export function createAdminRoutes(
                 await apService.fetchRemoteOutbox(url);
                 res.json({ message: `Sync triggered for ${url}` });
             } else {
-                const peers = database.getFollowedActors();
+                const peers = social.getFollowedActors();
                 for (const peer of peers) {
                     apService.fetchRemoteOutbox(peer.uri).catch(e => console.error(`Failed to sync ${peer.uri}:`, e));
                 }
@@ -1897,7 +1890,7 @@ export function createAdminRoutes(
 
             let found = false;
             for (const registry of registries) {
-                if (registry.get(id)) {
+                if (registry?.get(id)) {
                     if (enabled) {
                         await registry.enable(id);
                     } else {
@@ -1912,7 +1905,7 @@ export function createAdminRoutes(
             }
 
             // Persist to database
-            database.setPluginEnabled(id, enabled);
+            identity.setPluginEnabled(id, enabled);
 
             res.json({ message: `Plugin ${id} ${enabled ? 'enabled' : 'disabled'} successfully`, id, enabled });
         } catch (error) {

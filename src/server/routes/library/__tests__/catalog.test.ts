@@ -37,7 +37,10 @@ describe('Catalog Routes', () => {
             next();
         });
 
-        const router = createCatalogRoutes(mockCatalogService, mockDiscoveryService);
+        const router = createCatalogRoutes({
+            catalogService: mockCatalogService,
+            discoveryService: mockDiscoveryService
+        } as any);
         app.use('/catalog', router);
     });
 

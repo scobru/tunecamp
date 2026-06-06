@@ -4,9 +4,7 @@ import path from "path";
 import { parseFile } from "music-metadata";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
-import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
-import type { CatalogService } from "../../modules/catalog/catalog.service.js";
-import type { DiscoveryService } from "../../modules/catalog/discovery.service.js";
+import type { Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
@@ -16,19 +14,27 @@ if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
-import type { AuthService } from "../../modules/auth/auth.service.js";
-import type { PublishingService } from "../../modules/publishing/publishing.service.js";
-import { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { getStreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
-import type { StreamingService } from "../../modules/streaming/streaming.service.js";
-import { LocalizationService } from "../../modules/catalog/localization.service.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
-import type { MediaEngine } from "../../modules/media/media-engine.js";
+import type { ServiceContainer } from "../../core/container.js";
 
 
-export function createTracksRoutes(database: DatabaseService, publishingService: PublishingService, catalogService: CatalogService, discoveryService: DiscoveryService, musicDir: string, authService?: AuthService, gdriveService?: GoogleDriveService, streamingService?: StreamingService, localizationService?: LocalizationService, mediaEngine?: MediaEngine): Router {
+export function createTracksRoutes(container: ServiceContainer): Router {
+    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
+    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
+    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (container as any);
+    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (container as any);
+    const localizationService: ServiceContainer['localizationService'] = (container as any).localizationService || (container as any);
+    const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (container as any);
+    const social: ServiceContainer['social'] = (container as any).social || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
 
     const router = Router();
     router.use(express.json());
@@ -58,7 +64,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
      */
     router.get("/starred", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         if (!req.username) throw new ForbiddenError("Unauthorized");
-        const starredItems = database.getStarredItems(req.username, 'track');
+        const starredItems = social.getStarredItems(req.username, 'track');
         // Return just IDs for easy lookup in frontend
         res.json(starredItems.map((i: any) => i.item_id));
     }));
@@ -74,9 +80,9 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let tracksToSync: any[] = [];
         
         if (isRoot) {
-           tracksToSync = database.getTracks();
+           tracksToSync = library.getTracks();
         } else if (req.artistId) {
-           tracksToSync = database.getTracksByOwner(req.artistId);
+           tracksToSync = library.getTracksByOwner(req.artistId);
         } else {
            return res.json([]);
         }
@@ -85,7 +91,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             .filter(t => t.price && t.price > 0 && t.artist_id)
             .map(t => t.artist_id as number))];
 
-        const artistsBatch = database.getArtistsByIds(artistIdsToFetch);
+        const artistsBatch = library.getArtistsByIds(artistIdsToFetch);
         const artistMap = new Map(artistsBatch.map(a => [a.id, a]));
 
         const pricingData = tracksToSync
@@ -121,7 +127,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         if (!title) throw new BadRequestError("Title is required");
 
-        const trackId = database.createTrack({
+        const trackId = library.createTrack({
             title,
             album_id: albumId || null,
             artist_id: finalArtistId || null,
@@ -137,7 +143,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
             waveform: null, lyrics: lyrics || null
         });
 
-        const newTrack = database.getTrack(trackId);
+        const newTrack = library.getTrack(trackId);
         res.status(201).json(newTrack ? mapTrackDTO(newTrack, database, req.username) : null);
 
         if (albumId) {
@@ -205,7 +211,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let trackId: number;
 
         if (idParam.startsWith("ext:")) {
-            const track = database.getTrackByExternalId(idParam);
+            const track = library.getTrackByExternalId(idParam);
             if (!track) throw new NotFoundError("Track not found");
             trackId = track.id;
         } else {
@@ -232,7 +238,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let trackId: number;
 
         if (idParam.startsWith("ext:") || idParam.startsWith("http")) {
-            const existing = database.getTrackByExternalId(idParam);
+            const existing = library.getTrackByExternalId(idParam);
             if (existing) {
                 trackId = existing.id;
             } else {
@@ -240,10 +246,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                 if (!title) throw new BadRequestError("Title required to link external track");
                 let artistId = null;
                 if (artist) {
-                    const a = database.getArtistByName(artist);
-                    artistId = a ? a.id : database.createArtist(artist);
+                    const a = library.getArtistByName(artist);
+                    artistId = a ? a.id : library.createArtist(artist);
                 }
-                trackId = database.createTrack({
+                trackId = library.createTrack({
                     title, artist_id: artistId, artist_name: artist || null,
                     owner_id: req.userId || null, album_id: null, track_num: 1, duration: duration || 0,
                     external_id: idParam, external_artwork: coverUrl || null,
@@ -258,16 +264,16 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         if (isNaN(trackId)) throw new BadRequestError("Invalid track ID");
 
-        const track = database.getTrack(trackId);
+        const track = library.getTrack(trackId);
         if (!track) throw new NotFoundError("Track not found");
 
         if (req.context && !VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY)) {
-            const releases = database.getReleasesByTrackId(trackId);
+            const releases = library.getReleasesByTrackId(trackId);
             let isPublic = track.visibility === 'public' || track.visibility === 'unlisted' || releases.length > 0;
             // Standalone release tracks have null visibility and no library track_id link;
             // check their parent album's visibility instead
             if (!isPublic && !track.visibility && (track as any).album_id) {
-                const parentAlbum = database.getRelease((track as any).album_id) || database.getAlbum((track as any).album_id);
+                const parentAlbum = library.getRelease((track as any).album_id) || library.getAlbum((track as any).album_id);
                 if (parentAlbum && parentAlbum.visibility !== 'private') isPublic = true;
             }
             if (!isPublic) throw new ForbiddenError("You can only favorite public tracks");
@@ -286,7 +292,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let trackId: number;
 
         if (idParam.startsWith("ext:") || idParam.startsWith("http")) {
-            const existing = database.getTrackByExternalId(idParam);
+            const existing = library.getTrackByExternalId(idParam);
             if (!existing) return res.json({ success: true, starred: false });
             trackId = existing.id;
         } else {
@@ -307,7 +313,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         let trackId: number;
 
         if (idParam.startsWith("ext:")) {
-            const track = database.getTrackByExternalId(idParam);
+            const track = library.getTrackByExternalId(idParam);
             if (!track) throw new NotFoundError("Track not found");
             trackId = track.id;
         } else {
@@ -328,10 +334,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)/lyrics", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
@@ -355,10 +361,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)/cover", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
@@ -382,10 +388,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
 
         if (!track || !track.file_path) throw new NotFoundError("Track or file not found");
@@ -417,10 +423,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
@@ -438,7 +444,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
                 year: year ? parseInt(year) : undefined
             });
 
-            const updated = database.getTrack(track.id);
+            const updated = library.getTrack(track.id);
             res.json({ message: "Metadata matched and synced", track: updated ? mapTrackDTO(updated, database, req.username) : null });
         } catch (error: any) {
             console.error(`❌ [Metadata Match Error] Track ${track.id}:`, error);
@@ -457,20 +463,20 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
 
         if (idParam.startsWith("ext:")) {
             externalId = idParam;
-            const dbTrack = database.getTrackByExternalId(idParam);
+            const dbTrack = library.getTrackByExternalId(idParam);
             if (dbTrack) trackId = dbTrack.id;
         } else trackId = parseInt(idParam, 10);
 
         if (trackId && !isNaN(trackId)) {
-            const track = database.getTrack(trackId);
+            const track = library.getTrack(trackId);
             if (!track) { if (!externalId) throw new NotFoundError("Track not found"); }
             else {
                 const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
                 const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
                 if (!canSeePrivate && !isOwner && !req.userId) {
                     if (track.album_id) {
-                        const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                        if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
+                        const album = library.getRelease(track.album_id) || library.getAlbum(track.album_id);
+                        if (album && album.visibility === 'private' && !library.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
                     } else throw new ForbiddenError("Access denied");
                 }
             }
@@ -497,10 +503,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)/download", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
 
         if (!track) throw new NotFoundError("Track not found");
@@ -508,8 +514,8 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
         if (!canSeePrivate && !isOwner && !req.userId) {
             if (track.album_id) {
-                const album = database.getRelease(track.album_id) || database.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !database.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
+                const album = library.getRelease(track.album_id) || library.getAlbum(track.album_id);
+                if (album && album.visibility === 'private' && !library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
             } else throw new ForbiddenError("Access denied");
         }
 
@@ -517,7 +523,7 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (track.file_path.startsWith("gdrive://")) {
             if (!gdriveService) throw new Error("Google Drive service not available");
             const fileId = track.file_path.substring(9);
-            const ownerId = track.owner_id || database.getPrimaryAdminId() || 1;
+            const ownerId = track.owner_id || integration.getPrimaryAdminId() || 1;
             const { stream, headers } = await gdriveService.getFileStream(ownerId, fileId);
             const ext = headers['content-type']?.includes('flac') ? '.flac' : headers['content-type']?.includes('wav') ? '.wav' : '.mp3';
             const filename = `${track.artist_name || 'Unknown'} - ${track.title || 'Untitled'}${ext}`;
@@ -552,17 +558,17 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
     router.get("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
         if (!track) throw new NotFoundError("Track not found");
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
         if (!canSeePrivate && track.album_id) {
-            const album = database.getAlbum(track.album_id);
+            const album = library.getAlbum(track.album_id);
             if (album && album.visibility === 'private' && track.owner_id !== req.userId) {
-                if (!database.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
+                if (!library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
             }
         }
         res.json(mapTrackDTO(track, database, req.username));
@@ -576,10 +582,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
         if (!track) throw new NotFoundError("Track not found");
         const isRoot = req.isRootAdmin;
@@ -600,10 +606,10 @@ export function createTracksRoutes(database: DatabaseService, publishingService:
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
         const idParam = req.params.id as string;
         let track;
-        if (idParam.startsWith("ext:")) track = database.getTrackByExternalId(idParam);
+        if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
         else {
             const id = parseInt(idParam, 10);
-            if (!isNaN(id)) track = database.getTrack(id);
+            if (!isNaN(id)) track = library.getTrack(id);
         }
         if (!track) throw new NotFoundError("Track not found");
         const isRoot = req.isRootAdmin;

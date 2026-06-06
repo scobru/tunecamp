@@ -30,7 +30,10 @@ describe("Browser Routes Security", () => {
             updateTrackPathsPrefix: jest.fn()
         } as any;
         
-        app.use("/", createBrowserRoutes(musicDir, mockDatabase));
+        app.use("/", createBrowserRoutes({
+            musicDir,
+            database: mockDatabase
+        } as any));
         jest.clearAllMocks();
 
         // Default mocks

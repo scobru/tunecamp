@@ -10,13 +10,17 @@ import type { MetadataService } from "../../modules/catalog/metadata.service.js"
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";
 
-export function createSearchRoutes(
-    database: DatabaseService,
-    soulseek: SoulseekService,
-    scanner: ScannerService,
-    metadataService: MetadataService = defaultMetadataService,
-    streamingService: StreamingService = defaultStreamingService
-): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createSearchRoutes(container: ServiceContainer): Router {
+    const soulseek: ServiceContainer['soulseekService'] = (container as any).soulseekService || (container as any);
+    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
+    const metadataService: ServiceContainer['metadataService'] = (container as any).metadataService || (container as any);
+    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
@@ -36,13 +40,13 @@ export function createSearchRoutes(
         try {
             // Check if user has personal credentials
             if (req.userId) {
-                const creds = database.getUserSoulseekCredentials(req.userId);
+                const creds = integration.getUserSoulseekCredentials(req.userId);
                 if (creds && creds.username && creds.password_encrypted) {
                     await soulseek.connect(creds.username, creds.password_encrypted);
                 } else {
                     // Fallback to global credentials
-                    const globalUser = database.getSetting("soulseek_username");
-                    const globalPass = database.getSetting("soulseek_password");
+                    const globalUser = identity.getSetting("soulseek_username");
+                    const globalPass = identity.getSetting("soulseek_password");
                     if (globalUser && globalPass) {
                         await soulseek.connect(globalUser, globalPass);
                     }
@@ -78,7 +82,7 @@ export function createSearchRoutes(
 
         try {
             const filePath = result.file;
-            const downloadId = database.createSoulseekDownload({
+            const downloadId = integration.createSoulseekDownload({
                 user_id: req.userId!,
                 file_path: filePath,
                 filename: filePath.split(/[/\\]/).pop() || "unknown",
@@ -87,12 +91,12 @@ export function createSearchRoutes(
 
             // Start download in background
             soulseek.download(result).then(async (dest) => {
-                database.updateSoulseekDownloadProgress(downloadId, 1, 'completed', dest);
+                integration.updateSoulseekDownloadProgress(downloadId, 1, 'completed', dest);
                 // Trigger scanner on the new file
                 console.log(`📡 Soulseek download finished: ${dest}`);
             }).catch(err => {
                 console.error(`❌ Soulseek background download failed:`, err);
-                database.updateSoulseekDownloadProgress(downloadId, 0, 'failed');
+                integration.updateSoulseekDownloadProgress(downloadId, 0, 'failed');
             });
 
             res.json({ success: true, downloadId });
@@ -116,7 +120,7 @@ export function createSearchRoutes(
         if (!username || !password) return res.status(400).json({ error: "Credentials required" });
 
         try {
-            database.updateUserSoulseekCredentials(req.userId!, username, password);
+            integration.updateUserSoulseekCredentials(req.userId!, username, password);
             // Try to connect to verify
             const success = await soulseek.connect(username, password);
             res.json({ success });
@@ -136,7 +140,7 @@ export function createSearchRoutes(
         }
 
         try {
-            const downloads = database.getSoulseekDownloads(req.userId);
+            const downloads = integration.getSoulseekDownloads(req.userId);
             res.json(downloads);
         } catch (error) {
             res.status(500).json({ error: "Failed to fetch status" });
@@ -157,14 +161,14 @@ export function createSearchRoutes(
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
         try {
-            const download = database.getSoulseekDownload(id);
+            const download = integration.getSoulseekDownload(id);
             if (!download) return res.status(404).json({ error: "Download not found" });
             if (download.status !== 'completed') return res.status(400).json({ error: "Download not completed" });
             if (!download.file_path) return res.status(400).json({ error: "No file path available" });
             if (download.user_id !== req.userId) return res.status(403).json({ error: "Forbidden" });
 
             // Trigger scanner
-            const settings = database.getAllSettings();
+            const settings = identity.getAllSettings();
             const musicDir = settings.musicDir || process.env.TUNECAMP_MUSIC_DIR || "music";
             
             const filePath = download.file_path;
@@ -187,7 +191,7 @@ export function createSearchRoutes(
         }
 
         try {
-            database.clearFailedSoulseekDownloads(req.userId!);
+            integration.clearFailedSoulseekDownloads(req.userId!);
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ error: "Failed to clear downloads" });
@@ -208,11 +212,11 @@ export function createSearchRoutes(
         if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
 
         try {
-            const download = database.getSoulseekDownload(id);
+            const download = integration.getSoulseekDownload(id);
             if (!download) return res.status(404).json({ error: "Download not found" });
             if (download.user_id !== req.userId) return res.status(403).json({ error: "Forbidden" });
 
-            database.deleteSoulseekDownload(id);
+            integration.deleteSoulseekDownload(id);
             res.json({ success: true });
         } catch (error) {
             res.status(500).json({ error: "Failed to delete download" });
@@ -238,7 +242,7 @@ export function createSearchRoutes(
         console.log(`🔍 [Global Search] Query: "${query}", Profile: ${profile}, User: ${req.username || 'Guest'} (Role: ${req.role || 'none'})`);
         try {
             // 1. Search Local Database
-            const localResults = database.search(query, profile);
+            const localResults = library.search(query, profile);
 
             // Provider search (Streaming & External Metadata) is restricted to Manager/Root
             let streamingResults: any[] = [];

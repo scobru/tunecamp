@@ -48,7 +48,7 @@ describe("Import Routes Security", () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
-    app.use("/api/import", createImportRoutes());
+    app.use("/api/import", createImportRoutes({} as any));
   });
 
   it("should reject malformed URLs", async () => {

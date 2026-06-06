@@ -4,7 +4,12 @@ import { VisibilityProfile, VisibilityGuardian } from "../../common/visibility.j
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
-export function createPlaylistsRoutes(database: DatabaseService, zendbService?: ZenDBService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createPlaylistsRoutes(container: ServiceContainer): Router {
+    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
@@ -17,8 +22,8 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             const isAdmin = req.isAdmin || req.isSuperUser;
             const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
             
-            const genres = database.getGenres(profile);
-            const genreCounts = database.getGenreTrackCounts(profile);
+            const genres = library.getGenres(profile);
+            const genreCounts = library.getGenreTrackCounts(profile);
             
             const dynamicPlaylists = genres.map(genre => ({
                 id: `genre:${genre}`,
@@ -32,10 +37,10 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             }));
 
             if (req.isAdmin || req.isSuperUser) {
-                res.json([...database.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS), ...dynamicPlaylists]);
+                res.json([...library.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS), ...dynamicPlaylists]);
             } else if (req.username) {
-                const myPlaylists = database.getPlaylists(req.username, VisibilityProfile.ALL_ACCESS);
-                const publicPlaylists = database.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE);
+                const myPlaylists = library.getPlaylists(req.username, VisibilityProfile.ALL_ACCESS);
+                const publicPlaylists = library.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE);
                 
                 const seenIds = new Set(myPlaylists.map(p => p.id));
                 const combined = [...myPlaylists];
@@ -46,7 +51,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 }
                 res.json([...combined, ...dynamicPlaylists]);
             } else {
-                res.json([...database.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE), ...dynamicPlaylists]);
+                res.json([...library.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE), ...dynamicPlaylists]);
             }
         } catch (error) {
             console.error("Error getting playlists:", error);
@@ -69,7 +74,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             }
 
             const username = req.username || "admin";
-            const id = database.createPlaylist(name, username, description, !!isPublic);
+            const id = library.createPlaylist(name, username, description, !!isPublic);
             
 
             
@@ -95,7 +100,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
 
         try {
             const id = parseInt(idStr, 10);
-            const playlist = database.getPlaylist(id);
+            const playlist = library.getPlaylist(id);
             if (!playlist) return res.status(404).json({ error: "Playlist not found" });
             
             if (!req.isAdmin && playlist.username !== req.username) {
@@ -105,10 +110,10 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             const { isPublic, coverPath } = req.body;
 
             if (isPublic !== undefined) {
-                database.updatePlaylistVisibility(id, isPublic);
+                library.updatePlaylistVisibility(id, isPublic);
             }
             if (coverPath !== undefined) {
-                database.updatePlaylistCover(id, coverPath || null);
+                library.updatePlaylistCover(id, coverPath || null);
             }
 
 
@@ -134,8 +139,8 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 const isAdmin = req.isAdmin || req.isSuperUser;
                 const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
 
-                const tracks = database.getTracksByGenre(genre, profile);
-                const genreCounts = database.getGenreTrackCounts(profile);
+                const tracks = library.getTracksByGenre(genre, profile);
+                const genreCounts = library.getGenreTrackCounts(profile);
                 
                 return res.json({
                     id: idStr,
@@ -151,7 +156,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             }
 
             const id = parseInt(idStr, 10);
-            const playlist = database.getPlaylist(id);
+            const playlist = library.getPlaylist(id);
 
             if (!playlist) {
                 return res.status(404).json({ error: "Playlist not found" });
@@ -161,7 +166,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(403).json({ error: "Unauthorized" });
             }
 
-            const tracks = database.getPlaylistTracks(id);
+            const tracks = library.getPlaylistTracks(id);
 
             res.json({
                 ...playlist,
@@ -182,7 +187,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
         if (!req.isAdmin && !req.isActive) return res.status(403).json({ error: "Account not active" });
         try {
             const id = parseInt(req.params.id as string, 10);
-            const playlist = database.getPlaylist(id);
+            const playlist = library.getPlaylist(id);
 
             if (!playlist) {
                 return res.status(404).json({ error: "Playlist not found" });
@@ -192,7 +197,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(403).json({ error: "Not your playlist" });
             }
 
-            database.deletePlaylist(id);
+            library.deletePlaylist(id);
 
             
             res.json({ message: "Playlist deleted" });
@@ -220,7 +225,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 actualTrackId = parseInt(trackId, 10);
                 if (isNaN(actualTrackId)) {
                     if (trackId.startsWith("ext:") || trackId.startsWith("http")) {
-                        const existing = database.getTrackByExternalId(trackId);
+                        const existing = library.getTrackByExternalId(trackId);
                         if (existing) {
                             actualTrackId = existing.id;
                         } else if (metadata) {
@@ -231,11 +236,11 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
 
                             let artistId = null;
                             if (artist) {
-                                const a = database.getArtistByName(artist);
-                                artistId = a ? a.id : database.createArtist(artist);
+                                const a = library.getArtistByName(artist);
+                                artistId = a ? a.id : library.createArtist(artist);
                             }
 
-                            actualTrackId = database.createTrack({
+                            actualTrackId = library.createTrack({
                                 title,
                                 artist_id: artistId,
                                 artist_name: artist || null,
@@ -265,7 +270,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(400).json({ error: "trackId is required" });
             }
 
-            const playlist = database.getPlaylist(playlistId);
+            const playlist = library.getPlaylist(playlistId);
             if (!playlist) {
                 return res.status(404).json({ error: "Playlist not found" });
             }
@@ -274,14 +279,14 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(403).json({ error: "Not your playlist" });
             }
 
-            const track = database.getTrack(actualTrackId);
+            const track = library.getTrack(actualTrackId);
             if (!track) {
                 return res.status(404).json({ error: "Track not found" });
             }
 
             // SECURITY: Prevent adding private tracks to playlists unless you're the owner or an admin
             if (!req.isAdmin && track.album_id) {
-                const album = database.getAlbum(track.album_id);
+                const album = library.getAlbum(track.album_id);
                 const isOwner = track.owner_id === req.userId || (track.artist_id && track.artist_id === req.artistId);
                 
                 if (album && album.visibility === 'private' && !isOwner) {
@@ -290,7 +295,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 }
             }
 
-            database.addTrackToPlaylist(playlistId, actualTrackId);
+            library.addTrackToPlaylist(playlistId, actualTrackId);
 
 
 
@@ -312,7 +317,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
             const playlistId = parseInt(req.params.id as string, 10);
             const trackId = parseInt(req.params.trackId as string, 10);
 
-            const playlist = database.getPlaylist(playlistId);
+            const playlist = library.getPlaylist(playlistId);
             if (!playlist) {
                 return res.status(404).json({ error: "Playlist not found" });
             }
@@ -321,7 +326,7 @@ export function createPlaylistsRoutes(database: DatabaseService, zendbService?: 
                 return res.status(403).json({ error: "Not your playlist" });
             }
 
-            database.removeTrackFromPlaylist(playlistId, trackId);
+            library.removeTrackFromPlaylist(playlistId, trackId);
 
 
 

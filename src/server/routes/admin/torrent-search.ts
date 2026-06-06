@@ -6,7 +6,12 @@ import { DatabaseService } from '../../core/database.types.js';
 import { ForbiddenError, BadRequestError } from '../../common/errors.js';
 import { TorrentService } from '../../modules/integrations/torrent.service.js';
 
-export function createTorrentSearchRouter(database: DatabaseService, torrentService: TorrentService, authService: AuthService): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createTorrentSearchRouter(container: ServiceContainer): Router {
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const torrentService: ServiceContainer['torrentService'] = (container as any).torrentService || (container as any);
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     const router = Router();
     router.use(express.json());
     const auth = createAuthMiddleware(authService);

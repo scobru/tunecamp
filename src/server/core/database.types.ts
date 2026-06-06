@@ -357,77 +357,6 @@ interface GunCacheEntry {
 }
 
 export interface IdentityManager {
-    getUser(id: number): User | undefined;
-    getUserByUsername(username: string): User | undefined;
-    getUserByArtistId(artistId: number): User | undefined;
-    createUser(username: string, passwordHash: string, artistId?: number | null, role?: string): number;
-    updateUser(id: number, data: Partial<User>): void;
-    getAllUsers(): User[];
-    deleteUser(id: number): void;
-    getAdmins(): User[];
-    getSetting(key: string): string | undefined;
-    setSetting(key: string, value: string): void;
-    getAllSettings(): { [key: string]: string };
-    updateSubscription(userId: number, status: string, expiresAt: string): void;
-    getUserSubscription(userId: number): { status: string, expiresAt: string | null };
-}
-
-export interface LibraryManager {
-    getArtist(id: number): Artist | undefined;
-    getArtistSimple(id: number): Artist | undefined;
-    getArtistBySlug(slug: string): Artist | undefined;
-    getArtistBySlugSimple(slug: string): Artist | undefined;
-    getArtistByName(name: string): Artist | undefined;
-    createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: any, externalId?: string): number;
-    updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: any): void;
-    
-    getTrack(id: number): Track | undefined;
-    createTrack(track: Omit<Track, "id" | "album_title" | "created_at">): number;
-    updateTrack(id: number, data: Partial<Track>): void;
-    
-    updateTrackDeep(
-        trackId: number,
-        data: any,
-        primaryAdminId: number | null
-    ): {
-        track: Track;
-        fileChanges?: {
-            oldPath: string;
-            newPath: string;
-            oldLossless?: string;
-            newLossless?: string;
-        };
-        requiresTagSync: boolean;
-        requiresPublishingSync: boolean;
-    };
-    
-    getAlbum(id: number): Album | undefined;
-    getAlbumBySlug(slug: string): Album | undefined;
-    createAlbum(album: Omit<Album, "id" | "created_at" | "artist_name" | "artist_slug">): number;
-    
-    consolidateLibrary(): void;
-}
-
-export interface SocialManager {
-    getFollowers(artistId: number): Follower[];
-    getPendingFollowers(artistId: number): Follower[];
-    getFollower(artistId: number, actorUri: string): Follower | undefined;
-    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void;
-    acceptFollower(artistId: number, actorUri: string): void;
-    rejectFollower(artistId: number, actorUri: string): void;
-    removeFollower(artistId: number, actorUri: string): void;
-    unfollowActor(uri: string): void;
-}
-
-export interface DatabaseService {
-    db: DatabaseType;
-    pruneOrphans(): void;
-    transaction<T>(fn: () => T): T;
-    
-    identity: IdentityManager;
-    library: LibraryManager;
-    social: SocialManager;
-
     // Users
     getUser(id: number): User | undefined;
     getUserByUsername(username: string): User | undefined;
@@ -442,12 +371,25 @@ export interface DatabaseService {
     updateSubscription(userId: number, status: string, expiresAt: string): void;
     getUserSubscription(userId: number): { status: string, expiresAt: string | null };
 
-    // Auth
+    // Auth / OAuth
     createOAuthClient(client: Omit<OAuthClient, "created_at">): void;
     getOAuthClient(instanceUrl: string): OAuthClient | undefined;
     saveOAuthLink(provider: string, subject: string, gunPub: string, gunPriv: string): void;
     getOAuthLink(provider: string, subject: string): OAuthLink | undefined;
 
+    // Settings
+    getSetting(key: string): string | undefined;
+    setSetting(key: string, value: string): void;
+    getAllSettings(): { [key: string]: string };
+
+    // Plugins
+    getPluginState(id: string): { enabled: boolean; config: string | null } | undefined;
+    setPluginEnabled(id: string, enabled: boolean): void;
+    setPluginConfig(id: string, config: string): void;
+    getAllPluginsState(): any[];
+}
+
+export interface LibraryManager {
     // Artists
     getArtists(profile?: VisibilityProfile | ViewerContext): Artist[];
     getArtist(id: number): Artist | undefined;
@@ -456,14 +398,6 @@ export interface DatabaseService {
     getArtistBySlugSimple(slug: string): Artist | undefined;
     getArtistByName(name: string): Artist | undefined;
     getArtistsByIds(ids: number[]): Artist[];
-    getFollowers(artistId: number): Follower[];
-    getPendingFollowers(artistId: number): Follower[];
-    getFollower(artistId: number, actorUri: string): Follower | undefined;
-    addFollower(artistId: number, actorUri: string, inboxUrl: string, sharedInboxUrl?: string, followId?: string): void;
-    acceptFollower(artistId: number, actorUri: string): void;
-    rejectFollower(artistId: number, actorUri: string): void;
-    removeFollower(artistId: number, actorUri: string): void;
-    unfollowActor(actorUri: string): void;
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
@@ -473,7 +407,7 @@ export interface DatabaseService {
     isArtistLinkedToUser(id: number): boolean;
     isArtistLinkedToUserBySlug(slug: string): boolean;
 
-    // Releases (New watertight compartment)
+    // Releases
     getReleases(profile?: VisibilityProfile | ViewerContext): Release[];
     getRelease(id: number): Release | undefined;
     getReleaseBySlug(slug: string): Release | undefined;
@@ -492,7 +426,7 @@ export interface DatabaseService {
     // Legacy/Library Albums
     getAlbums(profile?: VisibilityProfile | ViewerContext): Album[];
     getAlbumsWithStats(profile?: VisibilityProfile | ViewerContext): (Album & { songCount: number; duration: number })[];
-    getLibraryAlbums(profile?: VisibilityProfile | ViewerContext): Album[]; // is_release=0
+    getLibraryAlbums(profile?: VisibilityProfile | ViewerContext): Album[];
     getAlbum(id: number): Album | undefined;
     getAlbumsByIds(ids: number[]): Album[];
     getAlbumBySlug(slug: string): Album | undefined;
@@ -517,7 +451,7 @@ export interface DatabaseService {
     updateAlbumDownload(id: number, download: string | null): void;
     updateAlbumPrice(id: number, price: number | null, price_usdc: number | null, currency?: 'ETH' | 'USD' | 'USDC' | 'USDT'): void;
     updateAlbumLinks(id: number, links: string | null): void;
-    promoteToRelease(id: number): void; // Mark library album as release
+    promoteToRelease(id: number): void;
     deleteAlbum(id: number, keepTracks?: boolean): void;
     deleteAlbumsBatch(ids: number[], keepTracks?: boolean): void;
     updateAlbumsVisibilityBatch(ids: number[], visibility: Album['visibility']): void;
@@ -581,6 +515,21 @@ export interface DatabaseService {
     mergeTracks(fromId: number, toId: number): void;
     getAllTracks(whereClause?: string, params?: any[]): Track[];
     iterateTracks(whereClause?: string, params?: any[]): IterableIterator<Track>;
+    updateTrackDeep(
+        trackId: number,
+        data: any,
+        primaryAdminId: number | null
+    ): {
+        track: Track;
+        fileChanges?: {
+            oldPath: string;
+            newPath: string;
+            oldLossless?: string;
+            newLossless?: string;
+        };
+        requiresTagSync: boolean;
+        requiresPublishingSync: boolean;
+    };
 
     // Playlists
     getPlaylists(username?: string, profile?: VisibilityProfile | ViewerContext): Playlist[];
@@ -594,7 +543,37 @@ export interface DatabaseService {
     addTrackToPlaylist(playlistId: number, trackId: number): void;
     removeTrackFromPlaylist(playlistId: number, trackId: number): void;
 
-    // Starred / Social
+    // Search
+    search(query: string, profile?: VisibilityProfile | ViewerContext): { artists: Artist[]; albums: Album[]; tracks: Track[] };
+
+    // Stats
+    getStats(artistId?: number, ownerId?: number): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number; genresCount: number; genres: string[] }>;
+    getPublicTracksCount(): number;
+    getGenres(profile?: VisibilityProfile | ViewerContext): string[];
+    getTracksByGenre(genre: string, profile?: VisibilityProfile | ViewerContext): Track[];
+    getGenreTrackCounts(profile?: VisibilityProfile | ViewerContext): Map<string, number>;
+    getListeningStats(): ListeningStats;
+
+    // Maintenance
+    getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[];
+    getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[];
+    getArtistsMissingMetadata(filter: 'photo'): Artist[];
+    consolidateLibrary(): void;
+    pruneOrphans(): void;
+}
+
+export interface SocialManager {
+    // Followers
+    getFollowers(artistId: number): Follower[];
+    getPendingFollowers(artistId: number): Follower[];
+    getFollower(artistId: number, actorUri: string): Follower | undefined;
+    addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void;
+    acceptFollower(artistId: number, actorUri: string): void;
+    rejectFollower(artistId: number, actorUri: string): void;
+    removeFollower(artistId: number, actorUri: string): void;
+    unfollowActor(uri: string): void;
+
+    // Starred / Social / Ratings
     starItem(user: string, type: 'track' | 'album' | 'artist', id: string): void;
     unstarItem(user: string, type: 'track' | 'album' | 'artist', id: string): void;
     starItems(user: string, items: { type: 'track' | 'album' | 'artist', id: string }[]): void;
@@ -631,25 +610,7 @@ export interface DatabaseService {
     updatePostVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     deletePost(id: number): void;
 
-    // Assets
-    getPublicAssets(): any[];
-    getAssetsByArtist(artistId: number): any[];
-    getAllAssets(): any[];
-    getAsset(id: number): any | undefined;
-    getAssetBySlug(slug: string): any | undefined;
-    createAsset(data: any): number;
-    updateAsset(id: number, data: any): void;
-    deleteAsset(id: number): void;
-
-    // Stats
-    getStats(artistId?: number, ownerId?: number): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number; genresCount: number; genres: string[] }>;
-    getPublicTracksCount(): number;
-    getGenres(profile?: VisibilityProfile | ViewerContext): string[];
-    getTracksByGenre(genre: string, profile?: VisibilityProfile | ViewerContext): Track[];
-    getGenreTrackCounts(profile?: VisibilityProfile | ViewerContext): Map<string, number>;
-    getListeningStats(): ListeningStats;
-
-    // ActivityPub Metadata
+    // ActivityPub Metadata Notes
     createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number;
     getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
     getApNote(noteId: string): ApNote | undefined;
@@ -658,7 +619,7 @@ export interface DatabaseService {
     addApInteraction(noteId: string, actorUri: string, type: 'like' | 'announce', activityId?: string): boolean;
     removeApInteraction(noteId: string, actorUri: string, type: 'like' | 'announce'): boolean;
 
-    // Remote Content (Fedify/AP)
+    // Remote Content & Actors (AP/Fedify)
     getRemoteActor(uri: string): RemoteActor | undefined;
     getRemoteActors(): RemoteActor[];
     getFollowedActors(): RemoteActor[];
@@ -669,15 +630,10 @@ export interface DatabaseService {
     saveRemotePost(post: any): void;
     deleteRemotePost(apId: string): void;
     deleteRemoteContent(apId: string): void;
+}
 
-    // Unlock Codes
-    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string, assetId?: number): void;
-    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; assetId?: number; isUsed: boolean };
-    redeemUnlockCode(code: string): void;
-    listUnlockCodes(releaseId?: number): any[];
-    getUnlockCodeByTxHash(txHash: string): any | undefined;
-
-    // Storage
+export interface IntegrationManager {
+    // Storage accounts
     getStorageAccounts(userId?: number): StorageAccount[];
     getStorageAccount(id: number): StorageAccount | undefined;
     getStorageAccountByProvider(userId: number, provider: string): StorageAccount | undefined;
@@ -686,7 +642,7 @@ export interface DatabaseService {
     deleteStorageAccount(id: number): void;
     getPrimaryAdminId(): number | null;
 
-    // Soulseek
+    // Soulseek downloads
     createSoulseekDownload(download: Partial<SoulseekDownload>): number;
     updateSoulseekDownloadProgress(id: number, progress: number, status?: string, filePath?: string): void;
     getSoulseekDownloads(userId?: number): SoulseekDownload[];
@@ -696,7 +652,7 @@ export interface DatabaseService {
     clearFailedSoulseekDownloads(userId: number): void;
     deleteSoulseekDownload(id: number): void;
 
-    // Torrent
+    // Torrent downloads
     getTorrents(): Torrent[];
     getTorrent(hash: string): Torrent | undefined;
     getTorrentsStatus(): any[];
@@ -705,27 +661,36 @@ export interface DatabaseService {
     updateTorrentStatus(infoHash: string, status: Torrent['status']): void;
     deleteTorrent(hash: string): void;
 
+    // Unlock Codes
+    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string, assetId?: number): void;
+    validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; assetId?: number; isUsed: boolean };
+    redeemUnlockCode(code: string): void;
+    listUnlockCodes(releaseId?: number): any[];
+    getUnlockCodeByTxHash(txHash: string): any | undefined;
+
+    // Assets
+    getPublicAssets(): any[];
+    getAssetsByArtist(artistId: number): any[];
+    getAllAssets(): any[];
+    getAsset(id: number): any | undefined;
+    getAssetBySlug(slug: string): any | undefined;
+    createAsset(data: any): number;
+    updateAsset(id: number, data: any): void;
+    deleteAsset(id: number): void;
+
     // Gun Cache
     getGunCache(key: string): GunCacheEntry | undefined;
     setGunCache(key: string, value: string, type: string, ttl: number): void;
     clearExpiredGunCache(): void;
-
-    // Settings
-    getSetting(key: string): string | undefined;
-    setSetting(key: string, value: string): void;
-    getAllSettings(): { [key: string]: string };
-
-    // Plugins
-    getPluginState(id: string): { enabled: boolean; config: string | null } | undefined;
-    setPluginEnabled(id: string, enabled: boolean): void;
-    setPluginConfig(id: string, config: string): void;
-    getAllPluginsState(): any[];
-
-    // Search
-    search(query: string, profile?: VisibilityProfile | ViewerContext): { artists: Artist[]; albums: Album[]; tracks: Track[] };
-
-    // Maintenance
-    getTracksMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' | 'external'): Track[];
-    getAlbumsMissingMetadata(filter: 'genre' | 'year' | 'cover' | 'description' | 'artist'): Album[];
-    getArtistsMissingMetadata(filter: 'photo'): Artist[];
 }
+
+export interface DatabaseService extends IdentityManager, LibraryManager, SocialManager, IntegrationManager {
+    db: DatabaseType;
+    identity: IdentityManager;
+    library: LibraryManager;
+    social: SocialManager;
+    integration: IntegrationManager;
+    transaction<T>(fn: () => T): T;
+
+}
+

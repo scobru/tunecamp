@@ -45,14 +45,22 @@ function getUserIdFromRequest(req: express.Request, jwtSecret: string): number |
     }
 }
 
-export function createPaymentsRoutes(database: DatabaseService, musicDir: string, config: ServerConfig): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createPaymentsRoutes(container: ServiceContainer): Router {
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const config: ServiceContainer['config'] = (container as any).config || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
 
     // 1. Stripe Webhook (needs raw body, NO JSON PARSER)
     // This route MUST be mounted before the global express.json() in server.ts
     router.post("/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
-        const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
-        const wSecret = database.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
+        const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
+        const wSecret = identity.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
 
         if (!sKey || !wSecret) {
             return res.status(501).json({ error: "Stripe not configured" });
@@ -75,7 +83,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 if (metadata.type === 'subscription' && metadata.userId) {
                     const userId = parseInt(metadata.userId, 10);
                     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-                    database.updateSubscription(userId, 'active', expiresAt);
+                    identity.updateSubscription(userId, 'active', expiresAt);
                     console.log(`✅ Stripe Subscription Success: User ${userId} is now active until ${expiresAt}`);
                 } else if (metadata.itemId && metadata.type) {
                     const itemId = parseInt(metadata.itemId, 10);
@@ -90,7 +98,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                         if (metadata.albumId) {
                             releaseId = parseInt(metadata.albumId, 10);
                         } else {
-                            const track = database.getTrack(itemId);
+                            const track = library.getTrack(itemId);
                             releaseId = track?.album_id || undefined;
                         }
                         trackId = itemId;
@@ -101,7 +109,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                     }
 
                     if (releaseId || trackId || assetId) {
-                        database.createUnlockCode(code, releaseId, trackId, undefined, assetId);
+                        integration.createUnlockCode(code, releaseId, trackId, undefined, assetId);
                         console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
                     }
                 }
@@ -119,7 +127,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
      * Check if direct payments are configured. Onramp is permanently disabled.
      */
     router.get("/onramp-config", (req, res) => {
-        const hasStripeCheckout = !!(database.getSetting("stripe_secret_key") || config.stripeSecretKey);
+        const hasStripeCheckout = !!(identity.getSetting("stripe_secret_key") || config.stripeSecretKey);
         res.json({
             configured: false,
             stripeCheckout: hasStripeCheckout
@@ -138,7 +146,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(400).json({ error: "Missing required fields: itemId, type, successUrl, and cancelUrl are required." });
             }
 
-            const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
+            const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
             if (!sKey) {
                 return res.status(501).json({ error: "Stripe not configured on this server." });
             }
@@ -149,11 +157,11 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             let amount = 0;
             if (type === 'track') {
                 const trackId = parseInt(itemId, 10);
-                let trackData: any = database.getTrack(trackId);
+                let trackData: any = library.getTrack(trackId);
 
                 // If albumId is provided, try to get price from release_tracks first
                 if (albumId) {
-                    const releaseTrack = database.getTrackPriceFromRelease(parseInt(albumId, 10), trackId);
+                    const releaseTrack = library.getTrackPriceFromRelease(parseInt(albumId, 10), trackId);
                     if (releaseTrack) {
                         console.log(`[Stripe Debug] Using price from release_tracks for track ${trackId} in album ${albumId}`);
                         trackData = {
@@ -184,7 +192,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                     }
                 }
             } else if (type === 'asset') {
-                const asset = database.getAsset(parseInt(itemId, 10));
+                const asset = integration.getAsset(parseInt(itemId, 10));
                 if (!asset) return res.status(404).json({ error: `Asset ${itemId} not found` });
                 name = asset.title;
                 if (asset.currency === 'USDC' || asset.currency === 'USD') {
@@ -197,7 +205,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                     }
                 }
             } else {
-                const album = database.getAlbum(parseInt(itemId, 10));                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
+                const album = library.getAlbum(parseInt(itemId, 10));                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
                 if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
 
@@ -263,7 +271,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(401).json({ error: "Authentication required to purchase subscription" });
             }
 
-            const sKey = database.getSetting("stripe_secret_key") || config.stripeSecretKey;
+            const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
             if (!sKey) {
                 return res.status(501).json({ error: "Stripe not configured on this server." });
             }
@@ -317,7 +325,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             }
 
             // Replay attack protection
-            const existingCode = database.getUnlockCodeByTxHash(txHash);
+            const existingCode = integration.getUnlockCodeByTxHash(txHash);
             if (existingCode) {
                 console.warn(`[Verify Subscription] Replay attempt detected for txHash: ${txHash}`);
                 return res.status(400).json({ error: "This transaction hash has already been used." });
@@ -337,7 +345,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 return res.status(400).json({ error: "Transaction failed on chain" });
             }
 
-            const adminTreasury = database.getSetting("adminTreasuryAddress") || process.env.TUNECAMP_OWNER_ADDRESS;
+            const adminTreasury = identity.getSetting("adminTreasuryAddress") || process.env.TUNECAMP_OWNER_ADDRESS;
             if (!adminTreasury) {
                 return res.status(501).json({ error: "Treasury address not configured on this server." });
             }
@@ -391,10 +399,10 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             if (success) {
                 // Generate and record unlock code to block replay attacks
                 const code = "SUB-" + Math.random().toString(36).substring(2, 12).toUpperCase();
-                database.createUnlockCode(code, undefined, undefined, txHash);
+                integration.createUnlockCode(code, undefined, undefined, txHash);
 
                 const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-                database.updateSubscription(userId, 'active', expiresAt);
+                identity.updateSubscription(userId, 'active', expiresAt);
                 console.log(`✅ Verified Crypto Subscription payment of ${paidAmountDesc} for User ${userId}. Expires: ${expiresAt}`);
 
                 return res.json({
@@ -425,7 +433,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             }
 
             // --- REPLAY ATTACK PROTECTION ---
-            const existingCode = database.getUnlockCodeByTxHash(txHash);
+            const existingCode = integration.getUnlockCodeByTxHash(txHash);
             if (existingCode) {
                 console.warn(`[Verify] Replay attempt detected for txHash: ${txHash}`);
                 return res.status(400).json({ error: "This transaction hash has already been used to unlock content." });
@@ -447,15 +455,15 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             }
 
             // 2. Fetch track metadata
-            const track = database.getTrack(parseInt(trackId, 10));
+            const track = library.getTrack(parseInt(trackId, 10));
             if (!track) {
                 return res.status(404).json({ error: "Track not found" });
             }
 
-            const web3CheckoutAddr = database.getSetting("web3_checkout_address");
+            const web3CheckoutAddr = identity.getSetting("web3_checkout_address");
             const artistWallet = (track as any).walletAddress || process.env.TUNECAMP_OWNER_ADDRESS;
-            const adminFeePct = Number(database.getSetting("adminFeePercentage") || 0);
-            const adminTreasury = database.getSetting("adminTreasuryAddress");
+            const adminFeePct = Number(identity.getSetting("adminFeePercentage") || 0);
+            const adminTreasury = identity.getSetting("adminTreasuryAddress");
 
             let verificationResult = { success: false, method: "", error: "" };
 
@@ -593,7 +601,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             const albumId = track.album_id;
             
             // Check if this was an album purchase or track purchase
-            database.createUnlockCode(code, albumId || undefined, tid, txHash);
+            integration.createUnlockCode(code, albumId || undefined, tid, txHash);
                 console.log(`✅ Verified ${verificationResult.method} payment for track ${trackId}. Code: ${code}`);
 
             return res.json({
@@ -645,7 +653,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             // 1. Check for Active Subscription
             const userId = getUserIdFromRequest(req, config.jwtSecret);
             if (userId !== null) {
-                const sub = database.getUserSubscription(userId);
+                const sub = identity.getUserSubscription(userId);
                 if (sub && sub.status === 'active') {
                     const isNotExpired = !sub.expiresAt || new Date(sub.expiresAt) > new Date();
                     if (isNotExpired) {
@@ -662,13 +670,13 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
                 }
 
                 // Validate unlock code
-                const validation = database.validateUnlockCode(code);
+                const validation = integration.validateUnlockCode(code);
                 if (!validation.valid) {
                     return res.status(403).json({ error: "Invalid or expired unlock code" });
                 }
 
                 // Get track
-                const track = database.getTrack(trackId);
+                const track = library.getTrack(trackId);
                 if (!track) {
                     return res.status(404).json({ error: "Track not found" });
                 }
@@ -685,7 +693,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             }
 
             // If we bypassed code check, we still need to fetch track and verify it exists
-            const track = database.getTrack(trackId);
+            const track = library.getTrack(trackId);
             if (!track) {
                 return res.status(404).json({ error: "Track not found" });
             }
@@ -719,7 +727,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             const assetId = parseInt(req.params.id as string, 10);
             const code = req.query.code as string;
 
-            const asset = database.getAsset(assetId);
+            const asset = integration.getAsset(assetId);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
             if (!asset.file_path) return res.status(400).json({ error: "Asset has no downloadable file" });
 
@@ -734,7 +742,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             if (!isUnlocked) {
                 const userId = getUserIdFromRequest(req, config.jwtSecret);
                 if (userId !== null) {
-                    const sub = database.getUserSubscription(userId);
+                    const sub = identity.getUserSubscription(userId);
                     if (sub && sub.status === 'active' && (!sub.expiresAt || new Date(sub.expiresAt) > new Date())) {
                         isUnlocked = true;
                     }
@@ -744,7 +752,7 @@ export function createPaymentsRoutes(database: DatabaseService, musicDir: string
             // Unlock code
             if (!isUnlocked) {
                 if (!code) return res.status(400).json({ error: "Unlock code or active subscription required" });
-                const validation = database.validateUnlockCode(code);
+                const validation = integration.validateUnlockCode(code);
                 if (!validation.valid || validation.assetId !== assetId) {
                     return res.status(403).json({ error: "Invalid unlock code for this asset" });
                 }

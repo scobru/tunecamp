@@ -4,19 +4,19 @@ import { createAuthMiddleware, type AuthenticatedRequest } from "../../middlewar
 import { VisibilityGuardian, Capability } from "../../common/visibility.js";
 import { StringUtils } from "../../../utils/stringUtils.js";
 
-export function createUnlockRoutes(database: DatabaseService, authMiddleware: ReturnType<typeof createAuthMiddleware>): Router {
-    const router = Router();
-    router.use(json());
+import type { ServiceContainer } from "../../core/container.js";
 
-    /**
-     * POST /api/unlock/validate
-     * Validate an unlock code
-     */
+export function createUnlockRoutes(container: ServiceContainer): Router {
+    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
+    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const router = Router();
     router.post("/validate", (req, res) => {
         const { code } = req.body;
         if (!code) return res.status(400).json({ error: "Code required" });
 
-        const result = database.validateUnlockCode(code);
+        const result = integration.validateUnlockCode(code);
         if (!result.valid) {
             return res.status(404).json({ valid: false, error: "Invalid code" });
         }
@@ -24,7 +24,7 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
         // Return release info if associated
         let release = null;
         if (result.releaseId) {
-            release = database.getAlbum(result.releaseId);
+            release = library.getAlbum(result.releaseId);
         }
 
         res.json({ valid: true, isUsed: result.isUsed, release });
@@ -38,14 +38,14 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
         const { code } = req.body;
         if (!code) return res.status(400).json({ error: "Code required" });
 
-        const result = database.validateUnlockCode(code);
+        const result = integration.validateUnlockCode(code);
         // Depending on logic, maybe multiple uses are allowed? 
         // For now assuming single use or just tracking usage.
         // User didn't specify strict single-use, but "is_used" implies it.
         // Let's mark it but allow re-download if same session? 
         // For now just allow redeem.
 
-        database.redeemUnlockCode(code);
+        integration.redeemUnlockCode(code);
         res.json({ success: true });
     });
 
@@ -67,13 +67,13 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
             if (!releaseId) {
                 return res.status(400).json({ error: "releaseId required for non-admin users" });
             }
-            const release = database.getRelease(releaseId);
+            const release = library.getRelease(releaseId);
             if (!release || release.owner_id !== req.userId) {
                 return res.status(403).json({ error: "Access denied: You don't own this release" });
             }
         }
 
-        const codes = database.listUnlockCodes(releaseId);
+        const codes = integration.listUnlockCodes(releaseId);
         res.json(codes);
     });
 
@@ -93,7 +93,7 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
             if (!releaseId) {
                 return res.status(400).json({ error: "releaseId required for non-admin users" });
             }
-            const release = database.getRelease(releaseId);
+            const release = library.getRelease(releaseId);
             if (!release || release.owner_id !== req.userId) {
                 return res.status(403).json({ error: "Access denied: You don't own this release" });
             }
@@ -105,13 +105,13 @@ export function createUnlockRoutes(database: DatabaseService, authMiddleware: Re
             // Standardized alphanumeric code generation
             const code = StringUtils.generateUnlockCode();
             try {
-                database.createUnlockCode(code, releaseId);
+                integration.createUnlockCode(code, releaseId);
                 created.push(code);
             } catch (e) {
                 // Retry once if collision (rare)
                 const retry = StringUtils.generateUnlockCode();
                 try {
-                    database.createUnlockCode(retry, releaseId);
+                    integration.createUnlockCode(retry, releaseId);
                     created.push(retry);
                 } catch (e2) {
                     console.error("Failed to generate unique code");

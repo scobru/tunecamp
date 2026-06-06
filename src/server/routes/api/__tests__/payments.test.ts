@@ -95,7 +95,11 @@ describe('Payments Routes', () => {
 
         app = express();
         // The stripe raw parser is handled by payments routes itself before router.use(json())
-        app.use('/api/payments', createPaymentsRoutes(mockDatabase, '/tmp/music', mockConfig));
+        app.use('/api/payments', createPaymentsRoutes({
+            database: mockDatabase,
+            musicDir: '/tmp/music',
+            config: mockConfig
+        } as any));
 
         // Get instances from mocks
         mockStripe = new (Stripe as any)();
@@ -118,7 +122,11 @@ describe('Payments Routes', () => {
             mockDatabase.getSetting.mockImplementation(() => null);
             const emptyConfig = { stripeSecretKey: '', stripeWebhookSecret: '' } as any;
             const guestApp = express();
-            guestApp.use('/api/payments', createPaymentsRoutes(mockDatabase, '/tmp/music', emptyConfig));
+            guestApp.use('/api/payments', createPaymentsRoutes({
+                database: mockDatabase,
+                musicDir: '/tmp/music',
+                config: emptyConfig
+            } as any));
 
             const res = await request(guestApp)
                 .post('/api/payments/stripe/webhook')

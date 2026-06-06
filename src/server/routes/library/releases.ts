@@ -30,11 +30,20 @@ interface CreateReleaseBody {
     albumArtist?: string;
 }
 
+import type { ServiceContainer } from "../../core/container.js";
+
 /**
  * Release Routes — Orchestrates the creation and management of formal releases.
  * These are separated from the raw scanned library tracks.
  */
-export function createReleaseRouter(database: DatabaseService, scanner: ScannerService, publishing: PublishingService, auth: AuthService, musicDir: string): Router {
+export function createReleaseRouter(container: ServiceContainer): Router {
+    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
+    const publishing: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
+    const auth: ServiceContainer['authService'] = (container as any).authService || (container as any);
+    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const social: ServiceContainer['social'] = (container as any).social || (container as any);
+    const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
 
@@ -48,11 +57,11 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
             const isAdmin = req.isAdmin || req.isSuperUser;
             if (isAdmin) {
                 // For Admins and Super Users, return ALL formal releases (including drafts/private)
-                releases = database.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                releases = library.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
             } else if (req.userId) {
                 // For logged-in users, merge their owned releases with public ones
-                const ownedFormalReleases = database.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
-                const publicReleases = database.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
+                const ownedFormalReleases = library.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
                 
                 const seenIds = new Set(ownedFormalReleases.map(r => r.id));
                 releases = [...ownedFormalReleases];
@@ -64,7 +73,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
                 }
             } else {
                 // For anonymous users, only show public formal releases
-                releases = database.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
+                releases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
             }
 
             res.json(releases);
@@ -90,10 +99,10 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
         const checkOwnerId = req.userId || null;
         if (checkArtistId || checkOwnerId) {
             let recentReleases: any[] = [];
-            if (checkArtistId && typeof database.getReleasesByArtist === 'function') {
-                recentReleases = database.getReleasesByArtist(checkArtistId, VisibilityProfile.ALL_ACCESS);
-            } else if (checkOwnerId && typeof database.getReleasesByOwner === 'function') {
-                recentReleases = database.getReleasesByOwner(checkOwnerId, VisibilityProfile.ALL_ACCESS);
+            if (checkArtistId && typeof library.getReleasesByArtist === 'function') {
+                recentReleases = library.getReleasesByArtist(checkArtistId, VisibilityProfile.ALL_ACCESS);
+            } else if (checkOwnerId && typeof library.getReleasesByOwner === 'function') {
+                recentReleases = library.getReleasesByOwner(checkOwnerId, VisibilityProfile.ALL_ACCESS);
             }
 
             const duplicate = recentReleases.find(r => {
@@ -116,7 +125,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
 
         try {
             newReleaseId = database.transaction(() => {
-                const rid = database.createRelease({
+                const rid = library.createRelease({
                     title: body.title,
                     slug: slug,
                     artist_id: body.artist_id || body.artistId || null,
@@ -144,13 +153,13 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
                 });
 
                 if (body.track_ids && body.track_ids.length > 0) {
-                    database.syncReleaseTracks(rid, body.track_ids);
+                    library.syncReleaseTracks(rid, body.track_ids);
                 }
 
                 return rid;
             });
 
-            const createdRelease = database.getRelease(newReleaseId);
+            const createdRelease = library.getRelease(newReleaseId);
             if (createdRelease && createdRelease.visibility === 'public') {
                 await publishing.syncRelease(newReleaseId).catch(e => console.error("Sync failed:", e));
             }
@@ -169,26 +178,26 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
         let release;
 
         if (isNaN(parseInt(idParam))) {
-            release = database.getReleaseBySlug(idParam);
+            release = library.getReleaseBySlug(idParam);
         } else {
-            release = database.getRelease(parseInt(idParam));
+            release = library.getRelease(parseInt(idParam));
         }
 
         if (!release) throw new NotFoundError("Release not found");
 
-        const tracks = database.getReleaseTracks(release.id);
+        const tracks = library.getReleaseTracks(release.id);
         
         const mappedTracks = tracks.map(t => ({
             ...t,
-            starred: req.username ? database.isStarred(req.username, 'track', String(t.id)) : false,
-            rating: req.username ? database.getItemRating(req.username, 'track', String(t.id)) : 0
+            starred: req.username ? social.isStarred(req.username, 'track', String(t.id)) : false,
+            rating: req.username ? social.getItemRating(req.username, 'track', String(t.id)) : 0
         }));
 
         res.json({
             ...release,
             tracks: mappedTracks,
-            starred: req.username ? database.isStarred(req.username, 'album', String(release.id)) : false,
-            rating: req.username ? database.getItemRating(req.username, 'album', String(release.id)) : 0
+            starred: req.username ? social.isStarred(req.username, 'album', String(release.id)) : false,
+            rating: req.username ? social.getItemRating(req.username, 'album', String(release.id)) : 0
         });
     }));
 
@@ -212,17 +221,17 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
 
             let release = null;
             if (isNaN(parseInt(param, 10))) {
-                release = database.getReleaseBySlug(param) || database.getAlbumBySlug(param);
+                release = library.getReleaseBySlug(param) || library.getAlbumBySlug(param);
             } else {
                 const releaseId = parseInt(param, 10);
-                release = database.getRelease(releaseId) || database.getAlbum(releaseId);
+                release = library.getRelease(releaseId) || library.getAlbum(releaseId);
             }
             
             let releaseCoverPath = release?.cover_path;
             
             // Fallback: if the release doesn't have an explicit cover_path, check if any of its tracks has one
             if (release && !releaseCoverPath) {
-                const releaseTracks = (database as any).getReleaseTracks ? database.getReleaseTracks(release.id) : database.getTracksByAlbum(release.id);
+                const releaseTracks = (database as any).getReleaseTracks ? library.getReleaseTracks(release.id) : library.getTracksByAlbum(release.id);
                 const trackWithCover = releaseTracks.find((t: any) => t.external_artwork || t.externalArtwork);
                 if (trackWithCover) {
                     releaseCoverPath = (trackWithCover as any).external_artwork || (trackWithCover as any).externalArtwork;
@@ -256,7 +265,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
         if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
         
         const id = parseInt(req.params.id);
-        const release = database.getRelease(id);
+        const release = library.getRelease(id);
         if (!release) throw new NotFoundError("Release not found");
 
         if (!req.isAdmin && release.owner_id !== req.userId) throw new ForbiddenError("Access denied");
@@ -264,9 +273,9 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
         const body = req.body;
         
         database.transaction(() => {
-            database.updateRelease(id, body);
+            library.updateRelease(id, body);
             if (body.track_ids) {
-                database.syncReleaseTracks(id, body.track_ids);
+                library.syncReleaseTracks(id, body.track_ids);
             }
         });
 
@@ -284,7 +293,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
         if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
 
         const id = parseInt(req.params.id);
-        const release = database.getRelease(id);
+        const release = library.getRelease(id);
         if (!release) throw new NotFoundError("Release not found");
 
         if (!req.isAdmin && release.owner_id !== req.userId) throw new ForbiddenError("Access denied");
@@ -294,7 +303,7 @@ export function createReleaseRouter(database: DatabaseService, scanner: ScannerS
                 await publishing.unpublishReleaseFromAP(release);
             }
             
-            database.deleteRelease(id);
+            library.deleteRelease(id);
             res.json({ success: true, message: "Release deleted" });
         } catch (error) {
             console.error("Error deleting release:", error);

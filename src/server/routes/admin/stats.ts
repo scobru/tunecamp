@@ -5,7 +5,12 @@ import { VisibilityProfile } from "../../common/visibility.js";
 import type { ServerConfig } from "../../core/config.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 
-export function createStatsRoutes(zendbService: ZenDBService, dbService: DatabaseService, config: ServerConfig): Router {
+import type { ServiceContainer } from "../../core/container.js";
+
+export function createStatsRoutes(container: ServiceContainer): Router {
+    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
+    const dbService: ServiceContainer['database'] = (container as any).database || (container as any);
+    const config: ServiceContainer['config'] = (container as any).config || (container as any);
     const router = Router();
 
     /**
