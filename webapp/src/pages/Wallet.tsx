@@ -6,64 +6,42 @@ import {
   Copy,
   Check,
   LogOut,
-  Shield,
-  Eye,
-  EyeOff,
 } from "lucide-react";
-import { ZenAuth } from "../services/zen";
 import clsx from "clsx";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { TokenRole } from "shogun-contracts-sdk";
 
 const Wallet = () => {
   const {
-    wallet,
     address,
     balanceEth,
     balanceUsdc,
-    isWalletReady,
-    isWalletLoading,
-    externalAddress,
-    externalBalanceEth,
-    externalBalanceUsdc,
-    isExternalConnected,
-    useExternalWallet,
-    connectExternalWallet,
-    disconnectExternalWallet,
-    setUseExternalWallet,
-    initWallet,
+    isConnected,
+    isConnecting,
+    connect,
+    disconnect,
+    tryReconnect,
     refreshBalances,
     error,
   } = useWalletStore();
 
-  const [copiedLocal, setCopiedLocal] = useState(false);
-  const [copiedExternal, setCopiedExternal] = useState(false);
-  const [showKeys, setShowKeys] = useState(false);
-  const [copiedPriv, setCopiedPriv] = useState(false);
-  const [copiedSEA, setCopiedSEA] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const activeAddress = useExternalWallet && isExternalConnected ? externalAddress : address;
-  const { ownedNFTs, loading: nftsLoading } = useOwnedNFTs(activeAddress);
+  const { ownedNFTs, loading: nftsLoading } = useOwnedNFTs(address);
+
+  // Silently restore a previously-authorized connection on mount (no popup).
+  useEffect(() => {
+    tryReconnect();
+  }, [tryReconnect]);
 
   useEffect(() => {
-    if (!isWalletReady && !isWalletLoading && !error) {
-      initWallet();
-    }
-  }, [isWalletReady, isWalletLoading, initWallet, error]);
+    if (isConnected) refreshBalances();
+  }, [isConnected, refreshBalances]);
 
-  useEffect(() => {
-    refreshBalances();
-  }, [isExternalConnected]);
-
-  const handleCopy = (text: string, isLocal: boolean) => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    if (isLocal) {
-      setCopiedLocal(true);
-      setTimeout(() => setCopiedLocal(false), 2000);
-    } else {
-      setCopiedExternal(true);
-      setTimeout(() => setCopiedExternal(false), 2000);
-    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatAddr = (addr: string | null) => {
@@ -80,7 +58,7 @@ const Wallet = () => {
         <div>
           <h1 className="text-4xl font-black tracking-tight">Wallet</h1>
           <p className="opacity-60 text-lg">
-            Manage your funds on Base Mainnet
+            Connect your wallet to pay on Base Mainnet
           </p>
         </div>
       </div>
@@ -93,195 +71,88 @@ const Wallet = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Local Wallet Card */}
-        <div
-          className={clsx(
-            "card bg-base-100/50 border shadow-xl transition-all",
-            !useExternalWallet
-              ? "border-primary/50 shadow-primary/10"
-              : "border-base-content/5 opacity-80",
-          )}
-        >
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="card-title text-2xl">TuneCamp Wallet</h2>
-                <span className="text-xs opacity-60">
-                  Auto-generated local wallet
-                </span>
-              </div>
-              <div className="badge badge-primary badge-outline">Local</div>
+      <div className="card bg-base-100/50 border border-secondary/50 shadow-xl shadow-secondary/10 transition-all">
+        <div className="card-body">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="card-title text-2xl">External Wallet</h2>
+              <span className="text-xs opacity-60">
+                Your own browser wallet (e.g. MetaMask)
+              </span>
             </div>
+            <div className="badge badge-secondary badge-outline border-secondary/30">
+              External
+            </div>
+          </div>
 
-            {isWalletLoading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-8 bg-base-content/5 rounded w-1/2"></div>
-                <div className="h-4 bg-base-content/5 rounded w-full"></div>
+          {!isConnected ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center">
+                <ExternalLink size={24} className="text-secondary" />
               </div>
-            ) : !isWalletReady ? (
-              <div className="text-center py-8 opacity-50">
-                Local wallet not ready
+              <p className="text-center opacity-70">
+                Connect your wallet to pay directly. TuneCamp never holds your
+                keys — every transaction is signed by you.
+              </p>
+              <button
+                className="btn btn-secondary mt-2 shadow-lg shadow-secondary/20"
+                onClick={connect}
+                disabled={isConnecting}
+              >
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <div className="text-xs uppercase tracking-wider opacity-50 mb-1">
+                  Balance
+                </div>
+                <div className="text-3xl font-bold font-mono text-secondary flex items-baseline gap-2">
+                  {parseFloat(balanceEth || "0").toFixed(4)}{" "}
+                  <span className="text-base opacity-60">ETH</span>
+                </div>
+                {parseFloat(balanceUsdc || "0") > 0 && (
+                  <div className="text-xl font-bold font-mono text-primary flex items-baseline gap-2 mt-1">
+                    {parseFloat(balanceUsdc || "0").toFixed(2)}{" "}
+                    <span className="text-base opacity-60">USDC</span>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <div className="text-xs uppercase tracking-wider opacity-50 mb-1">
-                    Balance
-                  </div>
-                  <div className="text-3xl font-bold font-mono text-primary flex items-baseline gap-2">
-                    {parseFloat(balanceEth || "0").toFixed(4)}{" "}
-                    <span className="text-base opacity-60">ETH</span>
-                  </div>
-                  {parseFloat(balanceUsdc || "0") > 0 && (
-                    <div className="text-xl font-bold font-mono text-secondary flex items-baseline gap-2 mt-1">
-                      {parseFloat(balanceUsdc || "0").toFixed(2)}{" "}
-                      <span className="text-base opacity-60">USDC</span>
-                    </div>
-                  )}
-                </div>
 
-                <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
-                  <div className="text-xs uppercase tracking-wider opacity-50 mb-2">
-                    Address
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="font-mono text-sm opacity-80">
-                      {formatAddr(address)}
-                    </span>
-                    <button
-                      className="btn btn-sm btn-ghost btn-circle"
-                      onClick={() => handleCopy(address || "", true)}
-                      title="Copy Address"
-                    >
-                      {copiedLocal ? (
-                        <Check size={16} className="text-success" />
-                      ) : (
-                        <Copy size={16} />
-                      )}
-                    </button>
-                  </div>
+              <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
+                <div className="text-xs uppercase tracking-wider opacity-50 mb-2">
+                  Address
                 </div>
-
-                <div className="card-actions mt-4 flex gap-2">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-mono text-sm opacity-80">
+                    {formatAddr(address)}
+                  </span>
                   <button
-                    className={clsx(
-                      "btn flex-1",
-                      !useExternalWallet ? "btn-primary" : "btn-outline",
-                    )}
-                    onClick={() => setUseExternalWallet(false)}
-                    disabled={!useExternalWallet && true}
+                    className="btn btn-sm btn-ghost btn-circle"
+                    onClick={() => handleCopy(address || "")}
+                    title="Copy Address"
                   >
-                    {!useExternalWallet ? "Currently Active" : "Set as Default"}
+                    {copied ? (
+                      <Check size={16} className="text-success" />
+                    ) : (
+                      <Copy size={16} />
+                    )}
                   </button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* External Wallet Card */}
-        <div
-          className={clsx(
-            "card bg-base-100/50 border shadow-xl transition-all",
-            useExternalWallet
-              ? "border-secondary/50 shadow-secondary/10"
-              : "border-base-content/5 opacity-80",
-          )}
-        >
-          <div className="card-body">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="card-title text-2xl">MetaMask</h2>
-                <span className="text-xs opacity-60">
-                  External browser wallet
-                </span>
-              </div>
-              <div className="badge badge-secondary badge-outline border-secondary/30">
-                External
-              </div>
-            </div>
-
-            {!isExternalConnected ? (
-              <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center">
-                  <ExternalLink size={24} className="text-secondary" />
-                </div>
-                <p className="text-center opacity-70">
-                  Connect your external wallet to pay directly from MetaMask.
-                </p>
+              <div className="card-actions flex gap-2 mt-4">
                 <button
-                  className="btn btn-secondary mt-2 shadow-lg shadow-secondary/20"
-                  onClick={connectExternalWallet}
+                  className="btn btn-ghost btn-square text-error hover:bg-error/20"
+                  onClick={disconnect}
+                  title="Disconnect"
                 >
-                  Connect MetaMask
+                  <LogOut size={20} />
                 </button>
               </div>
-            ) : (
-              <div className="space-y-6">
-                <div>
-                  <div className="text-xs uppercase tracking-wider opacity-50 mb-1">
-                    Balance
-                  </div>
-                  <div className="text-3xl font-bold font-mono text-secondary flex items-baseline gap-2">
-                    {parseFloat(externalBalanceEth || "0").toFixed(4)}{" "}
-                    <span className="text-base opacity-60">ETH</span>
-                  </div>
-                  {parseFloat(externalBalanceUsdc || "0") > 0 && (
-                    <div className="text-xl font-bold font-mono text-primary flex items-baseline gap-2 mt-1">
-                      {parseFloat(externalBalanceUsdc || "0").toFixed(2)}{" "}
-                      <span className="text-base opacity-60">USDC</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
-                  <div className="text-xs uppercase tracking-wider opacity-50 mb-2">
-                    Address
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="font-mono text-sm opacity-80">
-                      {formatAddr(externalAddress)}
-                    </span>
-                    <button
-                      className="btn btn-sm btn-ghost btn-circle"
-                      onClick={() => handleCopy(externalAddress || "", false)}
-                      title="Copy Address"
-                    >
-                      {copiedExternal ? (
-                        <Check size={16} className="text-success" />
-                      ) : (
-                        <Copy size={16} />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="card-actions flex gap-2 mt-4">
-                  <button
-                    className={clsx(
-                      "btn flex-1",
-                      useExternalWallet ? "btn-secondary" : "btn-outline",
-                    )}
-                    onClick={() => setUseExternalWallet(true)}
-                    disabled={useExternalWallet}
-                  >
-                    {useExternalWallet ? "Currently Active" : "Set as Default"}
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-square text-error hover:bg-error/20"
-                    onClick={() => {
-                      disconnectExternalWallet();
-                      setUseExternalWallet(false);
-                    }}
-                    title="Disconnect"
-                  >
-                    <LogOut size={20} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -292,7 +163,7 @@ const Wallet = () => {
           </div>
           <h3 className="text-xl font-bold">My TuneCamp NFTs</h3>
         </div>
-        
+
         {nftsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
             {[1, 2, 3, 4].map(i => (
@@ -318,7 +189,7 @@ const Wallet = () => {
                              "badge badge-sm font-bold shadow-lg",
                              nft.role === TokenRole.OWNERSHIP ? "badge-secondary" : "badge-primary"
                          )}>
-                             {nft.role === TokenRole.OWNERSHIP ? "Mstr" : "Licn."} 
+                             {nft.role === TokenRole.OWNERSHIP ? "Mstr" : "Licn."}
                              {nft.balance > 1 && ` x${nft.balance}`}
                          </span>
                      </div>
@@ -333,108 +204,13 @@ const Wallet = () => {
         )}
       </div>
 
-      <div className="bg-base-200/50 rounded-2xl p-6 border border-base-content/5 space-y-6">
-        <div>
-          <h3 className="text-xl font-bold mb-2">How it works</h3>
-          <p className="opacity-70 text-sm leading-relaxed max-w-2xl">
-            TuneCamp automatically creates a highly secure local wallet for you
-            using your account credentials, ensuring that your keys never leave
-            your device. You can choose to fund this local wallet for seamless
-            one-click purchases, or connect an external Web3 wallet like
-            MetaMask to retain manual control over each transaction signature.
-          </p>
-        </div>
-
-        <div className="border-t border-base-content/5 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Shield size={20} className="text-primary" />
-              <h3 className="text-xl font-bold">Security & Backup</h3>
-            </div>
-            <button
-              className="btn btn-sm btn-ghost gap-2"
-              onClick={() => setShowKeys(!showKeys)}
-            >
-              {showKeys ? <EyeOff size={16} /> : <Eye size={16} />}
-              {showKeys ? "Hide Sensitive Keys" : "Reveal Sensitive Keys"}
-            </button>
-          </div>
-
-          {showKeys ? (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="alert alert-warning text-xs py-2 bg-warning/10 border-warning/20 text-warning mb-4">
-                <Shield size={14} />
-                <span>
-                  <strong>NEVER SHARE THESE KEYS.</strong> Anyone with your
-                  private key or SEA pair can access your funds and account.
-                </span>
-              </div>
-
-              {/* Ethereum Private Key */}
-              <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
-                <div className="text-xs uppercase tracking-wider opacity-50 mb-2 flex justify-between items-center">
-                  <span>Integrated Wallet Private Key</span>
-                  <span className="text-[10px] opacity-40">
-                    Derived from Zen SEA
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-mono text-xs break-all opacity-80 select-all">
-                    {wallet?.privateKey || "Loading..."}
-                  </span>
-                  <button
-                    className="btn btn-sm btn-ghost btn-circle shrink-0"
-                    onClick={() => {
-                      if (!wallet?.privateKey) return;
-                      navigator.clipboard.writeText(wallet.privateKey);
-                      setCopiedPriv(true);
-                      setTimeout(() => setCopiedPriv(false), 2000);
-                    }}
-                  >
-                    {copiedPriv ? (
-                      <Check size={16} className="text-success" />
-                    ) : (
-                      <Copy size={16} />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Zen SEA Pair */}
-              <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
-                <div className="text-xs uppercase tracking-wider opacity-50 mb-2 flex justify-between items-center">
-                  <span>Zen SEA Pair (Account Export)</span>
-                  <span className="text-[10px] opacity-40">JSON Format</span>
-                </div>
-                <div className="flex items-start justify-between gap-4">
-                  <pre className="font-mono text-[10px] break-all opacity-80 whitespace-pre-wrap flex-1 max-h-32 overflow-y-auto select-all">
-                    {JSON.stringify((ZenAuth.user as any)._?.sea, null, 2)}
-                  </pre>
-                  <button
-                    className="btn btn-sm btn-ghost btn-circle shrink-0"
-                    onClick={() => {
-                      const sea = (ZenAuth.user as any)._?.sea;
-                      if (!sea) return;
-                      navigator.clipboard.writeText(JSON.stringify(sea));
-                      setCopiedSEA(true);
-                      setTimeout(() => setCopiedSEA(false), 2000);
-                    }}
-                  >
-                    {copiedSEA ? (
-                      <Check size={16} className="text-success" />
-                    ) : (
-                      <Copy size={16} />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm opacity-50 italic">
-              Keys are hidden for your security. Click reveal to view or backup.
-            </p>
-          )}
-        </div>
+      <div className="bg-base-200/50 rounded-2xl p-6 border border-base-content/5">
+        <h3 className="text-xl font-bold mb-2">How it works</h3>
+        <p className="opacity-70 text-sm leading-relaxed max-w-2xl">
+          TuneCamp connects to your own Web3 wallet (such as MetaMask) to handle
+          payments on Base Mainnet. Your private keys never leave your wallet,
+          and you confirm and sign every transaction yourself.
+        </p>
       </div>
     </div>
   );

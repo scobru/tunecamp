@@ -12,9 +12,9 @@ export const AdminSettingsPanel = () => {
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const { wallet, externalWallet, useExternalWallet, isExternalConnected, isWalletReady } = useWalletStore();
-  const activeSigner = useExternalWallet ? externalWallet : wallet;
-  const isReady = useExternalWallet ? isExternalConnected : isWalletReady;
+  const { signer, isConnected } = useWalletStore();
+  const activeSigner = signer;
+  const isReady = isConnected;
 
   const [isCheckingOnChain, setIsCheckingOnChain] = useState(false);
   const [hasOnChainInstance, setHasOnChainInstance] = useState(false);

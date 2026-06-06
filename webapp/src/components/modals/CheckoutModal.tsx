@@ -57,11 +57,10 @@ export const CheckoutModal = () => {
   }, []);
 
   const {
-    wallet,
+    signer,
     balanceEth,
-    externalWallet,
-    externalBalanceEth,
-    useExternalWallet,
+    isConnected,
+    connect,
   } = useWalletStore();
 
   useEffect(() => {
@@ -366,7 +365,7 @@ export const CheckoutModal = () => {
     displayPriceEth = String(track.price);
   }
 
-  const activeBalance = useExternalWallet ? externalBalanceEth : balanceEth;
+  const activeBalance = balanceEth;
   
   let currentStablePrice = 0;
   if (paymentMethod === "USDC") {
@@ -381,8 +380,8 @@ export const CheckoutModal = () => {
     ? parseFloat(activeBalance || "0") >= parseFloat(displayPriceEth)
     : parseFloat(stableBalance || "0") >= currentStablePrice;
     
-  const activeWalletLabel = useExternalWallet ? "MetaMask" : "Local Wallet";
-  const activeSigner = useExternalWallet ? externalWallet : wallet;
+  const activeWalletLabel = "your wallet";
+  const activeSigner = signer;
 
   const showUsdc = Number(track.priceUsdc || track.price_usdc || 0) > 0 || (track.currency === "USD" && track.price);
 
@@ -533,7 +532,7 @@ export const CheckoutModal = () => {
                 </div>
               )}
 
-              {!hasEnoughBalance && !txHash && paymentMethod === "ETH" && (
+              {isConnected && !hasEnoughBalance && !txHash && paymentMethod === "ETH" && (
                 <div className="w-full mb-4">
                   <p className="text-error text-sm p-3 bg-error/5 rounded-xl border border-error/10 text-left">
                     Insufficient ETH balance in {activeWalletLabel}. Please fund your wallet to complete the purchase.
@@ -541,7 +540,7 @@ export const CheckoutModal = () => {
                 </div>
               )}
 
-              {!hasEnoughBalance && !txHash && paymentMethod === "USDC" && (
+              {isConnected && !hasEnoughBalance && !txHash && paymentMethod === "USDC" && (
                 <div className="w-full mb-4">
                   <p className="text-error text-sm p-3 bg-error/5 rounded-xl border border-error/10 text-left">
                     Insufficient {paymentMethod} balance in {activeWalletLabel}. You have {stableBalance} {paymentMethod}. Please fund your wallet to complete the purchase.
@@ -555,20 +554,31 @@ export const CheckoutModal = () => {
                 </p>
               )}
 
-              <button
-                className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20 mt-4"
-                onClick={handleCryptoCheckout}
-                disabled={isProcessing || !hasEnoughBalance}
-              >
-                {isProcessing ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <>
-                    <Wallet size={20} />
-                    {hasEnoughBalance ? "Unlock Track" : "Insufficient Balance"}
-                  </>
-                )}
-              </button>
+              {!isConnected ? (
+                <button
+                  className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20 mt-4"
+                  onClick={connect}
+                  disabled={isProcessing}
+                >
+                  <Wallet size={20} />
+                  Connect Wallet
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20 mt-4"
+                  onClick={handleCryptoCheckout}
+                  disabled={isProcessing || !hasEnoughBalance}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Wallet size={20} />
+                      {hasEnoughBalance ? "Unlock Track" : "Insufficient Balance"}
+                    </>
+                  )}
+                </button>
+              )}
 
               <button
                 className="btn btn-ghost btn-block rounded-xl mt-2"

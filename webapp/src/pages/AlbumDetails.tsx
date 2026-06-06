@@ -27,8 +27,8 @@ const AlbumDetails = () => {
   const { cacheBuster } = useConfigStore();
   const { isAdminAuthenticated: isAdmin, isAuthenticated, user } = useAuthStore();
   const { isPurchased, verifyAndGetCode } = usePurchases();
-  const { address, externalAddress, useExternalWallet, isExternalConnected } = useWalletStore();
-  const activeAddress = useExternalWallet && isExternalConnected ? externalAddress : address;
+  const { address } = useWalletStore();
+  const activeAddress = address;
   const { ownedNFTs } = useOwnedNFTs(activeAddress);
   const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
