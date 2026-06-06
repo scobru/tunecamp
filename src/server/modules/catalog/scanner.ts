@@ -641,7 +641,7 @@ export class Scanner implements ScannerService {
         for (let i = 0; i < audioFiles.length; i += 50) {
             const batch = audioFiles.slice(i, i + 50);
             for (const file of batch) {
-                const result = await this.processAudioFile(file, dir);
+                const result = await this.processAudioFile(file, dir, undefined, this.primaryAdminId || undefined);
                 if (result) {
                     if (result.success) successful.push(result); else failed.push(result);
                     if (result.queuedConversion && ['.wav', '.flac'].includes(path.extname(file).toLowerCase())) {
@@ -797,7 +797,7 @@ export class Scanner implements ScannerService {
         this.musicDirectory = dir;
         if (this.watcher) this.watcher.close();
         this.watcher = chokidar.watch(dir, { ignored: /(^|[\/\\])\../, persistent: true, ignoreInitial: true });
-        this.watcher.on("add", (f) => { this.processAudioFile(f, dir); });
+        this.watcher.on("add", (f) => { this.processAudioFile(f, dir, undefined, this.primaryAdminId || undefined); });
     }
 
     public stopWatching(): void {
