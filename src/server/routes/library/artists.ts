@@ -250,8 +250,13 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
      */
     router.get("/:id/cover", (req, res) => {
         try {
-            const id = parseInt(req.params.id);
-            const artist = library.getArtist(id);
+            const param = req.params.id;
+            let artist;
+            if (isNaN(parseInt(param))) {
+                artist = library.getArtistBySlug(param);
+            } else {
+                artist = library.getArtist(parseInt(param));
+            }
             
             let photoPathToUse = artist?.photo_path;
             
@@ -283,17 +288,44 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
                 if (photoPathToUse.startsWith('http')) {
                     return res.redirect(photoPathToUse);
                 }
-                const photoPath = path.join(musicDir, photoPathToUse);
-                if (fs.existsSync(photoPath)) {
+                
+                let photoPath = "";
+                if (photoPathToUse === "/api/settings/logo") {
+                    const assetsDir = path.join(musicDir, "assets");
+                    if (fs.existsSync(assetsDir)) {
+                        const files = fs.readdirSync(assetsDir);
+                        const logoFile = files.find(f => f.startsWith("site-logo."));
+                        if (logoFile) photoPath = path.join(assetsDir, logoFile);
+                    }
+                } else if (photoPathToUse === "/api/settings/cover") {
+                    const assetsDir = path.join(musicDir, "assets");
+                    if (fs.existsSync(assetsDir)) {
+                        const files = fs.readdirSync(assetsDir);
+                        const coverFile = files.find(f => f.startsWith("site-cover."));
+                        if (coverFile) photoPath = path.join(assetsDir, coverFile);
+                    }
+                } else {
+                    photoPath = path.join(musicDir, photoPathToUse);
+                }
+
+                if (photoPath && fs.existsSync(photoPath)) {
                     return res.sendFile(path.resolve(photoPath), { maxAge: 86400000 });
                 }
             }
             
-            // Generate placeholder
-            const svg = getPlaceholderSVG(artist?.name || "Unknown");
-            res.setHeader("Content-Type", "image/svg+xml");
-            res.setHeader("Cache-Control", "public, max-age=3600");
-            res.send(svg);
+            // Fallback to website/tunecamp.jpg (JPEG is supported by Mastodon!)
+            const defaultJpgPath = path.join(process.cwd(), "website", "tunecamp.jpg");
+            if (fs.existsSync(defaultJpgPath)) {
+                res.setHeader("Content-Type", "image/jpeg");
+                res.setHeader("Cache-Control", "public, max-age=86400");
+                return res.sendFile(path.resolve(defaultJpgPath));
+            }
+            
+            // Second fallback: 1x1 transparent PNG
+            const transparentPng = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
+            res.setHeader("Content-Type", "image/png");
+            res.setHeader("Cache-Control", "public, max-age=86400");
+            res.send(transparentPng);
         } catch (e) {
             res.status(500).send("Error loading cover");
         }

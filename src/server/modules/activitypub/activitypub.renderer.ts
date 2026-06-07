@@ -37,11 +37,11 @@ export class ActivityPubRenderer {
                 owner: userUrl,
                 publicKeyPem: artist.public_key
             } : undefined,
-            icon: artist.photo_path ? {
+            icon: {
                 type: "Image",
                 mediaType: "image/jpeg",
-                url: `${this.baseUrl}/api/artists/${artist.slug}/photo`
-            } : undefined,
+                url: `${this.baseUrl}/api/artists/${artist.slug}/cover`
+            },
             alsoKnownAs: also_known_as && also_known_as.length > 0 ? also_known_as : undefined,
             movedTo: moved_to || undefined
         };

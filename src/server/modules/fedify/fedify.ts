@@ -99,8 +99,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             outbox: new URL(`/users/${slug}/outbox`, baseUrl),
             followers: new URL(`/users/${slug}/followers`, baseUrl),
             following: new URL(`/users/${slug}/following`, baseUrl),
-            icon: new Image({ url: new URL(handle !== "site" ? `/api/artists/${slug}/cover` : `/vite.svg`, baseUrl) }),
-            image: new Image({ url: new URL(handle !== "site" ? `/api/artists/${slug}/cover` : `/vite.svg`, baseUrl) }),
+            icon: new Image({ url: new URL(`/api/artists/${slug}/cover`, baseUrl) }),
+            image: new Image({ url: new URL(`/api/artists/${slug}/cover`, baseUrl) }),
             url: new URL(handle === "site" ? "/" : `/@${slug}`, baseUrl),
             endpoints: new Endpoints({
                 sharedInbox: new URL("/inbox", baseUrl)
@@ -400,6 +400,37 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             });
         })
         .on(Announce, async (ctx, announce) => {
+            try {
+                const objectUri = announce.objectId?.toString();
+                if (objectUri) {
+                    const note = dbService.getApNote(objectUri);
+                    if (note) {
+                        const docLoader = await getAuthenticatedLoader(ctx, "site");
+                        const actor = await announce.getActor({ documentLoader: docLoader }).catch(() => null) || await announce.getActor(ctx).catch(() => null);
+                        const actorUri = actor?.id?.toString();
+                        if (actorUri) {
+                            dbService.addApInteraction(objectUri, actorUri, 'announce', announce.id?.toString());
+                            console.log(`🔁 Boost received from ${actorUri} for note ${objectUri}`);
+                            
+                            // Upsert remote actor
+                            dbService.upsertRemoteActor({
+                                uri: actorUri,
+                                type: actor instanceof Person ? 'Person' : 'Service',
+                                username: actor.preferredUsername?.toString() || null,
+                                name: actor.name?.toString() || null,
+                                summary: (actor as any).summary?.toString() || null,
+                                icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
+                                inbox_url: actor.inboxId?.toString() || null,
+                                outbox_url: actor.outboxId?.toString() || null,
+                            });
+                        }
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("❌ Error processing Announce boost:", e);
+            }
+
             // This is where "Discovery" happens via Relay or Federating Instances
             try {
                 const docLoader = await getAuthenticatedLoader(ctx, "site");
@@ -500,6 +531,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             const actorUri = actor.id.toString();
 
             dbService.addLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
+            dbService.addApInteraction(objectUri, actorUri, 'like', like.id?.toString());
             console.log(`❤️ Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
 
             // Upsert remote actor
@@ -563,7 +595,23 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (!actorUri) return;
 
                 dbService.removeLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
+                dbService.removeApInteraction(objectUri, actorUri, 'like');
                 console.log(`💔 Undo Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+            } else if (object instanceof Announce) {
+                const announce = object;
+                const objectUri = announce.objectId?.toString();
+                if (!objectUri) return;
+
+                const note = dbService.getApNote(objectUri);
+                if (!note) return;
+
+                const docLoaderAnnounce = await getAuthenticatedLoader(ctx, "site");
+                const actor = await undo.getActor({ documentLoader: docLoaderAnnounce }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
+                const actorUri = actor?.id?.toString();
+                if (!actorUri) return;
+
+                dbService.removeApInteraction(objectUri, actorUri, 'announce');
+                console.log(`💔 Undo Announce received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
             }
         })
         .on(Move, async (ctx, move) => {
