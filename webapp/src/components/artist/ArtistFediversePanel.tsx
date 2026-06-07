@@ -2,12 +2,14 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
     RefreshCw, Trash2, MessageSquare, Disc, AlertTriangle, Users,
-    Globe, Eye, Lock, Send, Heart, Repeat, MessageCircle, ExternalLink, Copy, Check, Music
+    Globe, Eye, Lock, Send, Heart, Repeat, MessageCircle, ExternalLink, Copy, Check, Music,
+    Edit
 } from 'lucide-react';
 import API from '../../services/api';
 import { useAuthStore } from '../../stores/useAuthStore';
 import type { Artist, Post } from '../../types';
 import { renderMarkdown } from '../../utils/markdown';
+import { CreatePostModal } from '../modals/CreatePostModal';
 
 interface ApNote {
     id: number;
@@ -161,6 +163,19 @@ export const ArtistFediversePanel = () => {
         } finally {
             setProcessingId(null);
         }
+    };
+
+    const handleEditPost = (note: any) => {
+        const postToEdit = {
+            id: note.content_id,
+            content: note.postContent,
+            title: note.postTitle,
+            summary: note.postSummary,
+            visibility: note.visibility,
+            artistId: note.artist_id
+        };
+        const event = new CustomEvent('open-create-post-modal', { detail: postToEdit });
+        document.dispatchEvent(event);
     };
 
     const handleCreatePost = async (e: React.FormEvent) => {
@@ -842,19 +857,34 @@ export const ArtistFediversePanel = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Delete button (with processing check) */}
-                                                    <button
-                                                        className="btn btn-square btn-ghost btn-sm text-error/60 hover:text-error hover:bg-error/10 rounded-full"
-                                                        onClick={() => handleDelete(note)}
-                                                        disabled={!!processingId}
-                                                        title="Delete Activity"
-                                                    >
-                                                        {processingId === note.id ? (
-                                                            <span className="loading loading-spinner loading-xs" />
-                                                        ) : (
-                                                            <Trash2 size={15} />
+                                                    <div className="flex gap-1">
+                                                        {/* Edit button (only for posts, not releases) */}
+                                                        {note.note_type === 'post' && (
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-square btn-ghost btn-sm text-base-content/60 hover:text-primary hover:bg-primary/10 rounded-full"
+                                                                onClick={() => handleEditPost(note)}
+                                                                disabled={!!processingId}
+                                                                title="Edit Activity"
+                                                            >
+                                                                <Edit size={15} />
+                                                            </button>
                                                         )}
-                                                    </button>
+
+                                                        {/* Delete button (with processing check) */}
+                                                        <button
+                                                            className="btn btn-square btn-ghost btn-sm text-error/60 hover:text-error hover:bg-error/10 rounded-full"
+                                                            onClick={() => handleDelete(note)}
+                                                            disabled={!!processingId}
+                                                            title="Delete Activity"
+                                                        >
+                                                            {processingId === note.id ? (
+                                                                <span className="loading loading-spinner loading-xs" />
+                                                            ) : (
+                                                                <Trash2 size={15} />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {/* Post Content Body */}
@@ -1069,6 +1099,9 @@ export const ArtistFediversePanel = () => {
                     </div>
                 </div>
             </div>
+            <CreatePostModal onPostCreated={() => {
+                if (effectiveArtistId) loadData(effectiveArtistId);
+            }} />
         </div>
     );
 };
