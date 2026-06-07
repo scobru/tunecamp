@@ -33,7 +33,10 @@ app.use(express.json());
 // Auth routes
 app.use('/api/auth', createAuthRoutes({
     authService: mockAuthService,
-    authMiddleware: { requireAdmin: (req: any, res: any, next: any) => next() }
+    authMiddleware: {
+        requireAdmin: (req: any, res: any, next: any) => next(),
+        requireUser: (req: any, res: any, next: any) => next()
+    }
 } as any));
 
 // Admin routes
