@@ -96,7 +96,7 @@ Tunecamp exposes a full **Subsonic API** at `/rest`, compatible with Subsonic AP
 | :------------------- | :----------------------------------- |
 | `getUser.view`       | Get user details and permissions     |
 | `getUsers.view`      | List all users                       |
-| `scrobble.view`      | Record track plays (with GunDB sync) |
+| `scrobble.view`      | Record track plays (local SQLite)    |
 | `getNowPlaying.view` | Currently playing tracks             |
 
 ### Play Queue & Bookmarks

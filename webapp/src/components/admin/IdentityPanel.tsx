@@ -252,6 +252,45 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                       {identity.alias || "N/A"}
                     </div>
                   </div>
+                  <div className="form-control">
+                    <label className="label py-1">
+                      <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                        Active API Session Token (JWT)
+                      </span>
+                    </label>
+                    <div className="relative group">
+                      <div
+                        className={`p-3 pr-24 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["jwt_token"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                      >
+                        {API.getToken() || "No active token found"}
+                      </div>
+                      <div className="absolute top-1.5 right-2 flex gap-1">
+                        <button
+                          className="btn btn-xs btn-circle btn-ghost hover:bg-base-300"
+                          onClick={() => {
+                            const tok = API.getToken();
+                            if (tok) navigator.clipboard.writeText(tok);
+                          }}
+                          type="button"
+                          title="Copy Token"
+                        >
+                          <Copy size={12} />
+                        </button>
+                        <button
+                          className="btn btn-xs btn-circle btn-ghost hover:bg-base-300"
+                          onClick={() => togglePrivateKey("jwt_token")}
+                          type="button"
+                          title={showPrivateKeys["jwt_token"] ? "Hide Token" : "Show Token"}
+                        >
+                          {showPrivateKeys["jwt_token"] ? (
+                            <EyeOff size={12} />
+                          ) : (
+                            <Eye size={12} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"

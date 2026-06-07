@@ -10,7 +10,7 @@ The Zen protocol (built on the Zen decentralized graph) is used for features tha
 
 - **Community Registry**: Servers can register themselves in a global decentralized directory.
 - **Music Discovery**: The "Network" page scans Zen peers to discover other Tunecamp instances and their public tracks.
-- **Social Features**: Comments, track play/download stats, and user playlists are stored in Zen.
+- **Social Features**: User playlists are synchronized via Zen. Comments and personal play history are stored locally on the server's SQLite database to improve performance and privacy, while Zen can optionally maintain distributed, aggregate play/download counters.
 - **Identity (SEA)**: Each server and user has a cryptographic keypair (SEA) for signing data, verifying social interactions, and authenticating across instances.
 - **Cross-Instance Roaming**: Users can log in to any sibling instance using their Zen identity. The instance verifies their cryptographic proof and lazily creates a local profile.
 
@@ -89,9 +89,9 @@ Tunecamp exposes a full **Subsonic REST API** at `/rest` (API version 1.16.1), e
 | Hex-encoded | `p=enc:hex`                   | Password hex-encoded    |
 | Token+Salt  | `t=md5(password+salt)&s=salt` | Secure token-based auth |
 
-### Scrobbling & Zen
+### Scrobbling & Stats
 
-When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the play in the local database **and** increments the play count in Zen for public/unlisted releases, enabling decentralized play statistics.
+When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the play in the local SQLite database (`play_history` table). Local scrobbling and playback statistics are stored on the server. Global/decentralized download and play counters can be synchronized over the Zen network in a lightweight manner to avoid CPU overhead.
 
 ---
 

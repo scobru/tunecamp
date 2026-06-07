@@ -67,7 +67,7 @@ TUNECAMP_PUBLIC_URL=https://your-domain.com
 Tunecamp is already configured to trust proxies (via `app.set('trust proxy', true)`), which allows it to correctly identify the original IP of your visitors from the `X-Forwarded-For` header.
 
 ### 3. Zen WebSockets
-If you notice that comments or play stats are not syncing in real-time, double-check that the `Upgrade` and `Connection` headers are correctly set in your `location /` block. These are vital for the Zen peer-to-peer network to function.
+If you notice that peers or signaling are not syncing in real-time, double-check that the `Upgrade` and `Connection` headers are correctly set in your `location /` block. These are vital for the Zen peer-to-peer network to function.
 
 ## CapRover Specific Instructions
 

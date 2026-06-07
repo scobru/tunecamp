@@ -493,7 +493,7 @@ paths:
     get:
       summary: Get Comments
       tags: [Comments]
-      description: Get comments for a track or album from Zen.
+      description: Get comments for a track or album from the local database.
       operationId: getComments
       responses:
         '200':
