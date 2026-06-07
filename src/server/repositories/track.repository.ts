@@ -391,7 +391,7 @@ export class TrackRepository extends BaseRepository {
     }
 
     getCount(): number {
-        const row = this.db.prepare("SELECT COUNT(*) as count FROM tracks").get() as any;
+        const row = this.db.prepare("SELECT COUNT(*) as count FROM tracks WHERE mime_type LIKE 'audio/%' OR mime_type IS NULL").get() as any;
         return row ? row.count : 0;
     }
 

@@ -277,8 +277,9 @@ export class LibrarySync {
 
     const format = metadata?.format || {};
     // Update new multi-asset fields
+    const resolvedMimeType = this.getMimeType(normalizedPath, format.mimeType || existing.mime_type);
     this.database.updateTrack(existing.id, {
-        mime_type: format.mimeType || existing.mime_type,
+        mime_type: resolvedMimeType || existing.mime_type,
         file_size: format.fileSize || existing.file_size,
         file_hash: hash || existing.file_hash,
         version: metadataHints?.version || existing.version
@@ -316,7 +317,7 @@ export class LibrarySync {
         price_usdc: 0,
         currency: 'ETH',
         hash: hash,
-        mime_type: format.mimeType || (ext === '.mp3' ? 'audio/mpeg' : 'application/octet-stream'),
+        mime_type: this.getMimeType(normalizedPath, format.mimeType),
         file_size: format.fileSize || 0,
         file_hash: hash,
         version: metadataHints?.version || null
@@ -338,6 +339,23 @@ export class LibrarySync {
     let relative = path.relative(absoluteMusicDir, absoluteFilePath).replace(/\\/g, "/");
     while (relative.startsWith("../")) relative = relative.substring(3);
     return relative === ".." ? "." : relative;
+  }
+
+  private getMimeType(filePath: string, formatMimeType?: string): string {
+    if (formatMimeType && formatMimeType !== 'application/octet-stream') {
+      return formatMimeType;
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    switch (ext) {
+      case '.mp3': return 'audio/mpeg';
+      case '.wav': return 'audio/wav';
+      case '.flac': return 'audio/flac';
+      case '.ogg': return 'audio/ogg';
+      case '.opus': return 'audio/opus';
+      case '.m4a': return 'audio/mp4';
+      case '.aac': return 'audio/aac';
+      default: return 'application/octet-stream';
+    }
   }
 
   async cleanupEmptyEntities() {

@@ -744,12 +744,11 @@ export class Scanner implements ScannerService {
                 // entries alone (likely genuine alt versions on different albums).
                 if (score(other) >= primaryScore) continue;
 
-                const lossless = other.lossless_path
-                    || (path.extname(other.file_path || '').toLowerCase() === '.wav' ? other.file_path : null);
-                if (lossless && !primary.lossless_path) {
-                    this.database.updateTrackLosslessPath(primary.id, lossless);
+                try {
+                    this.database.mergeTracks(other.id, primary.id);
+                } catch (e) {
+                    console.error(`[Scanner] Soft-merge failed (${other.id} -> ${primary.id}):`, e);
                 }
-                this.database.deleteTrack(other.id);
             }
         }
     }

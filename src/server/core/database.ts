@@ -573,6 +573,28 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating tracks table: adding version column...");
                 db.exec("ALTER TABLE tracks ADD COLUMN version TEXT");
             }
+
+            // Repair incorrect mime_type values for audio files
+            console.log("⚙️ [Database] Repairing incorrect/generic audio mime types...");
+            db.exec(`
+                UPDATE tracks 
+                SET mime_type = CASE 
+                    WHEN file_path LIKE '%.mp3' THEN 'audio/mpeg'
+                    WHEN file_path LIKE '%.wav' THEN 'audio/wav'
+                    WHEN file_path LIKE '%.flac' THEN 'audio/flac'
+                    WHEN file_path LIKE '%.ogg' THEN 'audio/ogg'
+                    WHEN file_path LIKE '%.opus' THEN 'audio/opus'
+                    WHEN file_path LIKE '%.m4a' THEN 'audio/mp4'
+                    WHEN file_path LIKE '%.aac' THEN 'audio/aac'
+                    ELSE 'audio/mpeg'
+                END
+                WHERE (mime_type = 'application/octet-stream' OR mime_type IS NULL) 
+                  AND (
+                    file_path LIKE '%.mp3' OR file_path LIKE '%.wav' OR file_path LIKE '%.flac' OR
+                    file_path LIKE '%.ogg' OR file_path LIKE '%.opus' OR file_path LIKE '%.m4a' OR
+                    file_path LIKE '%.aac'
+                  );
+            `);
         }
 
         const adminExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='admin'").get();
