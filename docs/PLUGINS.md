@@ -4,15 +4,18 @@ TuneCamp uses a modular, provider-based architecture inspired by projects like *
 
 ## Overview
 
-There are 7 main types of providers you can implement:
+There are 8 main types of providers you can implement:
 
 1.  **MetadataProvider**: Adds new sources for track/album information (e.g., MusicBrainz, Discogs).
 2.  **StreamingProvider**: Provides external audio sources (e.g., YouTube, Bandcamp, SoundCloud) used as fallbacks when a local file is missing.
 3.  **DownloadProvider**: Adds new ways to acquire music (e.g., Soulseek, BitTorrent).
 4.  **ScannerProvider**: Adds support for new library sources (e.g., IPFS, S3, remote servers).
 5.  **StorageProvider**: Adds backends for user uploads (e.g., Google Drive, Dropbox).
-6.  **FederationProvider**: Adds new decentralized protocols (e.g., ActivityPub, Nostr, Zen P2P).
-7.  **AIProvider**: Adds support for different LLMs for metadata enrichment (e.g., Ollama, OpenAI).
+6.  **PlaylistProvider**: Imports playlists from external services (e.g., Deezer, YouTube Music).
+7.  **ScrobbleProvider**: Sends listening history to scrobbling services (e.g., Last.fm, ListenBrainz).
+8.  **AIProvider**: Adds support for different LLMs for metadata enrichment (e.g., Ollama, OpenAI).
+
+> **Note:** ActivityPub/Zen federation is handled internally by the platform's core modules and is not exposed as an external plugin type.
 
 ---
 

@@ -55,7 +55,7 @@ docker-compose up -d --build
 
 ### Web3 & Monetization
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
-- 💳 **Fiat Payments**: Optional Stripe and PayPal checkout for non-crypto purchases.
+- 💳 **Fiat Payments**: Optional Stripe checkout for non-crypto purchases. PayPal support is planned but not yet implemented.
 - 🏭 **Factory Contract**: Self-hosters deploy their own NFT + Checkout contract instances via EIP-1167 minimal proxies.
 - 🔑 **Unlock Codes**: Generate and distribute access codes for gated releases.
 - 👛 **Wallet Integration**: Client-side wallet derived from Zen credentials (no private key leaves the browser).
@@ -197,9 +197,9 @@ Configuration is managed via environment variables (or an `.env` file).
 | `STRIPE_SECRET_KEY` | Stripe secret key for fiat checkout | — |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | — |
 | `STRIPE_ONRAMP_SECRET_KEY` | Stripe key for crypto on-ramp (falls back to `STRIPE_SECRET_KEY`) | — |
-| `PAYPAL_CLIENT_ID` | PayPal client ID for fiat checkout | — |
-| `PAYPAL_CLIENT_SECRET` | PayPal client secret | — |
-| `PAYPAL_ENVIRONMENT` | PayPal environment (`sandbox` / `live`) | `sandbox` |
+| `PAYPAL_CLIENT_ID` | PayPal client ID for fiat checkout *(not yet implemented)* | — |
+| `PAYPAL_CLIENT_SECRET` | PayPal client secret *(not yet implemented)* | — |
+| `PAYPAL_ENVIRONMENT` | PayPal environment (`sandbox` / `live`) *(not yet implemented)* | `sandbox` |
 
 **Frontend build (Vite — `VITE_*`)**
 
@@ -220,7 +220,7 @@ Tunecamp exposes a full Subsonic API (version 1.16.1) at `/rest`. This allows yo
 
 > **Roaming Users**: To use Subsonic on a new instance, first log in via the web interface to trigger lazy account creation.
 
-See the [Subsonic API Reference →](./docs/subsonic.md)
+See the [Subsonic API Reference →](./docs/SUBSONIC.md)
 
 ### REST API
 
@@ -232,7 +232,7 @@ See the [OpenAPI Reference →](./docs/openapi.yml)
 
 For production deployments, using Nginx as a reverse proxy is recommended for SSL and WebSocket support.
 
-See the [Nginx Configuration Guide →](./docs/nginx.md)
+See the [Nginx Configuration Guide →](./docs/NGINX.md)
 
 ### Federation & Network Architecture
 
