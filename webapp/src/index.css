@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap");
+@plugin "@tailwindcss/typography";
 @plugin "daisyui";
 
 @plugin "daisyui/theme" {

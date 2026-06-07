@@ -50,7 +50,7 @@ const Wallet = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-20 p-6 md:p-0">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-24 p-6 md:px-0 md:pt-0 md:pb-16">
       <div className="flex items-center gap-4 border-b border-base-content/5 pb-6">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
           <WalletIcon size={32} className="text-white" />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { 
     RefreshCw, Trash2, MessageSquare, Disc, AlertTriangle, Users,
     Globe, Eye, Lock, Send, Heart, Repeat, MessageCircle, ExternalLink, Copy, Check, Music
@@ -868,9 +869,9 @@ export const ArtistFediversePanel = () => {
                                                                     </span>
                                                                 </div>
                                                                 <h4 className="text-xl font-serif font-black text-prominent hover:text-primary transition-colors leading-snug">
-                                                                    <a href={`#/post/${note.content_slug}`} className="hover:underline">
+                                                                    <Link to={`/post/${note.content_slug}`} className="hover:underline">
                                                                         {note.postTitle}
-                                                                    </a>
+                                                                    </Link>
                                                                 </h4>
                                                                 {note.postSummary && (
                                                                     <p className="text-sm italic opacity-75 border-l-2 border-primary/40 pl-3 font-serif py-0.5 leading-relaxed">
@@ -882,13 +883,13 @@ export const ArtistFediversePanel = () => {
                                                                     dangerouslySetInnerHTML={{ __html: renderMarkdown(note.postContent) }}
                                                                 />
                                                                 <div className="pt-2">
-                                                                    <a 
-                                                                        href={`#/post/${note.content_slug}`}
+                                                                    <Link 
+                                                                        to={`/post/${note.content_slug}`}
                                                                         className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary-hover font-bold hover:underline"
                                                                     >
                                                                         <span>Read Full Article</span>
                                                                         <ExternalLink size={12} />
-                                                                    </a>
+                                                                    </Link>
                                                                 </div>
                                                             </div>
                                                         ) : (

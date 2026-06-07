@@ -177,7 +177,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-20 p-6 md:p-0">
+    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-24 p-6 md:px-0 md:pt-0 md:pb-16">
       {/* Profile Header */}
       <div className="flex flex-col md:flex-row items-center gap-8 border-b border-base-content/5 pb-10">
         <div className="relative group">

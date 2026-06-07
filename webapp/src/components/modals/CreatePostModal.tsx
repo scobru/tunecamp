@@ -17,14 +17,30 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [tab, setTab] = useState<'write' | 'preview'>('write');
+    const [editingPostId, setEditingPostId] = useState<number | null>(null);
 
     useEffect(() => {
-        const handleOpen = () => {
+        const handleOpen = (e: Event) => {
+             const customEvent = e as CustomEvent;
+             const postToEdit = customEvent.detail;
+
              loadArtists();
-             setContent('');
-             setTitle('');
-             setSummary('');
-             setVisibility('public');
+             
+             if (postToEdit) {
+                 setEditingPostId(postToEdit.id);
+                 setContent(postToEdit.content || '');
+                 setTitle(postToEdit.title || '');
+                 setSummary(postToEdit.summary || '');
+                 setVisibility(postToEdit.visibility || 'public');
+                 setArtistId(String(postToEdit.artistId || postToEdit.artist_id || ''));
+             } else {
+                 setEditingPostId(null);
+                 setContent('');
+                 setTitle('');
+                 setSummary('');
+                 setVisibility('public');
+             }
+             
              setTab('write');
              setError('');
              dialogRef.current?.showModal();
@@ -58,7 +74,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!artistId) {
+        if (!artistId && !editingPostId) {
             setError('Please select an artist');
             return;
         }
@@ -70,11 +86,15 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         setError('');
 
         try {
-            await API.createPost(Number(artistId), content, visibility, title || undefined, summary || undefined);
+            if (editingPostId) {
+                await API.updatePost(editingPostId, content, visibility, title || undefined, summary || undefined);
+            } else {
+                await API.createPost(Number(artistId), content, visibility, title || undefined, summary || undefined);
+            }
             if (onPostCreated) onPostCreated();
             dialogRef.current?.close();
         } catch (e: any) {
-             setError(e.message || 'Failed to create post');
+             setError(e.message || (editingPostId ? 'Failed to update post' : 'Failed to create post'));
         } finally {
             setLoading(false);
         }
@@ -98,7 +118,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                 </form>
                 
                 <h3 className="font-bold text-xl mb-6 flex items-center gap-2 tracking-tight">
-                    <PenTool size={22} className="text-primary"/> Compose New Activity
+                    <PenTool size={22} className="text-primary"/> {editingPostId ? 'Edit Activity / Article' : 'Compose New Activity'}
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -291,7 +311,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                                     ) : (
                                         <>
                                             <Send size={12}/>
-                                            <span>Publish</span>
+                                            <span>{editingPostId ? 'Save Changes' : 'Publish'}</span>
                                         </>
                                     )}
                                 </button>
