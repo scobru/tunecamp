@@ -254,7 +254,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
 
         const baseUrl = apService.getBaseUrl();
         const userUrl = `${baseUrl}/users/${slug}`;
-        const followers = isSite ? [] : db.getFollowers(artist!.id);
+        const followers = db.getFollowers(isSite ? -1 : artist!.id);
 
         res.setHeader("Content-Type", "application/activity+json");
         res.json({

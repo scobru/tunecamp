@@ -1435,7 +1435,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Missing content" });
             }
 
-            // Root admin without an artist association posts as the SITE instance actor (id = -1)
+            // Root admin without an artist association posts as the SITE actor (id = -1)
             const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
             const resolvedArtistId = (artistId !== undefined && artistId !== null) ? parseInt(artistId) : (isSystemAdmin ? -1 : null);
 
@@ -1450,7 +1450,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             // Only root admin can post as the SITE actor
             if (resolvedArtistId === -1 && !isSystemAdmin) {
-                return res.status(403).json({ error: "Only root admin can post as instance actor" });
+                return res.status(403).json({ error: "Only root admin can post as site actor" });
             }
 
             const postId = social.createPost(resolvedArtistId, content, visibility || 'public', title, summary);

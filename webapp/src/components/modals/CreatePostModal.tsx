@@ -127,7 +127,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-bold opacity-40 uppercase tracking-wide">Posting Identity</span>
                                 <span className="font-bold text-base-content mt-0.5">
-                                    {isRootAdminNoArtist ? 'Instance Actor' : (selectedArtist?.name || 'Loading profile...')}
+                                    {isRootAdminNoArtist ? 'Site' : (selectedArtist?.name || 'Loading profile...')}
                                 </span>
                             </div>
                             <span className="badge badge-primary badge-outline badge-sm rounded-full font-bold px-3 py-2">

@@ -19,11 +19,18 @@ describe('Auth Routes', () => {
             createAdmin: (jest.fn() as any).mockResolvedValue({ id: 1 }),
             getUserPair: jest.fn().mockReturnValue(null),
             getUserByUsername: jest.fn(),
+            getUserProfile: jest.fn().mockReturnValue(null),
+            updateUserProfile: jest.fn(),
             getZenAvatar: jest.fn().mockReturnValue(null)
         };
 
         mockAuthMiddleware = {
             requireAdmin: jest.fn().mockImplementation((req: any, res: any, next: any) => {
+                req.username = 'admin';
+                req.role = UserRole.ADMIN;
+                next();
+            }),
+            requireUser: jest.fn().mockImplementation((req: any, res: any, next: any) => {
                 req.username = 'admin';
                 req.role = UserRole.ADMIN;
                 next();

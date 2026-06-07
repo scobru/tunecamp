@@ -328,8 +328,16 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
                 if (!follower) return;
 
-                // For site follow, we just accept it and maybe store it as a peer
-                console.log(`📥 New site follower: ${follower.id?.toString()}`);
+                const followerUri = follower.id?.toString();
+                const followerInbox = follower.inboxId?.toString();
+                const sharedInbox = follower.endpoints?.sharedInbox?.toString();
+
+                console.log(`📥 New site follower: ${followerUri}`);
+
+                if (followerUri && followerInbox) {
+                    dbService.addFollower(-1, followerUri, followerInbox, sharedInbox);
+                    dbService.acceptFollower(-1, followerUri);
+                }
 
                 await ctx.sendActivity(
                     { handle: "site" },
@@ -521,7 +529,11 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (handle === "site") {
                     const docLoaderFollow = await getAuthenticatedLoader(ctx, "site");
                     const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
-                    console.log(`📥 Site unfollowed by: ${unfollower?.id?.toString()}`);
+                    const unfollowerUri = unfollower?.id?.toString();
+                    console.log(`📥 Site unfollowed by: ${unfollowerUri}`);
+                    if (unfollowerUri) {
+                        dbService.removeFollower(-1, unfollowerUri);
+                    }
                     return;
                 }
 

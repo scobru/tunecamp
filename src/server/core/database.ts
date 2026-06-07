@@ -524,8 +524,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📡 [Database] Creating virtual artist record for Site Actor (@site)...");
                 const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
                 const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Instance Actor', 'site', 'public', ?, ?)")
+                db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Site', 'site', 'public', ?, ?)")
                   .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+            } else {
+                db.prepare("UPDATE artists SET name = 'Site' WHERE id = -1 AND name = 'Instance Actor'").run();
             }
         }
 

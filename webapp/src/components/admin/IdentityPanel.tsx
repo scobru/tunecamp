@@ -395,7 +395,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                       </div>
                     </div>
                     <div>
-                      <h3 className="font-bold">Instance Actor (Site)</h3>
+                      <h3 className="font-bold">Site Actor</h3>
                       <p className="text-[10px] opacity-40 font-mono mt-0.5">
                         @site@{window.location.hostname}
                       </p>
