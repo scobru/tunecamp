@@ -408,7 +408,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                         const docLoader = await getAuthenticatedLoader(ctx, "site");
                         const actor = await announce.getActor({ documentLoader: docLoader }).catch(() => null) || await announce.getActor(ctx).catch(() => null);
                         const actorUri = actor?.id?.toString();
-                        if (actorUri) {
+                        if (actor && actorUri) {
                             dbService.addApInteraction(objectUri, actorUri, 'announce', announce.id?.toString());
                             console.log(`🔁 Boost received from ${actorUri} for note ${objectUri}`);
                             
