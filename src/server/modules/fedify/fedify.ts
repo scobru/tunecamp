@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio, Article } from "@fedify/fedify";
+import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio, Article, Move } from "@fedify/fedify";
 import { BetterSqliteKvStore } from "./fedify-kv.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -50,6 +50,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         let icon: URL | undefined;
         let type: 'Person' | 'Service' = 'Person';
         let slug = handle;
+        let alsoKnownAs: string[] | null = null;
+        let movedTo: string | null = null;
 
         if (handle === "site") {
             name = dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance";
@@ -64,6 +66,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             summary = artist.bio || "";
             publicKey = artist.public_key || null;
             slug = artist.slug;
+            alsoKnownAs = artist.also_known_as || null;
+            movedTo = artist.moved_to || null;
         }
 
         const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl;
@@ -105,7 +109,9 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 id: new URL(`/users/${slug}#main-key`, baseUrl),
                 owner: new URL(`/users/${slug}`, baseUrl),
                 publicKey: cryptoKey
-            }) : undefined
+            }) : undefined,
+            aliases: alsoKnownAs && alsoKnownAs.length > 0 ? alsoKnownAs.map(uri => new URL(uri)) : undefined,
+            successor: movedTo ? new URL(movedTo) : undefined
         };
 
         return type === 'Service' ? new Service(actorOptions) : new Person(actorOptions);
@@ -546,6 +552,71 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
                 dbService.removeLike(actorUri, note.note_type as 'album' | 'track' | 'post', note.content_id);
                 console.log(`💔 Undo Like received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
+            }
+        })
+        .on(Move, async (ctx, move) => {
+            try {
+                const oldActorUri = move.actorId?.toString();
+                const newActorUri = move.targetId?.toString();
+
+                if (!oldActorUri || !newActorUri) {
+                    console.warn("⚠️ Received Move activity without actor or target ID.");
+                    return;
+                }
+
+                console.log(`📥 Received Move activity via Fedify: ${oldActorUri} is moving to ${newActorUri}`);
+
+                // 1. Fetch the target actor (new profile) to verify the backlink (alsoKnownAs/aliases)
+                const documentLoader = await getAuthenticatedLoader(ctx, "site");
+                const newActor = await move.getTarget({ documentLoader }).catch(() => null);
+
+                if (!newActor || !(newActor instanceof Person || newActor instanceof Service)) {
+                    console.warn(`⚠️ Move verification failed: target ${newActorUri} is not a valid Actor or could not be loaded.`);
+                    return;
+                }
+
+                // 2. Read aliases from the new actor
+                const aliases: string[] = [];
+                for await (const alias of newActor.getAliases({ documentLoader })) {
+                    if (alias.id) {
+                        aliases.push(alias.id.toString());
+                    }
+                }
+
+                if (!aliases.includes(oldActorUri)) {
+                    console.warn(`⚠️ Move verification failed: new actor ${newActorUri} does not list old actor ${oldActorUri} in its alsoKnownAs (aliases found: ${JSON.stringify(aliases)}).`);
+                    return;
+                }
+
+                // 3. Validation passed! Update local followers database
+                const newInbox = newActor.inboxId?.toString();
+                const newSharedInbox = newActor.endpoints?.sharedInbox?.toString();
+                if (!newInbox) {
+                    console.warn(`⚠️ Move warning: new actor ${newActorUri} doesn't expose an inboxId. Cannot update followers inbox.`);
+                    return;
+                }
+
+                dbService.updateFollowerUri(oldActorUri, newActorUri, newInbox, newSharedInbox);
+                console.log(`✅ Move complete! Updated follower record from ${oldActorUri} to ${newActorUri}`);
+
+                // 4. Update cached remote actor if it exists
+                const existingRemote = dbService.getRemoteActor(oldActorUri);
+                if (existingRemote) {
+                    dbService.upsertRemoteActor({
+                        uri: newActorUri,
+                        type: newActor instanceof Person ? 'Person' : 'Service',
+                        username: newActor.preferredUsername?.toString() || null,
+                        name: newActor.name?.toString() || null,
+                        summary: (newActor as any).summary?.toString() || null,
+                        icon_url: (newActor as any).icon?.id?.toString() || (newActor as any).icon?.toString() || null,
+                        inbox_url: newInbox,
+                        outbox_url: newActor.outboxId?.toString() || null,
+                        is_followed: existingRemote.is_followed,
+                    });
+                    dbService.unfollowActor(oldActorUri);
+                }
+            } catch (e) {
+                console.error("❌ Error processing Move activity:", e);
             }
         });
 

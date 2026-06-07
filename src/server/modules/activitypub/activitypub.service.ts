@@ -548,6 +548,69 @@ export class ActivityPubService {
         await this.sendActivity(artist, inboxUri, acceptActivity);
     }
 
+    public async handleMoveActivity(oldActorUri: string, newActorUri: string): Promise<void> {
+        try {
+            // 1. Fetch new actor to verify backlink (alsoKnownAs/aliases)
+            const res = await this.fetchWithSignature(newActorUri);
+            if (!res.ok) {
+                console.warn(`⚠️ Move verification failed: could not fetch new actor ${newActorUri}`);
+                return;
+            }
+            const actorData = await res.json() as any;
+            
+            // Normalize aliases
+            let aliases: string[] = [];
+            if (actorData.alsoKnownAs) {
+                aliases = Array.isArray(actorData.alsoKnownAs) 
+                    ? actorData.alsoKnownAs.map((a: any) => typeof a === 'string' ? a : a.id) 
+                    : [actorData.alsoKnownAs];
+            } else if (actorData.aliases) {
+                aliases = Array.isArray(actorData.aliases) 
+                    ? actorData.aliases.map((a: any) => typeof a === 'string' ? a : a.id) 
+                    : [actorData.aliases];
+            }
+            
+            // Clean/filter nulls
+            aliases = aliases.filter(a => typeof a === 'string').map(a => this.getString(a) || "");
+
+            if (!aliases.includes(oldActorUri)) {
+                console.warn(`⚠️ Move verification failed: new actor ${newActorUri} does not list old actor ${oldActorUri} in its alsoKnownAs (${JSON.stringify(aliases)})`);
+                return;
+            }
+
+            // 2. Validation passed! Update local followers database
+            const newInbox = this.getString(actorData.inbox);
+            const newSharedInbox = actorData.endpoints?.sharedInbox ? this.getString(actorData.endpoints.sharedInbox) : undefined;
+            
+            if (!newInbox) {
+                console.warn(`⚠️ Move warning: new actor ${newActorUri} doesn't expose an inbox. Cannot update followers inbox.`);
+                return;
+            }
+
+            this.db.updateFollowerUri(oldActorUri, newActorUri, newInbox, newSharedInbox ?? undefined);
+            console.log(`✅ Raw Inbox Move complete! Updated follower record from ${oldActorUri} to ${newActorUri}`);
+
+            // 3. Update cached remote actor
+            const existingRemote = this.db.getRemoteActor(oldActorUri);
+            if (existingRemote) {
+                this.db.upsertRemoteActor({
+                    uri: newActorUri,
+                    type: typeof actorData.type === 'string' ? actorData.type : 'Person',
+                    username: this.getString(actorData.preferredUsername),
+                    name: this.getString(actorData.name),
+                    summary: this.getString(actorData.summary),
+                    icon_url: this.getString(actorData.icon),
+                    inbox_url: newInbox,
+                    outbox_url: this.getString(actorData.outbox),
+                    is_followed: existingRemote.is_followed,
+                } as any);
+                this.db.unfollowActor(oldActorUri);
+            }
+        } catch (e) {
+            console.error(`❌ Error in handleMoveActivity for ${oldActorUri}:`, e);
+        }
+    }
+
     public async receiveFollowRequest(artist: Artist, activity: any): Promise<void> {
         const actorUri = activity.actor;
         const inboxUri = await this.getInboxFromActor(actorUri);
@@ -1065,6 +1128,143 @@ export class ActivityPubService {
             console.error("❌ Error during ActivityPub signature verification:", err);
             return false;
         }
+    }
+
+    public async setAlsoKnownAs(artistId: number, alsoKnownAsUris: string[] | null): Promise<void> {
+        const artist = this.db.getArtist(artistId);
+        if (!artist) throw new Error("Artist not found");
+
+        // Update database
+        this.db.updateArtistMigrationStatus(artistId, alsoKnownAsUris, artist.moved_to || null);
+
+        // Fetch updated artist to render
+        const updatedArtist = this.db.getArtist(artistId);
+        if (!updatedArtist) return;
+
+        // Broadcast Update activity to followers
+        const followers = this.db.getFollowers(artistId);
+        if (followers.length === 0) return;
+
+        console.log(`📢 Broadcasting actor Update (alsoKnownAs) for ${artist.name} to ${followers.length} followers`);
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        
+        const updateActivity = {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/v1"
+            ],
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Update",
+            actor: artistActorUrl,
+            object: this.renderer.renderActor(updatedArtist),
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`]
+        };
+
+        await Promise.all(followers.map(follower => this.sendActivity(artist, follower.inbox_uri, updateActivity)));
+    }
+
+    public async initiateMove(artistId: number, targetActorUri: string): Promise<void> {
+        const artist = this.db.getArtist(artistId);
+        if (!artist) throw new Error("Artist not found");
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+
+        // 1. Fetch the target actor profile to verify the backlink (alsoKnownAs/aliases)
+        const res = await this.fetchWithSignature(targetActorUri);
+        if (!res.ok) {
+            throw new Error(`Could not fetch target actor profile at ${targetActorUri}`);
+        }
+        const targetActorData = await res.json() as any;
+
+        let aliases: string[] = [];
+        if (targetActorData.alsoKnownAs) {
+            aliases = Array.isArray(targetActorData.alsoKnownAs)
+                ? targetActorData.alsoKnownAs.map((a: any) => typeof a === 'string' ? a : a.id)
+                : [targetActorData.alsoKnownAs];
+        } else if (targetActorData.aliases) {
+            aliases = Array.isArray(targetActorData.aliases)
+                ? targetActorData.aliases.map((a: any) => typeof a === 'string' ? a : a.id)
+                : [targetActorData.aliases];
+        }
+        
+        aliases = aliases.filter(a => typeof a === 'string').map(a => this.getString(a) || "");
+
+        if (!aliases.includes(artistActorUrl)) {
+            throw new Error(`Verification failed: Target actor ${targetActorUri} does not list this local artist ${artistActorUrl} in its alsoKnownAs list. Found: ${JSON.stringify(aliases)}`);
+        }
+
+        // 2. Set moved_to in local database
+        this.db.updateArtistMigrationStatus(artistId, artist.also_known_as || null, targetActorUri);
+
+        // 3. Broadcast Move activity to all followers
+        const followers = this.db.getFollowers(artistId);
+        if (followers.length === 0) {
+            console.log(`ℹ️ Artist has no followers to move.`);
+            return;
+        }
+
+        console.log(`📢 Broadcasting Move activity for ${artist.name} to ${followers.length} followers. New home: ${targetActorUri}`);
+
+        const moveActivity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Move",
+            actor: artistActorUrl,
+            object: artistActorUrl,
+            target: targetActorUri,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`]
+        };
+
+        await Promise.all(followers.map(follower => this.sendActivity(artist, follower.inbox_uri, moveActivity)));
+    }
+
+    public async importRemoteIdentity(artistId: number, remoteActorUri: string): Promise<void> {
+        const artist = this.db.getArtist(artistId);
+        if (!artist) throw new Error("Artist not found");
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+
+        // Verify that this local artist lists the remote actor as also_known_as
+        const currentAka = artist.also_known_as || [];
+        if (!currentAka.includes(remoteActorUri)) {
+            throw new Error(`Verification failed: Local artist must list ${remoteActorUri} in its Also Known As list before importing.`);
+        }
+
+        // Fetch the remote actor profile
+        const res = await this.fetchWithSignature(remoteActorUri);
+        if (!res.ok) {
+            throw new Error(`Could not fetch remote actor profile at ${remoteActorUri}`);
+        }
+        const remoteActorData = await res.json() as any;
+
+        // Verify backlink: movedTo or successor pointing to this local artist
+        const movedTo = this.getString(remoteActorData.movedTo) || this.getString(remoteActorData.successor);
+        if (!movedTo || movedTo !== artistActorUrl) {
+            throw new Error(`Verification failed: Remote actor does not have its movedTo/successor pointing to this local artist profile (${artistActorUrl}). Found: ${movedTo}`);
+        }
+
+        // Verification successful! Copy profile metadata
+        const remoteName = this.getString(remoteActorData.name) || this.getString(remoteActorData.preferredUsername) || artist.name;
+        const remoteBio = this.getString(remoteActorData.summary) || artist.bio || "";
+
+        // Update artist profile in DB
+        this.db.updateArtist(
+            artist.id,
+            remoteName,
+            remoteBio,
+            undefined, // keep current photo
+            undefined, // keep current links
+            undefined, // keep current postParams
+            undefined, // keep current walletAddress
+            undefined  // keep current visibility
+        );
+
+        console.log(`✅ Successfully imported identity from ${remoteActorUri} to local artist ${artist.name}`);
     }
 
     private async getRemotePublicKey(keyId: string): Promise<string | null> {

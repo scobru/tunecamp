@@ -235,6 +235,9 @@ const API = {
     getArtistFollowers: (artistId: string | number) => handleResponse(api.get<any[]>(`ap/followers/${artistId}`)),
     deletePublishedContent: (noteId: string) => handleResponse(api.delete(`ap/note?id=${encodeURIComponent(noteId)}`)),
     syncArtistActivityPub: (artistId: string | number) => handleResponse(api.post(`ap/sync/artist/${artistId}`)),
+    updateArtistAlias: (artistId: string | number, alsoKnownAs: string[] | null) => handleResponse(api.post('ap/identity/alias', { artistId, alsoKnownAs })),
+    initiateArtistMove: (artistId: string | number, targetActorUri: string) => handleResponse(api.post('ap/identity/move', { artistId, targetActorUri })),
+    importArtistIdentity: (artistId: string | number, remoteActorUri: string) => handleResponse(api.post('ap/identity/import', { artistId, remoteActorUri })),
 
     // --- Network ---
     getNetworkSites: () => handleResponse(api.get<NetworkSite[]>('stats/network/sites')),

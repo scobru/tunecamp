@@ -16,6 +16,11 @@ import {
   Clock,
   Globe,
   Shield,
+  Copy,
+  Plus,
+  Trash2,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
@@ -337,15 +342,15 @@ const Profile = () => {
             {/* Role & Permissions Card */}
             <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6 md:col-span-2">
               <h3 className="text-xl font-bold flex items-center gap-2">
-                <Shield size={20} className="text-secondary" /> Ruolo e Permessi dell'Account
+                <Shield size={20} className="text-secondary" /> Account Role & Permissions
               </h3>
               <p className="text-sm opacity-60">
-                Qui puoi consultare il tuo ruolo corrente all'interno della piattaforma TuneCamp e scoprire quali azioni puoi compiere.
+                Here you can view your current role within the TuneCamp platform and see what actions you can perform.
               </p>
               
               <div className="bg-base-200/30 rounded-2xl p-6 border border-base-content/5 flex flex-col md:flex-row gap-6 items-start">
                 <div className="flex flex-col gap-2 min-w-[200px]">
-                  <span className="text-xs opacity-50 uppercase tracking-widest font-black">Ruolo Corrente</span>
+                  <span className="text-xs opacity-50 uppercase tracking-widest font-black">Current Role</span>
                   <div className={clsx("badge badge-lg gap-2 font-bold py-4 px-5 text-sm uppercase tracking-wider rounded-xl shadow-sm border-0", 
                     role === 'root_admin' ? "bg-red-500/20 text-red-500" :
                     role === 'admin' ? "bg-primary/20 text-primary" :
@@ -359,7 +364,7 @@ const Profile = () => {
                   </div>
                   {user?.artistId && (
                     <div className="badge badge-outline gap-1 py-3 px-4 mt-1 font-semibold text-xs border-base-content/10">
-                      🎨 Artista Collegato
+                      🎨 Linked Artist
                     </div>
                   )}
                 </div>
@@ -373,25 +378,25 @@ const Profile = () => {
                       {role === 'user' && "Listener (Standard User / Artist)"}
                     </h4>
                     <p className="text-sm opacity-70 mt-1">
-                      {role === 'root_admin' && "Hai il controllo amministrativo e di sicurezza completo di questa istanza di TuneCamp."}
-                      {role === 'admin' && "Hai poteri amministrativi per moderare la community, gestire le release e supportare gli artisti."}
-                      {role === 'super_user' && "Ti occupi della qualità del catalogo musicale, dell'organizzazione e della correzione dei metadati dei brani."}
-                      {role === 'user' && "Sei un utente standard. Puoi ascoltare la musica, acquistare album e, se sei un artista, caricare le tue tracce."}
+                      {role === 'root_admin' && "You have complete administrative and security control over this TuneCamp instance."}
+                      {role === 'admin' && "You have administrative privileges to moderate the community, manage releases, and support artists."}
+                      {role === 'super_user' && "You are responsible for music catalog quality, organization, and correcting track metadata."}
+                      {role === 'user' && "You are a standard user. You can listen to music, purchase albums, and, if you are an artist, upload your own tracks."}
                     </p>
                   </div>
                   
                   <div className="divider opacity-5 my-2"></div>
                   
                   <div className="space-y-3">
-                    <span className="text-xs opacity-50 uppercase tracking-wider font-bold">Cosa puoi fare:</span>
+                    <span className="text-xs opacity-50 uppercase tracking-wider font-bold">What you can do:</span>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       {role === 'root_admin' && [
-                        "Gestire tutti gli utenti, i ruoli e lo stato attivo/disattivo",
-                        "Accedere a chiavi di cifratura e master key di sicurezza",
-                        "Modificare le impostazioni globali del sito (nome, logo, sfondi)",
-                        "Gestire la Curation Queue e le promozioni dei brani",
-                        "Effettuare backup completi e gestire l'archiviazione",
-                        "Gestire la federazione e l'integrazione ActivityPub globale"
+                        "Manage all users, roles, and active/inactive status",
+                        "Access encryption keys and master security keys",
+                        "Modify global site settings (name, logo, backgrounds)",
+                        "Manage Curation Queue and track promotions",
+                        "Perform full backups and manage storage",
+                        "Manage federation and global ActivityPub integration"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">
                           <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
@@ -400,11 +405,11 @@ const Profile = () => {
                       ))}
 
                       {role === 'admin' && [
-                        "Visualizzare gli account utente registrati sul server",
-                        "Moderare post e release a livello globale sull'istanza",
-                        "Gestire e promuovere i contenuti all'interno del catalogo",
-                        "Gestire i follow di ActivityPub e la federazione social",
-                        "Operare per conto degli artisti a cui sei assegnato"
+                        "View user accounts registered on the server",
+                        "Moderate posts and releases globally on the instance",
+                        "Manage and promote content within the catalog",
+                        "Manage ActivityPub follows and social federation",
+                        "Act on behalf of artists assigned to you"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">
                           <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
@@ -413,10 +418,10 @@ const Profile = () => {
                       ))}
 
                       {role === 'super_user' && [
-                        "Visibilità globale della libreria (inclusi bozze e file privati)",
-                        "Modificare i metadati di qualsiasi brano o album (titoli, generi)",
-                        "Caricare tracce e curare l'ordine del catalogo",
-                        "Correggere errori o imperfezioni nelle copertine e tag"
+                        "Global visibility of the library (including drafts and private files)",
+                        "Modify metadata for any track or album (titles, genres)",
+                        "Upload tracks and curate catalog ordering",
+                        "Correct errors or imperfections in covers and tags"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">
                           <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
@@ -425,10 +430,10 @@ const Profile = () => {
                       ))}
 
                       {role === 'user' && [
-                        "Ascoltare la musica pubblica (Arena) e acquistare brani",
-                        "Creare e gestire playlist personali e preferiti",
-                        "Caricare e gestire la tua musica (se collegato ad un Artista)",
-                        "Personalizzare il tuo profilo, alias e avatar"
+                        "Listen to public music (Arena) and purchase tracks",
+                        "Create and manage personal playlists and favorites",
+                        "Upload and manage your music (if linked to an Artist)",
+                        "Customize your profile, alias, and avatar"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">
                           <Check size={16} className="text-success mt-0.5 flex-shrink-0" />
@@ -493,11 +498,21 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
   const [followersCount, setFollowersCount] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Identity Migration State
+  const [aliases, setAliases] = useState<string[]>(initialData?.also_known_as || []);
+  const [newAlias, setNewAlias] = useState("");
+  const [targetMoveUri, setTargetMoveUri] = useState("");
+  const [sourceImportUri, setSourceImportUri] = useState("");
+  const [isAliasUpdating, setIsAliasUpdating] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || "");
       setBio(initialData.bio || "");
       setWalletAddress(initialData.walletAddress || "");
+      setAliases(initialData.also_known_as || []);
 
       // Parse links
       if (initialData.links) {
@@ -523,6 +538,60 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
         .catch(console.error);
     }
   }, [initialData]);
+
+  const handleUpdateAliases = async (updatedAliases: string[]) => {
+    if (!initialData?.id || isAliasUpdating) return;
+    setIsAliasUpdating(true);
+    try {
+      await API.updateArtistAlias(initialData.id, updatedAliases.length > 0 ? updatedAliases : null);
+      setAliases(updatedAliases);
+      alert("Aliases updated successfully!");
+    } catch (err: any) {
+      alert("Failed to update aliases: " + err.message);
+    } finally {
+      setIsAliasUpdating(false);
+    }
+  };
+
+  const handleAddAlias = () => {
+    if (!newAlias.trim()) return;
+    const updated = [...aliases, newAlias.trim()];
+    handleUpdateAliases(updated);
+    setNewAlias("");
+  };
+
+  const handleRemoveAlias = (index: number) => {
+    const updated = aliases.filter((_, i) => i !== index);
+    handleUpdateAliases(updated);
+  };
+
+  const handleInitiateMove = async () => {
+    if (!targetMoveUri.trim() || isMoving) return;
+    if (!confirm(`Are you sure you want to initiate migration of this identity to ${targetMoveUri}?\nThis will broadcast a Move activity to all followers and they will automatically follow the new profile.`)) return;
+    setIsMoving(true);
+    try {
+      await API.initiateArtistMove(initialData.id, targetMoveUri.trim());
+      alert("Move initiated successfully! Followers will be redirected to your new profile.");
+    } catch (err: any) {
+      alert("Failed to initiate move: " + err.message);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  const handleImportIdentity = async () => {
+    if (!sourceImportUri.trim() || isImporting) return;
+    setIsImporting(true);
+    try {
+      await API.importArtistIdentity(initialData.id, sourceImportUri.trim());
+      alert("Profile imported and verified successfully! Refreshing details...");
+      window.location.reload();
+    } catch (err: any) {
+      alert("Import failed: " + err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -773,6 +842,193 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                 onChange={(e) => setMastodonToken(e.target.value)}
                 placeholder="Bearer Token"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Identity & Migration Section */}
+        <div className="card bg-base-100/50 border border-base-content/5 overflow-hidden">
+          <div className="bg-gradient-to-r from-violet-500/10 to-transparent p-6 border-b border-base-content/5">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Globe size={20} className="text-violet-400" /> Identity Migration (ActivityPub)
+            </h3>
+            <p className="text-xs opacity-50 mt-1">
+              Link your remote Fediverse profiles, import metadata, or migrate your followers.
+            </p>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {/* Identity Info & Aliases */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-sm font-bold opacity-70 mb-3">ActivityPub Addresses</h4>
+                <div className="space-y-3">
+                  <div className="form-control">
+                    <span className="label-text text-xs opacity-50 mb-1">Local Handle</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`@${initialData?.slug}@${window.location.host}`}
+                        className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-200/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`@${initialData?.slug}@${window.location.host}`);
+                          alert("Handle copied to clipboard!");
+                        }}
+                        className="btn btn-sm btn-outline btn-square"
+                        title="Copy Handle"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="form-control">
+                    <span className="label-text text-xs opacity-50 mb-1">Actor URI</span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${window.location.origin}/api/ap/users/${initialData?.slug}`}
+                        className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-200/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/api/ap/users/${initialData?.slug}`);
+                          alert("Actor URI copied to clipboard!");
+                        }}
+                        className="btn btn-sm btn-outline btn-square"
+                        title="Copy Actor URI"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold opacity-70 mb-3">Verified Aliases</h4>
+                <div className="space-y-3">
+                  {aliases.length === 0 ? (
+                    <p className="text-xs opacity-40 italic">
+                      No aliases verified yet. Add aliases to prove ownership of remote accounts.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-36 overflow-y-auto">
+                      {aliases.map((aliasUri, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2 bg-base-200/50 p-2 rounded-lg border border-base-content/5">
+                          <span className="text-xs font-mono truncate flex-1" title={aliasUri}>{aliasUri}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAlias(idx)}
+                            className="btn btn-xs btn-ghost btn-square text-error"
+                            disabled={isAliasUpdating}
+                            title="Remove Alias"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      type="url"
+                      placeholder="https://mastodon.social/users/username"
+                      value={newAlias}
+                      onChange={(e) => setNewAlias(e.target.value)}
+                      className="input input-sm input-bordered flex-1 text-xs"
+                      disabled={isAliasUpdating}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddAlias}
+                      className={clsx("btn btn-sm btn-primary gap-1", isAliasUpdating && "loading")}
+                      disabled={isAliasUpdating || !newAlias.trim()}
+                    >
+                      {!isAliasUpdating && <Plus size={14} />} Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="divider opacity-5 my-2"></div>
+
+            {/* Import & Move Sections */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-base-200/30 p-4 rounded-xl border border-base-content/5 space-y-3">
+                <h4 className="text-sm font-bold flex items-center gap-2 text-violet-400">
+                  <ShieldCheck size={16} /> Import Profile Details
+                </h4>
+                <p className="text-xs opacity-60">
+                  Copy profile metadata (bio, links, etc.) from a remote Fediverse account to this instance.
+                </p>
+                <div className="alert alert-info bg-info/5 border-info/20 text-xs py-2 px-3">
+                  <span>
+                    <strong>Requirement:</strong> The remote account must first add your local Actor URI to their aliases.
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="Remote Actor URI"
+                    value={sourceImportUri}
+                    onChange={(e) => setSourceImportUri(e.target.value)}
+                    className="input input-sm input-bordered flex-1 text-xs"
+                    disabled={isImporting}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImportIdentity}
+                    className={clsx("btn btn-sm btn-secondary", isImporting && "loading")}
+                    disabled={isImporting || !sourceImportUri.trim()}
+                  >
+                    Verify & Import
+                  </button>
+                </div>
+              </div>
+
+              {/* Export/Move Section */}
+              <div className="bg-base-200/30 p-4 rounded-xl border border-base-content/5 space-y-3">
+                <h4 className="text-sm font-bold flex items-center gap-2 text-warning">
+                  <ArrowRight size={16} /> Migrate Out (Move)
+                </h4>
+                <p className="text-xs opacity-60">
+                  Migrate your followers to another ActivityPub profile. This will redirect followers to your new instance.
+                </p>
+                {initialData?.moved_to ? (
+                  <div className="alert alert-warning bg-warning/10 border-warning/20 text-xs py-2 px-3">
+                    <span>This account has migrated to: <strong>{initialData.moved_to}</strong></span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        placeholder="New Actor URI"
+                        value={targetMoveUri}
+                        onChange={(e) => setTargetMoveUri(e.target.value)}
+                        className="input input-sm input-bordered flex-1 text-xs"
+                        disabled={isMoving}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleInitiateMove}
+                        className={clsx("btn btn-sm btn-warning", isMoving && "loading")}
+                        disabled={isMoving || !targetMoveUri.trim()}
+                      >
+                        Initiate Move
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -111,6 +111,13 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                     console.log(`🔁 Announce from ${actorUri} on ${targetId}`);
                 }
                 return res.status(200).send("OK");
+            } else if (hasType(activity.type, "Move")) {
+                const oldActorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
+                const newActorUri = typeof activity.target === 'string' ? activity.target : activity.target?.id;
+                if (oldActorUri && newActorUri) {
+                    await apService.handleMoveActivity(oldActorUri, newActorUri);
+                    return res.status(200).send("OK");
+                }
             } else if (hasType(activity.type, "Create")) {
                 const obj = activity.object;
                 // Parse Funkwhale/Music/Tunecamp objects (handles array types like ["Note", "MusicAlbum"])
@@ -687,6 +694,93 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         } catch (e) {
             console.error("Failed to sync AP:", e);
             res.status(500).json({ error: "Sync failed" });
+        }
+    });
+
+    // Alias endpoint
+    router.post("/identity/alias", authMiddleware.requireUser, async (req: any, res) => {
+        const request = req as AuthenticatedRequest;
+        let artistId = req.body.artistId ? Number(req.body.artistId) : null;
+        if (!request.isRootAdmin) {
+            if (request.artistId === undefined || request.artistId === null) {
+                return res.status(403).send("Access denied: No linked artist profile");
+            }
+            artistId = Number(request.artistId);
+        } else {
+            if (!artistId) {
+                return res.status(400).send("Missing artistId");
+            }
+        }
+
+        const { alsoKnownAs } = req.body;
+        if (alsoKnownAs !== null && !Array.isArray(alsoKnownAs)) {
+            return res.status(400).send("alsoKnownAs must be an array or null");
+        }
+
+        try {
+            await apService.setAlsoKnownAs(artistId, alsoKnownAs);
+            res.json({ message: "Alias updated successfully" });
+        } catch (e: any) {
+            console.error("Failed to update alias:", e);
+            res.status(500).send(e.message || "Internal Error");
+        }
+    });
+
+    // Move endpoint
+    router.post("/identity/move", authMiddleware.requireUser, async (req: any, res) => {
+        const request = req as AuthenticatedRequest;
+        let artistId = req.body.artistId ? Number(req.body.artistId) : null;
+        if (!request.isRootAdmin) {
+            if (request.artistId === undefined || request.artistId === null) {
+                return res.status(403).send("Access denied: No linked artist profile");
+            }
+            artistId = Number(request.artistId);
+        } else {
+            if (!artistId) {
+                return res.status(400).send("Missing artistId");
+            }
+        }
+
+        const { targetActorUri } = req.body;
+        if (!targetActorUri) {
+            return res.status(400).send("Missing targetActorUri");
+        }
+
+        try {
+            await apService.initiateMove(artistId, targetActorUri);
+            res.json({ message: "Identity move initiated successfully" });
+        } catch (e: any) {
+            console.error("Failed to initiate identity move:", e);
+            res.status(500).send(e.message || "Internal Error");
+        }
+    });
+
+    // Import endpoint
+    router.post("/identity/import", authMiddleware.requireUser, async (req: any, res) => {
+        const request = req as AuthenticatedRequest;
+        let artistId = req.body.artistId ? Number(req.body.artistId) : null;
+        if (!request.isRootAdmin) {
+            if (request.artistId === undefined || request.artistId === null) {
+                return res.status(403).send("Access denied: No linked artist profile");
+            }
+            artistId = Number(request.artistId);
+        } else {
+            if (!artistId) {
+                return res.status(400).send("Missing artistId");
+            }
+        }
+
+        const { remoteActorUri } = req.body;
+        if (!remoteActorUri) {
+            return res.status(400).send("Missing remoteActorUri");
+        }
+
+        try {
+            await apService.importRemoteIdentity(artistId, remoteActorUri);
+            res.json({ message: "Remote identity imported successfully" });
+        } catch (e: any) {
+            console.error("Failed to import remote identity:", e);
+            res.status(500).send(e.message || "Internal Error");
         }
     });
 

@@ -48,6 +48,8 @@ export interface Artist {
     external_id?: string | null;
     public_key?: string;
     private_key?: string;
+    also_known_as?: string[] | null;
+    moved_to?: string | null;
     created_at?: string;
     // Computed fields
     isLibraryArtist?: boolean;
@@ -401,6 +403,7 @@ export interface LibraryManager {
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
+    updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;
     deleteArtist(id: number): void;
     deleteArtistsBatch(ids: number[]): void;
     updateArtistsVisibilityBatch(ids: number[], visibility: Artist['visibility']): void;
@@ -571,6 +574,7 @@ export interface SocialManager {
     acceptFollower(artistId: number, actorUri: string): void;
     rejectFollower(artistId: number, actorUri: string): void;
     removeFollower(artistId: number, actorUri: string): void;
+    updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void;
     unfollowActor(uri: string): void;
 
     // Starred / Social / Ratings

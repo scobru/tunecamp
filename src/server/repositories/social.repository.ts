@@ -41,6 +41,12 @@ export class SocialRepository extends BaseRepository {
         this.db.prepare("DELETE FROM followers WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
     }
 
+    updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void {
+        this.db.prepare(
+            "UPDATE followers SET actor_uri = ?, inbox_uri = ?, shared_inbox_uri = ? WHERE actor_uri = ?"
+        ).run(newActorUri, newInboxUri, newSharedInboxUri || null, oldActorUri);
+    }
+
     getFollowers(artistId: number): Follower[] {
         return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND status = 'accepted'").all(artistId) as Follower[];
     }

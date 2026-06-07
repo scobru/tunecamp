@@ -47,11 +47,21 @@ export class ArtistRepository extends BaseRepository {
             post_params = {};
         }
 
+        let also_known_as = [];
+        try {
+            const parsed = row.also_known_as ? JSON.parse(row.also_known_as) : [];
+            also_known_as = Array.isArray(parsed) ? parsed : [];
+        } catch (e: any) {
+            console.warn(`⚠️ [ArtistRepository] Failed to parse also_known_as for artist ${row.id}:`, e.message);
+            also_known_as = [];
+        }
+
         return {
             ...row,
             isLibraryArtist: !!row.isLibraryArtist,
             links,
-            post_params
+            post_params,
+            also_known_as
         } as Artist;
     }
 
@@ -171,6 +181,11 @@ export class ArtistRepository extends BaseRepository {
 
     updateKeys(id: number, publicKey: string, privateKey: string): void {
         this.db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKey, privateKey, id);
+    }
+
+    updateMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void {
+        const akaJson = alsoKnownAs ? JSON.stringify(alsoKnownAs) : null;
+        this.db.prepare("UPDATE artists SET also_known_as = ?, moved_to = ? WHERE id = ?").run(akaJson, movedTo, id);
     }
 
     delete(id: number): void {

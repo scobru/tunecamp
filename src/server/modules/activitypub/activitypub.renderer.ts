@@ -16,8 +16,10 @@ export class ActivityPubRenderer {
         };
     }
 
-    public renderActor(artist: Artist | { slug: string, name: string, bio?: string, photo_path?: string, public_key?: string }): any {
+    public renderActor(artist: Artist | { slug: string, name: string, bio?: string, photo_path?: string, public_key?: string, also_known_as?: string[] | null, moved_to?: string | null }): any {
         const userUrl = `${this.baseUrl}/users/${artist.slug}`;
+        const also_known_as = (artist as any).also_known_as;
+        const moved_to = (artist as any).moved_to;
         return {
             "@context": [
                 "https://www.w3.org/ns/activitystreams",
@@ -39,7 +41,9 @@ export class ActivityPubRenderer {
                 type: "Image",
                 mediaType: "image/jpeg",
                 url: `${this.baseUrl}/api/artists/${artist.slug}/photo`
-            } : undefined
+            } : undefined,
+            alsoKnownAs: also_known_as && also_known_as.length > 0 ? also_known_as : undefined,
+            movedTo: moved_to || undefined
         };
     }
 

@@ -16,6 +16,8 @@ export interface FederationProvider {
   getArtists(): Artist[];
   isArtistLinkedToUser(id: number): boolean;
   updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
+  updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;
+  updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
 
   // Local Content
   getReleases(): Release[];
@@ -37,6 +39,7 @@ export interface FederationProvider {
   acceptFollower(artistId: number, actorUri: string): void;
   rejectFollower(artistId: number, actorUri: string): void;
   removeFollower(artistId: number, actorUri: string): void;
+  updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void;
 
   // AP Notes
   createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number;

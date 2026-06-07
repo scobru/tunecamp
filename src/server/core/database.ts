@@ -77,6 +77,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             visibility TEXT DEFAULT 'public',
             post_params TEXT,
             external_id TEXT,
+            also_known_as TEXT,
+            moved_to TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -500,6 +502,14 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'wallet_address')) {
                 console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
                 db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
+            }
+            if (!cols.some(col => col.name === 'also_known_as')) {
+                console.log("📦 [Database] Migrating artists table: adding also_known_as column...");
+                db.exec("ALTER TABLE artists ADD COLUMN also_known_as TEXT");
+            }
+            if (!cols.some(col => col.name === 'moved_to')) {
+                console.log("📦 [Database] Migrating artists table: adding moved_to column...");
+                db.exec("ALTER TABLE artists ADD COLUMN moved_to TEXT");
             }
             
             // Migrate unlock_codes: add asset_id column if missing
