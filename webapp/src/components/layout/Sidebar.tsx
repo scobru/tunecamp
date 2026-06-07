@@ -32,6 +32,7 @@ export const Sidebar = () => {
   const { user, isAuthenticated, role, logout } = useAuthStore();
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteLogo, setSiteLogo] = useState<string | null>(null);
+  const [communityLink, setCommunityLink] = useState<string | null>(null);
  
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -71,6 +72,7 @@ export const Sidebar = () => {
       .then((s) => {
         if (s.siteName) setSiteName(s.siteName);
         if (s.siteLogo) setSiteLogo(s.siteLogo);
+        if (s.communityLink) setCommunityLink(s.communityLink);
       })
       .catch(console.error);
   }, []);
@@ -111,6 +113,28 @@ export const Sidebar = () => {
       </Link>
     </li>
   );
+
+  const ExternalNavItem = ({
+    href,
+    icon: Icon,
+    label,
+  }: {
+    href: string;
+    icon: any;
+    label: string;
+  }) => (
+    <li>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 px-4 py-2 rounded-full transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] group hover:bg-base-300/50 text-base-content/70 hover:text-base-content"
+      >
+        <Icon size={20} className="transition-transform group-hover:scale-110 opacity-60 group-hover:opacity-100" />
+        <span className="text-label-large tracking-tight">{label}</span>
+      </a>
+    </li>
+  );
  
   return (
     <div className="w-64 min-h-full bg-base-200 text-base-content border-r border-base-content/10 flex flex-col gap-6 p-4 pb-32 overflow-y-auto">
@@ -140,6 +164,9 @@ export const Sidebar = () => {
             <NavItem to="/search" icon={Search} label="Search" />
             <NavItem to="/network" icon={Globe} label="Network" />
             <NavItem to="/store" icon={ShoppingBag} label="Store" />
+            {communityLink && (
+              <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
+            )}
           </ul>
         </div>
  

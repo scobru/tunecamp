@@ -52,12 +52,14 @@ const SiteCard = memo(({ site }: { site: any }) => {
   const isLocal = site.federation === "local";
   const coverUrl = resolveUrl(site.coverImage, site.url);
   
+  const handleCardClick = () => {
+    window.open(site.url, "_blank", "noopener,noreferrer");
+  };
+
   return (
-    <a
-      href={site.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`card bg-base-200 border ${isLocal ? 'border-primary/50' : 'border-base-content/5'} hover:border-primary/30 transition-all hover:scale-[1.01] group`}
+    <div
+      onClick={handleCardClick}
+      className={`card bg-base-200 border cursor-pointer ${isLocal ? 'border-primary/50' : 'border-base-content/5'} hover:border-primary/30 transition-all hover:scale-[1.01] group`}
     >
       <figure className="h-32 bg-base-300 relative overflow-hidden">
         {coverUrl ? (
@@ -89,6 +91,19 @@ const SiteCard = memo(({ site }: { site: any }) => {
           {site.description || "No description provided."}
         </p>
 
+        {site.communityLink && (
+          <div className="mt-3 flex" onClick={(e) => e.stopPropagation()}>
+            <a
+              href={site.communityLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-xs btn-secondary border border-base-content/10 hover:border-primary/30 flex items-center gap-1 font-bold rounded-lg w-full justify-center"
+            >
+              💬 Join Community Chat
+            </a>
+          </div>
+        )}
+
         <div className="flex items-center justify-between text-xs font-mono opacity-50 border-t border-base-content/5 pt-4 mt-2">
           <span className={`badge badge-xs ${getFederationBadge(site.federation).class}`}>
             {getFederationBadge(site.federation).label}
@@ -98,7 +113,7 @@ const SiteCard = memo(({ site }: { site: any }) => {
           </span>
         </div>
       </div>
-    </a>
+    </div>
   );
 });
 

@@ -48,7 +48,7 @@ export interface AuthService {
     verifySubsonicToken(username: string, token: string, salt: string): Promise<boolean>;
     createAdmin(username: string, password: string, artistId?: number | null, role?: UserRole): Promise<{ id: number }>;
     createUser(username: string, password: string, artistId: number | null, storageQuota?: number, pubKey?: string, role?: UserRole): Promise<{ id: number }>;
-    updateAdmin(id: number, artistId: number | null, role?: UserRole): void;
+    updateAdmin(id: number, artistId: number | null, role?: UserRole, storageQuota?: number): void;
     updateStorageUsed(userId: number, bytesUsed: number): void;
     getStorageInfo(userId: number): { storage_quota: number; storage_used: number } | null;
     getAdminById(id: number): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean } | undefined;
@@ -554,15 +554,25 @@ export function createAuthService(
             return { id: Number(result.lastInsertRowid) };
         },
 
-        updateAdmin(id: number, artistId: number | null, role?: UserRole): void {
+        updateAdmin(id: number, artistId: number | null, role?: UserRole, storageQuota?: number): void {
+            const updates: string[] = ["artist_id = ?", "updated_at = CURRENT_TIMESTAMP"];
+            const params: any[] = [artistId];
+            
             if (role) {
                 if (id === 1 && role !== 'admin' && role !== 'root_admin') {
                     throw new Error("Cannot demote the primary admin");
                 }
-                db.prepare("UPDATE admin SET artist_id = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(artistId, role, id);
-            } else {
-                db.prepare("UPDATE admin SET artist_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(artistId, id);
+                updates.push("role = ?");
+                params.push(role);
             }
+            
+            if (storageQuota !== undefined) {
+                updates.push("storage_quota = ?");
+                params.push(storageQuota);
+            }
+            
+            params.push(id);
+            db.prepare(`UPDATE admin SET ${updates.join(", ")} WHERE id = ?`).run(...params);
         },
 
         updateStorageUsed(userId: number, bytesUsed: number): void {

@@ -25,6 +25,7 @@ export interface SiteInfo {
     description?: string;
     artistName?: string;
     coverImage?: string;
+    communityLink?: string;
 }
 
 interface UserProfile {
@@ -305,6 +306,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             description: siteInfo.description || "",
             artistName: siteInfo.artistName || "",
             coverImage: siteInfo.coverImage || "",
+            communityLink: siteInfo.communityLink || "",
             registeredAt: now,
             lastSeen: now,
             version: REGISTRY_VERSION,
@@ -335,7 +337,9 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                             lastSeen: now,
                             url: siteInfo.url,
                             title: siteInfo.title,
-                            artistName: siteInfo.artistName
+                            artistName: siteInfo.artistName,
+                            coverImage: siteInfo.coverImage || "",
+                            communityLink: siteInfo.communityLink || ""
                         }, async (pubAck: any) => {
                             if (pubAck.err) {
                                 console.warn("Failed to register site in directory:", pubAck.err);
@@ -434,6 +438,8 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                             url: directoryData.url,
                             title: directoryData.title || "Untitled",
                             artistName: directoryData.artistName || "",
+                            coverImage: directoryData.coverImage || "",
+                            communityLink: directoryData.communityLink || "",
                             name: directoryData.title || "Untitled",
                             lastSeen: directoryData.lastSeen || Date.now(),
                             pub: directoryData.pub || "",

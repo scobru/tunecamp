@@ -116,6 +116,16 @@ const Home = () => {
             <Link to="/about" className="btn btn-ghost rounded-xl border border-base-content/10">
               Explore Network
             </Link>
+            {siteSettings?.communityLink && (
+              <a
+                href={siteSettings.communityLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary rounded-xl px-8 border border-base-content/10 flex items-center gap-2"
+              >
+                Join Community
+              </a>
+            )}
           </div>
         </div>
 

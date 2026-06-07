@@ -120,6 +120,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 version: s.version || "2.0",
                 lastSeen: s.lastSeen,
                 coverImage: s.coverImage || null,
+                communityLink: s.communityLink || null,
                 federation: "zen"
             }));
 
@@ -143,6 +144,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 version: "2.0 (Local)",
                 lastSeen: new Date().toISOString(),
                 coverImage: dbService.getSetting("coverImage") || null,
+                communityLink: dbService.getSetting("communityLink") || null,
                 federation: "local"
             };
 
@@ -153,14 +155,6 @@ export function createStatsRoutes(container: ServiceContainer): Router {
         }
     });
 
-    /**
-     * GET /api/stats/network/tracks
-     * Get all content from the TuneCamp network.
-     * 
-     * Architecture v2: Zen provides instance URLs (signaling), then we fetch
-     * catalogs directly from each instance via HTTP. ActivityPub remote content
-     * and local content are also included.
-     */
     router.get("/network/tracks", async (req, res) => {
         try {
             const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;

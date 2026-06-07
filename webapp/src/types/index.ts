@@ -208,6 +208,7 @@ export interface SiteSettings {
     allowPublicRegistration?: boolean;
     backgroundImage?: string;
     themeFont?: string;
+    communityLink?: string;
     themeBlur?: string;
     themeOverlayOpacity?: string | number;
     donationLinks?: ArtistLink[];

@@ -19,6 +19,14 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [isRoot, setIsRoot] = useState(false);
     const [isActive, setIsActive] = useState(true);
     const [initialIsActive, setInitialIsActive] = useState(true);
+    const [storageQuota, setStorageQuota] = useState<number>(0);
+
+    // Auto-promote to Curator if an artist is linked and role is Listener
+    useEffect(() => {
+        if (artistId && role === 'user') {
+            setRole('super_user');
+        }
+    }, [artistId, role]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -57,6 +65,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setArtistId(userToEdit.artistId || userToEdit.artist_id || '');
                 setIsActive(userToEdit.is_active !== 0);
                 setInitialIsActive(userToEdit.is_active !== 0);
+                setStorageQuota(userToEdit.storage_quota !== undefined ? userToEdit.storage_quota : 0);
                 
                 dialogRef.current.dataset.userId = userToEdit.id;
                 dialogRef.current.dataset.mode = 'edit';
@@ -68,6 +77,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setArtistId('');
                 setIsActive(true);
                 setInitialIsActive(true);
+                setStorageQuota(1024 * 1024 * 1024); // default 1GB for new users
                 dialogRef.current.dataset.mode = 'create';
              }
              setError('');
@@ -87,7 +97,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
         const targetUserId = dialogRef.current?.dataset.userId;
 
         try {
-            const payload: any = { username, role };
+            const payload: any = { username, role, storageQuota };
             if (password) payload.password = password; // Only send if set
             if (artistId) payload.artistId = artistId;
             else payload.artistId = null; // Explicitly unlink if empty
@@ -185,6 +195,13 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                          <label className="label">
                             <span className="label-text-alt opacity-50">Linking to an artist allows this user to manage that artist's profile.</span>
                         </label>
+                        {artistId && (
+                            <label className="label py-0">
+                                <span className="label-text-alt text-info font-medium">
+                                    Note: This user will manage an artist profile. Make sure they are at least a Curator to upload music.
+                                </span>
+                            </label>
+                        )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-4">
@@ -205,8 +222,31 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                             </select>
                         </div>
 
+                        <div className="form-control flex-1">
+                            <label className="label">
+                                <span className="label-text">Storage Quota</span>
+                            </label>
+                            <select 
+                                className="select select-bordered w-full"
+                                value={storageQuota}
+                                onChange={e => setStorageQuota(Number(e.target.value))}
+                                disabled={dialogRef.current?.dataset.userId === '1'} // Root admin is unlimited
+                            >
+                                <option value="0">Unlimited (Root/Managers)</option>
+                                <option value="1073741824">1 GB</option>
+                                <option value="5368709120">5 GB</option>
+                                <option value="10737418240">10 GB</option>
+                                <option value="21474836480">20 GB</option>
+                                <option value="53687091200">50 GB</option>
+                                <option value="107374182400">100 GB</option>
+                                {![0, 1073741824, 5368709120, 10737418240, 21474836480, 53687091200, 107374182400].includes(Number(storageQuota)) && (
+                                    <option value={storageQuota}>Custom ({(Number(storageQuota) / 1024 / 1024 / 1024).toFixed(1)} GB)</option>
+                                )}
+                            </select>
+                        </div>
+
                         {isRoot && dialogRef.current?.dataset.mode === 'edit' && (
-                             <div className="form-control">
+                             <div className="form-control flex-initial self-end">
                                 <label className="label cursor-pointer justify-start gap-4">
                                     <span className="label-text">Active Status</span>
                                     <input 

@@ -264,6 +264,19 @@ export const AdminSettingsPanel = () => {
             />
           </div>
 
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text font-medium text-sm">Community Link (e.g., Telegram, WhatsApp)</span>
+            </label>
+            <input
+              type="url"
+              className="input input-bordered bg-base-300/50"
+              value={settings.communityLink || ""}
+              onChange={(e) => setSettings({ ...settings, communityLink: e.target.value })}
+              placeholder="https://t.me/yourgroup or https://chat.whatsapp.com/..."
+            />
+          </div>
+
           <div className="form-control pt-2 border-t border-base-content/5 mt-4">
             <label className="label cursor-pointer justify-between">
               <div className="flex items-center gap-2">

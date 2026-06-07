@@ -290,7 +290,7 @@
         }
 
         function isValidUrl(url) { return url && url.startsWith('http'); }
-        function normalizeSiteData(id, data, isSecure) { return { id, url: data.url, title: data.title || data.name, artistName: data.artistName || '', coverImage: data.coverImage, registeredAt: data.registeredAt, lastSeen: data.lastSeen || Date.now(), _secure: isSecure }; }
+        function normalizeSiteData(id, data, isSecure) { return { id, url: data.url, title: data.title || data.name, artistName: data.artistName || '', coverImage: data.coverImage, communityLink: data.communityLink || '', registeredAt: data.registeredAt, lastSeen: data.lastSeen || Date.now(), _secure: isSecure }; }
         function validateSite(site) { return site.url && isValidUrl(site.url) && site.title && site.title !== 'Untitled' && site.title !== 'TuneCamp Server' && site.title.trim() !== ''; }
 
         function renderSites() {
@@ -314,6 +314,12 @@
                     resolvedCover = `${cleanUrl}${path}`;
                 }
                 const coverHtml = resolvedCover ? `<img src="${escapeHtml(resolvedCover)}" class="w-full h-full object-cover">` : `<i class="fas fa-compact-disc"></i>`;
+                const chatHtml = site.communityLink ? `
+                    <a href="${escapeHtml(site.communityLink)}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 border border-primary/20 text-primary text-xs font-semibold rounded-lg hover:bg-primary/20 hover:scale-105 transition-all duration-300 shrink-0" title="Join the community chat">
+                        <i class="fas fa-comments"></i> Join Chat
+                    </a>
+                ` : '';
+
                 return `
                     <div class="glass-panel site-card">
                         <div class="h-40 bg-gradient-to-br from-primary to-purple-800 flex items-center justify-center text-5xl text-white/50 relative group">
@@ -321,7 +327,12 @@
                             <a href="${escapeHtml(site.url)}" target="_blank" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i class="fas fa-external-link-alt text-2xl text-white"></i></a>
                         </div>
                         <div class="p-5 flex flex-col flex-1">
-                            <h3 class="font-bold text-lg mb-1 line-clamp-1"><a href="${escapeHtml(site.url)}" target="_blank" class="hover:text-primary transition-colors">${escapeHtml(site.title)}</a></h3>
+                            <div class="flex items-start justify-between gap-2 mb-1">
+                                <h3 class="font-bold text-lg line-clamp-1 flex-1">
+                                    <a href="${escapeHtml(site.url)}" target="_blank" class="hover:text-primary transition-colors">${escapeHtml(site.title)}</a>
+                                </h3>
+                                ${chatHtml}
+                            </div>
                             ${site.artistName ? `<div class="text-sm text-text-muted mb-4 line-clamp-1"><i class="fas fa-user-music mr-1"></i> ${escapeHtml(site.artistName)}</div>` : ''}
                             <div class="mt-auto pt-4 border-t border-white/5 flex items-center justify-between text-xs text-text-muted/70">
                                 <span><i class="fas ${site._secure ? 'fa-lock text-green-400' : 'fa-broadcast-tower'} mr-1"></i> ${site._secure ? 'Verified' : 'Discovered'}</span>

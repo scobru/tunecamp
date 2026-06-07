@@ -262,7 +262,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 listenbrainz_token,
                 google_drive_client_id,
                 google_drive_client_secret,
-                themeFont, themeBlur, themeOverlayOpacity
+                themeFont, themeBlur, themeOverlayOpacity,
+                communityLink
             } = req.body;
             let settingsChanged = false;
 
@@ -307,6 +308,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (themeOverlayOpacity !== undefined) {
                 identity.setSetting("themeOverlayOpacity", themeOverlayOpacity.toString());
+                settingsChanged = true;
+            }
+            if (communityLink !== undefined) {
+                identity.setSetting("communityLink", communityLink);
                 settingsChanged = true;
             }
             if (zenPeers !== undefined) {
@@ -401,7 +406,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                     title: currentSiteName,
                     description: siteDescription !== undefined ? siteDescription : identity.getSetting("siteDescription") || "",
                     artistName: effectiveArtistName,
-                    coverImage: coverImage !== undefined ? coverImage : identity.getSetting("coverImage") || ""
+                    coverImage: coverImage !== undefined ? coverImage : identity.getSetting("coverImage") || "",
+                    communityLink: communityLink !== undefined ? communityLink : identity.getSetting("communityLink") || ""
                 };
 
                 await zendbService.registerSite(siteInfo);
@@ -1219,7 +1225,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
                 return res.status(403).json({ error: "Only the primary admin can create new admins" });
             }
-            const { username, password, artistId, isAdmin, role } = req.body;
+            const { username, password, artistId, isAdmin, role, storageQuota } = req.body;
             if (!username) {
                 return res.status(400).json({ error: "Username is required" });
             }
@@ -1230,11 +1236,15 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             const targetRole: UserRole = role || (isAdmin ? UserRole.ADMIN : UserRole.NORMAL_USER);
+            const quota = storageQuota !== undefined ? Number(storageQuota) : (targetRole === UserRole.NORMAL_USER ? 1024 * 1024 * 1024 : 0);
 
             if (targetRole === UserRole.ADMIN || targetRole === UserRole.SUPER_USER) {
-                await authService.createAdmin(username, password, artistId, targetRole);
+                const { id } = await authService.createAdmin(username, password, artistId, targetRole);
+                if (storageQuota !== undefined) {
+                    authService.updateAdmin(id, artistId, targetRole, quota);
+                }
             } else {
-                await authService.createUser(username, password, artistId || null, 1024 * 1024 * 1024, undefined, targetRole);
+                await authService.createUser(username, password, artistId || null, quota, undefined, targetRole);
             }
             res.json({ message: "Admin user created" });
         } catch (error: any) {
@@ -1256,10 +1266,11 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Only the primary admin can manage users" });
             }
             const id = parseInt(req.params.id, 10);
-            const { artistId, isAdmin, role } = req.body;
+            const { artistId, isAdmin, role, storageQuota } = req.body;
 
             const targetRole = role || (isAdmin === undefined ? undefined : (isAdmin ? 'admin' : 'user'));
-            authService.updateAdmin(id, artistId, targetRole as UserRole);
+            const quota = storageQuota !== undefined ? Number(storageQuota) : undefined;
+            authService.updateAdmin(id, artistId, targetRole as UserRole, quota);
             res.json({ message: "Admin user updated" });
         } catch (error) {
             console.error("Error updating admin:", error);
