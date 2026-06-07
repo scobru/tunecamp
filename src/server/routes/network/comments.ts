@@ -1,4 +1,4 @@
-import { Router, json } from "express";
+import { Router, json, Request, Response } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
@@ -12,7 +12,7 @@ export function createCommentsRoutes(container: ServiceContainer): Router {
     /**
      * GET /api/comments/track/:trackId
      */
-    router.get("/track/:trackId", wrapAsync(async (req, res) => {
+    router.get("/track/:trackId", wrapAsync(async (req: Request, res: Response) => {
         const trackId = parseInt(req.params.trackId as string, 10);
         if (isNaN(trackId)) return res.status(400).json({ error: "Invalid track ID" });
         const comments = social.getComments(trackId);
@@ -23,7 +23,7 @@ export function createCommentsRoutes(container: ServiceContainer): Router {
      * POST /api/comments/track/:trackId
      * Requires authentication (JWT).
      */
-    router.post("/track/:trackId", authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res) => {
+    router.post("/track/:trackId", authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
         const trackId = parseInt(req.params.trackId as string, 10);
         if (isNaN(trackId)) return res.status(400).json({ error: "Invalid track ID" });
 
@@ -43,7 +43,7 @@ export function createCommentsRoutes(container: ServiceContainer): Router {
      * DELETE /api/comments/:commentId
      * Requires authentication. Owner or admin only.
      */
-    router.delete("/:commentId", authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res) => {
+    router.delete("/:commentId", authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
         const commentId = parseInt(req.params.commentId as string, 10);
         if (isNaN(commentId)) return res.status(400).json({ error: "Invalid comment ID" });
 
