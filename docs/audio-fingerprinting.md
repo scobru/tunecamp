@@ -14,7 +14,7 @@ L'Audio Fingerprinting trasforma un file audio in una firma digitale unica (hash
 ## Funzionamento Tecnico
 
 ### 1. Generazione della Firma
-Il sistema utilizza il `FingerprintService` per analizzare il file audio. Attualmente, viene generata una firma basata sull'inviluppo della forma d'onda (waveform envelope), normalizzata per essere resistente a piccole variazioni di volume.
+La firma viene generata dal pipeline di `WaveformService` durante la scansione della traccia. Attualmente viene calcolato un hash dell'inviluppo della forma d'onda (waveform envelope), normalizzato per essere resistente a piccole variazioni di volume. Il valore risultante viene salvato nella colonna `fingerprint` della tabella `tracks` nel database.
 
 ### 2. Community Registry (ZenDB)
 Le impronte digitali e i relativi metadati sono memorizzati nel namespace `tunecamp-fingerprints` della rete Zen. 

@@ -32,7 +32,7 @@ Dalla root del progetto:
 ```bash
 npm run dev
 ```
-Il server sarà disponibile di default su `http://localhost:3000`.
+Il server sarà disponibile di default su `http://localhost:1970` (configurabile via `TUNECAMP_PORT`).
 
 ### Webapp
 Dalla directory `webapp/`:
@@ -70,4 +70,4 @@ Sono disponibili diversi script per compiti comuni:
 
 ## Contribuire
 
-Per maggiori dettagli sul processo di contribuzione, consulta il file `CONTRIBUTING.md` nella root del progetto.
+Per maggiori dettagli sul processo di contribuzione, consulta il file [`docs/CONTRIBUTING.md`](./CONTRIBUTING.md).
