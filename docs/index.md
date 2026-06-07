@@ -36,7 +36,6 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Social & Community](./social-features.md): Post, commenti e interazioni fan.
 - [Smart Contracts](./smart-contracts.md): Guida tecnica ai contratti Solidity su Base.
 - [Backup & Migrazione](./backup-migration.md): Come salvaguardare e spostare la tua istanza.
-- [Linda Messaging](./linda-bot.md): Bridge decentralizzato per messaggistica Zen.
 - [Federazione](./FEDERATION.md): Dettagli sul protocollo ActivityPub in TuneCamp.
 - [Subsonic](./SUBSONIC.md): Supporto al protocollo Subsonic per client esterni.
 - [Nginx](./NGINX.md): Esempi di configurazione per reverse proxy.

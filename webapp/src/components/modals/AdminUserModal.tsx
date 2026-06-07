@@ -21,12 +21,12 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [initialIsActive, setInitialIsActive] = useState(true);
     const [storageQuota, setStorageQuota] = useState<number>(0);
 
-    // Auto-promote to Curator if an artist is linked and role is Listener
+    // Auto-clear artist link if role is changed to Listener (Standard User)
     useEffect(() => {
-        if (artistId && role === 'user') {
-            setRole('super_user');
+        if (role === 'user' && artistId !== '') {
+            setArtistId('');
         }
-    }, [artistId, role]);
+    }, [role]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -175,8 +175,9 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                                 className="select select-bordered w-full"
                                 value={artistId}
                                 onChange={e => setArtistId(e.target.value)}
+                                disabled={role === 'user'}
                             >
-                                <option value="">None (Admin/Listener only)</option>
+                                <option value="">None (Managers/Curators only)</option>
                                 {artists.map(artist => (
                                     <option key={artist.id} value={artist.id}>
                                         {artist.name}
@@ -188,12 +189,17 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                                 className="btn btn-square btn-outline btn-primary"
                                 title="Create New Artist"
                                 onClick={() => document.dispatchEvent(new CustomEvent('open-admin-artist-modal'))}
+                                disabled={role === 'user'}
                             >
                                 +
                             </button>
                         </div>
                          <label className="label">
-                            <span className="label-text-alt opacity-50">Linking to an artist allows this user to manage that artist's profile.</span>
+                            <span className="label-text-alt opacity-50">
+                                {role === 'user'
+                                    ? "Listeners (Standard Users) cannot be linked to an artist profile."
+                                    : "Linking to an artist allows this user to manage that artist's profile."}
+                            </span>
                         </label>
                         {artistId && (
                             <label className="label py-0">
@@ -204,62 +210,60 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                         )}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="form-control flex-1">
-                            <label className="label">
-                                <span className="label-text">User Role</span>
-                            </label>
-                            <select 
-                                className="select select-bordered w-full"
-                                value={role}
-                                onChange={e => setRole(e.target.value)}
-                                disabled={dialogRef.current?.dataset.userId === '1'} // Cannot change root admin role
-                            >
-                                <option value="user">Listener (Standard User)</option>
-                                <option value="super_user">Curator (Super User / Library Management)</option>
-                                <option value="admin">Manager (Full Admin)</option>
-                                {role === 'root_admin' && <option value="root_admin">Root Admin</option>}
-                            </select>
-                        </div>
-
-                        <div className="form-control flex-1">
-                            <label className="label">
-                                <span className="label-text">Storage Quota</span>
-                            </label>
-                            <select 
-                                className="select select-bordered w-full"
-                                value={storageQuota}
-                                onChange={e => setStorageQuota(Number(e.target.value))}
-                                disabled={dialogRef.current?.dataset.userId === '1'} // Root admin is unlimited
-                            >
-                                <option value="0">Unlimited (Root/Managers)</option>
-                                <option value="1073741824">1 GB</option>
-                                <option value="5368709120">5 GB</option>
-                                <option value="10737418240">10 GB</option>
-                                <option value="21474836480">20 GB</option>
-                                <option value="53687091200">50 GB</option>
-                                <option value="107374182400">100 GB</option>
-                                {![0, 1073741824, 5368709120, 10737418240, 21474836480, 53687091200, 107374182400].includes(Number(storageQuota)) && (
-                                    <option value={storageQuota}>Custom ({(Number(storageQuota) / 1024 / 1024 / 1024).toFixed(1)} GB)</option>
-                                )}
-                            </select>
-                        </div>
-
-                        {isRoot && dialogRef.current?.dataset.mode === 'edit' && (
-                             <div className="form-control flex-initial self-end">
-                                <label className="label cursor-pointer justify-start gap-4">
-                                    <span className="label-text">Active Status</span>
-                                    <input 
-                                        type="checkbox" 
-                                        className="toggle toggle-success"
-                                        checked={isActive}
-                                        onChange={e => setIsActive(e.target.checked)}
-                                        disabled={dialogRef.current?.dataset.userId === '1'} // Cannot disable root
-                                    />
-                                </label>
-                            </div>
-                        )}
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">User Role</span>
+                        </label>
+                        <select 
+                            className="select select-bordered w-full"
+                            value={role}
+                            onChange={e => setRole(e.target.value)}
+                            disabled={dialogRef.current?.dataset.userId === '1'} // Cannot change root admin role
+                        >
+                            <option value="user">Listener (Standard User)</option>
+                            <option value="super_user">Curator (Super User / Library Management)</option>
+                            <option value="admin">Manager (Full Admin)</option>
+                            {role === 'root_admin' && <option value="root_admin">Root Admin</option>}
+                        </select>
                     </div>
+
+                    <div className="form-control">
+                        <label className="label">
+                            <span className="label-text">Storage Quota</span>
+                        </label>
+                        <select 
+                            className="select select-bordered w-full"
+                            value={storageQuota}
+                            onChange={e => setStorageQuota(Number(e.target.value))}
+                            disabled={dialogRef.current?.dataset.userId === '1'} // Root admin is unlimited
+                        >
+                            <option value="0">Unlimited (Root/Managers)</option>
+                            <option value="1073741824">1 GB</option>
+                            <option value="5368709120">5 GB</option>
+                            <option value="10737418240">10 GB</option>
+                            <option value="21474836480">20 GB</option>
+                            <option value="53687091200">50 GB</option>
+                            <option value="107374182400">100 GB</option>
+                            {![0, 1073741824, 5368709120, 10737418240, 21474836480, 53687091200, 107374182400].includes(Number(storageQuota)) && (
+                                <option value={storageQuota}>Custom ({(Number(storageQuota) / 1024 / 1024 / 1024).toFixed(1)} GB)</option>
+                            )}
+                        </select>
+                    </div>
+
+                    {isRoot && dialogRef.current?.dataset.mode === 'edit' && (
+                         <div className="form-control">
+                            <label className="label cursor-pointer justify-start gap-4">
+                                <span className="label-text">Active Status</span>
+                                <input 
+                                    type="checkbox" 
+                                    className="toggle toggle-success"
+                                    checked={isActive}
+                                    onChange={e => setIsActive(e.target.checked)}
+                                    disabled={dialogRef.current?.dataset.userId === '1'} // Cannot disable root
+                                />
+                            </label>
+                        </div>
+                    )}
                     
                     {error && <div className="text-error text-sm text-center">{error}</div>}
 

@@ -38,6 +38,16 @@ const Social = () => {
       navigate("/");
       return;
     }
+    
+    // Guard: Listeners (role === 'user') without an artist profile cannot access Social
+    const isListener = role === 'user';
+    const hasArtistId = !!user?.artistId;
+    if (isListener && !hasArtistId) {
+      console.warn("Access denied: Listeners without artist profile cannot access Social Hub");
+      navigate("/");
+      return;
+    }
+
     // Load artist data for automation tab
     if (user?.artistId && isAdmin) {
       API.getArtist(user.artistId)
@@ -50,7 +60,7 @@ const Social = () => {
         })
         .catch(console.error);
     }
-  }, [isAuthenticated, user, isLoading]);
+  }, [isAuthenticated, user, isLoading, role, navigate]);
 
   const handleSaveAutomation = async () => {
     if (!artistData?.id) return;

@@ -66,7 +66,7 @@ docker-compose up -d --build
 - ✏️ **Batch Editing**: Edit cover art, metadata, and pricing across multiple tracks at once.
 - 📁 **File Browser**: Browse the server filesystem and attach files to the library.
 - 🤖 **Telegram Bot**: Rapid ingestion of music files and remote management. See [telegram.md](docs/telegram.md).
-- 🧠 **AI Assistant (Linda)**: Optional OpenRouter-powered assistant for library tasks. See [linda-bot.md](docs/linda-bot.md).
+- 🧠 **AI Assistant**: Optional OpenRouter-powered assistant for library tasks. See [ai-integrations.md](docs/ai-integrations.md).
 - 🧩 **Plugins**: Load custom providers (streaming, metadata, storage) from a plugins directory. See [PLUGINS.md](docs/PLUGINS.md).
 - 💾 **Backup & Restore**: Full database backup/restore via the admin panel or CLI.
 - 📊 **Statistics**: Play counts, listening time, top tracks/artists, and library stats.
@@ -105,14 +105,12 @@ docker-compose up -d --build
 git clone https://github.com/scobru/shogun-tunecamp.git
 cd shogun-tunecamp
 
-# Install dependencies and build backend
+# Install all dependencies (both root and webapp workspace)
 npm install
-npm run build
 
-# Install frontend dependencies and build
-cd webapp
-npm install
-cd ..
+# Build backend and frontend
+npm run build
+npm run build -w webapp
 
 # Start the server (runs migrations automatically)
 npm start
@@ -120,10 +118,13 @@ npm start
 
 For development with hot-reload:
 ```bash
-# Terminal 1: Watch backend TypeScript
+# Terminal 1: Watch backend TypeScript and CSS
 npm run dev
 
-# Terminal 2: Watch frontend (Vite dev server with HMR)
+# Terminal 2: Start the backend server
+npm start
+
+# Terminal 3: Start frontend (Vite dev server with HMR)
 cd webapp && npm run dev
 ```
 
@@ -161,8 +162,8 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_PUBLIC_URL` | Public HTTPS URL (required for ActivityPub federation) | — |
 | `TUNECAMP_SITE_NAME` | Human-readable instance name | `My TuneCamp Server` |
 | `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins | *all* |
-| `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads | `/data/downloads` |
-| `TUNECAMP_PLUGINS_DIR` | Directory to load provider plugins from | — |
+| `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads | `./music/downloads` (local) / `/data/downloads` (Docker) |
+| `TUNECAMP_PLUGINS_DIR` | Directory to load provider plugins from | `./plugins` |
 
 **Federation & Network**
 
@@ -204,8 +205,8 @@ Configuration is managed via environment variables (or an `.env` file).
 
 | Variable | Description | Default |
 |:---------|:------------|:--------|
-| `VITE_TUNECAMP_RPC_URL` | Base RPC endpoint used by the in-browser wallet | `https://base.llamarpc.com` |
-| `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x8335...02913` |
+| `VITE_TUNECAMP_RPC_URL` | Base RPC endpoint used by the in-browser wallet | `https://mainnet.base.org` |
+| `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 
 ## API & Integrations
 
@@ -219,7 +220,7 @@ Tunecamp exposes a full Subsonic API (version 1.16.1) at `/rest`. This allows yo
 
 > **Roaming Users**: To use Subsonic on a new instance, first log in via the web interface to trigger lazy account creation.
 
-See the [Subsonic API Reference →](./docs/SUBSONIC.md)
+See the [Subsonic API Reference →](./docs/subsonic.md)
 
 ### REST API
 
@@ -231,7 +232,7 @@ See the [OpenAPI Reference →](./docs/openapi.yml)
 
 For production deployments, using Nginx as a reverse proxy is recommended for SSL and WebSocket support.
 
-See the [Nginx Configuration Guide →](./docs/NGINX.md)
+See the [Nginx Configuration Guide →](./docs/nginx.md)
 
 ### Federation & Network Architecture
 

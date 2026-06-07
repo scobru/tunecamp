@@ -196,7 +196,7 @@ export const Sidebar = () => {
           </ul>
         </div>
 
-        {isAuthenticated && (
+        {isAuthenticated && (isAdmin || !!user?.artistId) && (
           <div>
             <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Management</h3>
             <ul className="menu menu-sm p-0 gap-1">
@@ -209,7 +209,7 @@ export const Sidebar = () => {
                   <NavItem to="/my-music" icon={Music} label="My Music" />
                 </>
               )}
-              {(user?.artistId || isRoot) && (
+              {(user?.artistId || isAdmin) && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
               {(isRoot || role === 'admin') && (

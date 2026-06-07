@@ -1244,7 +1244,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                     authService.updateAdmin(id, artistId, targetRole, quota);
                 }
             } else {
-                await authService.createUser(username, password, artistId || null, quota, undefined, targetRole);
+                // Listeners (NORMAL_USER) cannot have an artist profile linked
+                await authService.createUser(username, password, null, quota, undefined, targetRole);
             }
             res.json({ message: "Admin user created" });
         } catch (error: any) {
@@ -1268,9 +1269,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const id = parseInt(req.params.id, 10);
             const { artistId, isAdmin, role, storageQuota } = req.body;
 
-            const targetRole = role || (isAdmin === undefined ? undefined : (isAdmin ? 'admin' : 'user'));
+            const currentAdmin = authService.getAdminById(id);
+            const targetRole = role || (isAdmin === undefined ? (currentAdmin?.role || 'user') : (isAdmin ? 'admin' : 'user'));
             const quota = storageQuota !== undefined ? Number(storageQuota) : undefined;
-            authService.updateAdmin(id, artistId, targetRole as UserRole, quota);
+            // Listeners (NORMAL_USER / 'user') cannot have an artist profile linked
+            const resolvedArtistId = targetRole === 'user' ? null : artistId;
+            authService.updateAdmin(id, resolvedArtistId, targetRole as UserRole, quota);
             res.json({ message: "Admin user updated" });
         } catch (error) {
             console.error("Error updating admin:", error);

@@ -87,4 +87,4 @@ Molte di queste chiavi possono essere inserite direttamente nell'interfaccia Adm
 ---
 
 ## Verifica
-Dopo aver inserito le chiavi, riavvia il server TuneCamp. Controlla i log di avvio per assicurarti che i servizi (Telegram, Linda, GDrive) siano inizializzati correttamente senza errori di autenticazione.
+Dopo aver inserito le chiavi, riavvia il server TuneCamp. Controlla i log di avvio per assicurarti che i servizi (Telegram, GDrive) siano inizializzati correttamente senza errori di autenticazione.

@@ -16,7 +16,7 @@ services:
       - "1970:1970"
     volumes:
       # Map your music library (REQUIRED - change this path)
-      - /path/to/your/music:/music:ro
+      - /path/to/your/music:/music
       # Persistent data (database, uploads)
       - tunecamp_data:/data
     environment:
@@ -29,7 +29,7 @@ services:
       # Optional: Site name for community
       - TUNECAMP_SITE_NAME=My TuneCamp Server
       # Optional: JWT secret (auto-generated if not set)
-      - JWT_SECRET=
+      - TUNECAMP_JWT_SECRET=
       - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
       - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}
       # ZEN Relay peer - must use /zen WebSocket path
@@ -50,9 +50,6 @@ services:
       - STRIPE_ONRAMP_SECRET_KEY=
       # YouTube Bot Detection Bypass
       - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
-      # Scrobbling
-      - LASTFM_API_KEY=${LASTFM_API_KEY:-}
-      - LISTENBRAINZ_TOKEN=${LISTENBRAINZ_TOKEN:-}
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 
