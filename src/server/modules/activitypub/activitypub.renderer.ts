@@ -112,7 +112,7 @@ export class ActivityPubRenderer {
         const published = post.published_at || post.created_at;
         const sentTime = published ? new Date(published).getTime() : 0;
 
-        let contentHtml = `<p>${post.content}</p>`;
+        let contentHtml = this.renderMarkdown(post.content);
 
         if (!post.title) {
             return {
@@ -169,5 +169,52 @@ export class ActivityPubRenderer {
             "opus": "audio/opus",
         };
         return contentTypes[ext || ""] || "audio/mpeg";
+    }
+
+    private renderMarkdown(markdown: string): string {
+        if (!markdown) return "";
+        // Escape HTML tags to prevent injection in the Fediverse
+        let html = markdown
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+
+        // Normalize line endings
+        html = html.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+        // Headings
+        html = html.replace(/^### (.*?)$/gm, "<h3>$1</h3>");
+        html = html.replace(/^## (.*?)$/gm, "<h2>$1</h2>");
+        html = html.replace(/^# (.*?)$/gm, "<h1>$1</h1>");
+
+        // Bold & Italic
+        html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+        html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+        html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
+        html = html.replace(/_(.*?)_/g, "<em>$1</em>");
+
+        // Links: [text](url)
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+        // Bullet Lists
+        html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+        // Wrap <li> elements in <ul>
+        html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
+            return `<ul>${match}</ul>`;
+        });
+        html = html.replace(/<\/ul>\s*<ul>/g, "");
+
+        // Split by double newlines into block elements
+        const blocks = html.split(/\n\n+/);
+        const processedBlocks = blocks.map(block => {
+            const trimmed = block.trim();
+            if (!trimmed) return "";
+            if (/^<(h[1-6]|ul|ol|li|hr|blockquote|p|div|a)/i.test(trimmed)) {
+                return trimmed;
+            }
+            return `<p>${trimmed.replace(/\n/g, "<br />")}</p>`;
+        });
+
+        return processedBlocks.filter(Boolean).join("\n");
     }
 }

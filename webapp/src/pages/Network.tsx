@@ -7,6 +7,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
 import { formatDuration } from "../utils/format";
 import type { NetworkSite, NetworkTrack, NetworkStatus } from "../types";
+import { renderMarkdown } from "../utils/markdown";
 
 const getHostname = (url: string) => {
   try {
@@ -173,7 +174,7 @@ const PostCard = memo(({
           </div>
         </div>
 
-        <div className="text-sm opacity-80 line-clamp-4 prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.content || "" }}>
+        <div className="text-sm opacity-80 line-clamp-4 prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: renderMarkdown(item.content || "") }}>
         </div>
 
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-base-content/5">

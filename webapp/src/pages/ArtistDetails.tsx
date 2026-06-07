@@ -9,6 +9,7 @@ import { formatDuration } from '../utils/format';
 import type { Artist, Album, Post, Track, Release, Asset } from '../types';
 import { AssetCard, AssetViewerModal } from './Store';
 import { SubscriptionModal } from '../components/modals/SubscriptionModal';
+import { renderMarkdown } from '../utils/markdown';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
     const p = platform.toLowerCase();
@@ -273,7 +274,7 @@ const ArtistDetails = () => {
 
                                         <div 
                                             className="prose prose-sm max-w-none opacity-85 leading-relaxed font-serif line-clamp-4" 
-                                            dangerouslySetInnerHTML={{ __html: post.content }} 
+                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }} 
                                         />
                                     </div>
 
@@ -306,7 +307,7 @@ const ArtistDetails = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="prose prose-sm max-w-none opacity-90 whitespace-pre-wrap text-base-content/95" dangerouslySetInnerHTML={{ __html: post.content }} />
+                                    <div className="prose prose-sm max-w-none opacity-90 text-base-content/95" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }} />
                                 </div>
                             )
                         ))}

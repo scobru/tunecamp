@@ -3,6 +3,7 @@ import API from '../../services/api';
 import { PenTool, Globe, Eye, Lock, Send } from 'lucide-react';
 import type { Artist } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { renderMarkdown } from '../../utils/markdown';
 
 export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void }) => {
     const dialogRef = useRef<HTMLDialogElement>(null);
@@ -15,6 +16,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [tab, setTab] = useState<'write' | 'preview'>('write');
 
     useEffect(() => {
         const handleOpen = () => {
@@ -23,6 +25,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
              setTitle('');
              setSummary('');
              setVisibility('public');
+             setTab('write');
              setError('');
              dialogRef.current?.showModal();
         };
@@ -159,18 +162,42 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
 
                     {/* Content text editor */}
                     <div className="form-control">
-                        <label className="label">
-                            <span className="label-text font-bold text-xs opacity-60">Content Body</span>
-                        </label>
+                        <div className="flex justify-between items-center label">
+                            <label className="label-text font-bold text-xs opacity-60">Content Body</label>
+                            
+                            <div className="flex bg-base-300/60 p-0.5 rounded-lg text-xs shrink-0">
+                                <button
+                                    type="button"
+                                    className={`px-3 py-1 rounded-md font-bold transition-all ${tab === 'write' ? 'bg-primary text-primary-content shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                                    onClick={() => setTab('write')}
+                                >
+                                    Write
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`px-3 py-1 rounded-md font-bold transition-all ${tab === 'preview' ? 'bg-primary text-primary-content shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                                    onClick={() => setTab('preview')}
+                                >
+                                    Preview
+                                </button>
+                            </div>
+                        </div>
                         <div className="relative">
-                            <textarea 
-                                className="textarea textarea-bordered w-full h-44 text-base rounded-xl bg-base-200/30 border-base-content/10 focus:outline-none focus:border-primary p-4 scrollbar-thin resize-none" 
-                                value={content}
-                                onChange={e => setContent(e.target.value)}
-                                placeholder="What's new in the community? Share releases, updates, thoughts..."
-                                maxLength={5500}
-                                required
-                            />
+                            {tab === 'write' ? (
+                                <textarea 
+                                    className="textarea textarea-bordered w-full min-h-[250px] text-base rounded-xl bg-base-200/30 border-base-content/10 focus:outline-none focus:border-primary p-4 scrollbar-thin resize-y" 
+                                    value={content}
+                                    onChange={e => setContent(e.target.value)}
+                                    placeholder="What's new in the community? Share releases, updates, thoughts... (Markdown supported)"
+                                    maxLength={5500}
+                                    required
+                                />
+                            ) : (
+                                <div 
+                                    className="prose prose-sm prose-invert max-w-none p-4 rounded-xl bg-base-200/30 border border-base-content/10 min-h-[250px] max-h-[400px] overflow-y-auto scrollbar-thin select-text"
+                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(content) || '<p class="opacity-40 italic">Nothing to preview yet...</p>' }}
+                                />
+                            )}
                         </div>
                     </div>
 

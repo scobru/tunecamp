@@ -6,6 +6,7 @@ import {
 import API from '../../services/api';
 import { useAuthStore } from '../../stores/useAuthStore';
 import type { Artist, Post } from '../../types';
+import { renderMarkdown } from '../../utils/markdown';
 
 interface ApNote {
     id: number;
@@ -55,6 +56,7 @@ export const ArtistFediversePanel = () => {
     const [composerVisibility, setComposerVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
     const [composerLoading, setComposerLoading] = useState(false);
     const [isComposerFocused, setIsComposerFocused] = useState(false);
+    const [composerTab, setComposerTab] = useState<'write' | 'preview'>('write');
     const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Micro-interactions States
@@ -170,6 +172,7 @@ export const ArtistFediversePanel = () => {
             setComposerContent('');
             setComposerTitle('');
             setComposerSummary('');
+            setComposerTab('write');
             setIsComposerFocused(false);
             await loadData(effectiveArtistId);
         } catch (e: any) {
@@ -591,33 +594,58 @@ export const ArtistFediversePanel = () => {
                                 {/* Textarea Wrapper */}
                                 <div className="flex-grow space-y-2">
                                     {isComposerFocused && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in pb-1">
-                                            <input 
-                                                type="text"
-                                                className="input input-sm input-bordered w-full rounded-xl bg-base-200/50 border-base-content/10 focus:outline-none focus:border-primary px-3 py-1.5 text-xs font-semibold"
-                                                placeholder="Article Title (Optional)"
-                                                value={composerTitle}
-                                                onChange={e => setComposerTitle(e.target.value)}
-                                            />
-                                            <input 
-                                                type="text"
-                                                className="input input-sm input-bordered w-full rounded-xl bg-base-200/50 border-base-content/10 focus:outline-none focus:border-primary px-3 py-1.5 text-xs font-semibold"
-                                                placeholder="Article Summary (Optional)"
-                                                value={composerSummary}
-                                                onChange={e => setComposerSummary(e.target.value)}
-                                            />
+                                        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between pb-1">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:flex-grow">
+                                                <input 
+                                                    type="text"
+                                                    className="input input-sm input-bordered w-full rounded-xl bg-base-200/50 border-base-content/10 focus:outline-none focus:border-primary px-3 py-1.5 text-xs font-semibold"
+                                                    placeholder="Article Title (Optional)"
+                                                    value={composerTitle}
+                                                    onChange={e => setComposerTitle(e.target.value)}
+                                                />
+                                                <input 
+                                                    type="text"
+                                                    className="input input-sm input-bordered w-full rounded-xl bg-base-200/50 border-base-content/10 focus:outline-none focus:border-primary px-3 py-1.5 text-xs font-semibold"
+                                                    placeholder="Article Summary (Optional)"
+                                                    value={composerSummary}
+                                                    onChange={e => setComposerSummary(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="flex bg-base-300/60 p-0.5 rounded-lg text-xs self-end sm:self-center shrink-0">
+                                                <button
+                                                    type="button"
+                                                    className={`px-3 py-1 rounded-md font-bold transition-all ${composerTab === 'write' ? 'bg-primary text-primary-content shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                                                    onClick={() => setComposerTab('write')}
+                                                >
+                                                    Write
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`px-3 py-1 rounded-md font-bold transition-all ${composerTab === 'preview' ? 'bg-primary text-primary-content shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                                                    onClick={() => setComposerTab('preview')}
+                                                >
+                                                    Preview
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
-                                    <textarea
-                                        ref={composerTextareaRef}
-                                        className="textarea border-none bg-transparent w-full p-0 pt-1 text-base placeholder:text-base-content/40 focus:outline-none focus:ring-0 resize-none min-h-[64px] scrollbar-thin"
-                                        placeholder={`Compose updates for the community...`}
-                                        value={composerContent}
-                                        onChange={e => setComposerContent(e.target.value)}
-                                        onFocus={() => setIsComposerFocused(true)}
-                                        maxLength={5500}
-                                        required
-                                    />
+                                    {composerTab === 'write' ? (
+                                        <textarea
+                                            ref={composerTextareaRef}
+                                            className={`textarea border-none bg-transparent w-full p-0 pt-1 text-base placeholder:text-base-content/40 focus:outline-none focus:ring-0 resize-y scrollbar-thin ${isComposerFocused ? 'min-h-[180px]' : 'min-h-[64px]'}`}
+                                            placeholder={`Compose updates for the community... (Markdown supported)`}
+                                            value={composerContent}
+                                            onChange={e => setComposerContent(e.target.value)}
+                                            onFocus={() => setIsComposerFocused(true)}
+                                            maxLength={5500}
+                                            required
+                                        />
+                                    ) : (
+                                        <div 
+                                            className="prose prose-sm prose-invert max-w-none p-3 rounded-xl bg-base-300/20 border border-base-content/10 min-h-[180px] max-h-[400px] overflow-y-auto scrollbar-thin select-text"
+                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(composerContent) || '<p class="opacity-40 italic">Nothing to preview yet...</p>' }}
+                                        />
+                                    )}
                                 </div>
                             </div>
 
@@ -830,7 +858,6 @@ export const ArtistFediversePanel = () => {
 
                                                 {/* Post Content Body */}
                                                 <div className="space-y-3 pl-0 sm:pl-14">
-                                                    
                                                     {/* If simple post or premium Article */}
                                                     {note.note_type === 'post' && (
                                                         note.postTitle ? (
@@ -852,7 +879,7 @@ export const ArtistFediversePanel = () => {
                                                                 )}
                                                                 <div 
                                                                     className="text-sm opacity-90 line-clamp-3 leading-relaxed font-serif pt-1 prose prose-sm prose-invert max-w-none"
-                                                                    dangerouslySetInnerHTML={{ __html: note.postContent }}
+                                                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(note.postContent) }}
                                                                 />
                                                                 <div className="pt-2">
                                                                     <a 
@@ -865,9 +892,10 @@ export const ArtistFediversePanel = () => {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <p className="text-base leading-relaxed text-base-content/90 whitespace-pre-wrap">
-                                                                {note.postContent}
-                                                            </p>
+                                                            <div 
+                                                                className="text-base leading-relaxed text-base-content/90 prose prose-sm prose-invert max-w-none select-text"
+                                                                dangerouslySetInnerHTML={{ __html: renderMarkdown(note.postContent) }}
+                                                            />
                                                         )
                                                     )}
 
