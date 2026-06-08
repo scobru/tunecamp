@@ -174,6 +174,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const apService = createActivityPubService(database as any, config, federation);
     await apService.generateKeysForAllArtists();
+    apService.startDeliveryQueue();
 
     const publishingService = createPublishingService(database, zendbService, apService, config, storage);
 
@@ -201,7 +202,13 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
     const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, autotaggerService);
     
-    const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService);
+    const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService, {
+        transcodeCacheDir: config.transcodeCacheDir,
+        transcodeCacheMaxBytes: config.transcodeCacheMaxBytes,
+        xaccelRedirect: config.xaccelRedirect,
+        xaccelMediaPrefix: config.xaccelMediaPrefix,
+        xaccelCachePrefix: config.xaccelCachePrefix,
+    });
     const subsonicService = new SubsonicService(database);
 
     const scanner = new Scanner(database, storage, autotaggerService, catalogService);

@@ -69,6 +69,57 @@ Tunecamp is already configured to trust proxies (via `app.set('trust proxy', tru
 ### 3. Zen WebSockets
 If you notice that peers or signaling are not syncing in real-time, double-check that the `Upgrade` and `Connection` headers are correctly set in your `location /` block. These are vital for the Zen peer-to-peer network to function.
 
+## Offloading Audio Delivery with X-Accel-Redirect (optional)
+
+By default Node serves every audio byte: it reads the file and pipes it through the
+event loop. On a busy instance this makes Node the bottleneck for streaming. You can
+hand byte-serving to nginx instead, so Node only does auth + decides *which* file to
+serve, while nginx streams it (with full HTTP Range support).
+
+This is **opt-in** and requires matching nginx config — if you enable the app flag
+without the `internal` locations below, streaming will break.
+
+### 1. Enable the feature in Tunecamp
+
+```bash
+TUNECAMP_XACCEL_REDIRECT=true
+# Optional — only change if you also change the nginx locations below:
+# TUNECAMP_XACCEL_MEDIA_PREFIX=/_protected_media
+# TUNECAMP_XACCEL_CACHE_PREFIX=/_protected_cache
+```
+
+When enabled, the app responds to stream requests with an `X-Accel-Redirect` header
+pointing at an internal location instead of piping the file.
+
+### 2. Add the internal locations in nginx
+
+Add these **inside the `server { ... }` block** (alongside `location /`). The `alias`
+paths must point to your `TUNECAMP_MUSIC_DIR` and your transcode cache directory
+(`TUNECAMP_TRANSCODE_CACHE_DIR`, which defaults to `<db-dir>/cache/transcode`):
+
+```nginx
+    # Original audio files (maps to TUNECAMP_MUSIC_DIR)
+    location /_protected_media/ {
+        internal;
+        alias /path/to/your/music/;   # trailing slash required
+    }
+
+    # Cached transcodes (maps to TUNECAMP_TRANSCODE_CACHE_DIR)
+    location /_protected_cache/ {
+        internal;
+        alias /path/to/your/data/cache/transcode/;   # trailing slash required
+    }
+```
+
+`internal` means these locations can only be reached via an `X-Accel-Redirect` from
+the app — they are never directly accessible to clients, so auth is still enforced by
+Tunecamp before the redirect is issued.
+
+> **Note:** This only offloads *local* files. Google Drive, external providers, and
+> live (seek) transcodes still stream through Node, which is correct. The transcode
+> **cache** (enabled independently) is what makes most transcoded streams eligible
+> for offload after the first request.
+
 ## CapRover Specific Instructions
 
 If you are deploying Tunecamp via **CapRover**, follow these steps to ensure WebSockets and large uploads work correctly:

@@ -7,6 +7,7 @@ import { getPlaceholderSVG } from '../../../utils/audioUtils.js';
 import type { DatabaseService, Track } from '../../core/database.js';
 import type { AuthService } from '../../modules/auth/auth.service.js';
 import type { MediaEngine } from '../../modules/media/media-engine.js';
+import { sendStreamResult } from '../../modules/media/media-engine.js';
 import type { SubsonicService } from '../../modules/subsonic/subsonic.service.js';
 import type { ZenDBService } from '../../modules/network/zendb.service.js';
 import { UserRole, VisibilityGuardian, VisibilityProfile } from '../../common/visibility.js';
@@ -313,14 +314,10 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         const trackId = parseInt(id.substring(3));
         try {
             const result = await mediaEngine.getStream({
-                trackId, format, bitrate: maxBitRate, seek: timeOffset ? parseInt(timeOffset) : 0
+                trackId, format, bitrate: maxBitRate, seek: timeOffset ? parseInt(timeOffset) : 0,
+                range: req.headers.range as string | undefined
             });
-            if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
-            if (result.contentRange) res.setHeader("Content-Range", result.contentRange);
-            res.setHeader("Content-Type", result.contentType);
-            res.setHeader("Accept-Ranges", "bytes");
-            res.status(result.statusCode);
-            result.stream.pipe(res);
+            sendStreamResult(res, result);
         } catch (error: any) {
             if (error.message && error.message.startsWith("REDIRECT:")) return res.redirect(error.message.substring(9));
             console.error('[Subsonic] Streaming error:', error);

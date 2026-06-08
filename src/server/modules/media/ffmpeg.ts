@@ -180,8 +180,25 @@ export function transcode(inputPath: string, format: string = 'mp3', bitrate?: n
 
     // Optimization: for Subsonic streaming, we want it to be fast and streamable
     command.outputOptions('-map_metadata', '0');
-    
+
     return command;
+}
+
+/**
+ * Transcode an audio file to a destination file on disk.
+ * Unlike live `transcode()`, this respects the concurrency queue (it is a full
+ * encode, not a latency-sensitive live stream) and is used to populate the
+ * transcode cache so subsequent requests can be served as plain file reads.
+ */
+export async function transcodeToFile(inputPath: string, outputPath: string, format: string = 'mp3', bitrate?: number): Promise<void> {
+    await acquireTaskSlot();
+    return new Promise<void>((resolve, reject) => {
+        const command = transcode(inputPath, format, bitrate);
+        command
+            .on('end', () => { releaseTaskSlot(); resolve(); })
+            .on('error', (err: any) => { releaseTaskSlot(); reject(err); })
+            .save(outputPath);
+    });
 }
 
 /**

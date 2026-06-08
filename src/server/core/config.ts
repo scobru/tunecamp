@@ -28,6 +28,18 @@ export interface ServerConfig {
     paypalEnvironment?: string;
     gdriveClientId?: string;
     gdriveClientSecret?: string;
+
+    // Transcode cache (#2): on-the-fly transcodes are written here so repeat
+    // requests for the same (track, format, bitrate) are served as plain file reads.
+    transcodeCacheDir: string;
+    transcodeCacheMaxBytes: number;
+
+    // X-Accel-Redirect offload (#3): when enabled, local audio is handed to the
+    // reverse proxy (nginx) to serve, taking Node out of the byte-pushing data path.
+    // Opt-in: requires matching `internal` locations in the nginx config.
+    xaccelRedirect: boolean;
+    xaccelMediaPrefix: string;   // internal location aliased to musicDir
+    xaccelCachePrefix: string;   // internal location aliased to transcodeCacheDir
 }
 
 /**
@@ -74,6 +86,15 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
     const finalMusicDir = overrides?.musicDir || process.env.TUNECAMP_MUSIC_DIR || defaultMusicDir;
     const defaultDownloadDir = path.join(finalMusicDir, "downloads");
 
+    // Transcode cache lives next to the database (same stable, writable location).
+    const finalDbPath = process.env.TUNECAMP_DB_PATH || defaultDbPath;
+    const defaultTranscodeCacheDir = path.join(path.dirname(finalDbPath), "cache", "transcode");
+    const transcodeCacheDir = process.env.TUNECAMP_TRANSCODE_CACHE_DIR || overrides?.transcodeCacheDir || defaultTranscodeCacheDir;
+    const transcodeCacheMaxBytes = parseInt(
+        process.env.TUNECAMP_TRANSCODE_CACHE_MAX_BYTES || "",
+        10
+    ) || overrides?.transcodeCacheMaxBytes || 2 * 1024 * 1024 * 1024; // 2 GB
+
     return {
         port: parseInt(process.env.TUNECAMP_PORT || "1970", 10),
         musicDir: finalMusicDir,
@@ -98,5 +119,10 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         paypalEnvironment: process.env.PAYPAL_ENVIRONMENT || overrides?.paypalEnvironment || "sandbox",
         gdriveClientId: process.env.TUNECAMP_GDRIVE_CLIENT_ID || overrides?.gdriveClientId,
         gdriveClientSecret: process.env.TUNECAMP_GDRIVE_CLIENT_SECRET || overrides?.gdriveClientSecret,
+        transcodeCacheDir,
+        transcodeCacheMaxBytes,
+        xaccelRedirect: process.env.TUNECAMP_XACCEL_REDIRECT === "true" || overrides?.xaccelRedirect || false,
+        xaccelMediaPrefix: process.env.TUNECAMP_XACCEL_MEDIA_PREFIX || overrides?.xaccelMediaPrefix || "/_protected_media",
+        xaccelCachePrefix: process.env.TUNECAMP_XACCEL_CACHE_PREFIX || overrides?.xaccelCachePrefix || "/_protected_cache",
     };
 }

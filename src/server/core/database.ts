@@ -706,6 +706,22 @@ export function createDatabase(dbPath: string): DatabaseService {
             )
         `);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_following_artist ON ap_following(artist_id)`);
+
+        // Durable outbound delivery queue (federation retry-on-failure).
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS ap_delivery_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_slug TEXT NOT NULL,
+                inbox_uri TEXT NOT NULL,
+                activity_json TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                next_attempt_at INTEGER NOT NULL,
+                last_error TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_delivery_due ON ap_delivery_queue(status, next_attempt_at)`);
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic
