@@ -227,6 +227,23 @@ export interface ApNote {
     deleted_at: string | null;
     likes_count: number;
     announces_count: number;
+    replies_count: number;
+}
+
+export interface ApInteraction {
+    actor_uri: string;
+    type: 'like' | 'announce';
+    created_at: string;
+}
+
+export interface ApReply {
+    id: number;
+    note_id: string;
+    reply_uri: string;
+    actor_uri: string;
+    content: string;
+    published_at: string | null;
+    created_at: string;
 }
 
 export interface Follower {
@@ -627,6 +644,10 @@ export interface SocialManager {
     deleteApNote(noteId: string): void;
     addApInteraction(noteId: string, actorUri: string, type: 'like' | 'announce', activityId?: string): boolean;
     removeApInteraction(noteId: string, actorUri: string, type: 'like' | 'announce'): boolean;
+    getApInteractions(noteId: string): ApInteraction[];
+    addApReply(noteId: string, replyUri: string, actorUri: string, content: string, publishedAt?: string): boolean;
+    getApReplies(noteId: string): ApReply[];
+    deleteApReply(replyUri: string): boolean;
 
     // Remote Content & Actors (AP/Fedify)
     getRemoteActor(uri: string): RemoteActor | undefined;

@@ -664,6 +664,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating ap_notes table: adding announces_count column...");
                 db.exec("ALTER TABLE ap_notes ADD COLUMN announces_count INTEGER DEFAULT 0");
             }
+            if (!cols.some(col => col.name === 'replies_count')) {
+                console.log("📦 [Database] Migrating ap_notes table: adding replies_count column...");
+                db.exec("ALTER TABLE ap_notes ADD COLUMN replies_count INTEGER DEFAULT 0");
+            }
         }
 
         db.exec(`
@@ -677,6 +681,19 @@ export function createDatabase(dbPath: string): DatabaseService {
                 UNIQUE(note_id, actor_uri, type)
             )
         `);
+
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS ap_replies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                note_id TEXT NOT NULL,
+                reply_uri TEXT NOT NULL UNIQUE,
+                actor_uri TEXT NOT NULL,
+                content TEXT NOT NULL,
+                published_at TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_replies_note ON ap_replies(note_id)`);
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic
