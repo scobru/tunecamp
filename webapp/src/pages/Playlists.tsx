@@ -91,7 +91,7 @@ const Playlists = () => {
               to={p.isUserPlaylist ? `/my-playlists/${p.id}` : `/playlists/${p.id}`}
               key={p.id}
               className={clsx(
-                "group transition-all duration-300 shadow-xl border border-base-content/5 overflow-hidden",
+                "group transition-all duration-300 shadow-level-1 border border-base-content/5 overflow-hidden",
                 viewMode === 'grid' && "card bg-base-200 hover:bg-base-300 hover:-translate-y-1",
                 viewMode === 'list' && "flex items-center gap-4 bg-base-200 p-4 rounded-xl hover:bg-base-300",
                 viewMode === 'minimal' && "flex items-center gap-3 bg-base-200/40 p-2 px-3 rounded-lg hover:bg-base-200"

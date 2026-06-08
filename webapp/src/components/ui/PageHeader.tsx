@@ -40,7 +40,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             {title}
           </h1>
           {subtitle && (
-            <p className="text-xs lg:text-sm opacity-60 font-medium tracking-wide mt-1 uppercase">
+            <p className="text-xs lg:text-sm opacity-60 font-medium tracking-normal mt-1">
               {subtitle}
             </p>
           )}

@@ -59,7 +59,7 @@ export const ArtistMetadataPickerModal = ({ artist, isOpen, onClose, onApplied }
 
     return (
         <div className="modal modal-open">
-            <div className="modal-box max-w-3xl bg-base-200 border border-primary/20 shadow-2xl">
+            <div className="modal-box max-w-3xl bg-base-200 border border-primary/20 shadow-level-1">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="font-bold text-xl flex items-center gap-2">
                         <User className="text-primary" /> Artist Metadata Enrichment
@@ -70,7 +70,7 @@ export const ArtistMetadataPickerModal = ({ artist, isOpen, onClose, onApplied }
                 </div>
 
                 <div className="mb-6 p-4 bg-primary/5 rounded-box border border-primary/10">
-                    <div className="text-xs uppercase opacity-50 font-bold mb-1">Local Artist Profile</div>
+                    <div className="text-xs opacity-50 font-bold mb-1">Local Artist Profile</div>
                     <div className="font-bold text-lg">{artist.name}</div>
                     <div className="text-sm opacity-70">Searching for high-quality photos and official bios...</div>
                 </div>
@@ -118,14 +118,14 @@ export const ArtistMetadataPickerModal = ({ artist, isOpen, onClose, onApplied }
                                     )}
                                     
                                     {c.aiBio && (
-                                        <div className="mt-2 text-[10px] uppercase tracking-wider font-bold text-primary/50">
+                                        <div className="mt-2 text-xs tracking-normal font-bold text-primary/50">
                                             ✨ AI Disambiguation Match
                                         </div>
                                     )}
                                 </div>
                                 <div className="flex items-center">
                                     <button 
-                                        className="btn btn-circle btn-primary btn-sm shadow-lg shadow-primary/20 scale-90 group-hover:scale-100 transition-transform"
+                                        className="btn btn-circle btn-primary btn-sm shadow-level-1 shadow-primary/20 scale-90 group-hover:scale-100 transition-transform"
                                         disabled={isApplying}
                                     >
                                         {isApplying ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}

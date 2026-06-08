@@ -258,16 +258,16 @@ const AlbumDetails = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-center md:justify-start gap-3">
                  {album.product_type === "podcast" || album.productType === "podcast" ? (
-                   <span className="badge badge-secondary font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-1 shadow-md shadow-secondary/15">
+                   <span className="badge badge-secondary font-black tracking-[0.2em] text-xs flex items-center gap-1 shadow-md shadow-secondary/15">
                       <Mic size={10} /> Podcast
                    </span>
                  ) : (
-                   <span className="badge badge-primary font-black uppercase tracking-[0.2em] text-[10px]">
+                   <span className="badge badge-primary font-black tracking-[0.2em] text-xs">
                       {album.type}
                    </span>
                  )}
                  {hasLossless && (
-                   <span className="badge badge-outline font-black uppercase tracking-[0.2em] text-[10px] opacity-40">
+                   <span className="badge badge-outline font-black tracking-[0.2em] text-xs opacity-40">
                       Hi-Res
                    </span>
                  )}
@@ -276,7 +276,7 @@ const AlbumDetails = () => {
                 {album.title}
               </h1>
               {(album.product_type === "podcast" || album.productType === "podcast") && (
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs opacity-75 font-bold tracking-wide pt-1">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs opacity-75 font-bold tracking-normal pt-1">
                   {album.podcast_category && (
                     <span className="badge badge-sm badge-outline border-base-content/25 text-base-content/75">{album.podcast_category}</span>
                   )}
@@ -284,7 +284,7 @@ const AlbumDetails = () => {
                     <span>By {album.podcast_author}</span>
                   )}
                   {album.podcast_explicit ? (
-                    <span className="badge badge-error badge-sm text-[9px] font-black uppercase">Explicit</span>
+                    <span className="badge badge-error badge-sm text-[11px] font-black">Explicit</span>
                   ) : null}
                 </div>
               )}
@@ -312,12 +312,12 @@ const AlbumDetails = () => {
 
             {seedingMagnet && (
               <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col gap-2 max-w-xl mx-auto md:mx-0 animate-fade-in">
-                 <div className="flex justify-between items-center text-xs font-bold text-primary uppercase tracking-widest">
+                 <div className="flex justify-between items-center text-xs font-bold text-primary tracking-normal">
                     <span>Magnet Link Ready</span>
                     <button className="btn btn-xs btn-ghost" onClick={() => setSeedingMagnet(null)}>Dismiss</button>
                  </div>
                  <div className="flex gap-2 items-center bg-base-100/50 p-2 rounded-xl border border-base-content/5">
-                    <code className="text-[10px] font-mono truncate flex-1">{seedingMagnet}</code>
+                    <code className="text-xs font-mono truncate flex-1">{seedingMagnet}</code>
                     <button 
                       className="btn btn-xs btn-primary" 
                       onClick={() => {
@@ -331,7 +331,7 @@ const AlbumDetails = () => {
 
             <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-2">
               <button
-                className="btn btn-primary btn-lg rounded-2xl px-10 shadow-2xl shadow-primary/20 hover:scale-105 transition-all"
+                className="btn btn-primary btn-lg rounded-2xl px-10 shadow-level-1 shadow-primary/20 hover:scale-105 transition-all"
                 onClick={handlePlay}
               >
                 <Play fill="currentColor" size={20} /> Play Album
@@ -387,7 +387,7 @@ const AlbumDetails = () => {
 
                   {hasLossless && (
                     <select
-                      className="select select-ghost select-md rounded-xl focus:outline-none uppercase text-[10px] font-black tracking-widest"
+                      className="select select-ghost select-md rounded-xl focus:outline-none text-xs font-black tracking-normal"
                       value={downloadFormat}
                       onChange={(e) => setDownloadFormat(e.target.value)}
                     >
@@ -421,8 +421,8 @@ const AlbumDetails = () => {
       {/* Tracklist using daisyUI 5 list-row */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-4">
-           <h2 className="text-sm font-black uppercase tracking-[0.2em] opacity-60">Tracklist</h2>
-           <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest opacity-40">
+           <h2 className="text-sm font-black tracking-[0.2em] opacity-60">Tracklist</h2>
+           <div className="flex items-center gap-6 text-xs font-black tracking-normal opacity-40">
               <span className="hidden md:block">Duration</span>
               <span className="w-8"></span>
            </div>
@@ -451,7 +451,7 @@ const AlbumDetails = () => {
                          {track.title}
                        </button>
                        {track.losslessPath && (
-                          <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase" aria-label="High Resolution Audio">Hi-Res</span>
+                          <span className="text-[11px] font-black opacity-30 border border-base-content/10 px-1.5 rounded" aria-label="High Resolution Audio">Hi-Res</span>
                        )}
                      </div>
                       {(album.product_type === 'podcast' || album.productType === 'podcast') && (
@@ -463,7 +463,7 @@ const AlbumDetails = () => {
                             <span className="badge badge-xs badge-outline opacity-60">Episode {track.podcast_episode_num}</span>
                           )}
                           {(track.podcast_episode_type || track.podcastEpisodeType) && (track.podcast_episode_type || track.podcastEpisodeType) !== 'full' && (
-                            <span className="badge badge-xs badge-ghost text-[9px] font-black uppercase opacity-60">
+                            <span className="badge badge-xs badge-ghost text-[11px] font-black opacity-60">
                               {track.podcast_episode_type || track.podcastEpisodeType}
                             </span>
                           )}
@@ -589,7 +589,7 @@ const AlbumDetails = () => {
               ) : licenseInfo.name}
            </span>
         </div>
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">
+        <div className="text-xs font-black tracking-[0.2em] opacity-40">
            Published on TuneCamp • {album.year}
         </div>
       </div>

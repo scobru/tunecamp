@@ -50,7 +50,7 @@ const Home = () => {
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
             <div
               key={i}
-              className="card bg-base-200 border border-base-content/5 shadow-xl"
+              className="card bg-base-200 border border-base-content/5 shadow-level-1"
             >
               <figure className="aspect-square w-full">
                 <div className="skeleton w-full h-full rounded-none"></div>
@@ -137,31 +137,31 @@ const Home = () => {
       {/* Stats Section - Minimalist */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-2">
         <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
-           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Total Library</span>
+           <span className="text-xs font-black tracking-normal opacity-40">Total Library</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-primary">{stats.albums || 0}</span>
-             <span className="text-xs opacity-40 font-bold uppercase">Albums</span>
+             <span className="text-xs opacity-40 font-bold">Albums</span>
            </div>
         </div>
         <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
-           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Audio Files</span>
+           <span className="text-xs font-black tracking-normal opacity-40">Audio Files</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-secondary">{stats.tracks || 0}</span>
-             <span className="text-xs opacity-40 font-bold uppercase">Tracks</span>
+             <span className="text-xs opacity-40 font-bold">Tracks</span>
            </div>
         </div>
         <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
-           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Diverse Styles</span>
+           <span className="text-xs font-black tracking-normal opacity-40">Diverse Styles</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-accent">{stats.genresCount || 0}</span>
-             <span className="text-xs opacity-40 font-bold uppercase">Genres</span>
+             <span className="text-xs opacity-40 font-bold">Genres</span>
            </div>
         </div>
         <div className="flex flex-col gap-1 p-4 rounded-3xl bg-base-200/30 border border-base-content/5">
-           <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Storage</span>
+           <span className="text-xs font-black tracking-normal opacity-40">Storage</span>
            <div className="flex items-baseline gap-2">
              <span className="text-3xl font-black text-neutral-content">{stats.totalSize || "0 GB"}</span>
-             <span className="text-xs opacity-40 font-bold uppercase">Used</span>
+             <span className="text-xs opacity-40 font-bold">Used</span>
            </div>
         </div>
       </div>
@@ -187,10 +187,10 @@ const Home = () => {
       <div className="space-y-6">
         <div id="recent-releases" className="flex items-end justify-between px-2">
           <div>
-            <h2 className="text-3xl font-black tracking-tighter uppercase mb-1">Recent Releases</h2>
+            <h2 className="text-3xl font-black tracking-tighter mb-1">Recent Releases</h2>
             <p className="text-sm opacity-40 font-medium">The latest published highlights</p>
           </div>
-          <Link to="/releases" className="btn btn-link btn-sm no-underline opacity-40 hover:opacity-100 uppercase tracking-widest font-black text-[10px]">
+          <Link to="/releases" className="btn btn-link btn-sm no-underline opacity-40 hover:opacity-100 tracking-normal font-black text-xs">
             View All →
           </Link>
         </div>
@@ -207,7 +207,7 @@ const Home = () => {
         <div className="space-y-6">
           <div className="flex items-end justify-between px-2">
             <div>
-              <h2 className="text-2xl font-black tracking-tighter uppercase mb-1 flex items-center gap-2">
+              <h2 className="text-2xl font-black tracking-tighter mb-1 flex items-center gap-2">
                 <Library size={24} className="text-secondary" /> Library Additions
               </h2>
               <p className="text-sm opacity-40 font-medium">Newest items in your personal collection</p>

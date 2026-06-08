@@ -97,7 +97,7 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-base-300 w-full max-w-2xl rounded-2xl border border-base-content/10 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+      <div className="bg-base-300 w-full max-w-2xl rounded-2xl border border-base-content/10 shadow-level-1 overflow-hidden flex flex-col max-h-[80vh]">
         <div className="p-6 border-b border-base-content/10 flex items-center justify-between bg-base-content/5">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Music className="text-primary" /> Match Metadata
@@ -164,7 +164,7 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
                         {match.title}
                       </div>
                       {match.source && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider ${
+                        <span className={`text-xs px-1.5 py-0.5 rounded border font-bold tracking-normal ${
                           match.source === 'discogs' 
                             ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' 
                             : 'bg-primary/10 text-primary border-primary/20'
@@ -214,7 +214,7 @@ export const MetadataMatchModal: React.FC<MetadataMatchModalProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-base-200/50 text-[10px] uppercase tracking-wider opacity-30 text-center">
+        <div className="p-4 bg-base-200/50 text-xs tracking-normal opacity-30 text-center">
           Data provided by MusicBrainz, Discogs, and iTunes API
         </div>
       </div>

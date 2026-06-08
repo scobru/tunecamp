@@ -201,9 +201,9 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
                   <div className="flex items-center gap-2">
                       {r.title}
                       {r.is_formal_release ? (
-                          <span className="badge badge-outline badge-xs text-[10px] opacity-70">Release</span>
+                          <span className="badge badge-outline badge-xs text-xs opacity-70">Release</span>
                       ) : (
-                          <span className="badge badge-ghost badge-xs text-[10px] opacity-70">Library</span>
+                          <span className="badge badge-ghost badge-xs text-xs opacity-70">Library</span>
                       )}
                   </div>
               </td>

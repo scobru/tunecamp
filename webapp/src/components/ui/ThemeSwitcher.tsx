@@ -32,7 +32,7 @@ export const ThemeSwitcher = () => {
                 t.id === "light" || t.id === "nordic" ? "text-black" : "text-white"
             )} />
           )}
-          <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-base-300 text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-base-content/5">
+          <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-base-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-base-content/5">
             {t.label}
           </span>
         </button>

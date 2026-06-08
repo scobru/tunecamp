@@ -53,7 +53,7 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                 </div>
                 {viewMode === 'grid' && item.download === 'free' && (
                     <div className="absolute top-2 right-2 z-10">
-                        <div className="badge badge-accent shadow-lg border-none font-bold text-[10px] py-3 px-2 flex gap-1 items-center animate-pulse">
+                        <div className="badge badge-accent shadow-level-1 border-none font-bold text-xs py-3 px-2 flex gap-1 items-center animate-pulse">
                             <Download size={10} /> FREE
                         </div>
                     </div>
@@ -83,16 +83,16 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                         </div>
                     )}
                 </div>
-                <p className={clsx("opacity-60 truncate", viewMode === 'minimal' ? "text-[10px] -mt-0.5" : "text-body-medium")}>
+                <p className={clsx("opacity-60 truncate", viewMode === 'minimal' ? "text-xs -mt-0.5" : "text-body-medium")}>
                     {item.artistName || item.artist_name}
                 </p>
                 {viewMode === 'grid' && (
                     <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
                         <span>{item.year}</span>
                         {(item.product_type === 'podcast' || item.productType === 'podcast') ? (
-                            <span className="uppercase border border-secondary text-secondary font-black px-1 rounded text-[10px] shadow-sm shadow-secondary/10">Podcast</span>
+                            <span className="border border-secondary text-secondary font-black px-1 rounded text-xs shadow-sm shadow-secondary/10">Podcast</span>
                         ) : item.type && (
-                            <span className="uppercase border border-white/20 px-1 rounded text-[10px]">{item.type}</span>
+                            <span className="border border-white/20 px-1 rounded text-xs">{item.type}</span>
                         )}
                     </div>
                 )}

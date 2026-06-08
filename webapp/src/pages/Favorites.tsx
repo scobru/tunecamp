@@ -91,7 +91,7 @@ const Favorites = () => {
           Sign in to your account to see your collection of favorite tracks, albums, and artists.
         </p>
         <button
-          className="btn btn-primary btn-lg px-12 rounded-2xl shadow-xl shadow-primary/20"
+          className="btn btn-primary btn-lg px-12 rounded-2xl shadow-level-1 shadow-primary/20"
           onClick={() =>
             document.dispatchEvent(new CustomEvent("open-auth-modal"))
           }
@@ -176,7 +176,7 @@ const Favorites = () => {
                       <ReleaseCard item={album} viewMode="grid" type="library" />
                       <button 
                         onClick={() => handleUnstar('album', album.id)}
-                        className="absolute top-2 right-2 p-2 bg-base-100/80 backdrop-blur-md rounded-xl text-error opacity-0 group-hover/album:opacity-100 transition-opacity shadow-lg hover:bg-error hover:text-white"
+                        className="absolute top-2 right-2 p-2 bg-base-100/80 backdrop-blur-md rounded-xl text-error opacity-0 group-hover/album:opacity-100 transition-opacity shadow-level-1 hover:bg-error hover:text-white"
                         title="Remove from favorites"
                       >
                         <Heart size={16} fill="currentColor" />
@@ -227,7 +227,7 @@ const ArtistCard = ({ artist, onRemove }: { artist: Artist; onRemove: () => void
       to={`/artists/${artist.slug || artist.id}`}
       className="block"
     >
-      <div className="aspect-square rounded-full overflow-hidden bg-neutral ring-4 ring-transparent group-hover:ring-primary/20 transition-all duration-500 shadow-2xl relative">
+      <div className="aspect-square rounded-full overflow-hidden bg-neutral ring-4 ring-transparent group-hover:ring-primary/20 transition-all duration-500 shadow-level-1 relative">
         {artist.coverImage ? (
           <img
             src={API.getArtistCoverUrl(artist.id)}
@@ -245,7 +245,7 @@ const ArtistCard = ({ artist, onRemove }: { artist: Artist; onRemove: () => void
     
     <button 
       onClick={onRemove}
-      className="absolute top-0 right-0 p-2 bg-base-100/80 backdrop-blur-md rounded-full text-error opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-error hover:text-white z-10"
+      className="absolute top-0 right-0 p-2 bg-base-100/80 backdrop-blur-md rounded-full text-error opacity-0 group-hover:opacity-100 transition-opacity shadow-level-1 hover:bg-error hover:text-white z-10"
       title="Unfollow artist"
     >
       <Heart size={14} fill="currentColor" />
@@ -257,7 +257,7 @@ const ArtistCard = ({ artist, onRemove }: { artist: Artist; onRemove: () => void
           {artist.name}
         </h3>
       </Link>
-      <p className="text-[10px] uppercase font-black tracking-widest opacity-40">Artist</p>
+      <p className="text-xs font-black tracking-normal opacity-40">Artist</p>
     </div>
   </div>
 );
@@ -274,7 +274,7 @@ const TrackList = ({
   <div className="overflow-visible bg-base-200/30 rounded-[2.5rem] border border-base-content/5 backdrop-blur-sm shadow-inner">
     <table className="table w-full">
       <thead>
-        <tr className="border-b border-base-content/5 opacity-40 text-[10px] uppercase font-black tracking-[0.2em]">
+        <tr className="border-b border-base-content/5 opacity-40 text-xs font-black tracking-[0.2em]">
           <th className="w-16 text-center">#</th>
           <th>Title</th>
           <th className="hidden md:table-cell">Album</th>
@@ -306,7 +306,7 @@ const TrackList = ({
                 <span className="font-bold text-base tracking-tight group-hover:text-primary transition-colors cursor-pointer" onClick={() => onPlay(track)}>
                   {track.title}
                 </span>
-                <span className="text-[10px] opacity-50 font-bold uppercase tracking-widest mt-0.5">
+                <span className="text-xs opacity-50 font-bold tracking-normal mt-0.5">
                   {track.artistName}
                 </span>
               </div>

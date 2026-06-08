@@ -147,7 +147,7 @@ const Artists = () => {
                                 {currentUser?.isRootAdmin && (
                                     <button
                                         onClick={(e) => handleEdit(e, artist)}
-                                        className="p-2 bg-base-300 hover:bg-primary hover:text-white rounded-full shadow-lg"
+                                        className="p-2 bg-base-300 hover:bg-primary hover:text-white rounded-full shadow-level-1"
                                         title="Edit Artist"
                                     >
                                         <Edit size={16} />
@@ -166,7 +166,7 @@ const Artists = () => {
                                 {(artist.id.toString() !== currentUser.artistId?.toString()) && (
                                     <button
                                         onClick={(e) => handleDelete(e, artist)}
-                                        className="p-2 bg-base-300 hover:bg-error hover:text-white rounded-full shadow-lg"
+                                        className="p-2 bg-base-300 hover:bg-error hover:text-white rounded-full shadow-level-1"
                                         title="Delete Artist"
                                     >
                                         <Trash2 size={16} />
@@ -177,8 +177,8 @@ const Artists = () => {
                         <Link to={`/artists/${artist.slug || artist.id}`} className={clsx("block w-full", viewMode !== 'grid' && "flex items-center gap-4")}>
                             <figure className={clsx(
                                 "relative overflow-hidden transition-all duration-500 shrink-0",
-                                viewMode === 'grid' && "aspect-square rounded-xl shadow-xl mb-4 border-4 border-transparent group-hover:border-primary/20 mx-auto w-full max-w-[200px]",
-                                viewMode === 'list' && "w-12 h-12 rounded-lg shadow-lg",
+                                viewMode === 'grid' && "aspect-square rounded-xl shadow-level-1 mb-4 border-4 border-transparent group-hover:border-primary/20 mx-auto w-full max-w-[200px]",
+                                viewMode === 'list' && "w-12 h-12 rounded-lg shadow-level-1",
                                 viewMode === 'minimal' && "w-0 h-0 opacity-0 absolute pointer-events-none"
                             )}>
                                 {artist.coverImage ? (

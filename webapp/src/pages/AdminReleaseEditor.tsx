@@ -954,7 +954,7 @@ export default function AdminReleaseEditor() {
               </div>
 
               {/* Tracks Table */}
-              <div className="card bg-base-100 shadow-2xl border border-base-content/5 overflow-hidden font-sans">
+              <div className="card bg-base-100 shadow-level-1 border border-base-content/5 overflow-hidden font-sans">
                 <div className="overflow-x-auto">
                   <table className="table table-md w-full">
                     <thead>

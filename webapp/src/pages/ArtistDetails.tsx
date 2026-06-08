@@ -146,11 +146,11 @@ const ArtistDetails = () => {
                      ) : (
                           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20"/>
                      )}
-                     <div className="absolute inset-0 bg-gradient-to-t from-base-100 via-base-100/50 to-transparent"></div>
+                     <div className="absolute inset-0 bg-base-200/40"></div>
                 </div>
 
                 <div className="relative z-10 flex gap-6 items-end w-full">
-                     <figure className="w-40 h-40 rounded-full shadow-2xl border-4 border-base-100 overflow-hidden shrink-0">
+                     <figure className="w-40 h-40 rounded-full shadow-level-1 border-4 border-base-100 overflow-hidden shrink-0">
                          {artist.coverImage ? (
                              <img src={API.getArtistCoverUrl(artist.id, cacheBuster)} className="w-full h-full object-cover"/>
                          ) : (
@@ -212,11 +212,11 @@ const ArtistDetails = () => {
                                      </a>
                                  ))}
                               </div>
-                              <button className="btn btn-primary btn-circle btn-lg text-white shadow-xl hover:scale-105 transition-transform shrink-0" onClick={handlePlay}>
+                              <button className="btn btn-primary btn-circle btn-lg text-white shadow-level-1 hover:scale-105 transition-transform shrink-0" onClick={handlePlay}>
                                   <Play fill="currentColor" size={28}/>
                               </button>
                               <button 
-                                  className={`btn btn-circle btn-lg shadow-xl hover:scale-105 transition-transform shrink-0 ${starred ? 'btn-error text-white' : 'btn-outline border-base-content/20'}`} 
+                                  className={`btn btn-circle btn-lg shadow-level-1 hover:scale-105 transition-transform shrink-0 ${starred ? 'btn-error text-white' : 'btn-outline border-base-content/20'}`} 
                                   onClick={handleToggleStar}
                               >
                                   <Heart fill={starred ? "currentColor" : "none"} size={28}/>
@@ -237,7 +237,7 @@ const ArtistDetails = () => {
                         {posts.map(post => (
                             post.title ? (
                                 /* Dedicated Premium Article Card Visualizer */
-                                <div key={post.id} className="card bg-gradient-to-br from-base-200/95 to-base-300/30 border border-primary/15 hover:border-primary/45 p-6 space-y-4 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 relative group flex flex-col justify-between">
+                                <div key={post.id} className="card bg-gradient-to-br from-base-200/95 to-base-300/30 border border-primary/15 hover:border-primary/45 p-6 space-y-4 rounded-2xl shadow-md hover:shadow-level-1 transition-all duration-300 relative group flex flex-col justify-between">
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
@@ -254,7 +254,7 @@ const ArtistDetails = () => {
                                                     <div className="text-xs opacity-50 font-medium">{new Date(post.createdAt).toLocaleDateString()}</div>
                                                 </div>
                                             </div>
-                                            <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold uppercase tracking-wider text-[9px] rounded-full">
+                                            <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold tracking-normal text-[11px] rounded-full">
                                                 Article
                                             </span>
                                         </div>
@@ -325,7 +325,7 @@ const ArtistDetails = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                         {formalReleases.map(album => (
                             <Link to={`/releases/${album.slug || album.id}`} key={album.id} className="group">
-                                <figure className="aspect-square relative overflow-hidden rounded-lg shadow-lg mb-3">
+                                <figure className="aspect-square relative overflow-hidden rounded-lg shadow-level-1 mb-3">
                                     <img 
                                         src={API.getReleaseCoverUrl(album.id, cacheBuster)} 
                                         alt={album.title} 
@@ -360,7 +360,7 @@ const ArtistDetails = () => {
                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                          {libraryAlbums.map(album => (
                              <Link to={`/albums/${album.slug || album.id}`} key={album.id} className="group">
-                                 <figure className="aspect-square relative overflow-hidden rounded-lg shadow-lg mb-3">
+                                 <figure className="aspect-square relative overflow-hidden rounded-lg shadow-level-1 mb-3">
                                      <img 
                                          src={API.getAlbumCoverUrl(album.id, cacheBuster)} 
                                          alt={album.title} 
@@ -416,7 +416,7 @@ const ArtistDetails = () => {
                      <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-base-content/5">
                          <table className="table w-full">
                              <thead>
-                                 <tr className="border-b border-base-content/10 opacity-50 text-xs uppercase tracking-wider">
+                                 <tr className="border-b border-base-content/10 opacity-50 text-xs tracking-normal">
                                      <th className="w-12 text-center">#</th>
                                      <th>Title</th>
                                      <th className="text-right">Duration</th>

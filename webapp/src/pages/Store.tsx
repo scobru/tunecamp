@@ -29,7 +29,7 @@ export const AssetViewerModal = ({ asset, onClose }: { asset: Asset | null; onCl
 
     return (
         <dialog className="modal modal-open">
-            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-4xl rounded-2xl shadow-2xl p-6 relative">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-4xl rounded-2xl shadow-level-1 p-6 relative">
                 <button 
                     className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 rounded-full"
                     onClick={onClose}

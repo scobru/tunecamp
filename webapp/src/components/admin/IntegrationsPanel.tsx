@@ -461,7 +461,7 @@ export const IntegrationsPanel = () => {
                     <h4 className="font-bold text-lg flex items-center gap-2 justify-between">
                         <span className="flex items-center gap-2">
                           {service.name}
-                          {plugin && <span className="text-[10px] opacity-30 font-mono">v{plugin.version}</span>}
+                          {plugin && <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>}
                         </span>
                         {service.hasConfig && isRootAdmin && (
                           <button 

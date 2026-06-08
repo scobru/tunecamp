@@ -139,7 +139,7 @@ export const AdminAssetModal = ({ onSaved }: { onSaved?: () => void }) => {
 
     return (
         <dialog id="admin-asset-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl rounded-2xl shadow-2xl p-6">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl rounded-2xl shadow-level-1 p-6">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 rounded-full">✕</button>
                 </form>

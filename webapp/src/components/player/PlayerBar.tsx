@@ -329,7 +329,7 @@ export const PlayerBar = () => {
 
           <div className="min-w-0">
             <h3 className="font-black text-title-small lg:text-title-medium truncate tracking-tight">{currentTrack.title}</h3>
-            <p className="text-[10px] lg:text-label-small font-medium opacity-60 text-primary truncate uppercase tracking-widest">{currentTrack.artistName}</p>
+            <p className="text-xs lg:text-label-small font-medium opacity-60 text-primary truncate tracking-normal">{currentTrack.artistName}</p>
           </div>
         </div>
 
@@ -392,7 +392,7 @@ export const PlayerBar = () => {
             </button>
           </div>
 
-          <div className="w-full flex items-center gap-4 text-[9px] lg:text-[10px] font-black tracking-widest opacity-40 h-6">
+          <div className="w-full flex items-center gap-4 text-[11px] lg:text-xs font-black tracking-normal opacity-40 h-6">
             <span className="w-8 lg:w-10 text-right tabular-nums">
               {formatDuration(currentTime)}
             </span>
@@ -451,7 +451,7 @@ export const PlayerBar = () => {
               <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100">
                 <MoreVertical size={18} />
               </div>
-              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-2xl bg-base-300 rounded-2xl w-56 border border-base-content/10 mb-4">
+              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-56 border border-base-content/10 mb-4">
                 <li><a onClick={toggleShuffle}><Shuffle size={16} className={clsx(isShuffled && "text-primary")}/> Shuffle</a></li>
                 <li><a onClick={toggleRepeat}><Repeat size={16} className={clsx(repeatMode !== 'none' && "text-primary")}/> Repeat: {repeatMode}</a></li>
                 <li><a onClick={toggleRadio}><Radio size={16} className={clsx(isRadioMode && "text-primary")}/> Radio Mode</a></li>

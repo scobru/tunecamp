@@ -138,7 +138,7 @@ export const BackupPanel = () => {
                 <div className="card bg-error/10 border border-error/20">
                     <div className="card-body">
                         <h2 className="card-title text-error"><Upload /> Restore Data</h2>
-                        <div className="alert alert-warning text-xs shadow-lg">
+                        <div className="alert alert-warning text-xs shadow-level-1">
                             <div>
                                 <AlertTriangle size={16} />
                                 <span>Warning: Restoring will overwrite all current data!</span>

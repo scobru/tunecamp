@@ -52,7 +52,7 @@ const Wallet = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-24 p-6 md:px-0 md:pt-0 md:pb-16">
       <div className="flex items-center gap-4 border-b border-base-content/5 pb-6">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-level-1 shadow-primary/20">
           <WalletIcon size={32} className="text-white" />
         </div>
         <div>
@@ -64,14 +64,14 @@ const Wallet = () => {
       </div>
 
       {error && (
-        <div className="alert alert-error shadow-lg">
+        <div className="alert alert-error shadow-level-1">
           <div>
             <span>{error}</span>
           </div>
         </div>
       )}
 
-      <div className="card bg-base-100/50 border border-secondary/50 shadow-xl shadow-secondary/10 transition-all">
+      <div className="card bg-base-100/50 border border-secondary/50 shadow-level-1 shadow-secondary/10 transition-all">
         <div className="card-body">
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -95,7 +95,7 @@ const Wallet = () => {
                 keys — every transaction is signed by you.
               </p>
               <button
-                className="btn btn-secondary mt-2 shadow-lg shadow-secondary/20"
+                className="btn btn-secondary mt-2 shadow-level-1 shadow-secondary/20"
                 onClick={connect}
                 disabled={isConnecting}
               >
@@ -105,7 +105,7 @@ const Wallet = () => {
           ) : (
             <div className="space-y-6">
               <div>
-                <div className="text-xs uppercase tracking-wider opacity-50 mb-1">
+                <div className="text-xs tracking-normal opacity-50 mb-1">
                   Balance
                 </div>
                 <div className="text-3xl font-bold font-mono text-secondary flex items-baseline gap-2">
@@ -121,7 +121,7 @@ const Wallet = () => {
               </div>
 
               <div className="bg-black/30 p-4 rounded-xl border border-base-content/5">
-                <div className="text-xs uppercase tracking-wider opacity-50 mb-2">
+                <div className="text-xs tracking-normal opacity-50 mb-2">
                   Address
                 </div>
                 <div className="flex items-center justify-between gap-4">
