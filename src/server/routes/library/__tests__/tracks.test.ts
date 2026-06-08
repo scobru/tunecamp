@@ -51,9 +51,11 @@ jest.unstable_mockModule('node-id3', () => ({
   default: { update: jest.fn() }
 }));
 
-// Mock ../ffmpeg.js
+// Mock ../ffmpeg.js (media-engine, pulled in transitively, imports transcode + transcodeToFile)
 jest.unstable_mockModule('../../../modules/media/ffmpeg.js', () => ({
-    writeMetadata: jest.fn()
+    writeMetadata: jest.fn(),
+    transcode: jest.fn(),
+    transcodeToFile: jest.fn(),
 }));
 
 // Import module under test dynamically

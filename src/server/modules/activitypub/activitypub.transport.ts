@@ -16,32 +16,37 @@ export class ActivityPubTransport {
         private getSiteKeys: () => { privateKey: string | null, publicKey: string | null }
     ) {}
 
-    public async send(actor: Artist | TransportIdentity, inboxUri: string, activity: any): Promise<void> {
+    /**
+     * Attempt to deliver an activity. Returns true if delivery succeeded, false
+     * otherwise — the caller uses this to decide whether to enqueue for retry.
+     */
+    public async send(actor: Artist | TransportIdentity, inboxUri: string, activity: any): Promise<boolean> {
         try {
             console.log(`📤 Sending activity ${activity.type || 'unknown'} from ${actor.slug} to ${inboxUri} via Fedify`);
-            
+
             const ctx = this.federation.createContext(new URL(this.baseUrl), undefined);
             await ctx.sendActivity(
                 { handle: actor.slug },
                 { id: new URL(inboxUri), inboxId: new URL(inboxUri) },
                 activity
             );
-            
+
             console.log(`✅ Activity queued/sent to ${inboxUri} via Fedify`);
+            return true;
         } catch (e) {
             console.error(`❌ Fedify failed to send activity to ${inboxUri}, falling back to manual:`, e);
-            await this.manualSend(actor, inboxUri, activity);
+            return this.manualSend(actor, inboxUri, activity);
         }
     }
 
-    private async manualSend(actor: Artist | TransportIdentity, inboxUri: string, activity: any): Promise<void> {
+    private async manualSend(actor: Artist | TransportIdentity, inboxUri: string, activity: any): Promise<boolean> {
         let activityJson: any;
         if (activity && typeof activity.toJsonLd === 'function') {
             activityJson = await activity.toJsonLd();
         } else {
             activityJson = { ...activity };
         }
-        
+
         if (!activityJson["@context"]) activityJson["@context"] = "https://www.w3.org/ns/activitystreams";
         if (!activityJson.id) activityJson.id = `${this.baseUrl}/activity/${crypto.randomUUID()}`;
 
@@ -50,12 +55,14 @@ export class ActivityPubTransport {
             if (!res.ok) {
                 const errText = await res.text().catch(() => "Unknown error");
                 console.error(`❌ Manual fallback failed to send activity to ${inboxUri}: ${res.status} ${errText}`);
-            } else {
-                await drainResponse(res);
-                console.log(`✅ Manually sent activity to ${inboxUri}`);
+                return false;
             }
+            await drainResponse(res);
+            console.log(`✅ Manually sent activity to ${inboxUri}`);
+            return true;
         } catch (e) {
             console.error(`❌ Error in manual fallback sending activity to ${inboxUri}:`, e);
+            return false;
         }
     }
 

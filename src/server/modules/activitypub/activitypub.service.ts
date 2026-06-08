@@ -11,10 +11,12 @@ import type { FederationProvider } from "./federation.provider.js";
 
 import { ActivityPubRenderer } from "./activitypub.renderer.js";
 import { ActivityPubTransport } from "./activitypub.transport.js";
+import { DeliveryQueue } from "./activitypub.delivery-queue.js";
 
 export class ActivityPubService {
     private renderer: ActivityPubRenderer;
     private transport: ActivityPubTransport;
+    private deliveryQueue?: DeliveryQueue;
 
     constructor(
         private db: FederationProvider,
@@ -24,13 +26,46 @@ export class ActivityPubService {
         const baseUrl = this.getBaseUrl();
         this.renderer = new ActivityPubRenderer(baseUrl);
         this.transport = new ActivityPubTransport(
-            this.federation, 
+            this.federation,
             baseUrl,
             () => ({
                 privateKey: this.db.getSetting("site_private_key") || null,
                 publicKey: this.db.getSetting("site_public_key") || null
             })
         );
+
+        // Durable retry queue for outbound delivery (#4). Backed by the same
+        // SQLite DB; instantiated only if the raw handle is reachable.
+        const rawDb = (this.db as any).db;
+        if (rawDb) {
+            this.deliveryQueue = new DeliveryQueue(
+                rawDb,
+                (slug, inbox, json) => this.retryDeliver(slug, inbox, json),
+                baseUrl
+            );
+        }
+    }
+
+    /** Start the background federation-delivery retry worker. */
+    public startDeliveryQueue(): void {
+        this.deliveryQueue?.start();
+    }
+
+    /** Re-attempt a queued delivery by re-signing and POSTing the stored JSON-LD. */
+    private async retryDeliver(actorSlug: string, inboxUri: string, activityJson: any): Promise<boolean> {
+        let actor: any = { slug: actorSlug };
+        if (actorSlug && actorSlug !== "site") {
+            const a = this.db.getArtistBySlug(actorSlug);
+            if (a) actor = a;
+        }
+        try {
+            const res = await this.transport.fetchWithSignature(inboxUri, "post", activityJson, actor);
+            const ok = res.ok;
+            await drainResponse(res).catch(() => {});
+            return ok;
+        } catch {
+            return false;
+        }
     }
 
     public getDomain(): string {
@@ -1107,7 +1142,12 @@ export class ActivityPubService {
     }
 
     public async sendActivity(actor: Artist | { slug: string, private_key?: string, public_key?: string }, inboxUri: string, activity: any): Promise<void> {
-        return this.transport.send(actor, inboxUri, activity);
+        const ok = await this.transport.send(actor, inboxUri, activity);
+        if (!ok) {
+            // Immediate delivery failed — persist for durable background retry
+            // instead of silently dropping the activity.
+            await this.deliveryQueue?.enqueue((actor as any).slug || "site", inboxUri, activity);
+        }
     }
 
     private async fetchWithSignature(uri: string, method: "get" | "post" = "get", body: any = null, signingArtist?: Artist): Promise<any> {

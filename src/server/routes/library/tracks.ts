@@ -17,6 +17,7 @@ if (ffmpegPath) {
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
+import { sendStreamResult } from "../../modules/media/media-engine.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 
@@ -485,11 +486,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             const result = await mediaEngine.getStream({
                 trackId, externalId, format: req.query.format as string, bitrate: req.query.bitrate as string, range: req.headers.range
             });
-            if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
-            if (result.contentRange) res.setHeader("Content-Range", result.contentRange);
-            res.setHeader("Content-Type", result.contentType).setHeader("Accept-Ranges", "bytes");
-            res.status(result.statusCode);
-            result.stream.pipe(res);
+            sendStreamResult(res, result);
         } catch (error: any) {
             if (error.message?.startsWith("REDIRECT:")) return res.redirect(error.message.substring(9));
             throw error;
