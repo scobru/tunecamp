@@ -28,6 +28,16 @@ interface CreateReleaseBody {
     externalLinks?: string;
     coverPath?: string;
     albumArtist?: string;
+    productType?: string;
+    product_type?: string;
+    podcastAuthor?: string;
+    podcast_author?: string;
+    podcastEmail?: string;
+    podcast_email?: string;
+    podcastCategory?: string;
+    podcast_category?: string;
+    podcastExplicit?: boolean | number;
+    podcast_explicit?: boolean | number;
 }
 
 import type { ServiceContainer } from "../../core/container.js";
@@ -149,7 +159,12 @@ export function createReleaseRouter(container: ServiceContainer): Router {
                     is_release: true,
                     album_artist: body.albumArtist || null,
                     genre: "Release",
-                    download: null
+                    download: null,
+                    product_type: body.product_type || body.productType || 'music',
+                    podcast_author: body.podcast_author || body.podcastAuthor || null,
+                    podcast_email: body.podcast_email || body.podcastEmail || null,
+                    podcast_category: body.podcast_category || body.podcastCategory || null,
+                    podcast_explicit: body.podcast_explicit || body.podcastExplicit || 0
                 });
 
                 if (body.track_ids && body.track_ids.length > 0) {

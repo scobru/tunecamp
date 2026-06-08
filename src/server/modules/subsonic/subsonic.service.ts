@@ -1,5 +1,5 @@
 import type { DatabaseService, Track } from "../../core/database.js";
-import { VisibilityProfile } from "../../common/visibility.js";
+import { VisibilityProfile, VisibilityGuardian, ViewerContext } from "../../common/visibility.js";
 
 /**
  * Deep module for Subsonic protocol logic.
@@ -325,5 +325,91 @@ export class SubsonicService {
       '@songCount': tracks.length, 
       entry: this.formatTracksBulk(tracks, username)
     };
+  }
+
+  formatPodcastChannel(album: any, username: string, includeEpisodes: boolean, context?: any) {
+    const id = `al_${album.id}`;
+    const publicUrl = (this.db.getSetting("publicUrl") || "").replace(/\/$/, "");
+    const url = `${publicUrl}/artists/${album.artist_slug || 'unknown'}/feed.xml`;
+    
+    const channel: any = {
+      '@id': id,
+      '@title': album.title,
+      '@description': album.description || '',
+      '@status': 'completed',
+      '@url': url
+    };
+    
+    if (album.podcast_author) channel['@author'] = album.podcast_author;
+    if (album.podcast_email) channel['@email'] = album.podcast_email;
+    if (album.podcast_category) channel['@category'] = album.podcast_category;
+    if (album.podcast_explicit !== undefined) channel['@explicit'] = album.podcast_explicit ? 'true' : 'false';
+    
+    if (includeEpisodes) {
+      const tracks = this.db.getTracks(album.id, context);
+      channel.episode = tracks.map((t: Track) => this.formatPodcastEpisode(t, username));
+    }
+    
+    return channel;
+  }
+
+  formatPodcastEpisode(track: Track, username: string) {
+    const id = `tr_${track.id}`;
+    return {
+      '@id': id,
+      '@streamId': id,
+      '@channelId': track.album_id ? `al_${track.album_id}` : undefined,
+      '@title': track.title,
+      '@description': track.description || track.title,
+      '@publishDate': track.created_at,
+      '@status': 'completed',
+      '@duration': Math.floor(track.duration || 0),
+      '@bytes': track.file_size || 0,
+      '@coverArt': track.album_id ? `al_${track.album_id}` : id,
+      '@contentType': this.getContentType(track.format),
+      '@isDir': false
+    };
+  }
+
+  getPodcasts(id: string | undefined, includeEpisodes: boolean, context: ViewerContext) {
+    const filter = VisibilityGuardian.getAlbumFilter(context, 'a');
+    let sql = `
+      SELECT a.*, ar.slug as artist_slug
+      FROM albums a
+      LEFT JOIN artists ar ON a.artist_id = ar.id
+      WHERE a.product_type = 'podcast' AND (${filter.sql})
+    `;
+    const params = [...filter.params];
+    
+    if (id) {
+      const albumId = parseInt(id.startsWith('al_') ? id.substring(3) : id);
+      sql += ` AND a.id = ?`;
+      params.push(albumId);
+    }
+    
+    sql += ` ORDER BY a.title`;
+    
+    const rows = (this.db as any).db.prepare(sql).all(...params);
+    return rows.map((row: any) => this.formatPodcastChannel(row, context.userId ? 'user' : 'guest', includeEpisodes, context));
+  }
+
+  getNewestPodcasts(size: number, offset: number, context: ViewerContext) {
+    const filter = VisibilityGuardian.getTrackFilter(context, 't');
+    const sql = `
+      SELECT t.id
+      FROM v_tracks t
+      JOIN albums a ON t.album_id = a.id
+      WHERE a.product_type = 'podcast' AND (${filter.sql})
+      ORDER BY t.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    const params = [...filter.params, size, offset];
+    const rows = (this.db as any).db.prepare(sql).all(...params);
+    const tracks: Track[] = [];
+    for (const row of rows) {
+      const track = this.db.getTrack(row.id);
+      if (track) tracks.push(track);
+    }
+    return tracks.map((t: Track) => this.formatPodcastEpisode(t, context.userId ? 'user' : 'guest'));
   }
 }

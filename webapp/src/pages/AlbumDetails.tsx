@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic } from "lucide-react";
 
 import { useParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -257,9 +257,15 @@ const AlbumDetails = () => {
           <div className="flex-1 space-y-6 text-center md:text-left">
             <div className="space-y-2">
               <div className="flex items-center justify-center md:justify-start gap-3">
-                 <span className="badge badge-primary font-black uppercase tracking-[0.2em] text-[10px]">
-                    {album.type}
-                 </span>
+                 {album.product_type === "podcast" || album.productType === "podcast" ? (
+                   <span className="badge badge-secondary font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-1 shadow-md shadow-secondary/15">
+                      <Mic size={10} /> Podcast
+                   </span>
+                 ) : (
+                   <span className="badge badge-primary font-black uppercase tracking-[0.2em] text-[10px]">
+                      {album.type}
+                   </span>
+                 )}
                  {hasLossless && (
                    <span className="badge badge-outline font-black uppercase tracking-[0.2em] text-[10px] opacity-40">
                       Hi-Res
@@ -269,6 +275,19 @@ const AlbumDetails = () => {
               <h1 className="text-5xl lg:text-8xl font-black tracking-tighter text-prominent leading-none">
                 {album.title}
               </h1>
+              {(album.product_type === "podcast" || album.productType === "podcast") && (
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs opacity-75 font-bold tracking-wide pt-1">
+                  {album.podcast_category && (
+                    <span className="badge badge-sm badge-outline border-base-content/25 text-base-content/75">{album.podcast_category}</span>
+                  )}
+                  {album.podcast_author && (
+                    <span>By {album.podcast_author}</span>
+                  )}
+                  {album.podcast_explicit ? (
+                    <span className="badge badge-error badge-sm text-[9px] font-black uppercase">Explicit</span>
+                  ) : null}
+                </div>
+              )}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-lg lg:text-2xl font-medium tracking-tight">
                 {album.album_artist || album.albumArtist ? (
                   <span className="text-primary font-bold">{album.album_artist || album.albumArtist}</span>
@@ -435,10 +454,30 @@ const AlbumDetails = () => {
                           <span className="text-[9px] font-black opacity-30 border border-base-content/10 px-1.5 rounded uppercase" aria-label="High Resolution Audio">Hi-Res</span>
                        )}
                      </div>
+                      {(album.product_type === 'podcast' || album.productType === 'podcast') && (
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          {(track.podcast_season_num !== undefined && track.podcast_season_num !== null) && (
+                            <span className="badge badge-xs badge-outline opacity-60">Season {track.podcast_season_num}</span>
+                          )}
+                          {(track.podcast_episode_num !== undefined && track.podcast_episode_num !== null) && (
+                            <span className="badge badge-xs badge-outline opacity-60">Episode {track.podcast_episode_num}</span>
+                          )}
+                          {(track.podcast_episode_type || track.podcastEpisodeType) && (track.podcast_episode_type || track.podcastEpisodeType) !== 'full' && (
+                            <span className="badge badge-xs badge-ghost text-[9px] font-black uppercase opacity-60">
+                              {track.podcast_episode_type || track.podcastEpisodeType}
+                            </span>
+                          )}
+                        </div>
+                      )}
                      {(track.artist_name || track.artistName) && 
                       (track.artist_name || track.artistName) !== (album.album_artist || album.albumArtist || album.artistName || album.artist_name) && (
                        <span className="text-xs opacity-50 truncate -mt-1 font-medium">{track.artist_name || track.artistName}</span>
                      )}
+                      {(album.product_type === 'podcast' || album.productType === 'podcast') && track.description && (
+                        <p className="text-xs opacity-75 mt-1.5 line-clamp-2 text-left leading-relaxed max-w-3xl font-medium">
+                          {track.description}
+                        </p>
+                      )}
                    </div>
                  </div>
 

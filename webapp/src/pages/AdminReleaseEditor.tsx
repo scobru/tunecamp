@@ -24,6 +24,7 @@ import {
   AlignLeft,
   Disc,
   Youtube,
+  Mic,
 } from "lucide-react";
 
 interface LocalTrack {
@@ -48,6 +49,11 @@ interface LocalTrack {
   showLyrics?: boolean; // Toggle visibility of lyrics editor
   registrationStatus?: 'unknown' | 'registered' | 'unregistered';
   isRegistering?: boolean;
+  description?: string;
+  podcast_episode_num?: number | string;
+  podcast_season_num?: number | string;
+  podcast_episode_type?: string;
+  showPodcastFields?: boolean;
 }
 
 interface LocalRelease {
@@ -72,6 +78,11 @@ interface LocalRelease {
   download?: string;
   license?: string;
   album_artist?: string;
+  product_type?: "music" | "podcast";
+  podcast_author?: string;
+  podcast_email?: string;
+  podcast_category?: string;
+  podcast_explicit?: boolean | number;
 }
 
 export default function AdminReleaseEditor() {
@@ -109,6 +120,11 @@ export default function AdminReleaseEditor() {
     license: "copyright",
     use_nft: true,
     album_artist: "",
+    product_type: "music",
+    podcast_author: "",
+    podcast_email: "",
+    podcast_category: "",
+    podcast_explicit: false,
   });
 
   // Tracks State
@@ -195,6 +211,11 @@ export default function AdminReleaseEditor() {
         license: data.license || "copyright",
         use_nft: data.use_nft !== undefined ? !!data.use_nft : true,
         album_artist: data.album_artist || data.albumArtist || "",
+        product_type: data.product_type || data.productType || "music",
+        podcast_author: data.podcast_author || data.podcastAuthor || "",
+        podcast_email: data.podcast_email || data.podcastEmail || "",
+        podcast_category: data.podcast_category || data.podcastCategory || "",
+        podcast_explicit: data.podcast_explicit !== undefined ? !!data.podcast_explicit : false,
       });
 
       if (data.slug || releaseId) {
@@ -340,6 +361,10 @@ export default function AdminReleaseEditor() {
             lyrics: t.lyrics,
             genre: t.genre,
             year: t.year,
+            description: t.description,
+            podcast_episode_num: t.podcast_episode_num,
+            podcast_season_num: t.podcast_season_num,
+            podcast_episode_type: t.podcast_episode_type,
           };
 
           if (t.file_path) {
@@ -697,7 +722,31 @@ export default function AdminReleaseEditor() {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="form-control">
+                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Product Type</label>
+                    <select
+                      className="select select-bordered w-full text-sm font-bold"
+                      value={metadata.product_type || "music"}
+                      onChange={(e) => setMetadata((prev) => ({ ...prev, product_type: e.target.value as any }))}
+                    >
+                      <option value="music">Music</option>
+                      <option value="podcast">Podcast</option>
+                    </select>
+                  </div>
+                  <div className="form-control">
+                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Type</label>
+                    <select
+                      className="select select-bordered w-full"
+                      value={metadata.type}
+                      onChange={(e) => setMetadata((prev) => ({ ...prev, type: e.target.value as any }))}
+                      disabled={metadata.product_type === 'podcast'}
+                    >
+                      <option value="album">Album</option>
+                      <option value="single">Single</option>
+                      <option value="ep">EP</option>
+                    </select>
+                  </div>
                   <div className="form-control">
                     <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Year</label>
                     <input
@@ -707,19 +756,80 @@ export default function AdminReleaseEditor() {
                       onChange={(e) => setMetadata((prev) => ({ ...prev, year: parseInt(e.target.value) }))}
                     />
                   </div>
-                  <div className="form-control">
-                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Type</label>
-                    <select
-                      className="select select-bordered w-full"
-                      value={metadata.type}
-                      onChange={(e) => setMetadata((prev) => ({ ...prev, type: e.target.value as any }))}
-                    >
-                      <option value="album">Album</option>
-                      <option value="single">Single</option>
-                      <option value="ep">EP</option>
-                    </select>
-                  </div>
                 </div>
+
+                {metadata.product_type === "podcast" && (
+                  <div className="card bg-secondary/5 border border-secondary/10 p-4 rounded-xl space-y-4">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+                      <Mic className="w-4 h-4" /> Podcast Channel Settings
+                    </h3>
+                    
+                    <div className="form-control">
+                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Podcast Author</label>
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm w-full text-sm"
+                        placeholder="Author Name"
+                        value={metadata.podcast_author || ""}
+                        onChange={(e) => setMetadata((prev) => ({ ...prev, podcast_author: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="form-control">
+                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Podcast Email</label>
+                      <input
+                        type="email"
+                        className="input input-bordered input-sm w-full text-sm"
+                        placeholder="author@example.com"
+                        value={metadata.podcast_email || ""}
+                        onChange={(e) => setMetadata((prev) => ({ ...prev, podcast_email: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="form-control">
+                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Podcast Category</label>
+                      <select
+                        className="select select-bordered select-sm w-full text-sm"
+                        value={metadata.podcast_category || ""}
+                        onChange={(e) => setMetadata((prev) => ({ ...prev, podcast_category: e.target.value }))}
+                      >
+                        <option value="">Select Category</option>
+                        <option value="Arts">Arts</option>
+                        <option value="Business">Business</option>
+                        <option value="Comedy">Comedy</option>
+                        <option value="Education">Education</option>
+                        <option value="Fiction">Fiction</option>
+                        <option value="Government">Government</option>
+                        <option value="History">History</option>
+                        <option value="Health & Fitness">Health & Fitness</option>
+                        <option value="Kids & Family">Kids & Family</option>
+                        <option value="Leisure">Leisure</option>
+                        <option value="Music">Music</option>
+                        <option value="News">News</option>
+                        <option value="Religion & Spirituality">Religion & Spirituality</option>
+                        <option value="Science">Science</option>
+                        <option value="Society & Culture">Society & Culture</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Technology">Technology</option>
+                        <option value="True Crime">True Crime</option>
+                        <option value="TV & Film">TV & Film</option>
+                      </select>
+                    </div>
+
+                    <div className="form-control flex flex-row items-center justify-between p-2 rounded-lg bg-base-200/50">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Explicit Content</span>
+                        <span className="text-[9px] opacity-40">Mark if this podcast contains adult content</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-secondary checkbox-sm"
+                        checked={!!metadata.podcast_explicit}
+                        onChange={(e) => setMetadata((prev) => ({ ...prev, podcast_explicit: e.target.checked }))}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-control">
                   <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Genre / Tags</label>
@@ -973,9 +1083,21 @@ export default function AdminReleaseEditor() {
                                   />
                                 </label>
                               </div>
-                            </td>
-                            <td className="text-right">
+                            </td>                             <td className="text-right">
                               <div className="flex gap-1 justify-end">
+                                {metadata.product_type === "podcast" && (
+                                  <button
+                                    className={`btn btn-square btn-xs ${(track.description || track.podcast_episode_num || track.podcast_season_num) ? "btn-secondary" : "btn-ghost"}`}
+                                    onClick={() => {
+                                      const newTracks = [...tracks];
+                                      newTracks[idx].showPodcastFields = !newTracks[idx].showPodcastFields;
+                                      setTracks(newTracks);
+                                    }}
+                                    title="Podcast Episode Settings"
+                                  >
+                                    <Mic className="w-3 h-3" />
+                                  </button>
+                                )}
                                 <button
                                   className={`btn btn-square btn-xs ${track.lyrics ? "btn-primary" : "btn-ghost"}`}
                                   onClick={() => {
@@ -996,6 +1118,78 @@ export default function AdminReleaseEditor() {
                               </div>
                             </td>
                           </tr>
+                          {metadata.product_type === "podcast" && track.showPodcastFields && (
+                            <tr className="bg-base-200/20">
+                              <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">
+                                <div className="card bg-base-300/40 p-4 rounded-xl border border-secondary/10 space-y-3">
+                                  <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Episode Settings: {track.title}</label>
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div className="form-control">
+                                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Episode Number</label>
+                                      <input
+                                        type="number"
+                                        className="input input-bordered input-sm w-full"
+                                        placeholder="1"
+                                        value={track.podcast_episode_num || ""}
+                                        onChange={(e) => {
+                                          const newTracks = [...tracks];
+                                          newTracks[idx].podcast_episode_num = e.target.value === "" ? "" : parseInt(e.target.value);
+                                          newTracks[idx].isDirty = true;
+                                          setTracks(newTracks);
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="form-control">
+                                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Season Number</label>
+                                      <input
+                                        type="number"
+                                        className="input input-bordered input-sm w-full"
+                                        placeholder="1"
+                                        value={track.podcast_season_num || ""}
+                                        onChange={(e) => {
+                                          const newTracks = [...tracks];
+                                          newTracks[idx].podcast_season_num = e.target.value === "" ? "" : parseInt(e.target.value);
+                                          newTracks[idx].isDirty = true;
+                                          setTracks(newTracks);
+                                        }}
+                                      />
+                                    </div>
+                                    <div className="form-control">
+                                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Episode Type</label>
+                                      <select
+                                        className="select select-bordered select-sm w-full font-bold"
+                                        value={track.podcast_episode_type || "full"}
+                                        onChange={(e) => {
+                                          const newTracks = [...tracks];
+                                          newTracks[idx].podcast_episode_type = e.target.value;
+                                          newTracks[idx].isDirty = true;
+                                          setTracks(newTracks);
+                                        }}
+                                      >
+                                        <option value="full">Full Episode</option>
+                                        <option value="trailer">Trailer</option>
+                                        <option value="bonus">Bonus</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div className="form-control">
+                                    <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Episode Description / Summary</label>
+                                    <textarea
+                                      className="textarea textarea-bordered textarea-sm w-full h-20 text-sm"
+                                      placeholder="Episode summary, show notes, and links..."
+                                      value={track.description || ""}
+                                      onChange={(e) => {
+                                        const newTracks = [...tracks];
+                                        newTracks[idx].description = e.target.value;
+                                        newTracks[idx].isDirty = true;
+                                        setTracks(newTracks);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
                           {track.showLyrics && (
                             <tr className="bg-base-200/20">
                               <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">

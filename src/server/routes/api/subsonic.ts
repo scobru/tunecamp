@@ -569,6 +569,45 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         sendResponse(res, req, { scanStatus: { '@scanning': 'false', '@count': 0 } });
     });
 
+    router.all(['/getPodcasts.view', '/getPodcasts'], (req, res) => {
+        if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
+        const username = (req as any).user?.username || 'admin';
+        const userObj = (db as any).db.prepare("SELECT id, role, artist_id, is_active FROM admin WHERE username = ?").get(username);
+        const context = userObj ? {
+            userId: userObj.id,
+            artistId: userObj.artist_id,
+            role: VisibilityGuardian.deriveRole(userObj.role, userObj.is_active !== 0)
+        } : { role: UserRole.GUEST };
+
+        const id = ensureString(req.query.id);
+        const includeEpisodes = ensureString(req.query.includeEpisodes) !== 'false';
+        
+        const channels = subsonicService.getPodcasts(id, includeEpisodes, context);
+        if (id && channels.length === 0) {
+            return sendError(res, req, 70, 'Podcast not found');
+        }
+        sendResponse(res, req, { podcasts: { channel: channels } });
+    });
+
+    router.all(['/getNewestPodcasts.view', '/getNewestPodcasts'], (req, res) => {
+        if (!subsonicService) return sendError(res, req, 80, 'Subsonic service not initialized');
+        const username = (req as any).user?.username || 'admin';
+        const userObj = (db as any).db.prepare("SELECT id, role, artist_id, is_active FROM admin WHERE username = ?").get(username);
+        const context = userObj ? {
+            userId: userObj.id,
+            artistId: userObj.artist_id,
+            role: VisibilityGuardian.deriveRole(userObj.role, userObj.is_active !== 0)
+        } : { role: UserRole.GUEST };
+
+        const countStr = ensureString(req.query.count);
+        const offsetStr = ensureString(req.query.offset);
+        const size = Math.min(countStr ? parseInt(countStr, 10) : 20, 500);
+        const offset = offsetStr ? parseInt(offsetStr, 10) : 0;
+
+        const episodes = subsonicService.getNewestPodcasts(size, offset, context);
+        sendResponse(res, req, { newestPodcasts: { episode: episodes } });
+    });
+
     router.use((req, res) => {
         console.warn(`[Subsonic] Unknown request: ${req.method} ${req.path}`);
         sendError(res, req, 0, `Unknown Subsonic request: ${req.path}`);

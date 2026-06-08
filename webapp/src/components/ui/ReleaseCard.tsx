@@ -89,7 +89,11 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                 {viewMode === 'grid' && (
                     <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
                         <span>{item.year}</span>
-                        {item.type && <span className="uppercase border border-white/20 px-1 rounded text-[10px]">{item.type}</span>}
+                        {(item.product_type === 'podcast' || item.productType === 'podcast') ? (
+                            <span className="uppercase border border-secondary text-secondary font-black px-1 rounded text-[10px] shadow-sm shadow-secondary/10">Podcast</span>
+                        ) : item.type && (
+                            <span className="uppercase border border-white/20 px-1 rounded text-[10px]">{item.type}</span>
+                        )}
                     </div>
                 )}
             </div>

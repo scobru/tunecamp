@@ -38,7 +38,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
-    router.use(json());
+    router.use(json({ limit: "10mb" }));
     const authMiddleware = createAuthMiddleware(authService);
 
     /**

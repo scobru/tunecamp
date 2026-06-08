@@ -44,6 +44,10 @@ export interface Track {
     genre?: string;
     external_artwork?: string;
     year?: number;
+    description?: string;
+    podcast_episode_num?: number;
+    podcast_season_num?: number;
+    podcast_episode_type?: string;
 }
 
 interface ReleaseTrack {
@@ -94,6 +98,11 @@ export interface Release {
     license?: string;
     track_ids?: (string | number)[];
     tracks?: Track[]; // Compat with existing code
+    product_type?: 'music' | 'podcast';
+    podcast_author?: string;
+    podcast_email?: string;
+    podcast_category?: string;
+    podcast_explicit?: boolean | number;
     release_tracks?: ReleaseTrack[];
     downloadCount?: number;
     unlockCodeCount?: number;

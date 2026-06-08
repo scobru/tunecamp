@@ -550,6 +550,22 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating albums table: adding product_type column...");
                 db.exec("ALTER TABLE albums ADD COLUMN product_type TEXT DEFAULT 'music'");
             }
+            if (!cols.some(col => col.name === 'podcast_author')) {
+                console.log("📦 [Database] Migrating albums table: adding podcast_author column...");
+                db.exec("ALTER TABLE albums ADD COLUMN podcast_author TEXT");
+            }
+            if (!cols.some(col => col.name === 'podcast_email')) {
+                console.log("📦 [Database] Migrating albums table: adding podcast_email column...");
+                db.exec("ALTER TABLE albums ADD COLUMN podcast_email TEXT");
+            }
+            if (!cols.some(col => col.name === 'podcast_category')) {
+                console.log("📦 [Database] Migrating albums table: adding podcast_category column...");
+                db.exec("ALTER TABLE albums ADD COLUMN podcast_category TEXT");
+            }
+            if (!cols.some(col => col.name === 'podcast_explicit')) {
+                console.log("📦 [Database] Migrating albums table: adding podcast_explicit column...");
+                db.exec("ALTER TABLE albums ADD COLUMN podcast_explicit INTEGER DEFAULT 0");
+            }
         }
 
         const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
@@ -574,6 +590,22 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'version')) {
                 console.log("📦 [Database] Migrating tracks table: adding version column...");
                 db.exec("ALTER TABLE tracks ADD COLUMN version TEXT");
+            }
+            if (!cols.some(col => col.name === 'description')) {
+                console.log("📦 [Database] Migrating tracks table: adding description column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN description TEXT");
+            }
+            if (!cols.some(col => col.name === 'podcast_episode_num')) {
+                console.log("📦 [Database] Migrating tracks table: adding podcast_episode_num column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN podcast_episode_num INTEGER");
+            }
+            if (!cols.some(col => col.name === 'podcast_season_num')) {
+                console.log("📦 [Database] Migrating tracks table: adding podcast_season_num column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN podcast_season_num INTEGER");
+            }
+            if (!cols.some(col => col.name === 'podcast_episode_type')) {
+                console.log("📦 [Database] Migrating tracks table: adding podcast_episode_type column...");
+                db.exec("ALTER TABLE tracks ADD COLUMN podcast_episode_type TEXT DEFAULT 'full'");
             }
 
             // Repair incorrect mime_type values for audio files

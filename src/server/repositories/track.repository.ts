@@ -198,15 +198,16 @@ export class TrackRepository extends BaseRepository {
         }
 
         const result = this.db.prepare(`
-            INSERT OR IGNORE INTO tracks (title, album_id, artist_id, owner_id, artist_name, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, price_usdt, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id, fingerprint, mime_type, file_size, file_hash, version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO tracks (title, album_id, artist_id, owner_id, artist_name, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, price_usdt, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id, fingerprint, mime_type, file_size, file_hash, version, description, podcast_episode_num, podcast_season_num, podcast_episode_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             track.title, safeAlbumId, safeArtistId, safeOwnerId, track.artist_name || null,
             track.track_num, track.duration, track.file_path, track.format, track.bitrate, 
             track.sample_rate, track.price || 0, track.price_usdc || 0, track.price_usdt || 0, track.currency || 'ETH', 
             track.lossless_path || null, track.url || null, track.service || null, 
             track.external_artwork || null, track.lyrics || null, track.hash || null, track.external_id || null, track.fingerprint || null,
-            track.mime_type || 'audio/mpeg', track.file_size || 0, track.file_hash || null, track.version || null
+            track.mime_type || 'audio/mpeg', track.file_size || 0, track.file_hash || null, track.version || null,
+            track.description || null, track.podcast_episode_num || null, track.podcast_season_num || null, track.podcast_episode_type || 'full'
         );
         return result.lastInsertRowid as number;
     }
@@ -228,7 +229,10 @@ export class TrackRepository extends BaseRepository {
             externalId: 'external_id',
             mimeType: 'mime_type',
             fileSize: 'file_size',
-            fileHash: 'file_hash'
+            fileHash: 'file_hash',
+            podcastEpisodeNum: 'podcast_episode_num',
+            podcastSeasonNum: 'podcast_season_num',
+            podcastEpisodeType: 'podcast_episode_type'
         };
 
         for (const [key, value] of Object.entries(track)) {

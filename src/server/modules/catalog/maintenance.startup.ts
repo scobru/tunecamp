@@ -38,6 +38,25 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
     const musicDir = path.resolve(config.musicDir).replace(/\\/g, '/');
 
     try {
+        // Remove polluted image files scanned as tracks
+        console.log(`📦 [Maintenance] Cleaning up invalid image tracks from database...`);
+        const deleteImagesRes = database.db.prepare(`
+            DELETE FROM tracks 
+            WHERE file_path LIKE '%.png' 
+               OR file_path LIKE '%.jpg' 
+               OR file_path LIKE '%.jpeg'
+               OR file_path LIKE '%.webp'
+               OR file_path LIKE '%.gif'
+               OR lossless_path LIKE '%.png'
+               OR lossless_path LIKE '%.jpg'
+               OR lossless_path LIKE '%.jpeg'
+               OR lossless_path LIKE '%.webp'
+               OR lossless_path LIKE '%.gif'
+        `).run();
+        if (deleteImagesRes.changes > 0) {
+            console.log(`✅ [Maintenance] Removed ${deleteImagesRes.changes} polluted image track records from database.`);
+        }
+
         // 0. Repair Ownership Gaps (Claim orphans for primary admin)
         console.log(`📦 [Maintenance] Repairing ownership gaps...`);
         const primaryAdmin = database.db.prepare("SELECT id FROM admin WHERE role IN ('admin', 'super_user', 'root_admin') ORDER BY id ASC LIMIT 1").get() as { id: number } | undefined;

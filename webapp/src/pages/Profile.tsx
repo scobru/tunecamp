@@ -141,6 +141,7 @@ const Profile = () => {
         setIsSaving(true);
         try {
           await API.patchProfile({ avatar: base64 });
+          window.location.reload();
         } catch (err) {
           console.error("Failed to update avatar:", err);
         } finally {

@@ -95,6 +95,39 @@ async function parseFileWithRetry(filePath: string, retries = 3, delay = 500): P
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
 const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"];
 
+export function isArtworkOrAvatar(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    if (![".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext)) {
+        return false;
+    }
+    const baseName = path.basename(filePath, ext).toLowerCase();
+
+    // Ignore exact matches for standard artwork/folder/avatar files
+    if (["cover", "folder", "artwork", "avatar"].includes(baseName)) {
+        return true;
+    }
+
+    // Ignore auto-generated or standard prefixes/patterns
+    if (
+        baseName.startsWith("cover-") || 
+        baseName.startsWith("avatar-") ||
+        baseName.startsWith("track-") ||
+        baseName.startsWith("background") ||
+        baseName.startsWith("site-cover") ||
+        baseName.startsWith("site-logo")
+    ) {
+        return true;
+    }
+
+    // Check directory structure: if it is inside an "artwork" folder or "assets" folder
+    const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+    if (normalized.includes("/artwork/") || normalized.includes("/assets/")) {
+        return true;
+    }
+
+    return false;
+}
+
 interface ArtistConfig {
     name: string;
     bio?: string;
@@ -489,6 +522,7 @@ export class Scanner implements ScannerService {
         const isAudio = AUDIO_EXTENSIONS.includes(ext);
         const isGeneric = GENERIC_EXTENSIONS.includes(ext);
         if (!isAudio && !isGeneric) return null;
+        if (isArtworkOrAvatar(currentFilePath)) return null;
 
         while (this.hashingSemaphore >= this.MAX_CONCURRENT_HASHING) {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -622,7 +656,11 @@ export class Scanner implements ScannerService {
                 if (entry.isDirectory()) await walkDir(full);
                 else if (entry.isFile()) {
                     const ext = path.extname(entry.name).toLowerCase();
-                    if (AUDIO_EXTENSIONS.includes(ext) || GENERIC_EXTENSIONS.includes(ext)) audioFiles.push(full);
+                    if (AUDIO_EXTENSIONS.includes(ext) || GENERIC_EXTENSIONS.includes(ext)) {
+                        if (!isArtworkOrAvatar(full)) {
+                            audioFiles.push(full);
+                        }
+                    }
                     else if (ext === ".yaml" || ext === ".yml") yamlFiles.push(full);
                 }
             }
@@ -796,7 +834,11 @@ export class Scanner implements ScannerService {
         this.musicDirectory = dir;
         if (this.watcher) this.watcher.close();
         this.watcher = chokidar.watch(dir, { ignored: /(^|[\/\\])\../, persistent: true, ignoreInitial: true });
-        this.watcher.on("add", (f) => { this.processAudioFile(f, dir, undefined, this.primaryAdminId || undefined); });
+        this.watcher.on("add", (f) => {
+            if (!isArtworkOrAvatar(f)) {
+                this.processAudioFile(f, dir, undefined, this.primaryAdminId || undefined);
+            }
+        });
     }
 
     public stopWatching(): void {

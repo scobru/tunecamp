@@ -88,6 +88,10 @@ export interface Album {
     external_id?: string | null;
     use_nft?: boolean | number;
     product_type?: string;
+    podcast_author?: string | null;
+    podcast_email?: string | null;
+    podcast_category?: string | null;
+    podcast_explicit?: boolean | number;
     // View fields
     artist_name?: string;
     artist_slug?: string;
@@ -139,6 +143,10 @@ export interface Track {
     file_size?: number;
     file_hash?: string | null;
     version?: string | null;
+    description?: string | null;
+    podcast_episode_num?: number | null;
+    podcast_season_num?: number | null;
+    podcast_episode_type?: string | null;
     // View fields
     artist_slug?: string;
     artist_wallet_address?: string;

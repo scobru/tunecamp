@@ -11,7 +11,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
     const router = Router();
-    router.use(json());
+    router.use(json({ limit: "10mb" }));
 
     /**
      * POST /api/auth/login

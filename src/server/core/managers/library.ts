@@ -169,6 +169,10 @@ export function createLibraryManager(
                 const externalArtwork = data.externalArtwork ?? data.external_artwork;
                 const fileName = data.fileName ?? data.filename ?? data.file_path;
                 const duration = data.duration;
+                const description = data.description;
+                const podcastEpisodeNum = data.podcastEpisodeNum ?? data.podcast_episode_num;
+                const podcastSeasonNum = data.podcastSeasonNum ?? data.podcast_season_num;
+                const podcastEpisodeType = data.podcastEpisodeType ?? data.podcast_episode_type;
 
                 // 1. Resolve Owner
                 let finalOwnerId = ownerId !== undefined ? ownerId : track.owner_id;
@@ -320,6 +324,11 @@ export function createLibraryManager(
                 if (data.external_id !== undefined || data.externalId !== undefined) {
                     updates.external_id = data.external_id ?? data.externalId;
                 }
+
+                if (description !== undefined) updates.description = description;
+                if (podcastEpisodeNum !== undefined) updates.podcast_episode_num = podcastEpisodeNum ? Number(podcastEpisodeNum) : null;
+                if (podcastSeasonNum !== undefined) updates.podcast_season_num = podcastSeasonNum ? Number(podcastSeasonNum) : null;
+                if (podcastEpisodeType !== undefined) updates.podcast_episode_type = podcastEpisodeType;
 
                 // Apply update
                 trackRepository.update(trackId, updates);

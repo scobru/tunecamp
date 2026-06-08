@@ -1,6 +1,6 @@
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import { Scanner } from '../scanner.js';
+import { Scanner, isArtworkOrAvatar } from '../scanner.js';
 
 // Mock fs-extra to avoid file system operations
 jest.mock('fs-extra', () => ({
@@ -119,5 +119,36 @@ describe('Scanner Core Logic', () => {
 
         expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
         expect(mockDbService.deleteTrack).not.toHaveBeenCalledWith(1);
+    });
+});
+
+describe('isArtworkOrAvatar helper', () => {
+    test('should return true for artwork, folder, cover, and avatar files', () => {
+        expect(isArtworkOrAvatar('music/cover.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/folder.png')).toBe(true);
+        expect(isArtworkOrAvatar('music/artwork.png')).toBe(true);
+        expect(isArtworkOrAvatar('music/avatar.jpg')).toBe(true);
+    });
+
+    test('should return true for files with auto-generated names or prefixes', () => {
+        expect(isArtworkOrAvatar('music/cover-al490-1780265924899.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/avatar-12.png')).toBe(true);
+        expect(isArtworkOrAvatar('music/track-12345-456.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/background.png')).toBe(true);
+        expect(isArtworkOrAvatar('music/site-cover.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/site-logo.png')).toBe(true);
+    });
+
+    test('should return true if located in artwork or assets directories', () => {
+        expect(isArtworkOrAvatar('music/releases/album/artwork/custom-cover.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/assets/random-pic.jpg')).toBe(true);
+    });
+
+    test('should return false for valid files or audio tracks', () => {
+        expect(isArtworkOrAvatar('music/song.mp3')).toBe(false);
+        expect(isArtworkOrAvatar('music/booklet.pdf')).toBe(false);
+        expect(isArtworkOrAvatar('music/archive.zip')).toBe(false);
+        expect(isArtworkOrAvatar('music/not-an-image.txt')).toBe(false);
+        expect(isArtworkOrAvatar('music/random_image.png')).toBe(false);
     });
 });
