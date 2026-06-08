@@ -35,13 +35,13 @@
   --color-warning: oklch(80% 0.15 85);
   --color-error: oklch(60% 0.2 30);
 
-  /* Minimalist Shapes */
-  --radius-selector: 1rem;
+  /* Minimalist Shapes — crisper, Bandcamp-like (less bubbly) */
+  --radius-selector: 0.75rem;
   --radius-field: 0.5rem;
-  --radius-box: 1.5rem;
+  --radius-box: 1rem;
 
-  --rounded-btn: 2rem;
-  --rounded-badge: 0.5rem;
+  --rounded-btn: 0.65rem;
+  --rounded-badge: 0.375rem;
   --tab-radius: 0.5rem;
 
   --border-btn: 1px;
@@ -216,8 +216,10 @@
 }
 
 /* Custom Utilities */
+/* Bandcamp-style clarity: solid, crisp panels instead of heavy translucent glass.
+   Keeps a light backdrop blur only as a fallback when a custom background image is set. */
 @utility glass-effect {
-  @apply backdrop-blur-md bg-base-200/60 border border-base-content/5;
+  @apply bg-base-200 border border-base-content/10;
 }
 
 @utility scrollbar-thin {

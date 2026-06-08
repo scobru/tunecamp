@@ -226,7 +226,7 @@ export const AdminSettingsPanel = () => {
       </div>
 
       {message && (
-        <div className={`alert ${message.includes("Failed") ? "alert-error" : "alert-success"} shadow-lg rounded-xl mb-6`}>
+        <div className={`alert ${message.includes("Failed") ? "alert-error" : "alert-success"} shadow-level-1 rounded-xl mb-6`}>
           {message.includes("Failed") ? <OctagonAlert size={20} /> : <CheckCircle2 size={20} />}
           <span>{message}</span>
         </div>
@@ -237,7 +237,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-primary/80">
             <Layout size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">General Configuration</h4>
+            <h4 className="font-bold text-xs tracking-normal">General Configuration</h4>
           </div>
           
           <div className="form-control">
@@ -293,7 +293,7 @@ export const AdminSettingsPanel = () => {
                 }
               />
             </label>
-            <p className="text-[10px] opacity-40 px-1 mt-1">If enabled, anyone can create an account on your node.</p>
+            <p className="text-[11px] opacity-40 px-1 mt-1">If enabled, anyone can create an account on your node.</p>
           </div>
         </div>
 
@@ -301,7 +301,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-secondary/80">
             <Globe size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Federation & Network</h4>
+            <h4 className="font-bold text-xs tracking-normal">Federation & Network</h4>
           </div>
 
           <div className="form-control">
@@ -331,7 +331,7 @@ export const AdminSettingsPanel = () => {
               placeholder="wss://peer1.com/zen, wss://peer2.com/zen"
             />
             <label className="label">
-              <span className="label-text-alt opacity-40 text-[10px]">Comma-separated list of relay nodes.</span>
+              <span className="label-text-alt opacity-40 text-[11px]">Comma-separated list of relay nodes.</span>
             </label>
           </div>
         </div>
@@ -340,7 +340,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-accent/80">
             <Palette size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Branding & Appearance</h4>
+            <h4 className="font-bold text-xs tracking-normal">Branding & Appearance</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -495,7 +495,7 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => setCoverFile(e.target.files ? e.target.files[0] : null) }
                 />
                 <label className="label">
-                  <span className="label-text-alt opacity-50 text-[10px]">This image represents your node in the global network list.</span>
+                  <span className="label-text-alt opacity-50 text-[11px]">This image represents your node in the global network list.</span>
                 </label>
               </div>
 
@@ -510,7 +510,7 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => setLogoFile(e.target.files ? e.target.files[0] : null) }
                 />
                 <label className="label">
-                  <span className="label-text-alt opacity-50 text-[10px]">This logo will appear in the top-left corner of the sidebar.</span>
+                  <span className="label-text-alt opacity-50 text-[11px]">This logo will appear in the top-left corner of the sidebar.</span>
                 </label>
               </div>
               
@@ -536,7 +536,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-yellow-400">
             <Wallet size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Payments &amp; Web3</h4>
+            <h4 className="font-bold text-xs tracking-normal">Payments &amp; Web3</h4>
           </div>
 
           <label className="label cursor-pointer justify-between items-start gap-4 bg-base-300/40 p-4 rounded-xl border border-base-content/5">
@@ -594,7 +594,7 @@ export const AdminSettingsPanel = () => {
                     </div>
                     <div>
                       <p className="text-success text-sm font-bold">Web3 Store Active</p>
-                      <p className="text-[10px] opacity-70 text-success">NFT and Checkout contracts are correctly configured.</p>
+                      <p className="text-[11px] opacity-70 text-success">NFT and Checkout contracts are correctly configured.</p>
                     </div>
                   </div>
                 ) : (
@@ -631,7 +631,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-green-400">
             <Save size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Revenue & Fees (Label Admin)</h4>
+            <h4 className="font-bold text-xs tracking-normal">Revenue & Fees (Label Admin)</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -650,7 +650,7 @@ export const AdminSettingsPanel = () => {
                 placeholder="0"
               />
               <label className="label">
-                <span className="label-text-alt opacity-40 text-[10px]">Percentage fee taken from direct payments. For smart contracts, this is fixed at 15%.</span>
+                <span className="label-text-alt opacity-40 text-[11px]">Percentage fee taken from direct payments. For smart contracts, this is fixed at 15%.</span>
               </label>
             </div>
 
@@ -666,7 +666,7 @@ export const AdminSettingsPanel = () => {
                 placeholder="0x..."
               />
               <label className="label">
-                <span className="label-text-alt opacity-40 text-[10px]">Address where label fees are sent.</span>
+                <span className="label-text-alt opacity-40 text-[11px]">Address where label fees are sent.</span>
               </label>
             </div>
           </div>
@@ -692,7 +692,7 @@ export const AdminSettingsPanel = () => {
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-error/80">
             <Shield size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Security & System Keys (Root Admin)</h4>
+            <h4 className="font-bold text-xs tracking-normal">Security & System Keys (Root Admin)</h4>
           </div>
           <div className="form-control">
             <label className="label">
@@ -724,7 +724,7 @@ export const AdminSettingsPanel = () => {
               </button>
             </div>
             <label className="label">
-              <span className="label-text-alt text-error/80 text-[10px] flex items-center gap-1 font-medium mt-1">
+              <span className="label-text-alt text-error/80 text-[11px] flex items-center gap-1 font-medium mt-1">
                 <OctagonAlert size={12} />
                 WARNING: This is the server's master cryptographic key. Keep it secret and secure. It is used to decrypt all Zen identities and derive user wallets.
               </span>

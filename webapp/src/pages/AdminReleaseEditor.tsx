@@ -648,9 +648,9 @@ export default function AdminReleaseEditor() {
         <div className="container mx-auto px-4 py-8 lg:p-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-12">
             {/* LEFT COLUMN: PRIMARY METADATA & COVER */}
-            <div className="lg:col-span-4 xl:col-span-3 space-y-8">
+            <div className="lg:col-span-4 space-y-8">
               {/* Cover Art */}
-              <div className="card bg-base-100 shadow-xl overflow-hidden border border-base-content/5">
+              <div className="card bg-base-100 shadow-level-1 overflow-hidden border border-base-content/5">
                 <div
                   className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${(isAdmin || isSuperUser) ? 'cursor-pointer' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
@@ -666,14 +666,14 @@ export default function AdminReleaseEditor() {
                   ) : (
                     <div className="text-center opacity-30">
                       <ImageIcon className="w-16 h-16 mx-auto mb-2" />
-                      <span className="text-sm font-bold tracking-widest uppercase">Select Cover</span>
+                      <span className="text-sm font-bold tracking-normal">Select Cover</span>
                     </div>
                   )}
                   {(isAdmin || (isSuperUser && user?.artistId)) && (
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white p-4 text-center">
                       <Download className="w-8 h-8 mb-2" />
-                      <span className="font-bold uppercase tracking-widest text-sm">Change Cover Image</span>
-                      <p className="text-[10px] opacity-70 mt-2">Square JPEG or PNG, min 1400px</p>
+                      <span className="font-bold tracking-normal text-sm">Change Cover Image</span>
+                      <p className="text-xs opacity-70 mt-2">Square JPEG or PNG, min 1400px</p>
                     </div>
                   )}
                   <input
@@ -692,9 +692,9 @@ export default function AdminReleaseEditor() {
               </div>
 
               {/* Album Primary Info */}
-              <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-6">
+              <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 space-y-6">
                 <div className="form-control">
-                  <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Album Title</label>
+                  <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Album Title</label>
                   <input
                     type="text"
                     className="input input-bordered w-full font-bold focus:border-primary"
@@ -706,7 +706,7 @@ export default function AdminReleaseEditor() {
                 </div>
 
                 <div className="form-control">
-                  <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Artist</label>
+                  <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Artist</label>
                   {user?.isRootAdmin ? (
                     <select
                       className="select select-bordered w-full"
@@ -725,7 +725,7 @@ export default function AdminReleaseEditor() {
                 </div>
 
                 <div className="form-control">
-                  <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Album Artist (compilation override)</label>
+                  <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Album Artist</label>
                   <input
                     type="text"
                     className="input input-bordered w-full text-sm"
@@ -740,7 +740,7 @@ export default function AdminReleaseEditor() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="form-control">
-                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Product Type</label>
+                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Product Type</label>
                     <select
                       className="select select-bordered w-full text-sm font-bold"
                       value={metadata.product_type || "music"}
@@ -751,7 +751,7 @@ export default function AdminReleaseEditor() {
                     </select>
                   </div>
                   <div className="form-control">
-                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Type</label>
+                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Type</label>
                     <select
                       className="select select-bordered w-full"
                       value={metadata.type}
@@ -764,7 +764,7 @@ export default function AdminReleaseEditor() {
                     </select>
                   </div>
                   <div className="form-control">
-                    <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Year</label>
+                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Year</label>
                     <input
                       type="number"
                       className="input input-bordered w-full"
@@ -776,12 +776,12 @@ export default function AdminReleaseEditor() {
 
                 {metadata.product_type === "podcast" && (
                   <div className="card bg-secondary/5 border border-secondary/10 p-4 rounded-xl space-y-4">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-secondary flex items-center gap-2">
+                    <h3 className="text-sm font-black tracking-normal text-secondary flex items-center gap-2">
                       <Mic className="w-4 h-4" /> Podcast Channel Settings
                     </h3>
                     
                     <div className="form-control">
-                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Podcast Author</label>
+                      <label className="label text-xs font-bold tracking-normal opacity-50">Podcast Author</label>
                       <input
                         type="text"
                         className="input input-bordered input-sm w-full text-sm"
@@ -792,7 +792,7 @@ export default function AdminReleaseEditor() {
                     </div>
 
                     <div className="form-control">
-                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Podcast Email</label>
+                      <label className="label text-xs font-bold tracking-normal opacity-50">Podcast Email</label>
                       <input
                         type="email"
                         className="input input-bordered input-sm w-full text-sm"
@@ -803,7 +803,7 @@ export default function AdminReleaseEditor() {
                     </div>
 
                     <div className="form-control">
-                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Podcast Category</label>
+                      <label className="label text-xs font-bold tracking-normal opacity-50">Podcast Category</label>
                       <select
                         className="select select-bordered select-sm w-full text-sm"
                         value={metadata.podcast_category || ""}
@@ -834,8 +834,8 @@ export default function AdminReleaseEditor() {
 
                     <div className="form-control flex flex-row items-center justify-between p-2 rounded-lg bg-base-200/50">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Explicit Content</span>
-                        <span className="text-[9px] opacity-40">Mark if this podcast contains adult content</span>
+                        <span className="text-xs font-bold tracking-normal opacity-80">Explicit Content</span>
+                        <span className="text-[11px] opacity-40">Mark if this podcast contains adult content</span>
                       </div>
                       <input
                         type="checkbox"
@@ -848,7 +848,7 @@ export default function AdminReleaseEditor() {
                 )}
 
                 <div className="form-control">
-                  <label className="label text-xs font-bold uppercase tracking-widest opacity-50">Genre / Tags</label>
+                  <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Genre / Tags</label>
                   <input
                     type="text"
                     className="input input-bordered w-full text-sm"
@@ -860,8 +860,8 @@ export default function AdminReleaseEditor() {
               </div>
 
               {/* Visibility & Federation */}
-              <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-widest opacity-50">Visibility & Distribution</h3>
+              <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 space-y-4">
+                <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Visibility & Distribution</h3>
                 <div className="grid grid-cols-1 gap-2">
                    {["public", "unlisted", "private"].map((v) => (
                      <label key={v} className={`flex items-center gap-3 p-3 rounded-xl border border-base-content/5 cursor-pointer transition-all ${metadata.visibility === v ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
@@ -893,7 +893,7 @@ export default function AdminReleaseEditor() {
                         checked={metadata.published_to_gundb !== false}
                         onChange={(e) => setMetadata((prev) => ({ ...prev, published_to_gundb: e.target.checked }))}
                       />
-                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Push to Zen (P2P)</span>
+                      <span className="text-xs font-bold tracking-normal opacity-70">Push to Zen (P2P)</span>
                     </label>
                     <label className="flex items-center gap-3 p-2 cursor-pointer hover:bg-base-200 rounded-lg transition-colors">
                       <input
@@ -902,7 +902,7 @@ export default function AdminReleaseEditor() {
                         checked={metadata.published_to_ap !== false}
                         onChange={(e) => setMetadata((prev) => ({ ...prev, published_to_ap: e.target.checked }))}
                       />
-                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Push to ActivityPub</span>
+                      <span className="text-xs font-bold tracking-normal opacity-70">Push to ActivityPub</span>
                     </label>
                   </div>
                 )}
@@ -910,12 +910,12 @@ export default function AdminReleaseEditor() {
             </div>
 
             {/* CENTER/RIGHT COLUMN: TRACKS & WEB3 */}
-            <div className="lg:col-span-8 xl:col-span-9 space-y-8">
+            <div className="lg:col-span-8 space-y-8">
               
               {/* Actions Toolbar */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-4 rounded-2xl shadow-lg border border-base-content/5">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-4 rounded-2xl shadow-level-1 border border-base-content/5">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
+                  <h2 className="text-xl font-black italic tracking-tighter flex items-center gap-3">
                     <Music className="w-6 h-6 text-primary" /> Tracks
                   </h2>
                   <div className="badge badge-primary badge-outline font-mono">{tracks.length} Brani</div>
@@ -996,7 +996,7 @@ export default function AdminReleaseEditor() {
                                   className="input input-ghost input-sm w-full font-bold focus:bg-base-300 p-1 -ml-1 h-auto"
                                 />
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[9px] font-mono opacity-40 uppercase shrink-0">File:</span>
+                                  <span className="text-[11px] font-mono opacity-40 shrink-0">File:</span>
                                   <input
                                     type="text"
                                     value={track.file_path?.split("/").pop() || ""}
@@ -1007,11 +1007,11 @@ export default function AdminReleaseEditor() {
                                       newTracks[idx].isDirty = true;
                                       setTracks(newTracks);
                                     }}
-                                    className="input input-ghost input-xs w-full font-mono text-[9px] opacity-40 focus:opacity-100 p-0 h-auto"
+                                    className="input input-ghost input-xs w-full font-mono text-[11px] opacity-40 focus:opacity-100 p-0 h-auto"
                                   />
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[9px] font-mono opacity-40 uppercase shrink-0">Genre:</span>
+                                  <span className="text-[11px] font-mono opacity-40 shrink-0">Genre:</span>
                                   <input
                                     type="text"
                                     value={track.genre || ""}
@@ -1021,10 +1021,10 @@ export default function AdminReleaseEditor() {
                                       newTracks[idx].isDirty = true;
                                       setTracks(newTracks);
                                     }}
-                                    className="input input-ghost input-xs w-24 font-mono text-[9px] opacity-40 focus:opacity-100 p-0 h-auto"
+                                    className="input input-ghost input-xs w-24 font-mono text-[11px] opacity-40 focus:opacity-100 p-0 h-auto"
                                     placeholder="Techno..."
                                   />
-                                  <span className="text-[9px] font-mono opacity-40 uppercase shrink-0">Year:</span>
+                                  <span className="text-[11px] font-mono opacity-40 shrink-0">Year:</span>
                                   <input
                                     type="number"
                                     value={track.year || ""}
@@ -1034,7 +1034,7 @@ export default function AdminReleaseEditor() {
                                       newTracks[idx].isDirty = true;
                                       setTracks(newTracks);
                                     }}
-                                    className="input input-ghost input-xs w-16 font-mono text-[9px] opacity-40 focus:opacity-100 p-0 h-auto"
+                                    className="input input-ghost input-xs w-16 font-mono text-[11px] opacity-40 focus:opacity-100 p-0 h-auto"
                                     placeholder="2024"
                                   />
                                 </div>
@@ -1044,17 +1044,17 @@ export default function AdminReleaseEditor() {
                               {track.duration ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, "0")}` : "--:--"}
                             </td>
                             <td className="hidden lg:table-cell">
-                                <span className="badge badge-outline badge-xs opacity-40 font-mono scale-90 uppercase">
+                                <span className="badge badge-outline badge-xs opacity-40 font-mono scale-90">
                                   {track.lossless_path ? (track.lossless_path.toLowerCase().endsWith(".wav") ? "WAV" : "FLAC") : (track.format || "MP3")}
                                 </span>
                             </td>
                             {metadata.use_nft && (
                               <td>
                                 {track.registrationStatus === 'registered' ? (
-                                  <div className="badge badge-success badge-sm gap-1 font-bold text-[9px]">Sì</div>
+                                  <div className="badge badge-success badge-sm gap-1 font-bold text-[11px]">Sì</div>
                                 ) : track.registrationStatus === 'unregistered' ? (
                                   <button 
-                                    className="btn btn-xs btn-outline btn-secondary font-bold text-[9px]"
+                                    className="btn btn-xs btn-outline btn-secondary font-bold text-[11px]"
                                     onClick={() => handleRegisterTrack(idx)}
                                     disabled={track.isRegistering}
                                   >
@@ -1138,10 +1138,10 @@ export default function AdminReleaseEditor() {
                             <tr className="bg-base-200/20">
                               <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">
                                 <div className="card bg-base-300/40 p-4 rounded-xl border border-secondary/10 space-y-3">
-                                  <label className="text-[10px] font-black uppercase tracking-widest text-secondary">Episode Settings: {track.title}</label>
+                                  <label className="text-xs font-black tracking-normal text-secondary">Episode Settings: {track.title}</label>
                                   <div className="grid grid-cols-3 gap-4">
                                     <div className="form-control">
-                                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Episode Number</label>
+                                      <label className="label text-xs font-bold tracking-normal opacity-50">Episode Number</label>
                                       <input
                                         type="number"
                                         className="input input-bordered input-sm w-full"
@@ -1156,7 +1156,7 @@ export default function AdminReleaseEditor() {
                                       />
                                     </div>
                                     <div className="form-control">
-                                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Season Number</label>
+                                      <label className="label text-xs font-bold tracking-normal opacity-50">Season Number</label>
                                       <input
                                         type="number"
                                         className="input input-bordered input-sm w-full"
@@ -1171,7 +1171,7 @@ export default function AdminReleaseEditor() {
                                       />
                                     </div>
                                     <div className="form-control">
-                                      <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Episode Type</label>
+                                      <label className="label text-xs font-bold tracking-normal opacity-50">Episode Type</label>
                                       <select
                                         className="select select-bordered select-sm w-full font-bold"
                                         value={track.podcast_episode_type || "full"}
@@ -1189,7 +1189,7 @@ export default function AdminReleaseEditor() {
                                     </div>
                                   </div>
                                   <div className="form-control">
-                                    <label className="label text-[10px] font-bold uppercase tracking-widest opacity-50">Episode Description / Summary</label>
+                                    <label className="label text-xs font-bold tracking-normal opacity-50">Episode Description / Summary</label>
                                     <textarea
                                       className="textarea textarea-bordered textarea-sm w-full h-20 text-sm"
                                       placeholder="Episode summary, show notes, and links..."
@@ -1211,9 +1211,9 @@ export default function AdminReleaseEditor() {
                               <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">
                                 <div className="card bg-base-300/40 p-4 rounded-xl border border-primary/10 space-y-3">
                                   <div className="flex justify-between items-center">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-primary">Lyrics: {track.title}</label>
+                                    <label className="text-xs font-black tracking-normal text-primary">Lyrics: {track.title}</label>
                                     <button 
-                                      className="btn btn-xs btn-ghost text-[9px]"
+                                      className="btn btn-xs btn-ghost text-[11px]"
                                       onClick={async () => {
                                           try {
                                             const response = await fetch(`/api/tracks/${track.id}/lyrics`);
@@ -1275,7 +1275,7 @@ export default function AdminReleaseEditor() {
                 {/* Pending Uploads */}
                 {filesToUpload.length > 0 && (
                   <div className="bg-primary/5 p-4 border-t border-primary/20 space-y-2">
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                    <h4 className="text-xs font-bold tracking-normal text-primary flex items-center gap-2">
                       <Plus className="w-3 h-3" /> Pending Uploads
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -1294,8 +1294,8 @@ export default function AdminReleaseEditor() {
               </div>
 
                {/* Description & Credits - Full Width */}
-               <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 mt-8">
-                 <h3 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4 flex items-center gap-2">
+               <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 mt-8">
+                 <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal mb-4 flex items-center gap-2">
                      <Disc className="w-4 h-4" /> Description & Credits
                  </h3>
                  <div className="form-control">
@@ -1312,21 +1312,21 @@ export default function AdminReleaseEditor() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
                 {/* Payment & Web3 */}
                 <div className="space-y-6">
-                  <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest opacity-50 flex items-center gap-2">
+                  <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 space-y-4">
+                    <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal flex items-center gap-2">
                        <Download className="w-3 h-3" /> Payment & Web3 Settings
                     </h3>
                     <div className="form-control">
-                      <label className="label-text-alt font-black uppercase tracking-widest opacity-40 mb-2">Payment Mode</label>
+                      <label className="label-text-alt font-black tracking-normal opacity-40 mb-2">Payment Mode</label>
                       {web3Enabled ? (
                         <div className="flex items-center justify-between bg-base-200 p-3 rounded-xl border border-base-content/5">
-                          <span className={`text-[10px] font-bold ${metadata.use_nft === false ? 'text-primary' : 'opacity-40'}`}>Direct Payment</span>
+                          <span className={`text-xs font-bold ${metadata.use_nft === false ? 'text-primary' : 'opacity-40'}`}>Direct Payment</span>
                           <input
                             type="checkbox" className="toggle toggle-primary toggle-sm mx-2"
                             checked={metadata.use_nft !== false}
                             onChange={(e) => setMetadata(prev => ({ ...prev, use_nft: e.target.checked }))}
                           />
-                          <span className={`text-[10px] font-bold ${metadata.use_nft !== false ? 'text-primary' : 'opacity-40'}`}>Smart Contract (NFT)</span>
+                          <span className={`text-xs font-bold ${metadata.use_nft !== false ? 'text-primary' : 'opacity-40'}`}>Smart Contract (NFT)</span>
                         </div>
                       ) : (
                         <div className="bg-base-200 p-3 rounded-xl border border-base-content/5 text-[11px] opacity-60 leading-relaxed">
@@ -1338,7 +1338,7 @@ export default function AdminReleaseEditor() {
                     
                     {!isNew && metadata.use_nft && (
                       <div className="bg-secondary/5 border border-secondary/20 rounded-xl p-4 space-y-3">
-                        <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
+                        <div className="flex justify-between items-center text-xs font-bold tracking-normal">
                           <span className="opacity-50">NFT Registrations:</span>
                           <span className="text-secondary">{tracks.filter(t => t.registrationStatus === 'registered').length}/{tracks.length}</span>
                         </div>
@@ -1358,8 +1358,8 @@ export default function AdminReleaseEditor() {
 
                 {/* Downloads & Advanced */}
                 <div className="space-y-6">
-                  <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6 space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest opacity-50">Download Experience</h3>
+                  <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 space-y-4">
+                    <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Download Experience</h3>
                     <div className="grid grid-cols-1 gap-2">
                        {["none", "free", "codes"].map((d) => (
                          <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border border-base-content/5 cursor-pointer transition-all ${metadata.download === d || (!metadata.download && d === "none") ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
@@ -1372,7 +1372,7 @@ export default function AdminReleaseEditor() {
                               <span className="text-sm font-bold capitalize">
                                 {d === 'none' ? 'Streaming Only' : d === 'free' ? 'Free Download' : 'Unlock Codes'}
                               </span>
-                              <span className="text-[10px] opacity-50">
+                              <span className="text-xs opacity-50">
                                 {d === 'none' ? 'Basic streaming' : d === 'free' ? 'Public download' : 'Require unique code'}
                               </span>
                             </div>
@@ -1386,8 +1386,8 @@ export default function AdminReleaseEditor() {
                     )}
                   </div>
 
-                  <div className="card bg-base-100 shadow-xl border border-base-content/5 p-6">
-                    <h3 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4">Legals & Rights</h3>
+                  <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6">
+                    <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal mb-4">Legals & Rights</h3>
                     <select
                       className="select select-bordered w-full text-sm"
                       value={metadata.license || "copyright"}
