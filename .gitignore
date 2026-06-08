@@ -74,3 +74,5 @@ scratch/
 *.orig
 *.patch
 *_patch
+# Exception: patch-package patches must be committed
+!patches/*.patch
