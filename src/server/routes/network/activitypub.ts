@@ -124,15 +124,25 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                 // Reply handling: if this Create(Note) replies to one of OUR notes, store it as a thread reply
                 const inReplyTo = obj && (typeof obj.inReplyTo === 'string' ? obj.inReplyTo : obj.inReplyTo?.id);
                 if (obj && inReplyTo) {
-                    const parentNote = db.getApNote(inReplyTo);
+                    let parentNote = db.getApNote(inReplyTo);
+                    let targetNoteId = inReplyTo;
+                    if (!parentNote) {
+                        // Check if it's a nested reply replying to an existing reply
+                        const parentReply = db.getApReply(inReplyTo);
+                        if (parentReply) {
+                            parentNote = db.getApNote(parentReply.note_id);
+                            targetNoteId = parentReply.note_id;
+                        }
+                    }
+
                     if (parentNote) {
                         const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
                         const replyUri = obj.id || activity.id;
                         if (actorUri && replyUri) {
                             // Best-effort fetch of the remote actor profile for display (name/avatar)
                             await apService.cacheRemoteActor(actorUri).catch(() => {});
-                            db.addApReply(inReplyTo, replyUri, actorUri, obj.content || obj.summary || "", obj.published || new Date().toISOString());
-                            console.log(`💬 Stored reply from ${actorUri} on note ${inReplyTo}`);
+                            db.addApReply(targetNoteId, replyUri, actorUri, obj.content || obj.summary || "", obj.published || new Date().toISOString());
+                            console.log(`💬 Stored reply from ${actorUri} on note ${targetNoteId} (replying to ${inReplyTo})`);
                         }
                         return res.status(200).send("OK");
                     }

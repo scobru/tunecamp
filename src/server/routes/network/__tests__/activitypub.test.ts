@@ -14,6 +14,8 @@ const mockDb = {
     getSetting: jest.fn(),
     getFollowers: jest.fn(),
     getApReply: jest.fn(),
+    getApNote: jest.fn(),
+    addApReply: jest.fn(),
 } as unknown as DatabaseService;
 
 const mockApService = {
@@ -30,6 +32,7 @@ const mockApService = {
     acceptFollow: jest.fn<any>().mockResolvedValue(undefined),
     acceptFollowRequest: jest.fn<any>().mockResolvedValue(undefined),
     rejectFollowRequest: jest.fn<any>().mockResolvedValue(undefined),
+    cacheRemoteActor: jest.fn<any>().mockResolvedValue(undefined),
 } as unknown as ActivityPubService;
 
 const mockAuthMiddleware = {
@@ -317,5 +320,93 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         expect(response.status).toBe(200);
         expect(response.body).toEqual({ success: true, message: "Follower rejected" });
         expect(mockApService.rejectFollowRequest).toHaveBeenCalledWith(mockArtist, "https://livellosegreto.it/users/bob");
+    });
+
+    test('POST /ap/users/:slug/inbox should process incoming direct reply (Create Note)', async () => {
+        const mockArtist = { id: 1, slug: "homologo" };
+        const mockParentNote = { note_id: "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post" };
+        
+        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
+        (mockDb.getApNote as jest.Mock).mockReturnValue(mockParentNote);
+        (mockDb.getApReply as jest.Mock).mockReturnValue(undefined);
+
+        const createReplyActivity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://mastodon.social/activities/create-reply-1",
+            type: "Create",
+            actor: "https://mastodon.social/users/bob",
+            object: {
+                id: "https://mastodon.social/users/bob/statuses/1",
+                type: "Note",
+                inReplyTo: "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post",
+                content: "<p>Nice post!</p>",
+                published: "2026-06-08T10:00:00Z"
+            }
+        };
+
+        const response = await request(app)
+            .post('/ap/users/homologo/inbox')
+            .send(createReplyActivity);
+
+        expect(response.status).toBe(200);
+        expect(mockDb.getApNote).toHaveBeenCalledWith("https://sudorecords.scobrudot.dev/api/ap/note/post/some-post");
+        expect(mockDb.addApReply).toHaveBeenCalledWith(
+            "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post",
+            "https://mastodon.social/users/bob/statuses/1",
+            "https://mastodon.social/users/bob",
+            "<p>Nice post!</p>",
+            "2026-06-08T10:00:00Z"
+        );
+    });
+
+    test('POST /ap/users/:slug/inbox should process incoming nested reply to another reply', async () => {
+        const mockArtist = { id: 1, slug: "homologo" };
+        const rootNoteUri = "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post";
+        const parentReplyUri = "https://mastodon.social/users/bob/statuses/1";
+        
+        const mockParentReply = {
+            note_id: rootNoteUri,
+            reply_uri: parentReplyUri
+        };
+        const mockParentNote = { note_id: rootNoteUri };
+
+        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
+        (mockDb.getApNote as jest.Mock).mockImplementation((uri) => {
+            if (uri === rootNoteUri) return mockParentNote;
+            return undefined;
+        });
+        (mockDb.getApReply as jest.Mock).mockImplementation((uri) => {
+            if (uri === parentReplyUri) return mockParentReply;
+            return undefined;
+        });
+
+        const nestedReplyActivity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: "https://mastodon.social/activities/create-reply-2",
+            type: "Create",
+            actor: "https://mastodon.social/users/charlie",
+            object: {
+                id: "https://mastodon.social/users/charlie/statuses/1",
+                type: "Note",
+                inReplyTo: parentReplyUri,
+                content: "<p>Replying to Bob</p>",
+                published: "2026-06-08T11:00:00Z"
+            }
+        };
+
+        const response = await request(app)
+            .post('/ap/users/homologo/inbox')
+            .send(nestedReplyActivity);
+
+        expect(response.status).toBe(200);
+        expect(mockDb.getApReply).toHaveBeenCalledWith(parentReplyUri);
+        expect(mockDb.getApNote).toHaveBeenCalledWith(rootNoteUri);
+        expect(mockDb.addApReply).toHaveBeenCalledWith(
+            rootNoteUri,
+            "https://mastodon.social/users/charlie/statuses/1",
+            "https://mastodon.social/users/charlie",
+            "<p>Replying to Bob</p>",
+            "2026-06-08T11:00:00Z"
+        );
     });
 });
