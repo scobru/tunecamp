@@ -35,6 +35,12 @@ export function createSocialManager(
         updateFollowerUri: (o: string, n: string, i: string, si?: string) => socialRepository.updateFollowerUri(o, n, i, si),
         unfollowActor: (u: string) => { db.prepare("UPDATE remote_actors SET is_followed = 0 WHERE uri = ?").run(u); },
 
+        // Following (per-artist)
+        addFollowing: (artistId: number, actorUri: string, inboxUri?: string) => socialRepository.addFollowing(artistId, actorUri, inboxUri),
+        removeFollowing: (artistId: number, actorUri: string) => socialRepository.removeFollowing(artistId, actorUri),
+        isFollowing: (artistId: number, actorUri: string) => socialRepository.isFollowing(artistId, actorUri),
+        getFollowingActors: (artistId: number) => socialRepository.getFollowingActors(artistId),
+
         // Starred / Social / Ratings
         starItem: (u: string, t: any, id: string) => socialRepository.starItem(u, t, id),
         unstarItem: (u: string, t: any, id: string) => socialRepository.unstarItem(u, t, id),
@@ -156,6 +162,7 @@ export function createSocialManager(
             return false;
         },
         getApReplies: (noteId: string) => db.prepare("SELECT id, note_id, reply_uri, actor_uri, content, published_at, created_at FROM ap_replies WHERE note_id = ? ORDER BY COALESCE(published_at, created_at) ASC").all(noteId) as any[],
+        getApReply: (replyUri: string) => db.prepare("SELECT id, note_id, reply_uri, actor_uri, content, published_at, created_at FROM ap_replies WHERE reply_uri = ?").get(replyUri) as any,
         deleteApReply: (replyUri: string): boolean => {
             const row = db.prepare("SELECT note_id FROM ap_replies WHERE reply_uri = ?").get(replyUri) as any;
             const result = db.prepare("DELETE FROM ap_replies WHERE reply_uri = ?").run(replyUri);

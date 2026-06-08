@@ -482,6 +482,27 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         });
     });
 
+    // Resolve individual Object (outbound Reply Note) so remote servers can dereference it
+    router.get("/note/reply/:id", (req, res) => {
+        const replyUri = `${apService.getBaseUrl()}/api/ap/note/reply/${req.params.id}`;
+        const reply = db.getApReply(replyUri);
+
+        if (!reply) return res.status(404).send("Not found");
+
+        res.setHeader("Content-Type", "application/activity+json");
+        res.json({
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Note",
+            id: reply.reply_uri,
+            attributedTo: reply.actor_uri,
+            inReplyTo: reply.note_id,
+            content: reply.content,
+            published: reply.published_at || reply.created_at,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${reply.actor_uri}/followers`]
+        });
+    });
+
     // List published content for artist
     router.get("/published/:artistId", authMiddleware.requireUser, (req: any, res) => {
         const { artistId } = req.params;
@@ -533,7 +554,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
             return {
                 uri: f.actor_uri,
                 created_at: f.created_at,
-                is_following_back: !!actor?.is_followed,
+                is_following_back: db.isFollowing(parsedArtistId, f.actor_uri),
                 actor: actor ? {
                     name: actor.name || actor.username || 'Unknown',
                     username: actor.username || 'unknown',
