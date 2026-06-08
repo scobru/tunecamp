@@ -25,6 +25,7 @@ export const ActivityPubPanel = () => {
     const [peerUrl, setPeerUrl] = useState('');
     const [peerLoading, setPeerLoading] = useState(false);
     const [peersLoading, setPeersLoading] = useState(false);
+    const [followersCount, setFollowersCount] = useState<number | null>(null);
 
     useEffect(() => {
         loadArtists();
@@ -34,10 +35,23 @@ export const ActivityPubPanel = () => {
     useEffect(() => {
         if (selectedArtistId) {
             loadNotes(selectedArtistId);
+            loadFollowersCount(selectedArtistId);
         } else {
             setNotes([]);
+            setFollowersCount(null);
         }
     }, [selectedArtistId]);
+
+    const loadFollowersCount = async (artistId: string) => {
+        setFollowersCount(null);
+        try {
+            const data = await API.getArtistFollowers(artistId);
+            setFollowersCount(Array.isArray(data) ? data.length : 0);
+        } catch (e) {
+            console.error("Failed to load followers count", e);
+            setFollowersCount(null);
+        }
+    };
 
     const loadArtists = async () => {
         try {
@@ -197,7 +211,7 @@ export const ActivityPubPanel = () => {
                             </div>
                         </div>
                         <div className="stat-title opacity-60 uppercase text-[10px] font-bold tracking-widest">Followers</div>
-                        <div className="stat-value text-primary">--</div> 
+                        <div className="stat-value text-primary">{followersCount === null ? <span className="loading loading-spinner loading-sm opacity-50" /> : followersCount}</div>
                         <div className="stat-desc font-mono text-[10px] mt-1 opacity-50">on @{selectedArtist.slug}@{window.location.hostname}</div>
                     </div>
                 </div>

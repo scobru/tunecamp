@@ -146,6 +146,25 @@ export function createSocialManager(
             }
             return false;
         },
+        getApInteractions: (noteId: string) => db.prepare("SELECT actor_uri, type, created_at FROM ap_interactions WHERE note_id = ? ORDER BY created_at DESC").all(noteId) as any[],
+        addApReply: (noteId: string, replyUri: string, actorUri: string, content: string, publishedAt?: string): boolean => {
+            const result = db.prepare("INSERT OR IGNORE INTO ap_replies (note_id, reply_uri, actor_uri, content, published_at) VALUES (?, ?, ?, ?, ?)").run(noteId, replyUri, actorUri, content, publishedAt ?? null);
+            if (result.changes > 0) {
+                db.prepare("UPDATE ap_notes SET replies_count = MAX(0, replies_count + 1) WHERE note_id = ?").run(noteId);
+                return true;
+            }
+            return false;
+        },
+        getApReplies: (noteId: string) => db.prepare("SELECT id, note_id, reply_uri, actor_uri, content, published_at, created_at FROM ap_replies WHERE note_id = ? ORDER BY COALESCE(published_at, created_at) ASC").all(noteId) as any[],
+        deleteApReply: (replyUri: string): boolean => {
+            const row = db.prepare("SELECT note_id FROM ap_replies WHERE reply_uri = ?").get(replyUri) as any;
+            const result = db.prepare("DELETE FROM ap_replies WHERE reply_uri = ?").run(replyUri);
+            if (result.changes > 0 && row) {
+                db.prepare("UPDATE ap_notes SET replies_count = MAX(0, replies_count - 1) WHERE note_id = ?").run(row.note_id);
+                return true;
+            }
+            return false;
+        },
 
         // Remote Content
         getRemoteActor: (u: string) => remoteActorRepository.getRemoteActor(u),

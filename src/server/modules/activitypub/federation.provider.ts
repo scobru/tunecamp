@@ -1,5 +1,5 @@
 
-import type { Artist, RemoteActor, Follower, Release, Track, Post, ApNote } from "../../core/database.types.js";
+import type { Artist, RemoteActor, Follower, Release, Track, Post, ApNote, ApReply } from "../../core/database.types.js";
 
 /**
  * FederationProvider Interface
@@ -46,4 +46,6 @@ export interface FederationProvider {
   getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
   getApNote(noteId: string): ApNote | undefined;
   markApNoteDeleted(noteId: string): void;
+  addApReply(noteId: string, replyUri: string, actorUri: string, content: string, publishedAt?: string): boolean;
+  getApReplies(noteId: string): ApReply[];
 }

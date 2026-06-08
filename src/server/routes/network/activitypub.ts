@@ -120,6 +120,24 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                 }
             } else if (hasType(activity.type, "Create")) {
                 const obj = activity.object;
+
+                // Reply handling: if this Create(Note) replies to one of OUR notes, store it as a thread reply
+                const inReplyTo = obj && (typeof obj.inReplyTo === 'string' ? obj.inReplyTo : obj.inReplyTo?.id);
+                if (obj && inReplyTo) {
+                    const parentNote = db.getApNote(inReplyTo);
+                    if (parentNote) {
+                        const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
+                        const replyUri = obj.id || activity.id;
+                        if (actorUri && replyUri) {
+                            // Best-effort fetch of the remote actor profile for display (name/avatar)
+                            await apService.cacheRemoteActor(actorUri).catch(() => {});
+                            db.addApReply(inReplyTo, replyUri, actorUri, obj.content || obj.summary || "", obj.published || new Date().toISOString());
+                            console.log(`💬 Stored reply from ${actorUri} on note ${inReplyTo}`);
+                        }
+                        return res.status(200).send("OK");
+                    }
+                }
+
                 // Parse Funkwhale/Music/Tunecamp objects (handles array types like ["Note", "MusicAlbum"])
                 if (obj && hasType(obj.type, "Note", "Audio", "Track", "Artist", "Album", "MusicRecording", "MusicAlbum", "Article")) {
                     console.log(`🎵 Parsing remote music object: ${JSON.stringify(obj.type)} (${obj.name || obj.title})`);
@@ -515,6 +533,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
             return {
                 uri: f.actor_uri,
                 created_at: f.created_at,
+                is_following_back: !!actor?.is_followed,
                 actor: actor ? {
                     name: actor.name || actor.username || 'Unknown',
                     username: actor.username || 'unknown',
@@ -684,6 +703,141 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         } catch (e) {
             console.error("Failed to delete AP note:", e);
             res.status(500).send("Internal Error");
+        }
+    });
+
+    // Helper: load a note and verify the requester owns it (or is root admin)
+    const loadOwnedNote = (req: any, res: any): any | null => {
+        const noteId = (req.query.id ?? req.body?.id) as string;
+        if (!noteId) {
+            res.status(400).json({ error: "Missing note id" });
+            return null;
+        }
+        const note = db.getApNote(noteId);
+        if (!note) {
+            res.status(404).json({ error: "Note not found" });
+            return null;
+        }
+        const request = req as AuthenticatedRequest;
+        if (!request.isRootAdmin && (request.artistId == null || Number(note.artist_id) !== Number(request.artistId))) {
+            console.warn(`⛔ Access Denied: Artist ${request.artistId} tried to access note ${noteId} owned by Artist ${note.artist_id}`);
+            res.status(403).json({ error: "Access denied" });
+            return null;
+        }
+        return note;
+    };
+
+    const enrichActor = (uri: string) => {
+        const actor = db.getRemoteActor(uri);
+        return actor ? {
+            name: actor.name || actor.username || 'Unknown',
+            username: actor.username || 'unknown',
+            icon_url: actor.icon_url,
+            uri: actor.uri
+        } : null;
+    };
+
+    // List who liked/announced a note (read-only social proof)
+    router.get("/note/interactions", authMiddleware.requireUser, (req: any, res) => {
+        const note = loadOwnedNote(req, res);
+        if (!note) return;
+        const interactions = db.getApInteractions(note.note_id).map(i => ({
+            actor_uri: i.actor_uri,
+            type: i.type,
+            created_at: i.created_at,
+            actor: enrichActor(i.actor_uri)
+        }));
+        res.json(interactions);
+    });
+
+    // List replies to a note (thread)
+    router.get("/note/replies", authMiddleware.requireUser, (req: any, res) => {
+        const note = loadOwnedNote(req, res);
+        if (!note) return;
+        const replies = db.getApReplies(note.note_id).map(r => ({
+            id: r.id,
+            reply_uri: r.reply_uri,
+            actor_uri: r.actor_uri,
+            content: r.content,
+            published_at: r.published_at || r.created_at,
+            actor: enrichActor(r.actor_uri)
+        }));
+        res.json(replies);
+    });
+
+    // Post a federated reply to one of the artist's own notes
+    router.post("/note/reply", authMiddleware.requireUser, async (req: any, res) => {
+        const note = loadOwnedNote(req, res);
+        if (!note) return;
+        const { content } = req.body;
+        if (!content || !String(content).trim()) {
+            return res.status(400).json({ error: "Reply content is required" });
+        }
+        try {
+            const artist = note.artist_id === -1
+                ? ({ id: -1, slug: "site", name: "Site" } as any)
+                : db.getArtist(note.artist_id);
+            if (!artist) return res.status(404).json({ error: "Artist not found" });
+            const result = await apService.postReply(artist, note.note_id, String(content));
+            res.json({ success: true, ...result });
+        } catch (e: any) {
+            console.error("Failed to post reply:", e);
+            res.status(500).json({ error: e.message || "Failed to post reply" });
+        }
+    });
+
+    // Follow back / unfollow a remote actor as the artist (sends a real Follow / Undo(Follow))
+    const resolveFollowerHandle = (parsedArtistId: number): string | null => {
+        if (parsedArtistId === -1) return "site";
+        const artist = db.getArtist(parsedArtistId);
+        return artist?.slug ?? null;
+    };
+
+    router.post("/followers/follow-back", authMiddleware.requireUser, async (req: any, res) => {
+        const { artistId, actorUri } = req.body;
+        const request = req as AuthenticatedRequest;
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId) || !actorUri) {
+            return res.status(400).json({ error: "Invalid artistId or actorUri" });
+        }
+        if (parsedArtistId === -1 && !request.isRootAdmin) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+        try {
+            const handle = resolveFollowerHandle(parsedArtistId);
+            if (!handle) return res.status(404).json({ error: "Artist not found" });
+            await apService.followRemoteActor(actorUri, handle);
+            res.json({ success: true, following: true });
+        } catch (e: any) {
+            console.error("Failed to follow back:", e);
+            res.status(500).json({ error: e.message || "Failed to follow back" });
+        }
+    });
+
+    router.post("/followers/unfollow", authMiddleware.requireUser, async (req: any, res) => {
+        const { artistId, actorUri } = req.body;
+        const request = req as AuthenticatedRequest;
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId) || !actorUri) {
+            return res.status(400).json({ error: "Invalid artistId or actorUri" });
+        }
+        if (parsedArtistId === -1 && !request.isRootAdmin) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+        try {
+            const handle = resolveFollowerHandle(parsedArtistId);
+            if (!handle) return res.status(404).json({ error: "Artist not found" });
+            await apService.unfollowRemoteActor(actorUri, handle);
+            res.json({ success: true, following: false });
+        } catch (e: any) {
+            console.error("Failed to unfollow:", e);
+            res.status(500).json({ error: e.message || "Failed to unfollow" });
         }
     });
 

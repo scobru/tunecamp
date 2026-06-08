@@ -21,25 +21,39 @@ interface ApNote {
     content_title: string;
     published_at: string;
     deleted_at: string | null;
+    likes_count?: number;
+    announces_count?: number;
+    replies_count?: number;
+}
+
+interface ApActorRef {
+    name: string;
+    username: string;
+    icon_url: string | null;
+    uri: string;
 }
 
 interface Follower {
     uri: string;
     created_at: string;
-    actor: {
-        name: string;
-        username: string;
-        icon_url: string | null;
-        uri: string;
-    } | null;
+    is_following_back?: boolean;
+    actor: ApActorRef | null;
 }
 
-interface MockComment {
-    id: string;
-    authorName: string;
-    authorHandle: string;
+interface ApReplyItem {
+    id: number;
+    reply_uri: string;
+    actor_uri: string;
     content: string;
-    time: string;
+    published_at: string;
+    actor: ApActorRef | null;
+}
+
+interface ApInteractionItem {
+    actor_uri: string;
+    type: 'like' | 'announce';
+    created_at: string;
+    actor: ApActorRef | null;
 }
 
 export const ArtistFediversePanel = () => {
@@ -64,12 +78,19 @@ export const ArtistFediversePanel = () => {
 
     // Micro-interactions States
     const [copied, setCopied] = useState(false);
-    const [favorites, setFavorites] = useState<Record<number, { active: boolean, count: number }>>({});
-    const [boosts, setBoosts] = useState<Record<number, { active: boolean, count: number }>>({});
-    const [followedBack, setFollowedBack] = useState<Record<string, boolean>>({});
-    const [showReplies, setShowReplies] = useState<Record<number, boolean>>({});
-    const [repliesList, setRepliesList] = useState<Record<number, MockComment[]>>({});
-    const [newReplyTexts, setNewReplyTexts] = useState<Record<number, string>>({});
+    // Follow-back (real Follow activity) — keyed by follower actor uri
+    const [followBack, setFollowBack] = useState<Record<string, boolean>>({});
+    const [followBackLoading, setFollowBackLoading] = useState<Record<string, boolean>>({});
+    // Replies (federated) — keyed by note_id (string URI)
+    const [showReplies, setShowReplies] = useState<Record<string, boolean>>({});
+    const [repliesByNote, setRepliesByNote] = useState<Record<string, ApReplyItem[]>>({});
+    const [repliesLoading, setRepliesLoading] = useState<Record<string, boolean>>({});
+    const [newReplyTexts, setNewReplyTexts] = useState<Record<string, string>>({});
+    const [replySending, setReplySending] = useState<Record<string, boolean>>({});
+    // Interactions popover (who liked / boosted) — read-only social proof
+    const [interactionsModal, setInteractionsModal] = useState<{ noteId: string; type: 'like' | 'announce' } | null>(null);
+    const [interactionsList, setInteractionsList] = useState<ApInteractionItem[]>([]);
+    const [interactionsLoading, setInteractionsLoading] = useState(false);
 
     const isRoot = !!(user?.isRootAdmin || role === 'root_admin');
     const rawArtistId = adminUser?.artistId ?? user?.artistId;
@@ -130,19 +151,12 @@ export const ArtistFediversePanel = () => {
             setArtist(artistData);
             setPendingRequests(pendingData);
 
-            const initialFavs: Record<number, { active: boolean, count: number }> = {};
-            const initialBoosts: Record<number, { active: boolean, count: number }> = {};
-            const initialReplies: Record<number, MockComment[]> = {};
-
-            notesData.forEach(note => {
-                initialFavs[note.id] = { active: false, count: note.likes_count ?? 0 };
-                initialBoosts[note.id] = { active: false, count: note.announces_count ?? 0 };
-                initialReplies[note.id] = [];
+            // Initialize real follow-back state from the backend (is_following_back)
+            const initialFollowBack: Record<string, boolean> = {};
+            (followersData as Follower[]).forEach(f => {
+                if (f?.uri) initialFollowBack[f.uri] = !!f.is_following_back;
             });
-
-            setFavorites(prev => ({ ...initialFavs, ...prev }));
-            setBoosts(prev => ({ ...initialBoosts, ...prev }));
-            setRepliesList(prev => ({ ...initialReplies, ...prev }));
+            setFollowBack(initialFollowBack);
         } catch (e) {
             console.error("Failed to load Fediverse data", e);
         } finally {
@@ -205,37 +219,42 @@ export const ArtistFediversePanel = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const toggleFavorite = (noteId: number) => {
-        setFavorites(prev => {
-            const current = prev[noteId] || { active: false, count: 0 };
-            return {
-                ...prev,
-                [noteId]: {
-                    active: !current.active,
-                    count: current.active ? Math.max(0, current.count - 1) : current.count + 1
-                }
-            };
-        });
+    // Open the read-only "who liked / boosted" list for a note (lazy load)
+    const openInteractions = async (noteId: string, type: 'like' | 'announce') => {
+        setInteractionsModal({ noteId, type });
+        setInteractionsLoading(true);
+        setInteractionsList([]);
+        try {
+            const data = await API.getNoteInteractions(noteId);
+            setInteractionsList((data as ApInteractionItem[]).filter(i => i.type === type));
+        } catch (e) {
+            console.error("Failed to load interactions", e);
+        } finally {
+            setInteractionsLoading(false);
+        }
     };
 
-    const toggleBoost = (noteId: number) => {
-        setBoosts(prev => {
-            const current = prev[noteId] || { active: false, count: 0 };
-            return {
-                ...prev,
-                [noteId]: {
-                    active: !current.active,
-                    count: current.active ? Math.max(0, current.count - 1) : current.count + 1
-                }
-            };
-        });
-    };
-
-    const toggleFollowBack = (uri: string) => {
-        setFollowedBack(prev => ({
-            ...prev,
-            [uri]: !prev[uri]
-        }));
+    // Real follow-back: send a Follow (or Undo) activity to the remote actor
+    const handleToggleFollowBack = async (uri: string) => {
+        if (!effectiveArtistId || followBackLoading[uri]) return;
+        const currentlyFollowing = !!followBack[uri];
+        setFollowBackLoading(prev => ({ ...prev, [uri]: true }));
+        // Optimistic update
+        setFollowBack(prev => ({ ...prev, [uri]: !currentlyFollowing }));
+        try {
+            if (currentlyFollowing) {
+                await API.unfollowFollowerActor(effectiveArtistId, uri);
+            } else {
+                await API.followBackActor(effectiveArtistId, uri);
+            }
+        } catch (e: any) {
+            // Revert on failure
+            setFollowBack(prev => ({ ...prev, [uri]: currentlyFollowing }));
+            console.error("Follow-back failed", e);
+            alert("Failed to update follow status: " + (e?.message || e));
+        } finally {
+            setFollowBackLoading(prev => ({ ...prev, [uri]: false }));
+        }
     };
 
     const handleAcceptRequest = async (actorUri: string) => {
@@ -260,28 +279,49 @@ export const ArtistFediversePanel = () => {
         }
     };
 
-    const handleAddMockComment = (noteId: number) => {
-        const text = newReplyTexts[noteId] || '';
-        if (!text.trim()) return;
-
-        const newComment: MockComment = {
-            id: Date.now().toString(),
-            authorName: artist?.name || 'You',
-            authorHandle: `@${artist?.slug || 'artist'}@${window.location.host}`,
-            content: text,
-            time: 'Just now'
-        };
-
-        setRepliesList(prev => ({
-            ...prev,
-            [noteId]: [...(prev[noteId] || []), newComment]
-        }));
-
-        setNewReplyTexts(prev => ({
-            ...prev,
-            [noteId]: ''
-        }));
+    // Lazy-load the federated replies for a note
+    const loadReplies = async (noteId: string) => {
+        setRepliesLoading(prev => ({ ...prev, [noteId]: true }));
+        try {
+            const data = await API.getNoteReplies(noteId);
+            setRepliesByNote(prev => ({ ...prev, [noteId]: data as ApReplyItem[] }));
+        } catch (e) {
+            console.error("Failed to load replies", e);
+        } finally {
+            setRepliesLoading(prev => ({ ...prev, [noteId]: false }));
+        }
     };
+
+    const toggleReplies = (noteId: string) => {
+        const willOpen = !showReplies[noteId];
+        setShowReplies(prev => ({ ...prev, [noteId]: willOpen }));
+        if (willOpen && repliesByNote[noteId] === undefined) {
+            loadReplies(noteId);
+        }
+    };
+
+    // Post a real federated reply (Create(Note) with inReplyTo)
+    const handlePostReply = async (noteId: string) => {
+        const text = (newReplyTexts[noteId] || '').trim();
+        if (!text || replySending[noteId]) return;
+        setReplySending(prev => ({ ...prev, [noteId]: true }));
+        try {
+            await API.postNoteReply(noteId, text);
+            setNewReplyTexts(prev => ({ ...prev, [noteId]: '' }));
+            await loadReplies(noteId);
+            // Reflect the new reply count locally without a full reload
+            setNotes(prev => prev.map(n => n.note_id === noteId
+                ? { ...n, replies_count: (n.replies_count ?? 0) + 1 }
+                : n));
+        } catch (e: any) {
+            console.error("Failed to post reply", e);
+            alert("Failed to send reply: " + (e?.message || e));
+        } finally {
+            setReplySending(prev => ({ ...prev, [noteId]: false }));
+        }
+    };
+
+    const stripHtml = (html: string) => (html || '').replace(/<[^>]*>/g, '').trim();
 
     // Correlate AP notes with database entities
     const correlatedNotes = useMemo(() => {
@@ -542,7 +582,8 @@ export const ArtistFediversePanel = () => {
                             <div className="grid gap-3 max-h-[350px] overflow-y-auto scrollbar-thin pr-1">
                                 {followers.map(follower => {
                                     const key = follower.uri;
-                                    const isFollowingBack = !!followedBack[key];
+                                    const isFollowingBack = !!followBack[key];
+                                    const isFbLoading = !!followBackLoading[key];
                                     return (
                                         <div key={key} className="flex items-center justify-between gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-primary/20 transition-all duration-short-4">
                                             <div className="flex items-center gap-3 overflow-hidden">
@@ -569,11 +610,15 @@ export const ArtistFediversePanel = () => {
                                                 </div>
                                             </div>
 
-                                            <button 
+                                            <button
                                                 className={`btn btn-xs rounded-full border-none text-[10px] font-bold ${isFollowingBack ? 'bg-primary/20 text-primary' : 'bg-neutral hover:bg-neutral-focus text-neutral-content'}`}
-                                                onClick={() => toggleFollowBack(key)}
+                                                onClick={() => handleToggleFollowBack(key)}
+                                                disabled={isFbLoading}
+                                                title={isFollowingBack ? 'Click to unfollow' : 'Send a Follow to this actor'}
                                             >
-                                                {isFollowingBack ? 'Followed' : 'Follow back'}
+                                                {isFbLoading
+                                                    ? <span className="loading loading-spinner loading-xs" />
+                                                    : (isFollowingBack ? 'Following' : 'Follow back')}
                                             </button>
                                         </div>
                                     );
@@ -800,10 +845,12 @@ export const ArtistFediversePanel = () => {
                         ) : (
                             <div className="space-y-4">
                                 {correlatedNotes.map(note => {
-                                    const noteFavState = favorites[note.id] || { active: false, count: 0 };
-                                    const noteBoostState = boosts[note.id] || { active: false, count: 0 };
-                                    const isRepliesOpen = !!showReplies[note.id];
-                                    const comments = repliesList[note.id] || [];
+                                    const likesCount = note.likes_count ?? 0;
+                                    const announcesCount = note.announces_count ?? 0;
+                                    const repliesCount = note.replies_count ?? 0;
+                                    const isRepliesOpen = !!showReplies[note.note_id];
+                                    const comments = repliesByNote[note.note_id] || [];
+                                    const isRepliesLoading = !!repliesLoading[note.note_id];
 
                                     return (
                                         <div 
@@ -1004,39 +1051,37 @@ export const ArtistFediversePanel = () => {
                                                         </div>
                                                     )}
 
-                                                    {/* Mastodon action footer */}
+                                                    {/* Mastodon action footer (counts are real federated data) */}
                                                     <div className="flex items-center justify-between text-base-content/55 pt-3 max-w-md select-none">
-                                                        
-                                                        {/* Reply Action */}
-                                                        <button 
+
+                                                        {/* Reply: opens the federated thread */}
+                                                        <button
                                                             className={`flex items-center gap-1.5 hover:text-primary transition-colors text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-primary/5 cursor-pointer ${isRepliesOpen ? 'text-primary' : ''}`}
-                                                            onClick={() => setShowReplies(prev => ({ ...prev, [note.id]: !prev[note.id] }))}
+                                                            onClick={() => toggleReplies(note.note_id)}
+                                                            title="View and write replies"
                                                         >
                                                             <MessageCircle size={15} />
-                                                            <span>{comments.length}</span>
+                                                            <span>{repliesCount}</span>
                                                         </button>
 
-                                                        {/* Boost Action */}
-                                                        <button 
-                                                            className={`flex items-center gap-1.5 hover:text-success transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-success/5 cursor-pointer ${noteBoostState.active ? 'text-success scale-105' : ''}`}
-                                                            onClick={() => toggleBoost(note.id)}
+                                                        {/* Boosts received (read-only) — click to see who boosted */}
+                                                        <button
+                                                            className="flex items-center gap-1.5 hover:text-success transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-success/5 cursor-pointer"
+                                                            onClick={() => openInteractions(note.note_id, 'announce')}
+                                                            title={announcesCount > 0 ? 'See who boosted' : 'No boosts yet'}
                                                         >
-                                                            <Repeat size={15} className={`transition-transform duration-medium-4 ${noteBoostState.active ? 'rotate-180' : ''}`} />
-                                                            <span>{noteBoostState.count}</span>
+                                                            <Repeat size={15} />
+                                                            <span>{announcesCount}</span>
                                                         </button>
 
-                                                        {/* Favorite Action */}
-                                                        <button 
-                                                            className={`flex items-center gap-1.5 hover:text-error transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-error/5 cursor-pointer ${noteFavState.active ? 'text-error scale-110' : ''}`}
-                                                            onClick={() => toggleFavorite(note.id)}
+                                                        {/* Likes received (read-only) — click to see who liked */}
+                                                        <button
+                                                            className="flex items-center gap-1.5 hover:text-error transition-all text-xs font-semibold py-1.5 px-2.5 rounded-full hover:bg-error/5 cursor-pointer"
+                                                            onClick={() => openInteractions(note.note_id, 'like')}
+                                                            title={likesCount > 0 ? 'See who liked' : 'No likes yet'}
                                                         >
-                                                            <Heart 
-                                                                size={15} 
-                                                                fill={noteFavState.active ? "currentColor" : "transparent"} 
-                                                                className={noteFavState.active ? "animate-pulse" : ""}
-                                                                style={{ animationDuration: '0.6s' }}
-                                                            />
-                                                            <span>{noteFavState.count}</span>
+                                                            <Heart size={15} fill={likesCount > 0 ? 'currentColor' : 'transparent'} />
+                                                            <span>{likesCount}</span>
                                                         </button>
 
                                                         {/* Broadcast indicator */}
@@ -1045,46 +1090,70 @@ export const ArtistFediversePanel = () => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Interactive Comments Drawer */}
+                                                    {/* Federated replies thread */}
                                                     {isRepliesOpen && (
                                                         <div className="mt-4 pt-4 border-t border-base-content/5 space-y-3 animate-slide-down">
-                                                            <div className="space-y-3">
-                                                                {comments.map(c => (
-                                                                    <div key={c.id} className="flex gap-3 bg-base-100/30 p-3 rounded-xl border border-base-content/5">
-                                                                        <div className="avatar flex-shrink-0">
-                                                                            <div className="w-8 h-8 rounded-full bg-neutral flex items-center justify-center text-xs font-semibold">
-                                                                                {c.authorName[0]}
+                                                            {isRepliesLoading && comments.length === 0 ? (
+                                                                <div className="flex justify-center py-4">
+                                                                    <span className="loading loading-spinner loading-sm opacity-40" />
+                                                                </div>
+                                                            ) : comments.length === 0 ? (
+                                                                <div className="text-center text-xs opacity-40 py-2">
+                                                                    No replies yet. Start the conversation below.
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-3">
+                                                                    {comments.map(c => {
+                                                                        const isOwn = c.actor_uri?.includes(`/users/${artist?.slug}`);
+                                                                        const displayName = c.actor?.name || (isOwn ? (artist?.name || 'You') : 'Fediverse user');
+                                                                        const handle = c.actor?.username
+                                                                            ? `@${c.actor.username}`
+                                                                            : (isOwn ? `@${artist?.slug}@${window.location.hostname}` : c.actor_uri);
+                                                                        return (
+                                                                            <div key={c.reply_uri} className="flex gap-3 bg-base-100/30 p-3 rounded-xl border border-base-content/5">
+                                                                                <div className="avatar flex-shrink-0">
+                                                                                    <div className="w-8 h-8 rounded-full bg-neutral flex items-center justify-center text-xs font-semibold overflow-hidden">
+                                                                                        {c.actor?.icon_url ? (
+                                                                                            <img src={c.actor.icon_url} alt={displayName} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                                                                        ) : (
+                                                                                            <span>{displayName[0]?.toUpperCase()}</span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex-1 text-xs min-w-0">
+                                                                                    <div className="flex items-center justify-between gap-2">
+                                                                                        <span className="font-bold text-base-content truncate">{displayName}</span>
+                                                                                        <span className="opacity-40 flex-shrink-0">{getRelativeTime(c.published_at)}</span>
+                                                                                    </div>
+                                                                                    <div className="font-mono opacity-50 mt-0.5 truncate" title={c.actor_uri}>{handle}</div>
+                                                                                    <p className="mt-1.5 opacity-85 leading-normal break-words">{stripHtml(c.content)}</p>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                        <div className="flex-1 text-xs">
-                                                                            <div className="flex items-center justify-between">
-                                                                                <span className="font-bold text-base-content">{c.authorName}</span>
-                                                                                <span className="opacity-40">{c.time}</span>
-                                                                            </div>
-                                                                            <div className="font-mono opacity-50 mt-0.5">{c.authorHandle}</div>
-                                                                            <p className="mt-1.5 opacity-85 leading-normal">{c.content}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
 
-                                                            {/* Add Reply Input */}
+                                                            {/* Add Reply Input (federated) */}
                                                             <div className="flex gap-2 pt-2 items-center">
-                                                                <input 
-                                                                    type="text" 
+                                                                <input
+                                                                    type="text"
                                                                     className="input input-sm select-bordered w-full rounded-full bg-base-100/50 border-base-content/10 px-4 focus:outline-none focus:border-primary/50 text-xs"
-                                                                    placeholder="Add reply..."
-                                                                    value={newReplyTexts[note.id] || ''}
-                                                                    onChange={e => setNewReplyTexts(prev => ({ ...prev, [note.id]: e.target.value }))}
+                                                                    placeholder="Write a reply to your followers..."
+                                                                    value={newReplyTexts[note.note_id] || ''}
+                                                                    disabled={!!replySending[note.note_id]}
+                                                                    onChange={e => setNewReplyTexts(prev => ({ ...prev, [note.note_id]: e.target.value }))}
                                                                     onKeyDown={e => {
-                                                                        if (e.key === 'Enter') handleAddMockComment(note.id);
+                                                                        if (e.key === 'Enter') handlePostReply(note.note_id);
                                                                     }}
                                                                 />
-                                                                <button 
+                                                                <button
                                                                     className="btn btn-sm btn-circle btn-primary shadow-sm"
-                                                                    onClick={() => handleAddMockComment(note.id)}
+                                                                    onClick={() => handlePostReply(note.note_id)}
+                                                                    disabled={!!replySending[note.note_id] || !(newReplyTexts[note.note_id] || '').trim()}
+                                                                    title="Send federated reply"
                                                                 >
-                                                                    <Send size={11} />
+                                                                    {replySending[note.note_id] ? <span className="loading loading-spinner loading-xs" /> : <Send size={11} />}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -1099,6 +1168,52 @@ export const ArtistFediversePanel = () => {
                     </div>
                 </div>
             </div>
+            {/* Interactions modal: who liked / boosted (read-only social proof) */}
+            {interactionsModal && (
+                <div className="modal modal-open" onClick={() => setInteractionsModal(null)}>
+                    <div className="modal-box max-w-sm bg-base-200" onClick={e => e.stopPropagation()}>
+                        <h3 className="font-bold text-lg flex items-center gap-2 mb-4">
+                            {interactionsModal.type === 'like'
+                                ? <><Heart size={18} className="text-error" /> Liked by</>
+                                : <><Repeat size={18} className="text-success" /> Boosted by</>}
+                        </h3>
+                        {interactionsLoading ? (
+                            <div className="flex justify-center py-8"><span className="loading loading-spinner loading-md opacity-40" /></div>
+                        ) : interactionsList.length === 0 ? (
+                            <div className="text-center py-8 opacity-50 text-sm">
+                                No {interactionsModal.type === 'like' ? 'likes' : 'boosts'} from the Fediverse yet.
+                            </div>
+                        ) : (
+                            <div className="grid gap-2 max-h-[400px] overflow-y-auto scrollbar-thin">
+                                {interactionsList.map(i => {
+                                    const name = i.actor?.name || 'Fediverse user';
+                                    const handle = i.actor?.username ? `@${i.actor.username}` : i.actor_uri;
+                                    return (
+                                        <a key={i.actor_uri} href={i.actor_uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-primary/20 transition-colors">
+                                            <div className="avatar placeholder flex-shrink-0">
+                                                <div className="w-9 h-9 rounded-full bg-neutral text-neutral-content overflow-hidden">
+                                                    {i.actor?.icon_url
+                                                        ? <img src={i.actor.icon_url} alt={name} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                                        : <span className="text-sm font-semibold">{name[0]?.toUpperCase()}</span>}
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-sm truncate">{name}</div>
+                                                <div className="text-[10px] opacity-50 font-mono truncate" title={i.actor_uri}>{handle}</div>
+                                            </div>
+                                            <ExternalLink size={12} className="ml-auto opacity-40 flex-shrink-0" />
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        <div className="modal-action">
+                            <button className="btn btn-sm" onClick={() => setInteractionsModal(null)}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <CreatePostModal onPostCreated={() => {
                 if (effectiveArtistId) loadData(effectiveArtistId);
             }} />

@@ -810,6 +810,115 @@ export class ActivityPubService {
         await Promise.all(followers.map(follower => this.sendActivity(artist, follower.inbox_uri, activity)));
     }
 
+    /** Best-effort: fetch a remote actor's profile and cache it for display (does not change follow state). */
+    public async cacheRemoteActor(actorUri: string): Promise<void> {
+        if (!actorUri || !actorUri.startsWith("http")) return;
+        const existing = this.db.getRemoteActor(actorUri);
+        if (existing && existing.name) return; // already cached with a display name
+        try {
+            const res = await this.fetchWithSignature(actorUri);
+            if (!res.ok) return;
+            const actorData = await res.json() as any;
+            this.db.upsertRemoteActor({
+                uri: actorUri,
+                type: typeof actorData.type === 'string' ? actorData.type : (Array.isArray(actorData.type) ? actorData.type[0] : 'Person'),
+                username: this.getString(actorData.preferredUsername),
+                name: this.getString(actorData.name),
+                summary: this.getString(actorData.summary),
+                icon_url: this.getString(actorData.icon),
+                inbox_url: this.getString(actorData.inbox),
+                outbox_url: this.getString(actorData.outbox)
+            } as any);
+        } catch (e) {
+            console.warn(`⚠️ Could not cache remote actor ${actorUri}`);
+        }
+    }
+
+    /**
+     * Publish a federated reply (Create(Note) with inReplyTo) to one of the artist's own notes.
+     * Stores a local copy so it shows immediately in the thread, then delivers the activity to
+     * the artist's followers and to any remote actors already participating in the thread.
+     */
+    public async postReply(artist: Artist, parentNoteId: string, content: string): Promise<{ replyUri: string }> {
+        const parent = this.db.getApNote(parentNoteId);
+        if (!parent) throw new Error("Parent note not found");
+        if (parent.artist_id !== artist.id) throw new Error("Not authorized for this note");
+
+        const text = (content || "").trim();
+        if (!text) throw new Error("Reply content is empty");
+        if (text.length > 5000) throw new Error("Reply content too long (max 5000 chars)");
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        const published = new Date().toISOString();
+        const replyUri = `${baseUrl}/api/ap/note/reply/${crypto.randomUUID()}`;
+
+        // Escape HTML to prevent injection in the Fediverse, then wrap as a paragraph
+        const safe = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        const contentHtml = `<p>${safe.replace(/\r?\n/g, "<br />")}</p>`;
+
+        // Collect distinct remote actors already in this thread, so we can address/notify them
+        const existingReplies = this.db.getApReplies(parentNoteId);
+        const threadActors = [...new Set(
+            existingReplies
+                .map(r => r.actor_uri)
+                .filter(a => !!a && a !== artistActorUrl && a.startsWith("http"))
+        )];
+
+        const note = {
+            type: "Note",
+            id: replyUri,
+            attributedTo: artistActorUrl,
+            inReplyTo: parentNoteId,
+            content: contentHtml,
+            published,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`, ...threadActors]
+        };
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Create",
+            actor: artistActorUrl,
+            object: note,
+            to: note.to,
+            cc: note.cc
+        };
+
+        // Store our own reply locally first (idempotent) so the UI thread updates immediately
+        this.db.addApReply(parentNoteId, replyUri, artistActorUrl, contentHtml, published);
+
+        // Resolve delivery inboxes: followers + thread participants
+        const inboxes = new Set<string>();
+        for (const f of this.db.getFollowers(artist.id)) {
+            if (f.inbox_uri) inboxes.add(f.inbox_uri);
+        }
+        await Promise.all(threadActors.map(async actorUri => {
+            try {
+                const inbox = await this.getInboxFromActor(actorUri);
+                if (inbox) inboxes.add(inbox);
+            } catch (e) {
+                console.warn(`⚠️ Could not resolve inbox for thread actor ${actorUri}`);
+            }
+        }));
+
+        if (inboxes.size === 0) {
+            console.log(`ℹ️ Reply ${replyUri} stored locally; no remote inboxes to deliver to yet.`);
+            return { replyUri };
+        }
+
+        console.log(`📢 Delivering reply on ${parentNoteId} to ${inboxes.size} inbox(es)`);
+        await Promise.all([...inboxes].map(inbox =>
+            this.sendActivity(artist, inbox, activity).catch(e => console.error(`⚠️ Reply delivery failed to ${inbox}:`, e))
+        ));
+
+        return { replyUri };
+    }
+
     public async broadcastDelete(album: Album, manualNoteId?: string): Promise<void> {
         if (!album.artist_id) return;
         const artist = this.db.getArtist(album.artist_id);
