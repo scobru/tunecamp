@@ -4,7 +4,8 @@ import fs from "fs-extra";
 import { createRequire } from "module";
 import { kprs } from "../../modules/network/zen-network.js";
 import type { ServiceContainer } from "../../core/container.js";
-import { VisibilityGuardian } from "../../common/visibility.js";
+import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
+import { create } from "xmlbuilder2";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../../../package.json");
@@ -212,6 +213,124 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             if (!coverFile) return res.status(404).json({ error: "Not found" });
             res.sendFile(path.resolve(path.join(assetsDir, coverFile)));
         } catch { res.status(404).json({ error: "Not found" }); }
+    });
+
+    // Helper function to build RSS 2.0 feed
+    function buildRssFeed(
+        publicUrl: string,
+        title: string,
+        description: string,
+        tracks: any[]
+    ): string {
+        const doc = create({ version: "1.0", encoding: "UTF-8" })
+            .ele("rss", {
+                version: "2.0",
+                "xmlns:itunes": "http://www.itunes.com/dtds/podcast-1.0.dtd",
+                "xmlns:content": "http://purl.org/rss/1.0/modules/content/"
+            })
+            .ele("channel")
+                .ele("title").txt(title).up()
+                .ele("description").txt(description).up()
+                .ele("link").txt(publicUrl).up()
+                .ele("generator").txt("TuneCamp").up()
+                .ele("language").txt("en").up();
+
+        // Sort tracks by created_at desc (latest first)
+        const sortedTracks = [...tracks].sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+        });
+
+        for (const track of sortedTracks) {
+            // Resolve link: if track belongs to an album/release, link to it. Else, artist slug.
+            let link = `${publicUrl}/#/artist/${track.artistSlug || 'unknown'}`;
+            if (track.album_id) {
+                const album = library.getAlbum(track.album_id);
+                if (album && album.slug) {
+                    link = `${publicUrl}/#/album/${album.slug}`;
+                }
+            }
+
+            const pubDate = track.created_at ? new Date(track.created_at).toUTCString() : new Date().toUTCString();
+            const duration = track.duration ? Math.round(track.duration) : 0;
+            const mimeType = track.mime_type || "audio/mpeg";
+            const fileSize = track.file_size || 0;
+            const streamUrl = `${publicUrl}/api/tracks/${track.id}/stream`;
+
+            const item = doc.ele("item")
+                .ele("title").txt(track.title).up()
+                .ele("link").txt(link).up()
+                .ele("description").txt(
+                    `Artist: ${track.artist_name || 'Unknown'}\n` +
+                    (track.album_title ? `Album: ${track.album_title}\n` : '') +
+                    (track.genre ? `Genre: ${track.genre}\n` : '')
+                ).up()
+                .ele("pubDate").txt(pubDate).up()
+                .ele("guid", { isPermaLink: "false" }).txt(`${publicUrl}/api/tracks/${track.id}`).up()
+                .ele("enclosure", {
+                    url: streamUrl,
+                    length: String(fileSize),
+                    type: mimeType
+                }).up();
+
+            if (duration > 0) {
+                const hours = Math.floor(duration / 3600);
+                const minutes = Math.floor((duration % 3600) / 60);
+                const seconds = Math.floor(duration % 60);
+                const durationStr = hours > 0 
+                    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                    : `${minutes}:${String(seconds).padStart(2, '0')}`;
+                item.ele("itunes:duration").txt(durationStr).up();
+            }
+            item.up();
+        }
+
+        return doc.end({ prettyPrint: true });
+    }
+
+    // Global Feed
+    router.get(["/feed.xml", "/rss.xml"], async (req, res) => {
+        try {
+            const dbPublicUrl = identity.getSetting("publicUrl");
+            const publicUrl = (dbPublicUrl || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
+            const title = identity.getSetting("siteName") || config.siteName || "TuneCamp";
+            const description = identity.getSetting("siteDescription") || config.siteDescription || "TuneCamp self-hosted federated music platform";
+            
+            const tracks = library.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
+            const xml = buildRssFeed(publicUrl, title, description, tracks);
+            
+            res.setHeader("Content-Type", "text/xml");
+            res.send(xml);
+        } catch (error) {
+            console.error("Error generating global RSS feed:", error);
+            res.status(500).send("Error generating feed");
+        }
+    });
+
+    // Artist-Specific Feed
+    router.get(["/artists/:slug/feed.xml", "/artists/:slug/rss.xml"], async (req, res) => {
+        try {
+            const { slug } = req.params;
+            const artist = library.getArtistBySlug(slug);
+            if (!artist) {
+                return res.status(404).send("Artist not found");
+            }
+
+            const dbPublicUrl = identity.getSetting("publicUrl");
+            const publicUrl = (dbPublicUrl || config.publicUrl || `${req.protocol}://${req.get('host')}`).trim().replace(/\/$/, "");
+            const title = `${artist.name} - TuneCamp Feed`;
+            const description = artist.bio || `TuneCamp music feed for ${artist.name}`;
+            
+            const tracks = library.getTracksByArtist(artist.id, VisibilityProfile.PUBLIC_STAGE);
+            const xml = buildRssFeed(publicUrl, title, description, tracks);
+            
+            res.setHeader("Content-Type", "text/xml");
+            res.send(xml);
+        } catch (error) {
+            console.error("Error generating artist RSS feed:", error);
+            res.status(500).send("Error generating feed");
+        }
     });
 
     return router;
