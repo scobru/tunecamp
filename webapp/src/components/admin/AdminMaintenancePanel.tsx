@@ -397,7 +397,7 @@ export const AdminMaintenancePanel = () => {
                 <div className="bg-base-300/40 border border-primary/20 rounded-xl p-4 space-y-3 shadow-md backdrop-blur-md">
                     <div className="flex items-center gap-2 border-b border-base-content/5 pb-2">
                         <Activity className="text-primary animate-pulse" size={18} />
-                        <h4 className="font-bold text-sm tracking-wider uppercase">Active Background Processes</h4>
+                        <h4 className="font-bold text-sm tracking-normal">Active Background Processes</h4>
                         <span className="badge badge-primary badge-sm animate-pulse ml-auto">{runningTasks.length} running</span>
                     </div>
                     <div className="grid gap-3">
@@ -444,7 +444,7 @@ export const AdminMaintenancePanel = () => {
                                     ) : (
                                         <progress className={`progress ${colorClass} w-full h-2`} defaultValue={undefined}></progress>
                                     )}
-                                    <div className="text-[10px] opacity-60 flex justify-between">
+                                    <div className="text-xs opacity-60 flex justify-between">
                                         <span>{progressMsg}</span>
                                         <span>Started {new Date(task.startedAt).toLocaleTimeString()}</span>
                                     </div>
@@ -463,7 +463,7 @@ export const AdminMaintenancePanel = () => {
                             <div className="card-body p-4">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Zap className="text-secondary" size={18} />
-                                    <h2 className="card-title text-sm font-bold uppercase tracking-wider">Library Scanning</h2>
+                                    <h2 className="card-title text-sm font-bold tracking-normal">Library Scanning</h2>
                                 </div>
                                 <p className="opacity-70 text-xs mb-4">
                                     Deep scan of the music directory to detect new files.
@@ -524,13 +524,13 @@ export const AdminMaintenancePanel = () => {
                                     value={auditStatus.processedTracks} 
                                     max={auditStatus.totalTracks}
                                 ></progress>
-                                <div className="flex gap-4 text-[10px] uppercase font-bold tracking-wider opacity-60">
+                                <div className="flex gap-4 text-xs font-bold tracking-normal opacity-60">
                                     <span className="text-success">Verified: {auditStatus.verifiedCount}</span>
                                     <span className="text-secondary">Repaired: {auditStatus.repairedCount}</span>
                                     <span className="text-error">Failed: {auditStatus.failedCount}</span>
                                 </div>
                                 {auditStatus.lastResult && (
-                                    <div className="text-[10px] italic opacity-40 border-t border-base-content/5 pt-1">
+                                    <div className="text-xs italic opacity-40 border-t border-base-content/5 pt-1">
                                         Last: {auditStatus.lastResult.artist} - {auditStatus.lastResult.title} ({auditStatus.lastResult.status})
                                     </div>
                                 )}

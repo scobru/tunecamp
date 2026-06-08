@@ -15,7 +15,7 @@ const About = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Cpu size={28} />
@@ -28,7 +28,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
               <Music size={28} />
@@ -41,7 +41,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
               <Globe size={28} />
@@ -54,7 +54,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Shield size={28} />
@@ -67,7 +67,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
               <Users size={28} />
@@ -80,7 +80,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Brain size={28} />
@@ -93,7 +93,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
               <CreditCard size={28} />
@@ -106,7 +106,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
               <Cloud size={28} />
@@ -119,7 +119,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 text-primary">
               <Layout size={28} />
@@ -132,7 +132,7 @@ const About = () => {
           </div>
         </div>
 
-        <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all">
+        <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all">
           <div className="card-body">
             <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
               <Zap size={28} />

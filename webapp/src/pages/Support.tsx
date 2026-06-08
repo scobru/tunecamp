@@ -13,7 +13,7 @@ const Support = () => {
 
             <div className="max-w-2xl mx-auto space-y-8 mt-8">
                 {/* TuneCamp Support */}
-                <div className="card bg-base-200 border border-base-content/5 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
+                <div className="card bg-base-200 border border-base-content/5 shadow-level-1 hover:shadow-level-1 transition-all hover:-translate-y-1">
                     <div className="card-body items-center text-center">
                         <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mb-4 text-secondary">
                             <Coffee size={32} />

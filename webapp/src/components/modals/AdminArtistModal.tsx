@@ -293,7 +293,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
 
                     {candidates.length > 0 && (
                         <div className="bg-base-200/50 border border-base-content/10 rounded-xl p-4 mt-2 space-y-3 shadow-inner backdrop-blur-md">
-                            <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider opacity-75">
+                            <div className="flex justify-between items-center text-xs font-semibold tracking-normal opacity-75">
                                 <span className="flex items-center gap-1.5 text-primary">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                                     Select artist info to import:
@@ -317,7 +317,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                                         onError={(e) => { e.currentTarget.style.display = 'none'; }} 
                                                     />
                                                 ) : (
-                                                    <span className="text-xs font-bold uppercase">{c.name.substring(0, 2)}</span>
+                                                    <span className="text-xs font-bold">{c.name.substring(0, 2)}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -412,7 +412,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 </label>
                             </div>
                             
-                            <div className="divider text-xs opacity-50 uppercase tracking-widest">ActivityPub / Mastodon Config</div>
+                            <div className="divider text-xs opacity-50 tracking-normal">ActivityPub / Mastodon Config</div>
                             <div className="bg-base-200 p-4 rounded-lg space-y-4">
                                 <div className="alert alert-info py-2 text-xs bg-info/10 border-info/20 mb-2">
                                     <Globe size={16}/> 
@@ -449,7 +449,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                     />
                                 </div>
                                 {!canEditSensitive && (
-                                    <p className="text-[10px] opacity-40 px-1 italic">Note: Only the artist can manage their Mastodon cross-posting credentials.</p>
+                                    <p className="text-xs opacity-40 px-1 italic">Note: Only the artist can manage their Mastodon cross-posting credentials.</p>
                                 )}
                             </div>
                         </>
@@ -476,7 +476,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                         value={avatarUrl}
                                         onChange={e => setAvatarUrl(e.target.value)}
                                     />
-                                    <div className="divider text-[10px] opacity-30 my-0">OR UPLOAD FILE</div>
+                                    <div className="divider text-xs opacity-30 my-0">OR UPLOAD FILE</div>
                                     <input 
                                         type="file" 
                                         className="file-input file-input-bordered w-full file-input-sm"

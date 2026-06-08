@@ -123,7 +123,7 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
                                                         {(track.losslessPath || track.lossless_path || '').toLowerCase().endsWith('.wav') ? 'WAV' : 'FLAC'}
                                                     </span>
                                                 ) : (
-                                                    <span className="badge badge-xs badge-outline opacity-50 font-mono uppercase">
+                                                    <span className="badge badge-xs badge-outline opacity-50 font-mono">
                                                         {track.format || 'MP3'}
                                                     </span>
                                                 )}

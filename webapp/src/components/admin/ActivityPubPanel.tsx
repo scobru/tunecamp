@@ -210,9 +210,9 @@ export const ActivityPubPanel = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="stat-title opacity-60 uppercase text-[10px] font-bold tracking-widest">Followers</div>
+                        <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Followers</div>
                         <div className="stat-value text-primary">{followersCount === null ? <span className="loading loading-spinner loading-sm opacity-50" /> : followersCount}</div>
-                        <div className="stat-desc font-mono text-[10px] mt-1 opacity-50">on @{selectedArtist.slug}@{window.location.hostname}</div>
+                        <div className="stat-desc font-mono text-xs mt-1 opacity-50">on @{selectedArtist.slug}@{window.location.hostname}</div>
                     </div>
                 </div>
             )}
@@ -233,7 +233,7 @@ export const ActivityPubPanel = () => {
                         />
                         <button 
                             type="submit" 
-                            className="btn btn-primary shadow-lg"
+                            className="btn btn-primary shadow-level-1"
                             disabled={peerLoading || !peerUrl}
                         >
                             {peerLoading ? <span className="loading loading-spinner loading-xs"/> : 'Follow Peer'}
@@ -242,7 +242,7 @@ export const ActivityPubPanel = () => {
 
                     {peers.length > 0 && (
                         <div className="space-y-3 mt-4">
-                            <h4 className="text-[10px] uppercase font-bold opacity-40 tracking-widest mb-2">Followed Peers</h4>
+                            <h4 className="text-xs font-bold opacity-40 tracking-normal mb-2">Followed Peers</h4>
                             <div className="grid gap-2">
                                 {peers.map(peer => (
                                     <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-base-content/5 group hover:bg-base-100/60 transition-colors">
@@ -254,7 +254,7 @@ export const ActivityPubPanel = () => {
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="font-bold text-sm truncate">{peer.name || peer.username}</div>
-                                                <div className="text-[10px] opacity-40 truncate flex items-center gap-1 font-mono">
+                                                <div className="text-xs opacity-40 truncate flex items-center gap-1 font-mono">
                                                     <span className="truncate">{peer.uri}</span>
                                                     <a href={peer.uri} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity">
                                                         <ExternalLink size={10}/>
@@ -309,7 +309,7 @@ export const ActivityPubPanel = () => {
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-lg">{note.content_title || 'Untitled'}</h3>
-                                            <div className="text-[10px] opacity-40 font-mono mb-2 break-all">{note.note_id}</div>
+                                            <div className="text-xs opacity-40 font-mono mb-2 break-all">{note.note_id}</div>
                                             <div className="badge badge-outline badge-sm gap-2 opacity-70">
                                                 {note.note_type === 'release' ? 'Release' : 'Post'}
                                             </div>

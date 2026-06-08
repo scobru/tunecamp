@@ -72,7 +72,7 @@ export const UnlockModal = () => {
                     <input 
                         type="text" 
                         placeholder="XXXX-XXXX" 
-                        className="input input-bordered w-full font-mono uppercase text-center tracking-widest" 
+                        className="input input-bordered w-full font-mono text-center tracking-normal" 
                         value={code}
                         onChange={e => setCode(e.target.value.toUpperCase())}
                         required

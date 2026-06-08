@@ -90,7 +90,7 @@ const PostPage = () => {
                         className="btn btn-sm btn-ghost btn-circle text-base-content/60 hover:text-primary hover:bg-base-200"
                         title="Copy article link"
                     >
-                        {copiedShare ? <span className="text-[10px] text-success font-bold font-mono">Copied!</span> : <Share2 size={16} />}
+                        {copiedShare ? <span className="text-xs text-success font-bold font-mono">Copied!</span> : <Share2 size={16} />}
                     </button>
                 </div>
 
@@ -118,7 +118,7 @@ const PostPage = () => {
                         </div>
                         <div className="space-y-0.5">
                             <div className="font-bold text-lg text-base-content hover:text-primary transition-colors cursor-pointer">{post.artistName || 'Unknown Artist'}</div>
-                            <div className="text-xs opacity-60 flex items-center gap-3 font-semibold tracking-wider uppercase">
+                            <div className="text-xs opacity-60 flex items-center gap-3 font-semibold tracking-normal">
                                 <span className="flex items-center gap-1"><Clock size={12}/> {new Date(post.createdAt).toLocaleDateString()}</span>
                                 <span>•</span>
                                 <span className="flex items-center gap-1"><BookOpen size={12}/> {readingTime} min read</span>

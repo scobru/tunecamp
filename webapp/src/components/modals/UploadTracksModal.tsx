@@ -237,7 +237,7 @@ export const UploadTracksModal = ({
           <div className="space-y-4 mb-6">
             <div className="form-control">
               <label className="label py-1">
-                <span className="label-text-alt uppercase font-bold opacity-50">Artist Name</span>
+                <span className="label-text-alt font-bold opacity-50">Artist Name</span>
               </label>
               <input
                 type="text"
@@ -255,7 +255,7 @@ export const UploadTracksModal = ({
             </div>
             <div className="form-control">
               <label className="label py-1">
-                <span className="label-text-alt uppercase font-bold opacity-50">Library Album Title</span>
+                <span className="label-text-alt font-bold opacity-50">Library Album Title</span>
               </label>
               <input
                 type="text"
@@ -294,7 +294,7 @@ export const UploadTracksModal = ({
           {releaseSlug && existingTracks.length > 0 && (
             <div className="space-y-2">
               <label className="label">
-                <span className="label-text-alt uppercase font-bold opacity-50">
+                <span className="label-text-alt font-bold opacity-50">
                   Current Tracks
                 </span>
               </label>
@@ -331,7 +331,7 @@ export const UploadTracksModal = ({
           {files.length > 0 && (
             <div className="space-y-2">
               <label className="label">
-                <span className="label-text-alt uppercase font-bold opacity-50 text-secondary">
+                <span className="label-text-alt font-bold opacity-50 text-secondary">
                   Files to Upload
                 </span>
               </label>

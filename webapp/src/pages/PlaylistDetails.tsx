@@ -93,7 +93,7 @@ const PlaylistDetails = () => {
   return (
     <div className="space-y-8 animate-fade-in p-6">
       <div className="flex flex-col md:flex-row gap-8 items-end">
-        <div className="w-52 h-52 bg-gradient-to-br from-primary to-secondary rounded-2xl shadow-2xl flex items-center justify-center text-6xl text-base-100/50 shrink-0 overflow-hidden relative group">
+        <div className="w-52 h-52 bg-gradient-to-br from-primary to-secondary rounded-2xl shadow-level-1 flex items-center justify-center text-6xl text-base-100/50 shrink-0 overflow-hidden relative group">
           {playlist.coverPath ? (
             <img
               src={playlist.coverPath}
@@ -117,7 +117,7 @@ const PlaylistDetails = () => {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="uppercase text-xs font-bold tracking-widest opacity-70 mb-2">
+          <div className="text-xs font-bold tracking-normal opacity-70 mb-2">
             Playlist
           </div>
           <h1 className="text-4xl lg:text-6xl font-black tracking-tighter mb-4 leading-tight">
@@ -170,7 +170,7 @@ const PlaylistDetails = () => {
         </div>
 
         <button
-          className="btn btn-primary btn-circle btn-lg shadow-xl hover:scale-105 transition-transform"
+          className="btn btn-primary btn-circle btn-lg shadow-level-1 hover:scale-105 transition-transform"
           onClick={() => {
             if (playlist.tracks && playlist.tracks.length > 0) {
               playTrack(playlist.tracks[0], playlist.tracks);
@@ -185,7 +185,7 @@ const PlaylistDetails = () => {
       <div className="overflow-visible bg-base-200/30 rounded-xl border border-base-content/5">
         <table className="table w-full">
           <thead>
-            <tr className="border-b border-base-content/10 text-xs uppercase opacity-50">
+            <tr className="border-b border-base-content/10 text-xs opacity-50">
               <th className="w-12 text-center">#</th>
               <th>Title</th>
               <th>Album</th>

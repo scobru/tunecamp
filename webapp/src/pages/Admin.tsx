@@ -83,21 +83,21 @@ const Admin = () => {
       {isAdmin && stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Total Users</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Total Users</div>
             <div className="stat-value text-primary">{stats.totalUsers}</div>
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Total Tracks</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Total Tracks</div>
             <div className="stat-value text-secondary">{stats.totalTracks}</div>
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Storage Used</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Storage Used</div>
             <div className="stat-value text-accent">
               {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB
             </div>
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-xs font-bold uppercase tracking-wider">Network Sites</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Network Sites</div>
             <div className="stat-value">{stats.networkSites}</div>
           </div>
         </div>

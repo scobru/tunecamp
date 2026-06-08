@@ -81,21 +81,21 @@ const MyMusic = () => {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">My Releases</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">My Releases</div>
             <div className="stat-value text-primary">{stats.albums}</div>
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">My Tracks</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">My Tracks</div>
             <div className="stat-value text-secondary">{stats.totalTracks}</div>
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">Storage Used</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Storage Used</div>
             <div className="stat-value text-accent text-2xl">
               {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(3)} GB
             </div>
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
-            <div className="stat-title opacity-60 text-[10px] font-bold uppercase tracking-wider">Genres</div>
+            <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Genres</div>
             <div className="stat-value">{stats.genresCount}</div>
           </div>
         </div>
@@ -155,7 +155,7 @@ const MyMusic = () => {
               {(user?.isAdmin || user?.isActive || role === 'super_user') && (
                 <>
                   <button
-                    className="btn btn-primary gap-2 shadow-lg shadow-primary/10 hover:scale-[1.02] transition-transform"
+                    className="btn btn-primary gap-2 shadow-level-1 shadow-primary/10 hover:scale-[1.02] transition-transform"
                     onClick={() => navigate("/publish")}
                   >
                     📤 Publish New Content

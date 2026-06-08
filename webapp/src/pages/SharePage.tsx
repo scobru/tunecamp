@@ -95,7 +95,7 @@ const SharePage = () => {
     if (loading) return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4 opacity-50">
             <Music className="w-12 h-12 animate-pulse" />
-            <p className="text-sm font-black uppercase tracking-widest">Loading shared content...</p>
+            <p className="text-sm font-black tracking-normal">Loading shared content...</p>
         </div>
     );
 
@@ -148,10 +148,10 @@ const SharePage = () => {
                 <button onClick={() => navigate(-1)} className="btn btn-ghost btn-circle">
                     <ArrowLeft size={20} />
                 </button>
-                <h1 className="text-sm font-black uppercase tracking-widest opacity-60">Shared Content</h1>
+                <h1 className="text-sm font-black tracking-normal opacity-60">Shared Content</h1>
             </div>
 
-            <div className="relative group rounded-[3rem] overflow-hidden border border-base-content/5 bg-base-200/40 p-8 lg:p-12 shadow-2xl">
+            <div className="relative group rounded-[3rem] overflow-hidden border border-base-content/5 bg-base-200/40 p-8 lg:p-12 shadow-level-1">
                 {/* Background Blur */}
                 <div className="absolute inset-0 z-0">
                     <img src={coverUrl} className="w-full h-full object-cover opacity-10 blur-[100px] scale-150" alt="" />
@@ -170,11 +170,11 @@ const SharePage = () => {
                     <div className="flex-1 space-y-8 text-center md:text-left">
                         <div className="space-y-4">
                             <div className="flex items-center justify-center md:justify-start gap-3">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-content px-2 py-0.5 rounded-md">
+                                <span className="text-xs font-black tracking-[0.3em] bg-primary text-primary-content px-2 py-0.5 rounded-md">
                                     {isTrack ? 'Track' : 'Album'}
                                 </span>
                                 {isTrack && (item as any).losslessPath && (
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] border border-white/20 px-2 py-0.5 rounded-md opacity-40">
+                                    <span className="text-xs font-black tracking-[0.3em] border border-white/20 px-2 py-0.5 rounded-md opacity-40">
                                         Hi-Res
                                     </span>
                                 )}
@@ -201,7 +201,7 @@ const SharePage = () => {
                         <div className="flex flex-wrap gap-4 justify-center md:justify-start">
                             <button 
                                 onClick={handlePlay}
-                                className="btn btn-primary btn-lg rounded-2xl px-12 shadow-2xl shadow-primary/20 hover:scale-105 transition-all"
+                                className="btn btn-primary btn-lg rounded-2xl px-12 shadow-level-1 shadow-primary/20 hover:scale-105 transition-all"
                             >
                                 <Play fill="currentColor" size={24} /> Listen Now
                             </button>
@@ -225,7 +225,7 @@ const SharePage = () => {
                             <div className="pt-4">
                                 <Link 
                                     to={`/albums/${(item as Album).slug || item.id}`}
-                                    className="text-xs font-black uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center md:justify-start gap-2"
+                                    className="text-xs font-black tracking-normal opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center md:justify-start gap-2"
                                 >
                                     View Full Album Details <ArrowLeft size={14} className="rotate-180" />
                                 </Link>
@@ -235,7 +235,7 @@ const SharePage = () => {
                              <div className="pt-4">
                                 <Link 
                                     to={`/albums/${(item as any).albumSlug || (item as any).albumId}`}
-                                    className="text-xs font-black uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center md:justify-start gap-2"
+                                    className="text-xs font-black tracking-normal opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center md:justify-start gap-2"
                                 >
                                     Go to Album <Disc size={14} />
                                 </Link>
@@ -247,7 +247,7 @@ const SharePage = () => {
 
             {/* Extra context or suggestions could go here */}
             <div className="px-4 text-center">
-                <p className="text-xs font-bold opacity-40 uppercase tracking-[0.3em]">
+                <p className="text-xs font-bold opacity-40 tracking-[0.3em]">
                     Powered by TuneCamp • Decentralized Music Federation
                 </p>
             </div>

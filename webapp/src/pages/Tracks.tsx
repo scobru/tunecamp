@@ -161,11 +161,11 @@ const Tracks = () => {
                       {track.title}
                     </button>
                     {track.losslessPath && (
-                      <span className="text-[8px] font-black opacity-30 border border-base-content/10 px-1 rounded uppercase">Hi-Res</span>
+                      <span className="text-[8px] font-black opacity-30 border border-base-content/10 px-1 rounded">Hi-Res</span>
                     )}
                     {isLiked && <Heart size={10} className="text-primary" fill="currentColor" />}
                   </div>
-                  <div className="text-xs opacity-60 font-medium truncate uppercase tracking-widest mt-0.5">
+                  <div className="text-xs opacity-60 font-medium truncate tracking-normal mt-0.5">
                     {track.artistName} • {track.albumName}
                   </div>
                 </div>
@@ -238,7 +238,7 @@ const Tracks = () => {
         </div>
         {filteredTracks.length > 100 && (
           <div className="text-center py-8">
-            <p className="text-xs font-black uppercase tracking-widest opacity-20">Showing first 100 tracks. Refine your search to find more.</p>
+            <p className="text-xs font-black tracking-normal opacity-20">Showing first 100 tracks. Refine your search to find more.</p>
           </div>
         )}
       </div>

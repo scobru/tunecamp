@@ -118,7 +118,7 @@ export const StoragePanel = () => {
 
             <div className="grid gap-6 md:grid-cols-3">
                 <div className="md:col-span-1 space-y-4">
-                    <h3 className="text-sm font-bold uppercase opacity-50">Connected Accounts</h3>
+                    <h3 className="text-sm font-bold opacity-50">Connected Accounts</h3>
                     {accounts.length === 0 ? (
                         <div className="p-6 bg-base-200 rounded-box text-center border border-dashed border-base-content/20">
                             <Cloud className="mx-auto opacity-20 mb-2" size={32} />
@@ -137,7 +137,7 @@ export const StoragePanel = () => {
                                         </div>
                                         <div className="min-w-0">
                                             <div className="text-xs font-bold truncate">{acc.account_email}</div>
-                                            <div className="text-[10px] opacity-50 uppercase">{acc.provider}</div>
+                                            <div className="text-xs opacity-50">{acc.provider}</div>
                                         </div>
                                     </div>
                                     <button className="btn btn-ghost btn-xs text-error" onClick={() => handleDisconnect(acc.id)}>
@@ -155,7 +155,7 @@ export const StoragePanel = () => {
                 <div className="md:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <h3 className="text-sm font-bold uppercase opacity-50">File Browser</h3>
+                            <h3 className="text-sm font-bold opacity-50">File Browser</h3>
                             {accounts.length > 0 && files.length > 0 && (
                                 <button 
                                     className="btn btn-xs btn-primary gap-1"
@@ -206,7 +206,7 @@ export const StoragePanel = () => {
                                                         <span className="text-xs truncate">{file.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className="text-[10px] opacity-50 truncate">{file.mimeType.split('.').pop()?.split('/').pop()}</td>
+                                                <td className="text-xs opacity-50 truncate">{file.mimeType.split('.').pop()?.split('/').pop()}</td>
                                                 <td className="text-right">
                                                     {file.mimeType === 'application/vnd.google-apps.folder' ? (
                                                         <button className="btn btn-ghost btn-xs" onClick={() => handleNavigate(file.id)}>
@@ -221,7 +221,7 @@ export const StoragePanel = () => {
                                                             {importing === file.id ? '...' : file.isImported ? 'Imported' : 'Import'}
                                                         </button>
                                                     ) : (
-                                                        <span className="text-[10px] opacity-30">N/A</span>
+                                                        <span className="text-xs opacity-30">N/A</span>
                                                     )}
                                                 </td>
                                             </tr>

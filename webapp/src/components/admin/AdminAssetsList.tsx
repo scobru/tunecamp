@@ -111,7 +111,7 @@ export const AdminAssetsList = () => {
                                                 <div>
                                                     <div className="font-medium text-sm">{asset.title}</div>
                                                     {(asset.requires_subscription || asset.requiresSubscription) && (
-                                                        <span className="text-[10px] text-primary font-bold">FREE w/ subscription</span>
+                                                        <span className="text-xs text-primary font-bold">FREE w/ subscription</span>
                                                     )}
                                                 </div>
                                             </div>

@@ -295,7 +295,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                     </span>
                   ) : (
                     t.format && (
-                      <span className="badge badge-outline badge-xs opacity-50 font-mono scale-90 uppercase">
+                      <span className="badge badge-outline badge-xs opacity-50 font-mono scale-90">
                         {t.format}
                       </span>
                     )

@@ -351,8 +351,8 @@ const Profile = () => {
               
               <div className="bg-base-200/30 rounded-2xl p-6 border border-base-content/5 flex flex-col md:flex-row gap-6 items-start">
                 <div className="flex flex-col gap-2 min-w-[200px]">
-                  <span className="text-xs opacity-50 uppercase tracking-widest font-black">Current Role</span>
-                  <div className={clsx("badge badge-lg gap-2 font-bold py-4 px-5 text-sm uppercase tracking-wider rounded-xl shadow-sm border-0", 
+                  <span className="text-xs opacity-50 tracking-normal font-black">Current Role</span>
+                  <div className={clsx("badge badge-lg gap-2 font-bold py-4 px-5 text-sm tracking-normal rounded-xl shadow-sm border-0", 
                     role === 'root_admin' ? "bg-red-500/20 text-red-500" :
                     role === 'admin' ? "bg-primary/20 text-primary" :
                     role === 'super_user' ? "bg-secondary/20 text-secondary" :
@@ -389,7 +389,7 @@ const Profile = () => {
                   <div className="divider opacity-5 my-2"></div>
                   
                   <div className="space-y-3">
-                    <span className="text-xs opacity-50 uppercase tracking-wider font-bold">What you can do:</span>
+                    <span className="text-xs opacity-50 tracking-normal font-bold">What you can do:</span>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       {role === 'root_admin' && [
                         "Manage all users, roles, and active/inactive status",
@@ -670,7 +670,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           </h3>
 
           <div className="flex flex-col items-center gap-4 py-2">
-            <div className="w-32 h-32 rounded-2xl overflow-hidden bg-neutral border border-base-content/10 shadow-xl relative group">
+            <div className="w-32 h-32 rounded-2xl overflow-hidden bg-neutral border border-base-content/10 shadow-level-1 relative group">
               {avatarPreview ? (
                 <img src={avatarPreview} className="w-full h-full object-cover" />
               ) : initialData?.id ? (
@@ -714,7 +714,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
         {/* Status Section */}
         <div className="card bg-primary/5 border border-primary/10 p-6 space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-widest opacity-40">Digital Presence</h3>
+          <h3 className="text-sm font-bold tracking-normal opacity-40">Digital Presence</h3>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/20 rounded-lg text-primary">
@@ -722,7 +722,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
               </div>
               <div>
                 <div className="text-xl font-black">{followersCount ?? 0}</div>
-                <div className="text-[10px] opacity-40 uppercase font-bold">Followers</div>
+                <div className="text-xs opacity-40 font-bold">Followers</div>
               </div>
             </div>
             <button
@@ -813,7 +813,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
         {/* Federation Section */}
         <div className="card bg-base-100/50 border border-base-content/5 overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-500/10 to-transparent p-6 border-b border-base-content/5">
+          <div className="bg-base-200/40 p-6 border-b border-base-content/5">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Play size={20} className="text-indigo-400" /> Federation & Automation
             </h3>
@@ -822,7 +822,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-xs uppercase font-bold opacity-40">Mastodon Instance</span>
+                <span className="label-text text-xs font-bold opacity-40">Mastodon Instance</span>
               </label>
               <input
                 type="url"
@@ -834,7 +834,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
             </div>
             <div className="form-control">
               <label className="label">
-                <span className="label-text text-xs uppercase font-bold opacity-40">Master Token</span>
+                <span className="label-text text-xs font-bold opacity-40">Master Token</span>
               </label>
               <input
                 type="password"
@@ -849,7 +849,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
         {/* Identity & Migration Section */}
         <div className="card bg-base-100/50 border border-base-content/5 overflow-hidden">
-          <div className="bg-gradient-to-r from-violet-500/10 to-transparent p-6 border-b border-base-content/5">
+          <div className="bg-base-200/40 p-6 border-b border-base-content/5">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Globe size={20} className="text-violet-400" /> Identity Migration (ActivityPub)
             </h3>
@@ -1052,7 +1052,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           </div>
           <button
             type="submit"
-            className="btn btn-primary btn-lg px-12 gap-3 w-full sm:w-auto shadow-xl shadow-primary/20"
+            className="btn btn-primary btn-lg px-12 gap-3 w-full sm:w-auto shadow-level-1 shadow-primary/20"
             disabled={isSaving}
           >
             {isSaving ? <span className="loading loading-spinner" /> : <Check size={24} />}
@@ -1075,7 +1075,7 @@ const TrackList = ({
     <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-base-content/5 min-h-[300px]">
       <table className="table w-full">
         <thead>
-          <tr className="border-b border-base-content/10 opacity-50 text-xs uppercase tracking-wider">
+          <tr className="border-b border-base-content/10 opacity-50 text-xs tracking-normal">
             <th className="w-12 text-center">#</th>
             <th>Title</th>
             <th>Album</th>

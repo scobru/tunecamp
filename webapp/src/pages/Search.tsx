@@ -398,7 +398,7 @@ const Search = () => {
                                                 </button>
                                                 {activePlaylistMenu === String(track.id) && (
                                                     <ul className="dropdown-content z-[50] menu p-2 shadow bg-base-200 rounded-box w-52 mt-1 border border-base-300 animate-in fade-in zoom-in duration-100">
-                                                        <li className="menu-title text-xs uppercase opacity-50">Your Playlists</li>
+                                                        <li className="menu-title text-xs opacity-50">Your Playlists</li>
                                                         {playlists.length === 0 ? (
                                                             <li className="disabled text-xs p-2">No playlists found</li>
                                                         ) : (

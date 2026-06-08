@@ -296,31 +296,31 @@ const ContentSearch: React.FC = () => {
 
             <div className="tabs tabs-boxed mb-6 p-1 bg-base-300">
                 <button 
-                    className={`tab flex-1 transition-all ${activeTab === 'soulseek' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
+                    className={`tab flex-1 transition-all ${activeTab === 'soulseek' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
                     onClick={() => setActiveTab('soulseek')}
                 >
                     <Activity className="mr-2" size={16} /> Soulseek
                 </button>
                 <button 
-                    className={`tab flex-1 transition-all ${activeTab === 'torrents' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
+                    className={`tab flex-1 transition-all ${activeTab === 'torrents' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
                     onClick={() => setActiveTab('torrents')}
                 >
                     <RefreshCw className="mr-2" size={16} /> WebTorrent
                 </button>
                 <button
-                    className={`tab flex-1 transition-all ${activeTab === 'seeding' ? 'tab-active bg-success text-success-content shadow-lg' : ''}`}
+                    className={`tab flex-1 transition-all ${activeTab === 'seeding' ? 'tab-active bg-success text-success-content shadow-level-1' : ''}`}
                     onClick={() => setActiveTab('seeding')}
                 >
                     <Upload className="mr-2" size={16} /> Seeding
                 </button>
                 <button
-                    className={`tab flex-1 transition-all ${activeTab === 'streaming' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
+                    className={`tab flex-1 transition-all ${activeTab === 'streaming' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
                     onClick={() => setActiveTab('streaming')}
                 >
                     <Globe className="mr-2" size={16} /> Streaming
                 </button>
                 <button 
-                    className={`tab flex-1 transition-all ${activeTab === 'downloads' ? 'tab-active bg-primary text-primary-content shadow-lg' : ''}`}
+                    className={`tab flex-1 transition-all ${activeTab === 'downloads' ? 'tab-active bg-primary text-primary-content shadow-level-1' : ''}`}
                     onClick={() => setActiveTab('downloads')}
                 >
                     <Download className="mr-2" size={16} /> Transfers
@@ -381,13 +381,13 @@ const ContentSearch: React.FC = () => {
                                                     </div>
                                                 )}
                                                 <div className="text-[11px] opacity-75 flex flex-wrap gap-2 mt-2.5 font-medium">
-                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-[10px] text-base-content/80 flex items-center gap-1">
+                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-xs text-base-content/80 flex items-center gap-1">
                                                         <span>👤</span> {res.user}
                                                     </span>
-                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-[10px] text-base-content/80 flex items-center gap-1">
+                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-xs text-base-content/80 flex items-center gap-1">
                                                         <span>💾</span> {(res.size / 1024 / 1024).toFixed(2)} MB
                                                     </span>
-                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-[10px] text-base-content/80 flex items-center gap-1">
+                                                    <span className="bg-base-300/60 px-2 py-0.5 rounded text-xs text-base-content/80 flex items-center gap-1">
                                                         <span>⚡</span> {(res.speed / 1024).toFixed(0)} KB/s
                                                     </span>
                                                 </div>
@@ -429,7 +429,7 @@ const ContentSearch: React.FC = () => {
                             </h2>
                             <form onSubmit={handleSeedFiles} className="space-y-4">
                                 <div>
-                                    <label className="label pb-1"><span className="label-text font-bold text-xs uppercase">Torrent Name</span></label>
+                                    <label className="label pb-1"><span className="label-text font-bold text-xs">Torrent Name</span></label>
                                     <input
                                         type="text"
                                         className="input input-bordered w-full"
@@ -439,7 +439,7 @@ const ContentSearch: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="label pb-1"><span className="label-text font-bold text-xs uppercase">File Paths (one per line)</span></label>
+                                    <label className="label pb-1"><span className="label-text font-bold text-xs">File Paths (one per line)</span></label>
                                     <textarea
                                         className="textarea textarea-bordered w-full font-mono text-xs h-40 leading-relaxed"
                                         placeholder={"/music/Artist/Album/01 - Track.flac\n/music/Artist/Album/02 - Track.flac"}
@@ -460,7 +460,7 @@ const ContentSearch: React.FC = () => {
                                 <div className="mt-4 alert alert-success gap-3 items-start">
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-xs mb-1">Seeding started — share this magnet:</p>
-                                        <code className="text-[10px] font-mono break-all">{seedingResult}</code>
+                                        <code className="text-xs font-mono break-all">{seedingResult}</code>
                                     </div>
                                     <button
                                         className="btn btn-ghost btn-xs flex-shrink-0"
@@ -483,7 +483,7 @@ const ContentSearch: React.FC = () => {
 
                     <div className="space-y-6">
                         <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
-                            <div className="p-4 bg-base-300 font-bold text-xs uppercase tracking-widest flex items-center gap-2">
+                            <div className="p-4 bg-base-300 font-bold text-xs tracking-normal flex items-center gap-2">
                                 <Upload size={14} className="text-success" /> Active Seeds
                             </div>
                             <div className="divide-y divide-base-content/5">
@@ -495,7 +495,7 @@ const ContentSearch: React.FC = () => {
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="min-w-0 flex-1">
                                                 <div className="text-xs font-bold truncate" title={t.name}>{t.name || t.infoHash || t.info_hash}</div>
-                                                <div className="text-[10px] opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
+                                                <div className="text-xs opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
                                             </div>
                                             <div className="flex gap-1 flex-shrink-0">
                                                 <button
@@ -513,7 +513,7 @@ const ContentSearch: React.FC = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="flex justify-between items-center text-[10px] font-bold uppercase gap-2">
+                                        <div className="flex justify-between items-center text-xs font-bold gap-2">
                                             <span className="text-success">seeding</span>
                                             <span className="opacity-40 normal-case">
                                                 {(t.numPeers ?? 0)} peer{(t.numPeers ?? 0) === 1 ? '' : 's'}
@@ -573,7 +573,7 @@ const ContentSearch: React.FC = () => {
                                                     {res.title}
                                                 </h3>
                                                 <div className="text-xs opacity-50 truncate font-medium">
-                                                    {res.artist} • <span className="uppercase font-bold text-primary">{res.source || res.provider}</span>
+                                                    {res.artist} • <span className="font-bold text-primary">{res.source || res.provider}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -656,7 +656,7 @@ const ContentSearch: React.FC = () => {
                                             <h3 className="font-bold truncate text-sm lg:text-base group-hover:text-primary transition-colors" title={res.title}>
                                                 {res.title}
                                             </h3>
-                                            <div className="text-[10px] uppercase opacity-50 flex flex-wrap gap-x-4 gap-y-1 mt-1 font-bold">
+                                            <div className="text-xs opacity-50 flex flex-wrap gap-x-4 gap-y-1 mt-1 font-bold">
                                                 <span className="text-primary">{res.provider}</span>
                                                 <span>{res.size}</span>
                                                 <span className="text-success">S: {res.seeds}</span>
@@ -700,7 +700,7 @@ const ContentSearch: React.FC = () => {
 
                     <div className="space-y-6">
                         <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
-                            <div className="p-4 bg-base-300 font-bold text-xs uppercase tracking-widest flex items-center justify-between gap-2">
+                            <div className="p-4 bg-base-300 font-bold text-xs tracking-normal flex items-center justify-between gap-2">
                                 <span className="flex items-center gap-2">
                                     <Activity size={14} className="text-primary"/> Active Torrents
                                 </span>
@@ -727,7 +727,7 @@ const ContentSearch: React.FC = () => {
                                             <div className="flex justify-between items-start gap-2">
                                                 <div className="min-w-0 flex-1">
                                                     <div className="text-xs font-bold truncate" title={t.name || t.infoHash || t.info_hash}>{displayName}</div>
-                                                    <div className="text-[10px] opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
+                                                    <div className="text-xs opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
                                                 </div>
                                                 <button
                                                     onClick={() => handleDeleteTorrent(t.infoHash || t.info_hash)}
@@ -742,9 +742,9 @@ const ContentSearch: React.FC = () => {
                                                     value={t.progress * 100}
                                                     max="100"
                                                 ></progress>
-                                                <span className="text-[10px] font-mono opacity-50">{(t.progress * 100).toFixed(0)}%</span>
+                                                <span className="text-xs font-mono opacity-50">{(t.progress * 100).toFixed(0)}%</span>
                                             </div>
-                                            <div className="flex justify-between items-center text-[10px] font-bold uppercase gap-2">
+                                            <div className="flex justify-between items-center text-xs font-bold gap-2">
                                                 <span className={clsx(
                                                     t.status === 'completed' ? 'text-success' :
                                                     t.status === 'seeding' ? 'text-success' :
@@ -796,13 +796,13 @@ const ContentSearch: React.FC = () => {
                                                 {filename}
                                             </div>
                                             {folder && (
-                                                <div className="text-[10px] opacity-40 font-mono truncate mt-0.5" title={dl.filename}>
+                                                <div className="text-xs opacity-40 font-mono truncate mt-0.5" title={dl.filename}>
                                                     📁 {folder}
                                                 </div>
                                             )}
                                         </td>
                                         <td>
-                                            <span className={`badge badge-sm px-3 h-6 font-bold uppercase tracking-tighter ${
+                                            <span className={`badge badge-sm px-3 h-6 font-bold tracking-tighter ${
                                                 dl.status === 'completed' ? 'badge-success text-success-content' : 
                                                 dl.status === 'failed' ? 'badge-error text-error-content' : 
                                                 'badge-info text-info-content'
@@ -817,10 +817,10 @@ const ContentSearch: React.FC = () => {
                                                     value={dl.progress * 100} 
                                                     max="100"
                                                 ></progress>
-                                                <span className="text-[10px] font-mono opacity-50">{(dl.progress * 100).toFixed(0)}%</span>
+                                                <span className="text-xs font-mono opacity-50">{(dl.progress * 100).toFixed(0)}%</span>
                                             </div>
                                         </td>
-                                        <td className="text-[10px] uppercase opacity-40 font-bold">{new Date(dl.added_at).toLocaleDateString()}</td>
+                                        <td className="text-xs opacity-40 font-bold">{new Date(dl.added_at).toLocaleDateString()}</td>
                                         <td className="text-right">
                                             <div className="flex justify-end gap-1">
                                                 {dl.status === 'completed' && (

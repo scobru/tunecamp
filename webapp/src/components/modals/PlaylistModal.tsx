@@ -99,7 +99,7 @@ export const PlaylistModal = () => {
         <dialog id="playlist-modal" className="modal modal-bottom sm:modal-middle" ref={dialogRef}>
             <div className="modal-box bg-base-100 border border-base-content/5 p-0 overflow-hidden max-w-md">
                 <div className="p-6 pb-0 flex justify-between items-center">
-                    <h3 className="font-black text-xl flex items-center gap-3 uppercase tracking-tighter">
+                    <h3 className="font-black text-xl flex items-center gap-3 tracking-tighter">
                         <ListMusic size={24} className="text-primary"/> Add to Playlist
                     </h3>
                     <form method="dialog">
@@ -112,7 +112,7 @@ export const PlaylistModal = () => {
                         {loading && playlists.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 opacity-30 gap-4">
                                 <Loader2 className="animate-spin" size={32} />
-                                <p className="text-xs font-bold uppercase tracking-widest">Loading Playlists...</p>
+                                <p className="text-xs font-bold tracking-normal">Loading Playlists...</p>
                             </div>
                         ) : playlists.length === 0 ? (
                             <div className="text-center py-12 bg-base-200/50 rounded-3xl border border-dashed border-base-content/5">
@@ -149,7 +149,7 @@ export const PlaylistModal = () => {
                                                     <span className="badge badge-xs opacity-40 font-black">PUBLIC</span>
                                                 )}
                                             </div>
-                                            <div className="text-[10px] font-black uppercase tracking-widest opacity-30">
+                                            <div className="text-xs font-black tracking-normal opacity-30">
                                                 {isMine ? 'My Playlist' : `By ${p.username}`}
                                             </div>
                                         </div>
@@ -172,7 +172,7 @@ export const PlaylistModal = () => {
                         <form onSubmit={handleCreate} className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                             <div className="form-control">
                                 <label className="label">
-                                    <span className="label-text text-[10px] font-black uppercase tracking-widest opacity-40">New Playlist Name</span>
+                                    <span className="label-text text-xs font-black tracking-normal opacity-40">New Playlist Name</span>
                                 </label>
                                 <input 
                                     type="text" 

@@ -107,7 +107,7 @@ export const PlayerCanvas = () => {
                         {currentTrack.title}
                     </h2>
                     <p 
-                        className="text-lg md:text-2xl font-bold opacity-60 uppercase tracking-[0.2em]"
+                        className="text-lg md:text-2xl font-bold opacity-60 tracking-[0.2em]"
                         style={{ color: dominantColor || 'var(--p)' }}
                     >
                         {currentTrack.artistName}
@@ -136,7 +136,7 @@ export const PlayerCanvas = () => {
 
                     <button 
                         onClick={togglePlay}
-                        className="btn btn-circle btn-primary btn-xl w-20 h-20 shadow-2xl shadow-primary/20 hover:scale-110 active:scale-95 transition-all"
+                        className="btn btn-circle btn-primary btn-xl w-20 h-20 shadow-level-1 shadow-primary/20 hover:scale-110 active:scale-95 transition-all"
                     >
                         {isPlaying ? (
                             <Pause size={40} fill="currentColor" />
@@ -155,7 +155,7 @@ export const PlayerCanvas = () => {
             </div>
 
             {/* Bottom Bar Hints */}
-            <div className="absolute bottom-12 flex items-center gap-8 text-[10px] font-black uppercase tracking-[0.3em] text-white/20">
+            <div className="absolute bottom-12 flex items-center gap-8 text-xs font-black tracking-[0.3em] text-white/20">
                 <span>Lossless Audio</span>
                 <span className="w-1 h-1 rounded-full bg-white/20" />
                 <span>Premium Quality</span>

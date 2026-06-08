@@ -172,7 +172,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
           {/* Current Identity Card (GunDB) */}
           <div className="card card-m3 bg-base-200/50">
             <div className="card-body p-6">
-              <h3 className="card-title text-[10px] uppercase tracking-[0.2em] opacity-50 mb-4">
+              <h3 className="card-title text-xs tracking-[0.2em] opacity-50 mb-4">
                 {isRootAdmin ? "Current P2P Node Identity (ZEN)" : "My Personal P2P Identity (ZEN)"}
               </h3>
 
@@ -180,19 +180,19 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                 <div className="space-y-4">
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">Public Key (pub)</span>
+                      <span className="label-text text-xs font-bold opacity-40">Public Key (pub)</span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all border border-base-content/5 shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all select-all border border-base-content/5 shadow-inner">
                       {identity.pub}
                     </div>
                   </div>
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">Private Key (priv)</span>
+                      <span className="label-text text-xs font-bold opacity-40">Private Key (priv)</span>
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_priv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["gundb_priv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
                       >
                         {identity.priv}
                       </div>
@@ -211,23 +211,23 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                   </div>
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                      <span className="label-text text-xs font-bold opacity-40">
                         Encryption Public Key (epub)
                       </span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all border border-base-content/5 shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all select-all border border-base-content/5 shadow-inner">
                       {identity.epub}
                     </div>
                   </div>
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                      <span className="label-text text-xs font-bold opacity-40">
                         Encryption Private Key (epriv)
                       </span>
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["zen_epriv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["zen_epriv"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
                       >
                         {identity.epriv}
                       </div>
@@ -246,7 +246,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                   </div>
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">Alias</span>
+                      <span className="label-text text-xs font-bold opacity-40">Alias</span>
                     </label>
                     <div className="p-3 bg-base-300/50 rounded-lg font-mono text-sm border border-base-content/5 shadow-inner">
                       {identity.alias || "N/A"}
@@ -254,13 +254,13 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                   </div>
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                      <span className="label-text text-xs font-bold opacity-40">
                         Active API Session Token (JWT)
                       </span>
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 pr-24 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["jwt_token"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
+                        className={`p-3 pr-24 bg-base-300/50 rounded-lg font-mono text-xs break-all border border-base-content/5 select-all transition-all shadow-inner ${!showPrivateKeys["jwt_token"] ? "blur-sm select-none grayscale opacity-30" : ""}`}
                       >
                         {API.getToken() || "No active token found"}
                       </div>
@@ -333,7 +333,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
           {isRootAdmin && (
             <div className="card card-m3 border border-warning/10 bg-warning/5">
               <div className="card-body p-6">
-                <h3 className="card-title text-[10px] uppercase tracking-[0.2em] text-warning mb-4 flex items-center gap-2">
+                <h3 className="card-title text-xs tracking-[0.2em] text-warning mb-4 flex items-center gap-2">
                   <Key size={16} /> Import Node Identity
                 </h3>
 
@@ -349,7 +349,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
 
               <form onSubmit={handleImport} className="space-y-4">
                 <textarea
-                  className="textarea textarea-bordered w-full font-mono text-[10px] h-32 bg-base-100/50 focus:border-warning"
+                  className="textarea textarea-bordered w-full font-mono text-xs h-32 bg-base-100/50 focus:border-warning"
                   placeholder='{"pub":"...", "priv":"...", "epub":"...", "epriv":"..."}'
                   value={importData}
                   onChange={(e) => setImportData(e.target.value)}
@@ -396,12 +396,12 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     </div>
                     <div>
                       <h3 className="font-bold">Site Actor</h3>
-                      <p className="text-[10px] opacity-40 font-mono mt-0.5">
+                      <p className="text-xs opacity-40 font-mono mt-0.5">
                         @site@{window.location.hostname}
                       </p>
                     </div>
                   </div>
-                  <div className="badge badge-primary badge-outline badge-sm font-bold tracking-wider py-2">
+                  <div className="badge badge-primary badge-outline badge-sm font-bold tracking-normal py-2">
                     SERVICE
                   </div>
                 </div>
@@ -409,24 +409,24 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                      <span className="label-text text-xs font-bold opacity-40">
                         RSA Public Key
                       </span>
                     </label>
-                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all max-h-32 overflow-y-auto border border-base-content/5 scrollbar-thin shadow-inner">
+                    <div className="p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all select-all max-h-32 overflow-y-auto border border-base-content/5 scrollbar-thin shadow-inner">
                       {siteApIdentity.publicKey}
                     </div>
                   </div>
 
                   <div className="form-control">
                     <label className="label py-1">
-                      <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                      <span className="label-text text-xs font-bold opacity-40">
                         RSA Private Key
                       </span>
                     </label>
                     <div className="relative group">
                       <div
-                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys["site"] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
+                        className={`p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all border border-base-content/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys["site"] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
                       >
                         {siteApIdentity.privateKey || "No private key stored"}
                       </div>
@@ -472,12 +472,12 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                       </div>
                       <div>
                         <h3 className="font-bold">{artist.name}</h3>
-                        <p className="text-[10px] opacity-40 font-mono mt-0.5">
+                        <p className="text-xs opacity-40 font-mono mt-0.5">
                           @{artist.slug}@{window.location.hostname}
                         </p>
                       </div>
                     </div>
-                    <div className="badge badge-secondary badge-outline badge-sm font-bold tracking-wider py-2">
+                    <div className="badge badge-secondary badge-outline badge-sm font-bold tracking-normal py-2">
                       ARTIST
                     </div>
                   </div>
@@ -490,24 +490,24 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="form-control">
                         <label className="label py-1">
-                          <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                          <span className="label-text text-xs font-bold opacity-40">
                             RSA Public Key
                           </span>
                         </label>
-                        <div className="p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all select-all max-h-32 overflow-y-auto border border-base-content/5 scrollbar-thin shadow-inner">
+                        <div className="p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all select-all max-h-32 overflow-y-auto border border-base-content/5 scrollbar-thin shadow-inner">
                           {publicKey}
                         </div>
                       </div>
 
                       <div className="form-control">
                         <label className="label py-1">
-                          <span className="label-text text-[10px] font-bold uppercase opacity-40">
+                          <span className="label-text text-xs font-bold opacity-40">
                             RSA Private Key
                           </span>
                         </label>
                         <div className="relative group">
                           <div
-                            className={`p-3 bg-base-300/50 rounded-lg font-mono text-[10px] break-all border border-base-content/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys[artist.id] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
+                            className={`p-3 bg-base-300/50 rounded-lg font-mono text-xs break-all border border-base-content/5 select-all transition-all scrollbar-thin shadow-inner ${!showPrivateKeys[artist.id] ? "blur-sm select-none grayscale opacity-30" : "max-h-32 overflow-y-auto"}`}
                           >
                             {privateKey || "No private key stored"}
                           </div>

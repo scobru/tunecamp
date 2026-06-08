@@ -375,7 +375,7 @@ export const CheckoutModal = () => {
       className={`modal ${isOpen ? "modal-open" : ""} bg-black/60 backdrop-blur-sm`}
     >
       <div className="modal-box bg-base-100/80 backdrop-blur-2xl border border-base-content/10 shadow-[0_0_40px_rgba(var(--color-primary),0.15)] rounded-3xl p-8 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-accent"></div>
+        <div className="absolute top-0 left-0 w-full h-1 bg-base-200/40"></div>
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 blur-[80px] rounded-full pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col items-center text-center">
@@ -384,7 +384,7 @@ export const CheckoutModal = () => {
               <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6 text-success animate-bounce">
                 <CheckCircle2 size={40} />
               </div>
-              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-base-content to-base-content/70 mb-2">
+              <h3 className="text-3xl font-bold bg-clip-text text-transparent bg-base-200/40 mb-2">
                 Purchase Successful!
               </h3>
               <p className="text-base-content/60 mb-6 font-medium">
@@ -392,7 +392,7 @@ export const CheckoutModal = () => {
                 collection.
               </p>
               <div className="bg-black/40 rounded-xl p-4 w-full mb-8 border border-base-content/5 break-all text-left">
-                <span className="text-xs text-base-content/40 uppercase tracking-wider block mb-1">
+                <span className="text-xs text-base-content/40 tracking-normal block mb-1">
                   Transaction Hash
                 </span>
                 <a
@@ -423,7 +423,7 @@ export const CheckoutModal = () => {
             </>
           ) : (
             <>
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-6 shadow-xl shadow-primary/20 transform rotate-3">
+              <div className="w-16 h-16 rounded-2xl bg-base-200/40 flex items-center justify-center mb-6 shadow-level-1 shadow-primary/20 transform rotate-3">
                 <Wallet size={32} className="text-white transform -rotate-3" />
               </div>
 
@@ -436,13 +436,13 @@ export const CheckoutModal = () => {
               {hasStripe && (
                 <div className="flex bg-base-200/50 p-1 rounded-2xl w-full mb-6 border border-base-content/5">
                   <button 
-                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-level-1' : 'text-base-content/50 hover:text-base-content'}`}
                     onClick={() => setPaymentType('crypto')}
                   >
                     Crypto
                   </button>
                   <button 
-                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-lg' : 'text-base-content/50 hover:text-base-content'}`}
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-level-1' : 'text-base-content/50 hover:text-base-content'}`}
                     onClick={() => setPaymentType('fiat')}
                   >
                     Card
@@ -541,7 +541,7 @@ export const CheckoutModal = () => {
 
               {!isConnected ? (
                 <button
-                  className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20 mt-4"
+                  className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-level-1 shadow-primary/20 mt-4"
                   onClick={connect}
                   disabled={isProcessing}
                 >
@@ -550,7 +550,7 @@ export const CheckoutModal = () => {
                 </button>
               ) : (
                 <button
-                  className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20 mt-4"
+                  className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-level-1 shadow-primary/20 mt-4"
                   onClick={handleCryptoCheckout}
                   disabled={isProcessing || !hasEnoughBalance}
                 >
@@ -582,7 +582,7 @@ export const CheckoutModal = () => {
                     </p>
                   )}
                   <button
-                    className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-lg shadow-primary/20"
+                    className="btn btn-primary btn-block rounded-xl h-14 gap-3 shadow-level-1 shadow-primary/20"
                     onClick={handleStripeCheckout}
                     disabled={isProcessing}
                   >

@@ -35,7 +35,7 @@ export const RelatedTracks = ({ trackId }: RelatedTracksProps) => {
         return (
             <div className="flex items-center gap-3 p-6 opacity-50">
                 <Sparkles className="animate-pulse text-secondary" />
-                <span className="text-sm font-bold uppercase tracking-widest">AI finding related vibes...</span>
+                <span className="text-sm font-bold tracking-normal">AI finding related vibes...</span>
             </div>
         );
     }
@@ -46,7 +46,7 @@ export const RelatedTracks = ({ trackId }: RelatedTracksProps) => {
         <div className="space-y-6">
             <div className="flex items-center gap-3 px-4">
                 <Sparkles className="text-secondary" size={20} />
-                <h3 className="font-black uppercase tracking-[0.2em] text-sm opacity-60">AI Similar Tracks</h3>
+                <h3 className="font-black tracking-[0.2em] text-sm opacity-60">AI Similar Tracks</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -59,7 +59,7 @@ export const RelatedTracks = ({ trackId }: RelatedTracksProps) => {
                             <img 
                                 src={track.coverImage || "https://placehold.co/100x100?text=No+Cover"} 
                                 alt={track.title}
-                                className="w-16 h-16 rounded-xl object-cover shadow-lg group-hover:scale-105 transition-transform"
+                                className="w-16 h-16 rounded-xl object-cover shadow-level-1 group-hover:scale-105 transition-transform"
                             />
                             <button 
                                 onClick={() => playTrack(track, related)}

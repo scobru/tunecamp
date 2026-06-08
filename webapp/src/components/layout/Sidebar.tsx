@@ -150,15 +150,15 @@ export const Sidebar = () => {
           )}
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-xl font-black tracking-tighter uppercase leading-none break-words mb-1">{siteName}</span>
-          <span className="text-[10px] font-bold opacity-50 uppercase tracking-widest">by tunecamp</span>
+          <span className="text-xl font-black tracking-tighter leading-none break-words mb-1">{siteName}</span>
+          <span className="text-xs font-bold opacity-50 tracking-normal">by tunecamp</span>
         </div>
       </div>
  
       {/* Main Nav */}
       <div className="space-y-6">
         <div>
-          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Discover</h3>
+          <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Discover</h3>
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/" icon={Home} label="Home" />
             <NavItem to="/search" icon={Search} label="Search" />
@@ -171,14 +171,14 @@ export const Sidebar = () => {
         </div>
  
         <div>
-          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Catalog</h3>
+          <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Catalog</h3>
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/albums" icon={Disc} label="Releases" />
           </ul>
         </div>
 
         <div>
-          <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Collection</h3>
+          <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Collection</h3>
           <ul className="menu menu-sm p-0 gap-1">
             {(isAdmin || isSuperUser || isRoot || !!user?.artistId) && (
               <NavItem to="/library" icon={Library} label="Library" />
@@ -198,7 +198,7 @@ export const Sidebar = () => {
 
         {isAuthenticated && (isAdmin || !!user?.artistId) && (
           <div>
-            <h3 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-base-content/40 mb-3">Management</h3>
+            <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Management</h3>
             <ul className="menu menu-sm p-0 gap-1">
               {isRoot && (
                 <NavItem to="/browser" icon={Folder} label="Files" />
@@ -258,7 +258,7 @@ export const Sidebar = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold truncate leading-snug">{user?.username || "User"}</p>
                 <span className={clsx(
-                  "inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border mt-0.5 shadow-sm transition-all duration-medium-1",
+                  "inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black tracking-normal border mt-0.5 shadow-sm transition-all duration-medium-1",
                   getRoleBadgeClass(role)
                 )}>
                   {getRoleLabel(role)}

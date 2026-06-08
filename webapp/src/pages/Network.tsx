@@ -151,7 +151,7 @@ const PostCard = memo(({
 
             <div className="flex flex-col">
               <span className="text-sm font-bold">{item.artistName}</span>
-              <span className="text-[10px] opacity-50">
+              <span className="text-xs opacity-50">
                 {item.published_at ? StringUtils.formatTimeAgo(new Date(item.published_at).getTime()) : ""}
               </span>
             </div>
@@ -182,7 +182,7 @@ const PostCard = memo(({
             href={siteUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] opacity-40 hover:text-primary transition-colors flex items-center gap-1"
+            className="text-xs opacity-40 hover:text-primary transition-colors flex items-center gap-1"
           >
             <Globe size={10} />
             {getHostname(siteUrl)}
@@ -523,7 +523,7 @@ const Network = () => {
         {isAdminAuthenticated && (
           <div className="form-control ml-2">
             <label className="label cursor-pointer gap-2">
-              <span className="label-text text-xs uppercase font-bold opacity-50">
+              <span className="label-text text-xs font-bold opacity-50">
                 Show Hidden
               </span>
               <input

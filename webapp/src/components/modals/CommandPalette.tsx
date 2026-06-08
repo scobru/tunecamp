@@ -29,7 +29,7 @@ export const CommandPalette = () => {
       onOpenChange={setOpen}
       className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh] pb-[20vh] bg-black/50 backdrop-blur-sm transition-opacity"
     >
-      <div className="w-[90vw] max-w-xl bg-base-200 rounded-xl shadow-2xl border border-base-content/10 overflow-hidden flex flex-col cmdk-root">
+      <div className="w-[90vw] max-w-xl bg-base-200 rounded-xl shadow-level-1 border border-base-content/10 overflow-hidden flex flex-col cmdk-root">
         <Command.Input 
           className="w-full bg-transparent p-4 text-lg outline-none border-b border-base-content/5 focus:ring-0 placeholder-opacity-50" 
           placeholder="Type a command or search (e.g. Navigation)..." 

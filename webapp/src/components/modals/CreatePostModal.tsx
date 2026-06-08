@@ -112,7 +112,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
 
     return (
         <dialog id="create-post-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl rounded-2xl shadow-2xl p-6">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl rounded-2xl shadow-level-1 p-6">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-4 top-4 rounded-full">✕</button>
                 </form>
@@ -125,7 +125,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                       {isRestrictedArtist ? (
                         <div className="bg-base-200/50 p-4 rounded-xl border border-base-content/5 flex items-center justify-between">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-bold opacity-40 uppercase tracking-wide">Posting Identity</span>
+                                <span className="text-xs font-bold opacity-40 tracking-normal">Posting Identity</span>
                                 <span className="font-bold text-base-content mt-0.5">
                                     {isRootAdminNoArtist ? 'Site' : (selectedArtist?.name || 'Loading profile...')}
                                 </span>
@@ -236,7 +236,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                                 {visibility === 'private' && <Lock size={14} className="text-warning" />}
                                 <span className="capitalize font-bold">{visibility === 'private' ? 'Followers only' : visibility}</span>
                             </div>
-                            <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[10] w-48 p-1.5 shadow-xl mb-1">
+                            <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[10] w-48 p-1.5 shadow-level-1 mb-1">
                                 <li>
                                     <button 
                                         type="button" 

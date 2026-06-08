@@ -164,7 +164,7 @@ const Social = () => {
             </div>
 
             <div className="card card-m3 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-transparent p-6 border-b border-base-content/5">
+              <div className="bg-base-200/40 p-6 border-b border-base-content/5">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   Mastodon Cross-Posting
                 </h3>
@@ -176,7 +176,7 @@ const Social = () => {
               <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text text-xs uppercase font-bold opacity-40">
+                    <span className="label-text text-xs font-bold opacity-40">
                       Mastodon Instance
                     </span>
                   </label>
@@ -190,7 +190,7 @@ const Social = () => {
                 </div>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text text-xs uppercase font-bold opacity-40">
+                    <span className="label-text text-xs font-bold opacity-40">
                       Access Token
                     </span>
                   </label>
@@ -205,7 +205,7 @@ const Social = () => {
               </div>
               <div className="p-6 pt-0 flex items-center gap-4">
                 <button
-                  className="btn btn-primary gap-2 shadow-lg"
+                  className="btn btn-primary gap-2 shadow-level-1"
                   onClick={handleSaveAutomation}
                   disabled={isSaving}
                 >

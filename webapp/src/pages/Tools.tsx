@@ -69,7 +69,7 @@ const Tools = () => {
 
                 {/* FMHY */}
                 <section>
-                    <div className="card bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 mt-12">
+                    <div className="card bg-base-200/40 border border-primary/20 mt-12">
                         <div className="card-body flex-row items-center justify-between gap-6">
                             <div>
                                 <h3 className="card-title text-xl mb-2 flex items-center gap-2"><FileAudio /> Need more tools?</h3>

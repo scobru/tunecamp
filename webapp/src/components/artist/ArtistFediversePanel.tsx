@@ -457,7 +457,7 @@ export const ArtistFediversePanel = () => {
                 <div className="lg:col-span-4 space-y-6">
                     
                     {/* Mastodon-style Artist Profile Card */}
-                    <div className="card-m3 overflow-hidden border border-base-content/5 bg-base-200/40 backdrop-blur-md rounded-2xl shadow-lg relative group">
+                    <div className="card-m3 overflow-hidden border border-base-content/5 bg-base-200/40 backdrop-blur-md rounded-2xl shadow-level-1 relative group">
                         
                         {/* Custom visual cover banner */}
                         <div className="h-32 w-full relative overflow-hidden bg-gradient-to-r from-primary/30 via-accent/20 to-neutral bg-cover bg-center">
@@ -473,7 +473,7 @@ export const ArtistFediversePanel = () => {
                         {/* Overlapping Avatar */}
                         <div className="absolute top-20 left-6">
                             <div className="avatar">
-                                <div className="w-20 h-20 rounded-full border-4 border-base-100 shadow-xl overflow-hidden bg-base-300 relative group/avatar">
+                                <div className="w-20 h-20 rounded-full border-4 border-base-100 shadow-level-1 overflow-hidden bg-base-300 relative group/avatar">
                                     {artist ? (
                                         <img
                                             src={(artist as any).photo_path
@@ -566,20 +566,20 @@ export const ArtistFediversePanel = () => {
                                             </div>
                                             <div className="overflow-hidden">
                                                 <div className="font-bold text-xs truncate text-base-content">{req.actor?.name || 'Anonymous listener'}</div>
-                                                <div className="text-[10px] opacity-50 truncate font-mono" title={req.uri}>
+                                                <div className="text-xs opacity-50 truncate font-mono" title={req.uri}>
                                                     @{req.actor?.username || 'unknown'}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex gap-1.5 flex-shrink-0">
                                             <button 
-                                                className="btn btn-xs btn-success rounded-full text-[10px] font-bold px-3 border-none hover:opacity-90"
+                                                className="btn btn-xs btn-success rounded-full text-xs font-bold px-3 border-none hover:opacity-90"
                                                 onClick={() => handleAcceptRequest(req.uri)}
                                             >
                                                 Accept
                                             </button>
                                             <button 
-                                                className="btn btn-xs btn-error btn-outline rounded-full text-[10px] font-bold px-3 hover:bg-error hover:text-error-content"
+                                                className="btn btn-xs btn-error btn-outline rounded-full text-xs font-bold px-3 hover:bg-error hover:text-error-content"
                                                 onClick={() => handleRejectRequest(req.uri)}
                                             >
                                                 Reject
@@ -627,14 +627,14 @@ export const ArtistFediversePanel = () => {
                                                 </div>
                                                 <div className="overflow-hidden">
                                                     <div className="font-bold text-xs truncate text-base-content">{follower.actor?.name || 'Anonymous listener'}</div>
-                                                    <div className="text-[10px] opacity-50 truncate font-mono" title={follower.uri}>
+                                                    <div className="text-xs opacity-50 truncate font-mono" title={follower.uri}>
                                                         @{follower.actor?.username || 'unknown'}
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <button
-                                                className={`btn btn-xs rounded-full border-none text-[10px] font-bold ${isFollowingBack ? 'bg-primary/20 text-primary' : 'bg-neutral hover:bg-neutral-focus text-neutral-content'}`}
+                                                className={`btn btn-xs rounded-full border-none text-xs font-bold ${isFollowingBack ? 'bg-primary/20 text-primary' : 'bg-neutral hover:bg-neutral-focus text-neutral-content'}`}
                                                 onClick={() => handleToggleFollowBack(key)}
                                                 disabled={isFbLoading}
                                                 title={isFollowingBack ? 'Click to unfollow' : 'Send a Follow to this actor'}
@@ -655,7 +655,7 @@ export const ArtistFediversePanel = () => {
                 <div className="lg:col-span-8 space-y-6">
 
                     {/* Integrated Premium Inline Composer */}
-                    <div className={`card-m3 border rounded-2xl p-4 bg-base-200/40 backdrop-blur-md transition-all duration-medium-2 ${isComposerFocused ? 'border-primary/50 shadow-lg ring-1 ring-primary/10' : 'border-base-content/5'}`}>
+                    <div className={`card-m3 border rounded-2xl p-4 bg-base-200/40 backdrop-blur-md transition-all duration-medium-2 ${isComposerFocused ? 'border-primary/50 shadow-level-1 ring-1 ring-primary/10' : 'border-base-content/5'}`}>
                         <form onSubmit={handleCreatePost} className="space-y-3">
                             <div className="flex gap-4 items-start">
                                 {/* Small Avatar */}
@@ -748,7 +748,7 @@ export const ArtistFediversePanel = () => {
                                             {composerVisibility === 'private' && <Lock size={14} className="text-warning" />}
                                             <span className="capitalize">{composerVisibility === 'private' ? 'Followers' : composerVisibility}</span>
                                         </div>
-                                        <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[1] w-48 p-1.5 shadow-xl mb-1">
+                                        <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[1] w-48 p-1.5 shadow-level-1 mb-1">
                                             <li>
                                                 <button 
                                                     type="button" 
@@ -906,7 +906,7 @@ export const ArtistFediversePanel = () => {
                                                         <div>
                                                             <div className="flex items-center gap-1.5 flex-wrap">
                                                                 <span className="font-bold text-sm text-base-content hover:underline cursor-pointer">{artist?.name}</span>
-                                                                <span className="text-[10px] opacity-40 font-mono">
+                                                                <span className="text-xs opacity-40 font-mono">
                                                                     @{artist?.slug || 'artist'}@{window.location.hostname}
                                                                 </span>
                                                             </div>
@@ -964,7 +964,7 @@ export const ArtistFediversePanel = () => {
                                                         note.postTitle ? (
                                                             <div className="p-5 rounded-2xl bg-gradient-to-br from-base-300/40 to-base-200/10 border border-primary/10 space-y-3 shadow-inner hover:border-primary/20 transition-all duration-300">
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold uppercase tracking-wider text-[9px] rounded-full">
+                                                                    <span className="badge badge-primary badge-xs py-1.5 px-2.5 font-bold tracking-normal text-[11px] rounded-full">
                                                                         Article
                                                                     </span>
                                                                 </div>
@@ -1028,7 +1028,7 @@ export const ArtistFediversePanel = () => {
                                                                             </h4>
                                                                             
                                                                             <div className="flex items-center gap-1.5 justify-center sm:justify-start flex-wrap">
-                                                                                <span className="badge badge-primary badge-outline badge-xs py-1.5 font-bold uppercase tracking-wider">
+                                                                                <span className="badge badge-primary badge-outline badge-xs py-1.5 font-bold tracking-normal">
                                                                                     {note.releaseData.type || 'Release'}
                                                                                 </span>
                                                                                 {note.releaseData.genre && (
@@ -1108,7 +1108,7 @@ export const ArtistFediversePanel = () => {
                                                         </button>
 
                                                         {/* Broadcast indicator */}
-                                                        <div className="text-[10px] font-semibold opacity-40 px-2 py-0.5 rounded-full bg-base-300">
+                                                        <div className="text-xs font-semibold opacity-40 px-2 py-0.5 rounded-full bg-base-300">
                                                             ActivityPub Note
                                                         </div>
                                                     </div>
@@ -1237,7 +1237,7 @@ export const ArtistFediversePanel = () => {
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="font-bold text-sm truncate">{name}</div>
-                                                <div className="text-[10px] opacity-50 font-mono truncate" title={i.actor_uri}>{handle}</div>
+                                                <div className="text-xs opacity-50 font-mono truncate" title={i.actor_uri}>{handle}</div>
                                             </div>
                                             <ExternalLink size={12} className="ml-auto opacity-40 flex-shrink-0" />
                                         </a>

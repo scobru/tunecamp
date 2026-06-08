@@ -69,7 +69,7 @@ export const SetupWizardModal = () => {
 
     return (
         <div className="modal modal-open bg-black/90 backdrop-blur-md z-[100]">
-            <div className="modal-box border border-primary/20 shadow-2xl max-w-md">
+            <div className="modal-box border border-primary/20 shadow-level-1 max-w-md">
                 
                 {/* Steps Indicator */}
                 <ul className="steps w-full mb-8">

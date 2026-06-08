@@ -63,7 +63,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Generator Side */}
                     <div className="md:col-span-1 border-r border-base-content/5 pr-6 space-y-4">
-                        <h4 className="text-sm font-bold opacity-70 uppercase tracking-wider">Generate Codes</h4>
+                        <h4 className="text-sm font-bold opacity-70 tracking-normal">Generate Codes</h4>
                         <form onSubmit={handleGenerate} className="space-y-4">
                             <div className="form-control">
                                 <label className="label text-xs">Number of codes</label>
@@ -85,7 +85,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
                     {/* List Side */}
                     <div className="md:col-span-2 space-y-4">
                         <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-bold opacity-70 uppercase tracking-wider">Active Codes</h4>
+                            <h4 className="text-sm font-bold opacity-70 tracking-normal">Active Codes</h4>
                             <button className="btn btn-ghost btn-xs gap-1" onClick={loadCodes} disabled={loading}>
                                 <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
                             </button>
@@ -111,16 +111,16 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
                                                 <td className="font-mono">{code.code || 'N/A'}</td>
                                                 <td>
                                                     {(code.isRedeemed || code.isUsed || code.is_used === 1) ? (
-                                                        <span className="flex items-center gap-1 text-success text-[10px] font-bold">
+                                                        <span className="flex items-center gap-1 text-success text-xs font-bold">
                                                             <CheckCircle size={10}/> USED
                                                         </span>
                                                     ) : (
-                                                        <span className="flex items-center gap-1 opacity-50 text-[10px] font-bold">
+                                                        <span className="flex items-center gap-1 opacity-50 text-xs font-bold">
                                                             <XCircle size={10}/> UNUSED
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="opacity-50 text-[10px]">
+                                                <td className="opacity-50 text-xs">
                                                     {code.createdAt ? new Date(code.createdAt).toLocaleDateString() : '-'}
                                                 </td>
                                             </tr>
