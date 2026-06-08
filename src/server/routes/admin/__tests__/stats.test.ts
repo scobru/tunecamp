@@ -39,6 +39,7 @@ describe('Stats Routes', () => {
                 return null;
             }),
             getFollowedActors: jest.fn().mockReturnValue([]),
+            getRemoteActors: jest.fn().mockReturnValue([]),
             getRemoteTracks: jest.fn().mockReturnValue([]),
             getRemotePosts: jest.fn().mockReturnValue([]),
             getReleases: jest.fn().mockReturnValue([]),
@@ -156,7 +157,7 @@ describe('Stats Routes', () => {
                 { url: 'https://sitea.com', name: 'Site A', description: 'Desc A', version: '2.0', lastSeen: 'today' }
             ]);
             mockDbService.getFollowedActors.mockReturnValue([
-                { uri: 'https://siteb.com/actor', name: 'Actor B', summary: 'Summary B', last_seen: 'yesterday' }
+                { uri: 'https://siteb.com/actor', name: 'Actor B', username: 'site', summary: 'Summary B', last_seen: 'yesterday' }
             ]);
 
             const res = await request(app).get('/api/stats/network/sites');
@@ -217,7 +218,7 @@ describe('Stats Routes', () => {
     describe('GET /api/stats/network/status', () => {
         test('returns network status counts', async () => {
             mockZenDBService.getCommunitySites.mockResolvedValue([{}, {}]);
-            mockDbService.getFollowedActors.mockReturnValue([{}]);
+            mockDbService.getFollowedActors.mockReturnValue([{ username: 'site' }]);
             mockDbService.getRemoteTracks.mockReturnValue([{}, {}]);
             mockDbService.getReleases.mockReturnValue([{}]);
             mockZenDBService.getPeerCount.mockReturnValue(5);

@@ -125,7 +125,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             }));
 
             // 2. Get actors from ActivityPub (Local DB of remote actors)
-            const apActors = dbService.getFollowedActors();
+            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site');
             const formattedApSites = apActors.map(a => ({
                 url: a.uri,
                 name: a.name || a.username || "AP Actor",
@@ -188,8 +188,41 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             }));
 
             // 3. Get posts from ActivityPub (Standard Federation - Remote)
+            const communityDomains = new Set<string>();
+            for (const s of gunSites) {
+                if (s.url) {
+                    try {
+                        const hostname = new URL(s.url).hostname;
+                        if (hostname) communityDomains.add(hostname);
+                    } catch {}
+                }
+            }
+
+            const actorsWithReleases = new Set(remoteApTracks.map(t => t.actor_uri));
+            const remoteActors = dbService.getRemoteActors?.() || [];
+            const actorsMap = new Map(remoteActors.map(a => [a.uri, a]));
+
             const remoteApPosts = dbService.getRemotePosts();
-            const apPosts = remoteApPosts.map(content => ({
+            const filteredApPosts = remoteApPosts.filter(content => {
+                const actor = actorsMap.get(content.actor_uri);
+                if (!actor) return false;
+                
+                // 1. Site actors are allowed
+                if (actor.username === 'site') return true;
+                
+                // 2. Music artists (with releases) are allowed
+                if (actorsWithReleases.has(content.actor_uri)) return true;
+                
+                // 3. Actors belonging to community instance domains are allowed
+                try {
+                    const hostname = new URL(content.actor_uri).hostname;
+                    if (communityDomains.has(hostname)) return true;
+                } catch {}
+                
+                return false;
+            });
+
+            const apPosts = filteredApPosts.map(content => ({
                 slug: content.ap_id,
                 title: content.title || "Untitled Post",
                 artistName: content.artist_name || "Unknown Artist",
@@ -258,7 +291,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
     router.get("/network/status", async (req, res) => {
         try {
             const gunSites = await zendbService.getCommunitySites();
-            const apActors = dbService.getFollowedActors();
+            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site');
             const apTracks = dbService.getRemoteTracks();
             const localReleases = dbService.getReleases(VisibilityProfile.PUBLIC_STAGE);
 
