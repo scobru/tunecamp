@@ -1,181 +1,62 @@
-# Architectural Roadmap: TuneCamp Multi-Asset & Streaming Evolution
+Sì, ha assolutamente senso implementare queste funzionalità in TuneCamp. Alcune di queste (come i Podcast e le Live) sono già tracciate o accennate nel codice e nella roadmap del progetto, mentre un feed RSS è il tassello fondamentale per far funzionare i podcast e aprirsi all'open web.
 
-This document outlines the high-level technical strategy, architectural modifications, and database designs required to expand `tunecamp` from a decentralized music platform into a multi-asset creator marketplace (Gumroad + Twitch + WriteFreely) with ActivityPub federation.
+Di seguito trovi una valutazione dettagliata dei Pro e Contro e della fattibilità tecnica per ciascuna funzionalità all'interno dell'architettura attuale di TuneCamp.
 
----
+1. Feed RSS (Podcast e Aggiornamenti)
+Attualmente TuneCamp implementa feed federati in formato JSON-LD/ActivityStreams per il Fediverso (in /users/:slug/outbox), ma non ha un feed XML classico (RSS 2.0 / Atom).
 
-## 1. Feature Phase 1: Multi-Asset Sales (Gumroad Style)
+PRO
+Distribuzione standard (Universale): L'RSS è la lingua franca del podcasting. Qualsiasi lettore di podcast (Apple Podcasts, Spotify, AntennaPod) e aggregatore di news richiede un feed RSS XML. Senza di esso, una funzione Podcast rimarrebbe isolata all'interno dell'istanza.
+Semplicità di implementazione estrema: TuneCamp ha già la libreria xmlbuilder2 installata (utilizzata per la compatibilità con le risposte XML di Subsonic in subsonic.ts). Generare un feed RSS per artista o per podcast richiederebbe pochissime righe di codice.
+Filosofia Decentralizzata: Si allinea perfettamente con lo spirito open e self-hosted della piattaforma, consentendo agli utenti di seguire i rilasci musicali o i post senza dover creare account o far parte del Fediverse.
+CONTRO
+Nessuno significativo: È una feature estremamente leggera, statica e priva di overhead prestazionale o rischi di sicurezza importanti.
+Fattibilità Tecnica in TuneCamp
+Stato attuale: Inesistente, ma supportato dalle dipendenze.
+Come implementarlo: Creando una nuova rotta in src/server/routes/api/misc.ts o in un modulo dedicato, per esempio /artists/:slug/feed.xml, che legga le tracce e gli album dell'artista dal database SQLite e generi il file XML usando xmlbuilder2.
+2. Funzionalità Podcast
+In src/types/index.ts troviamo già una definizione preliminare per PodcastConfig e la proprietà podcast all'interno della configurazione del catalogo:
 
-To support selling ebooks, digital graphics, software packages, and generic archives, we must abstract the current music-specific database models and processing engines.
-
-### A. Database Refactoring & Abstraction
-
-We will transition the codebase from audio-only models (`albums` and `tracks`) to generic product and asset entities.
-
-```mermaid
-classDiagram
-    direction TB
-    class Product {
-        +int id
-        +int artist_id
-        +string title
-        +string description
-        +string product_type
-        +string visibility
-        +boolean is_public
-        +float price
-        +string cover_url
-    }
-    class Asset {
-        +int id
-        +int product_id
-        +string file_path
-        +string file_name
-        +string mime_type
-        +int file_size
-        +string hash
-        +int duration
-    }
-    Product "1" *-- "many" Asset : contains
-```
-
-#### SQL Migration Strategy
-We will add `product_type` to `albums` and adapt `tracks` to handle arbitrary file attributes:
-```sql
--- Alter albums to support product classification
-ALTER TABLE albums ADD COLUMN product_type TEXT DEFAULT 'music'; -- 'music', 'software', 'ebook', 'graphics', 'generic'
-ALTER TABLE albums ADD COLUMN price REAL DEFAULT 0.0;
-
--- Alter tracks to act as generic assets
-ALTER TABLE tracks ADD COLUMN mime_type TEXT DEFAULT 'audio/mpeg';
-ALTER TABLE tracks ADD COLUMN file_size INTEGER DEFAULT 0;
-ALTER TABLE tracks ADD COLUMN file_hash TEXT;
-ALTER TABLE tracks ADD COLUMN version TEXT;
-```
-
-### B. Upload & Asset Processing Pipeline
-
-Currently, all file uploads pass through an audio-specific parser (`music-metadata` and `fluent-ffmpeg`). We must implement a format-agnostic router.
-
-```mermaid
-graph TD
-    A[Upload Handler] --> B{Determine Product Type}
-    B -->|music| C[Audio Processing Pipeline]
-    B -->|software / ebook / zip| D[Generic Asset Pipeline]
-    
-    C --> C1[Read ID3 Tags]
-    C --> C2[Extract Waveform SVG]
-    C --> C3[Transcode/Stream Ready]
-    
-    D --> D1[Verify MIME Type]
-    D --> D2[Generate MD5 Checksum]
-    D --> D3[Create Secure ZIP/PDF Preview]
-```
-
-- **Generic Asset Pipeline**: Bypasses FFmpeg. Generates file previews based on format (e.g., first 3 pages for a PDF, image resizing/watermarking for graphics, simple metadata file extraction for software packages).
-- **Integrated Payment & Access Control Flow**:
-  We will fully preserve and generalize the existing dual payment pathways for all new asset types:
-  
-  1. **Stripe Credit Card Payments**:
-     - Retains `/stripe/create-session` but abstracts `type` metadata to support generic values (e.g. `'ebook'`, `'software'`, `'graphics'`).
-     - Webhook (`/stripe/webhook`) will capture `itemId` (acting as generic `productId`) and register the generated secure `unlock_code` in the database.
-  
-  2. **Base L2 Web3 Crypto Payments (ETH & USDC)**:
-     - Leverages the existing Base RPC integration.
-     - Supports **Direct ETH/USDC Transfers** to the artist's configured wallet, automatically checking split fees (sending `adminFeePercentage` to the `adminTreasuryAddress`).
-     - Supports **Checkout Smart Contracts** (`purchaseWithETH` / `purchaseWithUSDC`). We will adapt the front-end to pass generic `productId`s to the smart contract checkout.
-     - **Replay Protection**: The transaction verification system (`/api/payments/verify`) validates the on-chain tx receipt on Base and ensures a transaction hash cannot be reused to unlock multiple items.
-  
-  3. **Universal Asset Unlock & Secure Download**:
-     - The general download controller `/api/payments/download/:productId` (adapted from `:trackId`) validates the purchased `unlock_code` or verified `txHash`.
-     - Once validated, it streams the asset binary (e.g. ZIP, PDF) from its secure storage location directly to the client with `application/octet-stream` headers, keeping raw file paths completely hidden.
-
-### C. ActivityPub Generalization
-
-Instead of emitting strictly `Audio` or `MusicAlbum` objects, the Fedify outbox dispatcher will generate standard ActivityStreams objects:
-- **Ebooks / Documents**: Fedify `Document` or `Article` objects with attachments.
-- **Software / Archives**: Fedify `Object` containing download links and secure cryptographically signed hashes (`sha256`).
-
----
-
-## 2. Feature Phase 2: Live Streaming & VOD Capture (Twitch Style)
-
-Adding live broadcasting requires incorporating a streaming ingestion protocol (RTMP/WHIP), package segmenting (HLS), and automatic recording.
-
-### A. Video Ingest & Transcoding Architecture
-
-We will integrate a lightweight, high-performance streaming server like **MediaMTX** or **Node-Media-Server** beside the Express daemon.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Creator as Broadcaster (OBS)
-    participant Ingest as RTMP Ingest (MediaMTX)
-    participant FFmpeg as FFmpeg Segmenter
-    participant Storage as VOD Storage
-    actor Viewer as Fan Player (WebHLS)
-
-    Creator->>Ingest: Push RTMP stream (Stream Key)
-    Note over Ingest: Stream Authenticated via Webhook to Tunecamp auth
-    Ingest->>FFmpeg: Spawn segmenting process
-    FFmpeg-->>Ingest: Output HLS playlist (.m3u8) & chunks (.ts)
-    Viewer->>Ingest: Stream HLS feed (low-latency)
-    
-    Note over FFmpeg: Simultaneously write feed to raw MP4
-    Creator->>Ingest: Stop Broadcast
-    FFmpeg->>Storage: Save consolidated VOD (MP4) to /data or Google Drive
-    FFmpeg-->>Storage: Auto-register VOD as a 'video' Product in DB
-```
-
-### B. Core Technical Components
-1. **Authentication Webhook**: When a creator streams to `rtmp://sudorecords.scobrudot.dev/live/{stream_key}`, the RTMP server hits a local Express endpoint `/api/live/auth` to validate the `stream_key` against the `artists` table.
-2. **Auto-HLS Segmenter**: The server segments the stream into HLS files. The web interface utilizes `hls.js` or `Video.js` to render the player on the artist's `/live` profile tab.
-3. **VOD Recording Engine**:
-   - The segmenter writes the incoming stream directly into an archival folder:
-     `ffmpeg -i rtmp://localhost/live/stream -c copy -f mp4 /data/vods/{stream_id}.mp4`
-   - When the stream ends, the local server captures the `.mp4`, registers it as a new product in the database under `product_type = 'video'`, and makes it available for on-demand playback, rental, or purchase.
-
----
-
-## 3. Feature Phase 3: Federated Blog/Article Engine (WriteFreely Style)
-
-To allow creators to publish newsletters, update logs, or newsletters, we will construct an article publishing engine that federates seamlessly to Mastodon and WriteFreely.
-
-### A. Schema Definition
-We will expand the existing `posts` schema to support long-form articles:
-```sql
-CREATE TABLE articles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    artist_id INTEGER NOT NULL,
-    slug TEXT NOT NULL UNIQUE,
-    title TEXT NOT NULL,
-    summary TEXT,
-    content TEXT NOT NULL, -- Markdown format
-    visibility TEXT DEFAULT 'public',
-    is_subscriber_only BOOLEAN DEFAULT 0, -- Gumroad premium subscription feature
-    published_at TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(artist_id) REFERENCES artists(id)
-);
-```
-
-### B. ActivityPub Article Federation
-
-Articles are highly compatible with ActivityPub and federate much more cleanly than audio streams. We will map articles directly to standard ActivityStreams `Article` and `Page` objects.
-
-```json
-{
-  "@context": "https://www.w3.org/ns/activitystreams",
-  "id": "https://sudorecords.scobrudot.dev/users/site/articles/first-update",
-  "type": "Article",
-  "attributedTo": "https://sudorecords.scobrudot.dev/users/site",
-  "title": "TuneCamp Platform Evolution Update",
-  "summary": "An introduction to the new multi-asset features.",
-  "content": "<p>We are expanding the platform to support PDF and Software distributions...</p>",
-  "published": "2026-06-01T20:00:00Z",
-  "to": ["https://www.w3.org/ns/activitystreams#Public"]
+typescript
+interface PodcastConfig {
+  enabled?: boolean;
+  title?: string;
+  description?: string;
+  author?: string;
+  email?: string;
+  category?: string;
+  image?: string;
+  explicit?: boolean;
 }
-```
+Inoltre, il client Subsonic ha l'endpoint stub per getPodcasts.view (in docs/SUBSONIC.md).
 
-- **Inbox Interaction**: When a remote user (e.g. from Mastodon) replies to an article, the incoming `Create Note` activity containing the `inReplyTo` field matching the Article ID is saved in our comments database.
-- **Subscriber Unlocks**: Premium posts can be restricted. Mastodon followers will receive only the summary, while users logged in on TuneCamp who have unlocked the product can read the full Markdown content.
+PRO
+Sinergia Audio-First: TuneCamp ha già tutta l'infrastruttura per la scansione dei file audio, l'estrazione dei metadati, la generazione dei waveform e lo streaming. Gestire podcast è un'estensione naturale del player e del backend.
+Subsonic Out-of-the-box: Le app mobili compatibili con Subsonic (come Symfonium, DSub, Tempo) supportano nativamente i podcast. Completare gli endpoint Subsonic legati ai podcast (getPodcasts) renderebbe TuneCamp un server podcast completo sul telefono dell'utente.
+Federazione Funkwhale/Castopod: Tramite ActivityPub (già integrato in activitypub.ts), TuneCamp potrebbe federare gli episodi dei podcast verso piattaforme specializzate del Fediverso.
+CONTRO
+Differenze nei Metadati: I podcast richiedono metadati specifici (numeri di episodio, stagioni, classificazione esplicita, tag iTunes) che richiederebbero estensioni alle tabelle SQLite attuali (es. tracks e albums).
+Storage e Banda: Gli episodi dei podcast sono generalmente file molto grandi (spesso oltre i 50-100MB per episodio). Per gli utenti che fanno self-hosting su piccoli VPS, questo potrebbe aumentare sensibilmente i costi di storage e consumo di banda.
+Fattibilità Tecnica in TuneCamp
+Stato attuale: Strutture dati parzialmente pronte e stub Subsonic indicati, ma manca la logica di business e la UI nel frontend React (webapp).
+Come implementarlo: Estendere lo schema database SQLite per supportare i dettagli del podcast, abilitare il caricamento di episodi tramite il Bulk Upload esistente (categorizzando il caricamento come "Episodio" invece che "Traccia") e completare gli endpoint in subsonic.ts.
+3. Live Streaming
+La funzionalità Live è attualmente pianificata nella Fase 2 della ROADMAP.md di TuneCamp ("Feature Phase 2: Live Streaming & VOD Capture").
+
+PRO
+Opportunità di Monetizzazione: Per i musicisti indipendenti, le live (concerti, sessioni di studio, Q&A) accoppiate con donazioni crypto/Stripe (già presenti nel codice) rappresentano una fonte di guadagno diretta e immediata.
+Conversione in VOD (Video on Demand): La roadmap prevede la possibilità di salvare la registrazione della live direttamente come file MP4 nel database e venderla come prodotto digitale (fiat/crypto/NFT) in modo automatico.
+Unicità sul mercato: Pochissime piattaforme musicali self-hosted offrono live streaming integrato, dando a TuneCamp un enorme vantaggio competitivo rispetto a Navidrome o Funkwhale.
+CONTRO
+Consumo di Risorse Elevatissimo: La transcodifica video in tempo reale (da RTMP/WHIP a HLS tramite FFmpeg) richiede CPU/GPU notevoli. Molti server self-hosted (es. Raspberry Pi o VPS da 5$) andrebbero in crash o rallenterebbero l'intera istanza.
+Complessità Infrastrutturale: Richiede di affiancare un server RTMP (come MediaMTX o Node-Media-Server), gestire porte di rete aggiuntive e integrare librerie HLS pesanti nel frontend.
+Fattibilità Tecnica in TuneCamp
+Stato attuale: Solo pianificato teoricamente in ROADMAP.md.
+Come implementarlo: Integrare un container MediaMTX nel file docker-compose.yml, creare endpoint di autenticazione per le chiavi di trasmissione (Stream Keys) e un player HLS con hls.js o video.js nella webapp.
+Raccomandazione Finale (Sì / No)
+Feed RSS & Podcast: ASSOLUTAMENTE SÌ. Dovrebbero essere le prime a essere implementate. Richiedono poco sforzo, sfruttano al 90% il codice già scritto e rendono TuneCamp molto più versatile e aperto verso l'esterno.
+
+Live Streaming: SÌ, MA COME MODULO OPZIONALE. È un'ottima feature per la roadmap futura, ma a causa dell'alto consumo di risorse deve essere disattivabile tramite configurazione (.env) per evitare di compromettere le performance dell'istanza principale su server economici.
+
+Se vuoi procedere con l'implementazione o lo studio dettagliato del Feed RSS o della compatibilità Podcast in Subsonic, fammi sapere così possiamo iniziare a delineare un piano d'azione!
+
