@@ -110,6 +110,7 @@ RUN apk add --no-cache \
 COPY package*.json ./
 COPY deps ./deps
 COPY scripts ./scripts
+COPY patches ./patches/
 COPY webapp/package.json ./webapp/
 
 # Install build tools, run npm ci, and cleanup in one layer
