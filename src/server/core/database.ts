@@ -694,6 +694,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             )
         `);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_replies_note ON ap_replies(note_id)`);
+
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS ap_following (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                artist_id INTEGER NOT NULL,
+                actor_uri TEXT NOT NULL,
+                inbox_uri TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(artist_id, actor_uri)
+            )
+        `);
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_following_artist ON ap_following(artist_id)`);
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic

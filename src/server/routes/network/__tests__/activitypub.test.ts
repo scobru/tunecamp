@@ -13,6 +13,7 @@ const mockDb = {
     removeFollower: jest.fn(),
     getSetting: jest.fn(),
     getFollowers: jest.fn(),
+    getApReply: jest.fn(),
 } as unknown as DatabaseService;
 
 const mockApService = {
@@ -118,6 +119,46 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         expect(response.body).toHaveProperty("type", "Article");
         expect(response.body).toHaveProperty("name", "Backward-Compatible Legacy Post");
         expect(response.body).toHaveProperty("summary", "Checking if legacy URLs still resolve correctly.");
+    });
+
+    // Outbound Reply Note Dereferencing Tests
+    test('GET /ap/note/reply/:id should resolve a stored reply as an AS2 Note', async () => {
+        const replyUri = "https://sudorecords.scobrudot.dev/api/ap/note/reply/abc-123";
+        const mockReply = {
+            id: 7,
+            note_id: "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post/1700000000000",
+            reply_uri: replyUri,
+            actor_uri: "https://sudorecords.scobrudot.dev/users/homologo",
+            content: "<p>Thanks for listening!</p>",
+            published_at: "2026-06-02T08:00:00.000Z",
+            created_at: "2026-06-02T08:00:01.000Z"
+        };
+        (mockDb.getApReply as jest.Mock).mockReturnValue(mockReply);
+
+        const response = await request(app)
+            .get('/ap/note/reply/abc-123');
+
+        expect(mockDb.getApReply).toHaveBeenCalledWith(replyUri);
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toContain("application/activity+json");
+        expect(response.body).toHaveProperty("@context", "https://www.w3.org/ns/activitystreams");
+        expect(response.body).toHaveProperty("type", "Note");
+        expect(response.body).toHaveProperty("id", replyUri);
+        expect(response.body).toHaveProperty("attributedTo", mockReply.actor_uri);
+        expect(response.body).toHaveProperty("inReplyTo", mockReply.note_id);
+        expect(response.body).toHaveProperty("content", "<p>Thanks for listening!</p>");
+        expect(response.body).toHaveProperty("published", "2026-06-02T08:00:00.000Z");
+        expect(response.body.to).toEqual(["https://www.w3.org/ns/activitystreams#Public"]);
+        expect(response.body.cc).toEqual([`${mockReply.actor_uri}/followers`]);
+    });
+
+    test('GET /ap/note/reply/:id should return 404 for an unknown reply', async () => {
+        (mockDb.getApReply as jest.Mock).mockReturnValue(undefined);
+
+        const response = await request(app)
+            .get('/ap/note/reply/does-not-exist');
+
+        expect(response.status).toBe(404);
     });
 
     // Actor Profile Endpoint Tests

@@ -31,6 +31,11 @@ export interface FederationProvider {
   upsertRemoteContent(content: any): void;
   unfollowActor(uri: string): void;
 
+  // Following (per-artist follow-back of remote actors)
+  addFollowing(artistId: number, actorUri: string, inboxUri?: string): void;
+  removeFollowing(artistId: number, actorUri: string): void;
+  isFollowing(artistId: number, actorUri: string): boolean;
+
   // Social
   getFollowers(artistId: number): Follower[];
   getPendingFollowers(artistId: number): Follower[];

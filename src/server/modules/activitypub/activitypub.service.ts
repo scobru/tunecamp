@@ -211,6 +211,12 @@ export class ActivityPubService {
                 console.warn(`⚠️ Could not update following status in DB for ${finalActorUri}`, dbErr);
             }
 
+            // Record per-artist following (artist_id, actor_uri) so follow-back state is tracked independently per local artist
+            const followerArtistId = followerHandle === "site" ? -1 : this.db.getArtistBySlug(followerHandle)?.id;
+            if (followerArtistId !== undefined && followerArtistId !== null) {
+                this.db.addFollowing(followerArtistId, finalActorUri, inboxUri);
+            }
+
         } catch (e) {
             console.error(`❌ Failed to follow actor ${actorUri}:`, e);
             throw e;
@@ -226,11 +232,20 @@ export class ActivityPubService {
             const baseUrl = this.getBaseUrl();
             const followerId = new URL(`/users/${followerHandle}`, baseUrl);
 
-            // Resolve inbox 
+            // Resolve which local artist is unfollowing so we can clear the per-artist following record
+            const followerArtistId = followerHandle === "site" ? -1 : this.db.getArtistBySlug(followerHandle)?.id;
+            const clearFollowing = () => {
+                if (followerArtistId !== undefined && followerArtistId !== null) {
+                    this.db.removeFollowing(followerArtistId, actorUri);
+                }
+            };
+
+            // Resolve inbox
             const inboxUri = await this.getInboxFromActor(actorUri);
             if (!inboxUri) {
                 console.warn(`⚠️ Could not resolve inbox for actor: ${actorUri}, updating local DB only`);
                 this.db.unfollowActor(actorUri);
+                clearFollowing();
                 return;
             }
 
@@ -256,6 +271,7 @@ export class ActivityPubService {
             }
 
             this.db.unfollowActor(actorUri);
+            clearFollowing();
             console.log(`📤 Sent Unfollow request to: ${inboxUri}`);
         } catch (e) {
             console.error(`❌ Failed to unfollow actor ${actorUri}:`, e);
