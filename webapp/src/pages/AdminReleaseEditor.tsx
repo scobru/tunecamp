@@ -103,6 +103,8 @@ export default function AdminReleaseEditor() {
   const isReady = isConnected;
   const [isSyncingPrices, setIsSyncingPrices] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
+  // Global payments mode: when Web3 is disabled, releases are direct/Stripe only (no NFT mode).
+  const [web3Enabled, setWeb3Enabled] = useState(false);
 
   // Metadata State
   const [metadata, setMetadata] = useState<Partial<LocalRelease>>({
@@ -118,7 +120,7 @@ export default function AdminReleaseEditor() {
     currency: "ETH",
     download: "none",
     license: "copyright",
-    use_nft: true,
+    use_nft: false,
     album_artist: "",
     product_type: "music",
     podcast_author: "",
@@ -162,6 +164,20 @@ export default function AdminReleaseEditor() {
       checkAllRegistrations();
     }
   }, [metadata.use_nft, isReady, tracks.length]);
+
+  // Read the global payments mode; if Web3 is off, NFT mode is unavailable.
+  useEffect(() => {
+    fetch("/api/payments/onramp-config")
+      .then((res) => res.json())
+      .then((data) => setWeb3Enabled(!!data.web3Enabled))
+      .catch((err) => console.error("Failed to fetch payment config", err));
+  }, []);
+
+  useEffect(() => {
+    if (!web3Enabled) {
+      setMetadata((prev) => (prev.use_nft === false ? prev : { ...prev, use_nft: false }));
+    }
+  }, [web3Enabled]);
 
   const loadArtists = async () => {
     try {
@@ -1301,16 +1317,23 @@ export default function AdminReleaseEditor() {
                        <Download className="w-3 h-3" /> Payment & Web3 Settings
                     </h3>
                     <div className="form-control">
-                      <label className="label-text-alt font-black uppercase tracking-widest opacity-40 mb-2">Smart Contract Mode</label>
-                      <div className="flex items-center justify-between bg-base-200 p-3 rounded-xl border border-base-content/5">
-                        <span className={`text-[10px] font-bold ${metadata.use_nft === false ? 'text-primary' : 'opacity-40'}`}>Direct Payment</span>
-                        <input 
-                          type="checkbox" className="toggle toggle-primary toggle-sm mx-2" 
-                          checked={metadata.use_nft !== false} 
-                          onChange={(e) => setMetadata(prev => ({ ...prev, use_nft: e.target.checked }))} 
-                        />
-                        <span className={`text-[10px] font-bold ${metadata.use_nft !== false ? 'text-primary' : 'opacity-40'}`}>Smart Contract (NFT)</span>
-                      </div>
+                      <label className="label-text-alt font-black uppercase tracking-widest opacity-40 mb-2">Payment Mode</label>
+                      {web3Enabled ? (
+                        <div className="flex items-center justify-between bg-base-200 p-3 rounded-xl border border-base-content/5">
+                          <span className={`text-[10px] font-bold ${metadata.use_nft === false ? 'text-primary' : 'opacity-40'}`}>Direct Payment</span>
+                          <input
+                            type="checkbox" className="toggle toggle-primary toggle-sm mx-2"
+                            checked={metadata.use_nft !== false}
+                            onChange={(e) => setMetadata(prev => ({ ...prev, use_nft: e.target.checked }))}
+                          />
+                          <span className={`text-[10px] font-bold ${metadata.use_nft !== false ? 'text-primary' : 'opacity-40'}`}>Smart Contract (NFT)</span>
+                        </div>
+                      ) : (
+                        <div className="bg-base-200 p-3 rounded-xl border border-base-content/5 text-[11px] opacity-60 leading-relaxed">
+                          <span className="font-bold text-primary">Direct Payment (Stripe)</span> — Web3 is disabled for this node.
+                          A root admin can enable the NFT store under <span className="font-semibold">Admin → Settings → Payments &amp; Web3</span>.
+                        </div>
+                      )}
                     </div>
                     
                     {!isNew && metadata.use_nft && (

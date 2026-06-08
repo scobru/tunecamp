@@ -207,6 +207,7 @@ export const AdminSettingsPanel = () => {
   const hasDeployedStore = !!(settings.web3_checkout_address && settings.web3_nft_address) || hasOnChainInstance;
   const checkoutAddress = settings.web3_checkout_address || "";
   const nftAddress = settings.web3_nft_address || "";
+  const web3Enabled = settings.web3Enabled === true || (settings.web3Enabled as unknown) === "true";
 
   return (
     <form onSubmit={handleSave} className="space-y-8 max-w-4xl">
@@ -531,76 +532,101 @@ export const AdminSettingsPanel = () => {
           </div>
         </div>
 
-        {/* Web3 Settings */}
+        {/* Payments & Web3 */}
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-yellow-400">
             <Wallet size={18} />
-            <h4 className="font-bold uppercase text-xs tracking-wider">Web3 Store Configuration</h4>
+            <h4 className="font-bold uppercase text-xs tracking-wider">Payments &amp; Web3</h4>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-sm">Checkout Contract</span>
-              </label>
-              <input
-                type="text"
-                className="input input-bordered bg-base-300/50 font-mono text-xs"
-                value={settings.web3_checkout_address !== undefined ? settings.web3_checkout_address : checkoutAddress}
-                onChange={(e) => setSettings({ ...settings, web3_checkout_address: e.target.value })}
-                placeholder="0x..."
-              />
+          <label className="label cursor-pointer justify-between items-start gap-4 bg-base-300/40 p-4 rounded-xl border border-base-content/5">
+            <div className="flex-1">
+              <span className="label-text font-bold">Enable Web3 (NFT store &amp; crypto payments)</span>
+              <p className="text-[11px] opacity-50 mt-1 leading-relaxed">
+                Off: artists sell via Stripe / direct payments only — the cleanest setup.
+                On: unlock the on-chain NFT store, the smart-contract release mode and treasury sync below.
+                Configure Stripe keys in the <span className="font-semibold">Integrations</span> tab.
+              </p>
             </div>
+            <input
+              type="checkbox"
+              className="toggle toggle-warning toggle-md shrink-0 mt-1"
+              checked={web3Enabled}
+              onChange={(e) => setSettings({ ...settings, web3Enabled: e.target.checked })}
+            />
+          </label>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-sm">NFT Contract</span>
-              </label>
-              <input
-                type="text"
-                className="input input-bordered bg-base-300/50 font-mono text-xs"
-                value={settings.web3_nft_address !== undefined ? settings.web3_nft_address : nftAddress}
-                onChange={(e) => setSettings({ ...settings, web3_nft_address: e.target.value })}
-                placeholder="0x..."
-              />
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-base-content/5">
-            {hasDeployedStore ? (
-              <div className="bg-success/10 border border-success/30 p-4 rounded-xl flex items-center gap-3">
-                <div className="p-2 bg-success/20 rounded-full text-success">
-                  <CheckCircle2 size={16} />
+          {web3Enabled ? (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium text-sm">Checkout Contract</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input input-bordered bg-base-300/50 font-mono text-xs"
+                    value={settings.web3_checkout_address !== undefined ? settings.web3_checkout_address : checkoutAddress}
+                    onChange={(e) => setSettings({ ...settings, web3_checkout_address: e.target.value })}
+                    placeholder="0x..."
+                  />
                 </div>
-                <div>
-                  <p className="text-success text-sm font-bold">Web3 Store Active</p>
-                  <p className="text-[10px] opacity-70 text-success">NFT and Checkout contracts are correctly configured.</p>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium text-sm">NFT Contract</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input input-bordered bg-base-300/50 font-mono text-xs"
+                    value={settings.web3_nft_address !== undefined ? settings.web3_nft_address : nftAddress}
+                    onChange={(e) => setSettings({ ...settings, web3_nft_address: e.target.value })}
+                    placeholder="0x..."
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <div className="flex-1 opacity-60 text-xs">
-                  <p>You haven't deployed your smart contracts yet. You can deploy them automatically on Base Network.</p>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-md rounded-xl px-8"
-                  onClick={handleDeploy}
-                  disabled={loading || !isReady || isCheckingOnChain}
-                >
-                  {loading ? (
-                    <span className="loading loading-spinner loading-xs"></span>
-                  ) : isCheckingOnChain ? (
-                    "Checking..."
-                  ) : (
-                    "Deploy Store Instance"
-                  )}
-                </button>
+
+              <div className="pt-4 border-t border-base-content/5">
+                {hasDeployedStore ? (
+                  <div className="bg-success/10 border border-success/30 p-4 rounded-xl flex items-center gap-3">
+                    <div className="p-2 bg-success/20 rounded-full text-success">
+                      <CheckCircle2 size={16} />
+                    </div>
+                    <div>
+                      <p className="text-success text-sm font-bold">Web3 Store Active</p>
+                      <p className="text-[10px] opacity-70 text-success">NFT and Checkout contracts are correctly configured.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col md:flex-row items-center gap-4">
+                    <div className="flex-1 opacity-60 text-xs">
+                      <p>You haven't deployed your smart contracts yet. You can deploy them automatically on Base Network.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-md rounded-xl px-8"
+                      onClick={handleDeploy}
+                      disabled={loading || !isReady || isCheckingOnChain}
+                    >
+                      {loading ? (
+                        <span className="loading loading-spinner loading-xs"></span>
+                      ) : isCheckingOnChain ? (
+                        "Checking..."
+                      ) : (
+                        "Deploy Store Instance"
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="text-xs opacity-50 bg-base-300/30 p-3 rounded-lg border border-base-content/5">
+              Web3 disabled. Releases sell through Stripe / direct payments. Turn this on to deploy an NFT store and enable smart-contract releases.
+            </div>
+          )}
         </div>
-        
+
         {/* Revenue & Fees Settings */}
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
           <div className="flex items-center gap-2 mb-2 text-green-400">
@@ -645,19 +671,21 @@ export const AdminSettingsPanel = () => {
             </div>
           </div>
           
-          <div className="pt-4 border-t border-base-content/5 flex flex-col md:flex-row items-center gap-4">
-            <div className="flex-1 opacity-60 text-xs">
-              <p>If you have a deployed Web3 Store, you must sync the treasury address to the blockchain to collect contract fees.</p>
+          {web3Enabled && (
+            <div className="pt-4 border-t border-base-content/5 flex flex-col md:flex-row items-center gap-4">
+              <div className="flex-1 opacity-60 text-xs">
+                <p>If you have a deployed Web3 Store, you must sync the treasury address to the blockchain to collect contract fees.</p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-success btn-sm rounded-xl px-6"
+                onClick={handleSyncTreasury}
+                disabled={loading || !isReady || !settings.web3_checkout_address}
+              >
+                Sync Treasury On-Chain
+              </button>
             </div>
-            <button
-              type="button"
-              className="btn btn-outline btn-success btn-sm rounded-xl px-6"
-              onClick={handleSyncTreasury}
-              disabled={loading || !isReady || !settings.web3_checkout_address}
-            >
-              Sync Treasury On-Chain
-            </button>
-          </div>
+          )}
         </div>
 
         {/* Security & System Keys */}

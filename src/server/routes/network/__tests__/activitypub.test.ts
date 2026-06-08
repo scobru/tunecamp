@@ -33,6 +33,7 @@ const mockApService = {
     acceptFollowRequest: jest.fn<any>().mockResolvedValue(undefined),
     rejectFollowRequest: jest.fn<any>().mockResolvedValue(undefined),
     cacheRemoteActor: jest.fn<any>().mockResolvedValue(undefined),
+    deleteReply: jest.fn<any>().mockResolvedValue(undefined),
 } as unknown as ActivityPubService;
 
 const mockAuthMiddleware = {
@@ -408,5 +409,58 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
             "<p>Replying to Bob</p>",
             "2026-06-08T11:00:00Z"
         );
+    });
+
+    // Reply deletion (author-only)
+    test('DELETE /ap/note/reply should delete a reply the artist authored', async () => {
+        const rootNoteUri = "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post";
+        const replyUri = "https://sudorecords.scobrudot.dev/api/ap/note/reply/own-1";
+        (mockDb.getApReply as jest.Mock).mockReturnValue({
+            note_id: rootNoteUri,
+            reply_uri: replyUri,
+            actor_uri: "https://sudorecords.scobrudot.dev/users/homologo"
+        });
+        (mockDb.getApNote as jest.Mock).mockReturnValue({ note_id: rootNoteUri, artist_id: 1 });
+        (mockDb.getArtist as jest.Mock).mockReturnValue({ id: 1, slug: "homologo", name: "Homologo" });
+
+        const response = await request(app)
+            .delete('/ap/note/reply')
+            .query({ uri: replyUri });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ success: true });
+        expect(mockApService.deleteReply).toHaveBeenCalledWith(
+            expect.objectContaining({ id: 1, slug: "homologo" }),
+            replyUri
+        );
+    });
+
+    test('DELETE /ap/note/reply should reject deleting a reply authored by someone else', async () => {
+        const rootNoteUri = "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post";
+        const replyUri = "https://mastodon.social/users/bob/statuses/1";
+        (mockDb.getApReply as jest.Mock).mockReturnValue({
+            note_id: rootNoteUri,
+            reply_uri: replyUri,
+            actor_uri: "https://mastodon.social/users/bob"
+        });
+        (mockDb.getApNote as jest.Mock).mockReturnValue({ note_id: rootNoteUri, artist_id: 1 });
+        (mockDb.getArtist as jest.Mock).mockReturnValue({ id: 1, slug: "homologo", name: "Homologo" });
+
+        const response = await request(app)
+            .delete('/ap/note/reply')
+            .query({ uri: replyUri });
+
+        expect(response.status).toBe(403);
+        expect(mockApService.deleteReply).not.toHaveBeenCalled();
+    });
+
+    test('DELETE /ap/note/reply should return 404 for an unknown reply', async () => {
+        (mockDb.getApReply as jest.Mock).mockReturnValue(undefined);
+
+        const response = await request(app)
+            .delete('/ap/note/reply')
+            .query({ uri: "https://sudorecords.scobrudot.dev/api/ap/note/reply/missing" });
+
+        expect(response.status).toBe(404);
     });
 });

@@ -87,6 +87,7 @@ export const ArtistFediversePanel = () => {
     const [repliesLoading, setRepliesLoading] = useState<Record<string, boolean>>({});
     const [newReplyTexts, setNewReplyTexts] = useState<Record<string, string>>({});
     const [replySending, setReplySending] = useState<Record<string, boolean>>({});
+    const [deletingReply, setDeletingReply] = useState<Record<string, boolean>>({});
     // Interactions popover (who liked / boosted) — read-only social proof
     const [interactionsModal, setInteractionsModal] = useState<{ noteId: string; type: 'like' | 'announce' } | null>(null);
     const [interactionsList, setInteractionsList] = useState<ApInteractionItem[]>([]);
@@ -318,6 +319,28 @@ export const ArtistFediversePanel = () => {
             alert("Failed to send reply: " + (e?.message || e));
         } finally {
             setReplySending(prev => ({ ...prev, [noteId]: false }));
+        }
+    };
+
+    // Delete one of your own replies (sends a federated Delete(Note))
+    const handleDeleteReply = async (noteId: string, replyUri: string) => {
+        if (deletingReply[replyUri]) return;
+        if (!confirm("Delete this reply? This sends a Delete to anyone who received it.")) return;
+        setDeletingReply(prev => ({ ...prev, [replyUri]: true }));
+        try {
+            await API.deleteNoteReply(replyUri);
+            setRepliesByNote(prev => ({
+                ...prev,
+                [noteId]: (prev[noteId] || []).filter(r => r.reply_uri !== replyUri),
+            }));
+            setNotes(prev => prev.map(n => n.note_id === noteId
+                ? { ...n, replies_count: Math.max(0, (n.replies_count ?? 1) - 1) }
+                : n));
+        } catch (e: any) {
+            console.error("Failed to delete reply", e);
+            alert("Failed to delete reply: " + (e?.message || e));
+        } finally {
+            setDeletingReply(prev => ({ ...prev, [replyUri]: false }));
         }
     };
 
@@ -1123,7 +1146,22 @@ export const ArtistFediversePanel = () => {
                                                                                 <div className="flex-1 text-xs min-w-0">
                                                                                     <div className="flex items-center justify-between gap-2">
                                                                                         <span className="font-bold text-base-content truncate">{displayName}</span>
-                                                                                        <span className="opacity-40 flex-shrink-0">{getRelativeTime(c.published_at)}</span>
+                                                                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                                                                            <span className="opacity-40">{getRelativeTime(c.published_at)}</span>
+                                                                                            {isOwn && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    className="btn btn-ghost btn-xs btn-circle text-error/50 hover:text-error hover:bg-error/10"
+                                                                                                    onClick={() => handleDeleteReply(note.note_id, c.reply_uri)}
+                                                                                                    disabled={!!deletingReply[c.reply_uri]}
+                                                                                                    title="Delete your reply"
+                                                                                                >
+                                                                                                    {deletingReply[c.reply_uri]
+                                                                                                        ? <span className="loading loading-spinner loading-xs" />
+                                                                                                        : <Trash2 size={12} />}
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
                                                                                     <div className="font-mono opacity-50 mt-0.5 truncate" title={c.actor_uri}>{handle}</div>
                                                                                     <p className="mt-1.5 opacity-85 leading-normal break-words">{stripHtml(c.content)}</p>

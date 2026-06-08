@@ -263,9 +263,14 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 google_drive_client_id,
                 google_drive_client_secret,
                 themeFont, themeBlur, themeOverlayOpacity,
-                communityLink
+                communityLink,
+                web3Enabled
             } = req.body;
             let settingsChanged = false;
+
+            if (web3Enabled !== undefined) {
+                identity.setSetting("web3Enabled", web3Enabled ? "true" : "false");
+            }
 
             if (siteName !== undefined) {
                 identity.setSetting("siteName", siteName);

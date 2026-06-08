@@ -21,6 +21,16 @@ export class ActivityPubTransport {
      * otherwise — the caller uses this to decide whether to enqueue for retry.
      */
     public async send(actor: Artist | TransportIdentity, inboxUri: string, activity: any): Promise<boolean> {
+        // Fedify's ctx.sendActivity() only accepts Fedify Activity instances (e.g.
+        // `new Follow(...)`). Plain JSON-LD activity objects — used by replies, posts,
+        // announces, etc. — crash Fedify internally ("Cannot read properties of
+        // undefined (reading 'href')"). Detect those and deliver them directly via
+        // our own signed sender instead of attempting + failing + falling back.
+        const isFedifyActivity = activity && typeof activity.toJsonLd === "function";
+        if (!isFedifyActivity) {
+            return this.manualSend(actor, inboxUri, activity);
+        }
+
         try {
             console.log(`📤 Sending activity ${activity.type || 'unknown'} from ${actor.slug} to ${inboxUri} via Fedify`);
 

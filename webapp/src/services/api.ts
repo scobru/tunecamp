@@ -237,6 +237,7 @@ const API = {
     getNoteInteractions: (noteId: string) => handleResponse(api.get<any[]>(`ap/note/interactions?id=${encodeURIComponent(noteId)}`)),
     getNoteReplies: (noteId: string) => handleResponse(api.get<any[]>(`ap/note/replies?id=${encodeURIComponent(noteId)}`)),
     postNoteReply: (noteId: string, content: string) => handleResponse(api.post(`ap/note/reply`, { id: noteId, content })),
+    deleteNoteReply: (replyUri: string) => handleResponse(api.delete(`ap/note/reply?uri=${encodeURIComponent(replyUri)}`)),
     followBackActor: (artistId: string | number, actorUri: string) => handleResponse(api.post('ap/followers/follow-back', { artistId, actorUri })),
     unfollowFollowerActor: (artistId: string | number, actorUri: string) => handleResponse(api.post('ap/followers/unfollow', { artistId, actorUri })),
     syncArtistActivityPub: (artistId: string | number) => handleResponse(api.post(`ap/sync/artist/${artistId}`)),

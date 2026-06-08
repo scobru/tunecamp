@@ -128,9 +128,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
      */
     router.get("/onramp-config", (req, res) => {
         const hasStripeCheckout = !!(identity.getSetting("stripe_secret_key") || config.stripeSecretKey);
+        const web3Enabled = identity.getSetting("web3Enabled") === "true";
         res.json({
             configured: false,
-            stripeCheckout: hasStripeCheckout
+            stripeCheckout: hasStripeCheckout,
+            web3Enabled
         });
     });
 

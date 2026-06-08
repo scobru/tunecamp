@@ -970,6 +970,60 @@ export class ActivityPubService {
         return { replyUri };
     }
 
+    /**
+     * Deletes a reply authored by the given artist and broadcasts a Delete(Note)
+     * to followers and other actors already participating in the thread.
+     * Only the artist who authored the reply may delete it.
+     */
+    public async deleteReply(artist: Artist, replyUri: string): Promise<void> {
+        const reply = this.db.getApReply(replyUri);
+        if (!reply) throw new Error("Reply not found");
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        if (reply.actor_uri !== artistActorUrl) {
+            throw new Error("Not authorized to delete this reply");
+        }
+
+        // Collect distinct remote actors in this thread so we can notify them too
+        const threadActors = [...new Set(
+            this.db.getApReplies(reply.note_id)
+                .map(r => r.actor_uri)
+                .filter(a => !!a && a !== artistActorUrl && a.startsWith("http"))
+        )];
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Delete",
+            actor: artistActorUrl,
+            object: { id: replyUri, type: "Note", atomUri: replyUri },
+            to: ["https://www.w3.org/ns/activitystreams#Public"]
+        };
+
+        const inboxes = new Set<string>();
+        for (const f of this.db.getFollowers(artist.id)) {
+            if (f.inbox_uri) inboxes.add(f.inbox_uri);
+        }
+        await Promise.all(threadActors.map(async actorUri => {
+            try {
+                const inbox = await this.getInboxFromActor(actorUri);
+                if (inbox) inboxes.add(inbox);
+            } catch (e) {
+                console.warn(`⚠️ Could not resolve inbox for thread actor ${actorUri}`);
+            }
+        }));
+
+        if (inboxes.size > 0) {
+            console.log(`📢 Broadcasting reply delete ${replyUri} to ${inboxes.size} inbox(es)`);
+            await Promise.all([...inboxes].map(inbox =>
+                this.sendActivity(artist, inbox, activity).catch(e => console.error(`⚠️ Reply delete delivery failed to ${inbox}:`, e))
+            ));
+        }
+
+        this.db.deleteApReply(replyUri);
+    }
+
     public async broadcastDelete(album: Album, manualNoteId?: string): Promise<void> {
         if (!album.artist_id) return;
         const artist = this.db.getArtist(album.artist_id);

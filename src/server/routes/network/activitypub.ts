@@ -817,6 +817,43 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         }
     });
 
+    // Delete a reply you authored. Only the original author may delete their own reply.
+    router.delete("/note/reply", authMiddleware.requireUser, async (req: any, res) => {
+        const request = req as AuthenticatedRequest;
+        const replyUri = (req.query?.uri ?? req.body?.uri) as string | undefined;
+        if (!replyUri) {
+            return res.status(400).json({ error: "Missing reply uri" });
+        }
+        const reply = db.getApReply(String(replyUri));
+        if (!reply) return res.status(404).json({ error: "Reply not found" });
+
+        const parentNote = db.getApNote(reply.note_id);
+        if (!parentNote) return res.status(404).json({ error: "Parent note not found" });
+
+        const artist = parentNote.artist_id === -1
+            ? ({ id: -1, slug: "site", name: "Site" } as any)
+            : db.getArtist(parentNote.artist_id);
+        if (!artist) return res.status(404).json({ error: "Artist not found" });
+
+        // SECURITY: the requester must own the artist AND the reply must be authored by that artist.
+        const ownsArtist = request.isRootAdmin
+            || (request.artistId != null && Number(parentNote.artist_id) === Number(request.artistId));
+        const ownActorUrl = `${apService.getBaseUrl()}/users/${artist.slug}`;
+        const isOwnReply = reply.actor_uri === ownActorUrl;
+        if (!ownsArtist || !isOwnReply) {
+            console.warn(`⛔ Access Denied: Artist ${request.artistId} tried to delete reply ${replyUri} authored by ${reply.actor_uri}`);
+            return res.status(403).json({ error: "You can only delete your own replies" });
+        }
+
+        try {
+            await apService.deleteReply(artist, String(replyUri));
+            res.json({ success: true });
+        } catch (e: any) {
+            console.error("Failed to delete reply:", e);
+            res.status(500).json({ error: e.message || "Failed to delete reply" });
+        }
+    });
+
     // Follow back / unfollow a remote actor as the artist (sends a real Follow / Undo(Follow))
     const resolveFollowerHandle = (parsedArtistId: number): string | null => {
         if (parsedArtistId === -1) return "site";
