@@ -5,8 +5,8 @@ import { Readable } from "stream";
 import type { DatabaseService, Track } from "../../core/database.js";
 import type { GoogleDriveService } from "../storage/google-drive.service.js";
 import type { StreamingService } from "../streaming/streaming.service.js";
-import { transcode, transcodeToFile } from "./ffmpeg.js";
-import { NotFoundError } from "../../common/errors.js";
+import { transcode, transcodeToFile, tryAcquireLiveSlot, releaseLiveSlot } from "./ffmpeg.js";
+import { NotFoundError, ServiceUnavailableError } from "../../common/errors.js";
 
 export interface StreamOptions {
   trackId?: number;
@@ -61,8 +61,16 @@ export function sendStreamResult(res: any, result: StreamResult): void {
   if (result.contentLength != null) res.setHeader("Content-Length", result.contentLength);
   if (result.contentRange) res.setHeader("Content-Range", result.contentRange);
   res.status(result.statusCode);
-  if (result.stream) result.stream.pipe(res);
-  else res.end();
+  if (result.stream) {
+    const stream = result.stream;
+    stream.pipe(res);
+    // Free the upstream (ffmpeg) promptly when the client disconnects mid-stream,
+    // so live-transcode slots are released instead of lingering until ffmpeg
+    // eventually errors on a full output buffer.
+    res.on("close", () => { if (!stream.destroyed) stream.destroy(); });
+  } else {
+    res.end();
+  }
 }
 
 export class MediaEngine {
@@ -240,28 +248,51 @@ export class MediaEngine {
       return this.liveTranscode(trackPath, format, bitrate, options.seek, contentType);
     }
 
-    // Cache-aware path: serve a cached transcode if present, otherwise produce it once.
     const cacheFile = this.transcodeCacheFile(trackPath, format, bitrate);
+
+    // Fast path: a cached transcode already exists — serve it as a plain file
+    // (Range-capable, no ffmpeg). This is the steady state for popular tracks.
     try {
-      if (!(await fs.pathExists(cacheFile))) {
-        await this.produceTranscode(trackPath, cacheFile, format, bitrate);
+      if (await fs.pathExists(cacheFile)) {
+        return this.serveLocalFile(cacheFile, options.range, this.opts.transcodeCacheDir, this.opts.xaccelCachePrefix, contentType);
       }
-      return this.serveLocalFile(cacheFile, options.range, this.opts.transcodeCacheDir, this.opts.xaccelCachePrefix, contentType);
-    } catch (err: any) {
-      // Cache write/serve failed — never block playback, fall back to a live transcode.
-      console.warn(`[MediaEngine] Transcode cache unavailable (${err?.message}); streaming live.`);
-      return this.liveTranscode(trackPath, format, bitrate, options.seek, contentType);
-    }
+    } catch { /* fall through to live streaming */ }
+
+    // Cache miss: stream live immediately for instant first-byte, and populate the
+    // cache in the background so the NEXT play is a file read. We deliberately do
+    // NOT await a full encode here — that serialized cold plays behind the encode
+    // queue and tripped proxy timeouts (504) under concurrency.
+    this.populateCacheInBackground(trackPath, cacheFile, format, bitrate);
+    return this.liveTranscode(trackPath, format, bitrate, undefined, contentType);
+  }
+
+  /** Fire-and-forget cache fill. Bounded by the ffmpeg CPU queue; never blocks a request. */
+  private populateCacheInBackground(trackPath: string, cacheFile: string, format: string, bitrate?: number): void {
+    this.produceTranscode(trackPath, cacheFile, format, bitrate).catch((err: any) => {
+      // Best-effort: a failed fill just means the next play transcodes live again.
+      console.warn(`[MediaEngine] Background transcode cache fill failed: ${err?.message}`);
+    });
   }
 
   private liveTranscode(trackPath: string, format: string, bitrate: number | undefined, seek: number | undefined, contentType: string): StreamResult {
+    // Admission control: shed load instead of spawning unbounded ffmpeg processes.
+    if (!tryAcquireLiveSlot()) {
+      throw new ServiceUnavailableError("Transcoder is busy, please retry shortly.");
+    }
+
+    let released = false;
+    const release = () => { if (!released) { released = true; releaseLiveSlot(); } };
+
     const command = transcode(trackPath, format, bitrate, seek);
     const stream = command.pipe() as Readable;
     stream.on('error', (err: any) => {
-      if (!err.message.includes('Output stream closed') && !err.message.includes('EPIPE')) {
+      if (!err.message?.includes('Output stream closed') && !err.message?.includes('EPIPE')) {
         console.error('[MediaEngine] Transcoding error:', err.message);
       }
+      release();
     });
+    stream.on('close', release);
+    stream.on('end', release);
     return { stream, contentType, statusCode: 200 };
   }
 

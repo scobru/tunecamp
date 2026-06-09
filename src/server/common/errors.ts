@@ -29,6 +29,12 @@ export class NotFoundError extends AppError {
     }
 }
 
+export class ServiceUnavailableError extends AppError {
+    constructor(message: string = "Service Unavailable", code: string = "SERVICE_UNAVAILABLE") {
+        super(message, 503, code);
+    }
+}
+
 /**
  * Checks if an uncaught exception/error is non-fatal and should not cause the server to crash.
  * This includes network timeouts, temporary SQLite lock/busy errors, and known P2P/GunDB issues.

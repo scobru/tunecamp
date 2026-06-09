@@ -66,6 +66,17 @@ console.log(`🚀 [FFmpeg] Concurrency limit set to ${MAX_CONCURRENT_TASKS} (Cor
 let activeTasks = 0;
 const taskQueue: (() => void)[] = [];
 
+// Live (latency-sensitive) transcodes are bursty and back-pressured by a slow
+// client, so they don't fit the CPU-bound `acquireTaskSlot` queue. We cap their
+// COUNT instead to stop a flood of requests (e.g. rapid timeline seeks) from
+// spawning unbounded ffmpeg processes that saturate every core and stall the
+// Node event loop — the failure mode that turns into gateway 504s.
+const MAX_LIVE_TRANSCODES = Math.max(
+    Number(process.env.TUNECAMP_MAX_LIVE_TRANSCODES) || MAX_CONCURRENT_TASKS * 8,
+    MAX_CONCURRENT_TASKS
+);
+let activeLiveTranscodes = 0;
+
 export async function acquireTaskSlot(): Promise<void> {
     if (activeTasks < MAX_CONCURRENT_TASKS) {
         activeTasks++;
@@ -85,6 +96,21 @@ export function releaseTaskSlot(): void {
             nextTask();
         }
     }
+}
+
+/**
+ * Non-blocking admission control for live transcodes. Returns false immediately
+ * when the live-transcode ceiling is reached so the caller can shed load (503)
+ * rather than queue or spawn an unbounded ffmpeg process.
+ */
+export function tryAcquireLiveSlot(): boolean {
+    if (activeLiveTranscodes >= MAX_LIVE_TRANSCODES) return false;
+    activeLiveTranscodes++;
+    return true;
+}
+
+export function releaseLiveSlot(): void {
+    if (activeLiveTranscodes > 0) activeLiveTranscodes--;
 }
 
 /**
@@ -191,12 +217,29 @@ export function transcode(inputPath: string, format: string = 'mp3', bitrate?: n
  * transcode cache so subsequent requests can be served as plain file reads.
  */
 export async function transcodeToFile(inputPath: string, outputPath: string, format: string = 'mp3', bitrate?: number): Promise<void> {
+    // Hard ceiling so a stuck/zombie ffmpeg can never hold a concurrency slot
+    // forever — that would permanently starve the queue after a few hangs.
+    const timeoutMs = Number(process.env.TUNECAMP_TRANSCODE_TIMEOUT_MS) || 5 * 60_000;
+
     await acquireTaskSlot();
     return new Promise<void>((resolve, reject) => {
         const command = transcode(inputPath, format, bitrate);
+        let settled = false;
+        const finish = (err?: any) => {
+            if (settled) return;          // guarantee the slot is released exactly once
+            settled = true;
+            clearTimeout(timer);
+            releaseTaskSlot();
+            if (err) reject(err); else resolve();
+        };
+        const timer = setTimeout(() => {
+            try { command.kill('SIGKILL'); } catch { /* already gone */ }
+            finish(new Error(`Transcode timed out after ${timeoutMs}ms: ${inputPath}`));
+        }, timeoutMs);
+
         command
-            .on('end', () => { releaseTaskSlot(); resolve(); })
-            .on('error', (err: any) => { releaseTaskSlot(); reject(err); })
+            .on('end', () => finish())
+            .on('error', (err: any) => finish(err))
             .save(outputPath);
     });
 }
