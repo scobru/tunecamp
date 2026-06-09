@@ -67,10 +67,6 @@ export class CatalogService {
             await this.publishing.unpublishReleaseFromAP(album as Release);
         }
 
-        if ((album as any).published_to_gundb) {
-            await this.zendb.unpublishRelease(album.id);
-        }
-
         this.database.deleteAlbum(albumId, keepTracks);
     }
 
@@ -233,36 +229,18 @@ export class CatalogService {
         const track = this.database.getTrack(trackId);
         if (!track) throw new Error("Track not found");
         this.database.starItem(username, 'track', String(trackId));
-        if (track.album_id) {
-            const album = this.database.getAlbum(track.album_id) || this.database.getRelease(track.album_id);
-            if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
-                this.zendb?.incrementTrackLikeCount(album.slug, String(trackId));
-            }
-        }
     }
 
     async unstarTrack(username: string, trackId: number): Promise<void> {
         const track = this.database.getTrack(trackId);
         if (!track) return;
         this.database.unstarItem(username, 'track', String(trackId));
-        if (track.album_id) {
-            const album = this.database.getAlbum(track.album_id) || this.database.getRelease(track.album_id);
-            if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
-                this.zendb?.decrementTrackLikeCount(album.slug, String(trackId));
-            }
-        }
     }
 
     async setTrackRating(username: string, trackId: number, rating: number): Promise<void> {
         const track = this.database.getTrack(trackId);
         if (!track) throw new Error("Track not found");
         this.database.setItemRating(username, 'track', String(trackId), rating);
-        if (track.album_id) {
-            const album = this.database.getAlbum(track.album_id) || this.database.getRelease(track.album_id);
-            if (album && (album.visibility === 'public' || album.visibility === 'unlisted')) {
-                this.zendb?.setTrackRating(album.slug, String(trackId), rating);
-            }
-        }
     }
 
     async starAlbum(username: string, albumId: number): Promise<void> {
