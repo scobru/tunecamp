@@ -172,6 +172,11 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
     // own, and the cheap reference-clearing below runs every tick to keep off-heap memory falling.
     let lastForcedGc = 0;
     const GC_MIN_INTERVAL_MS = 20_000;
+    // Even during an emergency we must NOT gc() every tick: a full stop-the-world GC on a
+    // 200MB+ external heap takes hundreds of ms to seconds, and a sustained inbound flood keeps
+    // the emergency latched for many seconds — so an unthrottled emergency gc() freezes the event
+    // loop for tens of seconds (→ nginx 504). Allow aggressive-but-throttled GC under emergency.
+    const EMERGENCY_GC_MIN_INTERVAL_MS = 5_000;
 
     const interval = setInterval(() => {
         if (evicting) return;
@@ -277,10 +282,12 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
         }
 
         // ── 5. Force GC if available (throttled — full GC is stop-the-world) ──
-        // Always GC on a genuine emergency (rare); otherwise at most once per interval so the
-        // event loop isn't frozen every second while ext hovers above its warning threshold.
+        // Throttle in BOTH paths so the loop isn't frozen by back-to-back full GCs. Emergencies
+        // use a shorter interval (reclaim faster) but are still rate-limited, because a flood can
+        // keep us latched in emergency for many seconds — gc()-per-tick there was the 504 driver.
         const nowTs = Date.now();
-        if (global.gc && (isEmergency || nowTs - lastForcedGc >= GC_MIN_INTERVAL_MS)) {
+        const gcMinInterval = isEmergency ? EMERGENCY_GC_MIN_INTERVAL_MS : GC_MIN_INTERVAL_MS;
+        if (global.gc && nowTs - lastForcedGc >= gcMinInterval) {
             global.gc();
             lastForcedGc = nowTs;
         }
@@ -319,7 +326,13 @@ export function getZen(options?: ZenOptions): any {
             super: false, // Identify as a ZEN client node, not a Relay node
             pid: options?.pid,
             stats: false, // Prevent writing to /root/.local/state/zen/
-            memory: ZEN_MEMORY_LIMIT_MB // Memory budget for built-in evictor (evict.js)
+            memory: ZEN_MEMORY_LIMIT_MB, // Memory budget for built-in evictor (evict.js)
+            // Cap inbound/outbound frame size. ZEN's default derives from `memory`
+            // (128MB → ~38MB max), so a relay's full-graph dump is accepted, buffered off-heap,
+            // and parsed before our on('in') soul-filter ever runs — that off-heap spike is what
+            // tips the evictor into emergency. Tunecamp (signaling-only client) never legitimately
+            // sends/receives frames near this size, so reject oversized frames at the wire.
+            max: parseInt(process.env.TUNECAMP_ZEN_MAX_MSG_MB || '8', 10) * 1024 * 1024
         };
 
         console.log(`📡 [ZEN] Initializing shared singleton with ${initializationOptions.peers.length} peers (memory limit: ${ZEN_MEMORY_LIMIT_MB}MB)...`);
