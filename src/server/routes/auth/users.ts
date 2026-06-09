@@ -27,7 +27,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
      */
     router.post("/register", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
         try {
-            const { pubKey, username, password, signature } = req.body;
+            const { username, password } = req.body;
 
             if (!username || !password) {
                 return res.status(400).json({ error: "Username and password required" });
@@ -62,7 +62,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
             // Create DB user without artist link (null) + storage quota (1GB)
             // Users are now standard listeners by default. Admin must promote them to artists.
             const DEFAULT_QUOTA = 1024 * 1024 * 1024; // 1GB
-            const { id: userId } = await authService.createUser(username, password, null, DEFAULT_QUOTA, pubKey);
+            const { id: userId } = await authService.createUser(username, password, null, DEFAULT_QUOTA);
 
             // 3. Generate JWT token for auto-login
             const token = authService.generateToken({
@@ -75,7 +75,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 tokenVersion: 0
             });
 
-            console.log(`🆕 New user registered: ${username} (user: ${userId}, pubKey: ${pubKey ? 'linked' : 'none'})`);
+            console.log(`🆕 New user registered: ${username} (userId: ${userId})`);
 
             res.json({
                 success: true,
@@ -86,7 +86,6 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 role: UserRole.NORMAL_USER,
                 isActive: true,
                 storageQuota: DEFAULT_QUOTA,
-                pubKey: pubKey || null
             });
         } catch (error: any) {
             console.error("User registration error:", error);
@@ -130,28 +129,10 @@ export function createUsersRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/users/sync-pair
-     * Sync full GunDB pair (SEA) to server for persistence
+     * @deprecated ZenAuth removed (Phase 1). No-op for backward compatibility.
      */
-    router.post("/sync-pair", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
-        try {
-            if (!req.isAdmin && !req.isActive) {
-                return res.status(403).json({ error: "Account not active" });
-            }
-            const { pair } = req.body;
-            if (!pair || !pair.pub || !pair.priv || !pair.epub || !pair.epriv) {
-                return res.status(400).json({ error: "Complete ZEN pair required" });
-            }
-
-            if (!req.username) {
-                return res.status(401).json({ error: "Unauthorized" });
-            }
-
-            authService.updateZenPair(req.username, pair);
-            res.json({ success: true });
-        } catch (error) {
-            console.error("User pair sync error:", error);
-            res.status(500).json({ error: "Pair sync failed" });
-        }
+    router.post("/sync-pair", (_req, res) => {
+        res.json({ success: true });
     });
 
     /**

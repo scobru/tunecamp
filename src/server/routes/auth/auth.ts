@@ -19,10 +19,10 @@ export function createAuthRoutes(container: ServiceContainer): Router {
      */
     router.post("/login", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
         try {
-            const { username, password, pubKey, proof } = req.body;
+            const { username, password } = req.body;
 
-            if (!password && !(pubKey && proof)) {
-                return res.status(400).json({ error: "Password or GunDB proof required" });
+            if (!password) {
+                return res.status(400).json({ error: "Password required" });
             }
 
             // Check if first run
@@ -36,7 +36,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             // Default to 'admin' if no username provided (legacy/default support)
             const userToAuth = username || 'admin';
 
-            const result = await authService.authenticateUser(userToAuth, password, pubKey, proof);
+            const result = await authService.authenticateUser(userToAuth, password);
             if (!result || !result.success) {
                 return res.status(401).json({ error: "Invalid username or password" });
             }
@@ -59,7 +59,6 @@ export function createAuthRoutes(container: ServiceContainer): Router {
                 artistId: result.artistId || null,
                 userId: result.id,
                 role: result.role || UserRole.NORMAL_USER,
-                pair: result.pair || null, // Return GunDB identity pair
                 mustChangePassword: await authService.isDefaultPassword(userToAuth)
             });
         } catch (error) {
