@@ -60,7 +60,7 @@ interface LocalRelease {
   id: number;
   title: string;
   artist_id: number;
-  type: "album" | "single" | "ep";
+  type: "album" | "single" | "liveset" | "podcast";
   year: number;
   cover_path?: string;
   slug: string;
@@ -738,29 +738,27 @@ export default function AdminReleaseEditor() {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="form-control">
-                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Product Type</label>
+                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Release Type</label>
                     <select
                       className="select select-bordered w-full text-sm font-bold"
-                      value={metadata.product_type || "music"}
-                      onChange={(e) => setMetadata((prev) => ({ ...prev, product_type: e.target.value as any }))}
-                    >
-                      <option value="music">Music</option>
-                      <option value="podcast">Podcast</option>
-                    </select>
-                  </div>
-                  <div className="form-control">
-                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Type</label>
-                    <select
-                      className="select select-bordered w-full"
                       value={metadata.type}
-                      onChange={(e) => setMetadata((prev) => ({ ...prev, type: e.target.value as any }))}
-                      disabled={metadata.product_type === 'podcast'}
+                      onChange={(e) => {
+                        const newType = e.target.value as LocalRelease["type"];
+                        setMetadata((prev) => ({
+                          ...prev,
+                          type: newType,
+                          // product_type is derived from the category and kept in sync
+                          // so the podcast RSS feed and Subsonic channel keep working.
+                          product_type: newType === "podcast" ? "podcast" : "music",
+                        }));
+                      }}
                     >
                       <option value="album">Album</option>
                       <option value="single">Single</option>
-                      <option value="ep">EP</option>
+                      <option value="liveset">Liveset</option>
+                      <option value="podcast">Podcast</option>
                     </select>
                   </div>
                   <div className="form-control">
@@ -774,7 +772,7 @@ export default function AdminReleaseEditor() {
                   </div>
                 </div>
 
-                {metadata.product_type === "podcast" && (
+                {metadata.type === "podcast" && (
                   <div className="card bg-secondary/5 border border-secondary/10 p-4 rounded-xl space-y-4">
                     <h3 className="text-sm font-black tracking-normal text-secondary flex items-center gap-2">
                       <Mic className="w-4 h-4" /> Podcast Channel Settings
@@ -1101,7 +1099,7 @@ export default function AdminReleaseEditor() {
                               </div>
                             </td>                             <td className="text-right">
                               <div className="flex gap-1 justify-end">
-                                {metadata.product_type === "podcast" && (
+                                {metadata.type === "podcast" && (
                                   <button
                                     className={`btn btn-square btn-xs ${(track.description || track.podcast_episode_num || track.podcast_season_num) ? "btn-secondary" : "btn-ghost"}`}
                                     onClick={() => {
@@ -1134,7 +1132,7 @@ export default function AdminReleaseEditor() {
                               </div>
                             </td>
                           </tr>
-                          {metadata.product_type === "podcast" && track.showPodcastFields && (
+                          {metadata.type === "podcast" && track.showPodcastFields && (
                             <tr className="bg-base-200/20">
                               <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">
                                 <div className="card bg-base-300/40 p-4 rounded-xl border border-secondary/10 space-y-3">

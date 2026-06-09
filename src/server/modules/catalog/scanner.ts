@@ -143,7 +143,7 @@ interface ReleaseConfig {
     cover?: string;
     genres?: string[];
     artist?: string;
-    type?: 'album' | 'single' | 'ep';
+    type?: 'album' | 'single' | 'liveset' | 'podcast';
     year?: number;
     download?: string;
     links?: { label: string; url: string }[] | { [key: string]: string };

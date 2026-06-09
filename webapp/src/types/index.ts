@@ -81,7 +81,7 @@ export interface Release {
     date?: string;
     description?: string;
     genre?: string;
-    type?: 'album' | 'single' | 'ep';
+    type?: 'album' | 'single' | 'liveset' | 'podcast';
     year?: number;
     download?: 'free' | 'paid' | 'codes';
     price?: number;
@@ -148,7 +148,7 @@ export interface Album {
     year?: number;
     tracks?: Track[];
     track_ids?: (string | number)[];
-    type: 'album' | 'single' | 'ep';
+    type: 'album' | 'single' | 'liveset' | 'podcast';
     slug?: string;
     description?: string;
     license?: string;

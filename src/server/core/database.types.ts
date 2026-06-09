@@ -71,7 +71,7 @@ export interface Album {
     cover_path: string | null;
     genre: string | null;
     description: string | null;
-    type: 'album' | 'single' | 'ep';
+    type: 'album' | 'single' | 'liveset' | 'podcast';
     year: number | string | null;
     download: string | null;
     price: number;

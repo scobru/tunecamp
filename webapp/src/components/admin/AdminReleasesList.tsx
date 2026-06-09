@@ -209,7 +209,10 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
               </td>
               <td>{r.artistName}</td>
               <td>
-                <div className="badge badge-sm">{r.type}</div>
+                <div className={clsx("badge badge-sm capitalize", {
+                  'badge-secondary': r.type === 'podcast',
+                  'badge-accent': r.type === 'liveset',
+                })}>{r.type || 'album'}</div>
               </td>
               <td>
                 <div className={clsx("badge badge-sm", {
