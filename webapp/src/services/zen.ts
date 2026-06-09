@@ -3,7 +3,6 @@ import ZEN from 'zen';
 
 // Remove redundant imports as ZEN includes everything needed
 import { DEFAULT_ZEN_PEERS } from '../../../src/common/zen-config';
-import API from './api';
 import type { UserPlaylist, UserPlaylistTrack, Track } from '../types';
 
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
