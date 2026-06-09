@@ -166,6 +166,12 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
     const extEmergencyBytes = parseInt(process.env.TUNECAMP_ZEN_EXT_EMERGENCY_MB || '45', 10) * 1024 * 1024;
 
     let evicting = false;
+    // Manual global.gc() is a stop-the-world full GC. The evictor body can run every second
+    // (whenever ext sits above its threshold), so calling gc() every tick stalls the event
+    // loop almost continuously. Throttle forced GC to an occasional sweep; V8 still GCs on its
+    // own, and the cheap reference-clearing below runs every tick to keep off-heap memory falling.
+    let lastForcedGc = 0;
+    const GC_MIN_INTERVAL_MS = 20_000;
 
     const interval = setInterval(() => {
         if (evicting) return;
@@ -270,8 +276,14 @@ function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
             }
         }
 
-        // ── 5. Force GC if available ──────────────────────────────────────
-        if (global.gc) global.gc();
+        // ── 5. Force GC if available (throttled — full GC is stop-the-world) ──
+        // Always GC on a genuine emergency (rare); otherwise at most once per interval so the
+        // event loop isn't frozen every second while ext hovers above its warning threshold.
+        const nowTs = Date.now();
+        if (global.gc && (isEmergency || nowTs - lastForcedGc >= GC_MIN_INTERVAL_MS)) {
+            global.gc();
+            lastForcedGc = nowTs;
+        }
 
         const heapAfter = v8.getHeapStatistics().used_heap_size;
         const extAfter = process.memoryUsage().external;
