@@ -87,9 +87,8 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                     {item.artistName || item.artist_name}
                 </p>
                 {viewMode === 'grid' && (() => {
-                    const category = (item.product_type === 'podcast' || item.productType === 'podcast')
-                        ? 'podcast'
-                        : (item.type || 'album');
+                    const category = item.type ||
+                        (item.product_type === 'podcast' || item.productType === 'podcast' ? 'podcast' : 'album');
                     return (
                         <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
                             <span>{item.year}</span>
