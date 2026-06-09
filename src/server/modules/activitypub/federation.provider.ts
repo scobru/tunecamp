@@ -1,5 +1,5 @@
 
-import type { Artist, User, RemoteActor, Follower, Release, Track, Post, ApNote, ApReply } from "../../core/database.types.js";
+import type { Artist, User, Album, RemoteActor, Follower, Release, Track, Post, ApNote, ApReply } from "../../core/database.types.js";
 
 /**
  * FederationProvider Interface
@@ -23,6 +23,10 @@ export interface FederationProvider {
   updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
   updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;
   updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
+
+  // Local Tracks & Albums (Phase 3)
+  getTrack(id: number): Track | undefined;
+  getAlbum(id: number): Album | undefined;
 
   // Local Content
   getReleases(): Release[];
