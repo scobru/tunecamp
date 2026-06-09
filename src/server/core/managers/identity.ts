@@ -51,5 +51,11 @@ updateSubscription(userId: number, status: string, expiresAt: string): void {
         setPluginEnabled: (id: string, e: boolean) => { db.prepare("INSERT OR REPLACE INTO system_plugins (id, enabled) VALUES (?, ?)").run(id, e ? 1 : 0); },
         setPluginConfig(id: string, config: string) { db.prepare("UPDATE system_plugins SET config = ? WHERE id = ?").run(config, id); },
         getAllPluginsState: () => db.prepare("SELECT * FROM system_plugins").all(),
+
+        // Phase 4: ActivityPub user keys
+        updateUserApKeys(userId: number, pubKey: string, privKey: string): void {
+            db.prepare("UPDATE admin SET ap_public_key = ?, ap_private_key = ? WHERE id = ?")
+              .run(pubKey, privKey, userId);
+        },
     };
 }

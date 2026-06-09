@@ -690,6 +690,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'avatar')) {
                 db.exec("ALTER TABLE admin ADD COLUMN avatar TEXT");
             }
+            // Phase 4: ActivityPub keys for user actors
+            if (!cols.some(col => col.name === 'ap_public_key')) {
+                console.log("📦 [Database] Migrating admin table: adding ap_public_key/ap_private_key columns...");
+                db.exec("ALTER TABLE admin ADD COLUMN ap_public_key TEXT");
+                db.exec("ALTER TABLE admin ADD COLUMN ap_private_key TEXT");
+            }
         }
 
         const remoteActorsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='remote_actors'").get();

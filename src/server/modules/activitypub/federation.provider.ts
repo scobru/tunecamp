@@ -1,5 +1,5 @@
 
-import type { Artist, RemoteActor, Follower, Release, Track, Post, ApNote, ApReply } from "../../core/database.types.js";
+import type { Artist, User, RemoteActor, Follower, Release, Track, Post, ApNote, ApReply } from "../../core/database.types.js";
 
 /**
  * FederationProvider Interface
@@ -9,6 +9,11 @@ export interface FederationProvider {
   // Settings
   getSetting(key: string): string | undefined;
   setSetting(key: string, value: string): void;
+
+  // Local Users (Phase 4)
+  getUser(id: number): User | undefined;
+  getUserByUsername(username: string): User | undefined;
+  updateUserApKeys(userId: number, pubKey: string, privKey: string): void;
 
   // Local Artists
   getArtist(id: number): Artist | undefined;

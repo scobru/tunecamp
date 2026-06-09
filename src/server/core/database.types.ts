@@ -33,6 +33,9 @@ export interface User {
     storage_used?: number;
     subscription_status?: string;
     subscription_expires_at?: string | null;
+    // Phase 4: ActivityPub actor keys
+    ap_public_key?: string | null;
+    ap_private_key?: string | null;
 }
 
 export interface Artist {
@@ -412,6 +415,9 @@ updateSubscription(userId: number, status: string, expiresAt: string): void;
     setPluginEnabled(id: string, enabled: boolean): void;
     setPluginConfig(id: string, config: string): void;
     getAllPluginsState(): any[];
+
+    // Phase 4: ActivityPub user keys
+    updateUserApKeys(userId: number, pubKey: string, privKey: string): void;
 }
 
 export interface LibraryManager {

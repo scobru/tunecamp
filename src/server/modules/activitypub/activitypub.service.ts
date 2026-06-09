@@ -102,6 +102,18 @@ export class ActivityPubService {
         }
     }
 
+    /**
+     * Phase 4: Ensure a regular user account has AP keys. Called lazily on login.
+     */
+    public async ensureUserKeys(userId: number): Promise<void> {
+        const user = this.db.getUser(userId);
+        if (!user) return;
+        if (user.ap_public_key) return; // already has keys
+        console.log(`🔑 [AP] Generating ActivityPub keys for user: ${user.username}`);
+        const { publicKey, privateKey } = await this.generateKeyPair();
+        this.db.updateUserApKeys(userId, publicKey, privateKey);
+    }
+
     public async generateKeysForAllArtists(): Promise<void> {
         const artists = this.db.getArtists();
 
@@ -562,6 +574,35 @@ export class ActivityPubService {
             artistWithKeys.public_key = this.db.getSetting("site_public_key");
         }
         return this.renderer.renderActor(artistWithKeys);
+    }
+
+    /**
+     * Phase 4: Generate a Person actor JSON-LD for a regular user account.
+     */
+    public generateUserActor(user: { id: number; username: string; ap_public_key?: string | null }): any {
+        const baseUrl = this.getBaseUrl();
+        const userUrl = `${baseUrl}/users/${user.username}`;
+        return {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/v1"
+            ],
+            id: userUrl,
+            type: "Person",
+            preferredUsername: user.username,
+            name: user.username,
+            summary: "",
+            inbox: `${userUrl}/inbox`,
+            outbox: `${userUrl}/outbox`,
+            followers: `${userUrl}/followers`,
+            following: `${userUrl}/following`,
+            publicKey: user.ap_public_key ? {
+                id: `${userUrl}#main-key`,
+                owner: userUrl,
+                publicKeyPem: user.ap_public_key,
+            } : undefined,
+            url: `${baseUrl}/@${user.username}`,
+        };
     }
 
     public generateNote(album: Album, artist: Artist, tracks: Track[]): any {
