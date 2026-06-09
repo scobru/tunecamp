@@ -2,7 +2,8 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile
+    StorageAccount, GoogleDriveFile,
+    DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem
 } from '../types';
 
 const API_URL = '/api';
@@ -563,6 +564,21 @@ const API = {
     // --- Admin: Plugins ---
     getPlugins: () => handleResponse(api.get<any[]>('admin/system/plugins')),
     togglePlugin: (pluginId: string, enabled: boolean) => handleResponse(api.put(`admin/system/plugins/${pluginId}/toggle`, { enabled })),
+
+    // --- Dig (crate-digging) ---
+    digSearch: (q: string, source = 'bandcamp') =>
+        handleResponse(api.get<DigSearchResult[]>(`dig/search?q=${encodeURIComponent(q)}&source=${source}`)),
+    digRun: (releaseUrl: string, strategy: DigStrategy = 'balanced') =>
+        handleResponse(api.post<DigResult>('dig/run', { releaseUrl, strategy })),
+    digGetSessions: () => handleResponse(api.get<DigSession[]>('dig/sessions')),
+    digCreateSession: (name: string) => handleResponse(api.post<DigSession>('dig/sessions', { name })),
+    digDeleteSession: (id: number) => handleResponse(api.delete(`dig/sessions/${id}`)),
+    digGetCrate: (sessionId: number) => handleResponse(api.get<DigCrateItem[]>(`dig/sessions/${sessionId}/crate`)),
+    digAddToCrate: (sessionId: number, item: DigCrateInput) =>
+        handleResponse(api.post<DigCrateItem>(`dig/sessions/${sessionId}/crate`, item)),
+    digRemoveFromCrate: (sessionId: number, itemId: number) =>
+        handleResponse(api.delete(`dig/sessions/${sessionId}/crate/${itemId}`)),
+    digGetHistory: () => handleResponse(api.get<DigHistoryItem[]>('dig/history')),
 };
 
 export default API;

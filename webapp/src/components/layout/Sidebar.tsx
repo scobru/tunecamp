@@ -21,7 +21,8 @@ import {
   MessageSquare,
   Library,
   Wrench,
-  ShoppingBag
+  ShoppingBag,
+  Shovel
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -164,6 +165,9 @@ export const Sidebar = () => {
             <NavItem to="/search" icon={Search} label="Search" />
             <NavItem to="/network" icon={Globe} label="Network" />
             <NavItem to="/store" icon={ShoppingBag} label="Store" />
+            {isAuthenticated && (
+              <NavItem to="/dig" icon={Shovel} label="Dig" />
+            )}
             {communityLink && (
               <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
             )}
