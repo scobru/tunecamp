@@ -21,12 +21,6 @@ describe('Stats Routes', () => {
 
     beforeEach(() => {
         mockZenDBService = {
-            getDownloadCount: jest.fn(),
-            incrementDownloadCount: jest.fn(),
-            getTrackDownloadCount: jest.fn(),
-            incrementTrackDownloadCount: jest.fn(),
-            getTrackPlayCount: jest.fn(),
-            incrementTrackPlayCount: jest.fn(),
             getCommunitySites: jest.fn<any>().mockResolvedValue([]),
             getPeerCount: jest.fn().mockReturnValue(0)
         };
@@ -38,6 +32,13 @@ describe('Stats Routes', () => {
                 if (key === 'siteDescription') return 'Local desc';
                 return null;
             }),
+            // Local stats counters (Phase 0: replaces Zen stats)
+            getReleaseDownloadCount: jest.fn().mockReturnValue(0),
+            incrementReleaseDownloadCount: jest.fn().mockReturnValue(1),
+            getTrackDownloadCount: jest.fn().mockReturnValue(0),
+            incrementTrackDownloadCount: jest.fn().mockReturnValue(1),
+            getTrackPlayCount: jest.fn().mockReturnValue(0),
+            incrementTrackPlayCount: jest.fn().mockReturnValue(1),
             getFollowedActors: jest.fn().mockReturnValue([]),
             getRemoteActors: jest.fn().mockReturnValue([]),
             getRemoteTracks: jest.fn().mockReturnValue([]),
@@ -75,17 +76,17 @@ describe('Stats Routes', () => {
 
     describe('GET /api/stats/release/:slug', () => {
         test('returns download count on success', async () => {
-            mockZenDBService.getDownloadCount.mockResolvedValue(42);
+            mockDbService.getReleaseDownloadCount.mockReturnValue(42);
 
             const res = await request(app).get('/api/stats/release/test-slug');
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ slug: 'test-slug', downloads: 42 });
-            expect(mockZenDBService.getDownloadCount).toHaveBeenCalledWith('test-slug');
+            expect(mockDbService.getReleaseDownloadCount).toHaveBeenCalledWith('test-slug');
         });
 
         test('returns 500 on failure', async () => {
-            mockZenDBService.getDownloadCount.mockRejectedValue(new Error('ZenDB Error'));
+            mockDbService.getReleaseDownloadCount.mockImplementation(() => { throw new Error('DB Error'); });
 
             const res = await request(app).get('/api/stats/release/test-slug');
 
@@ -96,58 +97,61 @@ describe('Stats Routes', () => {
 
     describe('POST /api/stats/release/:slug/download', () => {
         test('increments and returns download count', async () => {
-            mockZenDBService.incrementDownloadCount.mockResolvedValue(10);
+            mockDbService.incrementReleaseDownloadCount.mockReturnValue(10);
 
             const res = await request(app).post('/api/stats/release/test-slug/download');
 
             expect(res.status).toBe(200);
             expect(res.body).toEqual({ slug: 'test-slug', downloads: 10 });
-            expect(mockZenDBService.incrementDownloadCount).toHaveBeenCalledWith('test-slug');
+            expect(mockDbService.incrementReleaseDownloadCount).toHaveBeenCalledWith('test-slug');
         });
     });
 
     describe('GET /api/stats/track/:releaseSlug/:trackId', () => {
         test('returns track download count', async () => {
-            mockZenDBService.getTrackDownloadCount.mockResolvedValue(7);
+            mockDbService.getTrackDownloadCount.mockReturnValue(7);
 
-            const res = await request(app).get('/api/stats/track/release-slug/track-123');
+            const res = await request(app).get('/api/stats/track/release-slug/123');
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: 'track-123', downloads: 7 });
-            expect(mockZenDBService.getTrackDownloadCount).toHaveBeenCalledWith('release-slug', 'track-123');
+            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: '123', downloads: 7 });
+            expect(mockDbService.getTrackDownloadCount).toHaveBeenCalledWith(123);
         });
     });
 
     describe('POST /api/stats/track/:releaseSlug/:trackId/download', () => {
         test('increments and returns track download count', async () => {
-            mockZenDBService.incrementTrackDownloadCount.mockResolvedValue(8);
+            mockDbService.incrementTrackDownloadCount.mockReturnValue(8);
 
-            const res = await request(app).post('/api/stats/track/release-slug/track-123/download');
+            const res = await request(app).post('/api/stats/track/release-slug/123/download');
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: 'track-123', downloads: 8 });
+            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: '123', downloads: 8 });
+            expect(mockDbService.incrementTrackDownloadCount).toHaveBeenCalledWith(123);
         });
     });
 
     describe('GET /api/stats/track/:releaseSlug/:trackId/plays', () => {
         test('returns track play count', async () => {
-            mockZenDBService.getTrackPlayCount.mockResolvedValue(99);
+            mockDbService.getTrackPlayCount.mockReturnValue(99);
 
-            const res = await request(app).get('/api/stats/track/release-slug/track-123/plays');
+            const res = await request(app).get('/api/stats/track/release-slug/123/plays');
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: 'track-123', plays: 99 });
+            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: '123', plays: 99 });
+            expect(mockDbService.getTrackPlayCount).toHaveBeenCalledWith(123);
         });
     });
 
     describe('POST /api/stats/track/:releaseSlug/:trackId/play', () => {
         test('increments and returns track play count', async () => {
-            mockZenDBService.incrementTrackPlayCount.mockResolvedValue(100);
+            mockDbService.incrementTrackPlayCount.mockReturnValue(100);
 
-            const res = await request(app).post('/api/stats/track/release-slug/track-123/play');
+            const res = await request(app).post('/api/stats/track/release-slug/123/play');
 
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: 'track-123', plays: 100 });
+            expect(res.body).toEqual({ releaseSlug: 'release-slug', trackId: '123', plays: 100 });
+            expect(mockDbService.incrementTrackPlayCount).toHaveBeenCalledWith(123);
         });
     });
 

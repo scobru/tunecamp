@@ -961,7 +961,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                     // Handle unpublishing for formal releases
                     try {
                         await (publishingService as any).unpublishReleaseFromAP(release);
-                        await zendbService.unpublishRelease(id);
                     } catch (e) {
                         console.error(`Failed to unpublish formal release ${id}:`, e);
                     }
@@ -1065,7 +1064,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 // Handle unpublishing for formal releases
                 try {
                     await (publishingService as any).unpublishReleaseFromAP(release);
-                    await zendbService.unpublishRelease(id);
                 } catch (e) {
                     console.error("Failed to unpublish formal release:", e);
                 }

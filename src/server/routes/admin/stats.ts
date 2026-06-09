@@ -15,12 +15,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/stats/release/:slug
-     * Get download count for a release
+     * Get download count for a release (local SQLite)
      */
-    router.get("/release/:slug", async (req, res) => {
+    router.get("/release/:slug", (req, res) => {
         try {
             const slug = req.params.slug;
-            const count = await zendbService.getDownloadCount(slug);
+            const count = dbService.getReleaseDownloadCount(slug);
             res.json({ slug, downloads: count });
         } catch (error) {
             console.error("Error getting download count:", error);
@@ -30,12 +30,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/stats/release/:slug/download
-     * Increment download count for a release
+     * Increment download count for a release (local SQLite)
      */
-    router.post("/release/:slug/download", async (req, res) => {
+    router.post("/release/:slug/download", (req, res) => {
         try {
             const slug = req.params.slug;
-            const count = await zendbService.incrementDownloadCount(slug);
+            const count = dbService.incrementReleaseDownloadCount(slug);
             res.json({ slug, downloads: count });
         } catch (error) {
             console.error("Error incrementing download count:", error);
@@ -45,12 +45,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/stats/track/:releaseSlug/:trackId
-     * Get download count for a specific track
+     * Get download count for a specific track (local SQLite, releaseSlug ignored)
      */
-    router.get("/track/:releaseSlug/:trackId", async (req, res) => {
+    router.get("/track/:releaseSlug/:trackId", (req, res) => {
         try {
             const { releaseSlug, trackId } = req.params;
-            const count = await zendbService.getTrackDownloadCount(releaseSlug, trackId);
+            const count = dbService.getTrackDownloadCount(Number(trackId));
             res.json({ releaseSlug, trackId, downloads: count });
         } catch (error) {
             console.error("Error getting track download count:", error);
@@ -60,12 +60,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/stats/track/:releaseSlug/:trackId/download
-     * Increment download count for a specific track
+     * Increment download count for a specific track (local SQLite, releaseSlug ignored)
      */
-    router.post("/track/:releaseSlug/:trackId/download", async (req, res) => {
+    router.post("/track/:releaseSlug/:trackId/download", (req, res) => {
         try {
             const { releaseSlug, trackId } = req.params;
-            const count = await zendbService.incrementTrackDownloadCount(releaseSlug, trackId);
+            const count = dbService.incrementTrackDownloadCount(Number(trackId));
             res.json({ releaseSlug, trackId, downloads: count });
         } catch (error) {
             console.error("Error incrementing track download count:", error);
@@ -75,12 +75,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/stats/track/:releaseSlug/:trackId/plays
-     * Get play count for a specific track from Zen
+     * Get play count for a specific track (local SQLite, releaseSlug ignored)
      */
-    router.get("/track/:releaseSlug/:trackId/plays", async (req, res) => {
+    router.get("/track/:releaseSlug/:trackId/plays", (req, res) => {
         try {
             const { releaseSlug, trackId } = req.params;
-            const count = await zendbService.getTrackPlayCount(releaseSlug, trackId);
+            const count = dbService.getTrackPlayCount(Number(trackId));
             res.json({ releaseSlug, trackId, plays: count });
         } catch (error) {
             console.error("Error getting track play count:", error);
@@ -90,12 +90,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/stats/track/:releaseSlug/:trackId/play
-     * Increment play count for a specific track in Zen
+     * Increment play count for a specific track (local SQLite, releaseSlug ignored)
      */
-    router.post("/track/:releaseSlug/:trackId/play", async (req, res) => {
+    router.post("/track/:releaseSlug/:trackId/play", (req, res) => {
         try {
             const { releaseSlug, trackId } = req.params;
-            const count = await zendbService.incrementTrackPlayCount(releaseSlug, trackId);
+            const count = dbService.incrementTrackPlayCount(Number(trackId));
             res.json({ releaseSlug, trackId, plays: count });
         } catch (error) {
             console.error("Error incrementing track play count:", error);

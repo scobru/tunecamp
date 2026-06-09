@@ -796,6 +796,25 @@ export function createDatabase(dbPath: string): DatabaseService {
             )
         `);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_ap_delivery_due ON ap_delivery_queue(status, next_attempt_at)`);
+
+        // Phase 0: Zen → signaling only — local stats tables
+        // play_count = public counter (embedded player + webapp /stats/track/.../play)
+        // play_history stays separate (library plays via /stats/library/play + subsonic)
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS track_stats (
+                track_id       INTEGER PRIMARY KEY,
+                play_count     INTEGER NOT NULL DEFAULT 0,
+                download_count INTEGER NOT NULL DEFAULT 0
+            )
+        `);
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS release_stats (
+                slug           TEXT PRIMARY KEY,
+                download_count INTEGER NOT NULL DEFAULT 0
+            )
+        `);
+        // Ensure play_history is indexed for COUNT(*) queries
+        db.exec(`CREATE INDEX IF NOT EXISTS idx_play_history_track ON play_history(track_id)`);
     })();
 
     // View Refresh Phase: Ensure views are always up-to-date with current logic

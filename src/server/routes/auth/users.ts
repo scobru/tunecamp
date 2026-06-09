@@ -59,23 +59,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 return res.status(409).json({ error: "Username already taken" });
             }
 
-            // 1. Verify ZEN signature if provided (ZEN-first proof)
-            if (pubKey && signature) {
-                console.log(`🔐 [AUTH] Verifying registration signature for ${username}...`);
-                const isValid = await authService.verifyZenSignature(username, pubKey, signature);
-                if (isValid) {
-                    console.log(`✅ [AUTH] ZEN signature verified for registration of ${username}`);
-                    // Also ensure ZEN metadata is populated
-                    const existingUser = await zendbService.getUser(pubKey);
-                    if (!existingUser || !existingUser.username) {
-                        await zendbService.registerUser(pubKey, username);
-                    }
-                } else {
-                    console.warn(`⚠️ [AUTH] ZEN signature invalid for registration of ${username}. Proceeding with password-only auth.`);
-                }
-            }
-
-            // 2. Create DB user without artist link (null) + storage quota (1GB) + GunDB pubKey
+            // Create DB user without artist link (null) + storage quota (1GB)
             // Users are now standard listeners by default. Admin must promote them to artists.
             const DEFAULT_QUOTA = 1024 * 1024 * 1024; // 1GB
             const { id: userId } = await authService.createUser(username, password, null, DEFAULT_QUOTA, pubKey);
@@ -130,46 +114,18 @@ export function createUsersRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/users/:pubKey
-     * Get user profile by public key
+     * @deprecated Zen user profiles removed (Phase 0). Endpoint kept for compatibility.
      */
-    router.get("/:pubKey", async (req, res) => {
-        try {
-            const { pubKey } = req.params;
-            const user = await zendbService.getUser(pubKey);
-
-            if (!user) {
-                return res.status(404).json({ error: "User not found" });
-            }
-
-            res.json(user);
-        } catch (error) {
-            console.error("Get user error:", error);
-            res.status(500).json({ error: "Failed to get user" });
-        }
+    router.get("/:pubKey", (_req, res) => {
+        res.status(404).json({ error: "User not found" });
     });
 
     /**
      * POST /api/users/sync
-     * Sync Zen user data (pub, epub, alias, avatar) to local SQLite
+     * @deprecated Zen user sync removed (Phase 0). No-op for backward compatibility.
      */
-    router.post("/sync", async (req, res) => {
-        try {
-            if (!req.body || typeof req.body !== "object") {
-                return res.status(400).json({ error: "Request body is required" });
-            }
-            const { pub, epub, alias, avatar } = req.body;
-
-            if (!pub || !epub) {
-                return res.status(400).json({ error: "pub and epub are required" });
-            }
-
-            const finalAlias = alias || "Anonymous";
-            identity.syncZenUser(pub, epub, finalAlias, avatar);
-            res.json({ success: true });
-        } catch (error) {
-            console.error("User sync error:", error);
-            res.status(500).json({ error: "Sync failed" });
-        }
+    router.post("/sync", (_req, res) => {
+        res.json({ success: true });
     });
 
     /**

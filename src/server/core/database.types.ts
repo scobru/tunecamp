@@ -393,9 +393,7 @@ export interface IdentityManager {
     getAllUsers(): User[];
     deleteUser(id: number): void;
     getAdmins(): User[];
-    syncZenUser(pub: string, epub: string, alias: string, avatar?: string): void;
-    getZenUser(pub: string): { pub: string, epub: string, alias: string, avatar: string | null } | undefined;
-    updateSubscription(userId: number, status: string, expiresAt: string): void;
+updateSubscription(userId: number, status: string, expiresAt: string): void;
     getUserSubscription(userId: number): { status: string, expiresAt: string | null };
 
     // Auth / OAuth
@@ -622,6 +620,15 @@ export interface SocialManager {
     removeLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void;
     getLikesCount(objectType: 'album' | 'track' | 'post', objectId: number): number;
     hasLiked(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): boolean;
+    // Local stats counters (replaces Zen stats)
+    getTrackPlayCount(trackId: number): number;
+    incrementTrackPlayCount(trackId: number): number;
+    getTrackDownloadCount(trackId: number): number;
+    incrementTrackDownloadCount(trackId: number): number;
+    getTrackLikeCount(trackId: number): number;
+    getReleaseDownloadCount(slug: string): number;
+    incrementReleaseDownloadCount(slug: string): number;
+
     recordPlay(trackId: number, playedAt?: string): void;
     getRecentPlays(limit?: number): PlayHistoryEntry[];
     getTopTracks(limit?: number, days?: number, filter?: 'all' | 'library' | 'releases'): TrackWithPlayCount[];

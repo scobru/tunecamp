@@ -174,6 +174,57 @@ export class SocialRepository extends BaseRepository {
         return true;
     }
 
+    // --- Track / Release Stats (local counters, replaces Zen stats) ---
+
+    getTrackPlayCount(trackId: number): number {
+        const row = this.db.prepare(
+            "SELECT play_count FROM track_stats WHERE track_id = ?"
+        ).get(trackId) as { play_count: number } | undefined;
+        return row ? row.play_count : 0;
+    }
+
+    incrementTrackPlayCount(trackId: number): number {
+        this.db.prepare(
+            "INSERT INTO track_stats (track_id, play_count) VALUES (?, 1) ON CONFLICT(track_id) DO UPDATE SET play_count = play_count + 1"
+        ).run(trackId);
+        return this.getTrackPlayCount(trackId);
+    }
+
+    getTrackDownloadCount(trackId: number): number {
+        const row = this.db.prepare(
+            "SELECT download_count FROM track_stats WHERE track_id = ?"
+        ).get(trackId) as { download_count: number } | undefined;
+        return row ? row.download_count : 0;
+    }
+
+    incrementTrackDownloadCount(trackId: number): number {
+        this.db.prepare(
+            "INSERT INTO track_stats (track_id, download_count) VALUES (?, 1) ON CONFLICT(track_id) DO UPDATE SET download_count = download_count + 1"
+        ).run(trackId);
+        return this.getTrackDownloadCount(trackId);
+    }
+
+    getTrackLikeCount(trackId: number): number {
+        const row = this.db.prepare(
+            "SELECT COUNT(*) as count FROM starred_items WHERE item_type = 'track' AND item_id = CAST(? AS TEXT)"
+        ).get(trackId) as { count: number };
+        return row ? row.count : 0;
+    }
+
+    getReleaseDownloadCount(slug: string): number {
+        const row = this.db.prepare(
+            "SELECT download_count FROM release_stats WHERE slug = ?"
+        ).get(slug) as { download_count: number } | undefined;
+        return row ? row.download_count : 0;
+    }
+
+    incrementReleaseDownloadCount(slug: string): number {
+        this.db.prepare(
+            "INSERT INTO release_stats (slug, download_count) VALUES (?, 1) ON CONFLICT(slug) DO UPDATE SET download_count = download_count + 1"
+        ).run(slug);
+        return this.getReleaseDownloadCount(slug);
+    }
+
     // --- Play History & Stats ---
 
     recordPlay(trackId: number, playedAt?: string): void {
