@@ -134,9 +134,19 @@ export class DigService {
     async dig(releaseUrl: string, strategy: DigStrategy = "balanced"): Promise<DigResult> {
         const config = STRATEGIES[strategy] || STRATEGIES.balanced;
 
-        const meta = await extractBandcampMetadata(releaseUrl);
+        // The seed fetch is the single point of failure for a dig. Bandcamp (or a jammed event
+        // loop) can make a request time out transiently, so retry a couple of times with backoff
+        // before giving up — and report timeouts honestly rather than as "bad URL".
+        let meta = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            meta = await extractBandcampMetadata(releaseUrl);
+            if (meta && meta.tralbumId && meta.tralbumType) break;
+            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+        }
         if (!meta || !meta.tralbumId || !meta.tralbumType) {
-            throw new Error("Could not read this Bandcamp release (no tralbum id found).");
+            throw new Error(
+                "Could not read this Bandcamp release — it may be temporarily unreachable, or the URL is not a public track/album page. Please try again."
+            );
         }
 
         const seed = {
