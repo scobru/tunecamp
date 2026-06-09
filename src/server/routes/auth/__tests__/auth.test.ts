@@ -52,7 +52,7 @@ describe('Auth Routes', () => {
                 .send({});
             
             expect(res.status).toBe(400);
-            expect(res.body.error).toBe('Password or GunDB proof required');
+            expect(res.body.error).toBe('Password required');
         });
 
         test('returns 400 if it is first run and no accounts are set up', async () => {

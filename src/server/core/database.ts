@@ -608,6 +608,25 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating albums table: adding podcast_explicit column...");
                 db.exec("ALTER TABLE albums ADD COLUMN podcast_explicit INTEGER DEFAULT 0");
             }
+
+            // Data migration: unify the release category onto the `type` column.
+            // Legacy podcasts were stored with type='album' + product_type='podcast'.
+            // Backfill type='podcast' so the category is readable from a single field.
+            const podcastTypeFix = db.prepare(
+                "UPDATE albums SET type = 'podcast' WHERE product_type = 'podcast' AND type != 'podcast'"
+            ).run();
+            if (podcastTypeFix.changes > 0) {
+                console.log(`📦 [Database] Migrated ${podcastTypeFix.changes} podcast release(s) to type='podcast'.`);
+            }
+
+            // The supported categories are album | single | liveset | podcast.
+            // Fold the deprecated 'ep' type into 'album'.
+            const epTypeFix = db.prepare(
+                "UPDATE albums SET type = 'album' WHERE type = 'ep'"
+            ).run();
+            if (epTypeFix.changes > 0) {
+                console.log(`📦 [Database] Migrated ${epTypeFix.changes} 'ep' release(s) to type='album'.`);
+            }
         }
 
         const tracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tracks'").get();
@@ -689,6 +708,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             }
             if (!cols.some(col => col.name === 'avatar')) {
                 db.exec("ALTER TABLE admin ADD COLUMN avatar TEXT");
+            }
+            // Phase 4: ActivityPub keys for user actors
+            if (!cols.some(col => col.name === 'ap_public_key')) {
+                console.log("📦 [Database] Migrating admin table: adding ap_public_key/ap_private_key columns...");
+                db.exec("ALTER TABLE admin ADD COLUMN ap_public_key TEXT");
+                db.exec("ALTER TABLE admin ADD COLUMN ap_private_key TEXT");
             }
         }
 

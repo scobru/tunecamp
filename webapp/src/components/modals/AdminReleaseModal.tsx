@@ -13,7 +13,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const dialogRef = useRef<HTMLDialogElement>(null);
     const [title, setTitle] = useState('');
     const [artistId, setArtistId] = useState(''); // Could be dropdown in future
-    const [type, setType] = useState<'album'|'single'|'ep'>('album');
+    const [type, setType] = useState<'album'|'single'|'liveset'|'podcast'>('album');
     const [year, setYear] = useState(new Date().getFullYear());
     const [price, setPrice] = useState<string>('');
     const [priceUsdc, setPriceUsdc] = useState<string>('');
@@ -252,8 +252,9 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                                 onChange={e => setType(e.target.value as any)}
                             >
                                 <option value="album">Album</option>
-                                <option value="ep">EP</option>
                                 <option value="single">Single</option>
+                                <option value="liveset">Liveset</option>
+                                <option value="podcast">Podcast</option>
                             </select>
                         </div>
                         <div className="form-control">

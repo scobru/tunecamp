@@ -43,8 +43,7 @@ export interface AuthService {
     // ... rest of methods
 
     // Multi-user management
-    authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number; pair?: any } | false>;
-    verifyZenSignature(message: any, pubKey: string, proof: string): Promise<boolean>;
+    authenticateUser(username: string, password: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number } | false>;
     verifySubsonicToken(username: string, token: string, salt: string): Promise<boolean>;
     createAdmin(username: string, password: string, artistId?: number | null, role?: UserRole): Promise<{ id: number }>;
     createUser(username: string, password: string, artistId: number | null, storageQuota?: number, pubKey?: string, role?: UserRole): Promise<{ id: number }>;
@@ -282,53 +281,14 @@ export function createAuthService(
             console.log(`🛡️ [AUTH] Revoked all tokens for user ID: ${userId}`);
         },
 
-        async authenticateUser(username: string, password: string, pubKey?: string, proof?: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number; pair?: any } | false> {
-            console.log(`[AUTH] Attempting login for user: '${username}' (password provided: ${!!password}, pubKey: ${!!pubKey})`);
-            let user = db.prepare("SELECT id, username, password_hash, artist_id, role, gun_pub, gun_priv, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; username: string; password_hash: string; artist_id: number | null; role: UserRole; gun_pub: string | null; gun_priv: string | null; is_active: number; token_version: number } | undefined;
-            
+        async authenticateUser(username: string, password: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number } | false> {
+            console.log(`[AUTH] Attempting login for user: '${username}'`);
+            let user = db.prepare("SELECT id, username, password_hash, artist_id, role, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; username: string; password_hash: string; artist_id: number | null; role: UserRole; is_active: number; token_version: number } | undefined;
+
             if (!user) {
-                // Try case-insensitive fallback if not found (just in case)
-                user = db.prepare("SELECT id, username, password_hash, artist_id, role, gun_pub, gun_priv, is_active, token_version FROM admin WHERE username = ? COLLATE NOCASE").get(username) as any;
+                // Try case-insensitive fallback
+                user = db.prepare("SELECT id, username, password_hash, artist_id, role, is_active, token_version FROM admin WHERE username = ? COLLATE NOCASE").get(username) as any;
                 if (user) console.log(`[AUTH] Found user '${user.username}' via case-insensitive lookup for '${username}'`);
-            }
-
-            let gunVerified = false;
-
-            // 1. Verify ZEN identity if provided
-            if (pubKey && proof) {
-                console.log(`🔐 [AUTH] Verifying ZEN proof for ${username}...`);
-                const isValid = await this.verifyZenSignature(username, pubKey, proof);
-                if (isValid) {
-                    console.log(`✨ [AUTH] ZEN proof verified for ${username}`);
-                    
-                    // If user doesn't exist locally, lazy-create (Roaming)
-                    if (!user) {
-                        console.log(`📡 [AUTH] Roaming: Lazily creating local account for ZEN user ${username}`);
-                        const tempPass = crypto.randomBytes(32).toString('hex');
-                        const { id } = await this.createUser(username, tempPass, null as any); // artist creation below
-                        
-                        // Link the pubKey
-                        db.prepare("UPDATE admin SET gun_pub = ? WHERE id = ?").run(pubKey, id);
-                        
-                        // Reload user record
-                        user = db.prepare("SELECT id, username, password_hash, artist_id, role, gun_pub, gun_priv, is_active FROM admin WHERE id = ?").get(id) as any;
-                    } else if (!user.gun_pub) {
-                        // User exists but has no ZEN link yet - link it now
-                        console.log(`🔗 [AUTH] Linking existing local user ${username} to ZEN identity`);
-                        db.prepare("UPDATE admin SET gun_pub = ? WHERE id = ?").run(pubKey, user.id);
-                        user.gun_pub = pubKey;
-                    }
-
-                    // Only allow proof to bypass password if it matches the linked pubKey (if any)
-                    if (user && (!user.gun_pub || user.gun_pub === pubKey)) {
-                        console.log(`✅ [AUTH] ZEN verified and pubKey matches for ${username}`);
-                        gunVerified = true;
-                    } else {
-                        console.warn(`⚠️ [AUTH] ZEN pubKey mismatch for ${username}. Database: ${user?.gun_pub?.slice(0, 8)}, Provided: ${pubKey.slice(0, 8)}`);
-                    }
-                } else {
-                    console.warn(`❌ [AUTH] ZEN signature invalid for ${username}`);
-                }
             }
 
             if (!user) {
@@ -336,87 +296,27 @@ export function createAuthService(
                 return false;
             }
 
-            // 2. Verification check: Either ZEN proof was verified OR local password must match
-            if (!gunVerified) {
-                if (!password) {
-                    console.log(`❌ [AUTH] No password provided and ZEN verification failed for: ${username}`);
-                    return false;
-                }
-                const valid = await this.verifyPassword(password, user.password_hash);
-                if (!valid) {
-                    console.log(`❌ [AUTH] Password mismatch for ${username}. Hash in DB starts with: ${user.password_hash.slice(0, 10)}`);
-                    return false;
-                }
-                console.log(`✅ [AUTH] Password verified for ${username}`);
+            if (!password) {
+                console.log(`❌ [AUTH] No password provided for: ${username}`);
+                return false;
+            }
+            const valid = await this.verifyPassword(password, user.password_hash);
+            if (!valid) {
+                console.log(`❌ [AUTH] Password mismatch for ${username}`);
+                return false;
+            }
+            console.log(`✅ [AUTH] Password verified for ${username}`);
 
-                // Check if the linked ZEN identity is LEGACY (P-256)
-                if (user.gun_pub && user.gun_priv) {
-                    try {
-                        const existingPair = this.decryptZenPriv(user.gun_priv);
-                        if ((existingPair.curve && existingPair.curve !== 'secp256k1') || existingPair.pub.length > 80) {
-                            console.warn(`🚨 [AUTH] User ${username} has a LEGACY (SEA/P-256) identity. Flagging for regeneration.`);
-                            user.gun_priv = null; // Force regeneration
-                            user.gun_pub = null;
-                        }
-                    } catch (e) {
-                        user.gun_priv = null; 
-                    }
-                }
-            } else {
-                console.log(`✅ [AUTH] ZEN verification succeeded for ${username}, skipping password check`);
+            // Also store encrypted cleartext password for Subsonic token+salt auth
+            const encryptedPass = encryptZenPrivHelper(password, jwtSecret);
+            try {
+                db.prepare("UPDATE admin SET subsonic_password = ? WHERE id = ?").run(encryptedPass, user.id);
+            } catch (e) {
+                // Column might not exist yet
             }
 
             let userRole: UserRole = user.role ? (user.role as UserRole) : UserRole.ADMIN;
             if (user.id === 1) userRole = UserRole.ROOT_ADMIN;
-
-            // Handle ZEN Key Management for all users
-            let gunPair: any = undefined;
-            if (user.gun_pub && user.gun_priv) {
-                try {
-                    gunPair = this.decryptZenPriv(user.gun_priv);
-                } catch (e) {
-                    console.error(`⚠️ Failed to decrypt ZEN keys for ${username}. This likely means the server's encryption secret changed.`);
-                    console.log(`🔄 Attempting auto-recovery for ${username}...`);
-                }
-            }
-
-            // Root admin synchronization with system identity
-            if (user.id === 1) {
-                try {
-                    const systemPairRow = db.prepare("SELECT value FROM settings WHERE key = 'gunPair'").get() as { value: string } | undefined;
-                    if (systemPairRow) {
-                        const systemPair = JSON.parse(systemPairRow.value); // Fetch identity from settings
-                        if (systemPair && systemPair.pub && (!gunPair || gunPair.pub !== systemPair.pub)) {
-                            console.log(`🔗 Syncing Root Admin ${username} with instance ZEN Identity...`);
-                            gunPair = systemPair;
-                            const encryptedPriv = this.encryptZenPriv(gunPair);
-                            db.prepare("UPDATE admin SET gun_pub = ?, gun_priv = ? WHERE id = ?").run(gunPair.pub, encryptedPriv, user.id);
-                        }
-                    }
-                } catch (e) {
-                    console.error("❌ Failed to sync root admin with system ZEN pair:", e);
-                }
-            }
-
-            const isDefault = await this.isDefaultPassword(username);
-            
-            if (!gunPair && (user.id === 1 || !isDefault)) {
-                // Lazy-generate or RE-generate ZEN identity (secp256k1)
-                console.log(`🔐 Generating new ZEN Identity for ${userRole} ${username}...`);
-                gunPair = await (Zen as any).pair();
-                const encryptedPriv = this.encryptZenPriv(gunPair);
-                db.prepare("UPDATE admin SET gun_pub = ?, gun_priv = ? WHERE id = ?").run(gunPair.pub, encryptedPriv, user.id);
-            }
-
-            // Also store encrypted cleartext password for Subsonic token+salt auth
-            if (password) {
-                const encryptedPass = encryptZenPrivHelper(password, jwtSecret);
-                try {
-                    db.prepare("UPDATE admin SET subsonic_password = ? WHERE id = ?").run(encryptedPass, user.id);
-                } catch (e) {
-                    // Column might not exist yet
-                }
-            }
 
             let artistId = user.artist_id;
 
@@ -470,7 +370,6 @@ export function createAuthService(
                 role: userRole,
                 isActive: user.is_active === 1,
                 tokenVersion: user.token_version,
-                pair: gunPair
             };
         },
 
@@ -491,55 +390,6 @@ export function createAuthService(
             }
 
             return false;
-        },
-
-        async verifyZenSignature(message: any, pubKey: string, proof: any): Promise<boolean> {
-            try {
-                if (!proof || !pubKey) return false;
-
-                // Ensure proof is in the right format.
-                let parsedProof = proof;
-                if (typeof proof === 'string' && proof.trim().startsWith('{')) {
-                    try {
-                        parsedProof = JSON.parse(proof);
-                    } catch (e) {}
-                }
-
-                // Robustness: If the proof is a legacy signature format containing a Base64 signature,
-                // convert the signature to Base62 so that ZEN can verify it.
-                if (parsedProof && typeof parsedProof === 'object') {
-                    if (typeof parsedProof.s === 'string' && /[+/=]/.test(parsedProof.s)) {
-                        try {
-                            console.log("🔄 [AUTH] Detected legacy Base64 signature in proof. Converting to Base62 for verification...");
-                            const base64 = parsedProof.s.replace(/-/g, '+').replace(/_/g, '/');
-                            const buf = Buffer.from(base64, 'base64');
-                            parsedProof.s = bufToB62Fixed(new Uint8Array(buf), 86);
-                            console.log(`✨ [AUTH] Successfully converted legacy signature to Base62: ${parsedProof.s.slice(0, 10)}...`);
-                        } catch (err: any) {
-                            console.error("❌ [AUTH] Failed to convert legacy signature to Base62:", err.message);
-                        }
-                    }
-                }
-
-                // Diagnostic logs
-                console.log(`[DEBUG] verifyZenSignature - Expected Message: "${message}"`);
-                console.log(`[DEBUG] verifyZenSignature - PubKey: "${pubKey}"`);
-                
-                // Use ZEN verify (secp256k1)
-                const verified = await (Zen as any).verify(parsedProof, pubKey);
-                const isValid = !!verified;
-                
-                if (!isValid) {
-                    console.warn(`❌ ZEN signature verification failed for ${message}.`);
-                } else {
-                    console.log(`✅ ZEN signature verified for ${message}`);
-                }
-                
-                return isValid;
-            } catch (e) {
-                console.error("❌ Zen signature verification error:", e);
-                return false;
-            }
         },
 
         async createAdmin(username: string, password: string, artistId: number | null = null, role: UserRole = UserRole.ADMIN): Promise<{ id: number }> {
@@ -971,24 +821,3 @@ export function decryptZenPrivHelper(encrypted: string, secret: string): any {
     }
 }
 
-const BASE62_ALPHA = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-/**
- * Converts a byte buffer into a fixed-length Base62 string.
- */
-function bufToB62Fixed(buf: Uint8Array, len: number): string {
-    let hex = "";
-    for (let i = 0; i < buf.length; i++) {
-        hex += ("0" + buf[i].toString(16)).slice(-2);
-    }
-    let n = BigInt("0x" + (hex || "0"));
-    let out = "";
-    while (n > 0n) {
-        out = BASE62_ALPHA[Number(n % 62n)] + out;
-        n = n / 62n;
-    }
-    while (out.length < len) {
-        out = "0" + out;
-    }
-    return out;
-}

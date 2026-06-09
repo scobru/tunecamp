@@ -27,11 +27,17 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
             });
         } else {
             const artist = db.getArtistBySlug(slug);
-            if (!artist) {
-                console.log(`❌ Actor not found: ${slug}`);
-                return res.status(404).send("Not found");
+            if (artist) {
+                actor = apService.generateActor(artist);
+            } else {
+                // Phase 4: fall back to regular user account
+                const adminUser = db.getUserByUsername(slug);
+                if (!adminUser?.ap_public_key) {
+                    console.log(`❌ Actor not found: ${slug}`);
+                    return res.status(404).send("Not found");
+                }
+                actor = apService.generateUserActor(adminUser);
             }
-            actor = apService.generateActor(artist);
         }
 
         res.setHeader("Content-Type", "application/activity+json");

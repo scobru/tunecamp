@@ -18,7 +18,7 @@ interface CreateReleaseBody {
     date?: string;
     description?: string;
     track_ids?: number[];
-    type?: 'album' | 'single' | 'ep';
+    type?: 'album' | 'single' | 'liveset' | 'podcast';
     year?: number;
     license?: string;
     visibility?: 'public' | 'private' | 'unlisted';
@@ -41,6 +41,26 @@ interface CreateReleaseBody {
 }
 
 import type { ServiceContainer } from "../../core/container.js";
+
+/**
+ * The release category lives on the `type` column (album | single | ep | liveset | podcast).
+ * `product_type` (music | podcast) is kept as a derived field for backward compatibility
+ * with the podcast RSS feeds and the Subsonic podcast channel. This keeps both in sync
+ * regardless of which one a caller supplies.
+ */
+function syncReleaseCategory(data: { type?: string; product_type?: string; productType?: string }): void {
+    const productType = data.product_type ?? data.productType;
+    // If the caller marks this as a podcast via either field, normalize both.
+    if (data.type === 'podcast' || productType === 'podcast') {
+        data.type = 'podcast';
+        data.product_type = 'podcast';
+    } else if (data.type !== undefined) {
+        // A non-podcast type was set explicitly → it can't be a podcast product.
+        data.product_type = 'music';
+    } else if (productType !== undefined) {
+        data.product_type = 'music';
+    }
+}
 
 /**
  * Release Routes — Orchestrates the creation and management of formal releases.
@@ -103,6 +123,9 @@ export function createReleaseRouter(container: ServiceContainer): Router {
 
         const body = req.body as CreateReleaseBody;
         if (!body.title) throw new BadRequestError("Title is required");
+
+        // Keep the release category (type) and the legacy product_type in sync.
+        syncReleaseCategory(body);
 
         // Prevent rapid duplicate creation (double-submission prevention)
         const checkArtistId = body.artist_id || body.artistId || null;
@@ -286,7 +309,10 @@ export function createReleaseRouter(container: ServiceContainer): Router {
         if (!req.isAdmin && release.owner_id !== req.userId) throw new ForbiddenError("Access denied");
 
         const body = req.body;
-        
+
+        // Keep the release category (type) and the legacy product_type in sync.
+        syncReleaseCategory(body);
+
         database.transaction(() => {
             library.updateRelease(id, body);
             if (body.track_ids) {

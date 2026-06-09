@@ -12,6 +12,19 @@ const Releases = () => {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
+    const [category, setCategory] = useState<'all' | 'album' | 'single' | 'liveset' | 'podcast'>('all');
+
+    const CATEGORIES: { key: typeof category; label: string }[] = [
+        { key: 'all', label: 'All' },
+        { key: 'album', label: 'Albums' },
+        { key: 'single', label: 'Singles' },
+        { key: 'liveset', label: 'Livesets' },
+        { key: 'podcast', label: 'Podcasts' },
+    ];
+
+    // Resolve a release's category from `type`, falling back to the legacy product_type for podcasts.
+    const releaseCategory = (r: any): string =>
+        (r.product_type === 'podcast' || r.productType === 'podcast') ? 'podcast' : (r.type || 'album');
 
     useEffect(() => {
         const loadData = async () => {
@@ -31,9 +44,17 @@ const Releases = () => {
         loadData();
     }, [isAuthenticated]);
 
-    const filteredReleases = releases.filter(release => 
-        release.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        release.artistName?.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredReleases = releases.filter(release => {
+        const matchesSearch =
+            release.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            release.artistName?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = category === 'all' || releaseCategory(release) === category;
+        return matchesSearch && matchesCategory;
+    });
+
+    // Only show category tabs that actually have releases (besides "All").
+    const availableCategories = CATEGORIES.filter(
+        c => c.key === 'all' || releases.some(r => releaseCategory(r) === c.key)
     );
 
     if (loading) return <div className="p-12 text-center opacity-50">Loading releases...</div>;
@@ -82,6 +103,20 @@ const Releases = () => {
                     </div>
                 </div>
              </PageHeader>
+
+             {availableCategories.length > 2 && (
+                <div className="tabs tabs-boxed bg-base-200/40 w-fit max-w-full overflow-x-auto flex-nowrap">
+                    {availableCategories.map(c => (
+                        <button
+                            key={c.key}
+                            className={clsx("tab whitespace-nowrap", category === c.key && "tab-active")}
+                            onClick={() => setCategory(c.key)}
+                        >
+                            {c.label}
+                        </button>
+                    ))}
+                </div>
+             )}
 
              <div className={clsx(
                 "grid gap-6",

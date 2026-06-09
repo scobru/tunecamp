@@ -10,6 +10,7 @@ import type { ServiceContainer } from "../../core/container.js";
 export function createAuthRoutes(container: ServiceContainer): Router {
     const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
+    const apService: ServiceContainer['apService'] = (container as any).apService || null;
     const router = Router();
     router.use(json({ limit: "10mb" }));
 
@@ -19,10 +20,10 @@ export function createAuthRoutes(container: ServiceContainer): Router {
      */
     router.post("/login", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), async (req, res) => {
         try {
-            const { username, password, pubKey, proof } = req.body;
+            const { username, password } = req.body;
 
-            if (!password && !(pubKey && proof)) {
-                return res.status(400).json({ error: "Password or GunDB proof required" });
+            if (!password) {
+                return res.status(400).json({ error: "Password required" });
             }
 
             // Check if first run
@@ -36,10 +37,15 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             // Default to 'admin' if no username provided (legacy/default support)
             const userToAuth = username || 'admin';
 
-            const result = await authService.authenticateUser(userToAuth, password, pubKey, proof);
+            const result = await authService.authenticateUser(userToAuth, password);
             if (!result || !result.success) {
                 return res.status(401).json({ error: "Invalid username or password" });
             }
+
+            // Phase 4: lazily generate AP keys for this user (fire-and-forget)
+            apService?.ensureUserKeys(result.id).catch((e: any) =>
+                console.error('[AP] User key gen failed:', e)
+            );
 
             const token = authService.generateToken({
                 isAdmin: result.isAdmin || false,
@@ -59,7 +65,6 @@ export function createAuthRoutes(container: ServiceContainer): Router {
                 artistId: result.artistId || null,
                 userId: result.id,
                 role: result.role || UserRole.NORMAL_USER,
-                pair: result.pair || null, // Return GunDB identity pair
                 mustChangePassword: await authService.isDefaultPassword(userToAuth)
             });
         } catch (error) {

@@ -94,13 +94,13 @@ describe('Users Routes', () => {
 
             const res = await request(app)
                 .post('/api/users/register')
-                .send({ username: 'testuser', password: 'StrongPassword123!', pubKey: 'pub-123', signature: 'sig-123' });
+                .send({ username: 'testuser', password: 'StrongPassword123!' });
 
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
             expect(res.body.token).toBe('mocked-user-token');
             expect(res.body.username).toBe('testuser');
-            expect(mockAuthService.createUser).toHaveBeenCalledWith('testuser', 'StrongPassword123!', null, expect.any(Number), 'pub-123');
+            expect(mockAuthService.createUser).toHaveBeenCalledWith('testuser', 'StrongPassword123!', null, expect.any(Number));
         });
     });
 
@@ -134,71 +134,33 @@ describe('Users Routes', () => {
             expect(res.body.error).toBe('User not found');
         });
 
-        test('returns user details if found', async () => {
-            const mockUser = { username: 'zenuser', pubKey: 'pub-key' };
-            mockZenDBService.getUser.mockResolvedValue(mockUser);
-
+        test('always returns 404 (deprecated endpoint)', async () => {
             const res = await request(app).get('/api/users/pub-key');
 
-            expect(res.status).toBe(200);
-            expect(res.body).toEqual(mockUser);
+            expect(res.status).toBe(404);
+            expect(res.body.error).toBe('User not found');
         });
     });
 
     describe('POST /api/users/sync', () => {
-        test('returns 400 if pub or epub is missing', async () => {
+        test('is a no-op (deprecated endpoint) and returns success', async () => {
             const res = await request(app)
                 .post('/api/users/sync')
-                .send({ alias: 'NoPub' });
-
-            expect(res.status).toBe(400);
-            expect(res.body.error).toBe('pub and epub are required');
-        });
-
-        test('syncs Zen data successfully', async () => {
-            const res = await request(app)
-                .post('/api/users/sync')
-                .send({ pub: 'pub-1', epub: 'epub-1', alias: 'TestAlias', avatar: 'avatar.png' });
+                .send({ pub: 'pub-1', epub: 'epub-1' });
 
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
-            expect(mockDatabase.syncZenUser).toHaveBeenCalledWith('pub-1', 'epub-1', 'TestAlias', 'avatar.png');
         });
     });
 
     describe('POST /api/users/sync-pair', () => {
-        test('syncs GunDB pair when authenticated', async () => {
-            // Re-mount router with active, authenticated user context
-            const authApp = express();
-            authApp.use(express.json());
-            authApp.use((req: any, res, next) => {
-                req.username = 'testuser';
-                req.role = UserRole.NORMAL_USER;
-                req.isActive = true;
-                next();
-            });
-            authApp.use('/api/users', createUsersRoutes({
-                zendbService: mockZenDBService,
-                database: mockDatabase,
-                authService: mockAuthService,
-                apService: mockAPService
-            } as any));
-
-            const res = await request(authApp)
+        test('is a no-op (deprecated endpoint) and returns success', async () => {
+            const res = await request(app)
                 .post('/api/users/sync-pair')
-                .set('Authorization', 'Bearer token')
-                .send({
-                    pair: {
-                        pub: 'pub',
-                        priv: 'priv',
-                        epub: 'epub',
-                        epriv: 'epriv'
-                    }
-                });
+                .send({ pair: { pub: 'pub', priv: 'priv', epub: 'epub', epriv: 'epriv' } });
 
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
-            expect(mockAuthService.updateZenPair).toHaveBeenCalledWith('testuser', expect.any(Object));
         });
     });
 

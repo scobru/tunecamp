@@ -182,7 +182,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const lifecycleService = new LifecycleService(database, publishingService, apService);
 
-    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, openRouterService, metadataService);
+    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, openRouterService, metadataService, apService);
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
     const digService = new DigService(database);
 

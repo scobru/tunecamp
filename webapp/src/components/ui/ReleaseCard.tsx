@@ -86,16 +86,23 @@ export const ReleaseCard = ({ item, viewMode = 'grid', type = 'release' }: Relea
                 <p className={clsx("opacity-60 truncate", viewMode === 'minimal' ? "text-xs -mt-0.5" : "text-body-medium")}>
                     {item.artistName || item.artist_name}
                 </p>
-                {viewMode === 'grid' && (
-                    <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
-                        <span>{item.year}</span>
-                        {(item.product_type === 'podcast' || item.productType === 'podcast') ? (
-                            <span className="border border-secondary text-secondary font-black px-1 rounded text-xs shadow-sm shadow-secondary/10">Podcast</span>
-                        ) : item.type && (
-                            <span className="border border-white/20 px-1 rounded text-xs">{item.type}</span>
-                        )}
-                    </div>
-                )}
+                {viewMode === 'grid' && (() => {
+                    const category = (item.product_type === 'podcast' || item.productType === 'podcast')
+                        ? 'podcast'
+                        : (item.type || 'album');
+                    return (
+                        <div className="flex justify-between items-center mt-2 opacity-40 text-xs font-mono">
+                            <span>{item.year}</span>
+                            {category === 'podcast' ? (
+                                <span className="border border-secondary text-secondary font-black px-1 rounded text-xs shadow-sm shadow-secondary/10 capitalize">Podcast</span>
+                            ) : category === 'liveset' ? (
+                                <span className="border border-accent text-accent font-black px-1 rounded text-xs shadow-sm shadow-accent/10 capitalize">Liveset</span>
+                            ) : (
+                                <span className="border border-white/20 px-1 rounded text-xs capitalize">{category}</span>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
         </Link>
     );

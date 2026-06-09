@@ -102,6 +102,18 @@ export class ActivityPubService {
         }
     }
 
+    /**
+     * Phase 4: Ensure a regular user account has AP keys. Called lazily on login.
+     */
+    public async ensureUserKeys(userId: number): Promise<void> {
+        const user = this.db.getUser(userId);
+        if (!user) return;
+        if (user.ap_public_key) return; // already has keys
+        console.log(`🔑 [AP] Generating ActivityPub keys for user: ${user.username}`);
+        const { publicKey, privateKey } = await this.generateKeyPair();
+        this.db.updateUserApKeys(userId, publicKey, privateKey);
+    }
+
     public async generateKeysForAllArtists(): Promise<void> {
         const artists = this.db.getArtists();
 
@@ -563,6 +575,175 @@ export class ActivityPubService {
         }
         return this.renderer.renderActor(artistWithKeys);
     }
+
+    /**
+     * Phase 4: Generate a Person actor JSON-LD for a regular user account.
+     */
+    public generateUserActor(user: { id: number; username: string; ap_public_key?: string | null }): any {
+        const baseUrl = this.getBaseUrl();
+        const userUrl = `${baseUrl}/users/${user.username}`;
+        return {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/v1"
+            ],
+            id: userUrl,
+            type: "Person",
+            preferredUsername: user.username,
+            name: user.username,
+            summary: "",
+            inbox: `${userUrl}/inbox`,
+            outbox: `${userUrl}/outbox`,
+            followers: `${userUrl}/followers`,
+            following: `${userUrl}/following`,
+            publicKey: user.ap_public_key ? {
+                id: `${userUrl}#main-key`,
+                owner: userUrl,
+                publicKeyPem: user.ap_public_key,
+            } : undefined,
+            url: `${baseUrl}/@${user.username}`,
+        };
+    }
+
+    // ----------------------------------------------------------------
+    // Phase 3: AP Social — comment/like broadcasting
+    // ----------------------------------------------------------------
+
+    /**
+     * Broadcast a comment on a track as a Create(Note) AP activity to the artist's followers.
+     * No-op if the track has no artist, the artist has no AP keys, or no followers.
+     */
+    public async broadcastComment(trackId: number, username: string, text: string): Promise<void> {
+        const track = this.db.getTrack(trackId);
+        if (!track?.album_id) return;
+        const album = this.db.getAlbum(track.album_id);
+        if (!album?.artist_id) return;
+        const artist = this.db.getArtist(album.artist_id);
+        if (!artist?.public_key) return;
+        const followers = this.db.getFollowers(artist.id);
+        if (!followers.length) return;
+        const user = this.db.getUserByUsername(username);
+        if (!user?.ap_public_key) return;
+
+        const base = this.getBaseUrl();
+        const userUri = `${base}/users/${username}`;
+        const trackUri = `${base}/audio/${trackId}`;
+        const noteId = `${base}/api/ap/notes/comment-${trackId}-${username}-${Date.now()}`;
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Create",
+            id: `${noteId}/activity`,
+            actor: userUri,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${base}/users/${artist.slug}/followers`],
+            object: {
+                type: "Note",
+                id: noteId,
+                attributedTo: userUri,
+                inReplyTo: trackUri,
+                content: this.escapeHtml(text),
+                to: ["https://www.w3.org/ns/activitystreams#Public"],
+                cc: [`${base}/users/${artist.slug}/followers`],
+                published: new Date().toISOString(),
+            },
+        };
+
+        const userActor = { slug: username, private_key: user.ap_private_key, public_key: user.ap_public_key };
+        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+        await Promise.all(inboxes.map(inbox =>
+            this.sendActivity(userActor as any, inbox, activity)
+                .catch(e => console.error(`[AP] Comment delivery failed → ${inbox}:`, e))
+        ));
+        console.log(`[AP] broadcastComment: track ${trackId} by ${username} → ${inboxes.length} inbox(es)`);
+    }
+
+    /**
+     * Broadcast a Like activity for a track to the artist's followers.
+     */
+    public async broadcastLike(trackId: number, username: string): Promise<void> {
+        const track = this.db.getTrack(trackId);
+        if (!track?.album_id) return;
+        const album = this.db.getAlbum(track.album_id);
+        if (!album?.artist_id) return;
+        const artist = this.db.getArtist(album.artist_id);
+        if (!artist?.public_key) return;
+        const followers = this.db.getFollowers(artist.id);
+        if (!followers.length) return;
+        const user = this.db.getUserByUsername(username);
+        if (!user?.ap_public_key) return;
+
+        const base = this.getBaseUrl();
+        const userUri = `${base}/users/${username}`;
+        const trackUri = `${base}/audio/${trackId}`;
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Like",
+            id: `${base}/api/ap/likes/${username}-${trackId}`,
+            actor: userUri,
+            object: trackUri,
+        };
+
+        const userActor = { slug: username, private_key: user.ap_private_key, public_key: user.ap_public_key };
+        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+        await Promise.all(inboxes.map(inbox =>
+            this.sendActivity(userActor as any, inbox, activity)
+                .catch(e => console.error(`[AP] Like delivery failed → ${inbox}:`, e))
+        ));
+    }
+
+    /**
+     * Broadcast an Undo(Like) activity for a track to the artist's followers.
+     */
+    public async broadcastUnlike(trackId: number, username: string): Promise<void> {
+        const track = this.db.getTrack(trackId);
+        if (!track?.album_id) return;
+        const album = this.db.getAlbum(track.album_id);
+        if (!album?.artist_id) return;
+        const artist = this.db.getArtist(album.artist_id);
+        if (!artist?.public_key) return;
+        const followers = this.db.getFollowers(artist.id);
+        if (!followers.length) return;
+        const user = this.db.getUserByUsername(username);
+        if (!user?.ap_public_key) return;
+
+        const base = this.getBaseUrl();
+        const userUri = `${base}/users/${username}`;
+        const trackUri = `${base}/audio/${trackId}`;
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            type: "Undo",
+            id: `${base}/api/ap/undo/${username}-${trackId}`,
+            actor: userUri,
+            object: {
+                type: "Like",
+                id: `${base}/api/ap/likes/${username}-${trackId}`,
+                actor: userUri,
+                object: trackUri,
+            },
+        };
+
+        const userActor = { slug: username, private_key: user.ap_private_key, public_key: user.ap_public_key };
+        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+        await Promise.all(inboxes.map(inbox =>
+            this.sendActivity(userActor as any, inbox, activity)
+                .catch(e => console.error(`[AP] Unlike delivery failed → ${inbox}:`, e))
+        ));
+    }
+
+    /** Escape HTML entities in user-provided text for Note content. */
+    private escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#x27;");
+    }
+
+    // ----------------------------------------------------------------
 
     public generateNote(album: Album, artist: Artist, tracks: Track[]): any {
         return this.renderer.renderNote(album, artist, tracks);

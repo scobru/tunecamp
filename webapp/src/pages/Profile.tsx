@@ -447,6 +447,64 @@ const Profile = () => {
               </div>
             </div>
           </div>
+
+          {/* Fediverse Identity — full-width panel below the 2-col grid */}
+          <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Globe size={20} className="text-secondary" /> Fediverse Identity
+            </h3>
+            <p className="text-sm opacity-60">
+              Your account is available as an ActivityPub actor. Follow or interact from Mastodon, Funkwhale, and other Fediverse apps.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text opacity-60">Fediverse Handle</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`@${user?.username}@${window.location.host}`}
+                    className="input input-bordered flex-1 font-mono text-sm"
+                  />
+                  <button
+                    className="btn btn-ghost btn-square"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`@${user?.username}@${window.location.host}`);
+                      alert("Handle copied!");
+                    }}
+                    title="Copy handle"
+                  >
+                    <Copy size={18} />
+                  </button>
+                </div>
+              </div>
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text opacity-60">Actor URI</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/users/${user?.username}`}
+                    className="input input-bordered flex-1 font-mono text-sm"
+                  />
+                  <button
+                    className="btn btn-ghost btn-square"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/users/${user?.username}`);
+                      alert("Actor URI copied!");
+                    }}
+                    title="Copy actor URI"
+                  >
+                    <Copy size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
 

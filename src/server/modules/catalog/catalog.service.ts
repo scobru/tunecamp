@@ -4,6 +4,7 @@ import type { MetadataService } from "./metadata.service.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
+import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import { VisibilityGuardian, Capability, VisibilityProfile, UserRole } from "../../common/visibility.js";
 import path from "path";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
@@ -23,7 +24,8 @@ export class CatalogService {
         private storage: StorageEngine,
         private musicDir: string,
         private openRouter: OpenRouterService,
-        private metadataService: MetadataService
+        private metadataService: MetadataService,
+        private apService?: ActivityPubService
     ) {}
 
     // --- Library Operations ---
@@ -229,12 +231,18 @@ export class CatalogService {
         const track = this.database.getTrack(trackId);
         if (!track) throw new Error("Track not found");
         this.database.starItem(username, 'track', String(trackId));
+        // Phase 3: AP Like broadcast (fire-and-forget)
+        this.apService?.broadcastLike(trackId, username)
+            .catch(e => console.error('[AP] broadcastLike:', e));
     }
 
     async unstarTrack(username: string, trackId: number): Promise<void> {
         const track = this.database.getTrack(trackId);
         if (!track) return;
         this.database.unstarItem(username, 'track', String(trackId));
+        // Phase 3: AP Unlike broadcast (fire-and-forget)
+        this.apService?.broadcastUnlike(trackId, username)
+            .catch(e => console.error('[AP] broadcastUnlike:', e));
     }
 
     async setTrackRating(username: string, trackId: number, rating: number): Promise<void> {

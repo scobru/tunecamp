@@ -59,15 +59,23 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             publicKey = dbService.getSetting("site_public_key") || null;
             type = 'Service';
         } else {
-            if (!dbService.isArtistLinkedToUserBySlug(handle)) return null;
-            const artist = dbService.getArtistBySlug(handle);
-            if (!artist) return null;
-            name = artist.name;
-            summary = artist.bio || "";
-            publicKey = artist.public_key || null;
-            slug = artist.slug;
-            alsoKnownAs = artist.also_known_as || null;
-            movedTo = artist.moved_to || null;
+            const artist = dbService.isArtistLinkedToUserBySlug(handle) ? dbService.getArtistBySlug(handle) : null;
+            if (artist) {
+                name = artist.name;
+                summary = artist.bio || "";
+                publicKey = artist.public_key || null;
+                slug = artist.slug;
+                alsoKnownAs = artist.also_known_as || null;
+                movedTo = artist.moved_to || null;
+            } else {
+                // Phase 4: Fall back to regular user account
+                const user = dbService.getUserByUsername(handle);
+                if (!user?.ap_public_key) return null;
+                name = user.username;
+                summary = "";
+                publicKey = user.ap_public_key;
+                slug = user.username;
+            }
         }
 
         const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl;
@@ -124,11 +132,17 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 publicKey = dbService.getSetting("site_public_key") || null;
                 privateKeyStr = dbService.getSetting("site_private_key") || null;
             } else {
-                if (!dbService.isArtistLinkedToUserBySlug(handle)) return [];
-                const artist = dbService.getArtistBySlug(handle);
-                if (!artist) return [];
-                publicKey = artist.public_key || null;
-                privateKeyStr = artist.private_key || null;
+                const artist = dbService.isArtistLinkedToUserBySlug(handle) ? dbService.getArtistBySlug(handle) : null;
+                if (artist) {
+                    publicKey = artist.public_key || null;
+                    privateKeyStr = artist.private_key || null;
+                } else {
+                    // Phase 4: regular user account
+                    const user = dbService.getUserByUsername(handle);
+                    if (!user?.ap_public_key) return [];
+                    publicKey = user.ap_public_key;
+                    privateKeyStr = user.ap_private_key || null;
+                }
             }
 
             if (!privateKeyStr || !publicKey) return [];
