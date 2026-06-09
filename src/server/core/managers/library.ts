@@ -382,7 +382,7 @@ export function createLibraryManager(
                 tracks: trackRepository.getCount(), 
                 publicAlbums: albumRepository.getLibraryAlbums(VisibilityProfile.PUBLIC_STAGE).length, 
                 totalUsers: (db.prepare("SELECT COUNT(*) as count FROM admin").get() as any).count, 
-                storageUsed: 0, networkSites: 0, totalTracks: trackRepository.getCount(), 
+                storageUsed: (db.prepare("SELECT COALESCE(SUM(file_size), 0) as s FROM tracks").get() as any).s, networkSites: 0, totalTracks: trackRepository.getCount(),
                 genresCount: genres.length, genres: genres 
             }; 
         },
