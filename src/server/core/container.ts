@@ -11,6 +11,7 @@ import type { createAuthMiddleware } from "../middleware/auth.js";
 import type { ScannerService } from "../modules/catalog/scanner.service.js";
 import type { CatalogService } from "../modules/catalog/catalog.service.js";
 import type { DiscoveryService } from "../modules/catalog/discovery.service.js";
+import type { DigService } from "../modules/catalog/dig.service.js";
 import type { MetadataService } from "../modules/catalog/metadata.service.js";
 import type { MaintenanceService } from "../modules/catalog/maintenance.service.js";
 import type { LocalizationService } from "../modules/catalog/localization.service.js";
@@ -51,6 +52,7 @@ export interface ServiceContainer {
     scannerService: ScannerService;
     catalogService: CatalogService;
     discoveryService: DiscoveryService;
+    digService: DigService;
     metadataService: MetadataService;
     maintenanceService: MaintenanceService;
     localizationService: LocalizationService;

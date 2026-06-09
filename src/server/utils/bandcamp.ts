@@ -33,6 +33,35 @@ export interface BandcampMetadata {
     cover: string;
     genre?: string;
     tracks: BandcampTrack[];
+    /** Internal Bandcamp tralbum id, needed for the collectors API. */
+    tralbumId?: number;
+    /** Internal Bandcamp tralbum type ('a' = album, 't' = track). */
+    tralbumType?: TralbumType;
+}
+
+/** Bandcamp internal tralbum type discriminator. */
+export type TralbumType = 'a' | 't';
+
+/** A Bandcamp fan who owns (collected) a given release. */
+export interface BandcampCollector {
+    fanId: number;
+    username: string;
+    name: string;
+    url: string;
+}
+
+/** An item in a Bandcamp fan's public collection. */
+export interface BandcampCollectedItem {
+    tralbumId: number;
+    tralbumType: TralbumType;
+    title: string;
+    artist: string;
+    url: string;
+    coverUrl: string;
+    /** Global count of how many fans collected this item (Bandcamp's own signal). */
+    alsoCollectedCount: number;
+    /** mp3-128 preview stream URL for the featured track, if available. */
+    previewUrl: string | null;
 }
 
 /**
@@ -128,16 +157,131 @@ export async function extractBandcampMetadata(url: string): Promise<BandcampMeta
             }))
             .filter((t: any) => t.title);
 
-        return { 
-            title, 
-            artist, 
-            year, 
-            cover, 
+        return {
+            title,
+            artist,
+            year,
+            cover,
             genre: tralbumData.tags?.[0]?.name || "Bandcamp",
-            tracks 
+            tracks,
+            tralbumId: typeof tralbumData.id === "number" ? tralbumData.id : undefined,
+            tralbumType: tralbumData.item_type === "album" ? "a" : tralbumData.item_type === "track" ? "t" : undefined
         };
     } catch (error) {
         console.error("[Bandcamp] Error extracting metadata:", error);
         return null;
     }
+}
+
+const COLLECTORS_API_URL = "https://bandcamp.com/api/tralbumcollectors/2/thumbs";
+const FAN_COLLECTION_API_URL = "https://bandcamp.com/api/fancollection/1/collection_items";
+const COLLECTORS_PAGE_SIZE = 40;
+const COLLECTION_PAGE_SIZE = 40;
+
+async function postJson(url: string, body: unknown, timeoutMs = 12_000): Promise<any | null> {
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": USER_AGENT },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (!response.ok) {
+        throw new Error(`${url} returned ${response.status}`);
+    }
+    return response.json();
+}
+
+/**
+ * Fetches the fans who have collected (own) a given Bandcamp release.
+ *
+ * Uses Bandcamp's internal, undocumented `tralbumcollectors` endpoint. Pagination
+ * is driven by the per-result `token` field (the last result's token is passed as the
+ * next request's `token`). NOTE: this endpoint is reverse-engineered and may change.
+ */
+export async function getTralbumCollectors(
+    tralbumType: TralbumType,
+    tralbumId: number,
+    limit: number = 60
+): Promise<BandcampCollector[]> {
+    const collectors: BandcampCollector[] = [];
+    let token: string | null = null;
+    try {
+        while (collectors.length < limit) {
+            const data: any = await postJson(COLLECTORS_API_URL, {
+                tralbum_type: tralbumType,
+                tralbum_id: tralbumId,
+                count: COLLECTORS_PAGE_SIZE,
+                token
+            });
+            const results: any[] = data?.results || [];
+            if (results.length === 0) break;
+
+            for (const r of results) {
+                if (typeof r.fan_id !== "number") continue;
+                collectors.push({
+                    fanId: r.fan_id,
+                    username: r.username || "",
+                    name: r.name || r.username || "Unknown",
+                    url: r.url || (r.username ? `https://bandcamp.com/${r.username}` : "")
+                });
+            }
+
+            token = results[results.length - 1]?.token || null;
+            if (!data?.more_available || !token) break;
+        }
+    } catch (error) {
+        console.error(`[Bandcamp] getTralbumCollectors failed for ${tralbumType}${tralbumId}:`, error);
+    }
+    return collectors.slice(0, limit);
+}
+
+/**
+ * Fetches the public collection of a Bandcamp fan.
+ *
+ * Uses the internal `fancollection/collection_items` endpoint. The first request needs an
+ * `older_than_token`; a synthetic "<now>::a::" token returns the most recent page, and the
+ * response's `last_token` paginates further back. Each item already carries title/artist/art
+ * and a preview stream URL via the sibling `tracklists` map, so no per-item fetch is needed.
+ */
+export async function getFanCollection(
+    fanId: number,
+    limit: number = 40
+): Promise<BandcampCollectedItem[]> {
+    const items: BandcampCollectedItem[] = [];
+    let token: string = `${Math.floor(Date.now() / 1000)}::a::`;
+    try {
+        while (items.length < limit) {
+            const data: any = await postJson(FAN_COLLECTION_API_URL, {
+                fan_id: fanId,
+                older_than_token: token,
+                count: COLLECTION_PAGE_SIZE
+            });
+            const rawItems: any[] = data?.items || [];
+            const tracklists: Record<string, any[]> = data?.tracklists || {};
+            if (rawItems.length === 0) break;
+
+            for (const it of rawItems) {
+                if (typeof it.tralbum_id !== "number") continue;
+                const tType: TralbumType = it.tralbum_type === "t" ? "t" : "a";
+                const tlKey = `${tType}${it.tralbum_id}`;
+                const previewUrl = tracklists[tlKey]?.[0]?.file?.["mp3-128"] || null;
+                items.push({
+                    tralbumId: it.tralbum_id,
+                    tralbumType: tType,
+                    title: it.item_title || it.album_title || "Unknown",
+                    artist: it.band_name || "Unknown",
+                    url: it.item_url || "",
+                    coverUrl: it.item_art_url || it.item_art?.thumb_url || "",
+                    alsoCollectedCount: typeof it.also_collected_count === "number" ? it.also_collected_count : 0,
+                    previewUrl
+                });
+            }
+
+            token = data?.last_token || "";
+            if (!data?.more_available || !token) break;
+        }
+    } catch (error) {
+        console.error(`[Bandcamp] getFanCollection failed for fan ${fanId}:`, error);
+    }
+    return items.slice(0, limit);
 }

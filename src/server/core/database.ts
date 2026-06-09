@@ -432,6 +432,48 @@ export function createDatabase(dbPath: string): DatabaseService {
             text TEXT NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- Digging ("Dig") feature: external crate-digging sessions inspired by Badger.
+        CREATE TABLE IF NOT EXISTS dig_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS dig_crate_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL REFERENCES dig_sessions(id) ON DELETE CASCADE,
+            source TEXT NOT NULL DEFAULT 'bandcamp',
+            source_url TEXT NOT NULL,
+            title TEXT,
+            artist TEXT,
+            cover_url TEXT,
+            preview_url TEXT,
+            bpm REAL,
+            added_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS dig_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            query TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'bandcamp',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Cache of scraped fan collections (TTL via expires_at, unix seconds) to avoid re-scraping.
+        CREATE TABLE IF NOT EXISTS dig_cache (
+            cache_key TEXT PRIMARY KEY,
+            payload TEXT NOT NULL,
+            expires_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_dig_sessions_user ON dig_sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_dig_crate_session ON dig_crate_items(session_id);
+        CREATE INDEX IF NOT EXISTS idx_dig_history_user ON dig_history(user_id);
+        CREATE INDEX IF NOT EXISTS idx_dig_cache_expires ON dig_cache(expires_at);
     `);
 
     // Runtime Migrations (robust column checks)

@@ -422,3 +422,71 @@ export interface GoogleDriveFile {
     isImported?: boolean;
 }
 
+
+// --- Dig (crate-digging) ---
+export type DigStrategy = 'fast' | 'balanced' | 'deep';
+
+export interface DigSearchResult {
+    id: string;
+    title: string;
+    artist: string;
+    url: string;
+    coverUrl: string;
+    source: string;
+}
+
+export interface RankedRelease {
+    tralbumId: number;
+    title: string;
+    artist: string;
+    url: string;
+    coverUrl: string;
+    previewUrl: string | null;
+    score: number;
+    alsoCollectedCount: number;
+}
+
+export interface DigResult {
+    seed: { title: string; artist: string; url: string; coverUrl: string };
+    strategy: DigStrategy;
+    collectorsSampled: number;
+    results: RankedRelease[];
+}
+
+export interface DigSession {
+    id: number;
+    user_id: number;
+    name: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DigCrateItem {
+    id: number;
+    session_id: number;
+    source: string;
+    source_url: string;
+    title: string | null;
+    artist: string | null;
+    cover_url: string | null;
+    preview_url: string | null;
+    bpm: number | null;
+    added_at: string;
+}
+
+export interface DigCrateInput {
+    source?: string;
+    sourceUrl: string;
+    title?: string;
+    artist?: string;
+    coverUrl?: string;
+    previewUrl?: string;
+    bpm?: number;
+}
+
+export interface DigHistoryItem {
+    id: number;
+    query: string;
+    source: string;
+    created_at: string;
+}

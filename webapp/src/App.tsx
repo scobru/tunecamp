@@ -36,6 +36,7 @@ const Files = lazy(() => import("./pages/Files"));
 const Favorites = lazy(() => import("./pages/Favorites"));
 const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
+const Dig = lazy(() => import("./pages/Dig"));
 
 
 const LoadingSpinner = () => (
@@ -174,6 +175,7 @@ function App() {
 
             {/* Store */}
             <Route path="/store" element={<Store />} />
+            <Route path="/dig" element={<Dig />} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

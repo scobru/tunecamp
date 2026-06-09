@@ -37,9 +37,11 @@ import { createAdminRoutes } from "./routes/admin/admin.js";
 import { createCatalogRoutes } from "./routes/library/catalog.js";
 import { CatalogService } from "./modules/catalog/catalog.service.js";
 import { DiscoveryService } from "./modules/catalog/discovery.service.js";
+import { DigService } from "./modules/catalog/dig.service.js";
 import { LocalDiskStorage } from "./modules/storage/storage.engine.js";
 import { createAlbumsRoutes } from "./routes/library/albums.js";
 import { createTracksRoutes } from "./routes/library/tracks.js";
+import { createDigRoutes } from "./routes/library/dig.js";
 import { createArtistsRoutes } from "./routes/library/artists.js";
 import { createPlaylistsRoutes } from "./routes/library/playlists.js";
 import { createUploadRoutes } from "./routes/library/upload.js";
@@ -182,6 +184,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, openRouterService, metadataService);
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
+    const digService = new DigService(database);
 
     const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
 
@@ -239,6 +242,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         scannerService,
         catalogService,
         discoveryService,
+        digService,
         metadataService,
         maintenanceService,
         localizationService,
@@ -332,6 +336,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(container));
     app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(container));
+    app.use("/api/dig", authMiddleware.requireUser, createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
 
 
