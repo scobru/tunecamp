@@ -400,7 +400,7 @@ export const PlayerBar = () => {
             <div className="flex-1 relative h-1 lg:h-1.5 group">
                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-full bg-base-content/5 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-primary/40 rounded-full transition-all duration-200"
+                  className="h-full bg-primary/40 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
                </div>
