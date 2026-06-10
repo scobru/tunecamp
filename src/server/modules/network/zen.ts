@@ -2,7 +2,11 @@
 import ZEN from 'zen/zen.js';
 // @ts-ignore
 import 'zen/lib/yson.js'; // Fix: JSON blocking CPU warning
-import 'zen/lib/evict.js'; // Enable automatic memory eviction to prevent OOM
+// NOTE: 'zen/lib/evict.js' is intentionally NOT imported. Its memory check compares
+// process RSS against 80% of the ZEN `memory` budget (128MB → 102MB); a Node server's
+// RSS sits at 200MB+ at idle, so the check never passes and its GC() runs every single
+// second forever — killing one live subscription per tick and rescanning the dup tracker.
+// startAggressiveEvictor() below covers eviction with thresholds based on real heap/ext usage.
 import { DEFAULT_ZEN_PEERS, ZEN_CONFIG_DEFAULTS } from '../../../common/zen-config.js';
 import v8 from 'v8';
 
@@ -350,17 +354,27 @@ export function getZen(options?: ZenOptions): any {
         // Fix: filter by PAYLOAD SIZE, not heap pressure. Only let through souls
         // that Tunecamp actually uses. Everything else is relay gossip noise.
         const MAX_UNPROTECTED_SOULS = 3; // Max non-protected souls per message before stripping
+        // HAM future-state guard. zen.js defers any key whose state is ahead of our clock via
+        // setTimeout(ham, state - now), pinning the whole message context until the timer fires.
+        // A peer with a skewed clock (e.g. a host with broken NTP, minutes ahead) makes every one
+        // of its puts re-fire in a single burst N minutes after we receive them — the resulting
+        // put/ack turn-queue storm freezes the event loop for tens of seconds (nginx 504s, then
+        // the Docker healthcheck kills the container). Legit skew is sub-second, so anything
+        // beyond the tolerance is clamped to our local clock at receipt time.
+        const FUTURE_STATE_TOLERANCE_MS = parseInt(process.env.TUNECAMP_ZEN_FUTURE_TOLERANCE_MS || '5000', 10);
         let incomingCount = 0;
         let droppedCount = 0;
         let strippedCount = 0;
+        let clampedCount = 0;
 
         setInterval(() => {
-            if (incomingCount > 0 || droppedCount > 0 || strippedCount > 0) {
+            if (incomingCount > 0 || droppedCount > 0 || strippedCount > 0 || clampedCount > 0) {
                 const heap = Math.round(v8.getHeapStatistics().used_heap_size / 1e6);
-                console.log(`📊 [ZEN-Traffic] In: ${incomingCount}/5s | Dropped: ${droppedCount}/5s | Stripped: ${strippedCount}/5s | Heap: ${heap}MB/${V8_HEAP_LIMIT_MB}MB`);
+                console.log(`📊 [ZEN-Traffic] In: ${incomingCount}/5s | Dropped: ${droppedCount}/5s | Stripped: ${strippedCount}/5s | Clamped: ${clampedCount}/5s | Heap: ${heap}MB/${V8_HEAP_LIMIT_MB}MB`);
                 incomingCount = 0;
                 droppedCount = 0;
                 strippedCount = 0;
+                clampedCount = 0;
             }
         }, 5000).unref();
 
@@ -414,6 +428,25 @@ export function getZen(options?: ZenOptions): any {
                 if (Object.keys(msg.put).length === 0) {
                     droppedCount++;
                     return;
+                }
+
+                // Clamp future HAM states on the souls we kept, so zen.js never schedules
+                // a deferred ham() re-fire for them (see FUTURE_STATE_TOLERANCE_MS above).
+                const nowMs = Date.now();
+                const maxState = nowMs + FUTURE_STATE_TOLERANCE_MS;
+                for (const soul of Object.keys(msg.put)) {
+                    const states = msg.put[soul]?._?.['>'];
+                    if (!states) continue;
+                    for (const key of Object.keys(states)) {
+                        const state = states[key];
+                        if (typeof state === 'number' && state > maxState) {
+                            if (clampedCount < 3) {
+                                console.warn(`⏰ [ZEN] Clamped future state on '${soul}'.'${key}': +${Math.round((state - nowMs) / 1000)}s ahead (peer clock skew?)`);
+                            }
+                            states[key] = nowMs;
+                            clampedCount++;
+                        }
+                    }
                 }
 
                 // Emergency heap check: if we are extremely low on memory, drop everything non-critical
