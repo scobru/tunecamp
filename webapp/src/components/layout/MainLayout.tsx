@@ -166,17 +166,15 @@ export const MainLayout = () => {
 
       {/* Floating Chat Trigger & Widget */}
       {!!siteSettings?.telegram_chat_group_id && (
-        <>
-          <button
-            className="fixed bottom-24 right-6 sm:bottom-28 sm:right-8 z-40 btn btn-circle btn-primary btn-lg shadow-level-3 hover:scale-110 active:scale-95 transition-all duration-medium-1 [transition-timing-function:var(--ease-spring)] group"
-            onClick={() => setIsChatOpen(true)}
-            aria-label="Open Community Chat"
-          >
-            <MessageSquare className="w-6 h-6 transition-transform group-hover:rotate-12 text-primary-content" />
-          </button>
-          <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-        </>
+        <button
+          className="fixed bottom-24 right-6 sm:bottom-28 sm:right-8 z-40 btn btn-circle btn-primary btn-lg shadow-level-3 hover:scale-110 active:scale-95 transition-all duration-medium-1 [transition-timing-function:var(--ease-spring)] group"
+          onClick={() => setIsChatOpen(true)}
+          aria-label="Open Community Chat"
+        >
+          <MessageSquare className="w-6 h-6 transition-transform group-hover:rotate-12 text-primary-content" />
+        </button>
       )}
+      <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
       {/* Global Modals */}
       <CommandPalette />
