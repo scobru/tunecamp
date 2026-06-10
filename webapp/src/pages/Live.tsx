@@ -36,6 +36,7 @@ const Live = () => {
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const [listenerCount, setListenerCount] = useState(0);
+    const [isSimulated, setIsSimulated] = useState(false);
 
     // Listening state
     const [listeningTo, setListeningTo] = useState<LiveSession | null>(null);
@@ -44,6 +45,7 @@ const Live = () => {
     const roomRef = useRef<Room | null>(null);
     const micStreamRef = useRef<MediaStream | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
 
     const refreshSessions = useCallback(async () => {
         try {
@@ -68,6 +70,11 @@ const Live = () => {
         roomRef.current = null;
         micStreamRef.current?.getTracks().forEach(t => t.stop());
         micStreamRef.current = null;
+        if (audioContextRef.current) {
+            audioContextRef.current.close().catch(console.error);
+            audioContextRef.current = null;
+        }
+        setIsSimulated(false);
         if (audioRef.current) {
             audioRef.current.srcObject = null;
         }
@@ -80,8 +87,31 @@ const Live = () => {
     const handleGoLive = async () => {
         setError("");
         setIsStarting(true);
+        setIsSimulated(false);
+        let stream: MediaStream;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
+            } catch (mediaError: any) {
+                console.warn("Microphone access failed, falling back to simulated silent stream:", mediaError);
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                if (AudioContextClass) {
+                    const ctx = new AudioContextClass();
+                    const dest = ctx.createMediaStreamDestination();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    gain.gain.value = 0; // complete silence
+                    osc.connect(gain);
+                    gain.connect(dest);
+                    osc.start();
+                    stream = dest.stream;
+                    audioContextRef.current = ctx;
+                    setIsSimulated(true);
+                } else {
+                    throw mediaError;
+                }
+            }
+
             const session = await API.startLive(title.trim() || "Live session");
 
             const room = joinRoom({ appId: APP_ID }, session.roomId);
@@ -190,6 +220,15 @@ const Live = () => {
 
                         {isBroadcasting ? (
                             <div className="space-y-4">
+                                {isSimulated && (
+                                    <div className="alert alert-warning text-xs p-3 rounded-xl flex items-start gap-2">
+                                        <Radio size={16} className="shrink-0 mt-0.5 text-warning-content" />
+                                        <span>
+                                            <strong>Demo Mode:</strong> Microphone access was denied or unavailable.
+                                            Streaming a simulated silent stream so you can still test WebRTC connectivity.
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-2 text-sm opacity-70">
                                     <Users size={16} />
                                     <span>{listenerCount} listener{listenerCount === 1 ? "" : "s"} connected</span>
