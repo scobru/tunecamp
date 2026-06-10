@@ -1,14 +1,10 @@
-import { getZen, Zen } from "./zen.js";
+import { Worker } from "worker_threads";
 import fetch from "node-fetch";
 import { drainResponse } from "../../common/network.js";
-import { getHardwarePeerId, kprs } from "./zen-network.js";
+import { kprs } from "./zen-network.js";
 
 import type { DatabaseService } from "../../core/database.js";
-import { slugify } from "../../../utils/audioUtils.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
-import fs from "fs-extra";
-import path from "path";
-import { monitorEventLoopDelay } from "perf_hooks";
 
 // Public Zen peers for the community registry
 const REGISTRY_PEERS = [
@@ -17,7 +13,19 @@ const REGISTRY_PEERS = [
 
 const REGISTRY_ROOT = "tunecamp";
 const REGISTRY_NAMESPACE = "tunecamp-community";
-const REGISTRY_VERSION = "2.0"; 
+const REGISTRY_VERSION = "2.0";
+const SITES_PATH = `${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`;
+
+// ─── Worker supervision tuning ──────────────────────────────────────────────
+// ZEN runs in a worker_thread (see zen.worker.ts) so that its event-loop
+// freezes can't take down the HTTP server. The main thread heartbeats the
+// worker; if the worker loop is frozen (heartbeats time out) or the worker
+// crashes, it gets terminated and respawned with backoff.
+const RPC_DEFAULT_TIMEOUT_MS = 15_000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
+const HEARTBEAT_TIMEOUT_MS = 10_000;
+const HEARTBEAT_MAX_MISSES = 3;
+const RESPAWN_BACKOFF_MS = [1_000, 5_000, 15_000, 60_000];
 
 export interface SiteInfo {
     url: string;
@@ -46,12 +54,12 @@ export interface ZenDBService {
 }
 
 export function createZenDBService(database: DatabaseService, server?: any, peers?: string[], publicUrl?: string): ZenDBService {
-    let zen: any = null;
     let initialized = false;
     let serverPair: any = null;
 
     // Use provided peers or fallback to defaults
     const activePeers = peers && peers.length > 0 ? peers : REGISTRY_PEERS;
+    let initializationPeers: string[] = [];
 
     // Cache for community data to prevent CPU starvation on frequent requests
     const cache = {
@@ -62,6 +70,121 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     let isRefreshingSites = false;
     let firstStart = true;
 
+    // ─── Worker RPC client + supervisor ──────────────────────────────────────
+
+    let worker: Worker | null = null;
+    let workerReady = false;
+    let shuttingDown = false;
+    let respawnCount = 0;
+    let rpcSeq = 0;
+    let heartbeatMisses = 0;
+    let heartbeatTimer: NodeJS.Timeout | null = null;
+    let lastPeerCount = 0;
+    let lastSiteInfo: SiteInfo | null = null;
+    const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
+
+    function rejectAllPending(reason: string) {
+        for (const [, entry] of pending) {
+            clearTimeout(entry.timer);
+            entry.reject(new Error(reason));
+        }
+        pending.clear();
+    }
+
+    function rpc(method: string, params?: any, timeoutMs: number = RPC_DEFAULT_TIMEOUT_MS): Promise<any> {
+        if (!worker || !workerReady && method !== 'init') {
+            return Promise.reject(new Error(`[ZenDB] Worker not available for '${method}'`));
+        }
+        const id = ++rpcSeq;
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => {
+                pending.delete(id);
+                reject(new Error(`[ZenDB] RPC '${method}' timed out after ${timeoutMs}ms`));
+            }, timeoutMs);
+            pending.set(id, { resolve, reject, timer });
+            worker!.postMessage({ id, method, params });
+        });
+    }
+
+    function spawnWorker(): Worker {
+        const w = new Worker(new URL("./zen.worker.js", import.meta.url));
+
+        w.on("message", (msg: { id: number; ok: boolean; result?: any; error?: string }) => {
+            const entry = pending.get(msg.id);
+            if (!entry) return;
+            pending.delete(msg.id);
+            clearTimeout(entry.timer);
+            if (msg.ok) entry.resolve(msg.result);
+            else entry.reject(new Error(msg.error || "Unknown worker error"));
+        });
+
+        w.on("error", (err) => {
+            console.error("🚨 [ZenDB] Worker error:", err);
+        });
+
+        w.on("exit", (code) => {
+            workerReady = false;
+            rejectAllPending(`[ZenDB] Worker exited (code ${code})`);
+            if (shuttingDown) return;
+
+            const backoff = RESPAWN_BACKOFF_MS[Math.min(respawnCount, RESPAWN_BACKOFF_MS.length - 1)];
+            respawnCount++;
+            console.warn(`♻️ [ZenDB] Worker died (code ${code}). Respawning in ${backoff / 1000}s (attempt ${respawnCount})...`);
+            setTimeout(() => {
+                worker = spawnWorker();
+                initWorker().catch(e => console.error("🚨 [ZenDB] Worker re-init failed:", e.message));
+            }, backoff).unref();
+        });
+
+        return w;
+    }
+
+    async function initWorker(): Promise<void> {
+        const result = await rpc("init", {
+            peers: initializationPeers,
+            publicUrl: publicUrl,
+            pair: serverPair
+        }, 60_000);
+
+        if (result?.pair) {
+            serverPair = result.pair;
+            if (result.generated) {
+                database.setSetting("zenPair", JSON.stringify(serverPair));
+            }
+        }
+        workerReady = true;
+        heartbeatMisses = 0;
+
+        // Re-register this site after a respawn so the registry heals itself
+        if (lastSiteInfo) {
+            registerSite(lastSiteInfo).catch(() => { });
+        }
+    }
+
+    function startHeartbeat() {
+        if (heartbeatTimer) return;
+        heartbeatTimer = setInterval(async () => {
+            if (!workerReady || shuttingDown) return;
+            try {
+                const res = await rpc("ping", {}, HEARTBEAT_TIMEOUT_MS);
+                lastPeerCount = res?.peerCount ?? 0;
+                heartbeatMisses = 0;
+                respawnCount = 0; // healthy again — reset backoff
+            } catch (e) {
+                heartbeatMisses++;
+                console.warn(`💔 [ZenDB] Worker heartbeat missed (${heartbeatMisses}/${HEARTBEAT_MAX_MISSES})`);
+                if (heartbeatMisses >= HEARTBEAT_MAX_MISSES && worker) {
+                    console.error("🚨 [ZenDB] Worker loop is frozen. Terminating for respawn...");
+                    heartbeatMisses = 0;
+                    workerReady = false;
+                    try { await worker.terminate(); } catch (err) { }
+                    // The 'exit' handler takes care of the respawn
+                }
+            }
+        }, HEARTBEAT_INTERVAL_MS);
+        heartbeatTimer.unref();
+    }
+
     function invalidateCache() {
         cache.sites = { data: [], timestamp: 0 };
         console.log("🧹 Zen Community Cache invalidated.");
@@ -70,56 +193,20 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function init(): Promise<boolean> {
         try {
             // Load peers from settings if not provided in constructor
-            let initializationPeers = activePeers;
+            initializationPeers = [...activePeers];
             const storedPeers = database.getSetting("zenPeers") || database.getSetting("gunPeers");
             if (storedPeers && Array.isArray(storedPeers)) {
                 initializationPeers.push(...storedPeers);
             }
 
-            console.log(`📡 [ZenDB] Initializing with peers: ${initializationPeers.join(', ')}`);
-            
+            console.log(`📡 [ZenDB] Initializing worker with peers: ${initializationPeers.join(', ')}`);
+
             const nonZenPeers = initializationPeers.filter(p => !p.includes('/zen'));
             if (nonZenPeers.length > 0) {
                 console.warn(`⚠️  [ZEN] Some peers do NOT use /zen path:`, nonZenPeers);
             }
 
-            const hwidRaw = getHardwarePeerId();
-            let ppid = null;
-            if (hwidRaw) {
-                try {
-                    const seed = await (Zen as any).hash(hwidRaw, null, null, { encode: "base62" });
-                    const ppair = await (Zen as any).pair(null, { seed });
-                    ppid = ppair.pub;
-                    console.log(`🔑 ZEN Peer ID (stable): ${ppid.slice(0, 9)}...`);
-                } catch (e: any) {
-                    console.warn(`⚠️ ZEN pid derivation failed: ${e.message}`);
-                }
-            }
-
-            zen = getZen({
-                peers: initializationPeers,
-                publicUrl: publicUrl,
-                pid: ppid || undefined
-            });
-
-            // Populate the backward-compatibility kprs set with configured peers
-            initializationPeers.forEach(p => kprs.add(p));
-
-            console.log(`📡 [ZenDB] Shared instance acquired.`);
-
-            // Diagnostic: warn if no peers connected after 15s
-            setTimeout(() => {
-                const connectedCount = getPeerCount();
-                if (connectedCount === 0) {
-                    console.warn(`🕒 [ZEN] No peers connected after 15s. Targets:`, initializationPeers);
-                }
-            }, 15000);
-
-            if (typeof zen.user !== 'function') {
-                console.error("🚨 [ZenDB] ERROR: zen.user is not a function!");
-            }
-
-            // Initialize User Auth
+            // Load stored identity (validation/generation happens in the worker)
             const storedPairStr = database.getSetting("zenPair") || database.getSetting("gunPair");
             if (storedPairStr) {
                 try {
@@ -129,80 +216,20 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 }
             }
 
-            if (!serverPair) {
-                console.log("🔐 Generating new ZEN Identity for this server...");
-                serverPair = await (Zen as any).pair();
-                database.setSetting("zenPair", JSON.stringify(serverPair));
-            }
+            // Populate the backward-compatibility kprs set with configured peers
+            initializationPeers.forEach(p => kprs.add(p));
 
-            const user = zen.user();
-
-            if (serverPair) {
-                const isSecp256k1 = serverPair.curve === 'secp256k1';
-                let isCorrupted = false;
-                let isLegacy = false;
-
-                if (isSecp256k1) {
-                    if (!serverPair.pub || !serverPair.priv) {
-                        isCorrupted = true;
-                    }
-                } else {
-                    const missing = ['pub', 'priv', 'epub', 'epriv'].filter(k => !serverPair[k] || serverPair[k].length === 0);
-                    if (missing.length > 0) {
-                        isCorrupted = true;
-                    }
-                    isLegacy = true; // Non-secp256k1 keys are legacy
-                }
-
-                if (isCorrupted || isLegacy) {
-                    console.warn(`🚨 [ZenDB] Server Identity is LEGACY or CORRUPTED! Generating new ZEN pair...`);
-                    serverPair = await (Zen as any).pair();
-                    database.setSetting("zenPair", JSON.stringify(serverPair));
-                }
-            }
-
-            const authPromise = new Promise<void>((resolve, reject) => {
-                user.auth(serverPair, (ack: any) => {
-                    if (ack.err) {
-                        console.error("❌ Failed to authenticate Zen user:", ack.err);
-                        reject(new Error(ack.err));
-                    } else {
-                        console.log(`🔐 Zen Authenticated as pubKey: ${serverPair.pub.slice(0, 8)}...`);
-                        resolve();
-                    }
-                });
-                setTimeout(() => resolve(), 10000);
-            });
-
-            try {
-                await authPromise;
-            } catch (e) {
-                console.warn("⚠️ Zen Authentication had errors, but continuing initialization.");
-            }
+            worker = spawnWorker();
+            await initWorker();
+            startHeartbeat();
 
             initialized = true;
-            console.log("🌐 ZEN Relay initialized (signaling + identity + stats)");
-
-            // Track event-loop delay so we can see the loop stalling before a
-            // health-check failure / Swarm restart (manual full GC removed: it was a
-            // stop-the-world freeze every 30s; let V8 manage GC itself).
-            const loopDelay = monitorEventLoopDelay({ resolution: 20 });
-            loopDelay.enable();
-
-            setInterval(() => {
-                const used = process.memoryUsage();
-                const peerCount = getPeerCount();
-                const root = zen._ || (zen as any)._graph?._;
-                const nodeCount = root?.graph ? Object.keys(root.graph).length : 0;
-                const lagMean = Math.round(loopDelay.mean / 1e6);
-                const lagMax = Math.round(loopDelay.max / 1e6);
-                loopDelay.reset();
-                console.log(`[Diag] RSS: ${Math.round(used.rss / 1e6)}MB | HeapTotal: ${Math.round(used.heapTotal / 1e6)}MB | HeapUsed: ${Math.round(used.heapUsed / 1e6)}MB | Ext: ${Math.round(used.external / 1e6)}MB | ArrayBuf: ${Math.round((used as any).arrayBuffers / 1e6)}MB | ZEN Peers: ${peerCount} | nodes: ${nodeCount} | LoopLag: ${lagMean}ms avg / ${lagMax}ms max`);
-            }, 30000);
-
+            console.log("🌐 ZEN worker initialized (signaling + identity + stats, isolated thread)");
             return true;
         } catch (error) {
             console.error("Failed to initialize ZenDB:", error);
+            // Worker may still come up via respawn; mark service initialized so
+            // calls degrade gracefully instead of being dropped forever.
             return false;
         }
     }
@@ -221,11 +248,10 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             serverPair = pair;
             database.setSetting("zenPair", JSON.stringify(serverPair));
 
-            if (zen) {
-                zen.user().leave();
-                zen.user().auth(serverPair, (ack: any) => {
-                    if (!ack.err) console.log(`🔐 Identity Imported & Re-Authenticated: ${serverPair.pub.slice(0, 8)}...`);
-                });
+            try {
+                await rpc("setPair", { pair });
+            } catch (e: any) {
+                console.warn("⚠️ [ZenDB] Worker re-auth failed (will re-auth on respawn):", e.message);
             }
             return true;
         } catch (e) {
@@ -234,21 +260,10 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         }
     }
 
-    async function clearRadata() {
-        const radataPath = path.join(process.cwd(), 'radata');
-        try {
-            console.warn(`⚠️ Attempting to clear Zen radata directory at ${radataPath}...`);
-            await fs.emptyDir(radataPath);
-            console.log("✅ Zen radata cleared successfully.");
-        } catch (error) {
-            console.error("❌ Failed to clear Zen radata:", error);
-        }
-    }
-
     // ─── Instance Signaling ─────────────────────────────────────────────────────
 
     async function registerSite(siteInfo: SiteInfo): Promise<boolean> {
-        if (!initialized || !zen || !serverPair) {
+        if (!initialized || !serverPair) {
             console.warn("ZenDB not initialized or no keys");
             return false;
         }
@@ -258,6 +273,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             return false;
         }
 
+        lastSiteInfo = siteInfo;
         const siteId = await getPersistentSiteId(siteInfo);
         const now = Date.now();
 
@@ -276,58 +292,39 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             pub: serverPair.pub
         };
 
-        const attemptRegistration = async (retryCount = 0): Promise<boolean> => {
-            return new Promise(async (resolve) => {
-                const signedSite = await (Zen as any).sign(siteRecord, serverPair);
-
-                const contentRef = zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/content/${serverPair.pub}`).get("profile");
-
-                contentRef.put(signedSite, async (ack: any) => {
-                    if (ack.err) {
-                        console.warn("Failed to write to public content node:", ack.err);
-                        resolve(false);
-                        return;
-                    }
-
-                    console.log(`📝 Registering public reference for Site ID: ${siteId}`);
-                    zen
-                        .get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`)
-                        .get(siteId)
-                        .put({
-                            id: siteId,
-                            pub: serverPair.pub,
-                            lastSeen: now,
-                            url: siteInfo.url,
-                            title: siteInfo.title,
-                            artistName: siteInfo.artistName,
-                            coverImage: siteInfo.coverImage || "",
-                            communityLink: siteInfo.communityLink || ""
-                        }, async (pubAck: any) => {
-                            if (pubAck.err) {
-                                console.warn("Failed to register site in directory:", pubAck.err);
-                                resolve(false);
-                            } else {
-                                console.log(`✅ Server registered in Tunecamp Community - Site ID: ${siteId}`);
-                                invalidateCache();
-                                resolve(true);
-                            }
-                        });
-                });
-
-                setTimeout(() => resolve(true), 5000);
-            });
+        const directoryRecord = {
+            id: siteId,
+            pub: serverPair.pub,
+            lastSeen: now,
+            url: siteInfo.url,
+            title: siteInfo.title,
+            artistName: siteInfo.artistName,
+            coverImage: siteInfo.coverImage || "",
+            communityLink: siteInfo.communityLink || ""
         };
 
-        return attemptRegistration();
+        try {
+            const ok = await rpc("registerSite", {
+                siteRecord,
+                directoryRecord,
+                siteId,
+                contentPath: `${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/content/${serverPair.pub}`,
+                sitesPath: SITES_PATH
+            }, 20_000);
+            if (ok) invalidateCache();
+            return !!ok;
+        } catch (e: any) {
+            console.warn("⚠️ [ZenDB] registerSite failed:", e.message);
+            return false;
+        }
     }
 
     // ─── Community Site Discovery ────────────────────────────────────────────────
 
     async function getCommunitySites(): Promise<any[]> {
-        if (!initialized || !zen) return [];
+        if (!initialized) return [];
 
         const CACHE_KEY = "community_sites";
-        const TTL = 60 * 60; 
 
         const cached = database.getGunCache(CACHE_KEY); // Keep cache method name for now
         if (cached) {
@@ -360,89 +357,35 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         isRefreshingSites = true;
 
         const CACHE_KEY = "community_sites";
-        const TTL = 60 * 60; 
+        const TTL = 60 * 60;
 
-        return new Promise((resolve) => {
-            const sites: any[] = [];
-            const processedIds = new Set();
+        try {
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            const sites: any[] = await rpc("listSites", {
+                sitesPath: SITES_PATH,
+                collectMs: 3000,
+                maxSites: 50,
+                minLastSeen: sevenDaysAgo
+            }, 10_000);
 
-            let handlerActive = true;
-
-            const handler = zen
-                .get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`)
-                .map()
-                .on((directoryData: any, siteId: string, _msg: any, ev: any) => {
-                    if (!handlerActive) return; 
-
-                    if (ev && typeof ev.off === 'function') {
-                        try { ev.off(); } catch (e) { }
-                    }
-
-                    if (!directoryData || siteId === "_") return;
-                    if (processedIds.has(siteId)) return;
-                    processedIds.add(siteId);
-
-                    const MAX_SITES_PER_RUN = 50;
-                    if (sites.length >= MAX_SITES_PER_RUN) {
-                        return; 
-                    }
-
-                    if (directoryData.lastSeen && typeof directoryData.lastSeen === 'number') {
-                        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-                        if (directoryData.lastSeen < sevenDaysAgo) {
-                            return;
-                        }
-                    }
-
-                    if (directoryData.url) {
-                        sites.push({
-                            id: siteId,
-                            url: directoryData.url,
-                            title: directoryData.title || "Untitled",
-                            artistName: directoryData.artistName || "",
-                            coverImage: directoryData.coverImage || "",
-                            communityLink: directoryData.communityLink || "",
-                            name: directoryData.title || "Untitled",
-                            lastSeen: directoryData.lastSeen || Date.now(),
-                            pub: directoryData.pub || "",
-                            _secure: true,
-                            _verified: true
-                        });
-                    }
-                });
-
-            setTimeout(() => {
-                handlerActive = false;
-
-                try {
-                    if (handler && typeof (handler as any).off === 'function') {
-                        (handler as any).off();
-                    } else {
-                        zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).off();
-                    }
-                } catch (e) { }
-
-                isRefreshingSites = false;
-
-                if (sites.length > 0) {
-                    console.log(`⏱️ Discovery: Found ${sites.length} sites. Updating cache.`);
-                    database.setGunCache(CACHE_KEY, JSON.stringify(sites), "sites", TTL);
-                    cache.sites = { data: sites, timestamp: Date.now() };
-                }
-
-                if (global.gc) {
-                    global.gc();
-                }
-
-                resolve(sites);
-            }, 3000); 
-        });
+            if (sites.length > 0) {
+                console.log(`⏱️ Discovery: Found ${sites.length} sites. Updating cache.`);
+                database.setGunCache(CACHE_KEY, JSON.stringify(sites), "sites", TTL);
+                cache.sites = { data: sites, timestamp: Date.now() };
+            }
+            return sites;
+        } catch (e: any) {
+            console.warn("⚠️ [ZenDB] Site discovery failed:", e.message);
+            return cache.sites.data;
+        } finally {
+            isRefreshingSites = false;
+        }
     }
 
     // ─── Network Cleanup ─────────────────────────────────────────────────────────
 
     async function cleanupNetwork() {
-        if (!initialized || !zen || !serverPair) return;
+        if (!initialized || !serverPair) return;
 
         try {
             const publicUrl = database.getSetting("publicUrl");
@@ -454,17 +397,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             const currentSiteId = await getPersistentSiteId(siteInfo);
 
             console.log(`🧹 Starting network cleanup (Site ID: ${currentSiteId})...`);
-
-            zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`)
-                .map()
-                .once((siteData: any, siteId: string) => {
-                    if (!siteData || siteId === "_") return;
-                    if (siteData.pub === serverPair.pub && siteId !== currentSiteId) {
-                        console.log(`🧹 Removing stale site registration: ${siteId}`);
-                        zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).get(siteId).put(null);
-                    }
-                });
-
+            await rpc("cleanupOwnStale", { sitesPath: SITES_PATH, currentSiteId });
         } catch (error) {
             console.error("Error in network cleanup:", error);
         } finally {
@@ -473,66 +406,32 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     }
 
     async function cleanupGlobalNetwork() {
-        if (!initialized || !zen) return;
+        if (!initialized) return;
 
         console.log("🧹 Starting GLOBAL network cleanup...");
+        try {
+            const sites: any[] = await rpc("listSites", {
+                sitesPath: SITES_PATH,
+                collectMs: 3000,
+                maxSites: 200,
+                minLastSeen: 0
+            }, 10_000);
 
-        return new Promise<void>((resolve) => {
-            let total = 0;
-            let checked = 0;
             let removed = 0;
-
-            const sitesRef = zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`);
-
-            sitesRef.once((sites: any) => {
-                if (!sites) {
-                    resolve();
-                    return;
+            for (const site of sites) {
+                if (!site.url) continue;
+                const isReachable = await checkSiteReachability(site.url);
+                if (!isReachable) {
+                    await pruneSite(site.id);
+                    removed++;
                 }
-
-                const siteIds = Object.keys(sites).filter(id => id !== "_" && id !== "undefined" && id !== "null");
-                total = siteIds.length;
-
-                if (total === 0) {
-                    resolve();
-                    return;
-                }
-
-                siteIds.forEach(siteId => {
-                    sitesRef.get(siteId).once(async (siteData: any) => {
-                        try {
-                            if (!siteData || !siteData.url) {
-                                checked++;
-                                if (checked >= total) resolve();
-                                return;
-                            }
-
-                            const isReachable = await checkSiteReachability(siteData.url);
-                            if (!isReachable) {
-                                sitesRef.get(siteId).put(null);
-                                removed++;
-                            }
-                        } catch (err) {
-                            console.error(`Error checking site ${siteId}:`, err);
-                        } finally {
-                            checked++;
-                            if (checked >= total) {
-                                console.log(`✅ Global cleanup complete. Checked ${checked} sites, removed ${removed}.`);
-                                invalidateCache();
-                                resolve();
-                            }
-                        }
-                    });
-                });
-            });
-
-            setTimeout(() => {
-                if (checked < total) {
-                    invalidateCache();
-                    resolve();
-                }
-            }, 60000);
-        });
+            }
+            console.log(`✅ Global cleanup complete. Checked ${sites.length} sites, removed ${removed}.`);
+        } catch (e: any) {
+            console.warn("⚠️ [ZenDB] Global cleanup failed:", e.message);
+        } finally {
+            invalidateCache();
+        }
     }
 
     async function checkSiteReachability(url: string): Promise<boolean> {
@@ -581,12 +480,12 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     async function cleanupRegistry(): Promise<void> {
         console.log("🧹 [ZenDB] Starting registry cleanup health-check...");
         // Get all sites without the 7-day filter to identify even older dead sites
-        const sites = await getCommunitySites(); 
+        const sites = await getCommunitySites();
         let pruned = 0;
 
         for (const site of sites) {
             if (!site.url) continue;
-            
+
             // Skip checking local/private addresses
             if (site.url.includes("localhost") || site.url.includes("127.0.0.1") || site.url.includes("192.168.")) {
                 continue;
@@ -595,36 +494,36 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for remote health check
-                
+
                 // Try to HEAD the site first
-                const res = await fetch(site.url, { 
-                    method: 'HEAD', 
-                    signal: controller.signal 
+                const res = await fetch(site.url, {
+                    method: 'HEAD',
+                    signal: controller.signal
                 }).catch(() => null);
 
                 if (!res) {
                     // Try a GET if HEAD fails (some servers block HEAD)
-                    const getRes = await fetch(site.url, { 
-                        method: 'GET', 
-                        signal: controller.signal 
+                    const getRes = await fetch(site.url, {
+                        method: 'GET',
+                        signal: controller.signal
                     }).catch(() => null);
-                    
+
                     if (!getRes || getRes.status >= 500) {
                         throw new Error("Unreachable");
                     }
-                    
+
                     if (getRes.status === 404) {
-                         console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
-                         await pruneSite(site.id);
-                         pruned++;
-                         continue;
+                        console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
+                        await pruneSite(site.id);
+                        pruned++;
+                        continue;
                     }
                 } else if (res.status === 404) {
                     console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
                     await pruneSite(site.id);
                     pruned++;
                 }
-                
+
                 clearTimeout(timeoutId);
             } catch (err) {
                 console.log(`❌ [ZenDB] Site ${site.url} is unreachable. Pruning from registry...`);
@@ -642,13 +541,11 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
     }
 
     async function pruneSite(siteId: string): Promise<void> {
-        return new Promise((resolve) => {
-            if (!zen) return resolve();
-            zen.get(`${REGISTRY_ROOT}/${REGISTRY_NAMESPACE}/sites`).get(siteId)
-                .put(null, (ack: any) => {
-                    resolve();
-                });
-        });
+        try {
+            await rpc("pruneSite", { sitesPath: SITES_PATH, siteId });
+        } catch (e: any) {
+            console.warn(`⚠️ [ZenDB] pruneSite(${siteId}) failed:`, e.message);
+        }
     }
 
     return {
@@ -661,65 +558,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         syncNetwork: cleanupNetwork,
         cleanupGlobalNetwork,
         invalidateCache,
-        getPeerCount: () => {
-            return getPeerCount();
-        },
+        getPeerCount: () => lastPeerCount,
         cleanupRegistry
     };
-
-    function getPeerCount(): number {
-        if (!zen) return 0;
-        try {
-            // Robustly find the root internal state object. 
-            // In Zen v1.0.8, it's often at ._ or ._graph._
-            const root = zen._ || (zen as any)._graph?._;
-            if (!root) return 0;
-            
-            const opt = root.opt || {};
-            const peers = opt.peers || {};
-            const axePeers = root.axe?.up || {};
-            const meshPeers = opt.mesh?.peers || {};
-            
-            // Collect all unique active peer objects/URLs
-            const activePeers = new Set<any>();
-            
-            // Helper to check if a peer connection is active
-            const isActive = (p: any) => {
-                if (!p) return false;
-                const conn = p.wire || p.socket || p.conn;
-                if (!conn) return false;
-                return conn.readyState === 1 || conn.readyState === 'open';
-            };
-            
-            // 1. Check root.opt.peers (standard Gun/Zen peer tracking)
-            if (peers && typeof peers === 'object') {
-                if (Array.isArray(peers)) {
-                    // If it's still an array of strings, it's not connected yet
-                } else {
-                    Object.values(peers).forEach(p => {
-                        if (isActive(p)) activePeers.add(p);
-                    });
-                }
-            }
-            
-            // 2. Check root.axe.up (AXE mesh upstream connections - critical for Zen v1.0.8+)
-            if (axePeers && typeof axePeers === 'object') {
-                Object.values(axePeers).forEach(p => {
-                    if (isActive(p)) activePeers.add(p);
-                });
-            }
-            
-            // 3. Check root.opt.mesh.peers (lower-level DAM connections)
-            if (meshPeers && typeof meshPeers === 'object') {
-                Object.values(meshPeers).forEach(p => {
-                    if (isActive(p)) activePeers.add(p);
-                });
-            }
-            
-            return activePeers.size;
-        } catch (e) {
-            console.error("🚨 [ZenDB] Error in getPeerCount:", e);
-            return 0;
-        }
-    }
 }
