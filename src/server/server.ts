@@ -100,7 +100,6 @@ import { torrentSearchService } from "./modules/integrations/torrent-search.serv
 import { PublicScraperTorrentProvider } from "./providers/torrent/public-scraper.provider.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { kprs } from "./modules/network/zen-network.js";
-import { getZen } from "./modules/network/zen.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
