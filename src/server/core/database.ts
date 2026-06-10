@@ -613,7 +613,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             // Legacy podcasts were stored with type='album' + product_type='podcast'.
             // Backfill type='podcast' so the category is readable from a single field.
             const podcastTypeFix = db.prepare(
-                "UPDATE albums SET type = 'podcast' WHERE product_type = 'podcast' AND type != 'podcast'"
+                "UPDATE albums SET type = 'podcast' WHERE product_type = 'podcast' AND (type IS NULL OR type = 'album')"
             ).run();
             if (podcastTypeFix.changes > 0) {
                 console.log(`📦 [Database] Migrated ${podcastTypeFix.changes} podcast release(s) to type='podcast'.`);
