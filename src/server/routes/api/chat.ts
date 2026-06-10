@@ -59,14 +59,21 @@ export function createChatRoutes(container: ServiceContainer): Router {
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
         });
 
         // Send a ping to keep-alive
         res.write('comment: connected\n\n');
+        if (typeof (res as any).flush === 'function') {
+            (res as any).flush();
+        }
 
         const onMessage = (msg: any) => {
             res.write(`data: ${JSON.stringify(msg)}\n\n`);
+            if (typeof (res as any).flush === 'function') {
+                (res as any).flush();
+            }
         };
 
         chatService.events.on('message', onMessage);

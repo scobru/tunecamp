@@ -23,7 +23,8 @@ import {
   Wrench,
   ShoppingBag,
   Shovel,
-  Radio
+  Radio,
+  Rss
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -176,9 +177,10 @@ export const Sidebar = () => {
                 className="flex items-center gap-3 px-4 py-2 w-full text-left rounded-full transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] group hover:bg-base-300/50 text-base-content/70 hover:text-base-content cursor-pointer"
               >
                 <MessageSquare size={20} className="transition-transform group-hover:scale-110 opacity-60 group-hover:opacity-100" />
-                <span className="text-label-large tracking-tight">Community Chat</span>
+                <span className="text-label-large tracking-tight">Chat</span>
               </button>
             </li>
+            <ExternalNavItem href="/feed.xml" icon={Rss} label="RSS Feed" />
             {communityLink && (
               <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
             )}

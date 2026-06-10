@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart, ShoppingBag } from 'lucide-react';
+import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart, ShoppingBag, Rss } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useConfigStore } from '../stores/useConfigStore';
@@ -211,6 +211,10 @@ const ArtistDetails = () => {
                                          <span className="capitalize">{link.platform || 'Link'}</span>
                                      </a>
                                  ))}
+                                 <a href={`/artists/${artist.slug}/feed.xml`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline gap-2 bg-base-content/5 border-base-content/10 hover:bg-base-content/10 text-base-content rounded-xl">
+                                     <Rss size={16} className="text-orange-500" />
+                                     <span>RSS Feed</span>
+                                 </a>
                               </div>
                               <button className="btn btn-primary btn-circle btn-lg text-white shadow-level-1 hover:scale-105 transition-transform shrink-0" onClick={handlePlay}>
                                   <Play fill="currentColor" size={28}/>
