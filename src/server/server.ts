@@ -231,6 +231,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     console.log(`🔌 [Integrations] TorrentSearch initialized with PublicScraper provider`);
 
     const chatService = new ChatService(database);
+    const liveService = new LiveService();
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
 
     const container: ServiceContainer = {
