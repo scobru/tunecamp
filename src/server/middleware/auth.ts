@@ -154,6 +154,7 @@ export function createAuthMiddleware(authService: AuthService) {
                 req.isSuperUser = false;
                 req.isActive = false;
                 req.isRootAdmin = false;
+                req.role = UserRole.GUEST;
                 req.context = { role: UserRole.GUEST };
             }
 
