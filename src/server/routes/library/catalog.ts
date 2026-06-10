@@ -100,5 +100,21 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
         }
     });
 
+    /**
+     * GET /api/catalog/random
+     * Returns random tracks for radio mode
+     */
+    router.get("/random", async (req: any, res) => {
+        const limit = parseInt(req.query.limit as string) || 1;
+        const isAdmin = req.isAdmin || req.isSuperUser;
+        try {
+            const tracks = await catalogService.getRandomTracks(limit, isAdmin);
+            res.json(tracks);
+        } catch (error) {
+            console.error("Error getting random tracks:", error);
+            res.status(500).json({ error: "Failed to get random tracks" });
+        }
+    });
+
     return router;
 }
