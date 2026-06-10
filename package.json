@@ -31,7 +31,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "patch-package": "^8.0.1",
     "@fedify/express": "^1.10.3",
     "@fedify/fedify": "^1.10.3",
     "@js-temporal/polyfill": "^0.5.1",
