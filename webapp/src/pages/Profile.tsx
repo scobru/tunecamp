@@ -36,6 +36,31 @@ const Profile = () => {
   const { loading: purchasesLoading, isPurchased } = usePurchases();
   const { playTrack } = usePlayerStore();
 
+  const [artistData, setArtistData] = useState<any>(null);
+  const [artistLoading, setArtistLoading] = useState(false);
+
+  const isRoot = role === 'root_admin' || user?.isRootAdmin;
+  
+  const activeHandle = useMemo(() => {
+    if (user?.artistId && artistData) {
+      return `@${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, '')}@${window.location.host}`;
+    }
+    if (isRoot) {
+      return `@site@${window.location.host}`;
+    }
+    return `@${user?.username || 'admin'}@${window.location.host}`;
+  }, [user, artistData, isRoot]);
+
+  const activeActorUri = useMemo(() => {
+    if (user?.artistId && artistData) {
+      return `${window.location.origin}/users/${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, '')}`;
+    }
+    if (isRoot) {
+      return `${window.location.origin}/users/site`;
+    }
+    return `${window.location.origin}/users/${user?.username || 'admin'}`;
+  }, [user, artistData, isRoot]);
+
   const [activeTab, setActiveTab] = useState<
     "settings" | "collection" | "artist"
   >("settings");
@@ -46,8 +71,6 @@ const Profile = () => {
       setActiveTab("settings");
     }
   }, [user?.artistId, activeTab]);
-  const [artistData, setArtistData] = useState<any>(null);
-  const [artistLoading, setArtistLoading] = useState(false);
   const [alias, setAlias] = useState(user?.alias || "");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
   const [isSaving, setIsSaving] = useState(false);
@@ -466,13 +489,13 @@ const Profile = () => {
                   <input
                     type="text"
                     readOnly
-                    value={`@${user?.username}@${window.location.host}`}
+                    value={activeHandle}
                     className="input input-bordered flex-1 font-mono text-sm"
                   />
                   <button
                     className="btn btn-ghost btn-square"
                     onClick={() => {
-                      navigator.clipboard.writeText(`@${user?.username}@${window.location.host}`);
+                      navigator.clipboard.writeText(activeHandle);
                       alert("Handle copied!");
                     }}
                     title="Copy handle"
@@ -489,13 +512,13 @@ const Profile = () => {
                   <input
                     type="text"
                     readOnly
-                    value={`${window.location.origin}/users/${user?.username}`}
+                    value={activeActorUri}
                     className="input input-bordered flex-1 font-mono text-sm"
                   />
                   <button
                     className="btn btn-ghost btn-square"
                     onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/users/${user?.username}`);
+                      navigator.clipboard.writeText(activeActorUri);
                       alert("Actor URI copied!");
                     }}
                     title="Copy actor URI"

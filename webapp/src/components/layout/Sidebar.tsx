@@ -34,7 +34,6 @@ export const Sidebar = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteLogo, setSiteLogo] = useState<string | null>(null);
   const [communityLink, setCommunityLink] = useState<string | null>(null);
-  const [telegramChatGroupId, setTelegramChatGroupId] = useState<string | null>(null);
  
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -75,7 +74,6 @@ export const Sidebar = () => {
         if (s.siteName) setSiteName(s.siteName);
         if (s.siteLogo) setSiteLogo(s.siteLogo);
         if (s.communityLink) setCommunityLink(s.communityLink);
-        if (s.telegram_chat_group_id) setTelegramChatGroupId(s.telegram_chat_group_id);
       })
       .catch(console.error);
   }, []);
