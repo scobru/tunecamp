@@ -56,6 +56,8 @@ jest.unstable_mockModule('../../../modules/media/ffmpeg.js', () => ({
     writeMetadata: jest.fn(),
     transcode: jest.fn(),
     transcodeToFile: jest.fn(),
+    tryAcquireLiveSlot: jest.fn().mockReturnValue(true),
+    releaseLiveSlot: jest.fn(),
 }));
 
 // Import module under test dynamically
