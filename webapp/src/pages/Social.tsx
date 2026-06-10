@@ -39,11 +39,10 @@ const Social = () => {
       return;
     }
     
-    // Guard: Listeners (role === 'user') without an artist profile cannot access Social
-    const isListener = role === 'user';
+    // Guard: Users without an artist profile cannot access Social
     const hasArtistId = !!user?.artistId;
-    if (isListener && !hasArtistId) {
-      console.warn("Access denied: Listeners without artist profile cannot access Social Hub");
+    if (!hasArtistId) {
+      console.warn("Access denied: Users without artist profile cannot access Social Hub");
       navigate("/");
       return;
     }

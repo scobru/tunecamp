@@ -1,6 +1,6 @@
 import { stringify } from "yaml";
 import path from "path";
-import type { DatabaseService, Post, Release } from "../../core/database.js";
+import type { DatabaseService, Post, Release, Artist } from "../../core/database.js";
 import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -62,6 +62,34 @@ export class PublishingService {
         } catch (e) {
             console.error("❌ Failed to broadcast release via ActivityPub:", e);
         }
+
+        // Cross-post to Mastodon
+        if (release.artist_id) {
+            const artist = this.db.getArtist(release.artist_id);
+            if (artist) {
+                const publicUrl = (this.db.getSetting("publicUrl") || this.config.publicUrl || "").replace(/\/$/, "");
+                let statusText = `🎵 New release: "${release.title}" by ${artist.name}\n\n`;
+                if (release.description) {
+                    const cleanDesc = release.description.replace(/<[^>]*>?/gm, "").trim();
+                    statusText += cleanDesc;
+                }
+                if (publicUrl) {
+                    const releaseUrl = `${publicUrl}/releases/${release.slug}`;
+                    const suffix = `\n\nListen here: ${releaseUrl}`;
+                    const limit = 500 - suffix.length;
+                    if (statusText.length > limit) {
+                        statusText = statusText.substring(0, limit - 3) + "..." + suffix;
+                    } else {
+                        statusText += suffix;
+                    }
+                } else {
+                    if (statusText.length > 500) {
+                        statusText = statusText.substring(0, 497) + "...";
+                    }
+                }
+                await this.crossPostToMastodon(release.artist_id, statusText);
+            }
+        }
     }
 
     /**
@@ -85,6 +113,54 @@ export class PublishingService {
         const siteInfo = this.getSiteInfo(artistName);
         if (siteInfo) {
             await this.zendb.registerSite(siteInfo);
+        }
+    }
+
+    private async crossPostToMastodon(artistId: number, statusText: string): Promise<void> {
+        try {
+            const artist = this.db.getArtist(artistId);
+            if (!artist) return;
+
+            let postParams = artist.post_params;
+            if (typeof postParams === 'string') {
+                try {
+                    postParams = JSON.parse(postParams);
+                } catch {
+                    postParams = null;
+                }
+            }
+
+            if (!postParams || typeof postParams !== 'object') return;
+
+            const { instance, token } = postParams;
+            if (!instance || !token) return;
+
+            let instanceUrl = instance.trim();
+            if (!instanceUrl.startsWith("http://") && !instanceUrl.startsWith("https://")) {
+                instanceUrl = "https://" + instanceUrl;
+            }
+            instanceUrl = instanceUrl.replace(/\/$/, "");
+
+            const url = `${instanceUrl}/api/v1/statuses`;
+            console.log(`📡 Mirroring status to Mastodon at ${url}...`);
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ status: statusText })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`❌ Mastodon API error mirroring status: ${response.status} ${response.statusText} - ${text}`);
+            } else {
+                console.log(`✅ Successfully mirrored status to Mastodon!`);
+            }
+        } catch (error) {
+            console.error(`❌ Error mirroring status to Mastodon:`, error);
         }
     }
 
@@ -196,6 +272,31 @@ export class PublishingService {
             await this.ap.broadcastPost(post);
         } catch (e) {
             console.error("❌ Failed to broadcast post via ActivityPub:", e);
+        }
+
+        // Cross-post to Mastodon
+        if (post.artist_id) {
+            const artist = this.db.getArtist(post.artist_id);
+            if (artist) {
+                const publicUrl = (this.db.getSetting("publicUrl") || this.config.publicUrl || "").replace(/\/$/, "");
+                const cleanContent = post.content.replace(/<[^>]*>?/gm, "").trim();
+                let statusText = post.title ? `📝 ${post.title}\n\n${cleanContent}` : cleanContent;
+                if (publicUrl) {
+                    const postUrl = `${publicUrl}/post/${post.slug}`;
+                    const suffix = `\n\nRead more: ${postUrl}`;
+                    const limit = 500 - suffix.length;
+                    if (statusText.length > limit) {
+                        statusText = statusText.substring(0, limit - 3) + "..." + suffix;
+                    } else {
+                        statusText += suffix;
+                    }
+                } else {
+                    if (statusText.length > 500) {
+                        statusText = statusText.substring(0, 497) + "...";
+                    }
+                }
+                await this.crossPostToMastodon(post.artist_id, statusText);
+            }
         }
     }
 

@@ -581,7 +581,7 @@ export interface LibraryManager {
     // Stats
     getStats(artistId?: number, ownerId?: number): Promise<{ artists: number; albums: number; tracks: number; publicAlbums: number; totalUsers: number; storageUsed: number; networkSites: number; totalTracks: number; genresCount: number; genres: string[] }>;
     getPublicTracksCount(): number;
-    getGenres(profile?: VisibilityProfile | ViewerContext): string[];
+    getGenres(profile?: VisibilityProfile | ViewerContext, artistId?: number, ownerId?: number): string[];
     getTracksByGenre(genre: string, profile?: VisibilityProfile | ViewerContext): Track[];
     getGenreTrackCounts(profile?: VisibilityProfile | ViewerContext): Map<string, number>;
     getListeningStats(): ListeningStats;

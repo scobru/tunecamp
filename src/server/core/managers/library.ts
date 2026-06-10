@@ -373,24 +373,117 @@ export function createLibraryManager(
         // Stats
         async getStats(aid?: number, oid?: number) { 
             const isAdmin = aid === undefined && oid === undefined;
-            const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
-            const genres = this.getGenres(profile);
+            const profile = VisibilityProfile.ALL_ACCESS;
+            const genres = this.getGenres(profile, aid, oid);
+
+            let artistsCount = 0;
+            let albumsCount = 0;
+            let tracksCount = 0;
+            let publicAlbumsCount = 0;
+            let totalUsers = 0;
+            let storageUsed = 0;
+
+            if (isAdmin) {
+                artistsCount = artistRepository.getCount();
+                albumsCount = albumRepository.getCount();
+                tracksCount = trackRepository.getCount();
+                publicAlbumsCount = albumRepository.getLibraryAlbums(VisibilityProfile.PUBLIC_STAGE).length;
+                totalUsers = (db.prepare("SELECT COUNT(*) as count FROM admin").get() as any).count;
+                storageUsed = (db.prepare("SELECT COALESCE(SUM(file_size), 0) as s FROM tracks").get() as any).s;
+            } else {
+                artistsCount = aid !== undefined ? 1 : 0;
+                totalUsers = 1;
+
+                // Albums count: count all albums/releases owned by or associated with this user
+                const albumParams: any[] = [];
+                const albumConditions: string[] = [];
+                if (oid !== undefined) {
+                    albumConditions.push(`owner_id = ?`);
+                    albumParams.push(oid);
+                    albumConditions.push(`EXISTS (SELECT 1 FROM album_ownership ao WHERE ao.album_id = albums.id AND ao.owner_id = ?)`);
+                    albumParams.push(oid);
+                }
+                if (aid !== undefined) {
+                    albumConditions.push(`artist_id = ?`);
+                    albumParams.push(aid);
+                }
+                const albumSql = `SELECT COUNT(*) as count FROM albums WHERE ${albumConditions.join(" OR ")}`;
+                albumsCount = (db.prepare(albumSql).get(...albumParams) as any).count;
+
+                // Tracks count: count all tracks owned by or associated with this user
+                const trackParams: any[] = [];
+                const trackConditions: string[] = [];
+                if (oid !== undefined) {
+                    trackConditions.push(`owner_id = ?`);
+                    trackParams.push(oid);
+                    trackConditions.push(`EXISTS (SELECT 1 FROM track_ownership to_ WHERE to_.track_id = tracks.id AND to_.owner_id = ?)`);
+                    trackParams.push(oid);
+                    trackConditions.push(`EXISTS (SELECT 1 FROM album_ownership ao WHERE ao.album_id = tracks.album_id AND ao.owner_id = ?)`);
+                    trackParams.push(oid);
+                }
+                if (aid !== undefined) {
+                    trackConditions.push(`artist_id = ?`);
+                    trackParams.push(aid);
+                }
+                const trackSql = `SELECT COUNT(*) as count FROM tracks WHERE (mime_type LIKE 'audio/%' OR mime_type IS NULL) AND (${trackConditions.join(" OR ")})`;
+                tracksCount = (db.prepare(trackSql).get(...trackParams) as any).count;
+
+                // Storage used: sum of file_size of tracks owned by or associated with this user
+                const storageSql = `SELECT COALESCE(SUM(file_size), 0) as s FROM tracks WHERE ${trackConditions.join(" OR ")}`;
+                storageUsed = (db.prepare(storageSql).get(...trackParams) as any).s;
+
+                // Public albums count for this user
+                publicAlbumsCount = albumRepository.getLibraryAlbums(VisibilityProfile.PUBLIC_STAGE)
+                    .filter(a => (oid !== undefined && a.owner_id === oid) || (aid !== undefined && a.artist_id === aid)).length;
+            }
 
             return { 
-                artists: artistRepository.getCount(), 
-                albums: albumRepository.getCount(), 
-                tracks: trackRepository.getCount(), 
-                publicAlbums: albumRepository.getLibraryAlbums(VisibilityProfile.PUBLIC_STAGE).length, 
-                totalUsers: (db.prepare("SELECT COUNT(*) as count FROM admin").get() as any).count, 
-                storageUsed: (db.prepare("SELECT COALESCE(SUM(file_size), 0) as s FROM tracks").get() as any).s, networkSites: 0, totalTracks: trackRepository.getCount(),
-                genresCount: genres.length, genres: genres 
+                artists: artistsCount, 
+                albums: albumsCount, 
+                tracks: tracksCount, 
+                publicAlbums: publicAlbumsCount, 
+                totalUsers: totalUsers, 
+                storageUsed: storageUsed, 
+                networkSites: 0, 
+                totalTracks: tracksCount,
+                genresCount: genres.length, 
+                genres: genres 
             }; 
         },
         getPublicTracksCount: () => trackRepository.getAll(VisibilityProfile.PUBLIC_STAGE).length,
-        getGenres(p?: VisibilityProfile | ViewerContext): string[] {
+        getGenres(p?: VisibilityProfile | ViewerContext, artistId?: number, ownerId?: number): string[] {
             const context = getContextFromProfile(p);
             const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
-            const rows = db.prepare(`SELECT DISTINCT genre FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${filter.sql})`).all(...filter.params) as any[];
+            
+            let sql = `SELECT DISTINCT genre FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${filter.sql})`;
+            const params = [...filter.params];
+
+            if (artistId !== undefined || ownerId !== undefined) {
+                const subConditions: string[] = [];
+                const subParams: any[] = [];
+                
+                if (ownerId !== undefined) {
+                    subConditions.push(`(
+                        owner_id = ? 
+                        OR (owner_id IS NULL AND effective_owner_id = ?)
+                        OR EXISTS (SELECT 1 FROM track_ownership to_ WHERE to_.track_id = v_tracks.id AND to_.owner_id = ?)
+                        OR EXISTS (SELECT 1 FROM album_ownership ao_ WHERE ao_.album_id = v_tracks.album_id AND ao_.owner_id = ?)
+                    )`);
+                    subParams.push(ownerId, ownerId, ownerId, ownerId);
+                }
+                
+                if (artistId !== undefined) {
+                    subConditions.push(`artist_id = ?`);
+                    subParams.push(artistId);
+                }
+                
+                if (subConditions.length > 0) {
+                    sql += ` AND (${subConditions.join(" OR ")})`;
+                    params.push(...subParams);
+                }
+            }
+
+            const rows = db.prepare(sql).all(...params) as any[];
             const genreSet = new Set<string>();
             rows.forEach(r => {
                 r.genre.split(',').forEach((g: string) => {

@@ -226,7 +226,7 @@ export const Sidebar = () => {
                   <NavItem to="/my-music" icon={Music} label="My Music" />
                 </>
               )}
-              {(user?.artistId || isAdmin) && (
+              {!!user?.artistId && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
               {(isRoot || role === 'admin') && (
