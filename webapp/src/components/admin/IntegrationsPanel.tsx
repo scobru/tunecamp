@@ -175,10 +175,6 @@ export const IntegrationsPanel = () => {
             <label className="label text-xs">Allowed Channels (Comma separated)</label>
             <input type="text" className="input input-sm input-bordered" value={settings?.telegram_allowed_channels || ''} onChange={e => setSettings({ ...settings!, telegram_allowed_channels: e.target.value })} />
           </div>
-          <div className="form-control">
-            <label className="label text-xs">Community Chat Group ID</label>
-            <input type="text" className="input input-sm input-bordered" placeholder="e.g. -100xxxxxxxx" value={settings?.telegram_chat_group_id || ''} onChange={e => setSettings({ ...settings!, telegram_chat_group_id: e.target.value })} />
-          </div>
         </div>
       )
     },
