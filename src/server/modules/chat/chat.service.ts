@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 import type { DatabaseService } from '../../core/database.js';
-import type { TelegramBotService } from '../integrations/telegram-bot.js';
 
 export interface ChatMessage {
     id: number;
@@ -14,13 +13,8 @@ export interface ChatMessage {
 
 export class ChatService {
     public events = new EventEmitter();
-    private telegramBot?: TelegramBotService;
 
     constructor(private database: DatabaseService) {}
-
-    setTelegramBot(bot: TelegramBotService) {
-        this.telegramBot = bot;
-    }
 
     getHistory(limit = 100): ChatMessage[] {
         try {
@@ -35,10 +29,10 @@ export class ChatService {
     }
 
     addMessage(
-        username: string, 
-        role: string, 
-        message: string, 
-        source: 'webapp' | 'telegram', 
+        username: string,
+        role: string,
+        message: string,
+        source: 'webapp' | 'telegram' = 'webapp',
         telegramMessageId?: number
     ): ChatMessage | null {
         try {
@@ -58,13 +52,6 @@ export class ChatService {
 
             // Broadcast message to all active SSE streams
             this.events.emit('message', insertedMsg);
-
-            // Forward to Telegram group if message originated from webapp
-            if (source === 'webapp' && this.telegramBot) {
-                this.telegramBot.sendWebappMessageToGroup(username, role, message).catch(err => {
-                    console.error('[ChatService] Failed to forward message to Telegram:', err.message);
-                });
-            }
 
             return insertedMsg;
         } catch (err) {

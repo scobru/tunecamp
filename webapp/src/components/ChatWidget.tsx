@@ -182,7 +182,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
               <h3 className="font-extrabold text-base tracking-tight leading-tight">Community Chat</h3>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-2 h-2 rounded-full bg-success animate-pulse shadow-sm shadow-success/50" />
-                <span className="text-[10px] opacity-60 font-semibold tracking-tight uppercase">Telegram Bridge Active</span>
+                <span className="text-[10px] opacity-60 font-semibold tracking-tight uppercase">Live</span>
               </div>
             </div>
           </div>
@@ -229,7 +229,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <p className="text-sm font-bold">No messages yet</p>
-                <p className="text-xs leading-relaxed mt-1">Start the conversation! Messages will also mirror to our Telegram group chat.</p>
+                <p className="text-xs leading-relaxed mt-1">Start the conversation!</p>
               </div>
             </div>
           ) : (
