@@ -157,7 +157,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-5xl">
+    <div className="space-y-8 animate-fade-in w-full">
       <div className="flex items-center gap-3 px-1">
         <Shield size={24} className="text-primary" />
         <h2 className="text-xl font-bold tracking-tight">Identity Management</h2>

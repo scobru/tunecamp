@@ -210,7 +210,7 @@ export const AdminSettingsPanel = () => {
   const web3Enabled = settings.web3Enabled === true || (settings.web3Enabled as unknown) === "true";
 
   return (
-    <form onSubmit={handleSave} className="space-y-8 max-w-4xl">
+    <form onSubmit={handleSave} className="space-y-6 w-full">
       <div className="flex items-center justify-between border-b border-base-content/10 pb-4 mb-6">
         <div className="flex items-center gap-3">
           <Cog className="text-primary" size={24} />
@@ -232,7 +232,7 @@ export const AdminSettingsPanel = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* General Settings */}
         <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4">
           <div className="flex items-center gap-2 mb-2 text-primary/80">
@@ -337,13 +337,14 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Branding Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2 xl:col-span-3">
           <div className="flex items-center gap-2 mb-2 text-accent/80">
             <Palette size={18} />
             <h4 className="font-bold text-xs tracking-normal">Branding & Appearance</h4>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Col 1: Background */}
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
@@ -356,7 +357,6 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => {
                     const val = e.target.value;
                     setSettings({ ...settings, backgroundImage: val });
-                    // Live preview background image
                     const mainDiv = document.querySelector(".drawer");
                     if (mainDiv) {
                       if (val) {
@@ -402,7 +402,10 @@ export const AdminSettingsPanel = () => {
                   }}
                 />
               </div>
+            </div>
 
+            {/* Col 2: Theme controls */}
+            <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
                   <span className="label-text font-medium text-sm">Theme Font Family</span>
@@ -413,7 +416,6 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => {
                     const font = e.target.value;
                     setSettings({ ...settings, themeFont: font });
-                    // Live dynamic font loading and application
                     if (font !== "Outfit" && font !== "sans-serif") {
                       const fontId = "dynamic-google-font";
                       let linkElement = document.getElementById(fontId) as HTMLLinkElement;
@@ -483,6 +485,7 @@ export const AdminSettingsPanel = () => {
               </div>
             </div>
 
+            {/* Col 3: Uploads & Previews */}
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
@@ -533,7 +536,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Payments & Web3 */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2 xl:col-span-3">
           <div className="flex items-center gap-2 mb-2 text-yellow-400">
             <Wallet size={18} />
             <h4 className="font-bold text-xs tracking-normal">Payments &amp; Web3</h4>
@@ -628,7 +631,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Revenue & Fees Settings */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2 xl:col-span-3">
           <div className="flex items-center gap-2 mb-2 text-green-400">
             <Save size={18} />
             <h4 className="font-bold text-xs tracking-normal">Revenue & Fees (Label Admin)</h4>
@@ -689,7 +692,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Security & System Keys */}
-        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2">
+        <div className="bg-base-200/40 p-6 rounded-2xl border border-base-content/5 space-y-4 md:col-span-2 xl:col-span-3">
           <div className="flex items-center gap-2 mb-2 text-error/80">
             <Shield size={18} />
             <h4 className="font-bold text-xs tracking-normal">Security & System Keys (Root Admin)</h4>

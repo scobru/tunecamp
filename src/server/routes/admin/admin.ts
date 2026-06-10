@@ -717,7 +717,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (finalArtistId) updates.artist_id = finalArtistId;
             if (body.date) updates.date = body.date;
             if (body.description !== undefined) updates.description = body.description;
-            if (body.type) updates.type = body.type;
+            if (body.type) {
+                updates.type = body.type;
+                updates.product_type = body.type === 'podcast' ? 'podcast' : 'music';
+            }
             if (body.year) updates.year = body.year;
             if (body.album_artist !== undefined) updates.album_artist = body.album_artist;
             if (body.albumArtist !== undefined) updates.album_artist = body.albumArtist;
