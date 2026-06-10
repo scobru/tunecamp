@@ -29,6 +29,11 @@ export interface ServerConfig {
     gdriveClientId?: string;
     gdriveClientSecret?: string;
 
+    // Live streaming (P2P WebRTC audio rooms). The server only announces
+    // sessions; media flows browser-to-browser, so the cost of enabling
+    // this is negligible. Opt-out via TUNECAMP_LIVE_ENABLED=false.
+    liveEnabled: boolean;
+
     // Transcode cache (#2): on-the-fly transcodes are written here so repeat
     // requests for the same (track, format, bitrate) are served as plain file reads.
     transcodeCacheDir: string;
@@ -119,6 +124,9 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         paypalEnvironment: process.env.PAYPAL_ENVIRONMENT || overrides?.paypalEnvironment || "sandbox",
         gdriveClientId: process.env.TUNECAMP_GDRIVE_CLIENT_ID || overrides?.gdriveClientId,
         gdriveClientSecret: process.env.TUNECAMP_GDRIVE_CLIENT_SECRET || overrides?.gdriveClientSecret,
+        liveEnabled: process.env.TUNECAMP_LIVE_ENABLED !== undefined
+            ? process.env.TUNECAMP_LIVE_ENABLED !== "false"
+            : (overrides?.liveEnabled ?? true),
         transcodeCacheDir,
         transcodeCacheMaxBytes,
         xaccelRedirect: process.env.TUNECAMP_XACCEL_REDIRECT === "true" || overrides?.xaccelRedirect || false,

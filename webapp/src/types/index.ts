@@ -246,6 +246,14 @@ export interface SiteSettings {
     google_drive_client_secret?: string;
 }
 
+export interface LiveSession {
+    roomId: string;
+    title: string;
+    username: string;
+    artistId?: string | number;
+    startedAt: string;
+}
+
 export interface Post {
     id: string;
     slug: string;
