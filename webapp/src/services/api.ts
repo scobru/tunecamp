@@ -3,7 +3,8 @@ import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile,
-    DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem
+    DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
+    LiveSession
 } from '../types';
 
 const API_URL = '/api';
@@ -586,7 +587,12 @@ const API = {
     getChatStreamUrl: () => {
         const token = localStorage.getItem('tunecamp_token');
         return `/api/chat/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-    }
+    },
+
+    // --- Live (P2P audio streaming) ---
+    getLiveSessions: () => handleResponse(api.get<{ enabled: boolean, sessions: LiveSession[] }>('live/sessions')),
+    startLive: (title: string) => handleResponse(api.post<LiveSession>('live/start', { title })),
+    stopLive: (roomId?: string) => handleResponse(api.post<{ success: boolean }>('live/stop', { roomId }))
 };
 
 export default API;

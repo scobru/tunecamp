@@ -34,6 +34,7 @@ import type { LocalDiskStorage } from "../modules/storage/storage.engine.js";
 import type { Scanner } from "../modules/catalog/scanner.js";
 
 import type { ChatService } from "../modules/chat/chat.service.js";
+import type { LiveService } from "../modules/live/live.service.js";
 
 export interface ServiceContainer {
     // Core
@@ -79,6 +80,7 @@ export interface ServiceContainer {
     torrentService: TorrentService;
     gdriveService?: GoogleDriveService;
     chatService: ChatService;
+    liveService: LiveService;
 
     // AI
     openRouterService: OpenRouterService;

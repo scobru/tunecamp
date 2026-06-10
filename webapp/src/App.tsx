@@ -37,6 +37,7 @@ const Favorites = lazy(() => import("./pages/Favorites"));
 const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Dig = lazy(() => import("./pages/Dig"));
+const Live = lazy(() => import("./pages/Live"));
 
 
 const LoadingSpinner = () => (
@@ -153,6 +154,7 @@ function App() {
             {/* Purchased tracks view is now in the User Profile Collection tab */}
             <Route path="/post/:slug" element={<Post />} />
             <Route path="/network" element={<Network />} />
+            <Route path="/live" element={<Live />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
