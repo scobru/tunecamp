@@ -241,7 +241,7 @@ export interface ApNote {
     replies_count: number;
 }
 
-export interface ApInteraction {
+interface ApInteraction {
     actor_uri: string;
     type: 'like' | 'announce';
     created_at: string;

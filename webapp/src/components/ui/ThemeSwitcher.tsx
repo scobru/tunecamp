@@ -11,6 +11,7 @@ export const ThemeSwitcher = () => {
     { id: "grey", label: "Grey", color: "bg-[#666666]", bg: "bg-[#666666]" },
     { id: "light", label: "White", color: "bg-[#FFFFFF]", bg: "bg-[#FFFFFF]" },
     { id: "nordic", label: "Nordic", color: "bg-[#A5C9D7]", bg: "bg-[#A5C9D7]" },
+    { id: "nordic-dark", label: "Nordic Dark", color: "bg-[#1B252C]", bg: "bg-[#1B252C]" },
   ];
 
   return (

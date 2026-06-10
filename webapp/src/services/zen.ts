@@ -248,6 +248,7 @@ export interface ZenProfile {
 
 // ZenAuth removed (Phase 1). Use username+password JWT auth instead.
 // Export kept as empty stub so old imports don't crash at runtime.
+// fallow-ignore-next-line unused-export
 export const ZenAuth = {
     init: async () => null,
     isLoggedIn: () => false,
@@ -269,6 +270,7 @@ export const ZenAuth = {
 // Zen Social — Likes/Favorites
 // ============================================================
 
+// fallow-ignore-next-line unused-export
 export const ZenSocial = {
     /**
      * Toggle like status for a track
@@ -379,6 +381,7 @@ function generateId(): string {
 // Local cache for recently created/updated playlists to avoid Zen latency
 const playlistCache: Record<string, UserPlaylist> = {};
 
+// fallow-ignore-next-line unused-export
 export const ZenPlaylists = {
 
     /**

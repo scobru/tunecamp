@@ -26,10 +26,12 @@
       "ignore": [
         "src/types/color-thief-react.d.ts",
         "src/types/material-web.d.ts",
-        "src/zen.d.ts"
+        "src/zen.d.ts",
+        "src/services/zen.ts"
       ],
       "ignoreDependencies": [
-        "autoprefixer"
+        "autoprefixer",
+        "zen"
       ]
     }
   }

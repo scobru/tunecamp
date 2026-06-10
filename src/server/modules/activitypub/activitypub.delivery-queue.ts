@@ -16,9 +16,6 @@ import type { Database } from "better-sqlite3";
  * the backing store.
  */
 
-export interface DeliveryResult {
-    ok: boolean;
-}
 
 /** Re-attempt a stored delivery. Returns true when the remote accepted it. */
 export type DeliverFn = (actorSlug: string, inboxUri: string, activityJson: any) => Promise<boolean>;

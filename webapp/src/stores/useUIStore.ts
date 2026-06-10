@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'tunecamp' | 'light' | 'grey' | 'nordic';
+export type Theme = 'tunecamp' | 'light' | 'grey' | 'nordic' | 'nordic-dark';
 
 interface UIState {
   theme: Theme;

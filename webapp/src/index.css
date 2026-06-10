@@ -126,6 +126,28 @@
   --rounded-btn: 2rem;
 }
 
+@plugin "daisyui/theme" {
+  name: "nordic-dark";
+  color-scheme: dark;
+  --color-base-100: oklch(15% 0.025 220); /* Deep Slate/Ice Blue */
+  --color-base-200: oklch(19% 0.025 220); /* Elevated surface */
+  --color-base-300: oklch(23% 0.03 220); /* Interactive surface */
+  --color-base-content: oklch(95% 0.015 220); /* Soft icy blue/white text */
+
+  --color-prominent: oklch(100% 0 0);
+
+  --color-primary: oklch(65% 0.18 215); /* Vibrant Celeste */
+  --color-primary-content: oklch(100% 0 0);
+
+  --color-secondary: oklch(50% 0.1 220);
+  --color-accent: oklch(75% 0.15 160); /* Frosty Mint */
+
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1.5rem;
+  --rounded-btn: 2rem;
+}
+
 @theme {
   --font-sans: "Outfit", sans-serif;
   --font-mono: "JetBrains Mono", monospace;

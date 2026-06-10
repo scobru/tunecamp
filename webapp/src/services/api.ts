@@ -22,7 +22,7 @@ api.interceptors.request.use((config) => {
 });
 
 /** Error subclass that preserves the HTTP response status code. */
-export class ApiError extends Error {
+class ApiError extends Error {
     status: number;
     constructor(message: string, status: number) {
         super(message);

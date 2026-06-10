@@ -9,13 +9,13 @@
 
 type TaskStatus = 'running' | 'completed' | 'failed';
 
-export interface TaskProgress {
+interface TaskProgress {
     current: number;
     total: number;
     message?: string;
 }
 
-export interface TaskEntry {
+interface TaskEntry {
     taskId: string;
     status: TaskStatus;
     startedAt: Date;

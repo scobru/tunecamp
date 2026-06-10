@@ -15,6 +15,7 @@ describe('ThemeSwitcher', () => {
     expect(screen.getByTitle('Grey')).toBeInTheDocument()
     expect(screen.getByTitle('White')).toBeInTheDocument()
     expect(screen.getByTitle('Nordic')).toBeInTheDocument()
+    expect(screen.getByTitle('Nordic Dark')).toBeInTheDocument()
   })
 
   it('changes theme when a button is clicked', () => {
