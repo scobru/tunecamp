@@ -165,7 +165,7 @@ export const MainLayout = () => {
       <PlayerCanvas />
 
       {/* Floating Chat Trigger & Widget */}
-      {!!siteSettings?.telegram_chat_group_id && (
+      {(siteSettings?.chatEnabled === true || siteSettings?.chatEnabled === 'true') && (
         <button
           className="fixed bottom-24 right-6 sm:bottom-28 sm:right-8 z-40 btn btn-circle btn-primary btn-lg shadow-level-3 hover:scale-110 active:scale-95 transition-all duration-medium-1 [transition-timing-function:var(--ease-spring)] group"
           onClick={() => setIsChatOpen(true)}

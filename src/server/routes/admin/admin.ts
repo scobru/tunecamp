@@ -250,7 +250,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const { 
                 siteName, siteDescription, publicUrl, artistName, coverImage, mode, 
                 zenPeers, web3_checkout_address, web3_nft_address,
-                telegram_bot_token, telegram_allowed_channels, telegram_chat_group_id,
+                telegram_bot_token, telegram_allowed_channels,
                 adminFeePercentage, adminTreasuryAddress,
                 soulseek_username, soulseek_password,
                 stripe_secret_key, stripe_webhook_secret,
@@ -264,12 +264,17 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 google_drive_client_secret,
                 themeFont, themeBlur, themeOverlayOpacity,
                 communityLink,
-                web3Enabled
+                web3Enabled,
+                chatEnabled
             } = req.body;
             let settingsChanged = false;
 
             if (web3Enabled !== undefined) {
                 identity.setSetting("web3Enabled", web3Enabled ? "true" : "false");
+            }
+
+            if (chatEnabled !== undefined) {
+                identity.setSetting("chatEnabled", chatEnabled ? "true" : "false");
             }
 
             if (siteName !== undefined) {
@@ -338,10 +343,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 identity.setSetting("telegram_allowed_channels", telegram_allowed_channels);
                 settingsChanged = true;
             }
-            if (telegram_chat_group_id !== undefined) {
-                identity.setSetting("telegram_chat_group_id", telegram_chat_group_id);
-                settingsChanged = true;
-            }
             if (adminFeePercentage !== undefined) {
                 identity.setSetting("adminFeePercentage", adminFeePercentage.toString());
             }
@@ -389,7 +390,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             // Restart telegram bot if settings changed
-            if (telegram_bot_token !== undefined || telegram_allowed_channels !== undefined || telegram_chat_group_id !== undefined) {
+            if (telegram_bot_token !== undefined || telegram_allowed_channels !== undefined) {
                 telegramBotService.restart().catch((err: any) => console.error("Failed to restart Telegram bot:", err));
             }
 
