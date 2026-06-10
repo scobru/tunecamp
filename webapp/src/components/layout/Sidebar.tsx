@@ -34,6 +34,7 @@ export const Sidebar = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteLogo, setSiteLogo] = useState<string | null>(null);
   const [communityLink, setCommunityLink] = useState<string | null>(null);
+  const [telegramChatGroupId, setTelegramChatGroupId] = useState<string | null>(null);
  
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -74,6 +75,7 @@ export const Sidebar = () => {
         if (s.siteName) setSiteName(s.siteName);
         if (s.siteLogo) setSiteLogo(s.siteLogo);
         if (s.communityLink) setCommunityLink(s.communityLink);
+        if (s.telegram_chat_group_id) setTelegramChatGroupId(s.telegram_chat_group_id);
       })
       .catch(console.error);
   }, []);
@@ -168,9 +170,19 @@ export const Sidebar = () => {
             {isAuthenticated && (
               <NavItem to="/dig" icon={Shovel} label="Dig" />
             )}
-            {communityLink && (
+            {telegramChatGroupId ? (
+              <li>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent("open-chat"))}
+                  className="flex items-center gap-3 px-4 py-2 w-full text-left rounded-full transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] group hover:bg-base-300/50 text-base-content/70 hover:text-base-content cursor-pointer"
+                >
+                  <MessageSquare size={20} className="transition-transform group-hover:scale-110 opacity-60 group-hover:opacity-100" />
+                  <span className="text-label-large tracking-tight">Community Chat</span>
+                </button>
+              </li>
+            ) : communityLink ? (
               <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
-            )}
+            ) : null}
           </ul>
         </div>
  

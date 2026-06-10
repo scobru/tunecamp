@@ -15,12 +15,21 @@ import { CheckoutModal } from "../modals/CheckoutModal";
 import { CommandPalette } from "../modals/CommandPalette";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useUIStore } from "../../stores/useUIStore";
+import { ChatWidget } from "../ChatWidget";
+import { MessageSquare } from "lucide-react";
 
 export const MainLayout = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const dominantColor = usePlayerStore(state => state.dominantColor);
   const theme = useUIStore(state => state.theme);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenChat = () => setIsChatOpen(true);
+    window.addEventListener("open-chat", handleOpenChat);
+    return () => window.removeEventListener("open-chat", handleOpenChat);
+  }, []);
 
   useEffect(() => {
     // Apply theme on mount and when it changes
@@ -154,6 +163,20 @@ export const MainLayout = () => {
 
       <PlayerBar />
       <PlayerCanvas />
+
+      {/* Floating Chat Trigger & Widget */}
+      {!!siteSettings?.telegram_chat_group_id && (
+        <>
+          <button
+            className="fixed bottom-24 right-6 sm:bottom-28 sm:right-8 z-40 btn btn-circle btn-primary btn-lg shadow-level-3 hover:scale-110 active:scale-95 transition-all duration-medium-1 [transition-timing-function:var(--ease-spring)] group"
+            onClick={() => setIsChatOpen(true)}
+            aria-label="Open Community Chat"
+          >
+            <MessageSquare className="w-6 h-6 transition-transform group-hover:rotate-12 text-primary-content" />
+          </button>
+          <ChatWidget isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        </>
+      )}
 
       {/* Global Modals */}
       <CommandPalette />

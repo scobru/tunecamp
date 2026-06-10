@@ -8,6 +8,7 @@ import { DatabaseService } from '../../core/database.js';
 import type { ServerConfig } from '../../core/config.js';
 import type { OpenRouterService } from '../ai/openrouter.service.js';
 import { VisibilityProfile } from '../../common/visibility.js';
+import { ChatService } from '../chat/chat.service.js';
 
 export class TelegramBotService {
     private bot?: Telegraf;
@@ -20,7 +21,8 @@ export class TelegramBotService {
         private database: DatabaseService,
         private scanner: ScannerService,
         private config: ServerConfig,
-        private ai?: OpenRouterService
+        private ai?: OpenRouterService,
+        private chatService?: ChatService
     ) {}
 
     private get musicDir(): string {
@@ -343,6 +345,16 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
                         if (commands[cmd]) {
                             console.log(`[TelegramBot] Command received in ${chatType} ${chatId}: ${cmd}`);
                             return await commands[cmd](ctx);
+                        }
+                    }
+
+                    // Bridge regular messages from Telegram community group to Webapp
+                    const chatGroupIdSetting = this.database.getSetting('telegram_chat_group_id');
+                    if (chatGroupIdSetting && chatId === chatGroupIdSetting.trim()) {
+                        if (msg.text && !msg.text.startsWith('/')) {
+                            const senderName = msg.from?.first_name || msg.from?.username || 'Telegram User';
+                            this.chatService?.addMessage(senderName, 'telegram_user', msg.text, 'telegram', msg.message_id);
+                            return;
                         }
                     }
 
@@ -760,6 +772,22 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
         } catch (err: any) {
             console.error(`[TelegramBot] Failed to send radio track: ${err.message}`);
             await this.safeReply(ctx, "❌ Error fetching radio track.");
+        }
+    }
+
+    async sendWebappMessageToGroup(username: string, role: string, message: string) {
+        if (!this.bot || !this.isRunning) return;
+        const targetChatId = this.database.getSetting('telegram_chat_group_id');
+        if (!targetChatId) return;
+
+        try {
+            let roleBadge = '';
+            if (role === 'root_admin' || role === 'admin' || role === 'super_user') {
+                roleBadge = ' ⭐';
+            }
+            await this.bot.telegram.sendMessage(targetChatId.trim(), `💬 [${username}${roleBadge}]: ${message}`);
+        } catch (err: any) {
+            console.error('[TelegramBot] Failed to send webapp message to Telegram:', err.message);
         }
     }
 }

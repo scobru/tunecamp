@@ -83,6 +83,8 @@ import { securityHeaders } from "./middleware/security.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { SoulseekService } from "./modules/integrations/soulseek.js";
 import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
+import { ChatService } from "./modules/chat/chat.service.js";
+import { createChatRoutes } from "./routes/api/chat.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
 import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
@@ -226,7 +228,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
     torrentSearchService.registerProvider(new PublicScraperTorrentProvider());
     console.log(`🔌 [Integrations] TorrentSearch initialized with PublicScraper provider`);
 
-    const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
+    const chatService = new ChatService(database);
+    const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService, chatService);
+    chatService.setTelegramBot(telegramBotService);
 
     const container: ServiceContainer = {
         database,
@@ -257,6 +261,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         zendbService,
         lifecycleService,
         telegramBotService,
+        chatService,
         soulseekService,
         torrentService: torrentService as any,
         gdriveService,
@@ -355,6 +360,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
     app.use("/api/users", createUsersRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
+    app.use("/api/chat", authMiddleware.optionalAuth, createChatRoutes(container));
     app.use("/api/unlock", createUnlockRoutes(container));
 
     // Public assets store

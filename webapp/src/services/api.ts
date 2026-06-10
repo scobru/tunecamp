@@ -579,6 +579,14 @@ const API = {
     digRemoveFromCrate: (sessionId: number, itemId: number) =>
         handleResponse(api.delete(`dig/sessions/${sessionId}/crate/${itemId}`)),
     digGetHistory: () => handleResponse(api.get<DigHistoryItem[]>('dig/history')),
+
+    // --- Chat ---
+    getChatHistory: (limit?: number) => handleResponse(api.get<any[]>(`chat/history${limit ? `?limit=${limit}` : ''}`)),
+    sendChatMessage: (message: string) => handleResponse(api.post<any>('chat/messages', { message })),
+    getChatStreamUrl: () => {
+        const token = localStorage.getItem('tunecamp_token');
+        return `/api/chat/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    }
 };
 
 export default API;

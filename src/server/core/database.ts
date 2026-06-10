@@ -433,6 +433,16 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            message TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'webapp',
+            telegram_message_id INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         -- Digging ("Dig") feature: external crate-digging sessions inspired by Badger.
         CREATE TABLE IF NOT EXISTS dig_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

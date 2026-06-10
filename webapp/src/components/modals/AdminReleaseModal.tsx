@@ -35,6 +35,8 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const [showMetadataModal, setShowMetadataModal] = useState(false);
     const [currentAlbumData, setCurrentAlbumData] = useState<any>(null);
 
+    const isLibrary = !!(isEditing && currentAlbumData && !currentAlbumData.is_release && !currentAlbumData.is_formal_release);
+
     useEffect(() => {
         const handleOpen = async (e: CustomEvent) => {
             loadAllTracks();
@@ -117,12 +119,9 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
     const handleDelete = async () => {
         if (!editId) return;
         
-        // Custom confirmation logic to handle the three states (Cancel, Keep Files, Delete All)
-        // Since browser confirm is binary, we'll ask: "Delete everything?" -> OK. "Keep files?" -> Cancel is tricky.
-        // Let's stick to the previous flow but make messages clearer, OR assume delete means delete everything by default?
-        // User pattern suggests they want to delete everything usually.
+        const itemType = isLibrary ? (type === 'single' || selectedTrackIds.length <= 1 ? 'track' : 'album') : 'release';
         
-        if (!confirm('Are you sure you want to delete this release? This will remove the database entries. You will be asked next if you want to delete the files from disk.')) return;
+        if (!confirm(`Are you sure you want to delete this ${itemType}? This will remove the database entries. You will be asked next if you want to delete the files from disk.`)) return;
         
         const deleteFiles = confirm('PERMANENTLY DELETE FILES? \nOK = Delete files from disk (Cannot be undone) \nCancel = Keep files on disk (Will be re-scanned if not moved)');
         
@@ -133,7 +132,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
             onReleaseUpdated();
             dialogRef.current?.close();
         } catch (e: any) {
-            setError(e.message || 'Failed to delete release');
+            setError(e.message || `Failed to delete ${itemType}`);
         } finally {
             setLoading(false);
         }
@@ -155,11 +154,11 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                     year,
                     genre,
                     visibility,
-                    license,
+                    license: isLibrary ? undefined : license,
                     track_ids: selectedTrackIds,
-                    price: price ? Number(price) : undefined,
-                    priceUsdc: priceUsdc ? Number(priceUsdc) : undefined,
-                    currency: currency !== 'USDC' ? currency : 'ETH', // Default to ETH if USDC selected as primary currency is stored in price_usdc
+                    price: isLibrary ? undefined : (price ? Number(price) : undefined),
+                    priceUsdc: isLibrary ? undefined : (priceUsdc ? Number(priceUsdc) : undefined),
+                    currency: isLibrary ? undefined : (currency !== 'USDC' ? currency : 'ETH'), // Default to ETH if USDC selected as primary currency is stored in price_usdc
                 });
             } else {
                 release = await API.createRelease({ 
@@ -200,7 +199,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                 
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="font-bold text-lg flex items-center gap-2">
-                        <Disc size={20}/> {isEditing ? 'Edit Release' : 'Create Release'}
+                        <Disc size={20}/> {isLibrary ? (type === 'single' || selectedTrackIds.length <= 1 ? 'Edit Track' : 'Edit Album') : (isEditing ? 'Edit Release' : 'Create Release')}
                     </h3>
                     <button
                         type="button"
@@ -283,33 +282,35 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         />
                     </div>
 
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">Price</span>
-                        </label>
-                        <div className="flex gap-2">
-                            <select 
-                                className="select select-bordered"
-                                value={currency}
-                                onChange={e => setCurrency(e.target.value as any)}
-                            >
-                                <option value="ETH">ETH</option>
-                                <option value="USD">USD</option>
-                                <option value="USDC">USDC</option>
-                            </select>
-                            <input 
-                                type="number" 
-                                step="any"
-                                className="input input-bordered w-full" 
-                                value={currency === 'USDC' ? priceUsdc : price}
-                                onChange={e => {
-                                    if (currency === 'USDC') setPriceUsdc(e.target.value);
-                                    else setPrice(e.target.value);
-                                }}
-                                placeholder="0.00"
-                            />
+                    {!isLibrary && (
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Price</span>
+                            </label>
+                            <div className="flex gap-2">
+                                <select 
+                                    className="select select-bordered"
+                                    value={currency}
+                                    onChange={e => setCurrency(e.target.value as any)}
+                                >
+                                    <option value="ETH">ETH</option>
+                                    <option value="USD">USD</option>
+                                    <option value="USDC">USDC</option>
+                                </select>
+                                <input 
+                                    type="number" 
+                                    step="any"
+                                    className="input input-bordered w-full" 
+                                    value={currency === 'USDC' ? priceUsdc : price}
+                                    onChange={e => {
+                                        if (currency === 'USDC') setPriceUsdc(e.target.value);
+                                        else setPrice(e.target.value);
+                                    }}
+                                    placeholder="0.00"
+                                />
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="form-control">
                         <label className="label">
@@ -326,7 +327,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         </select>
                         <label className="label">
                             <span className="label-text-alt opacity-70">
-                                {visibility === 'private' && "Only admins can see this release."}
+                                {visibility === 'private' && (isLibrary ? "Only admins can see this album/track." : "Only admins can see this release.")}
                                 {visibility === 'public' && "Visible to everyone and federated to the network."}
                                 {visibility === 'unlisted' && "Accessible if you have the link/ID, but not shown in public catalogs."}
                             </span>
@@ -353,25 +354,27 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         </label>
                     </div>
 
-                    <div className="form-control">
-                        <label className="label">
-                            <span className="label-text">License</span>
-                        </label>
-                        <select 
-                            className="select select-bordered w-full"
-                            value={license}
-                            onChange={e => setLicense(e.target.value)}
-                        >
-                            <option value="copyright">All Rights Reserved (Copyright)</option>
-                            <option value="cc-by">Creative Commons BY (Attribution)</option>
-                            <option value="cc-by-sa">Creative Commons BY-SA (ShareAlike)</option>
-                            <option value="cc-by-nc">Creative Commons BY-NC (Non-Commercial)</option>
-                            <option value="cc-by-nc-sa">Creative Commons BY-NC-SA (Non-Commercial ShareAlike)</option>
-                            <option value="cc-by-nd">Creative Commons BY-ND (NoDerivs)</option>
-                            <option value="cc-by-nc-nd">Creative Commons BY-NC-ND (Non-Commercial NoDerivs)</option>
-                            <option value="public-domain">Public Domain / CC0</option>
-                        </select>
-                    </div>
+                    {!isLibrary && (
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">License</span>
+                            </label>
+                            <select 
+                                className="select select-bordered w-full"
+                                value={license}
+                                onChange={e => setLicense(e.target.value)}
+                            >
+                                <option value="copyright">All Rights Reserved (Copyright)</option>
+                                <option value="cc-by">Creative Commons BY (Attribution)</option>
+                                <option value="cc-by-sa">Creative Commons BY-SA (ShareAlike)</option>
+                                <option value="cc-by-nc">Creative Commons BY-NC (Non-Commercial)</option>
+                                <option value="cc-by-nc-sa">Creative Commons BY-NC-SA (Non-Commercial ShareAlike)</option>
+                                <option value="cc-by-nd">Creative Commons BY-ND (NoDerivs)</option>
+                                <option value="cc-by-nc-nd">Creative Commons BY-NC-ND (Non-Commercial NoDerivs)</option>
+                                <option value="public-domain">Public Domain / CC0</option>
+                            </select>
+                        </div>
+                    )}
                     
                     <div className="form-control">
                         <label className="label">
@@ -406,14 +409,14 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                                     onClick={handleDelete}
                                     disabled={loading}
                                 >
-                                    <Trash2 size={18} /> Delete Release
+                                    <Trash2 size={18} /> {isLibrary ? (type === 'single' || selectedTrackIds.length <= 1 ? 'Delete Track' : 'Delete Album') : 'Delete Release'}
                                 </button>
                             )}
                         </div>
                         <div className="flex gap-2">
                             <button type="button" className="btn btn-ghost" onClick={() => dialogRef.current?.close()}>Cancel</button>
                             <button type="submit" className="btn btn-primary" disabled={loading}>
-                                {loading ? 'Saving...' : (isEditing ? 'Update Release' : 'Create Release')}
+                                {loading ? 'Saving...' : (isEditing ? (isLibrary ? (type === 'single' || selectedTrackIds.length <= 1 ? 'Update Track' : 'Update Album') : 'Update Release') : 'Create Release')}
                             </button>
                         </div>
                     </div>

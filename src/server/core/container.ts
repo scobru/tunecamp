@@ -33,6 +33,8 @@ import type { OpenRouterService } from "../modules/ai/openrouter.service.js";
 import type { LocalDiskStorage } from "../modules/storage/storage.engine.js";
 import type { Scanner } from "../modules/catalog/scanner.js";
 
+import type { ChatService } from "../modules/chat/chat.service.js";
+
 export interface ServiceContainer {
     // Core
     database: DatabaseService;
@@ -76,6 +78,7 @@ export interface ServiceContainer {
     soulseekService: SoulseekService;
     torrentService: TorrentService;
     gdriveService?: GoogleDriveService;
+    chatService: ChatService;
 
     // AI
     openRouterService: OpenRouterService;
