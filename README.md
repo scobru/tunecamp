@@ -16,8 +16,8 @@ The fastest way to run Tunecamp is using Docker Compose.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/scobru/shogun-tunecamp.git
-cd shogun-tunecamp
+git clone https://github.com/scobru/tunecamp.git
+cd tunecamp
 
 # 2. Edit docker-compose.yml to set your music directory
 #    Change /path/to/your/music to your actual music folder
@@ -52,6 +52,8 @@ docker-compose up -d --build
 - 🔊 **Subsonic/OpenSubsonic API**: Full compatibility (v1.16.1) with mobile apps like DSub, Symfonium, Tempo, Substreamer, Amuse, and play:Sub.
 - 🎧 **Built-in Player**: Waveform visualization, queue management, lyrics display, and keyboard shortcuts.
 - 📋 **Playlists**: Create and share playlists (public/private).
+- 🎙️ **Live Streaming (P2P)**: Artists broadcast live audio straight from the browser to listeners over WebRTC (Trystero) — the server only announces sessions, media never touches it.
+- 💬 **Community Chat**: Built-in instance chat with persistent history and role badges.
 
 ### Web3 & Monetization
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
@@ -89,8 +91,8 @@ docker-compose up -d --build
 **Prerequisites**: Docker 20+, Docker Compose
 
 ```bash
-git clone https://github.com/scobru/shogun-tunecamp.git
-cd shogun-tunecamp
+git clone https://github.com/scobru/tunecamp.git
+cd tunecamp
 
 # Edit docker-compose.yml to configure your music path and environment
 docker-compose up -d --build
@@ -102,8 +104,8 @@ docker-compose up -d --build
 
 ```bash
 # Clone the repository
-git clone https://github.com/scobru/shogun-tunecamp.git
-cd shogun-tunecamp
+git clone https://github.com/scobru/tunecamp.git
+cd tunecamp
 
 # Install all dependencies (both root and webapp workspace)
 npm install
