@@ -27,8 +27,8 @@ paths:
       summary: User Login
       tags: [Authentication]
       description: |
-        Authenticates a user. Supports decentralized proof-of-possession (roaming) via Zen.
-        If the user is known on the Zen peer network but not locally, the backend lazily creates a local profile.
+        Authenticates a user with username and password.
+        The response includes a `mustChangePassword` flag when the account still uses the default password.
       operationId: login
       requestBody:
         required: true
@@ -42,17 +42,11 @@ paths:
                   type: string
                 password:
                   type: string
-                pubKey:
-                  type: string
-                  description: Optional Zen public key for decentralized roaming.
-                proof:
-                  type: string
-                  description: Cryptographic signature proving ownership of the pubKey.
       responses:
         '200':
           description: Successful authentication. Returns JWT and user info.
         '401':
-          description: Invalid credentials or signature.
+          description: Invalid username or password.
 
   /auth/me:
     get:
@@ -73,7 +67,7 @@ paths:
     post:
       summary: User Registration
       tags: [Users]
-      description: Registers a new user. Prioritizes Zen identity linking.
+      description: Registers a new user account (username and password). Can be disabled via the `allowRegistration` setting.
       operationId: register
       requestBody:
         required: true
@@ -87,12 +81,6 @@ paths:
                   type: string
                 password:
                   type: string
-                pubKey:
-                  type: string
-                  description: The user's Zen SEA public key.
-                signature:
-                  type: string
-                  description: Proof-of-possession signature.
       responses:
         '200':
           description: Registration successful.
