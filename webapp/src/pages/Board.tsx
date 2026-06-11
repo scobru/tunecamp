@@ -10,6 +10,7 @@ import {
   Send,
   Lock,
   Clock,
+  Trash2,
   Sparkles,
   AlertCircle
 } from "lucide-react";
@@ -64,7 +65,7 @@ const getRoleBadgeClass = (role: string) => {
 };
 
 const Board = () => {
-  const { messages, isLoading, error, sendMessage } = useChat();
+  const { messages, isLoading, error, sendMessage, deleteMessage } = useChat();
   const { user, isAuthenticated, role } = useAuthStore();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -74,6 +75,15 @@ const Board = () => {
   const [postError, setPostError] = useState<string | null>(null);
 
   const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    try {
+      await deleteMessage(id);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete message");
+    }
+  };
 
   // Load site settings to check if the board is enabled
   useEffect(() => {
@@ -238,6 +248,7 @@ const Board = () => {
               {orderedMessages.map((msg, index) => {
                 const isMe = user?.username === msg.username;
                 const avatarColor = getAvatarColorClass(msg.username);
+                const canDelete = isMe || isAdmin;
                 
                 return (
                   <div
@@ -274,10 +285,21 @@ const Board = () => {
                           </span>
                         )}
 
-                        <span className="text-[10px] opacity-40 font-bold flex items-center gap-1 ml-auto">
-                          <Clock size={10} />
-                          {StringUtils.formatTimeAgo(new Date(msg.created_at).getTime())}
-                        </span>
+                        <div className="ml-auto flex items-center gap-2">
+                          <span className="text-[10px] opacity-40 font-bold flex items-center gap-1">
+                            <Clock size={10} />
+                            {StringUtils.formatTimeAgo(new Date(msg.created_at).getTime())}
+                          </span>
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(msg.id)}
+                              className="text-error/60 hover:text-error transition-colors p-1 hover:bg-error/10 rounded-md"
+                              title="Delete message"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium break-words pt-1 opacity-90 text-base-content">

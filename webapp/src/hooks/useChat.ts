@@ -9,6 +9,7 @@ export interface ChatMessage {
     source: 'webapp' | 'telegram';
     telegram_message_id: number | null;
     created_at: string;
+    deleted?: boolean;
 }
 
 export function useChat() {
@@ -41,13 +42,17 @@ export function useChat() {
         eventSource.onmessage = (event) => {
             try {
                 const newMsg = JSON.parse(event.data) as ChatMessage;
-                setMessages((prev) => {
-                    // Prevent duplicate messages if any (e.g. from network or retry)
-                    if (prev.some((m) => m.id === newMsg.id)) {
-                        return prev;
-                    }
-                    return [...prev, newMsg];
-                });
+                if (newMsg.deleted) {
+                    setMessages((prev) => prev.filter((m) => m.id !== newMsg.id));
+                } else {
+                    setMessages((prev) => {
+                        // Prevent duplicate messages if any (e.g. from network or retry)
+                        if (prev.some((m) => m.id === newMsg.id)) {
+                            return prev;
+                        }
+                        return [...prev, newMsg];
+                    });
+                }
             } catch (err) {
                 console.error('Failed to parse chat stream event:', err);
             }
@@ -75,11 +80,24 @@ export function useChat() {
         }
     }, []);
 
+    // Delete a message
+    const deleteMessage = useCallback(async (id: number) => {
+        try {
+            await API.deleteChatMessage(id);
+            setMessages((prev) => prev.filter((m) => m.id !== id));
+            return true;
+        } catch (err: any) {
+            console.error('Failed to delete message:', err);
+            throw err;
+        }
+    }, []);
+
     return {
         messages,
         isLoading,
         error,
         sendMessage,
+        deleteMessage,
         refresh: loadHistory
     };
 }

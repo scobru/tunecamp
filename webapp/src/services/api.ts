@@ -584,6 +584,7 @@ const API = {
     // --- Chat ---
     getChatHistory: (limit?: number) => handleResponse(api.get<any[]>(`chat/history${limit ? `?limit=${limit}` : ''}`)),
     sendChatMessage: (message: string) => handleResponse(api.post<any>('chat/messages', { message })),
+    deleteChatMessage: (id: number) => handleResponse<{ success: boolean }>(api.delete(`chat/messages/${id}`)),
     getChatStreamUrl: () => {
         const token = localStorage.getItem('tunecamp_token');
         return `/api/chat/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;

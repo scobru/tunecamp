@@ -8,6 +8,7 @@ export interface ChatMessage {
     message: string;
     source: 'webapp' | 'telegram';
     telegram_message_id: number | null;
+    deleted?: boolean;
     created_at: string;
 }
 
@@ -25,6 +26,17 @@ export class ChatService {
         } catch (err) {
             console.error('[ChatService] Failed to fetch chat history:', err);
             return [];
+        }
+    }
+
+    getMessage(id: number): ChatMessage | null {
+        try {
+            return this.database.db.prepare(
+                "SELECT * FROM chat_messages WHERE id = ?"
+            ).get(id) as ChatMessage | null;
+        } catch (err) {
+            console.error('[ChatService] Failed to fetch chat message by ID:', err);
+            return null;
         }
     }
 
@@ -57,6 +69,24 @@ export class ChatService {
         } catch (err) {
             console.error('[ChatService] Failed to save chat message:', err);
             return null;
+        }
+    }
+
+    deleteMessage(id: number): boolean {
+        try {
+            const result = this.database.db.prepare(
+                "DELETE FROM chat_messages WHERE id = ?"
+            ).run(id);
+
+            const success = result.changes > 0;
+            if (success) {
+                // Broadcast deletion event via SSE stream
+                this.events.emit('message', { id, deleted: true } as any);
+            }
+            return success;
+        } catch (err) {
+            console.error('[ChatService] Failed to delete chat message:', err);
+            return false;
         }
     }
 }
