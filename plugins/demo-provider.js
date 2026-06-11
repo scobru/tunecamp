@@ -81,8 +81,8 @@ export default class DemoProvider {
     async searchRecording(query) {
         console.log(`[DemoProvider] Ricerca registrazione per: "${query}"`);
         const lower = query.toLowerCase();
-        return DEMO_TRACKS.filter(t => 
-            t.title.toLowerCase().includes(lower) || 
+        return DEMO_TRACKS.filter(t =>
+            t.title.toLowerCase().includes(lower) ||
             t.artist.toLowerCase().includes(lower) ||
             t.album.toLowerCase().includes(lower)
         ).map(t => ({
@@ -139,8 +139,8 @@ export default class DemoProvider {
         console.log(`[DemoProvider] Ottenimento stream per traccia: "${trackTitle}" di ${artistName}`);
         const lowerTitle = trackTitle.toLowerCase();
         const lowerArtist = artistName.toLowerCase();
-        const track = DEMO_TRACKS.find(t => 
-            t.title.toLowerCase().includes(lowerTitle) && 
+        const track = DEMO_TRACKS.find(t =>
+            t.title.toLowerCase().includes(lowerTitle) &&
             t.artist.toLowerCase().includes(lowerArtist)
         );
         return track ? track.url : null;
@@ -149,8 +149,8 @@ export default class DemoProvider {
     async search(query) {
         console.log(`[DemoProvider] Ricerca sorgenti di streaming per: "${query}"`);
         const lower = query.toLowerCase();
-        return DEMO_TRACKS.filter(t => 
-            t.title.toLowerCase().includes(lower) || 
+        return DEMO_TRACKS.filter(t =>
+            t.title.toLowerCase().includes(lower) ||
             t.artist.toLowerCase().includes(lower)
         ).map(t => ({
             id: t.id,
