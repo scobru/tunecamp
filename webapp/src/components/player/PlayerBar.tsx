@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useShallow } from "zustand/react/shallow";
@@ -112,6 +112,76 @@ export const PlayerBar = () => {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   
+  // Track seek/scrub state
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [localProgress, setLocalProgress] = useState(0);
+  const localProgressRef = useRef(0);
+  const progressContainerRef = useRef<HTMLDivElement>(null);
+
+  const updateDragPosition = useCallback((clientX: number) => {
+    if (!progressContainerRef.current || !duration) return;
+    const rect = progressContainerRef.current.getBoundingClientRect();
+    const clickX = clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, clickX / rect.width));
+    const newProgress = percent * 100;
+    setLocalProgress(newProgress);
+    localProgressRef.current = newProgress;
+  }, [duration]);
+
+  const handleProgressMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressContainerRef.current || !duration) return;
+    setIsSeeking(true);
+    updateDragPosition(e.clientX);
+  };
+
+  const handleProgressTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!progressContainerRef.current || !duration || e.touches.length === 0) return;
+    setIsSeeking(true);
+    updateDragPosition(e.touches[0].clientX);
+  };
+
+  useEffect(() => {
+    if (!isSeeking) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      updateDragPosition(e.clientX);
+    };
+
+    const handleMouseUp = () => {
+      setIsSeeking(false);
+      if (audioRef.current && Number.isFinite(duration) && duration > 0) {
+        const targetTime = (localProgressRef.current / 100) * duration;
+        audioRef.current.currentTime = targetTime;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        updateDragPosition(e.touches[0].clientX);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsSeeking(false);
+      if (audioRef.current && Number.isFinite(duration) && duration > 0) {
+        const targetTime = (localProgressRef.current / 100) * duration;
+        audioRef.current.currentTime = targetTime;
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isSeeking, duration, updateDragPosition]);
+
   // Track if the pause/play was triggered by our own code to avoid event loops
   const isInternalChange = useRef(false);
   const lastTrackId = useRef<string | number | null>(null);
@@ -394,27 +464,32 @@ export const PlayerBar = () => {
 
           <div className="w-full flex items-center gap-4 text-[11px] lg:text-xs font-black tracking-normal opacity-40 h-6">
             <span className="w-8 lg:w-10 text-right tabular-nums">
-              {formatDuration(currentTime)}
+              {formatDuration(isSeeking ? (localProgress / 100) * duration : currentTime)}
             </span>
 
-            <div className="flex-1 relative h-1 lg:h-1.5 group">
-               <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-full bg-base-content/5 rounded-full overflow-hidden">
+            <div 
+              ref={progressContainerRef}
+              className="flex-1 relative h-6 cursor-pointer flex items-center group"
+              onMouseDown={handleProgressMouseDown}
+              onTouchStart={handleProgressTouchStart}
+            >
+               <div className="w-full h-1 lg:h-1.5 bg-base-content/5 rounded-full overflow-hidden relative">
                 <div 
                   className="h-full bg-primary/40 rounded-full"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${isSeeking ? localProgress : progress}%` }}
                 />
                </div>
                <input
                 aria-label="Seek track"
-                aria-valuenow={Math.round(progress)}
+                aria-valuenow={Math.round(isSeeking ? localProgress : progress)}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 type="range"
-                className="range range-xs range-primary absolute inset-0 opacity-0 cursor-pointer z-10"
+                className="range range-xs range-primary absolute inset-x-0 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none z-10"
                 min="0"
                 max="100"
                 step="0.1"
-                value={progress || 0}
+                value={isSeeking ? localProgress : (progress || 0)}
                 onChange={(e) => handleSeek(parseFloat(e.target.value) / 100)}
               />
             </div>
