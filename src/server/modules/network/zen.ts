@@ -35,9 +35,7 @@ function isProtectedSoul(soul: string): boolean {
 
 interface ZenOptions {
     peers?: string[];
-    web?: any;
     radisk?: boolean;
-    localStorage?: boolean;
     file?: string;
     publicUrl?: string; // New: to filter out self from peers
     pid?: string;
@@ -157,7 +155,7 @@ class ServerZenUser {
  * This rewrite targets ALL of these, using the real v8 heap limit (from
  * --max-old-space-size) as the reference instead of the arbitrary 128MB ZEN budget.
  */
-function startAggressiveEvictor(zen: any, memoryLimitMB: number) {
+function startAggressiveEvictor(zen: any) {
     // Use real v8 heap limit for thresholds, not the ZEN graph budget
     const heapLimitMB = V8_HEAP_LIMIT_MB;
     const thresholdBytes = heapLimitMB * 0.50 * 1024 * 1024; // 50% of real heap limit
@@ -387,17 +385,12 @@ export function getZen(options?: ZenOptions): any {
                 const subscribedSouls = Object.keys(next);
 
                 const souls = Object.keys(msg.put);
-                if (incomingCount <= 5) {
-                    console.log(`[Diagnostic] Incoming msg #${incomingCount} has ${souls.length} souls. First 3: ${souls.slice(0, 3).join(', ')} | Subscribed in next: ${subscribedSouls.length}. First 3: ${subscribedSouls.slice(0, 3).join(', ')}`);
-                }
-
                 for (const soul of souls) {
                     // We keep the soul if:
                     // 1. It is explicitly in isProtectedSoul (shogun root, local user profile keys)
                     // 2. We have an active subscription for it in root.next
                     // 3. Or it is a child of an active subscription (starts with subscribed soul + '/')
                     let keep = isProtectedSoul(soul) || !!next[soul];
-                    let keepReason = keep ? (isProtectedSoul(soul) ? 'protected' : 'next') : 'none';
 
                     if (!keep) {
                         for (const sub of subscribedSouls) {
@@ -408,14 +401,9 @@ export function getZen(options?: ZenOptions): any {
 
                             if (soul.startsWith(sub + '/')) {
                                 keep = true;
-                                keepReason = `wildcard(${sub})`;
                                 break;
                             }
                         }
-                    }
-
-                    if (incomingCount <= 5 && souls.indexOf(soul) < 3) {
-                        console.log(`[Diagnostic] Soul '${soul}': keep=${keep} (reason: ${keepReason})`);
                     }
 
                     if (!keep) {
@@ -466,18 +454,13 @@ export function getZen(options?: ZenOptions): any {
                         return;
                     }
                 }
-            } else if (msg) {
-                if (incomingCount <= 5) {
-                    console.log(`[Diagnostic] Incoming msg #${incomingCount} is NOT put. Keys: ${Object.keys(msg).join(', ')} | dam: ${msg.dam} | get: ${msg.get ? JSON.stringify(msg.get) : 'no'}`);
-                }
             }
 
             this.to.next(msg);
         });
 
         // Start our aggressive evictor as a safety net on top of the built-in one
-        startAggressiveEvictor(zenInstance, ZEN_MEMORY_LIMIT_MB);
-
+        startAggressiveEvictor(zenInstance);
 
         // --- COMPATIBILITY SHIM ---
         // ZEN does not have a native .user() instance like GunDB. 
@@ -495,9 +478,6 @@ export function getZen(options?: ZenOptions): any {
             writable: true,
             configurable: true
         });
-
-        // Initialize internal graph state
-        (zenInstance as any)._graph;
     } else if (options?.peers) {
         // Update existing instance if new options provided (peers)
         if (options.peers) {
@@ -509,11 +489,6 @@ export function getZen(options?: ZenOptions): any {
             console.log(`📡 [ZEN] Shared singleton adding ${filteredPeers.length} peers...`);
             zenInstance.opt({ peers: filteredPeers });
         }
-    }
-
-    // DIAGNOSTIC: Ensure .user is a function before returning
-    if (typeof zenInstance.user !== 'function') {
-        console.error("🚨 [ZEN] FATAL: zenInstance.user is STILL not a function after initialization!");
     }
 
     return zenInstance;
