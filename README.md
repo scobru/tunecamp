@@ -8,7 +8,7 @@
 
 ## Why This Exists
 
-Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model—Zen for instance discovery and identity, direct HTTP for content sharing—giving artists ownership of their distribution without sacrificing reach.
+Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model—Zen for instance discovery (signaling), direct HTTP for content sharing—giving artists ownership of their distribution without sacrificing reach.
 
 ## Quick Start
 
@@ -43,7 +43,7 @@ docker-compose up -d --build
 - 🔊 **Smart Streaming**: Provider fallback for missing local files via SoundCloud and Bandcamp, with caching and automatic retries. Additional providers (e.g. YouTube) can be added through the [plugin system](docs/PLUGINS.md).
 
 ### Decentralization & Federation
-- 🔐 **Zen Identity**: Cryptographic keypairs (SEA) for signing, identity roaming across instances, and decentralized comments/stats.
+- 🔐 **Instance Identity**: Each server holds a cryptographic keypair used to sign its entry in the community registry.
 - 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma). Artists are ActivityPub actors with followers, posts, and release broadcasts.
 - 🌐 **Community Network**: Discover other Tunecamp instances via Zen signaling, then fetch catalogs directly via HTTP REST for always-fresh content.
 - 🔗 **HTTP Federation**: Instances expose a public `/api/catalog` endpoint, enabling direct instance-to-instance content discovery without intermediary replication.
@@ -57,10 +57,10 @@ docker-compose up -d --build
 
 ### Web3 & Monetization
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
-- 💳 **Fiat Payments**: Optional Stripe checkout for non-crypto purchases. PayPal support is planned but not yet implemented.
+- 💳 **Fiat Payments**: Optional Stripe checkout for non-crypto purchases.
 - 🏭 **Factory Contract**: Self-hosters deploy their own NFT + Checkout contract instances via EIP-1167 minimal proxies.
 - 🔑 **Unlock Codes**: Generate and distribute access codes for gated releases.
-- 👛 **Wallet Integration**: Client-side wallet derived from Zen credentials (no private key leaves the browser).
+- 👛 **Wallet Integration**: Connect a browser wallet (MetaMask or any injected EIP-1193 provider) for on-chain purchases.
 
 ### Administration
 - 🛡️ **Role-Based Access (RBAC)**: Root Admin, Admin, and Artist/User roles with granular permissions. See [ROLES.md](docs/ROLES.md).
@@ -200,9 +200,6 @@ Configuration is managed via environment variables (or an `.env` file).
 | `STRIPE_SECRET_KEY` | Stripe secret key for fiat checkout | — |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | — |
 | `STRIPE_ONRAMP_SECRET_KEY` | Stripe key for crypto on-ramp (falls back to `STRIPE_SECRET_KEY`) | — |
-| `PAYPAL_CLIENT_ID` | PayPal client ID for fiat checkout *(not yet implemented)* | — |
-| `PAYPAL_CLIENT_SECRET` | PayPal client secret *(not yet implemented)* | — |
-| `PAYPAL_ENVIRONMENT` | PayPal environment (`sandbox` / `live`) *(not yet implemented)* | `sandbox` |
 
 **Frontend build (Vite — `VITE_*`)**
 
@@ -221,9 +218,7 @@ Tunecamp exposes a full Subsonic API (version 1.16.1) at `/rest`. This allows yo
 - **Server URL**: `https://your-server.com`
 - **Username/Password**: Your Tunecamp credentials
 
-> **Roaming Users**: To use Subsonic on a new instance, first log in via the web interface to trigger lazy account creation.
-
-See the [Subsonic API Reference →](./docs/SUBSONIC.md)
+See the [Subsonic API Reference →](./docs/subsonic.md)
 
 ### REST API
 
@@ -244,7 +239,6 @@ Tunecamp uses a **hybrid federation model**:
 | Layer | Protocol | Purpose |
 |:------|:---------|:--------|
 | **Discovery** | Zen | Instance URL signaling — announces presence to the network |
-| **Identity** | Zen SEA | Cryptographic keypairs, wallet derivation, comments, play/like stats |
 | **Content** | HTTP REST | Direct catalog fetching between instances (`/api/catalog`) |
 | **Social** | ActivityPub | Artist federation, followers, release broadcasts, posts |
 

@@ -1,18 +1,18 @@
 # Federation & Decentralization in Tunecamp
 
-Tunecamp leverages two primary technologies to enable a decentralized music ecosystem: **ActivityPub** for social federation and **Zen** for decentralized data storage and discovery. It also provides full **Subsonic API** compatibility for mobile and desktop clients.
+Tunecamp leverages two primary technologies to enable a decentralized music ecosystem: **ActivityPub** for social federation and **Zen** for instance discovery (signaling). It also provides full **Subsonic API** compatibility for mobile and desktop clients.
 
-## Zen Protocol: Decentralized Social & Discovery
+## Zen Protocol: Instance Discovery (Signaling)
 
-The Zen protocol (built on the Zen decentralized graph) is used for features that require real-time, decentralized synchronization without a central authority.
+Tunecamp uses the Zen decentralized graph **only as a signaling layer**: instances announce their public URL to a shared community registry so other instances can discover them. Everything else — accounts, playlists, comments, play history — lives in the server's local SQLite database, and catalogs are exchanged directly over HTTP.
+
+> **Note**: Earlier versions used Zen for user identity (SEA keypairs), Zen-first authentication, wallet derivation, and cross-instance roaming. These have been removed: authentication is now username/password (JWT), and the web client no longer connects to Zen peers. Zen runs server-side only, in a dedicated worker thread.
 
 ### Key Roles
 
-- **Community Registry**: Servers can register themselves in a global decentralized directory.
-- **Music Discovery**: The "Network" page scans Zen peers to discover other Tunecamp instances and their public tracks.
-- **Social Features**: User playlists are synchronized via Zen. Comments and personal play history are stored locally on the server's SQLite database to improve performance and privacy, while Zen can optionally maintain distributed, aggregate play/download counters.
-- **Identity (SEA)**: Each server and user has a cryptographic keypair (SEA) for signing data, verifying social interactions, and authenticating across instances.
-- **Cross-Instance Roaming**: Users can log in to any sibling instance using their Zen identity. The instance verifies their cryptographic proof and lazily creates a local profile.
+- **Community Registry**: Servers register themselves in a global decentralized directory (`tunecamp-community`).
+- **Music Discovery**: The "Network" page reads the registry to discover other Tunecamp instances, then fetches their catalogs directly via HTTP (`/api/catalog`).
+- **Instance Identity**: Each server holds a cryptographic keypair used to sign its registry entry.
 
 ### Secure Graph Strategy
 
@@ -22,20 +22,10 @@ Tunecamp uses a "Secure Graph" approach:
 2.  **Public Directory**: A reference (link) is placed in a public directory namespace (`tunecamp-community`).
 3.  **Verification**: When discovery scans the network, it validates the data against the sender's public key.
 
-### Decentralized Identity & Auth Flow
-
-Tunecamp implements a **Zen-first authentication** flow:
-
-1.  **Registration**: A Zen SEA keypair is generated on the client. The backend verifies the cryptographic signature of the username before creating the local account, linking the public key.
-2.  **Login**: The client authenticates against Zen peers first. It then generates a proof-of-possession (signature) sent to the backend.
-3.  **Roaming**: If a user hits a new Tunecamp instance where they don't have an account, they provide their Zen proof. The backend verifies this against the peer network and lazily creates a local SQLite entry and Artist profile, allowing "session roaming."
-
 ### Configuration
 
-Set Zen relay peers using:
-
-- `TUNECAMP_GUN_PEERS` (Backend)
-- `VITE_GUN_PEERS` (Frontend)
+- `TUNECAMP_ZEN_PEERS` (backend): comma/space-separated Zen relay peer URLs.
+- `TUNECAMP_ZEN_MEMORY_LIMIT` (backend): memory limit (MB) for the Zen network worker.
 
 ---
 
@@ -91,7 +81,7 @@ Tunecamp exposes a full **Subsonic REST API** at `/rest` (API version 1.16.1), e
 
 ### Scrobbling & Stats
 
-When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the play in the local SQLite database (`play_history` table). Local scrobbling and playback statistics are stored on the server. Global/decentralized download and play counters can be synchronized over the Zen network in a lightweight manner to avoid CPU overhead.
+When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the play in the local SQLite database (`play_history` table). All scrobbling and playback statistics are stored locally on the server.
 
 ---
 
@@ -103,7 +93,6 @@ When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the
 | Likes / Favorites    | ActivityPub  | External (Mastodon, etc)  |
 | Release Notification | ActivityPub  | External (Mastodon, etc)  |
 | Funkwhale Federation | ActivityPub  | External (Funkwhale)      |
-| User Identity / Roaming | Zen        | Internal (Tunecamp Nodes) |
+| Instance Discovery   | Zen          | Internal (Tunecamp Nodes) |
 | Mobile Streaming     | Subsonic API | External (Any client)     |
 | Starred / Favorites  | Subsonic API | Local (per user)          |
- Favorites  | Subsonic API | Local (per user)          |

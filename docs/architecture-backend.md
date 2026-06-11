@@ -20,7 +20,7 @@ Gestisce la persistenza locale tramite SQLite. Le tabelle includono:
 - `chat_messages`: Cronologia della chat community.
 
 ### 2. Integrazione Zen in Worker Thread (`modules/network/zendb.service.ts`, `zen.worker.ts`)
-Zen è usato per il signaling/discovery delle istanze della community e per l'identità crittografica (SEA). Storicamente i freeze dell'event loop di Zen bloccavano l'intero server HTTP (errori 504), quindi Zen gira **esclusivamente in un `worker_thread`** — il main thread non importa mai il modulo `zen`.
+Zen è usato esclusivamente per il signaling/discovery delle istanze della community; il server mantiene una keypair crittografica (SEA) per firmare la propria voce nel registry. Storicamente i freeze dell'event loop di Zen bloccavano l'intero server HTTP (errori 504), quindi Zen gira **esclusivamente in un `worker_thread`** — il main thread non importa mai il modulo `zen`.
 
 - `zendb.service.ts` (main thread) parla col worker via RPC `postMessage` con timeout.
 - Un **heartbeat** (ping ogni 30s) supervisiona il worker: dopo 3 mancate risposte il worker viene considerato congelato, terminato e **respawnato con backoff** (1s → 5s → 15s → 60s).
