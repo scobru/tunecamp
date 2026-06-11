@@ -29,7 +29,6 @@ const Social = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  const isAdmin = role === "admin" || role === "super_user" || user?.isRootAdmin;
   const isRootAdmin = !!user?.isRootAdmin;
 
   useEffect(() => {
