@@ -18,7 +18,7 @@ describe("Security Middleware", () => {
         expect(response.headers["x-xss-protection"]).toBe("1; mode=block");
         expect(response.headers["permissions-policy"]).toContain("geolocation=()");
         expect(response.headers["content-security-policy"]).toBe(
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://crypto-js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https: https://*.stripe.com; font-src 'self' data: https: https://fonts.gstatic.com; media-src 'self' data: blob: https:; connect-src 'self' ws: wss: http: https: https://api.stripe.com https://crypto-js.stripe.com https://www.paypal.com; frame-src 'self' https: https://js.stripe.com https://crypto-js.stripe.com https://www.paypal.com;"
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://crypto-js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https: https://*.stripe.com; font-src 'self' data: https: https://fonts.gstatic.com; media-src 'self' data: blob: https:; connect-src 'self' ws: wss: http: https: https://api.stripe.com https://crypto-js.stripe.com; frame-src 'self' https: https://js.stripe.com https://crypto-js.stripe.com;"
         );
     });
 });

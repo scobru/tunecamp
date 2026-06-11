@@ -9,7 +9,6 @@ interface HealthStatus {
   telegram: { active: boolean };
   openrouter: { configured: boolean; model: string };
   stripe: { configured: boolean; webhookConfigured: boolean };
-  paypal: { configured: boolean; environment: string };
   moonpay: { configured: boolean };
   gdrive: { configured: boolean; active: boolean };
   youtube: { online: boolean };
