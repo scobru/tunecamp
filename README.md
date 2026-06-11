@@ -70,6 +70,7 @@ docker-compose up -d --build
 - 🧩 **Plugins**: Load custom providers (streaming, metadata, storage) from a plugins directory. See [PLUGINS.md](docs/PLUGINS.md).
 - 💾 **Backup & Restore**: Full database backup/restore via the admin panel or CLI.
 - 📊 **Statistics**: Play counts, listening time, top tracks/artists, and library stats.
+- 📟 **Monitoring**: `/health` endpoint plus optional Sentry crash reporting. See [monitoring.md](docs/monitoring.md).
 
 ### Content Acquisition
 - 🔎 **Soulseek Search**: Search Soulseek from the admin panel with one-click import.

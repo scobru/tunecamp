@@ -5,6 +5,9 @@
  * Consistently loads configuration and starts the streaming server.
  */
 
+// Must stay the first import: initializes Sentry (if SENTRY_DSN is set)
+// before any other module loads.
+import './instrument.js';
 import { loadConfig } from './server/core/config.js';
 import { startServer } from './server/server.js';
 import { isNonFatalError } from './server/common/errors.js';

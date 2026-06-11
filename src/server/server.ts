@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import * as Sentry from "@sentry/node";
 import express from "express";
 import cors from "cors";
 import compression from "compression";
@@ -421,6 +422,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
         res.send(getCachedHtml());
     });
 
+    // Captures unhandled route errors to Sentry (no-op when SENTRY_DSN is unset),
+    // then falls through to our own errorHandler for the actual response.
+    Sentry.setupExpressErrorHandler(app);
     app.use(errorHandler);
 
     server.listen(config.port, async () => {

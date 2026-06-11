@@ -34,6 +34,7 @@
     "@fedify/express": "^1.10.3",
     "@fedify/fedify": "^1.10.3",
     "@js-temporal/polyfill": "^0.5.1",
+    "@sentry/node": "^10.57.0",
     "adm-zip": "^0.5.16",
     "andrade-soulseek-downloader": "^1.0.28",
     "archiver": "^7.0.1",

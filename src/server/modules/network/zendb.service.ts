@@ -1,4 +1,5 @@
 import { Worker } from "worker_threads";
+import * as Sentry from "@sentry/node";
 import fetch from "node-fetch";
 import { drainResponse } from "../../common/network.js";
 import { kprs } from "./zen-network.js";
@@ -120,6 +121,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
 
         w.on("error", (err) => {
             console.error("🚨 [ZenDB] Worker error:", err);
+            Sentry.captureException(err);
         });
 
         w.on("exit", (code) => {
@@ -130,6 +132,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
             const backoff = RESPAWN_BACKOFF_MS[Math.min(respawnCount, RESPAWN_BACKOFF_MS.length - 1)];
             respawnCount++;
             console.warn(`♻️ [ZenDB] Worker died (code ${code}). Respawning in ${backoff / 1000}s (attempt ${respawnCount})...`);
+            Sentry.captureMessage(`[ZenDB] Worker died (code ${code}), respawn attempt ${respawnCount}`, "warning");
             setTimeout(() => {
                 worker = spawnWorker();
                 initWorker().catch(e => console.error("🚨 [ZenDB] Worker re-init failed:", e.message));
@@ -175,6 +178,7 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 console.warn(`💔 [ZenDB] Worker heartbeat missed (${heartbeatMisses}/${HEARTBEAT_MAX_MISSES})`);
                 if (heartbeatMisses >= HEARTBEAT_MAX_MISSES && worker) {
                     console.error("🚨 [ZenDB] Worker loop is frozen. Terminating for respawn...");
+                    Sentry.captureMessage("[ZenDB] Worker loop frozen, terminating for respawn", "warning");
                     heartbeatMisses = 0;
                     workerReady = false;
                     try { await worker.terminate(); } catch (err) { }
