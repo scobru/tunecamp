@@ -6,6 +6,19 @@ import type { ServiceContainer } from "../../core/container.js";
 
 export function createProxyRoutes(container: ServiceContainer): Router {
     const router = Router();
+    const library = container.library;
+
+    const deleteBrokenTrack = (url: string, reason: string) => {
+        try {
+            const tracks = Array.from(library.iterateTracks("url = ? AND file_path IS NULL", [url]));
+            for (const track of tracks) {
+                console.warn(`🧹 [Self-Healing] Deleting broken external track ${track.id} ("${track.title}"): ${reason}`);
+                library.deleteTrack(track.id);
+            }
+        } catch (dbErr) {
+            console.error("❌ [Self-Healing] Failed to delete broken track:", dbErr);
+        }
+    };
 
     /**
      * GET /api/proxy/stream
@@ -35,6 +48,9 @@ export function createProxyRoutes(container: ServiceContainer): Router {
 
             if (!response.ok) {
                 console.warn(`⚠️ Proxy target returned error: ${response.status}`);
+                if (response.status === 404 || response.status === 410 || response.status === 403) {
+                    deleteBrokenTrack(url, `HTTP ${response.status} from target`);
+                }
                 return res.status(response.status).send(`Failed to fetch remote stream: ${response.statusText}`);
             }
 
@@ -60,8 +76,12 @@ export function createProxyRoutes(container: ServiceContainer): Router {
                 res.status(500).send("Proxy target returned no body");
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("❌ Proxy error:", error);
+            const isConnectionError = error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT';
+            if (isConnectionError) {
+                deleteBrokenTrack(url, `Connection error (${error.code})`);
+            }
             res.status(500).send("Proxy error");
         }
     });

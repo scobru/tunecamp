@@ -1,4 +1,5 @@
 import path from "path";
+import { pathToFileURL } from "url";
 import fs from "fs-extra";
 import { metadataService } from "../modules/catalog/metadata.service.js";
 import { streamingService } from "../modules/streaming/streaming.service.js";
@@ -55,7 +56,7 @@ export async function loadPlugins(pluginsDir?: string): Promise<void> {
     for (const file of jsFiles) {
         const fullPath = path.join(dir, file);
         try {
-            const mod = await import(fullPath);
+            const mod = await import(pathToFileURL(fullPath).href);
             const PluginClass = mod.default;
 
             if (!PluginClass || typeof PluginClass !== "function") {
