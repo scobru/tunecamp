@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useChat } from "../hooks/useChat";
 import { useAuthStore } from "../stores/useAuthStore";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -10,7 +10,6 @@ import {
   Send,
   Lock,
   Clock,
-  Trash2,
   Sparkles,
   AlertCircle
 } from "lucide-react";
