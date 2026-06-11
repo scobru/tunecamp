@@ -40,8 +40,12 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Subsonic](./SUBSONIC.md): Supporto al protocollo Subsonic per client esterni.
 - [Nginx](./NGINX.md): Esempi di configurazione per reverse proxy.
 - [Audio Fingerprinting](./audio-fingerprinting.md): Identificazione automatica e registro community.
+- [Monitoring & Alerting](./monitoring.md): Health endpoint, crash reporting Sentry e uptime check esterni.
+- [Telegram Bot](./telegram.md): Ingestione rapida di file musicali e gestione remota.
+- [Plugin](./PLUGINS.md): Provider custom (streaming, metadata, storage) da una directory plugins.
+- [Ruoli & Permessi](./ROLES.md): RBAC — Root Admin, Admin, Artist/User.
 
 ---
 
-*Ultimo aggiornamento: 11 Maggio 2026*
+*Ultimo aggiornamento: 11 Giugno 2026*
 *Generato tramite il workflow `bmad-document-project`*

@@ -42,8 +42,8 @@ Tunecamp is a monorepo consisting of a Node.js/TypeScript backend and a Vite/Rea
 
 ```bash
 # Clone the repository
-git clone https://github.com/scobru/shogun-tunecamp.git
-cd shogun-tunecamp
+git clone https://github.com/scobru/tunecamp.git
+cd tunecamp
 
 # Install root & backend dependencies
 npm install
