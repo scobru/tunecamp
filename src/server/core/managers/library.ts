@@ -452,6 +452,18 @@ export function createLibraryManager(
         },
         getPublicTracksCount: () => trackRepository.getAll(VisibilityProfile.PUBLIC_STAGE).length,
         getGenres(p?: VisibilityProfile | ViewerContext, artistId?: number, ownerId?: number): string[] {
+            const getCasingScore = (s: string): number => {
+                let score = 0;
+                if (s.length === 0) return 0;
+                if (/^[A-Z]/.test(s)) score += 10;
+                const upperCount = (s.match(/[A-Z]/g) || []).length;
+                score += upperCount;
+                if (s.length > 3 && s === s.toUpperCase()) {
+                    score -= 20;
+                }
+                return score;
+            };
+
             const context = getContextFromProfile(p);
             const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
             
@@ -484,19 +496,40 @@ export function createLibraryManager(
             }
 
             const rows = db.prepare(sql).all(...params) as any[];
-            const genreSet = new Set<string>();
+            const genreMap = new Map<string, string>();
             rows.forEach(r => {
                 r.genre.split(',').forEach((g: string) => {
                     const trimmed = g.trim();
-                    if (trimmed) genreSet.add(trimmed);
+                    if (!trimmed) return;
+                    const lower = trimmed.toLowerCase();
+                    const existing = genreMap.get(lower);
+                    if (!existing) {
+                        genreMap.set(lower, trimmed);
+                    } else {
+                        const scoreExisting = getCasingScore(existing);
+                        const scoreNew = getCasingScore(trimmed);
+                        if (scoreNew > scoreExisting) {
+                            genreMap.set(lower, trimmed);
+                        }
+                    }
                 });
             });
-            return Array.from(genreSet).sort();
+            return Array.from(genreMap.values()).sort((a, b) => a.localeCompare(b));
         },
         getTracksByGenre(g: string, p?: VisibilityProfile | ViewerContext): Track[] {
             const context = getContextFromProfile(p);
             const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
-            const rows = db.prepare(`SELECT * FROM v_tracks WHERE (genre = ? OR genre LIKE ? OR genre LIKE ? OR genre LIKE ?) AND (${filter.sql}) ORDER BY artist_name, album_title, track_num`).all(g, `${g},%`, `%, ${g},%`, `%, ${g}`, ...filter.params);
+            const lowerG = g.toLowerCase();
+            const rows = db.prepare(`
+                SELECT * FROM v_tracks 
+                WHERE (
+                    LOWER(genre) = ? 
+                    OR LOWER(genre) LIKE ? 
+                    OR LOWER(genre) LIKE ? 
+                    OR LOWER(genre) LIKE ?
+                ) AND (${filter.sql}) 
+                ORDER BY artist_name, album_title, track_num
+            `).all(lowerG, `${lowerG},%`, `%, ${lowerG},%`, `%, ${lowerG}`, ...filter.params);
             return rows.map(r => (trackRepository as any).mapTrack(r));
         },
         getGenreTrackCounts(p?: VisibilityProfile | ViewerContext): Map<string, number> {

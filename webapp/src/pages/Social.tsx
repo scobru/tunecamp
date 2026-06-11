@@ -47,8 +47,8 @@ const Social = () => {
       return;
     }
 
-    // Load artist data for automation tab
-    if (user?.artistId && isAdmin) {
+    // Load artist data for automation tab (all users with an artist profile)
+    if (user?.artistId) {
       API.getArtist(user.artistId)
         .then((data) => {
           setArtistData(data);
@@ -71,9 +71,27 @@ const Social = () => {
           ? { instance: mastodonInstance, token: mastodonToken }
           : null;
       await API.updateArtist(artistData.id, { postParams });
+      setArtistData({ ...artistData, postParams });
       setMessage("Automation settings saved!");
     } catch (err: any) {
       setMessage(`Failed: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDisconnectAutomation = async () => {
+    if (!artistData?.id) return;
+    setIsSaving(true);
+    setMessage("");
+    try {
+      await API.updateArtist(artistData.id, { postParams: null });
+      setMastodonInstance("");
+      setMastodonToken("");
+      setArtistData({ ...artistData, postParams: null });
+      setMessage("Cross-posting disconnected!");
+    } catch (err: any) {
+      setMessage(`Failed to disconnect: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -202,7 +220,7 @@ const Social = () => {
                   />
                 </div>
               </div>
-              <div className="p-6 pt-0 flex items-center gap-4">
+              <div className="p-6 pt-0 flex items-center gap-4 flex-wrap">
                 <button
                   className="btn btn-primary gap-2 shadow-level-1"
                   onClick={handleSaveAutomation}
@@ -215,6 +233,15 @@ const Social = () => {
                   )}
                   Save Settings
                 </button>
+                {(artistData?.postParams || mastodonInstance || mastodonToken) && (
+                  <button
+                    className="btn btn-outline btn-error gap-2"
+                    onClick={handleDisconnectAutomation}
+                    disabled={isSaving}
+                  >
+                    Disconnect
+                  </button>
+                )}
                 {message && (
                   <span
                     className={`text-sm font-medium ${message.includes("Failed") ? "text-error" : "text-success"}`}
