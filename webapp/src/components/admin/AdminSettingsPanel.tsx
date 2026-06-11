@@ -300,7 +300,7 @@ export const AdminSettingsPanel = () => {
             <label className="label cursor-pointer justify-between">
               <div className="flex items-center gap-2">
                 <Shield size={16} className="opacity-60" />
-                <span className="label-text font-medium">Community Chat</span>
+                <span className="label-text font-medium">Message Board</span>
               </div>
               <input
                 type="checkbox"
@@ -311,7 +311,7 @@ export const AdminSettingsPanel = () => {
                 }
               />
             </label>
-            <p className="text-[11px] opacity-40 px-1 mt-1">Show the built-in community chat widget to logged-in users.</p>
+            <p className="text-[11px] opacity-40 px-1 mt-1">Show the built-in community message board to logged-in users.</p>
           </div>
         </div>
 

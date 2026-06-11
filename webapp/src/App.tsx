@@ -38,6 +38,7 @@ const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Dig = lazy(() => import("./pages/Dig"));
 const Live = lazy(() => import("./pages/Live"));
+const Board = lazy(() => import("./pages/Board"));
 
 
 const LoadingSpinner = () => (
@@ -162,6 +163,7 @@ function App() {
             <Route path="/my-music" element={<MyMusic />} />
             <Route path="/publish" element={<Publish />} />
             <Route path="/social" element={<Social />} />
+            <Route path="/board" element={<Board />} />
             <Route path="/share/:id" element={<SharePage />} />
 
             {/* Admin - Protected */}

@@ -171,15 +171,7 @@ export const Sidebar = () => {
             {isAuthenticated && (
               <NavItem to="/dig" icon={Shovel} label="Dig" />
             )}
-            <li>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent("open-chat"))}
-                className="flex items-center gap-3 px-4 py-2 w-full text-left rounded-full transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] group hover:bg-base-300/50 text-base-content/70 hover:text-base-content cursor-pointer"
-              >
-                <MessageSquare size={20} className="transition-transform group-hover:scale-110 opacity-60 group-hover:opacity-100" />
-                <span className="text-label-large tracking-tight">Chat</span>
-              </button>
-            </li>
+            <NavItem to="/board" icon={MessageSquare} label="Board" />
             <ExternalNavItem href="/feed.xml" icon={Rss} label="RSS Feed" />
             {communityLink && (
               <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
