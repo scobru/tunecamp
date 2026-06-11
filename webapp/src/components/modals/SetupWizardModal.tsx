@@ -5,7 +5,8 @@ import API from '../../services/api';
 import { ShieldAlert, Music } from 'lucide-react';
 
 export const SetupWizardModal = () => {
-    const { mustChangePassword, checkAuth, logout } = useAuthStore();
+    const { mustChangePassword, checkAuth, logout, user } = useAuthStore();
+    const isRootAdmin = !!user?.isRootAdmin;
     const [step, setStep] = useState(1);
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -39,7 +40,11 @@ export const SetupWizardModal = () => {
         setLoading(true);
         try {
             await API.changePassword(currentPassword, newPassword);
-            setStep(2);
+            if (isRootAdmin) {
+                setStep(2);
+            } else {
+                await checkAuth(); // Non-root users only need the password step
+            }
         } catch (e: any) {
             setError(e.message || 'Failed to change password');
         } finally {
@@ -71,19 +76,23 @@ export const SetupWizardModal = () => {
         <div className="modal modal-open bg-black/90 backdrop-blur-md z-[100]">
             <div className="modal-box border border-primary/20 shadow-level-1 max-w-md">
                 
-                {/* Steps Indicator */}
-                <ul className="steps w-full mb-8">
-                    <li className={`step ${step >= 1 ? 'step-primary' : ''}`}>Security</li>
-                    <li className={`step ${step >= 2 ? 'step-primary' : ''}`}>Identity</li>
-                </ul>
+                {/* Steps Indicator (root admin also configures the instance identity) */}
+                {isRootAdmin && (
+                    <ul className="steps w-full mb-8">
+                        <li className={`step ${step >= 1 ? 'step-primary' : ''}`}>Security</li>
+                        <li className={`step ${step >= 2 ? 'step-primary' : ''}`}>Identity</li>
+                    </ul>
+                )}
 
                 {step === 1 && (
                     <>
                         <h3 className="font-bold text-2xl flex items-center gap-2 mb-2">
-                            <ShieldAlert className="text-error" /> Secure your instance
+                            <ShieldAlert className="text-error" /> {isRootAdmin ? 'Secure your instance' : 'Secure your account'}
                         </h3>
                         <p className="text-base-content/70 mb-6">
-                            You are currently using the default password. Let's change it to something secure before you proceed.
+                            {isRootAdmin
+                                ? "You are currently using the default password. Let's change it to something secure before you proceed."
+                                : "You are using a temporary password. Choose a new one to continue."}
                         </p>
 
                         <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -95,7 +104,7 @@ export const SetupWizardModal = () => {
                                     value={currentPassword}
                                     onChange={e => setCurrentPassword(e.target.value)}
                                     required
-                                    placeholder="tunecamp"
+                                    placeholder={isRootAdmin ? 'tunecamp' : ''}
                                 />
                             </div>
 
@@ -127,7 +136,7 @@ export const SetupWizardModal = () => {
                             <div className="modal-action">
                                 <button type="button" className="btn btn-ghost" onClick={logout}>Log Out</button>
                                 <button type="submit" className="btn btn-primary px-8" disabled={loading}>
-                                    {loading ? <span className="loading loading-spinner"></span> : 'Next Step'}
+                                    {loading ? <span className="loading loading-spinner"></span> : (isRootAdmin ? 'Next Step' : 'Save & Continue')}
                                 </button>
                             </div>
                         </form>
