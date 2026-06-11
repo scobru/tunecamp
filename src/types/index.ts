@@ -70,7 +70,6 @@ export interface ReleaseConfig {
   download?: DownloadMode;
   unlockCodes?: UnlockCodesConfig; // For 'codes' download mode
   price?: number;
-  paypalLink?: string;
   stripeLink?: string;
   bandcampLink?: string;
   streamingLinks?: StreamingLink[]; // Links to listen on platforms (Spotify, Apple Music, etc.)

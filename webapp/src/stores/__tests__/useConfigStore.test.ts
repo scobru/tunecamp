@@ -35,7 +35,6 @@ describe('useConfigStore', () => {
             telegram: { active: false },
             openrouter: { configured: true, model: 'gpt-4' },
             stripe: { configured: true, webhookConfigured: true },
-            paypal: { configured: false, environment: 'sandbox' },
             moonpay: { configured: false },
             gdrive: { configured: true, active: true },
             youtube: { online: true },
@@ -80,7 +79,7 @@ describe('useConfigStore', () => {
             gdrive: { active: true },
             soulseek: { connected: true },
             youtube: { online: true },
-            paypal: { configured: false, environment: 'sandbox' },
+            telegram: { active: false },
         };
 
         useConfigStore.setState({ status: mockHealth });
@@ -90,7 +89,7 @@ describe('useConfigStore', () => {
         expect(store.isConfigured('gdrive')).toBe(true);
         expect(store.isConfigured('soulseek')).toBe(true);
         expect(store.isConfigured('youtube')).toBe(true);
-        expect(store.isConfigured('paypal')).toBe(false);
+        expect(store.isConfigured('telegram')).toBe(false);
         expect(store.isConfigured('discogs')).toBe(false); // not in mockHealth
     });
 

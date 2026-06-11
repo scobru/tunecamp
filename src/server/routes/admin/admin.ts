@@ -1741,16 +1741,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             webhookConfigured: !!stripeWebhook
         };
         
-        // 8. PayPal
-        const ppId = identity.getSetting("paypal_client_id") || config.paypalClientId;
-        const ppSecret = identity.getSetting("paypal_client_secret") || config.paypalClientSecret;
-        results.paypal = { 
-            configured: !!ppId && !!ppSecret,
-            environment: identity.getSetting("paypal_environment") || config.paypalEnvironment || "sandbox"
-        };
-
-        
-        // 10. Google Drive
+        // 8. Google Drive
         results.gdrive = {
             configured: !!(config.gdriveClientId && config.gdriveClientSecret),
             active: !!gdriveService

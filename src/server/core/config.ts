@@ -23,9 +23,6 @@ export interface ServerConfig {
     openrouterModel?: string;
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;
-    paypalClientId?: string;
-    paypalClientSecret?: string;
-    paypalEnvironment?: string;
     gdriveClientId?: string;
     gdriveClientSecret?: string;
 
@@ -119,9 +116,6 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         openrouterModel: process.env.OPENROUTER_MODEL || overrides?.openrouterModel || "openrouter/free",
         stripeSecretKey: process.env.STRIPE_SECRET_KEY || overrides?.stripeSecretKey,
         stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || overrides?.stripeWebhookSecret,
-        paypalClientId: process.env.PAYPAL_CLIENT_ID || overrides?.paypalClientId,
-        paypalClientSecret: process.env.PAYPAL_CLIENT_SECRET || overrides?.paypalClientSecret,
-        paypalEnvironment: process.env.PAYPAL_ENVIRONMENT || overrides?.paypalEnvironment || "sandbox",
         gdriveClientId: process.env.TUNECAMP_GDRIVE_CLIENT_ID || overrides?.gdriveClientId,
         gdriveClientSecret: process.env.TUNECAMP_GDRIVE_CLIENT_SECRET || overrides?.gdriveClientSecret,
         liveEnabled: process.env.TUNECAMP_LIVE_ENABLED !== undefined
