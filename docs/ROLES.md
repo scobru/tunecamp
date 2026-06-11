@@ -64,6 +64,21 @@ The **Listener** (or Artist) is the base role for users who publish music and in
 
 ---
 
+## First Login: Setup Wizard
+
+When a user logs in and their account still has the default password (`tunecamp`), the web app blocks access behind a setup wizard until the password is changed. The backend signals this via the `mustChangePassword` flag returned by `POST /api/auth/login` (computed by `isDefaultPassword` in `auth.service.ts`).
+
+What the wizard shows depends on the role:
+
+- **Instance Owner (Root Admin)** — two steps:
+  1. **Security** — replace the default password.
+  2. **Identity** — set the instance's site name and description. This step can be skipped and configured later under Admin Settings.
+- **All other roles** (Manager, Curator, Listener) — a single **Security** step to replace the temporary password. The Identity step is not shown because site settings are exclusive to the Instance Owner (see Permission Matrix above).
+
+A Root Admin can force any user through the password step at their next login by resetting that user's password to `tunecamp` (`PUT /api/admin/system/users/:id/password`).
+
+---
+
 ## Security Verification
 
 TuneCamp implements these controls at the API level:
