@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server build & tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # The "zen" dependency is a git dependency resolved via git+ssh in the
+      # lockfile; CI runners have no SSH keys, so rewrite to anonymous HTTPS.
+      - name: Use HTTPS for GitHub git dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build server (tsc)
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+  webapp:
+    name: Webapp build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use HTTPS for GitHub git dependencies
+        run: |
+          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The lockfile is generated on Windows, so npm ci skips Linux native
+      # binaries (npm optional-deps bug, npm/cli#4828). Same workaround as
+      # the Dockerfile, with -gnu variants instead of -musl.
+      - name: Install Linux native binaries (rollup, lightningcss, tailwind)
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu
+
+      - name: Build webapp (tsc + vite)
+        run: npm run build -w webapp

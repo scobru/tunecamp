@@ -136,6 +136,8 @@ ARG TUNECAMP_DOWNLOAD_DIR=/music/downloads
 
 # Environment variables
 ENV NODE_ENV=production
+# Deploy commit, used by Sentry as release tag (set SENTRY_DSN to enable crash reporting)
+ENV TUNECAMP_GIT_SHA=$CAPROVER_GIT_COMMIT_SHA
 ENV TUNECAMP_DB_PATH=/data/tunecamp.db
 ENV TUNECAMP_ADMIN_USER=$TUNECAMP_ADMIN_USER
 ENV TUNECAMP_ADMIN_PASS=$TUNECAMP_ADMIN_PASS
