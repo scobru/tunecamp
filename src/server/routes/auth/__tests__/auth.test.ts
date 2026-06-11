@@ -17,6 +17,7 @@ describe('Auth Routes', () => {
             isRootAdmin: jest.fn().mockReturnValue(false),
             isDefaultPassword: (jest.fn() as any).mockResolvedValue(false),
             createAdmin: (jest.fn() as any).mockResolvedValue({ id: 1 }),
+            changePassword: (jest.fn() as any).mockResolvedValue(undefined),
             getUserPair: jest.fn().mockReturnValue(null),
             getUserByUsername: jest.fn(),
             getUserProfile: jest.fn().mockReturnValue(null),
@@ -158,6 +159,7 @@ describe('Auth Routes', () => {
 
             expect(res.status).toBe(401);
             expect(res.body.error).toBe('Current password is incorrect');
+            expect(mockAuthService.changePassword).not.toHaveBeenCalled();
         });
 
         test('successfully changes password and returns new token', async () => {
@@ -172,6 +174,66 @@ describe('Auth Routes', () => {
             expect(res.body.message).toBe('Password changed successfully');
             expect(res.body.token).toBe('mocked-jwt-token');
             expect(res.body.pair).toEqual({ pub: 'some-key' });
+            expect(mockAuthService.changePassword).toHaveBeenCalledWith('admin', 'NewPassword123!');
+        });
+    });
+
+    describe('POST /api/auth/password (integration, real auth service)', () => {
+        test('persists the new password: old one stops working, new one authenticates', async () => {
+            const sqlite3 = (await import('better-sqlite3')).default;
+            const { createAuthService } = await import('../../../modules/auth/auth.service.js');
+
+            const db = new sqlite3(':memory:');
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS gun_users (
+                    pub TEXT PRIMARY KEY,
+                    epub TEXT NOT NULL,
+                    alias TEXT UNIQUE NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS artists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    slug TEXT UNIQUE NOT NULL,
+                    visibility TEXT DEFAULT 'public'
+                );
+            `);
+            const realAuthService = createAuthService(db, 'secret', 'admin', 'tunecamp');
+            await realAuthService.init();
+
+            const integrationApp = express();
+            integrationApp.use(express.json());
+            integrationApp.use('/api/auth', createAuthRoutes({
+                authService: realAuthService,
+                authMiddleware: {
+                    requireAdmin: (req: any, _res: any, next: any) => {
+                        req.username = 'admin';
+                        req.role = UserRole.ROOT_ADMIN;
+                        req.userId = 1;
+                        next();
+                    },
+                    requireUser: (req: any, _res: any, next: any) => {
+                        req.username = 'admin';
+                        req.role = UserRole.ROOT_ADMIN;
+                        req.userId = 1;
+                        next();
+                    }
+                }
+            } as any));
+
+            const res = await request(integrationApp)
+                .post('/api/auth/password')
+                .send({ currentPassword: 'tunecamp', newPassword: 'BrandNewPassword123!' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.message).toBe('Password changed successfully');
+
+            const oldAuth = await realAuthService.authenticateUser('admin', 'tunecamp');
+            expect(oldAuth && oldAuth.success).toBeFalsy();
+
+            const newAuth = await realAuthService.authenticateUser('admin', 'BrandNewPassword123!');
+            expect(newAuth && newAuth.success).toBe(true);
+
+            db.close();
         });
     });
 

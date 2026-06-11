@@ -151,6 +151,8 @@ export function createAuthRoutes(container: ServiceContainer): Router {
                 return res.status(401).json({ error: "Current password is incorrect" });
             }
 
+            await authService.changePassword(username, newPassword);
+
             const authResult = await authService.authenticateUser(username, newPassword);
             const tokenVersion = (authResult && authResult.success) ? authResult.tokenVersion : 0;
 
