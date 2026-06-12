@@ -1,16 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { joinRoom } from "trystero/nostr";
-import type { Room } from "trystero/nostr";
+import Hls from "hls.js";
 import { Radio, Mic, Users, Headphones, StopCircle, Loader2, LogOut } from "lucide-react";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
 import type { LiveSession } from "../types";
 import clsx from "clsx";
-
-// Shared Trystero namespace: peers only meet when they join the same roomId,
-// which is generated server-side per session.
-const APP_ID = "tunecamp-live-v1";
 
 // Music-friendly capture: browsers default to voice processing which mangles music.
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
@@ -19,6 +14,9 @@ const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
     autoGainControl: false,
     channelCount: 2,
 };
+
+// MediaRecorder chunk cadence: each chunk is POSTed to the server's HLS ingest.
+const CHUNK_MS = 1000;
 
 const Live = () => {
     const { isAuthenticated, role, user } = useAuthStore();
@@ -36,22 +34,26 @@ const Live = () => {
     const [isBroadcasting, setIsBroadcasting] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const [listenerCount, setListenerCount] = useState(0);
-    const [isSimulated, setIsSimulated] = useState(false);
 
     // Listening state
     const [listeningTo, setListeningTo] = useState<LiveSession | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
 
-    const roomRef = useRef<Room | null>(null);
+    const recorderRef = useRef<MediaRecorder | null>(null);
     const micStreamRef = useRef<MediaStream | null>(null);
+    const sessionRef = useRef<LiveSession | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const audioContextRef = useRef<AudioContext | null>(null);
+    const hlsRef = useRef<Hls | null>(null);
 
     const refreshSessions = useCallback(async () => {
         try {
             const data = await API.getLiveSessions();
             setEnabled(data.enabled);
             setSessions(data.sessions);
+
+            // Listener count for own broadcast comes from playlist polls server-side
+            const mine = data.sessions.find(s => s.roomId === sessionRef.current?.roomId);
+            if (mine) setListenerCount(mine.listenerCount ?? 0);
         } catch (e) {
             console.error("Failed to load live sessions:", e);
         } finally {
@@ -65,79 +67,77 @@ const Live = () => {
         return () => clearInterval(interval);
     }, [refreshSessions]);
 
-    const teardownRoom = useCallback(() => {
-        roomRef.current?.leave();
-        roomRef.current = null;
+    const teardownBroadcast = useCallback(() => {
+        if (recorderRef.current && recorderRef.current.state !== "inactive") {
+            recorderRef.current.stop();
+        }
+        recorderRef.current = null;
         micStreamRef.current?.getTracks().forEach(t => t.stop());
         micStreamRef.current = null;
-        if (audioContextRef.current) {
-            audioContextRef.current.close().catch(console.error);
-            audioContextRef.current = null;
-        }
-        setIsSimulated(false);
-        if (audioRef.current) {
-            audioRef.current.srcObject = null;
-        }
+        sessionRef.current = null;
         setListenerCount(0);
     }, []);
 
-    // Leave the room when navigating away
-    useEffect(() => teardownRoom, [teardownRoom]);
+    const teardownPlayback = useCallback(() => {
+        hlsRef.current?.destroy();
+        hlsRef.current = null;
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.removeAttribute("src");
+            audioRef.current.load();
+        }
+    }, []);
+
+    // Clean up when navigating away
+    useEffect(() => () => {
+        teardownBroadcast();
+        teardownPlayback();
+    }, [teardownBroadcast, teardownPlayback]);
 
     const handleGoLive = async () => {
         setError("");
         setIsStarting(true);
-        setIsSimulated(false);
-        let stream: MediaStream;
         try {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
-            } catch (mediaError: any) {
-                console.warn("Microphone access failed, falling back to simulated silent stream:", mediaError);
-                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                if (AudioContextClass) {
-                    const ctx = new AudioContextClass();
-                    const dest = ctx.createMediaStreamDestination();
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    gain.gain.value = 0; // complete silence
-                    osc.connect(gain);
-                    gain.connect(dest);
-                    osc.start();
-                    stream = dest.stream;
-                    audioContextRef.current = ctx;
-                    setIsSimulated(true);
-                } else {
-                    throw mediaError;
-                }
-            }
-
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
             const session = await API.startLive(title.trim() || "Live session");
+            sessionRef.current = session;
 
-            const room = joinRoom({ appId: APP_ID }, session.roomId);
-            // Streams are pushed per-peer on join: addStream to "all" only
-            // reaches peers already connected, and at start there are none.
-            room.onPeerJoin = peerId => {
-                room.addStream(stream, { target: peerId });
-                setListenerCount(c => c + 1);
+            const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+                ? "audio/webm;codecs=opus"
+                : "audio/webm";
+            const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 128_000 });
+
+            recorder.ondataavailable = async (event) => {
+                if (event.data.size === 0 || !sessionRef.current) return;
+                try {
+                    await API.ingestLive(sessionRef.current.roomId, event.data);
+                } catch (e: any) {
+                    // 409: pipeline gone (e.g. admin stopped the session) — stop recording
+                    if (e?.status === 409 || e?.status === 403) {
+                        console.warn("Live pipeline ended, stopping broadcast");
+                        handleStopLive();
+                    } else {
+                        console.error("Chunk upload failed (will keep trying):", e);
+                    }
+                }
             };
-            room.onPeerLeave = () => setListenerCount(c => Math.max(0, c - 1));
 
-            roomRef.current = room;
+            recorder.start(CHUNK_MS);
+            recorderRef.current = recorder;
             micStreamRef.current = stream;
             setIsBroadcasting(true);
             refreshSessions();
         } catch (e: any) {
             console.error("Failed to go live:", e);
             setError(e?.message || "Failed to start broadcasting");
-            teardownRoom();
+            teardownBroadcast();
         } finally {
             setIsStarting(false);
         }
     };
 
     const handleStopLive = async () => {
-        teardownRoom();
+        teardownBroadcast();
         setIsBroadcasting(false);
         try {
             await API.stopLive();
@@ -149,27 +149,52 @@ const Live = () => {
 
     const handleListen = (session: LiveSession) => {
         setError("");
-        // Leave any previous room first
-        teardownRoom();
+        teardownPlayback();
         setIsConnecting(true);
         setListeningTo(session);
 
-        const room = joinRoom({ appId: APP_ID }, session.roomId);
-        room.onPeerStream = stream => {
-            if (audioRef.current) {
-                audioRef.current.srcObject = stream;
-                audioRef.current.play().catch(err => {
-                    console.error("Audio playback failed:", err);
-                    setError("Playback blocked by the browser. Press play on the audio control.");
-                });
-            }
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const src = API.getLiveStreamUrl(session.roomId);
+        const onPlaying = () => setIsConnecting(false);
+        audio.addEventListener("playing", onPlaying, { once: true });
+
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                lowLatencyMode: true,
+                liveSyncDurationCount: 3,
+            });
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+                if (data.fatal) {
+                    console.error("HLS fatal error:", data);
+                    setError("Stream interrupted. The broadcast may have ended.");
+                    setIsConnecting(false);
+                    teardownPlayback();
+                    setListeningTo(null);
+                }
+            });
+            hls.loadSource(src);
+            hls.attachMedia(audio);
+            hlsRef.current = hls;
+        } else if (audio.canPlayType("application/vnd.apple.mpegurl")) {
+            // Safari plays HLS natively
+            audio.src = src;
+        } else {
+            setError("Your browser does not support HLS playback.");
             setIsConnecting(false);
-        };
-        roomRef.current = room;
+            setListeningTo(null);
+            return;
+        }
+
+        audio.play().catch(err => {
+            console.error("Audio playback failed:", err);
+            setError("Playback blocked by the browser. Press play on the audio control.");
+        });
     };
 
     const handleLeave = () => {
-        teardownRoom();
+        teardownPlayback();
         setListeningTo(null);
         setIsConnecting(false);
     };
@@ -198,7 +223,7 @@ const Live = () => {
         <div className="space-y-8 animate-fade-in">
             <PageHeader
                 title="Live"
-                subtitle="Peer-to-peer audio sessions, straight from the artist's browser"
+                subtitle="Live audio sessions, streamed from this instance"
                 icon={Radio}
                 iconColor="text-error"
             />
@@ -220,15 +245,6 @@ const Live = () => {
 
                         {isBroadcasting ? (
                             <div className="space-y-4">
-                                {isSimulated && (
-                                    <div className="alert alert-warning text-xs p-3 rounded-xl flex items-start gap-2">
-                                        <Radio size={16} className="shrink-0 mt-0.5 text-warning-content" />
-                                        <span>
-                                            <strong>Demo Mode:</strong> Microphone access was denied or unavailable.
-                                            Streaming a simulated silent stream so you can still test WebRTC connectivity.
-                                        </span>
-                                    </div>
-                                )}
                                 <div className="flex items-center gap-2 text-sm opacity-70">
                                     <Users size={16} />
                                     <span>{listenerCount} listener{listenerCount === 1 ? "" : "s"} connected</span>
@@ -240,8 +256,9 @@ const Live = () => {
                         ) : (
                             <div className="space-y-4">
                                 <p className="text-sm opacity-60">
-                                    Audio is captured from your microphone / audio input and streamed
-                                    directly to listeners over WebRTC. No data passes through the server.
+                                    Audio is captured from your microphone / audio input, encoded on
+                                    this server and streamed to listeners over HLS. One upload from
+                                    you, unlimited listeners.
                                 </p>
                                 <input
                                     type="text"
@@ -276,7 +293,7 @@ const Live = () => {
                             <div>
                                 <p className="font-bold text-sm">{listeningTo.title}</p>
                                 <p className="text-xs opacity-60">
-                                    {isConnecting ? "Connecting to peer..." : `Live by ${listeningTo.username}`}
+                                    {isConnecting ? "Buffering stream..." : `Live by ${listeningTo.username}`}
                                 </p>
                             </div>
                         </div>
@@ -313,8 +330,14 @@ const Live = () => {
                             return (
                                 <div key={session.roomId} className="card bg-base-200 border border-base-content/5 shadow-level-1">
                                     <div className="card-body p-5">
-                                        <div className="flex items-center gap-2 text-error text-xs font-black uppercase tracking-wider">
-                                            <span className="w-2 h-2 rounded-full bg-error animate-pulse" /> Live
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-error text-xs font-black uppercase tracking-wider">
+                                                <span className="w-2 h-2 rounded-full bg-error animate-pulse" /> Live
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs opacity-50">
+                                                <Users size={12} />
+                                                {session.listenerCount ?? 0}
+                                            </div>
                                         </div>
                                         <h4 className="font-bold text-base leading-tight">{session.title}</h4>
                                         <p className="text-xs opacity-60">

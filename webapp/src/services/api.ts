@@ -594,7 +594,12 @@ const API = {
     // --- Live (P2P audio streaming) ---
     getLiveSessions: () => handleResponse(api.get<{ enabled: boolean, sessions: LiveSession[] }>('live/sessions')),
     startLive: (title: string) => handleResponse(api.post<LiveSession>('live/start', { title })),
-    stopLive: (roomId?: string) => handleResponse(api.post<{ success: boolean }>('live/stop', { roomId }))
+    stopLive: (roomId?: string) => handleResponse(api.post<{ success: boolean }>('live/stop', { roomId })),
+    ingestLive: (roomId: string, chunk: Blob) =>
+        handleResponse(api.post<{ success: boolean }>(`live/${roomId}/ingest`, chunk, {
+            headers: { 'Content-Type': 'application/octet-stream' }
+        })),
+    getLiveStreamUrl: (roomId: string) => `${API_URL}/live/${roomId}/hls/live.m3u8`
 };
 
 export default API;
