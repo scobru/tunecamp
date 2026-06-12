@@ -14,8 +14,8 @@ Questo documento analizza in modo onesto e dettagliato le differenze tra **Funkw
 | **Modello di Federazione** | ActivityPub nativo (replica parziale delle librerie tra pod) | **Ibrido**: ActivityPub (sociale) + Zen Protocol (scoperta nodi) + HTTP REST |
 | **Monetizzazione** | Assente | **Integrata**: NFT (ERC-1155 su Base) + Stripe (Fiat) |
 | **Compatibilità Mobile** | Subsonic API | Subsonic / OpenSubsonic API |
-| **Metodi di Ingestione** | Upload web, importazione locale, YouTube | Upload web, Bot Telegram, Soulseek, BitTorrent |
-| **Funzionalità Social** | Commenti, preferiti, profili utente | Post Fediverse, Chat integrata, Live Stream P2P |
+| **Metodi di Ingestione** | Upload web, importazione locale, YouTube | Upload web, Bot Telegram; Soulseek e BitTorrent disponibili ma disattivati di default (opt-in admin) |
+| **Funzionalità Social** | Commenti, preferiti, profili utente | Post Fediverse, Chat integrata, Live Stream (HLS lato server) |
 | **Difficoltà di Gestione** | Media/Alta (più servizi in esecuzione) | Bassa (singolo processo Node o Docker Compose leggero) |
 
 ---
@@ -35,7 +35,7 @@ Questo documento analizza in modo onesto e dettagliato le differenze tra **Funkw
 * **TuneCamp** utilizza un **modello federativo ibrido**:
   * **Social (ActivityPub)**: Gestisce gli attori degli artisti e i follower esterni (es. utenti Mastodon o Funkwhale che possono seguire l'artista e ricevere notifiche sulle nuove pubblicazioni).
   * **Segnalazione (Zen Protocol)**: Utilizza un database p2p a grafo decentralizzato per scoprire gli URL delle altre istanze TuneCamp in modo sicuro.
-  * **Catalogo (HTTP REST diretto)**: Per evitare la duplicazione dei dati e la desincronizzazione del catalogo, ogni istanza interroga in tempo reale l'endpoint `/api/catalog` dei peer scoperti, garantendo che le informazioni sulle tracce e i prezzi siano sempre freschi e accurati.
+  * **Catalogo (HTTP REST con cache)**: Per evitare la duplicazione dei dati e la desincronizzazione del catalogo, ogni istanza interroga l'endpoint `/api/catalog` dei peer scoperti. Le risposte vengono cachate in SQLite con strategia *stale-while-revalidate* (TTL 1 ora, scadenza definitiva 7 giorni): le richieste servono la copia in cache e la aggiornano in background, così un peer temporaneamente offline non fa sparire le sue tracce dal network. I dati su tracce e prezzi sono quindi "freschi fino a ~1 ora", non in tempo reale.
 
 ### 4. Monetizzazione e Web3
 * **Funkwhale** è incentrato esclusivamente sull'ascolto libero e gratuito della musica federata. Non ha alcun modulo di pagamento.
@@ -47,7 +47,7 @@ Questo documento analizza in modo onesto e dettagliato le differenze tra **Funkw
 ### 5. Ingestione dei Contenuti
 * **Funkwhale** supporta il caricamento di file e cartelle musicali locali ed è in grado di importare audio da sorgenti esterne (es. URL di YouTube).
 * **TuneCamp** include tool dedicati all'ingestione massiva per chi colleziona grandi librerie musicali:
-  * **Soulseek & Torrent**: Integrazione nativa che permette di cercare e scaricare album da reti P2P direttamente dal pannello di amministrazione.
+  * **Soulseek & Torrent (opt-in, disattivati di default)**: Integrazione che permette di cercare e scaricare album da reti P2P direttamente dal pannello di amministrazione. Essendo fonti legalmente "grigie" — problematiche come default su una piattaforma che vende musica — questi plugin si registrano disabilitati e richiedono un'attivazione esplicita da parte dell'admin tramite i toggle dei plugin. Lo stesso vale per gli scraper di stream SoundCloud/Bandcamp. La responsabilità legale dell'attivazione ricade su chi gestisce l'istanza.
   * **Telegram Bot**: Un bot dedicato tramite cui l'amministratore dell'istanza può semplicemente inoltrare file audio in chat per vederli aggiunti ed elaborati automaticamente sul proprio server TuneCamp.
   * **Google Drive Storage**: Consente di utilizzare una cartella Drive remota al posto dello spazio su disco locale per ospitare i file musicali.
 
