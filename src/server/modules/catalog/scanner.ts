@@ -97,7 +97,7 @@ const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", "
 
 export function isArtworkOrAvatar(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
-    if (![".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext)) {
+    if (![".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(ext)) {
         return false;
     }
     const baseName = path.basename(filePath, ext).toLowerCase();

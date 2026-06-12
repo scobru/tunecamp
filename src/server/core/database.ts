@@ -1009,7 +1009,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         const toDelete: number[] = [];
         for (const t of tracks) {
             const ext = path.extname(t.file_path).toLowerCase();
-            if ([".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext)) {
+            if ([".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"].includes(ext)) {
                 const baseName = path.basename(t.file_path, ext).toLowerCase();
                 const normalized = t.file_path.replace(/\\/g, "/").toLowerCase();
                 const isArtwork = 
