@@ -213,7 +213,7 @@ describe('Payments Routes', () => {
 
             const res = await request(app)
                 .post('/api/payments/stripe/create-session')
-                .send({ itemId: 99, type: 'track', successUrl: 'http://ok', cancelUrl: 'http://no' });
+                .send({ itemId: 99, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
 
             expect(res.status).toBe(404);
             expect(res.body.error).toBe('Track 99 not found');
@@ -233,7 +233,7 @@ describe('Payments Routes', () => {
 
             const res = await request(app)
                 .post('/api/payments/stripe/create-session')
-                .send({ itemId: 5, type: 'track', successUrl: 'http://ok', cancelUrl: 'http://no' });
+                .send({ itemId: 5, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
 
             expect(res.status).toBe(200);
             expect(res.body.id).toBe('sess_123');
@@ -297,6 +297,98 @@ describe('Payments Routes', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.method).toBe('DirectETH');
             expect(mockDatabase.createUnlockCode).toHaveBeenCalled();
+        });
+
+        test('enforces per-release price override over the track-level price', async () => {
+            mockProvider.getTransaction.mockResolvedValue({
+                to: '0xArtistWallet',
+                value: 1.0 // pays the (lower) track-level price
+            });
+            mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
+            mockDatabase.getTrack.mockReturnValue({
+                id: 5,
+                album_id: 7,
+                walletAddress: '0xArtistWallet',
+                price: 1.0,
+                currency: 'ETH'
+            });
+            mockDatabase.getTrackPriceFromRelease.mockReturnValue({
+                price: 2.0, price_usdc: 0, currency: 'ETH', title: 'T'
+            });
+
+            const res = await request(app)
+                .post('/api/payments/verify')
+                .send({ txHash: '0x123', trackId: '5' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/Underpayment/);
+            expect(mockDatabase.createUnlockCode).not.toHaveBeenCalled();
+        });
+
+        test('rejects split payments whose label fee amount is too low', async () => {
+            mockDatabase.getSetting.mockImplementation((key: string) => {
+                if (key === 'adminFeePercentage') return '15';
+                if (key === 'adminTreasuryAddress') return '0xTreasury';
+                return null;
+            });
+            mockProvider.getTransaction.mockImplementation((hash: string) => {
+                if (hash === '0xfee') return Promise.resolve({ to: '0xTreasury', value: 0.0001, data: '0x' });
+                return Promise.resolve({ to: '0xArtistWallet', value: 0.85, data: '0x' });
+            });
+            mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
+            mockDatabase.getTrack.mockReturnValue({
+                id: 5,
+                walletAddress: '0xArtistWallet',
+                price: 1.0,
+                currency: 'ETH'
+            });
+
+            const res = await request(app)
+                .post('/api/payments/verify')
+                .send({ txHash: '0x123', feeTxHash: '0xfee', trackId: '5' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/Label fee underpayment/);
+            expect(mockDatabase.createUnlockCode).not.toHaveBeenCalled();
+        });
+
+        test('accepts split payments with a correct label fee and burns the fee tx', async () => {
+            mockDatabase.getSetting.mockImplementation((key: string) => {
+                if (key === 'adminFeePercentage') return '15';
+                if (key === 'adminTreasuryAddress') return '0xTreasury';
+                return null;
+            });
+            mockProvider.getTransaction.mockImplementation((hash: string) => {
+                if (hash === '0xfee') return Promise.resolve({ to: '0xTreasury', value: 0.15, data: '0x' });
+                return Promise.resolve({ to: '0xArtistWallet', value: 0.85, data: '0x' });
+            });
+            mockProvider.getTransactionReceipt.mockResolvedValue({ status: 1 });
+            mockDatabase.getTrack.mockReturnValue({
+                id: 5,
+                walletAddress: '0xArtistWallet',
+                price: 1.0,
+                currency: 'ETH'
+            });
+
+            const res = await request(app)
+                .post('/api/payments/verify')
+                .send({ txHash: '0x123', feeTxHash: '0xfee', trackId: '5' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            // Purchase tx and fee tx are both recorded against replay
+            const recordedHashes = mockDatabase.createUnlockCode.mock.calls.map((c: any[]) => c[3]);
+            expect(recordedHashes).toContain('0x123');
+            expect(recordedHashes).toContain('0xfee');
+        });
+
+        test('rejects external Stripe return URLs', async () => {
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 5, type: 'track', successUrl: 'https://evil.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/must point to this instance/);
         });
     });
 
@@ -368,7 +460,7 @@ describe('Payments Routes', () => {
         test('POST /api/payments/stripe/create-subscription-session returns 401 if unauthenticated', async () => {
             const res = await request(app)
                 .post('/api/payments/stripe/create-subscription-session')
-                .send({ successUrl: 'http://ok', cancelUrl: 'http://no' });
+                .send({ successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
 
             expect(res.status).toBe(401);
         });
@@ -382,7 +474,7 @@ describe('Payments Routes', () => {
             const res = await request(app)
                 .post('/api/payments/stripe/create-subscription-session')
                 .set('Authorization', `Bearer ${jwtToken}`)
-                .send({ successUrl: 'http://ok', cancelUrl: 'http://no', email: 'fan@test.com' });
+                .send({ successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no', email: 'fan@test.com' });
 
             expect(res.status).toBe(200);
             expect(res.body.id).toBe('sub_sess_123');

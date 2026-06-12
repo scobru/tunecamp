@@ -8,6 +8,7 @@ import Stripe from "stripe";
 import type { DatabaseService } from "../../core/database.js";
 import { getEthUsdRate } from "../../modules/catalog/price.js";
 import type { ServerConfig } from "../../core/config.js";
+import { rateLimit } from "../../middleware/rateLimit.js";
 
 // Setup Base RPC
 const provider = new ethers.JsonRpcProvider(process.env.TUNECAMP_RPC_URL || "https://mainnet.base.org");
@@ -33,6 +34,27 @@ function generateUnlockCode(prefix = ""): string {
     let code = "";
     for (let i = 0; i < 10; i++) code += alphabet[bytes[i] % alphabet.length];
     return prefix + code;
+}
+
+/** Stripe return URLs must point back at this instance, otherwise a crafted
+ *  checkout link can bounce a paying user to an attacker page after payment. */
+function isAllowedReturnUrl(url: string, req: express.Request, publicUrl?: string | null): boolean {
+    try {
+        const target = new URL(url);
+        const allowed = new Set<string>();
+        if (publicUrl) {
+            try { allowed.add(new URL(publicUrl).origin); } catch {}
+        }
+        const host = req.get("host");
+        if (host) {
+            allowed.add(`${req.protocol}://${host}`);
+            // Behind a TLS-terminating proxy req.protocol may be http
+            allowed.add(`https://${host}`);
+        }
+        return allowed.has(target.origin);
+    } catch {
+        return false;
+    }
 }
 
 function getUserIdFromRequest(req: express.Request, jwtSecret: string): number | null {
@@ -132,6 +154,12 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     // All other routes below need JSON parsing
     router.use(express.json());
 
+    // The verify endpoints are unauthenticated and each call costs two RPC
+    // lookups — keep them on a much tighter budget than the global limiter
+    // so they can't be used to exhaust the instance's RPC quota.
+    const verifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: "Too many verification attempts, try again later." });
+    router.use(["/verify", "/subscription/verify"], verifyLimiter);
+
     /**
      * GET /api/payments/onramp-config
      * Check if direct payments are configured. Onramp is permanently disabled.
@@ -156,6 +184,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
 
             if (!itemId || !type || !successUrl || !cancelUrl) {
                 return res.status(400).json({ error: "Missing required fields: itemId, type, successUrl, and cancelUrl are required." });
+            }
+
+            const sitePublicUrl = identity.getSetting("publicUrl") || config.publicUrl;
+            if (!isAllowedReturnUrl(successUrl, req, sitePublicUrl) || !isAllowedReturnUrl(cancelUrl, req, sitePublicUrl)) {
+                return res.status(400).json({ error: "successUrl and cancelUrl must point to this instance." });
             }
 
             const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
@@ -281,6 +314,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             const userId = getUserIdFromRequest(req, config.jwtSecret);
             if (!userId) {
                 return res.status(401).json({ error: "Authentication required to purchase subscription" });
+            }
+
+            const sitePublicUrl = identity.getSetting("publicUrl") || config.publicUrl;
+            if (!successUrl || !cancelUrl || !isAllowedReturnUrl(successUrl, req, sitePublicUrl) || !isAllowedReturnUrl(cancelUrl, req, sitePublicUrl)) {
+                return res.status(400).json({ error: "successUrl and cancelUrl must point to this instance." });
             }
 
             const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
@@ -472,6 +510,22 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Track not found" });
             }
 
+            // Resolve the effective price the same way the Stripe path does:
+            // per-release overrides (release_tracks) win over the track row,
+            // otherwise a track sold at a higher per-release price could be
+            // unlocked on-chain by paying the lower track-level price.
+            let effPrice = track.price || 0;
+            let effPriceUsdc = track.price_usdc || 0;
+            let effCurrency = track.currency;
+            if (track.album_id) {
+                const override = library.getTrackPriceFromRelease(track.album_id, parseInt(trackId, 10));
+                if (override) {
+                    effPrice = Number(override.price ?? effPrice);
+                    effPriceUsdc = Number(override.price_usdc ?? effPriceUsdc);
+                    effCurrency = (override.currency as typeof effCurrency) || effCurrency;
+                }
+            }
+
             const web3CheckoutAddr = identity.getSetting("web3_checkout_address");
             const artistWallet = (track as any).walletAddress || process.env.TUNECAMP_OWNER_ADDRESS;
             const adminFeePct = Number(identity.getSetting("adminFeePercentage") || 0);
@@ -502,10 +556,40 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 if (!feeTx || !feeReceipt || feeReceipt.status !== 1) {
                     return res.status(400).json({ error: "Label fee transaction not found or failed on chain." });
                 }
-                if (feeTx.to?.toLowerCase() !== adminTreasury.toLowerCase()) {
+
+                // Verify recipient AND amount: checking the recipient alone
+                // lets a 1-wei "fee" pass. The fee can arrive as native ETH
+                // to the treasury or as a USDC transfer to the treasury.
+                const feeToAddress = feeTx.to?.toLowerCase();
+                if (feeToAddress === USDC_ADDRESS.toLowerCase()) {
+                    const iface = new ethers.Interface(ERC20_ABI);
+                    const parsedFee = iface.parseTransaction({ data: feeTx.data });
+                    if (!parsedFee || parsedFee.name !== "transfer") {
+                        return res.status(400).json({ error: "Label fee transaction is not a valid USDC transfer." });
+                    }
+                    if (parsedFee.args[0].toLowerCase() !== adminTreasury.toLowerCase()) {
+                        return res.status(400).json({ error: "Label fee transaction recipient mismatch." });
+                    }
+                    const paidFeeUsdc = parseFloat(ethers.formatUnits(parsedFee.args[1], 6));
+                    const expectedFeeUsdc = effPriceUsdc * (adminFeePct / 100);
+                    if (expectedFeeUsdc > 0 && paidFeeUsdc < expectedFeeUsdc * 0.99) { // 1% tolerance
+                        return res.status(400).json({ error: `Label fee underpayment: paid ${paidFeeUsdc} USDC, expected ${expectedFeeUsdc.toFixed(6)} USDC` });
+                    }
+                } else if (feeToAddress === adminTreasury.toLowerCase()) {
+                    const paidFeeEth = parseFloat(ethers.formatEther(feeTx.value));
+                    let expectedTotalEth = effPrice;
+                    if (effCurrency === 'USD') {
+                        const rate = await getEthUsdRate();
+                        expectedTotalEth = effPrice / rate;
+                    }
+                    const expectedFeeEth = expectedTotalEth * (adminFeePct / 100);
+                    const margin = expectedFeeEth * 0.05; // 5% tolerance (rate drift)
+                    if (expectedFeeEth > 0 && paidFeeEth < expectedFeeEth - margin) {
+                        return res.status(400).json({ error: `Label fee underpayment: paid ${paidFeeEth} ETH, expected ~${expectedFeeEth} ETH` });
+                    }
+                } else {
                     return res.status(400).json({ error: "Label fee transaction recipient mismatch." });
                 }
-                // Optional: verify amount matches expected percentage
                 console.log(`[Verify] Label fee transaction ${feeTxHash} verified for treasury ${adminTreasury}`);
             }
 
@@ -524,10 +608,10 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                             // Amount check for ETH
                             if (parsed.name === "purchaseWithETH") {
                                 const paidEth = parseFloat(ethers.formatEther(tx.value));
-                                let expectedEth = track.price || 0;
-                                if (track.currency === 'USD') {
+                                let expectedEth = effPrice;
+                                if (effCurrency === 'USD') {
                                     const rate = await getEthUsdRate();
-                                    expectedEth = (track.price || 0) / rate;
+                                    expectedEth = effPrice / rate;
                                 }
                                 const margin = expectedEth * 0.05;
                                 if (paidEth < expectedEth - margin) {
@@ -562,7 +646,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                         const decimals = 6; // USDC on Base has 6 decimals
                         const paidAmount = parseFloat(ethers.formatUnits(amount, decimals));
                         
-                        let expectedAmount = track.price_usdc || 0;
+                        let expectedAmount = effPriceUsdc;
                         if (adminFeePct > 0 && adminTreasury) {
                             // If fee split is active, artist receives total - fee
                             expectedAmount = expectedAmount * (1 - adminFeePct / 100);
@@ -586,11 +670,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             else if (artistWallet && toAddress === artistWallet.toLowerCase()) {
                 verificationResult.method = "DirectETH";
                 const paidEth = parseFloat(ethers.formatEther(tx.value));
-                let expectedEth = track.price || 0;
-                
-                if (track.currency === 'USD') {
+                let expectedEth = effPrice;
+
+                if (effCurrency === 'USD') {
                     const rate = await getEthUsdRate();
-                    expectedEth = (track.price || 0) / rate;
+                    expectedEth = effPrice / rate;
                 }
                 
                 if (adminFeePct > 0 && adminTreasury) {

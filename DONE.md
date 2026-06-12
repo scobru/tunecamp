@@ -66,6 +66,18 @@ Deviazione richiesta dal piano originale: 5 interventi sui limiti documentati in
 - `docs/comparison-funkwhale.md`: "trattenendo fino al 100% dei ricavi" → "senza fee di piattaforma se self-hosti" con link al calcolo.
 - Verificati e lasciati invariati: `website/index.html` ("without platform middleman fees" — già onesto), `README.md` (split 85/15 dichiarato esplicitamente), `About.tsx` ("without intermediaries" riferito a dati/piattaforma, non ai ricavi).
 
+## Follow-up security review pagamenti — completato (12 giugno 2026)
+
+Corretti in `payments.ts` i finding aperti #3, #4, #7, #8 della review:
+- **#3**: importo della label fee verificato contro `prezzo effettivo × adminFeePct` — sia fee in ETH nativo (`feeTx.value`, tolleranza 5%) che in USDC (parsing calldata ERC-20, tolleranza 1%).
+- **#4**: `/verify` risolve il prezzo effettivo (price/price_usdc/currency) via `getTrackPriceFromRelease` come il percorso Stripe; tutti e tre i casi di verifica usano i valori effettivi.
+- **#7**: `successUrl`/`cancelUrl` validati contro l'origine dell'istanza (publicUrl o host della richiesta) su entrambe le route di creazione sessione Stripe.
+- **#8**: rate limit dedicato 30 req/15min per IP su `/verify` e `/subscription/verify`.
+
+Restano aperti (tracciati in roadmap): #5 (accettato e documentato — trust sul contratto checkout, richiede admin malevolo) e #6 (JWT in query string).
+
+**Test**: 4 nuovi test (override prezzo per-release, fee troppo bassa, fee corretta + burn della fee tx, URL di ritorno esterno respinto); suite completa 609 verdi.
+
 ## 7. Segnali di maturità — completato (12 giugno 2026)
 
 **Docs backup/deploy**: `docs/backup-migration.md` risultava già completa (UI, API, tool CLI `backup.ts`/`restore.ts`) — nessun lavoro necessario.

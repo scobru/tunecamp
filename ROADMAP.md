@@ -7,12 +7,10 @@ Lavori completati: vedi [DONE.md](DONE.md).
 
 ## Follow-up dalla security review pagamenti
 
-Finding aperti in `docs/security-review-payments.md` (i due High sono già corretti):
+Restano aperti in `docs/security-review-payments.md` (tutti gli altri finding sono corretti):
 
-- **#3 (Medium)**: verificare l'importo della label fee, non solo il destinatario.
-- **#4 (Medium)**: `/verify` deve risolvere il prezzo effettivo come fa il percorso Stripe (override `release_tracks`).
-- **#5 (Medium)**: documentare/verificare l'assunzione di fiducia sul contratto checkout per `purchaseWithUSDC`.
-- **#6-8 (Low)**: token JWT in query string, validazione `successUrl`/`cancelUrl`, rate limit dedicato sulle route di verify.
+- **#5 (Medium, accettato e documentato)**: verifica opzionale via RPC del price mapping del contratto checkout per `purchaseWithUSDC` — richiede contratto admin malevolo per essere sfruttato.
+- **#6 (Low)**: sostituire il JWT in query string con token monouso a vita breve per i link di download.
 
 ## Deciso di NON fare
 
