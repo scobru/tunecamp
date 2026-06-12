@@ -23,7 +23,7 @@ export class StreamingService {
     constructor() {
         // SoundCloud/Bandcamp stream scraping violates their ToS, so these
         // providers ship disabled and require an explicit admin opt-in
-        // (Admin → System → Plugins). syncRegistryWithDatabase restores the
+        // (Admin → Integrations). syncRegistryWithDatabase restores the
         // persisted choice of admins who already opted in.
         this.registry.register(soundcloudStreamingProvider, false);
         this.registry.register(bandcampStreamingProvider, false);

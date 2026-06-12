@@ -158,6 +158,15 @@ export const IntegrationsPanel = () => {
       )
     },
     {
+      id: "torrent",
+      name: "BitTorrent",
+      icon: <Download className="text-success" />,
+      status: plugins.find(p => p.id === 'torrent')?.enabled ? 'online' : 'offline',
+      details: plugins.find(p => p.id === 'torrent')?.enabled ? "Enabled — use only for content you own" : "Disabled (default)",
+      description: "Download music via magnet links (WebTorrent). Enable only for content you own the rights to.",
+      pluginId: "torrent"
+    },
+    {
       id: "telegram",
       name: "Telegram Bot",
       icon: <MessageSquare className="text-primary" />,
