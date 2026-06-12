@@ -3,6 +3,7 @@ import API from '../../services/api';
 import { useAuthStore } from '../../stores/useAuthStore';
 import type { Playlist } from '../../types';
 import { Plus, ListMusic, Lock, Globe, Check, Loader2 } from 'lucide-react';
+import { notify } from '../../utils/notify';
 import clsx from 'clsx';
 
 export const PlaylistModal = () => {
@@ -91,7 +92,7 @@ export const PlaylistModal = () => {
             }, 1000);
         } catch (e) {
             console.error('Failed to add track to playlist:', e);
-            alert('Failed to add track to playlist');
+            notify.error(e, 'Failed to add track to playlist');
         }
     };
 

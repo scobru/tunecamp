@@ -19,6 +19,7 @@ import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 
 import { formatDuration } from "../utils/format";
 import { PageHeader } from "../components/ui/PageHeader";
+import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
 
@@ -103,7 +104,7 @@ const Tracks = () => {
       navigator.share({ title: track.title, url }).catch(console.error);
     } else {
       navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      notify.success("Link copied to clipboard!");
     }
   };
 
@@ -177,16 +178,16 @@ const Tracks = () => {
                 <div className="list-col-wrap flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => playTrack(track, filteredTracks)}
-                    className="btn btn-ghost btn-sm btn-circle text-primary"
-                    title="Play Track"
+                    className="btn btn-ghost btn-sm btn-circle text-primary tooltip tooltip-top"
+                    data-tip="Play Track"
                   >
                     <Play size={16} fill="currentColor" />
                   </button>
                   
                   <button 
                     onClick={() => handleLike(track)}
-                    className={clsx("btn btn-ghost btn-sm btn-circle", isLiked && "text-primary")}
-                    title={isLiked ? "Unlike Track" : "Like Track"}
+                    className={clsx("btn btn-ghost btn-sm btn-circle tooltip tooltip-top", isLiked && "text-primary")}
+                    data-tip={isLiked ? "Unlike Track" : "Like Track"}
                   >
                     <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
                   </button>
@@ -194,8 +195,8 @@ const Tracks = () => {
                   {purchased && (
                     <button 
                       onClick={() => window.open(API.getTrackDownloadUrl(track.id), "_blank")}
-                      className="btn btn-ghost btn-sm btn-circle text-success"
-                      title="Download Track"
+                      className="btn btn-ghost btn-sm btn-circle text-success tooltip tooltip-top"
+                      data-tip="Download Track"
                     >
                       <CheckCircle2 size={16} />
                     </button>
@@ -206,8 +207,8 @@ const Tracks = () => {
                       href={`/api/albums/${String(track.albumId)}/download`} 
                       target="_blank" 
                       rel="noreferrer"
-                      className="btn btn-ghost btn-sm btn-circle text-success flex items-center justify-center"
-                      title="Free Download"
+                      className="btn btn-ghost btn-sm btn-circle text-success flex items-center justify-center tooltip tooltip-top"
+                      data-tip="Free Download"
                     >
                       <Download size={16} />
                     </a>
@@ -215,8 +216,8 @@ const Tracks = () => {
 
                   <button 
                     onClick={() => handleShare(track)}
-                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content"
-                    title="Share Track"
+                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content tooltip tooltip-top"
+                    data-tip="Share Track"
                   >
                     <Share2 size={16} />
                   </button>
@@ -226,8 +227,8 @@ const Tracks = () => {
                       if (!isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
                       document.dispatchEvent(new CustomEvent("open-playlist-modal", { detail: { trackId: track.id } }));
                     }}
-                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content"
-                    title="Add to Playlist"
+                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content tooltip tooltip-left"
+                    data-tip="Add to Playlist"
                   >
                     <ListMusic size={16} />
                   </button>

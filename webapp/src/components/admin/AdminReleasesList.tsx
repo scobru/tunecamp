@@ -4,6 +4,7 @@ import { Globe, Lock, Send, CheckCircle, Trash2, Disc } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { notify } from "../../utils/notify";
 
 export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   const { user, role } = useAuthStore();
@@ -50,7 +51,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
         setSelectedIds([]);
         loadReleases();
     } catch (e: any) {
-        alert("Batch delete failed: " + e.message);
+        notify.error(e, "Batch delete failed");
     }
   };
 
@@ -58,10 +59,10 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
     if (!confirm("Request promotion to public release? This will notify the Admin.")) return;
     try {
         await API.requestPromotion(id);
-        alert("Promotion requested!");
+        notify.success("Promotion requested!");
         loadReleases();
     } catch (e: any) {
-        alert("Promotion failed: " + e.message);
+        notify.error(e, "Promotion failed");
     }
   };
 
@@ -69,10 +70,10 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
     if (!confirm("Finalize release? This will broadcast it to the Fediverse and Zen network.")) return;
     try {
         await API.finalizeRelease(id);
-        alert("Release finalized!");
+        notify.success("Release finalized!");
         loadReleases();
     } catch (e: any) {
-        alert("Finalization failed: " + e.message);
+        notify.error(e, "Finalization failed");
     }
   };
 
@@ -93,7 +94,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
       await API.toggleReleaseVisibility(release.id, newVisibility);
     } catch (e) {
       console.error(e);
-      alert("Failed to update visibility");
+      notify.error(e, "Failed to update visibility");
       setReleases(oldReleases); // Rollback
     }
   };
@@ -105,7 +106,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
         setSelectedIds([]);
         loadReleases();
     } catch (e: any) {
-        alert("Batch visibility update failed: " + e.message);
+        notify.error(e, "Batch visibility update failed");
     }
   };
 
@@ -226,9 +227,9 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
               </td>
               <td>
                 <button
-                  className={`btn btn-xs btn-ghost gap-1 ${r.visibility === "public" ? "text-success" : "text-base-content/50"}`}
+                  className={clsx("btn btn-xs btn-ghost gap-1 tooltip tooltip-top", r.visibility === "public" ? "text-success" : "text-base-content/50")}
                   onClick={(e) => handleToggleVisibility(e, r)}
-                  title={r.visibility === "public" ? "Public" : "Private"}
+                  data-tip={r.visibility === "public" ? "Public" : "Private"}
                 >
                   {r.visibility === "public" ? (
                     <Globe size={14} />

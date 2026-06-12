@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useNavigate } from 'react-router-dom';
 import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause, Upload, Copy } from 'lucide-react';
+import { notify } from '../utils/notify';
 import clsx from 'clsx';
 import type { TorrentSearchResult, Track } from '../types';
 
@@ -149,10 +150,10 @@ const ContentSearch: React.FC = () => {
 
             // 2. Localize it
             await API.localizeTrack(dbTrackId);
-            alert(`✅ Localization started for "${item.title}". It will appear in your library soon.`);
+            notify.success(`Localization started for "${item.title}". It will appear in your library soon.`);
         } catch (err: any) {
             console.error(`Failed to rip track: ${err.message}`);
-            alert(`Rip failed: ${err.message}`);
+            notify.error(err, "Rip failed");
         } finally {
             setLoading(false);
         }
@@ -165,11 +166,12 @@ const ContentSearch: React.FC = () => {
         setLoading(true);
         try {
             await API.addTorrent(magnetUri);
+            notify.success("Torrent added successfully");
             setMagnetUri('');
             fetchTorrents();
         } catch (err: any) {
             console.error(`Failed to add torrent: ${err.message}`);
-            alert(err.message);
+            notify.error(err, "Failed to add torrent");
         } finally {
             setLoading(false);
         }
@@ -178,12 +180,12 @@ const ContentSearch: React.FC = () => {
     const handleDownloadTorrentResult = async (torrent: any) => {
         try {
             await API.downloadTorrentResult(torrent, 'public-scraper');
-            alert('Torrent added to download queue!');
+            notify.success('Torrent added to download queue!');
             setActiveTab('torrents');
             fetchTorrents();
         } catch (err: any) {
             console.error(`Failed to start torrent download: ${err.message}`);
-            alert(`Download failed: ${err.message}`);
+            notify.error(err, "Download failed");
         }
     };
 
@@ -208,9 +210,10 @@ const ContentSearch: React.FC = () => {
             setSeedingResult(res.magnetUri);
             setSeedFilePaths('');
             setSeedName('');
+            notify.success("Started seeding file(s)");
             fetchTorrents();
         } catch (err: any) {
-            alert(`Seeding failed: ${err.message}`);
+            notify.error(err, "Seeding failed");
         } finally {
             setSeedLoading(false);
         }
@@ -221,10 +224,10 @@ const ContentSearch: React.FC = () => {
         try {
             const result = await API.purgeStuckTorrents();
             fetchTorrents();
-            alert(`Purged ${result.count} stuck torrent(s).`);
+            notify.success(`Purged ${result.count} stuck torrent(s).`);
         } catch (err: any) {
             console.error(`Failed to purge torrents: ${err.message}`);
-            alert(`Purge failed: ${err.message}`);
+            notify.error(err, "Purge failed");
         }
     };
 

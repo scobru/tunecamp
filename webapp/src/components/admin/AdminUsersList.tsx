@@ -3,6 +3,7 @@ import API from "../../services/api";
 import { User, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { notify } from "../../utils/notify";
 
 export const AdminUsersList = () => {
   const { user, role } = useAuthStore();
@@ -44,7 +45,7 @@ export const AdminUsersList = () => {
       loadUsers();
     } catch (e: any) {
       console.error(e);
-      alert("Failed to delete user: " + (e.message || "Unknown error"));
+      notify.error(e, "Failed to delete user");
     }
   };
 
@@ -56,7 +57,7 @@ export const AdminUsersList = () => {
         setSelectedIds([]);
         loadUsers();
     } catch (e: any) {
-        alert("Batch delete failed: " + (e.message || "Unknown error"));
+        notify.error(e, "Batch delete failed");
     }
   };
 

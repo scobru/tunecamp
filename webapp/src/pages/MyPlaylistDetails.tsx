@@ -20,6 +20,7 @@ import {
 import type { UserPlaylist, Playlist, UserPlaylistTrack, Track } from "../types";
 import { AddTrackToUserPlaylistModal } from "../components/modals/AddTrackToUserPlaylistModal";
 import { formatDuration } from "../utils/format";
+import { notify } from "../utils/notify";
 
 /**
  * Convert a UserPlaylistTrack to a playable Track object for the player store
@@ -76,10 +77,11 @@ const MyPlaylistDetails = () => {
       return;
     try {
       await API.deletePlaylist(String(playlist.id));
+      notify.success("Playlist deleted successfully");
       navigate("/my-playlists");
     } catch (e) {
       console.error(e);
-      alert("Failed to delete playlist");
+      notify.error(e, "Failed to delete playlist");
     }
   };
 
@@ -89,19 +91,23 @@ const MyPlaylistDetails = () => {
     try {
       await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
       loadPlaylist(String(playlist.id));
+      notify.success("Track removed from playlist");
     } catch (e) {
       console.error(e);
+      notify.error(e, "Failed to remove track");
     }
   };
 
   const handleToggleVisibility = async () => {
     if (!playlist) return;
     try {
-      await API.updatePlaylist(String(playlist.id), { isPublic: !playlist.isPublic });
-      setPlaylist({ ...playlist, isPublic: !playlist.isPublic });
+      const newStatus = !playlist.isPublic;
+      await API.updatePlaylist(String(playlist.id), { isPublic: newStatus });
+      setPlaylist({ ...playlist, isPublic: newStatus });
+      notify.success(`Playlist is now ${newStatus ? "Public" : "Private"}`);
     } catch (e) {
       console.error(e);
-      alert("Failed to update playlist visibility");
+      notify.error(e, "Failed to update playlist visibility");
     }
   };
 
@@ -116,9 +122,10 @@ const MyPlaylistDetails = () => {
     try {
       await API.updatePlaylist(String(playlist.id), { coverPath: url });
       setPlaylist({ ...playlist, coverUrl: url, coverPath: url } as any);
+      notify.success("Playlist cover updated successfully");
     } catch (e) {
       console.error(e);
-      alert("Failed to update playlist cover");
+      notify.error(e, "Failed to update playlist cover");
     }
   };
 
@@ -171,9 +178,9 @@ const MyPlaylistDetails = () => {
           {isOwner && (
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
               <button
-                className="btn btn-sm btn-circle btn-ghost text-white"
+                className="btn btn-sm btn-circle btn-ghost text-white tooltip tooltip-top"
                 onClick={handleEditCover}
-                title="Edit Cover"
+                data-tip="Edit Cover"
               >
                 <ImageIcon size={20} />
               </button>
@@ -222,9 +229,9 @@ const MyPlaylistDetails = () => {
                   <Trash2 size={16} /> Delete Playlist
                 </button>
                 <button
-                  className={`btn btn-sm btn-outline gap-2 ${playlist.isPublic ? "btn-success" : "text-opacity-70"}`}
+                  className={`btn btn-sm btn-outline gap-2 tooltip tooltip-top ${playlist.isPublic ? "btn-success" : "text-opacity-70"}`}
                   onClick={handleToggleVisibility}
-                  title={
+                  data-tip={
                     playlist.isPublic
                       ? "Visible to everyone"
                       : "Only visible to you"
@@ -243,7 +250,7 @@ const MyPlaylistDetails = () => {
               className="btn btn-sm btn-outline gap-2"
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                // Optional: show a quick toast/alert
+                notify.success("Playlist link copied to clipboard!");
               }}
             >
               Copy Link
@@ -325,15 +332,15 @@ const MyPlaylistDetails = () => {
                         <a
                           href={API.getTrackDownloadUrl(track.id)}
                           target="_blank"
-                          className="btn btn-ghost btn-xs btn-circle text-success flex items-center justify-center"
-                          title="Download Track"
+                          className="btn btn-ghost btn-xs btn-circle text-success flex items-center justify-center tooltip tooltip-top"
+                          data-tip="Download Track"
                         >
                           <Download size={16} />
                         </a>
                         <button
-                          className="btn btn-ghost btn-xs btn-circle text-error"
+                          className="btn btn-ghost btn-xs btn-circle text-error tooltip tooltip-left"
                           onClick={() => handleRemoveTrack(track.id)}
-                          title="Remove Track"
+                          data-tip="Remove Track"
                         >
                           <Trash2 size={16} />
                         </button>

@@ -6,6 +6,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useConfigStore } from '../stores/useConfigStore';
 import { formatDuration } from '../utils/format';
+import { notify } from '../utils/notify';
 import type { Artist, Album, Post, Track, Release, Asset } from '../types';
 import { AssetCard, AssetViewerModal } from './Store';
 import { SubscriptionModal } from '../components/modals/SubscriptionModal';
@@ -191,12 +192,12 @@ const ArtistDetails = () => {
                                       {artist.walletAddress.substring(0, 6)}...{artist.walletAddress.substring(artist.walletAddress.length - 4)}
                                   </span>
                                   <button 
-                                      className="btn btn-xs btn-ghost btn-circle text-emerald-400 hover:bg-emerald-500/20" 
+                                      className="btn btn-xs btn-ghost btn-circle text-emerald-400 hover:bg-emerald-500/20 tooltip tooltip-top" 
                                       onClick={() => {
                                           navigator.clipboard.writeText(artist.walletAddress || '');
-                                          alert('Wallet address copied!');
+                                          notify.success('Wallet address copied!');
                                       }}
-                                      title="Copy Wallet"
+                                      data-tip="Copy Wallet"
                                   >
                                       <Copy size={12} />
                                   </button>

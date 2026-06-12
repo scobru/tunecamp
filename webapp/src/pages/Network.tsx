@@ -6,6 +6,7 @@ import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
 import { formatDuration } from "../utils/format";
+import { notify } from "../utils/notify";
 import type { NetworkSite, NetworkTrack, NetworkStatus } from "../types";
 import { renderMarkdown } from "../utils/markdown";
 
@@ -162,11 +163,12 @@ const PostCard = memo(({
              </span>
              {isAdmin && (
               <button
-                className={`btn btn-xs btn-ghost btn-circle ${isHidden ? "text-primary" : "text-error opacity-0 group-hover:opacity-100"}`}
+                className={`btn btn-xs btn-ghost btn-circle tooltip tooltip-left ${isHidden ? "text-primary" : "text-error opacity-0 group-hover:opacity-100"}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleVisibility(uniqueId);
                 }}
+                data-tip={isHidden ? "Unhide Post" : "Hide Post"}
               >
                 {isHidden ? "👁️" : "🗑️"}
               </button>
@@ -293,12 +295,12 @@ const TrackCard = memo(({
           </div>
           {isAdmin && (
             <button
-              className={`btn btn-xs btn-ghost btn-circle ${isHidden ? "text-primary" : "text-error opacity-0 group-hover:opacity-100"}`}
+              className={`btn btn-xs btn-ghost btn-circle tooltip tooltip-left ${isHidden ? "text-primary" : "text-error opacity-0 group-hover:opacity-100"}`}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleVisibility(uniqueId);
               }}
-              title={isHidden ? "Unhide Track" : "Hide Track"}
+              data-tip={isHidden ? "Unhide Track" : "Hide Track"}
             >
               {isHidden ? "👁️" : "🗑️"}
             </button>
@@ -496,7 +498,8 @@ const Network = () => {
       >
         {isAdminAuthenticated && (
           <button
-            className="btn btn-primary btn-sm gap-2"
+            className="btn btn-primary btn-sm gap-2 tooltip tooltip-bottom"
+            data-tip="Federated sync: pull and push metadata updates"
             onClick={async () => {
               if (
                 confirm(
@@ -508,11 +511,11 @@ const Network = () => {
                     artists: number;
                     notes: number;
                   };
-                  alert(
+                  notify.success(
                     `Sync complete! Processed ${res.artists} artists and ${res.notes} items.`,
                   );
                 } catch (err: unknown) {
-                  alert("Sync failed: " + (err instanceof Error ? err.message : String(err)));
+                  notify.error(err, "Sync failed");
                 }
               }
             }}

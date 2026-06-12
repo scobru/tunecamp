@@ -5,6 +5,7 @@ import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucid
 import type { Artist, User as AppUser } from '../types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useConfigStore } from '../stores/useConfigStore';
+import { notify } from '../utils/notify';
 import clsx from 'clsx';
 
 const Artists = () => {
@@ -41,7 +42,7 @@ const Artists = () => {
             await API.deleteArtist(artist.id.toString());
             setArtists(prev => prev.filter(a => a.id !== artist.id));
         } catch (error: any) {
-            alert(error.message || 'Failed to delete artist. They might still have releases, albums, or tracks attached.');
+            notify.error(error, 'Failed to delete artist. They might still have releases, albums, or tracks attached.');
         }
     };
 
@@ -100,23 +101,23 @@ const Artists = () => {
                     )}
                     <div className="join bg-base-200 w-full sm:w-auto justify-center">
                         <button
-                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'grid' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial tooltip tooltip-bottom", viewMode === 'grid' && "btn-active")}
                             onClick={() => setViewMode('grid')}
-                            title="Grid View"
+                            data-tip="Grid View"
                         >
                             <LayoutGrid size={16} />
                         </button>
                         <button
-                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'list' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial tooltip tooltip-bottom", viewMode === 'list' && "btn-active")}
                             onClick={() => setViewMode('list')}
-                            title="List View"
+                            data-tip="List View"
                         >
                             <List size={16} />
                         </button>
                         <button
-                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'minimal' && "btn-active")}
+                            className={clsx("btn btn-sm join-item flex-1 sm:flex-initial tooltip tooltip-bottom", viewMode === 'minimal' && "btn-active")}
                             onClick={() => setViewMode('minimal')}
-                            title="Minimal View"
+                            data-tip="Minimal View"
                         >
                             <AlignJustify size={16} />
                         </button>
@@ -147,8 +148,8 @@ const Artists = () => {
                                 {currentUser?.isRootAdmin && (
                                     <button
                                         onClick={(e) => handleEdit(e, artist)}
-                                        className="p-2 bg-base-300 hover:bg-primary hover:text-white rounded-full shadow-level-1"
-                                        title="Edit Artist"
+                                        className="p-2 bg-base-300 hover:bg-primary hover:text-white rounded-full shadow-level-1 tooltip tooltip-top"
+                                        data-tip="Edit Artist"
                                     >
                                         <Edit size={16} />
                                     </button>
@@ -156,18 +157,18 @@ const Artists = () => {
                                 <button
                                     onClick={(e) => handleToggleStar(e, artist)}
                                     className={clsx(
-                                        "p-2 bg-base-300 rounded-full shadow-lg transition-colors",
+                                        "p-2 bg-base-300 rounded-full shadow-lg transition-colors tooltip tooltip-top",
                                         artist.starred ? "text-error" : "hover:text-error"
                                     )}
-                                    title={artist.starred ? "Remove from Favorites" : "Add to Favorites"}
+                                    data-tip={artist.starred ? "Remove from Favorites" : "Add to Favorites"}
                                 >
                                     <Heart size={16} fill={artist.starred ? "currentColor" : "none"} />
                                 </button>
                                 {(artist.id.toString() !== currentUser.artistId?.toString()) && (
                                     <button
                                         onClick={(e) => handleDelete(e, artist)}
-                                        className="p-2 bg-base-300 hover:bg-error hover:text-white rounded-full shadow-level-1"
-                                        title="Delete Artist"
+                                        className="p-2 bg-base-300 hover:bg-error hover:text-white rounded-full shadow-level-1 tooltip tooltip-top"
+                                        data-tip="Delete Artist"
                                     >
                                         <Trash2 size={16} />
                                     </button>

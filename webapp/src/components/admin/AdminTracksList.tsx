@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import API from "../../services/api";
 import { Link as LinkIcon, Edit, Trash2, ChevronUp, ChevronDown, Search, X, Music } from "lucide-react";
 import { BatchTrackEditModal } from "../modals/BatchTrackEditModal";
+import { notify } from "../../utils/notify";
 
 type SortKey = "title" | "artist_name" | "album_title" | "duration";
 interface SortConfig {
@@ -79,7 +80,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       loadTracks();
     } catch (e) {
       console.error(e);
-      alert("Failed to delete track");
+      notify.error(e, "Failed to delete track");
     }
   };
 
@@ -98,10 +99,10 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
         await API.localizeTrack(id);
       }
       loadTracks();
-      alert(`Track "${name}" successfully localized to server!`);
+      notify.success(`Track "${name}" successfully localized to server!`);
     } catch (e: any) {
       console.error(e);
-      alert("Localization failed: " + e.message);
+      notify.error(e, "Localization failed");
     } finally {
       setLocalizing(null);
     }
@@ -114,7 +115,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
     });
 
     if (toLocalize.length === 0) {
-      alert("None of the selected tracks need localization.");
+      notify.warning("None of the selected tracks need localization.");
       return;
     }
 
@@ -132,7 +133,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
           failed++;
         }
       }
-      alert(`✅ Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
+      notify.success(`Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
       loadTracks();
       setSelectedIds(new Set());
     } finally {
@@ -172,7 +173,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       loadTracks();
     } catch (e: any) {
       console.error(e);
-      alert("Failed to perform batch deletion: " + e.message);
+      notify.error(e, "Failed to perform batch deletion");
     }
   };
 
@@ -316,17 +317,17 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 <a
                   href={API.getTrackDownloadUrl(t.id)}
                   target="_blank"
-                  className="btn btn-xs btn-ghost text-success"
-                  title="Download original file"
+                  className="btn btn-xs btn-ghost text-success tooltip tooltip-top"
+                  data-tip="Download original file"
                 >
                   Download
                 </a>
                 {t.service && t.service !== 'local' && (!t.path?.startsWith('localized/') && !t.path?.startsWith('cloud_imports/')) && (
                   <button
-                    className="btn btn-xs btn-ghost text-warning"
+                    className="btn btn-xs btn-ghost text-warning tooltip tooltip-top"
                     onClick={() => handleLocalize(t.id, t.title, t.path?.startsWith('gdrive://'))}
                     disabled={localizing === t.id}
-                    title={t.path?.startsWith('gdrive://') ? "Download from GDrive and save to server" : "Download and localize to server library"}
+                    data-tip={t.path?.startsWith('gdrive://') ? "Download from GDrive and save to server" : "Download and localize to server library"}
                   >
                     {localizing === t.id ? "..." : "Localize"}
                   </button>

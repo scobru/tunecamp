@@ -4,6 +4,7 @@ import { Disc, Edit, Trash2, Globe, Lock, Share2 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useConfigStore } from "../../stores/useConfigStore";
+import { notify } from "../../utils/notify";
 
 export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
   const { user } = useAuthStore();
@@ -63,7 +64,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
       await API.deleteAlbum(String(id), keepFiles);
       loadAlbums();
     } catch (e: any) {
-      alert("Delete failed: " + e.message);
+      notify.error(e, "Delete failed");
     }
   };
 
@@ -76,7 +77,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
         setSelectedIds([]);
         loadAlbums();
     } catch (e: any) {
-        alert("Batch delete failed: " + e.message);
+        notify.error(e, "Batch delete failed");
     }
   };
 
@@ -87,7 +88,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
         setSelectedIds([]);
         loadAlbums();
     } catch (e: any) {
-        alert("Batch visibility update failed: " + e.message);
+        notify.error(e, "Batch visibility update failed");
     }
   };
 
@@ -95,11 +96,11 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
       if (!confirm("Promote this library album to a formal Release? This will allow it to be sold and federated.")) return;
       try {
           await API.promoteToRelease(String(id));
-          alert("Album promoted to release draft!");
+          notify.success("Album promoted to release draft!");
           window.dispatchEvent(new CustomEvent("refresh-admin-releases"));
           loadAlbums();
       } catch (e: any) {
-          alert("Promotion failed: " + e.message);
+          notify.error(e, "Promotion failed");
       }
   };
 
@@ -232,9 +233,9 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
                       <Edit size={14} /> Edit
                     </button>
                     <button
-                      className="btn btn-xs btn-ghost text-primary gap-1"
+                      className="btn btn-xs btn-ghost text-primary gap-1 tooltip tooltip-top"
                       onClick={() => handlePromote(a.id)}
-                      title="Promote to formal Release"
+                      data-tip="Promote to formal Release"
                     >
                       <Share2 size={14} /> Promote
                     </button>

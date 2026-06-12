@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { X, Check, Loader2, User, Globe } from "lucide-react";
+import { notify } from "../../utils/notify";
 
 interface ArtistMetadataMatch {
     id: string;
@@ -49,7 +50,7 @@ export const ArtistMetadataPickerModal = ({ artist, isOpen, onClose, onApplied }
             onApplied();
             onClose();
         } catch (e: any) {
-            alert("Failed to apply artist metadata: " + e.message);
+            notify.error(e, "Failed to apply artist metadata");
         } finally {
             setIsApplying(false);
         }

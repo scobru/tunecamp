@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { CheckCircle, XCircle, Play, Info } from "lucide-react";
+import { notify } from "../../utils/notify";
 
 export const CurationQueue = () => {
     const [pendingReleases, setPendingReleases] = useState<any[]>([]);
@@ -28,10 +29,10 @@ export const CurationQueue = () => {
         if (!confirm("Are you sure you want to APPROVE this release?")) return;
         try {
             await API.approvePromotion(id);
-            alert("Release approved!");
+            notify.success("Release approved!");
             loadQueue();
         } catch (e: any) {
-            alert("Approval failed: " + e.message);
+            notify.error(e, "Approval failed");
         }
     };
 
@@ -40,10 +41,10 @@ export const CurationQueue = () => {
         if (reason === null) return;
         try {
             await API.rejectPromotion(id, reason);
-            alert("Release rejected.");
+            notify.success("Release rejected.");
             loadQueue();
         } catch (e: any) {
-            alert("Rejection failed: " + e.message);
+            notify.error(e, "Rejection failed");
         }
     };
 
@@ -94,9 +95,9 @@ export const CurationQueue = () => {
 
                             <div className="flex gap-2">
                                 <button 
-                                    className="btn btn-circle btn-ghost" 
-                                    title="Preview (Experimental)"
-                                    onClick={() => alert("Preview coming soon. Check files in library.")}
+                                    className="btn btn-circle btn-ghost tooltip tooltip-top" 
+                                    data-tip="Preview (Experimental)"
+                                    onClick={() => notify.info("Preview coming soon. Check files in library.")}
                                 >
                                     <Play size={20} />
                                 </button>

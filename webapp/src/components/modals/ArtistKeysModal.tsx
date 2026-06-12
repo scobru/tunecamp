@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import API from '../../services/api';
 import { Key, Copy, AlertTriangle } from 'lucide-react';
+import { notify } from '../../utils/notify';
 
 export const ArtistKeysModal = () => {
     const dialogRef = useRef<HTMLDialogElement>(null);
@@ -39,7 +40,7 @@ export const ArtistKeysModal = () => {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        // Could add a small toast; for now just copy
+        notify.success("Copiato negli appunti!");
     };
 
     return (

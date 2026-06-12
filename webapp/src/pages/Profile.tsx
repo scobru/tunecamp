@@ -25,6 +25,7 @@ import {
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
 import { formatDuration } from "../utils/format";
+import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
 
@@ -493,12 +494,12 @@ const Profile = () => {
                     className="input input-bordered flex-1 font-mono text-sm"
                   />
                   <button
-                    className="btn btn-ghost btn-square"
+                    className="btn btn-ghost btn-square tooltip tooltip-left"
                     onClick={() => {
                       navigator.clipboard.writeText(activeHandle);
-                      alert("Handle copied!");
+                      notify.success("Handle copied!");
                     }}
-                    title="Copy handle"
+                    data-tip="Copy handle"
                   >
                     <Copy size={18} />
                   </button>
@@ -516,12 +517,12 @@ const Profile = () => {
                     className="input input-bordered flex-1 font-mono text-sm"
                   />
                   <button
-                    className="btn btn-ghost btn-square"
+                    className="btn btn-ghost btn-square tooltip tooltip-left"
                     onClick={() => {
                       navigator.clipboard.writeText(activeActorUri);
-                      alert("Actor URI copied!");
+                      notify.success("Actor URI copied!");
                     }}
-                    title="Copy actor URI"
+                    data-tip="Copy actor URI"
                   >
                     <Copy size={18} />
                   </button>
@@ -629,9 +630,9 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     try {
       await API.updateArtistAlias(initialData.id, updatedAliases.length > 0 ? updatedAliases : null);
       setAliases(updatedAliases);
-      alert("Aliases updated successfully!");
+      notify.success("Aliases updated successfully!");
     } catch (err: any) {
-      alert("Failed to update aliases: " + err.message);
+      notify.error(err, "Failed to update aliases");
     } finally {
       setIsAliasUpdating(false);
     }
@@ -655,9 +656,9 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     setIsMoving(true);
     try {
       await API.initiateArtistMove(initialData.id, targetMoveUri.trim());
-      alert("Move initiated successfully! Followers will be redirected to your new profile.");
+      notify.success("Move initiated successfully! Followers will be redirected to your new profile.");
     } catch (err: any) {
-      alert("Failed to initiate move: " + err.message);
+      notify.error(err, "Failed to initiate move");
     } finally {
       setIsMoving(false);
     }
@@ -668,10 +669,10 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     setIsImporting(true);
     try {
       await API.importArtistIdentity(initialData.id, sourceImportUri.trim());
-      alert("Profile imported and verified successfully! Refreshing details...");
+      notify.success("Profile imported and verified successfully! Refreshing details...");
       window.location.reload();
     } catch (err: any) {
-      alert("Import failed: " + err.message);
+      notify.error(err, "Import failed");
     } finally {
       setIsImporting(false);
     }
@@ -693,9 +694,9 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     setIsSyncing(true);
     try {
       await API.syncArtistActivityPub(initialData.id);
-      alert("Synchronization complete!");
+      notify.success("Synchronization complete!");
     } catch (err: any) {
-      alert("Sync failed: " + err.message);
+      notify.error(err, "Sync failed");
     } finally {
       setIsSyncing(false);
     }
@@ -960,10 +961,10 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(`@${initialData?.slug}@${window.location.host}`);
-                          alert("Handle copied to clipboard!");
+                          notify.success("Handle copied to clipboard!");
                         }}
-                        className="btn btn-sm btn-outline btn-square"
-                        title="Copy Handle"
+                        className="btn btn-sm btn-outline btn-square tooltip tooltip-left"
+                        data-tip="Copy Handle"
                       >
                         <Copy size={14} />
                       </button>
@@ -982,10 +983,10 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(`${window.location.origin}/api/ap/users/${initialData?.slug}`);
-                          alert("Actor URI copied to clipboard!");
+                          notify.success("Actor URI copied to clipboard!");
                         }}
-                        className="btn btn-sm btn-outline btn-square"
-                        title="Copy Actor URI"
+                        className="btn btn-sm btn-outline btn-square tooltip tooltip-left"
+                        data-tip="Copy Actor URI"
                       >
                         <Copy size={14} />
                       </button>

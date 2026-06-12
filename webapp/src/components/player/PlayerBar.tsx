@@ -28,6 +28,7 @@ import { QueuePanel } from "./QueuePanel";
 import { PlayerCanvas } from "./PlayerCanvas";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { formatDuration } from "../../utils/format";
+import { notify } from "../../utils/notify";
 
 // Robust interop for color-thief-react which has inconsistent exports across versions/builds
 const ColorThiefReact: any = ColorThiefReactModule;
@@ -355,8 +356,11 @@ export const PlayerBar = () => {
     try {
         const id = currentTrack.artistId ? String(currentTrack.artistId) : `ext:artist:${currentTrack.artistName}`;
         await API.starArtist(id, { name: currentTrack.artistName });
-        // Optional: show toast or feedback
-    } catch (e) { console.error(e); }
+        notify.success("Artist added to favorites!");
+    } catch (e) {
+        console.error(e);
+        notify.error(e, "Failed to favorite artist");
+    }
   };
 
   const handleStarAlbum = async () => {
@@ -364,8 +368,11 @@ export const PlayerBar = () => {
     try {
         const id = currentTrack.albumId ? String(currentTrack.albumId) : `ext:album:${currentTrack.album_title}`;
         await API.starAlbum(id, { title: currentTrack.album_title, artist: currentTrack.artistName });
-        // Optional: show toast or feedback
-    } catch (e) { console.error(e); }
+        notify.success("Album added to favorites!");
+    } catch (e) {
+        console.error(e);
+        notify.error(e, "Failed to favorite album");
+    }
   };
 
   return (
@@ -408,24 +415,27 @@ export const PlayerBar = () => {
           <div className="flex items-center gap-3 lg:gap-6">
             <button
               aria-label="Toggle shuffle"
-              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all", isShuffled ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
+              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all tooltip tooltip-top", isShuffled ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
               onClick={toggleShuffle}
+              data-tip="Shuffle"
             >
               <Shuffle size={14} aria-hidden="true" />
             </button>
 
             <button
               aria-label="Toggle radio mode"
-              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all", isRadioMode ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
+              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all tooltip tooltip-top", isRadioMode ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
               onClick={toggleRadio}
+              data-tip="Radio Mode"
             >
               <Radio size={14} aria-hidden="true" />
             </button>
 
             <button
               aria-label="Previous track"
-              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100"
+              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100 tooltip tooltip-top"
               onClick={prev}
+              data-tip="Previous Track"
             >
               <SkipBack className="w-[18px] h-[18px] lg:w-5 lg:h-5" fill="currentColor" aria-hidden="true" />
             </button>
@@ -444,16 +454,18 @@ export const PlayerBar = () => {
 
             <button
               aria-label="Next track"
-              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100"
+              className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100 tooltip tooltip-top"
               onClick={next}
+              data-tip="Next Track"
             >
               <SkipForward className="w-[18px] h-[18px] lg:w-5 lg:h-5" fill="currentColor" aria-hidden="true" />
             </button>
 
             <button
               aria-label={`Repeat mode: ${repeatMode}`}
-              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle relative transition-all", repeatMode !== "none" ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
+              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle relative transition-all tooltip tooltip-top", repeatMode !== "none" ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
               onClick={toggleRepeat}
+              data-tip={`Repeat Mode: ${repeatMode}`}
             >
               <Repeat size={14} aria-hidden="true" />
               {repeatMode === "one" && (
@@ -544,16 +556,16 @@ export const PlayerBar = () => {
 
             <div className="hidden lg:flex gap-1">
                 <button 
-                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100"
+                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top"
                     onClick={handleStarArtist}
-                    title="Favorite Artist"
+                    data-tip="Favorite Artist"
                 >
                     <User size={18} />
                 </button>
                 <button 
-                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100"
+                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top"
                     onClick={handleStarAlbum}
-                    title="Favorite Album"
+                    data-tip="Favorite Album"
                 >
                     <Disc size={18} />
                 </button>
@@ -561,22 +573,25 @@ export const PlayerBar = () => {
 
             <button
               aria-label="Toggle lyrics"
-              className={clsx("hidden md:flex btn btn-ghost btn-sm btn-square", isShuffled ? "text-primary" : "opacity-40")}
+              className={clsx("hidden md:flex btn btn-ghost btn-sm btn-square tooltip tooltip-top", isShuffled ? "text-primary" : "opacity-40")}
               onClick={toggleLyrics}
+              data-tip="Lyrics"
             >
               <Mic2 size={18} />
             </button>
             <button
               aria-label="Toggle queue"
-              className={clsx("btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100")}
+              className={clsx("btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top")}
               onClick={toggleQueue}
+              data-tip="Play Queue"
             >
               <ListMusic size={18} />
             </button>
             <button
               aria-label="Toggle Canvas View"
-              className="hidden lg:flex btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-primary"
+              className="hidden lg:flex btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-primary tooltip tooltip-top"
               onClick={toggleCanvas}
+              data-tip="Visualizer"
             >
               <Maximize2 size={18} />
             </button>

@@ -4,6 +4,7 @@ import API from "../services/api";
 import { Play, Music, Disc, User, ArrowLeft, Heart, Share2 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
+import { notify } from "../utils/notify";
 import type { Track, Album } from "../types";
 import clsx from "clsx";
 
@@ -88,7 +89,7 @@ const SharePage = () => {
             }).catch(console.error);
         } else {
             navigator.clipboard.writeText(window.location.href);
-            alert("Link copied to clipboard!");
+            notify.success("Link copied to clipboard!");
         }
     };
 
@@ -208,14 +209,16 @@ const SharePage = () => {
 
                             <button 
                                 onClick={handleLike}
-                                className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5", isLiked && "text-primary")}
+                                className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 tooltip tooltip-top", isLiked && "text-primary")}
+                                data-tip={isLiked ? "Unlike" : "Like"}
                             >
                                 <Heart size={24} fill={isLiked ? "currentColor" : "none"} />
                             </button>
 
                             <button 
                                 onClick={handleShare}
-                                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5"
+                                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 tooltip tooltip-top"
+                                data-tip="Share Content"
                             >
                                 <Share2 size={24} />
                             </button>

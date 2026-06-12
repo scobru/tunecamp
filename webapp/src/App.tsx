@@ -4,6 +4,8 @@ import { lazy, Suspense, useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
 import { useConfigStore } from "./stores/useConfigStore";
 import { SetupWizardModal } from "./components/modals/SetupWizardModal";
+import { Toaster } from "react-hot-toast";
+
 
 // Lazy-load all page components to reduce initial bundle size
 const Home = lazy(() => import("./pages/Home"));
@@ -130,6 +132,32 @@ function App() {
   return (
     <>
       <SetupWizardModal />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          className: "bg-base-200 text-base-content border border-base-content/10 shadow-level-3",
+          style: {
+            background: "var(--color-base-200)",
+            color: "var(--color-base-content)",
+            border: "1px solid color-mix(in srgb, var(--color-base-content) 10%, transparent)",
+            fontFamily: "var(--font-sans)",
+            fontSize: "var(--text-body-medium)",
+            borderRadius: "var(--radius-field)",
+          },
+          success: {
+            iconTheme: {
+              primary: "oklch(65% 0.18 145)",
+              secondary: "var(--color-base-200)",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "oklch(60% 0.2 30)",
+              secondary: "var(--color-base-200)",
+            },
+          },
+        }}
+      />
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
           <Route element={<MainLayout />}>

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useConfigStore } from "../../stores/useConfigStore";
+import { notify } from "../../utils/notify";
 
 export const AdminArtistsList = () => {
   const { user, role } = useAuthStore();
@@ -64,7 +65,7 @@ export const AdminArtistsList = () => {
       await API.deleteArtist(String(id));
       loadArtists();
     } catch (e: any) {
-      alert("Delete failed: " + e.message);
+      notify.error(e, "Delete failed");
     }
   };
 
@@ -76,7 +77,7 @@ export const AdminArtistsList = () => {
         setSelectedIds([]);
         loadArtists();
     } catch (e: any) {
-        alert("Batch delete failed: " + e.message);
+        notify.error(e, "Batch delete failed");
     }
   };
 
@@ -87,7 +88,7 @@ export const AdminArtistsList = () => {
         setSelectedIds([]);
         loadArtists();
     } catch (e: any) {
-        alert("Batch visibility update failed: " + e.message);
+        notify.error(e, "Batch visibility update failed");
     }
   };
 

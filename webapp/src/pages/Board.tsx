@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
 import API from "../services/api";
+import { notify } from "../utils/notify";
 import type { SiteSettings } from "../types";
 import {
   MessageSquare,
@@ -81,7 +82,7 @@ const Board = () => {
     try {
       await deleteMessage(id);
     } catch (err: any) {
-      alert(err.message || "Failed to delete message");
+      notify.error(err, "Failed to delete message");
     }
   };
 
@@ -293,8 +294,8 @@ const Board = () => {
                           {canDelete && (
                             <button
                               onClick={() => handleDelete(msg.id)}
-                              className="text-error/60 hover:text-error transition-colors p-1 hover:bg-error/10 rounded-md"
-                              title="Delete message"
+                              className="text-error/60 hover:text-error transition-colors p-1 hover:bg-error/10 rounded-md tooltip tooltip-left"
+                              data-tip="Delete message"
                             >
                               <Trash2 size={12} />
                             </button>

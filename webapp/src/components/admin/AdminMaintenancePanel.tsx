@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
+import { notify } from "../../utils/notify";
 import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Shield, RefreshCw, Zap } from "lucide-react";
 
 import { MetadataMatchModal } from "../MetadataMatchModal";
@@ -165,7 +166,7 @@ export const AdminMaintenancePanel = () => {
             setResults(res);
             loadTracks(); // Refresh list
         } catch (e: any) {
-            alert("Autofill failed: " + e.message);
+            notify.error(e, "Autofill failed");
         } finally {
             setIsProcessing(false);
         }
@@ -181,7 +182,7 @@ export const AdminMaintenancePanel = () => {
             setResults(res);
             loadTracks(); // Refresh list
         } catch (e: any) {
-            alert("AI Autofill failed: " + e.message);
+            notify.error(e, "AI Autofill failed");
         } finally {
             setIsAIProcessing(false);
         }
@@ -197,7 +198,7 @@ export const AdminMaintenancePanel = () => {
             setResults(res);
             loadAlbums(); // Refresh list
         } catch (e: any) {
-            alert("Album Autofill failed: " + e.message);
+            notify.error(e, "Album Autofill failed");
         } finally {
             setIsProcessing(false);
         }
@@ -213,7 +214,7 @@ export const AdminMaintenancePanel = () => {
             setResults(res);
             loadAlbums(); // Refresh list
         } catch (e: any) {
-            alert("AI Album Autofill failed: " + e.message);
+            notify.error(e, "AI Album Autofill failed");
         } finally {
             setIsAIProcessing(false);
         }
@@ -224,10 +225,10 @@ export const AdminMaintenancePanel = () => {
         setIsProcessing(true);
         try {
             const res = await API.repairArtistLinks(artistId);
-            alert(`✅ Repair complete!\n\nFixed ${res.tracks} tracks and ${res.albums} albums.`);
+            notify.success(`Repair complete! Fixed ${res.tracks} tracks and ${res.albums} albums.`);
             loadArtists();
         } catch (e: any) {
-            alert(`❌ Repair failed: ${e.message}`);
+            notify.error(e, "Repair failed");
         } finally {
             setIsProcessing(false);
         }
@@ -240,7 +241,7 @@ export const AdminMaintenancePanel = () => {
             const status = await API.getAuditStatus();
             setAuditStatus(status);
         } catch (e: any) {
-            alert("Failed to start audit: " + e.message);
+            notify.error(e, "Failed to start audit");
         }
     };
 
@@ -250,7 +251,7 @@ export const AdminMaintenancePanel = () => {
             const status = await API.getAuditStatus();
             setAuditStatus(status);
         } catch (e: any) {
-            alert("Failed to stop audit: " + e.message);
+            notify.error(e, "Failed to stop audit");
         }
     };
 
@@ -259,9 +260,9 @@ export const AdminMaintenancePanel = () => {
         setIsProcessing(true);
         try {
             const res = await API.pruneOrphans();
-            alert(res.message);
+            notify.success(res.message);
         } catch (e: any) {
-            alert("Optimization failed: " + e.message);
+            notify.error(e, "Optimization failed");
         } finally {
             setIsProcessing(false);
         }
@@ -272,9 +273,9 @@ export const AdminMaintenancePanel = () => {
         setIsProcessing(true);
         try {
             const res = await API.syncTagsToFiles();
-            alert(res.message);
+            notify.success(res.message);
         } catch (e: any) {
-            alert("Tag sync failed: " + e.message);
+            notify.error(e, "Tag sync failed");
         } finally {
             setIsProcessing(false);
         }
@@ -285,9 +286,9 @@ export const AdminMaintenancePanel = () => {
         setIsProcessing(true);
         try {
             await API.cleanupNetwork();
-            alert("Network cleanup finished successfully.");
+            notify.success("Network cleanup finished successfully.");
         } catch (e: any) {
-            alert("Cleanup failed: " + e.message);
+            notify.error(e, "Cleanup failed");
         } finally {
             setIsProcessing(false);
         }
@@ -298,9 +299,9 @@ export const AdminMaintenancePanel = () => {
         setIsProcessing(true);
         try {
             await API.triggerRescan();
-            alert("Full library rescan triggered in background.");
+            notify.success("Full library rescan triggered in background.");
         } catch (e: any) {
-            alert("Rescan failed: " + e.message);
+            notify.error(e, "Rescan failed");
         } finally {
             setIsProcessing(false);
         }
@@ -355,20 +356,20 @@ export const AdminMaintenancePanel = () => {
                     <div className="divider divider-horizontal mx-0"></div>
 
                     <button 
-                        className="btn btn-sm btn-outline btn-accent"
+                        className="btn btn-sm btn-outline btn-accent tooltip tooltip-bottom"
                         onClick={handleNetworkCleanup}
                         disabled={isProcessing}
-                        title="Cleanup network site reachability"
+                        data-tip="Cleanup network site reachability"
                     >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
                         Cleanup Network
                     </button>
 
                     <button 
-                        className="btn btn-sm btn-outline btn-error"
+                        className="btn btn-sm btn-outline btn-error tooltip tooltip-bottom"
                         onClick={handleOptimizeDB}
                         disabled={isProcessing}
-                        title="Optimize database and remove orphan records"
+                        data-tip="Optimize database and remove orphan records"
                     >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
                         Optimize DB
@@ -571,10 +572,10 @@ export const AdminMaintenancePanel = () => {
                                 Autofill ({selectedIds.length})
                             </button>
                             <button
-                                className="btn btn-sm btn-outline btn-primary"
+                                className="btn btn-sm btn-outline btn-primary tooltip tooltip-top"
                                 onClick={handleSyncTags}
                                 disabled={isProcessing}
-                                title="Sync to files"
+                                data-tip="Sync to files"
                             >
                                 <Disc size={18} />
                                 Sync
@@ -785,8 +786,8 @@ export const AdminMaintenancePanel = () => {
                                             </button>
                                             {mode === 'artists' && (
                                                 <button 
-                                                    className="btn btn-xs btn-ghost text-primary"
-                                                    title="Repair Artist Links"
+                                                    className="btn btn-xs btn-ghost text-primary tooltip tooltip-left"
+                                                    data-tip="Repair Artist Links"
                                                     onClick={() => handleRepairArtistLinks(item.id)}
                                                     disabled={isProcessing}
                                                 >

@@ -3,6 +3,7 @@ import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { MessageSquare, Trash2, Send } from "lucide-react";
 import { StringUtils } from "../utils/stringUtils";
+import { notify } from "../utils/notify";
 
 interface Comment {
   id: number;
@@ -44,7 +45,7 @@ export const Comments = ({ trackId }: CommentsProps) => {
     e.preventDefault();
     if (!newComment.trim() || !trackId) return;
     if (!isAuthenticated) {
-      alert("Please log in to comment.");
+      notify.warning("Please log in to comment.");
       return;
     }
     setSubmitting(true);
@@ -54,7 +55,7 @@ export const Comments = ({ trackId }: CommentsProps) => {
       loadComments();
     } catch (e) {
       console.error(e);
-      alert("Failed to post comment");
+      notify.error(e, "Failed to post comment");
     } finally {
       setSubmitting(false);
     }
@@ -67,7 +68,7 @@ export const Comments = ({ trackId }: CommentsProps) => {
       setComments(prev => prev.filter(c => c.id !== commentId));
     } catch (e) {
       console.error(e);
-      alert("Failed to delete comment");
+      notify.error(e, "Failed to delete comment");
     }
   };
 
@@ -130,8 +131,9 @@ export const Comments = ({ trackId }: CommentsProps) => {
               </div>
               {canDelete(c) && (
                 <button
-                  className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity self-center"
+                  className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity self-center tooltip tooltip-left"
                   onClick={() => handleDelete(c.id)}
+                  data-tip="Delete Comment"
                 >
                   <Trash2 size={14} />
                 </button>

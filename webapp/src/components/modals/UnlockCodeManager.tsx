@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import API from '../../services/api';
 import { Key, Plus, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import type { UnlockCode } from '../../types';
+import { notify } from '../../utils/notify';
 
 interface UnlockCodeManagerProps {
     releaseId: string | number;
@@ -42,7 +43,7 @@ export const UnlockCodeManager = ({ releaseId, isOpen, onClose }: UnlockCodeMana
             setCount(1);
         } catch (e) {
             console.error(e);
-            alert('Failed to generate codes');
+            notify.error(e, 'Failed to generate codes');
         } finally {
             setGenerating(false);
         }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle, Globe } from 'lucide-react';
 import API from '../../services/api';
 import type { Artist } from '../../types';
+import { notify } from '../../utils/notify';
 
 interface ApNote {
     id: number;
@@ -84,12 +85,12 @@ export const ActivityPubPanel = () => {
         setPeerLoading(true);
         try {
             await API.followRemoteActor(peerUrl);
-            alert(`Follow request sent to ${peerUrl}. If it's a TuneCamp instance, discovery will start automatically.`);
+            notify.success(`Follow request sent to ${peerUrl}. If it's a TuneCamp instance, discovery will start automatically.`);
             setPeerUrl('');
             loadPeers();
         } catch (e: any) {
             console.error(e);
-            alert(`Failed to follow peer: ${e.message}`);
+            notify.error(e, `Failed to follow peer`);
         } finally {
             setPeerLoading(false);
         }
@@ -103,17 +104,17 @@ export const ActivityPubPanel = () => {
             setPeers(prev => prev.filter(p => p.uri !== url));
         } catch (e: any) {
             console.error(e);
-            alert(`Failed to unfollow: ${e.message}`);
+            notify.error(e, `Failed to unfollow`);
         }
     };
 
     const handleSyncPeer = async (url?: string) => {
         try {
             await API.syncPeer(url);
-            alert(url ? `Sync triggered for ${url}` : 'Global sync triggered');
+            notify.success(url ? `Sync triggered for ${url}` : 'Global sync triggered');
         } catch (e: any) {
             console.error(e);
-            alert(`Failed to sync: ${e.message}`);
+            notify.error(e, `Failed to sync`);
         }
     };
 
@@ -139,7 +140,7 @@ export const ActivityPubPanel = () => {
             setNotes(prev => prev.filter(n => n.id !== note.id));
         } catch (e) {
             console.error("Failed to delete note", e);
-            alert("Failed to delete note");
+            notify.error(e, "Failed to delete note");
         } finally {
             setProcessingId(null);
         }
@@ -151,11 +152,11 @@ export const ActivityPubPanel = () => {
         setLoading(true);
         try {
             await API.syncActivityPub();
-            alert('Synchronization started in background. Please wait a few moments and refresh.');
+            notify.success('Synchronization started in background. Please wait a few moments and refresh.');
             if (selectedArtistId) loadNotes(selectedArtistId);
         } catch (e) {
             console.error(e);
-            alert('Failed to start synchronization');
+            notify.error(e, 'Failed to start synchronization');
         } finally {
             setLoading(false);
         }
@@ -182,18 +183,18 @@ export const ActivityPubPanel = () => {
                         ))}
                     </select>
                     <button 
-                        className="btn btn-primary btn-outline gap-2 shadow-sm"
+                        className="btn btn-primary btn-outline gap-2 shadow-sm tooltip tooltip-bottom"
                         onClick={handleSync}
                         disabled={loading}
-                        title="Synchronize with Fediverse"
+                        data-tip="Synchronize with Fediverse"
                     >
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''}/> Sync
                     </button>
                     <button 
-                        className="btn btn-square btn-ghost hover:bg-base-300"
+                        className="btn btn-square btn-ghost hover:bg-base-300 tooltip tooltip-bottom"
                         onClick={() => selectedArtistId && loadNotes(selectedArtistId)}
                         disabled={loading}
-                        title="Refresh list"
+                        data-tip="Refresh list"
                     >
                         <RefreshCw size={20} className={loading && !processingId ? 'animate-spin' : ''}/>
                     </button>
@@ -264,16 +265,16 @@ export const ActivityPubPanel = () => {
                                         </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button 
-                                                className="btn btn-ghost btn-xs btn-square"
+                                                className="btn btn-ghost btn-xs btn-square tooltip tooltip-top"
                                                 onClick={() => handleSyncPeer(peer.uri)}
-                                                title="Sync Peer"
+                                                data-tip="Sync Peer"
                                             >
                                                 <RefreshCw size={14}/>
                                             </button>
                                             <button 
-                                                className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error"
+                                                className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error tooltip tooltip-top"
                                                 onClick={() => handleUnfollowPeer(peer.uri)}
-                                                title="Unfollow Peer"
+                                                data-tip="Unfollow Peer"
                                             >
                                                 <Trash2 size={14}/>
                                             </button>

@@ -9,6 +9,7 @@ import API from '../../services/api';
 import { useAuthStore } from '../../stores/useAuthStore';
 import type { Artist, Post } from '../../types';
 import { renderMarkdown } from '../../utils/markdown';
+import { notify } from '../../utils/notify';
 import { CreatePostModal } from '../modals/CreatePostModal';
 
 interface ApNote {
@@ -110,11 +111,11 @@ export const ArtistFediversePanel = () => {
         setLoading(true);
         try {
             await API.syncArtistActivityPub(effectiveArtistId);
-            alert('Synchronization complete.');
+            notify.success('Synchronization complete.');
             loadData(effectiveArtistId);
         } catch (e: any) {
             console.error(e);
-            alert('Failed to synchronize: ' + e.message);
+            notify.error(e, 'Failed to synchronize');
         } finally {
             setLoading(false);
         }
@@ -174,7 +175,7 @@ export const ArtistFediversePanel = () => {
             setNotes(prev => prev.filter(n => n.id !== note.id));
         } catch (e) {
             console.error("Failed to delete note", e);
-            alert("Failed to delete note");
+            notify.error(e, "Failed to delete note");
         } finally {
             setProcessingId(null);
         }
@@ -208,7 +209,7 @@ export const ArtistFediversePanel = () => {
             await loadData(effectiveArtistId);
         } catch (e: any) {
             console.error("Failed to create post", e);
-            alert("Failed to create post: " + e.message);
+            notify.error(e, "Failed to create post");
         } finally {
             setComposerLoading(false);
         }
@@ -252,7 +253,7 @@ export const ArtistFediversePanel = () => {
             // Revert on failure
             setFollowBack(prev => ({ ...prev, [uri]: currentlyFollowing }));
             console.error("Follow-back failed", e);
-            alert("Failed to update follow status: " + (e?.message || e));
+            notify.error(e, "Failed to update follow status");
         } finally {
             setFollowBackLoading(prev => ({ ...prev, [uri]: false }));
         }
@@ -265,7 +266,7 @@ export const ArtistFediversePanel = () => {
             loadData(effectiveArtistId);
         } catch (e: any) {
             console.error(e);
-            alert("Failed to accept follower: " + e.message);
+            notify.error(e, "Failed to accept follower");
         }
     };
 
@@ -276,7 +277,7 @@ export const ArtistFediversePanel = () => {
             loadData(effectiveArtistId);
         } catch (e: any) {
             console.error(e);
-            alert("Failed to reject follower: " + e.message);
+            notify.error(e, "Failed to reject follower");
         }
     };
 
@@ -316,7 +317,7 @@ export const ArtistFediversePanel = () => {
                 : n));
         } catch (e: any) {
             console.error("Failed to post reply", e);
-            alert("Failed to send reply: " + (e?.message || e));
+            notify.error(e, "Failed to send reply");
         } finally {
             setReplySending(prev => ({ ...prev, [noteId]: false }));
         }
@@ -338,7 +339,7 @@ export const ArtistFediversePanel = () => {
                 : n));
         } catch (e: any) {
             console.error("Failed to delete reply", e);
-            alert("Failed to delete reply: " + (e?.message || e));
+            notify.error(e, "Failed to delete reply");
         } finally {
             setDeletingReply(prev => ({ ...prev, [replyUri]: false }));
         }
@@ -432,18 +433,18 @@ export const ArtistFediversePanel = () => {
                 
                 <div className="flex gap-2 w-full sm:w-auto">
                     <button 
-                        className="btn btn-primary btn-outline gap-2 flex-1 sm:flex-initial"
+                        className="btn btn-primary btn-outline gap-2 flex-1 sm:flex-initial tooltip tooltip-bottom"
                         onClick={handleSync}
                         disabled={loading}
-                        title="Synchronize with Fediverse"
+                        data-tip="Synchronize with Fediverse"
                     >
                         <RefreshCw size={18} className={loading ? 'animate-spin' : ''}/> Sync Content
                     </button>
                     <button 
-                        className="btn btn-square btn-ghost"
+                        className="btn btn-square btn-ghost tooltip tooltip-bottom"
                         onClick={() => loadData(effectiveArtistId)}
                         disabled={loading}
-                        title="Refresh list"
+                        data-tip="Refresh list"
                     >
                         <RefreshCw size={18} className={loading && !processingId ? 'animate-spin' : ''}/>
                     </button>
@@ -501,9 +502,9 @@ export const ArtistFediversePanel = () => {
                                 
                                 {/* Federated Handle */}
                                 <div 
-                                    className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-base-300 text-xs text-primary font-mono cursor-pointer hover:bg-primary/10 transition-colors"
+                                    className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-base-300 text-xs text-primary font-mono cursor-pointer hover:bg-primary/10 transition-colors tooltip tooltip-bottom"
                                     onClick={() => handleCopyHandle(fediverseHandle)}
-                                    title="Click to copy handle"
+                                    data-tip="Click to copy handle"
                                 >
                                     <span className="truncate max-w-[200px] sm:max-w-xs">{fediverseHandle}</span>
                                     {copied ? <Check size={12} className="text-success" /> : <Copy size={12} className="opacity-60" />}
@@ -634,10 +635,10 @@ export const ArtistFediversePanel = () => {
                                             </div>
 
                                             <button
-                                                className={`btn btn-xs rounded-full border-none text-xs font-bold ${isFollowingBack ? 'bg-primary/20 text-primary' : 'bg-neutral hover:bg-neutral-focus text-neutral-content'}`}
+                                                className={`btn btn-xs rounded-full border-none text-xs font-bold tooltip tooltip-left ${isFollowingBack ? 'bg-primary/20 text-primary' : 'bg-neutral hover:bg-neutral-focus text-neutral-content'}`}
                                                 onClick={() => handleToggleFollowBack(key)}
                                                 disabled={isFbLoading}
-                                                title={isFollowingBack ? 'Click to unfollow' : 'Send a Follow to this actor'}
+                                                data-tip={isFollowingBack ? 'Click to unfollow' : 'Send a Follow to this actor'}
                                             >
                                                 {isFbLoading
                                                     ? <span className="loading loading-spinner loading-xs" />

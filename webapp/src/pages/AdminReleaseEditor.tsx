@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
 import { useWalletStore } from "../stores/useWalletStore";
+import { notify } from "../utils/notify";
 import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
 import { TrackPickerModal } from "../components/modals/TrackPickerModal";
@@ -295,7 +296,7 @@ export default function AdminReleaseEditor() {
       }
     } catch (e) {
       console.error("Failed to delete release", e);
-      alert("Failed to delete release");
+      notify.error(e, "Failed to delete release");
       setSaving(false);
     }
   };
@@ -359,7 +360,7 @@ export default function AdminReleaseEditor() {
           });
         } catch (e) {
           console.error("Upload failed", e);
-          alert("Some files failed to upload. Please try again.");
+          notify.error(e, "Some files failed to upload. Please try again.");
           // Don't clear filesToUpload so user can retry
           throw e;
         }
@@ -405,7 +406,7 @@ export default function AdminReleaseEditor() {
       }
     } catch (e) {
       console.error("Save failed", e);
-      alert("Failed to save release or upload tracks.");
+      notify.error(e, "Failed to save release or upload tracks.");
     } finally {
       setSaving(false);
       setUploadingFileIndex(null);
@@ -459,7 +460,7 @@ export default function AdminReleaseEditor() {
 
   const handleRegisterTrack = async (idx: number) => {
     if (!activeSigner || !isReady) {
-      alert("Wallet not connected.");
+      notify.warning("Wallet not connected.");
       return;
     }
     
@@ -493,10 +494,10 @@ export default function AdminReleaseEditor() {
       updatedTracks[idx].isRegistering = false;
       setTracks(updatedTracks);
       
-      alert(`Track "${track.title}" registered successfully.`);
+      notify.success(`Track "${track.title}" registered successfully.`);
     } catch (e: any) {
       console.error(e);
-      alert(`Registration failed: ${e.message}`);
+      notify.error(e, "Registration failed");
       const updatedTracks = [...tracks];
       updatedTracks[idx].isRegistering = false;
       setTracks(updatedTracks);
@@ -505,11 +506,11 @@ export default function AdminReleaseEditor() {
 
   const handleSyncPrices = async () => {
     if (!activeSigner || !isReady) {
-      alert("Wallet not connected.");
+      notify.warning("Wallet not connected.");
       return;
     }
     if (isNew) {
-      alert("Please save the release first.");
+      notify.warning("Please save the release first.");
       return;
     }
 
@@ -556,11 +557,11 @@ export default function AdminReleaseEditor() {
       await tx.wait();
       
       setSyncMessage("");
-      alert(`Synchronized ${pricingData.length} track price(s) to the blockchain.`);
+      notify.success(`Synchronized ${pricingData.length} track price(s) to the blockchain.`);
     } catch (e: any) {
       console.error(e);
       setSyncMessage("");
-      alert(`Sync failed: ${e.message}`);
+      notify.error(e, "Sync failed");
     } finally {
       setIsSyncingPrices(false);
     }
@@ -595,8 +596,8 @@ export default function AdminReleaseEditor() {
         <div className="flex-1 gap-2 lg:gap-4 overflow-hidden">
           <button
             onClick={() => navigate("/admin")}
-            className="btn btn-ghost btn-circle lg:btn-sm lg:btn-ghost"
-            title="Back"
+            className="btn btn-ghost btn-circle lg:btn-sm lg:btn-ghost tooltip tooltip-bottom"
+            data-tip="Back"
           >
             <span className="lg:hidden">&larr;</span>
             <span className="hidden lg:inline">&larr; Back</span>
@@ -1219,8 +1220,8 @@ export default function AdminReleaseEditor() {
                                             if (data.lyrics) {
                                               const newTracks = [...tracks];
                                               newTracks[idx].lyrics = data.lyrics; newTracks[idx].isDirty = true; setTracks(newTracks);
-                                            } else alert("No lyrics found in metadata.");
-                                          } catch (e) { alert("Fetch failed"); }
+                                            } else notify.warning("No lyrics found in metadata.");
+                                          } catch (e) { notify.error(e, "Fetch failed"); }
                                       }}
                                     >Fill from Metadata</button>
                                   </div>

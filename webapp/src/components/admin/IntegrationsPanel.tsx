@@ -18,6 +18,7 @@ import {
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
+import { notify } from "../../utils/notify";
 import clsx from "clsx";
 import type { SiteSettings } from "../../types";
 
@@ -78,7 +79,7 @@ export const IntegrationsPanel = () => {
         ));
     } catch (e: any) {
         console.error("Failed to toggle plugin:", e);
-        alert("Action failed: " + e.message);
+        notify.error(e, "Action failed");
     } finally {
         setIsProcessing(null);
     }
@@ -91,11 +92,11 @@ export const IntegrationsPanel = () => {
     setIsProcessing('youtube');
     try {
         const res = await API.uploadYouTubeCookies(file);
-        alert(res.message);
+        notify.success(res.message);
         fetchStatus();
     } catch (e: any) {
         console.error("Upload failed:", e);
-        alert("Upload failed: " + e.message);
+        notify.error(e, "Upload failed");
     } finally {
         setIsProcessing(null);
     }
@@ -112,7 +113,7 @@ export const IntegrationsPanel = () => {
         // Other auth logic if any
     } catch (e: any) {
         console.error("Auth failed:", e);
-        alert("Auth failed: " + e.message);
+        notify.error(e, "Auth failed");
     } finally {
         setIsProcessing(null);
     }
@@ -123,11 +124,11 @@ export const IntegrationsPanel = () => {
     setIsSaving(true);
     try {
       await API.updateSettings(settings);
-      alert("API settings saved successfully.");
+      notify.success("API settings saved successfully.");
       await loadData();
     } catch (e: any) {
       console.error(e);
-      alert("Failed to save settings: " + e.message);
+      notify.error(e, "Failed to save settings");
     } finally {
       setIsSaving(false);
     }
@@ -465,9 +466,9 @@ export const IntegrationsPanel = () => {
                         </span>
                         {service.hasConfig && isRootAdmin && (
                           <button 
-                            className="btn btn-xs btn-ghost btn-circle"
+                            className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
                             onClick={() => setExpandedConfig(expandedConfig === service.id ? null : service.id)}
-                            title="Configure APIs"
+                            data-tip="Configure APIs"
                           >
                             <Settings size={14} className={expandedConfig === service.id ? "text-primary" : ""} />
                           </button>

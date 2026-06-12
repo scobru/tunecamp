@@ -11,6 +11,7 @@ import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { useWalletStore } from "../stores/useWalletStore";
 
 import { formatDuration } from "../utils/format";
+import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
 
@@ -138,7 +139,7 @@ const AlbumDetails = () => {
       navigator.share({ title: album.title, url }).catch(console.error);
     } else {
       navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      notify.success("Link copied to clipboard!");
     }
   };
 
@@ -148,7 +149,7 @@ const AlbumDetails = () => {
       navigator.share({ title: track.title, url }).catch(console.error);
     } else {
       navigator.clipboard.writeText(url);
-      alert("Link copied to clipboard!");
+      notify.success("Link copied to clipboard!");
     }
   };
 
@@ -175,16 +176,16 @@ const AlbumDetails = () => {
             .filter(Boolean);
             
           if (filePaths.length === 0) {
-              alert("No local files found for this album.");
+              notify.error("No local files found for this album.");
               return;
           }
 
           const res = await API.seedTorrent(filePaths, album.title);
           setSeedingMagnet(res.magnetUri);
-          alert("Torrent seeding started!");
+          notify.success("Torrent seeding started!");
       } catch (err: any) {
           console.error("Seeding failed:", err);
-          alert(`Failed to start seeding: ${err.message}`);
+          notify.error(err, "Failed to start seeding");
       } finally {
           setIsSeeding(false);
       }
@@ -322,7 +323,7 @@ const AlbumDetails = () => {
                       className="btn btn-xs btn-primary" 
                       onClick={() => {
                         navigator.clipboard.writeText(seedingMagnet);
-                        alert("Magnet link copied!");
+                        notify.success("Magnet link copied!");
                       }}
                     >Copy</button>
                  </div>
@@ -338,9 +339,9 @@ const AlbumDetails = () => {
               </button>
 
               <button
-                className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all", isAlbumLiked && "text-primary")}
+                className={clsx("btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all tooltip tooltip-top", isAlbumLiked && "text-primary")}
                 onClick={handleLikeAlbum}
-                title={isAlbumLiked ? "Unstar Album" : "Star Album"}
+                data-tip={isAlbumLiked ? "Unstar Album" : "Star Album"}
               >
                 <Heart size={24} fill={isAlbumLiked ? "currentColor" : "none"} />
               </button>

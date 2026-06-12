@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Upload, AlertTriangle, FileAudio, Cloud } from 'lucide-react';
 import API from '../../services/api';
+import { notify } from '../../utils/notify';
 
 export const BackupPanel = () => {
     const [uploading, setUploading] = useState(false);
@@ -35,15 +36,15 @@ export const BackupPanel = () => {
 
         try {
             await API.uploadBackup(file, (percent) => setUploadProgress(percent));
-            alert("Restore started successfully! The server will restart automatically. The page will reload in a few seconds.");
+            notify.success("Restore started successfully! The server will restart automatically. The page will reload in a few seconds.");
             setTimeout(() => window.location.reload(), 5000);
         } catch (error: any) {
             console.error(error);
             const msg = error.message || 'Unknown error';
             if (msg.includes('timeout') || msg.includes('504') || msg.includes('502') || msg.includes('Network Error')) {
-                alert(`Restore may still be running on the server.\n\nThe connection timed out (possibly due to reverse proxy settings), but the restore process continues in the background.\n\nTry reloading the page in a few minutes.`);
+                notify.warning(`Restore may still be running on the server.\n\nThe connection timed out (possibly due to reverse proxy settings), but the restore process continues in the background.\n\nTry reloading the page in a few minutes.`);
             } else {
-                alert(`Restore failed: ${msg}`);
+                notify.error(error, "Restore failed");
             }
         } finally {
             setUploading(false);
@@ -53,17 +54,17 @@ export const BackupPanel = () => {
 
     const handleGDriveBackup = async () => {
         if (!hasGDrive) {
-            alert("Please connect a Google Drive account in the 'Storage' tab first.");
+            notify.warning("Please connect a Google Drive account in the 'Storage' tab first.");
             return;
         }
 
         setGdriveLoading(true);
         try {
             const res = await API.backupToGDrive();
-            alert(`Backup successful! File "${res.fileName}" saved to your Google Drive.`);
+            notify.success(`Backup successful! File "${res.fileName}" saved to your Google Drive.`);
         } catch (error: any) {
             console.error(error);
-            alert("Google Drive backup failed: " + (error.message || "Unknown error"));
+            notify.error(error, "Google Drive backup failed");
         } finally {
             setGdriveLoading(false);
         }

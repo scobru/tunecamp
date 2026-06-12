@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { formatDuration } from "../utils/format";
+import { notify } from "../utils/notify";
 import type { Playlist } from "../types";
 
 const PlaylistDetails = () => {
@@ -50,10 +51,11 @@ const PlaylistDetails = () => {
       return;
     try {
       await API.deletePlaylist(String(playlist.id));
+      notify.success("Playlist deleted successfully");
       navigate("/playlists");
     } catch (e) {
       console.error(e);
-      alert("Failed to delete playlist");
+      notify.error(e, "Failed to delete playlist");
     }
   };
 
@@ -63,8 +65,10 @@ const PlaylistDetails = () => {
     try {
       await API.removeTrackFromPlaylist(String(playlist.id), trackId);
       loadPlaylist(String(playlist.id));
+      notify.success("Track removed from playlist");
     } catch (e) {
       console.error(e);
+      notify.error(e, "Failed to remove track");
     }
   };
 
@@ -78,9 +82,10 @@ const PlaylistDetails = () => {
     try {
       await API.updatePlaylist(String(playlist.id), { coverPath: url });
       setPlaylist({ ...playlist, coverPath: url });
+      notify.success("Playlist cover updated successfully");
     } catch (e) {
       console.error(e);
-      alert("Failed to update playlist cover");
+      notify.error(e, "Failed to update playlist cover");
     }
   };
 
@@ -106,9 +111,9 @@ const PlaylistDetails = () => {
           {isAdminAuthenticated && !id?.startsWith("genre:") && (
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
               <button
-                className="btn btn-sm btn-circle btn-ghost text-white"
+                className="btn btn-sm btn-circle btn-ghost text-white tooltip tooltip-top"
                 onClick={handleEditCover}
-                title="Edit Cover"
+                data-tip="Edit Cover"
               >
                 <ImageIcon size={20} />
               </button>
@@ -151,8 +156,10 @@ const PlaylistDetails = () => {
                       isPublic: !playlist.isPublic,
                     });
                     loadPlaylist(String(playlist.id));
+                    notify.success(`Playlist is now ${!playlist.isPublic ? "Public" : "Private"}`);
                   } catch (e) {
                     console.error(e);
+                    notify.error(e, "Failed to update playlist visibility");
                   }
                 }}
               >
@@ -229,8 +236,8 @@ const PlaylistDetails = () => {
                     {isAdminAuthenticated && !id?.startsWith("genre:") && (
                       <button
                         onClick={() => handleRemoveTrack(String(track.id))}
-                        className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove Track"
+                        className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity tooltip tooltip-left"
+                        data-tip="Remove Track"
                       >
                         <Trash2 size={16} />
                       </button>

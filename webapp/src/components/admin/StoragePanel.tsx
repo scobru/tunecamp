@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { HardDrive, Cloud, Plus, Trash2, Folder, Music, RefreshCw } from 'lucide-react';
 import API from '../../services/api';
 import type { StorageAccount, GoogleDriveFile } from '../../types';
+import { notify } from '../../utils/notify';
 
 export const StoragePanel = () => {
     const [accounts, setAccounts] = useState<StorageAccount[]>([]);
@@ -52,7 +53,7 @@ export const StoragePanel = () => {
             }
         } catch (e) {
             console.error(e);
-            alert("Failed to get auth URL");
+            notify.error(e, "Failed to get auth URL");
         }
     };
 
@@ -84,10 +85,10 @@ export const StoragePanel = () => {
         setImporting(file.id);
         try {
             await API.importGDriveFile(file.id);
-            alert(`Imported "${file.name}" successfully!`);
+            notify.success(`Imported "${file.name}" successfully!`);
         } catch (e: any) {
             console.error(e);
-            alert("Import failed: " + e.message);
+            notify.error(e, "Import failed");
         } finally {
             setImporting(null);
         }
@@ -99,11 +100,11 @@ export const StoragePanel = () => {
         setImportingAll(true);
         try {
             const res = await API.importGDriveFolderRecursive(currentFolder);
-            alert(res.message || `Successfully imported all files!`);
+            notify.success(res.message || `Successfully imported all files!`);
             loadFiles(currentFolder);
         } catch (e: any) {
             console.error(e);
-            alert("Recursive import failed: " + e.message);
+            notify.error(e, "Recursive import failed");
         } finally {
             setImportingAll(false);
         }
@@ -140,7 +141,11 @@ export const StoragePanel = () => {
                                             <div className="text-xs opacity-50">{acc.provider}</div>
                                         </div>
                                     </div>
-                                    <button className="btn btn-ghost btn-xs text-error" onClick={() => handleDisconnect(acc.id)}>
+                                    <button 
+                                        className="btn btn-ghost btn-xs text-error tooltip tooltip-left" 
+                                        onClick={() => handleDisconnect(acc.id)}
+                                        data-tip="Disconnect Account"
+                                    >
                                         <Trash2 size={14} />
                                     </button>
                                 </div>

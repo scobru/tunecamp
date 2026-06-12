@@ -6,6 +6,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { formatDuration } from '../utils/format';
+import { notify } from '../utils/notify';
 import clsx from 'clsx';
 import type { Track, Album, Artist, Playlist } from '../types';
 
@@ -93,6 +94,7 @@ const Search = () => {
                 const next = new Set(starredTracks);
                 next.delete(trackId);
                 setStarredTracks(next);
+                notify.success("Removed from favorites");
             } else {
                 const metadata = item.isExternal ? {
                     title: item.title,
@@ -106,9 +108,11 @@ const Search = () => {
                 const next = new Set(starredTracks);
                 next.add(trackId);
                 setStarredTracks(next);
+                notify.success("Added to favorites");
             }
         } catch (e) {
             console.error("Error toggling track star:", e);
+            notify.error(e, "Error toggling favorites");
         }
     };
 
@@ -123,11 +127,12 @@ const Search = () => {
                 const next = new Set(starredAlbums);
                 next.delete(id);
                 setStarredAlbums(next);
+                notify.success("Album removed from favorites");
             } else {
                 // RESTRICTION: Only local albums can be starred.
                 // Streaming/External albums must be localized/matched first.
                 if (item.isExternal || id.startsWith('ext:')) {
-                    alert("You can only favorite albums in your library. Please localize or match this content first.");
+                    notify.warning("You can only favorite albums in your library. Please localize or match this content first.");
                     return;
                 }
                 
@@ -135,9 +140,11 @@ const Search = () => {
                 const next = new Set(starredAlbums);
                 next.add(id);
                 setStarredAlbums(next);
+                notify.success("Album added to favorites");
             }
         } catch (e) {
             console.error("Error toggling album star:", e);
+            notify.error(e, "Error toggling album favorites");
         }
     };
 
@@ -152,10 +159,11 @@ const Search = () => {
                 const next = new Set(starredArtists);
                 next.delete(id);
                 setStarredArtists(next);
+                notify.success("Artist removed from favorites");
             } else {
                 // RESTRICTION: Only local artists can be starred.
                 if (item.isExternal || id.startsWith('ext:')) {
-                    alert("You can only favorite artists in your library. Please localize or match this content first.");
+                    notify.warning("You can only favorite artists in your library. Please localize or match this content first.");
                     return;
                 }
                 
@@ -163,9 +171,11 @@ const Search = () => {
                 const next = new Set(starredArtists);
                 next.add(id);
                 setStarredArtists(next);
+                notify.success("Artist added to favorites");
             }
         } catch (e) {
             console.error("Error toggling artist star:", e);
+            notify.error(e, "Error toggling artist favorites");
         }
     };
 
@@ -190,8 +200,10 @@ const Search = () => {
 
             await API.addTrackToPlaylist(playlistId, String(trackId));
             setActivePlaylistMenu(null);
+            notify.success("Track added to playlist");
         } catch (e) {
             console.error("Error adding to playlist:", e);
+            notify.error(e, "Failed to add track to playlist");
         }
     };
 
@@ -257,7 +269,7 @@ const Search = () => {
                                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                      <button 
                                                          className={clsx(
-                                                             "btn btn-circle btn-ghost btn-sm",
+                                                             "btn btn-circle btn-ghost btn-sm tooltip tooltip-top",
                                                              starredArtists.has(String(artist.id)) ? "text-primary opacity-100" : "text-white"
                                                          )}
                                                          onClick={(e) => {
@@ -265,6 +277,7 @@ const Search = () => {
                                                              e.stopPropagation();
                                                              handleToggleStarArtist(artist);
                                                          }}
+                                                         data-tip={starredArtists.has(String(artist.id)) ? "Remove from Favorites" : "Add to Favorites"}
                                                      >
                                                          <Heart size={20} fill={starredArtists.has(String(artist.id)) ? "currentColor" : "none"} />
                                                      </button>
@@ -310,18 +323,19 @@ const Search = () => {
                                                         </div>
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                                             <button 
-                                                                className="btn btn-circle btn-primary btn-sm scale-90 group-hover:scale-100 transition-transform"
+                                                                className="btn btn-circle btn-primary btn-sm scale-90 group-hover:scale-100 transition-transform tooltip tooltip-top"
                                                                 onClick={(e) => {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
                                                                     playTrack({ ...album, albumId: album.id, albumName: album.title } as any);
                                                                 }}
+                                                                data-tip="Play Album"
                                                             >
                                                                 <Play size={16} fill="currentColor" />
                                                             </button>
                                                             <button 
                                                                 className={clsx(
-                                                                    "btn btn-circle btn-ghost btn-sm",
+                                                                    "btn btn-circle btn-ghost btn-sm tooltip tooltip-top",
                                                                     starredAlbums.has(String(album.id)) ? "text-primary opacity-100" : "text-white"
                                                                 )}
                                                                 onClick={(e) => {
@@ -329,6 +343,7 @@ const Search = () => {
                                                                     e.stopPropagation();
                                                                     handleToggleStarAlbum(album);
                                                                 }}
+                                                                data-tip={starredAlbums.has(String(album.id)) ? "Remove from Favorites" : "Add to Favorites"}
                                                             >
                                                                 <Heart size={16} fill={starredAlbums.has(String(album.id)) ? "currentColor" : "none"} />
                                                             </button>
@@ -380,11 +395,11 @@ const Search = () => {
                                             
                                             <button 
                                                 className={clsx(
-                                                    "btn btn-ghost btn-xs transition-colors",
+                                                    "btn btn-ghost btn-xs transition-colors tooltip tooltip-left",
                                                     starredTracks.has(String(track.id)) ? "text-primary opacity-100" : "opacity-0 group-hover:opacity-100"
                                                 )}
                                                 onClick={() => handleToggleStar(track)}
-                                                title="Add to Favourites"
+                                                data-tip={starredTracks.has(String(track.id)) ? "Remove from Favorites" : "Add to Favorites"}
                                             >
                                                 <Heart size={14} fill={starredTracks.has(String(track.id)) ? "currentColor" : "none"} />
                                             </button>

@@ -5,6 +5,7 @@ import { Folder, File, ArrowLeft, Music, Image as ImageIcon, Trash2, MoreHorizon
 import { StringUtils } from '../utils/stringUtils';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { notify } from '../utils/notify';
 import type { Track } from '../types';
 
 const Files = () => {
@@ -90,9 +91,10 @@ const Files = () => {
 
         try {
             await API.renameBrowserPath(item.path, newPath);
+            notify.success(`Renamed successfully to ${newName}`);
             loadData(currentPath);
         } catch (err: any) {
-            alert("Failed to rename: " + err.message);
+            notify.error(err, "Failed to rename");
         }
     };
 
@@ -108,9 +110,10 @@ const Files = () => {
 
         try {
             await API.renameBrowserPath(item.path, newPath);
+            notify.success(`Moved successfully to ${newPath}`);
             loadData(currentPath);
         } catch (err: any) {
-            alert("Failed to move: " + err.message);
+            notify.error(err, "Failed to move");
         }
     };
 
@@ -120,9 +123,10 @@ const Files = () => {
         
         try {
             await API.deleteBrowserPath(item.path);
+            notify.success(`Deleted ${item.name}`);
             loadData(currentPath);
         } catch (err: any) {
-            alert("Failed to delete: " + err.message);
+            notify.error(err, "Failed to delete");
         }
     };
 
@@ -137,7 +141,7 @@ const Files = () => {
     return (
         <div className="space-y-6 animate-fade-in">
              <div className="flex items-center gap-4">
-                <button className="btn btn-circle btn-ghost" onClick={goUp} disabled={currentPath === '/' || currentPath === ''}>
+                <button className="btn btn-circle btn-ghost tooltip tooltip-right" onClick={goUp} disabled={currentPath === '/' || currentPath === ''} data-tip="Go up">
                     <ArrowLeft size={20}/>
                 </button>
                 <div className="text-xl font-mono opacity-70 breadcrumbs">
