@@ -1,37 +1,43 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Link } from "react-router-dom";
-import { ListMusic, Globe, Lock, Music, LayoutGrid, List, AlignJustify } from "lucide-react";
-import type { Playlist } from "../types";
+import { Link, useSearchParams } from "react-router-dom";
+import { ListMusic, Globe, Lock, Music, LayoutGrid, List, AlignJustify, Plus, Heart } from "lucide-react";
+import type { Playlist, UserPlaylist } from "../types";
 import { PageHeader } from "../components/ui/PageHeader";
+import { useAuthStore } from "../stores/useAuthStore";
+import { CreateUserPlaylistModal } from "../components/modals/CreateUserPlaylistModal";
 import clsx from "clsx";
 
-// Extended interface to handle both types
-interface UnifiedPlaylist extends Playlist {
-  isUserPlaylist?: boolean;
-}
+type Tab = "mine" | "public";
+
+const isGenreMix = (p: Playlist) =>
+  p.username === "system" || String(p.id).startsWith("genre:");
 
 const Playlists = () => {
-  const [playlists, setPlaylists] = useState<UnifiedPlaylist[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { isAuthenticated, user } = useAuthStore();
+
+  const tab: Tab = searchParams.get("tab") === "public" ? "public" : "mine";
+  const setTab = (t: Tab) => setSearchParams(t === "mine" ? {} : { tab: t }, { replace: true });
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     loadPlaylists();
     window.addEventListener("refresh-playlists", loadPlaylists);
     return () => window.removeEventListener("refresh-playlists", loadPlaylists);
-  }, []);
+  }, [isAuthenticated]);
 
   const loadPlaylists = async () => {
     setLoading(true);
     try {
-      const apiData = await API.getPlaylists().catch(() => []);
-      const normalized = apiData.filter(p => p.isPublic).map(p => ({
-        ...p,
-        isUserPlaylist: false,
-        createdAt: new Date((p as any).createdAt || (p as any).created_at || 0).getTime()
-      }));
-      setPlaylists(normalized.sort((a, b) => (b as any).createdAt - (a as any).createdAt) as any);
+      const data = await API.getPlaylists();
+      setPlaylists(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -39,56 +45,150 @@ const Playlists = () => {
     }
   };
 
+  const handleCreated = (newPlaylist: Playlist | UserPlaylist) => {
+    setPlaylists((prev) => {
+      if (prev.some((p) => p.id === newPlaylist.id)) return prev;
+      return [newPlaylist as Playlist, ...prev];
+    });
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 animate-fade-in p-6">
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 mb-6">
+          <Heart size={64} className="text-pink-400" />
+        </div>
+        <h1 className="text-3xl font-black mb-3">Playlists</h1>
+        <p className="opacity-60 text-lg mb-6 text-center max-w-md">
+          Login with your community account to create your own playlists and
+          discover the public ones on this instance.
+        </p>
+        <button
+          className="btn btn-primary gap-2"
+          onClick={() =>
+            document.dispatchEvent(new CustomEvent("open-auth-modal"))
+          }
+        >
+          Login to Get Started
+        </button>
+      </div>
+    );
+  }
+
+  const minePlaylists = playlists.filter(
+    (p) => !isGenreMix(p) && p.username === user?.username,
+  );
+  const publicPlaylists = playlists.filter((p) => p.isPublic);
+  const visible = tab === "mine" ? minePlaylists : publicPlaylists;
+
   return (
     <div className="space-y-8 animate-fade-in">
-      <PageHeader 
-        title="Playlists" 
-        subtitle={`${playlists.length} public playlists on the network`}
+      <PageHeader
+        title="Playlists"
+        subtitle={
+          tab === "mine"
+            ? `${minePlaylists.length} personal playlists`
+            : `${publicPlaylists.length} public playlists on the network`
+        }
         icon={ListMusic}
         iconColor="text-secondary"
       >
-        <div className="join bg-base-200">
-          <button
-            className={clsx("btn btn-sm join-item", viewMode === 'grid' && "btn-active")}
-            onClick={() => setViewMode('grid')}
-            title="Grid View"
-          >
-            <LayoutGrid size={16} />
-          </button>
-          <button
-            className={clsx("btn btn-sm join-item", viewMode === 'list' && "btn-active")}
-            onClick={() => setViewMode('list')}
-            title="List View"
-          >
-            <List size={16} />
-          </button>
-          <button
-            className={clsx("btn btn-sm join-item", viewMode === 'minimal' && "btn-active")}
-            onClick={() => setViewMode('minimal')}
-            title="Minimal View"
-          >
-            <AlignJustify size={16} />
-          </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="join bg-base-200 w-full sm:w-auto justify-center">
+            <button
+              className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'grid' && "btn-active")}
+              onClick={() => setViewMode('grid')}
+              title="Grid View"
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'list' && "btn-active")}
+              onClick={() => setViewMode('list')}
+              title="List View"
+            >
+              <List size={16} />
+            </button>
+            <button
+              className={clsx("btn btn-sm join-item flex-1 sm:flex-initial", viewMode === 'minimal' && "btn-active")}
+              onClick={() => setViewMode('minimal')}
+              title="Minimal View"
+            >
+              <AlignJustify size={16} />
+            </button>
+          </div>
+          {tab === "mine" && (
+            <button
+              className="btn btn-primary btn-sm h-10 w-full sm:w-auto gap-2"
+              onClick={() =>
+                document.dispatchEvent(
+                  new CustomEvent("open-create-user-playlist-modal"),
+                )
+              }
+            >
+              <Plus size={20} /> New Playlist
+            </button>
+          )}
         </div>
       </PageHeader>
 
+      <div role="tablist" className="tabs tabs-boxed bg-base-200 w-fit">
+        <button
+          role="tab"
+          className={clsx("tab gap-2", tab === "mine" && "tab-active")}
+          onClick={() => setTab("mine")}
+        >
+          <Heart size={14} /> My Playlists
+        </button>
+        <button
+          role="tab"
+          className={clsx("tab gap-2", tab === "public" && "tab-active")}
+          onClick={() => setTab("public")}
+        >
+          <Globe size={14} /> Public
+        </button>
+      </div>
+
       {loading ? (
         <div className="text-center opacity-50 py-12">Loading playlists...</div>
-      ) : playlists.length === 0 ? (
-        <div className="text-center opacity-50 py-12 border-2 border-dashed border-base-content/5 rounded-2xl">
+      ) : visible.length === 0 ? (
+        <div className="text-center opacity-50 py-16 border-2 border-dashed border-base-content/5 rounded-2xl">
           <ListMusic size={48} className="mx-auto mb-4 opacity-50" />
-          <p className="text-lg">No playlists found.</p>
+          {tab === "mine" ? (
+            <>
+              <p className="text-lg font-bold">No playlists yet</p>
+              <p className="text-sm mt-2 opacity-70">
+                Create your first playlist to start collecting your favorite tracks!
+              </p>
+              <button
+                className="btn btn-primary btn-sm gap-2 mt-6"
+                onClick={() =>
+                  document.dispatchEvent(
+                    new CustomEvent("open-create-user-playlist-modal"),
+                  )
+                }
+              >
+                <Plus size={16} /> Create Playlist
+              </button>
+            </>
+          ) : (
+            <p className="text-lg">No public playlists found.</p>
+          )}
         </div>
       ) : (
         <div className={clsx(
           "grid gap-6",
-          viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : 
-          viewMode === 'list' ? "grid-cols-1 md:grid-cols-2" : 
+          viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" :
+          viewMode === 'list' ? "grid-cols-1 md:grid-cols-2" :
           "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2"
         )}>
-          {playlists.map((p) => (
+          {visible.map((p) => (
             <Link
-              to={p.isUserPlaylist ? `/my-playlists/${p.id}` : `/playlists/${p.id}`}
+              to={
+                tab === "mine" || (!isGenreMix(p) && p.username === user?.username)
+                  ? `/my-playlists/${p.id}`
+                  : `/playlists/${p.id}`
+              }
               key={p.id}
               className={clsx(
                 "group transition-all duration-300 shadow-level-1 border border-base-content/5 overflow-hidden",
@@ -175,9 +275,10 @@ const Playlists = () => {
           ))}
         </div>
       )}
+
+      <CreateUserPlaylistModal onCreated={handleCreated} />
     </div>
   );
 };
 
 export default Playlists;
-

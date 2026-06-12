@@ -53,8 +53,8 @@ const Library = () => {
     return (
         <div className="space-y-6 animate-fade-in">
              <PageHeader 
-                title="Library" 
-                subtitle={`${albums.length} albums in your library`}
+                title="Archive"
+                subtitle={`${albums.length} albums in the private archive`}
                 icon={LibraryIcon}
                 iconColor="text-primary"
              >
