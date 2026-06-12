@@ -283,11 +283,20 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
               <td className="font-bold">
                 <div className="flex items-center gap-2">
                   {t.title}
-                  {t.service && t.service !== "local" && (
-                    <span className="badge badge-secondary badge-xs gap-1 opacity-70">
-                      <LinkIcon size={10} /> {t.service}
-                    </span>
-                  )}
+                  {t.service && t.service !== "local" && (() => {
+                    const isBoard = t.description?.includes("Board") || t.external_id?.startsWith("ext:link:");
+                    const badgeText = isBoard 
+                      ? (t.service === "gdrive" ? "board-gdrive" : t.service === "dropbox" ? "board-dropbox" : `board-${t.service}`)
+                      : t.service;
+                    const badgeClass = isBoard 
+                      ? "badge badge-outline badge-neutral badge-xs gap-1 opacity-70" 
+                      : "badge badge-secondary badge-xs gap-1 opacity-70";
+                    return (
+                      <span className={badgeClass}>
+                        <LinkIcon size={10} /> {badgeText}
+                      </span>
+                    );
+                  })()}
                   {t.lossless_path ? (
                     <span className="badge badge-outline badge-xs opacity-50 font-mono scale-90">
                       {t.lossless_path.toLowerCase().endsWith(".wav")
