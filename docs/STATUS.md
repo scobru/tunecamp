@@ -1,0 +1,25 @@
+# Project Status
+
+An honest snapshot of how production-ready each part of TuneCamp is. Updated 2026-06-12.
+
+**Overall**: young, single-maintainer project. Solid for a self-hosted single artist or small label that can tolerate rough edges; not yet a drop-in replacement for a managed platform. 600+ automated tests, no external security audit.
+
+## By area
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Library, scanning, streaming | **Stable** | Core since the beginning; worker-pool parsing, pre-transcoding of lossless, Subsonic/OpenSubsonic API. |
+| Web player & artist pages | **Stable** | |
+| Stripe payments & unlock codes | **Beta** | Internally reviewed (see [security-review-payments.md](security-review-payments.md)); no external audit. Test with small amounts first. |
+| On-chain payments (Base, NFT) | **Beta / opt-in** | Disabled by default (`web3Enabled`). Trust assumptions documented in the security review. |
+| Federation (ActivityPub + catalog) | **Beta** | Followable from Mastodon/Funkwhale; peer catalogs cached with stale-while-revalidate. Expect interop quirks. |
+| Live streaming (HLS) | **New** | Recently migrated from WebRTC mesh to server-side HLS; lightly battle-tested. |
+| Telegram bot, Google Drive storage | **Beta** | Functional, less test coverage. |
+| Soulseek / BitTorrent / SC-BC stream scraping | **Opt-in, unsupported** | Disabled by default for legal reasons; enable at your own risk. |
+| Backup & restore | **Stable** | UI + CLI tools; see [backup-migration.md](backup-migration.md). Consider Litestream for continuous replication ([scaling.md](scaling.md)). |
+
+## Known limits
+
+- Single process, single SQLite writer — scaling model and ceilings in [scaling.md](scaling.md).
+- No external security audit; payment flows internally reviewed with open findings tracked in [security-review-payments.md](security-review-payments.md).
+- Small community: expect to debug some things yourself and report issues.

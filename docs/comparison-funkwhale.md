@@ -61,7 +61,7 @@ Questo documento analizza in modo onesto e dettagliato le differenze tra **Funkw
 * Desideri un'integrazione immediata ed esclusiva con l'ecosistema Mastodon/Pleroma.
 
 ### Scegli TuneCamp se:
-* Sei un artista indipendente, un produttore o una piccola etichetta che vuole vendere musica direttamente, trattenendo fino al 100% dei ricavi.
+* Sei un artista indipendente, un produttore o una piccola etichetta che vuole vendere musica direttamente, senza fee di piattaforma se self-hosti la tua istanza (restano le fee di Stripe ~2,9% + €0,30 e i costi del VPS — vedi [payments.md § 3.1](payments.md) per il calcolo onesto).
 * Vuoi una soluzione che si configuri in pochi minuti su un piccolo server economico (VPS) senza dover configurare molteplici componenti infrastrutturali (Redis, PostgreSQL, Celery).
 * Vuoi sperimentare la distribuzione basata su blockchain (Base Network) per creare NFT musicali e attivare un modello di fan-ownership.
 * Cerchi flessibilità nella gestione dei file tramite bot Telegram o archiviazione su Google Drive.

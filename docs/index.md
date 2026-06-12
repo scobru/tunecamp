@@ -4,6 +4,7 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 
 ### Panoramica del Progetto
 
+- [**Stato del Progetto**](./STATUS.md): Maturità onesta di ogni area (stable/beta/opt-in) e limiti noti.
 - [**Panoramica Progetto**](./project-overview.md): Obiettivi, stack tecnologico e struttura generale.
 - [**Analisi dell'Albero dei Sorgenti**](./source-tree-analysis.md): Descrizione dettagliata delle directory e dei punti di ingresso.
 
@@ -36,6 +37,8 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Social & Community](./social-features.md): Post, commenti e interazioni fan.
 - [Smart Contracts](./smart-contracts.md): Guida tecnica ai contratti Solidity su Base.
 - [Backup & Migrazione](./backup-migration.md): Come salvaguardare e spostare la tua istanza.
+- [Scaling & Limiti di Concorrenza](./scaling.md): Limiti pratici di SQLite/single-process e come mitigarli.
+- [Security Review Pagamenti](./security-review-payments.md): Finding corretti e aperti del flusso pagamenti.
 - [Federazione](./FEDERATION.md): Dettagli sul protocollo ActivityPub in TuneCamp.
 - [Subsonic](./SUBSONIC.md): Supporto al protocollo Subsonic per client esterni.
 - [Nginx](./NGINX.md): Esempi di configurazione per reverse proxy.

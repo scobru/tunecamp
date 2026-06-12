@@ -48,6 +48,21 @@ TuneCamp implements a universal fee split mechanism that applies to **all paymen
 - **Stripe Payments (Fiat)**: The user pays the full amount via credit card. The platform receives the funds in its Stripe account. The split is then managed via the platform's financial logic (e.g., Stripe Connect payouts or internal accounting), with the artist's share being credited to their balance or paid out periodically.
 - **Direct Verification**: Even for direct txHash verification, the backend checks if the appropriate "Label Fee" has been sent to the treasury before generating an unlock code.
 
+## 3.1 What an artist actually keeps (honest cost breakdown)
+
+TuneCamp's pitch is "no platform middleman fees", not "100% of revenue". Here is where the money actually goes on a €10 sale:
+
+| Cost | Who charges it | Typical amount | Notes |
+|------|----------------|----------------|-------|
+| Instance fee | The TuneCamp instance you publish on | 0–15% | Default split is 85/15. **If you self-host your own instance, this is 0%** — you are the platform. Pro artists on third-party instances keep 100% of the split. |
+| Card processing | Stripe | ~2.9% + €0.30 | Unavoidable for fiat payments anywhere. TuneCamp adds nothing on top. |
+| Network gas | Base (Ethereum L2) | a few cents | Only for on-chain (ETH/USDC/NFT) purchases. Paid by the buyer. |
+| Hosting | Your VPS provider | ~€5–15/month | Fixed cost, independent of sales volume. |
+
+**Example** — €10 album sold via Stripe on your own self-hosted instance: €10 − €0.59 Stripe ≈ **€9.41 to you (~94%)**. The same sale on Bandcamp: 10% revenue share + ~5% payment processing ≈ **€8.50**. The difference compounds with volume, but be honest with yourself about the fixed hosting cost: below roughly €10–20/month in sales, a hosted platform may net you more.
+
+**On-chain payments: near-zero fees, with caveats.** A buyer who already holds USDC on Base pays only gas (cents), and you receive ~100% — the best case of any payment path, beating Stripe's ~94%. Two caveats keep it from being the default recommendation: (1) buyers *without* crypto who use the onramp (MoonPay/Stripe Onramp) pay ~1–4.5% conversion fees plus extra UX friction, often worse than a plain card checkout; (2) you receive USDC/ETH, so cashing out to EUR has its own exchange/withdrawal costs, and holding ETH carries price risk until you convert (USDC largely avoids this). The instance fee split (85/15 default) applies on-chain too — it is enforced by the `TuneCampCheckout` contract itself.
+
 ## 4. Configuration
 
 Required Environment Variables:
