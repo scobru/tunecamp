@@ -1,6 +1,7 @@
 import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import Database from 'better-sqlite3';
 
 // Mock networkUtils for ESM
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
@@ -26,6 +27,7 @@ describe('Stats Routes', () => {
         };
 
         mockDbService = {
+            db: new Database(':memory:'),
             getSetting: jest.fn<any>().mockImplementation((key: string) => {
                 if (key === 'publicUrl') return 'https://localinstance.com';
                 if (key === 'siteName') return 'Local site';
