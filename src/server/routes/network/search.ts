@@ -9,6 +9,7 @@ import { streamingService as defaultStreamingService } from "../../modules/strea
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";
 import type { StreamingService } from "../../modules/streaming/streaming.service.js";
 import { VisibilityGuardian, UserRole, Capability, VisibilityProfile } from "../../common/visibility.js";
+import { requireDownloadProvider } from "../../middleware/provider-gate.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -23,6 +24,10 @@ export function createSearchRoutes(container: ServiceContainer): Router {
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
+
+    // Soulseek is disabled by default (grey-area P2P): all its endpoints
+    // require the plugin to be explicitly enabled by the admin.
+    router.use("/content/soulseek", requireDownloadProvider("soulseek"));
 
     /**
      * GET /api/search/content/soulseek

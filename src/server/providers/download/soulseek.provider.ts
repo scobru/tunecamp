@@ -13,7 +13,7 @@ export class SoulseekDownloadProvider implements DownloadProvider {
     readonly id = "soulseek";
     readonly name = "Soulseek";
     readonly version = "1.0.0";
-    readonly description = "Search and download music via the Soulseek P2P network";
+    readonly description = "Search and download music via the Soulseek P2P network. Disabled by default: enable only for content you own the rights to.";
 
     constructor(private readonly soulseekService: SoulseekService) {}
 

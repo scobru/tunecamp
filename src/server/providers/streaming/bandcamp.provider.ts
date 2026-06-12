@@ -8,7 +8,7 @@ export class BandcampProvider implements StreamingProvider {
     readonly id = "bandcamp";
     readonly name = "Bandcamp";
     readonly version = "1.1.0";
-    readonly description = "Streaming provider using Bandcamp scraping.";
+    readonly description = "Streaming provider using Bandcamp scraping. Disabled by default: scraping is against Bandcamp ToS.";
 
     async isAvailable(): Promise<boolean> {
         return true;

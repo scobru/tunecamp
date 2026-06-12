@@ -102,7 +102,7 @@ export class SoundCloudStreamingProvider implements StreamingProvider {
     readonly id = "soundcloud";
     readonly name = "SoundCloud";
     readonly version = "1.1.0";
-    readonly description = "SoundCloud streaming (progressive MP3 + HLS fallback, no API key needed)";
+    readonly description = "SoundCloud streaming (progressive MP3 + HLS fallback, no API key needed). Disabled by default: bypasses the official player, against SoundCloud ToS.";
 
     async isAvailable(): Promise<boolean> {
         try {

@@ -20,7 +20,7 @@ export class TorrentDownloadProvider implements DownloadProvider {
     readonly id = "torrent";
     readonly name = "BitTorrent";
     readonly version = "1.0.0";
-    readonly description = "Download music via BitTorrent magnet links (WebTorrent)";
+    readonly description = "Download music via BitTorrent magnet links (WebTorrent). Disabled by default: enable only for content you own the rights to.";
 
     constructor(
         private readonly torrentService: TorrentService,

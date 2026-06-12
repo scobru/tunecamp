@@ -25,7 +25,7 @@ export class DownloadService {
      */
     async search(query: string): Promise<DownloadResult[]> {
         const allResults: DownloadResult[][] = await Promise.all(
-            this.registry.getAll().map(async (provider) => {
+            this.registry.getEnabled().map(async (provider) => {
                 try {
                     const available = await provider.isAvailable();
                     if (!available) {
@@ -55,6 +55,9 @@ export class DownloadService {
         const provider = this.registry.get(result.source);
         if (!provider) {
             throw new Error(`[DownloadService] No provider registered for source: "${result.source}"`);
+        }
+        if (!this.registry.isEnabled(result.source)) {
+            throw new Error(`[DownloadService] Provider "${result.source}" is disabled. Enable it under System → Plugins.`);
         }
 
         console.log(`[DownloadService] ⬇️ Downloading via "${provider.name}": ${result.title}`);
@@ -89,9 +92,13 @@ export function getDownloadService(): DownloadService | null {
 
 export function initDownloadService(soulseekService: SoulseekService, torrentService?: TorrentService, defaultOwnerId: number = 1, db?: any): DownloadService {
     _downloadService = new DownloadService();
-    _downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService));
+    // P2P sources are an explicit admin opt-in: legally grey for a
+    // music-selling platform, so they ship disabled until toggled on
+    // (Admin → System → Plugins). syncRegistryWithDatabase below restores
+    // the persisted choice of admins who already opted in.
+    _downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService), false);
     if (torrentService) {
-        _downloadService.getRegistry().register(new TorrentDownloadProvider(torrentService, defaultOwnerId));
+        _downloadService.getRegistry().register(new TorrentDownloadProvider(torrentService, defaultOwnerId), false);
     }
     if (db) {
         syncRegistryWithDatabase(_downloadService.getRegistry(), db).catch(err => console.error("Failed to sync download registry:", err));

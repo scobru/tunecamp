@@ -7,6 +7,7 @@ import { ForbiddenError, BadRequestError } from '../../common/errors.js';
 import { TorrentService } from '../../modules/integrations/torrent.service.js';
 
 import type { ServiceContainer } from "../../core/container.js";
+import { requireDownloadProvider } from "../../middleware/provider-gate.js";
 
 export function createTorrentSearchRouter(container: ServiceContainer): Router {
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
@@ -15,6 +16,10 @@ export function createTorrentSearchRouter(container: ServiceContainer): Router {
     const router = Router();
     router.use(express.json());
     const auth = createAuthMiddleware(authService);
+
+    // BitTorrent is disabled by default (grey-area P2P): all its endpoints
+    // require the plugin to be explicitly enabled by the admin.
+    router.use(requireDownloadProvider("torrent"));
 
     /**
      * GET /api/admin/network/torrents/search

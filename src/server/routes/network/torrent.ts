@@ -4,6 +4,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 
 import type { ServiceContainer } from "../../core/container.js";
+import { requireDownloadProvider } from "../../middleware/provider-gate.js";
 
 export function createTorrentRoutes(container: ServiceContainer): Router {
     const torrentService: ServiceContainer['torrentService'] = (container as any).torrentService || (container as any);
@@ -12,6 +13,10 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(express.json());
+
+    // BitTorrent is disabled by default (grey-area P2P): all its endpoints
+    // require the plugin to be explicitly enabled by the admin.
+    router.use(requireDownloadProvider("torrent"));
 
     /**
      * GET /api/admin/torrents

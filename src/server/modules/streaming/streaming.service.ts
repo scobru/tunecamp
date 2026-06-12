@@ -21,8 +21,12 @@ export class StreamingService {
     private CACHE_TTL_MS = 5 * 60 * 60 * 1000; // 5 hours default
 
     constructor() {
-        this.registry.register(soundcloudStreamingProvider);
-        this.registry.register(bandcampStreamingProvider);
+        // SoundCloud/Bandcamp stream scraping violates their ToS, so these
+        // providers ship disabled and require an explicit admin opt-in
+        // (Admin → System → Plugins). syncRegistryWithDatabase restores the
+        // persisted choice of admins who already opted in.
+        this.registry.register(soundcloudStreamingProvider, false);
+        this.registry.register(bandcampStreamingProvider, false);
     }
 
     /**
