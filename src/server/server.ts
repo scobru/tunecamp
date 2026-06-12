@@ -172,6 +172,34 @@ export async function startServer(config: ServerConfig): Promise<void> {
         taskManager.run('zendb-cleanup', () => zendbService.cleanupRegistry());
     }, 12 * 60 * 60 * 1000);
 
+    // Scheduled off-peak library scan: when the admin sets `scheduledScanHour`
+    // (0-23, server local time), a full scan runs once a day in that hour.
+    // Shares the 'library-rescan' task id with the manual scan, so the two
+    // can never run concurrently. The setting is read each tick: changes from
+    // the admin panel apply without a restart.
+    setInterval(() => {
+        try {
+            const hourSetting = (database.getSetting("scheduledScanHour") || "").trim();
+            if (hourSetting === "") return;
+            if (new Date().getHours() !== Number(hourSetting)) return;
+
+            const lastRun = database.getSetting("scheduledScanLastRun");
+            if (lastRun && Date.now() - new Date(lastRun).getTime() < 20 * 60 * 60 * 1000) return;
+
+            const started = taskManager.run('library-rescan', async () => {
+                console.log(`🌙 [Scheduler] Starting scheduled library scan (hour ${hourSetting})`);
+                const result = await scanner.scanDirectory(config.musicDir, (processed, total) => {
+                    taskManager.updateProgress('library-rescan', processed, total, `Scheduled scan: ${processed}/${total} files`);
+                });
+                console.log(`🌙 [Scheduler] Scheduled scan complete. Processed ${result.successful.length} files.`);
+                return { processed: result.successful.length, failed: result.failed.length };
+            });
+            if (started) database.setSetting("scheduledScanLastRun", new Date().toISOString());
+        } catch (e) {
+            console.error("❌ [Scheduler] Scheduled scan check failed:", e);
+        }
+    }, 15 * 60 * 1000);
+
     app.get("/api/peers", (req, res) => {
         res.status(200).json(Array.from(kprs));
     });
@@ -433,9 +461,12 @@ export async function startServer(config: ServerConfig): Promise<void> {
         server.headersTimeout = 301000;
 
         // Async Background integrations start after the HTTP server is bound!
-        const slskUser = database.getSetting("soulseek_username");
-        const slskPass = database.getSetting("soulseek_password");
-        soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
+        // Soulseek only auto-connects when the admin has opted in via the plugin toggle.
+        if (downloadService.getRegistry().isEnabled("soulseek")) {
+            const slskUser = database.getSetting("soulseek_username");
+            const slskPass = database.getSetting("soulseek_password");
+            soulseekService.connect(slskUser, slskPass).catch(err => console.error("Soulseek initial connection failed:", err));
+        }
         
         telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
 

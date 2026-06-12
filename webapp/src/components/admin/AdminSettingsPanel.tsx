@@ -313,6 +313,23 @@ export const AdminSettingsPanel = () => {
             </label>
             <p className="text-[11px] opacity-40 px-1 mt-1">Show the built-in community message board to logged-in users.</p>
           </div>
+
+          <div className="form-control pt-2 border-t border-base-content/5 mt-4">
+            <label className="label">
+              <span className="label-text font-medium">Scheduled Library Scan</span>
+            </label>
+            <select
+              className="select select-bordered select-sm bg-base-300/50"
+              value={(settings.scheduledScanHour as string) ?? ""}
+              onChange={(e) => setSettings({ ...settings, scheduledScanHour: e.target.value })}
+            >
+              <option value="">Disabled</option>
+              {Array.from({ length: 24 }, (_, h) => (
+                <option key={h} value={String(h)}>{String(h).padStart(2, "0")}:00</option>
+              ))}
+            </select>
+            <p className="text-[11px] opacity-40 px-1 mt-1">Run a full library scan automatically once a day at this hour (server time). Pick an off-peak hour to keep imports away from listener traffic.</p>
+          </div>
         </div>
 
         {/* Federation Settings */}

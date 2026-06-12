@@ -330,7 +330,10 @@ export class LibrarySync {
         }
     }
 
-    return { trackId, success: true, message: "Processed.", action: 'created', queuedConversion: ext === ".wav" };
+    // Queue MP3 pre-transcoding for every lossless source (.wav AND .flac):
+    // file_path already points at the future .mp3, so without this the file
+    // never exists and every stream transcodes on the fly forever.
+    return { trackId, success: true, message: "Processed.", action: 'created', queuedConversion: isLossless };
   }
 
   private normalizePath(filePath: string, musicDir: string): string {

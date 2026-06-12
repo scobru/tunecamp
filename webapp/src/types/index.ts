@@ -229,6 +229,7 @@ export interface SiteSettings {
     telegram_bot_token?: string;
     telegram_allowed_channels?: string;
     chatEnabled?: boolean | string;
+    scheduledScanHour?: string;
     adminFeePercentage?: string | number;
     adminTreasuryAddress?: string;
     soulseek_username?: string;
@@ -252,6 +253,7 @@ export interface LiveSession {
     username: string;
     artistId?: string | number;
     startedAt: string;
+    listenerCount?: number;
 }
 
 export interface Post {

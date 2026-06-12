@@ -32,6 +32,11 @@ export function createDatabase(dbPath: string): DatabaseService {
     db.pragma("journal_mode = WAL");
     db.pragma("busy_timeout = 5000");
     db.pragma("foreign_keys = ON");
+    // WAL + NORMAL is the SQLite-recommended pairing: commits append to the WAL
+    // without an fsync each (the checkpoint still syncs), which makes bulk scans
+    // with thousands of small writes behave like batched transactions. Safe in
+    // WAL mode: a power cut can lose the last commits but cannot corrupt the DB.
+    db.pragma("synchronous = NORMAL");
 
     // Rescue Phase: Recover from interrupted migrations
     const tablesToRescue = ['albums', 'tracks', 'admin', 'artists'];

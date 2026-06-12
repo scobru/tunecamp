@@ -596,6 +596,17 @@ export class Scanner implements ScannerService {
                     // Process Conversion if needed (separate queue, limited concurrency)
                     if (syncResult.queuedConversion && !isGeneric) {
                         this.conversionQueue.add(() => convertWavToMp3(currentFilePath));
+                    } else if (!isGeneric && track.lossless_path && track.file_path) {
+                        // Self-healing for libraries scanned before flac pre-transcoding
+                        // existed: the track row points at an .mp3 that was never
+                        // generated, so every stream transcodes on the fly. Queue it now.
+                        const mp3Path = path.join(musicDir, track.file_path);
+                        if (track.file_path.toLowerCase().endsWith('.mp3') && !(await this.storage.pathExists(mp3Path))) {
+                            const losslessPath = path.join(musicDir, track.lossless_path);
+                            if (await this.storage.pathExists(losslessPath)) {
+                                this.conversionQueue.add(() => convertWavToMp3(losslessPath));
+                            }
+                        }
                     }
                 }
             }

@@ -10,6 +10,7 @@ import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../
 import multer from "multer";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
+import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 
@@ -267,7 +268,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 themeFont, themeBlur, themeOverlayOpacity,
                 communityLink,
                 web3Enabled,
-                chatEnabled
+                chatEnabled,
+                scheduledScanHour
             } = req.body;
             let settingsChanged = false;
 
@@ -277,6 +279,15 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             if (chatEnabled !== undefined) {
                 identity.setSetting("chatEnabled", chatEnabled ? "true" : "false");
+            }
+
+            if (scheduledScanHour !== undefined) {
+                // "" disables; otherwise an hour of day 0-23 (local server time)
+                const hour = String(scheduledScanHour).trim();
+                if (hour !== "" && (!/^\d{1,2}$/.test(hour) || Number(hour) > 23)) {
+                    return res.status(400).json({ error: "scheduledScanHour must be empty or an hour between 0 and 23" });
+                }
+                identity.setSetting("scheduledScanHour", hour);
             }
 
             if (siteName !== undefined) {
@@ -396,8 +407,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 telegramBotService.restart().catch((err: any) => console.error("Failed to restart Telegram bot:", err));
             }
 
-            // Reconnect Soulseek if credentials changed
-            if (soulseek_username !== undefined || soulseek_password !== undefined) {
+            // Reconnect Soulseek if credentials changed (only when the plugin is enabled)
+            if ((soulseek_username !== undefined || soulseek_password !== undefined) && isDownloadProviderEnabled("soulseek")) {
                 const sUsername = soulseek_username !== undefined ? soulseek_username : identity.getSetting("soulseek_username");
                 const sPassword = soulseek_password !== undefined ? soulseek_password : identity.getSetting("soulseek_password");
                 if (sUsername && sPassword) {
