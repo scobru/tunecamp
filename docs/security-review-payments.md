@@ -12,13 +12,13 @@ Scope: `src/server/routes/api/payments.ts` (Stripe checkout, webhook, on-chain v
 | 4 | Medium | `/verify` checked the price against `track.price` only, while the Stripe path also consults per-release overrides (`release_tracks`). A track sold at a higher per-release price could be unlocked on-chain by paying the (lower) track-level price. | `/verify` now resolves the effective price (price, price_usdc, currency) via `getTrackPriceFromRelease` exactly like the Stripe path, and all three verification cases compare against it. |
 | 7 | Low | `successUrl`/`cancelUrl` for Stripe sessions were taken from the client unvalidated — a crafted link could bounce a paying user to an attacker URL after checkout (phishing vector, no funds at risk). | Both URLs must now match the instance origin (`publicUrl` setting or request host) on both session-creation routes. |
 | 8 | Low | `/verify` and `/subscription/verify` are unauthenticated and each call triggers two RPC lookups — a cheap amplification target for RPC-quota exhaustion. | Dedicated rate limiter on both routes: 30 requests / 15 min per IP (global limiter is 1000 / 15 min). |
+| 6 | Low | Session JWT accepted via query string (`?token=`) and request body. Tokens in URLs end up in server logs, proxies and browser history; a leaked download link was a leaked session. | Session tokens are now header-only. Download routes accept a purpose-scoped token (`?dt=`, 5-minute expiry) minted via `POST /api/payments/download-token`; download tokens are rejected on every other authenticated route, so a leaked link expires in minutes and grants nothing beyond downloads. |
 
 ## Open findings (accepted or needing follow-up)
 
 | # | Severity | Finding | Recommendation |
 |---|----------|---------|----------------|
 | 5 | Medium | `purchaseWithUSDC` via the checkout contract is trusted on `trackId` match alone — no amount check server-side. This is sound **only if** the deployed contract enforces its own price mapping; the server cannot tell whether the configured `web3_checkout_address` actually does. | Trust assumption now documented here and in STATUS.md; optionally read the contract's price mapping via RPC and compare. Only the instance admin can set `web3_checkout_address`, so exploiting this requires a malicious or buggy admin-deployed contract. |
-| 6 | Low | JWT accepted via query string (`?token=`) in `getUserIdFromRequest`. Tokens in URLs end up in server logs, proxies and browser history. | Keep for download links if needed, but prefer short-lived single-purpose tokens for URL use. |
 | 9 | Info | Path handling in downloads is safe: `track.file_path` comes from the DB (scanner-controlled), not from the request; asset absolute paths are admin-set. | — |
 | 10 | Info | Stripe webhook signature verification is correctly implemented with the raw body before any JSON parser. | — |
 

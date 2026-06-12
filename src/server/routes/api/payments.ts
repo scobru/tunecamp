@@ -57,21 +57,42 @@ function isAllowedReturnUrl(url: string, req: express.Request, publicUrl?: strin
     }
 }
 
+/** Resolves the user from the session JWT in the Authorization header.
+ *  Session tokens are deliberately NOT accepted via query string or body:
+ *  URLs end up in server logs, proxies and browser history. Purpose-scoped
+ *  download tokens (see getDownloadUserId) are rejected here so a leaked
+ *  download link cannot be replayed against other authenticated routes. */
 function getUserIdFromRequest(req: express.Request, jwtSecret: string): number | null {
-    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-        token = authHeader.split(" ")[1];
-    } else if (req.query && req.query.token) {
-        token = req.query.token as string;
-    } else if (req.body && req.body.token) {
-        token = req.body.token;
-    }
-    
-    if (!token) return null;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
     try {
-        const decoded = jwt.verify(token, jwtSecret) as any;
-        return decoded && typeof decoded.userId === 'number' ? decoded.userId : null;
+        const decoded = jwt.verify(authHeader.split(" ")[1], jwtSecret) as any;
+        if (!decoded || typeof decoded.userId !== 'number') return null;
+        if (decoded.purpose === 'download') return null;
+        return decoded.userId;
+    } catch {
+        return null;
+    }
+}
+
+const DOWNLOAD_TOKEN_TTL = '5m';
+
+/** Resolves the user for download routes: session JWT in the header, or a
+ *  short-lived single-purpose download token in the `dt` query param
+ *  (minted via POST /api/payments/download-token). Only purpose:'download'
+ *  tokens are accepted from the URL, so a leaked link expires in minutes
+ *  and grants nothing beyond downloads. */
+function getDownloadUserId(req: express.Request, jwtSecret: string): number | null {
+    const fromHeader = getUserIdFromRequest(req, jwtSecret);
+    if (fromHeader !== null) return fromHeader;
+
+    const dt = req.query?.dt as string | undefined;
+    if (!dt) return null;
+    try {
+        const decoded = jwt.verify(dt, jwtSecret) as any;
+        if (!decoded || typeof decoded.userId !== 'number') return null;
+        if (decoded.purpose !== 'download') return null;
+        return decoded.userId;
     } catch {
         return null;
     }
@@ -726,6 +747,20 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/payments/download-token
+     * Mints a short-lived, download-only token for use in download URLs.
+     * Requires a session JWT in the Authorization header.
+     */
+    router.post("/download-token", (req, res) => {
+        const userId = getUserIdFromRequest(req, config.jwtSecret);
+        if (userId === null) {
+            return res.status(401).json({ error: "Authentication required" });
+        }
+        const token = jwt.sign({ userId, purpose: 'download' }, config.jwtSecret, { expiresIn: DOWNLOAD_TOKEN_TTL });
+        res.json({ token, expiresIn: 300 });
+    });
+
+    /**
      * GET /api/payments/rate/:currency
      * Get the current conversion rate for a currency (only 'USD' supported for now).
      */
@@ -757,7 +792,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             let isUnlocked = false;
 
             // 1. Check for Active Subscription
-            const userId = getUserIdFromRequest(req, config.jwtSecret);
+            const userId = getDownloadUserId(req, config.jwtSecret);
             if (userId !== null) {
                 const sub = identity.getUserSubscription(userId);
                 if (sub && sub.status === 'active') {
@@ -846,7 +881,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
 
             // Active subscription
             if (!isUnlocked) {
-                const userId = getUserIdFromRequest(req, config.jwtSecret);
+                const userId = getDownloadUserId(req, config.jwtSecret);
                 if (userId !== null) {
                     const sub = identity.getUserSubscription(userId);
                     if (sub && sub.status === 'active' && (!sub.expiresAt || new Date(sub.expiresAt) > new Date())) {

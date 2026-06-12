@@ -7,10 +7,11 @@ Lavori completati: vedi [DONE.md](DONE.md).
 
 ## Follow-up dalla security review pagamenti
 
-Restano aperti in `docs/security-review-payments.md` (tutti gli altri finding sono corretti):
+Resta aperto in `docs/security-review-payments.md` (tutti gli altri finding sono corretti):
 
 - **#5 (Medium, accettato e documentato)**: verifica opzionale via RPC del price mapping del contratto checkout per `purchaseWithUSDC` — richiede contratto admin malevolo per essere sfruttato.
-- **#6 (Low)**: sostituire il JWT in query string con token monouso a vita breve per i link di download.
+
+Pattern analogo fuori scope pagamenti (da valutare): `?token=` con JWT di sessione è usato anche da `/api/tracks/:id/download`, dai link di backup admin e dallo stream chat — candidati alla stessa migrazione a token `dt`.
 
 ## Deciso di NON fare
 

@@ -18,10 +18,26 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export const AssetViewerModal = ({ asset, onClose }: { asset: Asset | null; onClose: () => void }) => {
-    if (!asset) return null;
+    // Download URLs are async now: they carry a short-lived download token
+    const [inlineUrl, setInlineUrl] = useState<string | null>(null);
+    const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
-    const inlineUrl = API.getAssetDownloadUrl(asset.id, true);
-    
+    useEffect(() => {
+        if (!asset) return;
+        let cancelled = false;
+        Promise.all([
+            API.getAssetDownloadUrl(asset.id, true),
+            API.getAssetDownloadUrl(asset.id, false)
+        ]).then(([inline, download]) => {
+            if (cancelled) return;
+            setInlineUrl(inline);
+            setDownloadUrl(download);
+        });
+        return () => { cancelled = true; };
+    }, [asset?.id]);
+
+    if (!asset || !inlineUrl || !downloadUrl) return null;
+
     // Check type / file extension
     const isVideo = asset.type === 'video' || asset.mime_type?.startsWith('video/') || asset.file_path?.endsWith('.mp4') || asset.file_path?.endsWith('.webm') || asset.file_path?.endsWith('.mov');
     const isPdf = asset.mime_type === 'application/pdf' || asset.file_path?.endsWith('.pdf');
@@ -51,7 +67,7 @@ export const AssetViewerModal = ({ asset, onClose }: { asset: Asset | null; onCl
                             <FileText size={48} className="mx-auto opacity-30" />
                             <p className="text-sm opacity-60 font-medium">This file type ({asset.mime_type || 'digital'}) cannot be previewed directly in the browser.</p>
                             <a 
-                                href={API.getAssetDownloadUrl(asset.id, false)} 
+                                href={downloadUrl} 
                                 className="btn btn-primary rounded-full gap-2"
                                 download
                             >
@@ -69,7 +85,7 @@ export const AssetViewerModal = ({ asset, onClose }: { asset: Asset | null; onCl
                         <button className="btn btn-sm btn-ghost rounded-full" onClick={onClose}>Close</button>
                         {(isVideo || isPdf || isImage) && (
                             <a 
-                                href={API.getAssetDownloadUrl(asset.id, false)} 
+                                href={downloadUrl} 
                                 className="btn btn-sm btn-success rounded-full gap-1"
                                 download
                             >
@@ -102,7 +118,7 @@ export const AssetCard = ({ asset, hasSubscription, onBuy, onPreview }: { asset:
 
     const handleAction = () => {
         if (isUnlocked || isFree) {
-            window.open(API.getAssetDownloadUrl(asset.id, false), '_blank');
+            API.getAssetDownloadUrl(asset.id, false).then(url => window.open(url, '_blank'));
         } else {
             onBuy(asset);
         }

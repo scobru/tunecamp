@@ -66,6 +66,16 @@ Deviazione richiesta dal piano originale: 5 interventi sui limiti documentati in
 - `docs/comparison-funkwhale.md`: "trattenendo fino al 100% dei ricavi" → "senza fee di piattaforma se self-hosti" con link al calcolo.
 - Verificati e lasciati invariati: `website/index.html` ("without platform middleman fees" — già onesto), `README.md` (split 85/15 dichiarato esplicitamente), `About.tsx` ("without intermediaries" riferito a dati/piattaforma, non ai ricavi).
 
+## Finding #6 — token di download monouso — completato (12 giugno 2026)
+
+Il JWT di sessione non è più accettato via query string o body su nessuna route payments: un link trapelato non è più una sessione trapelata.
+
+- **Server** (`payments.ts`): nuovo `POST /api/payments/download-token` (auth header-only) che conia un JWT `purpose:'download'` con scadenza 5 minuti; le route di download accettano `?dt=` solo con quel purpose; i token download sono rifiutati su tutte le altre route autenticate (un link trapelato scade in minuti e non dà accesso oltre i download).
+- **Webapp**: `getAssetDownloadUrl` ora asincrona con mint e cache del token (riuso fino a 30s dalla scadenza); `Store.tsx` refactorato (URL in stato via useEffect, click handler async).
+- **Residuo fuori scope** (in roadmap): lo stesso pattern `?token=` esiste su `/api/tracks/:id/download`, link backup admin e stream chat.
+
+**Test**: 2 nuovi (token sessione in query ignorato; mint + uso `dt` + rifiuto del token download come sessione); suite completa 611 verdi, build Vite ok.
+
 ## Follow-up security review pagamenti — completato (12 giugno 2026)
 
 Corretti in `payments.ts` i finding aperti #3, #4, #7, #8 della review:

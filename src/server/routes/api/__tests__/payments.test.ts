@@ -382,6 +382,45 @@ describe('Payments Routes', () => {
             expect(recordedHashes).toContain('0xfee');
         });
 
+        test('session tokens are no longer accepted via query string on downloads', async () => {
+            const jwt = (await import('jsonwebtoken')).default;
+            const sessionToken = jwt.sign({ userId: 42 }, 'test-jwt-secret');
+            mockDatabase.getUserSubscription.mockReturnValue({ status: 'active', expiresAt: null });
+            mockDatabase.getTrack.mockReturnValue({ id: 5, file_path: 'a.mp3' });
+
+            const res = await request(app)
+                .get(`/api/payments/download/5?token=${sessionToken}`);
+
+            // Without ?code and with the query session token ignored → 400
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/Unlock code required/);
+        });
+
+        test('mints a download token and accepts it via dt query param', async () => {
+            const jwt = (await import('jsonwebtoken')).default;
+            const sessionToken = jwt.sign({ userId: 42 }, 'test-jwt-secret');
+            mockDatabase.getUserSubscription.mockReturnValue({ status: 'active', expiresAt: null });
+            mockDatabase.getTrack.mockReturnValue({ id: 5, file_path: 'a.mp3' });
+            (fs.pathExists as any).mockResolvedValue(true);
+            (fs.createReadStream as any).mockReturnValue({ pipe: (res: any) => res.end('data') });
+
+            const mint = await request(app)
+                .post('/api/payments/download-token')
+                .set('Authorization', `Bearer ${sessionToken}`);
+            expect(mint.status).toBe(200);
+            expect(mint.body.token).toBeTruthy();
+
+            const dl = await request(app)
+                .get(`/api/payments/download/5?dt=${mint.body.token}`);
+            expect(dl.status).toBe(200);
+
+            // A download token must not work as a session token
+            const reuse = await request(app)
+                .post('/api/payments/download-token')
+                .set('Authorization', `Bearer ${mint.body.token}`);
+            expect(reuse.status).toBe(401);
+        });
+
         test('rejects external Stripe return URLs', async () => {
             const res = await request(app)
                 .post('/api/payments/stripe/create-session')

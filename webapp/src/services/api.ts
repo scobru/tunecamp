@@ -56,6 +56,8 @@ const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<T> => {
     }
 };
 
+let downloadTokenCache: { token: string, expiresAt: number } | null = null;
+
 const API = {
     getToken: () => localStorage.getItem('tunecamp_token'),
     setToken: (token: string | null) => {
@@ -218,14 +220,32 @@ const API = {
     updateAsset: (id: number, formData: FormData) => handleResponse(api.put(`admin/assets/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
     uploadAssetCover: (id: number, formData: FormData) => handleResponse(api.post(`admin/assets/${id}/cover`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
     deleteAsset: (id: number) => handleResponse(api.delete(`admin/assets/${id}`)),
-    getAssetDownloadUrl: (id: string | number, inline = false) => {
+    /**
+     * Returns the asset download URL with a short-lived download-only token
+     * (`dt`) instead of the session JWT: leaked URLs expire in minutes and
+     * grant nothing beyond downloads. The token is cached until shortly
+     * before expiry. Anonymous users get a bare URL (free assets only).
+     */
+    getAssetDownloadUrl: async (id: string | number, inline = false) => {
         const url = `/api/payments/download/asset/${id}`;
-        const token = localStorage.getItem('tunecamp_token');
         const params = new URLSearchParams();
-        if (token) params.set('token', token);
+        const dt = await API.getDownloadToken();
+        if (dt) params.set('dt', dt);
         if (inline) params.set('inline', 'true');
         const queryString = params.toString();
         return queryString ? `${url}?${queryString}` : url;
+    },
+    getDownloadToken: async (): Promise<string | null> => {
+        if (!API.getToken()) return null;
+        const cached = downloadTokenCache;
+        if (cached && cached.expiresAt - Date.now() > 30_000) return cached.token;
+        try {
+            const data = await handleResponse(api.post<{ token: string, expiresIn: number }>('payments/download-token'));
+            downloadTokenCache = { token: data.token, expiresAt: Date.now() + data.expiresIn * 1000 };
+            return data.token;
+        } catch {
+            return null;
+        }
     },
 
     // --- Subscription ---
