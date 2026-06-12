@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import type { Database as DatabaseType } from "better-sqlite3";
+import path from "path";
 import { TrackRepository } from "../repositories/track.repository.js";
 import { AlbumRepository } from "../repositories/album.repository.js";
 import { ArtistRepository } from "../repositories/artist.repository.js";
@@ -981,6 +982,46 @@ export function createDatabase(dbPath: string): DatabaseService {
         }
         return matrix[b.length][a.length];
     });
+
+    // Clean up any files that were incorrectly imported as tracks (e.g. artworks/avatars)
+    try {
+        const tracks = db.prepare("SELECT id, file_path FROM tracks WHERE file_path IS NOT NULL").all() as { id: number, file_path: string }[];
+        const toDelete: number[] = [];
+        for (const t of tracks) {
+            const ext = path.extname(t.file_path).toLowerCase();
+            if ([".png", ".jpg", ".jpeg", ".webp", ".gif"].includes(ext)) {
+                const baseName = path.basename(t.file_path, ext).toLowerCase();
+                const normalized = t.file_path.replace(/\\/g, "/").toLowerCase();
+                const isArtwork = 
+                    ["cover", "folder", "artwork", "avatar"].includes(baseName) ||
+                    baseName.startsWith("cover-") || 
+                    baseName.startsWith("avatar-") ||
+                    baseName.startsWith("track-") ||
+                    baseName.startsWith("artwork-") ||
+                    baseName.startsWith("background") ||
+                    baseName.startsWith("site-cover") ||
+                    baseName.startsWith("site-logo") ||
+                    normalized.includes("/artwork/") || 
+                    normalized.includes("/assets/");
+                if (isArtwork) {
+                    toDelete.push(t.id);
+                }
+            }
+        }
+        if (toDelete.length > 0) {
+            console.log(`🧹 [Database Cleanup] Removing ${toDelete.length} incorrectly imported artwork track entries...`);
+            const deleteStmt = db.prepare("DELETE FROM tracks WHERE id = ?");
+            const deleteOwnershipStmt = db.prepare("DELETE FROM track_ownership WHERE track_id = ?");
+            db.transaction(() => {
+                for (const id of toDelete) {
+                    deleteOwnershipStmt.run(id);
+                    deleteStmt.run(id);
+                }
+            })();
+        }
+    } catch (e) {
+        console.error("⚠️ [Database Cleanup] Failed to run artwork tracks cleanup:", e);
+    }
 
     const trackRepository = new TrackRepository(db);
     const albumRepository = new AlbumRepository(db);

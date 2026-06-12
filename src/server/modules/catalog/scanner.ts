@@ -112,6 +112,7 @@ export function isArtworkOrAvatar(filePath: string): boolean {
         baseName.startsWith("cover-") || 
         baseName.startsWith("avatar-") ||
         baseName.startsWith("track-") ||
+        baseName.startsWith("artwork-") ||
         baseName.startsWith("background") ||
         baseName.startsWith("site-cover") ||
         baseName.startsWith("site-logo")
