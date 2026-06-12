@@ -1,6 +1,6 @@
 import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
-import { VisibilityProfile, VisibilityGuardian } from "../../common/visibility.js";
+import { VisibilityProfile, VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
@@ -284,14 +284,24 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Track not found" });
             }
 
-            // SECURITY: Prevent adding private tracks to playlists unless you're the owner or an admin
-            if (!req.isAdmin && track.album_id) {
-                const album = library.getAlbum(track.album_id);
+            // SECURITY: Prevent adding private-library tracks to playlists unless you own them
+            // or can see the private library (admin/curator). Covers both album tracks and
+            // orphan local files (album_id NULL but file_path set).
+            const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
+            if (!req.isAdmin && !canSeePrivate) {
                 const isOwner = track.owner_id === req.userId || (track.artist_id && track.artist_id === req.artistId);
-                
-                if (album && album.visibility === 'private' && !isOwner) {
-                    console.warn(`🛑 [Playlist] User ${req.username} tried to add private track ${actualTrackId} from album ${album.id} to playlist ${playlistId}`);
-                    return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
+
+                if (!isOwner) {
+                    if (track.album_id) {
+                        const album = library.getAlbum(track.album_id);
+                        if (album && album.visibility === 'private') {
+                            console.warn(`🛑 [Playlist] User ${req.username} tried to add private track ${actualTrackId} from album ${album.id} to playlist ${playlistId}`);
+                            return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
+                        }
+                    } else if (track.file_path) {
+                        console.warn(`🛑 [Playlist] User ${req.username} tried to add orphan private track ${actualTrackId} to playlist ${playlistId}`);
+                        return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
+                    }
                 }
             }
 
