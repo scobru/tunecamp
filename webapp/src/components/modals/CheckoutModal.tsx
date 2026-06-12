@@ -42,15 +42,23 @@ export const CheckoutModal = () => {
   const [isLoadingRate, setIsLoadingRate] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"ETH" | "USDC">("ETH");
   const [stableBalance, setStableBalance] = useState<string>("0");
-  const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("crypto");
+  // Card is the default payment path; crypto is opt-in (admin web3Enabled toggle)
+  const [paymentType, setPaymentType] = useState<"crypto" | "fiat">("fiat");
 
   const [hasStripe, setHasStripe] = useState(false);
+  const [web3Available, setWeb3Available] = useState(false);
 
   useEffect(() => {
     fetch("/api/payments/onramp-config")
       .then(res => res.json())
       .then(data => {
-        if (data.stripeCheckout) setHasStripe(true);
+        const stripe = !!data.stripeCheckout;
+        const web3 = !!data.web3Enabled;
+        setHasStripe(stripe);
+        setWeb3Available(web3);
+        // Crypto becomes the active path only when it's the only one available.
+        // (No Stripe and no web3: keep the legacy crypto view rather than a dead end.)
+        if (!stripe) setPaymentType("crypto");
       })
       .catch(err => console.error("Failed to fetch payment config", err));
   }, []);
@@ -433,19 +441,19 @@ export const CheckoutModal = () => {
                 directly. Choose your preferred payment method.
               </p>
 
-              {hasStripe && (
+              {hasStripe && web3Available && (
                 <div className="flex bg-base-200/50 p-1 rounded-2xl w-full mb-6 border border-base-content/5">
-                  <button 
-                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-level-1' : 'text-base-content/50 hover:text-base-content'}`}
-                    onClick={() => setPaymentType('crypto')}
-                  >
-                    Crypto
-                  </button>
-                  <button 
+                  <button
                     className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-level-1' : 'text-base-content/50 hover:text-base-content'}`}
                     onClick={() => setPaymentType('fiat')}
                   >
                     Card
+                  </button>
+                  <button
+                    className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'crypto' ? 'bg-primary text-white shadow-level-1' : 'text-base-content/50 hover:text-base-content'}`}
+                    onClick={() => setPaymentType('crypto')}
+                  >
+                    Crypto
                   </button>
                 </div>
               )}

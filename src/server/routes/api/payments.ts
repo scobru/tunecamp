@@ -25,6 +25,16 @@ const CHECKOUT_ABI = [
     "function purchaseWithUSDC(uint256 trackId, uint8 role, uint256 quantity)"
 ];
 
+/** Cryptographically secure 10-char unlock code (A-Z0-9). Math.random is
+ *  predictable: an attacker observing a few codes could derive future ones. */
+function generateUnlockCode(prefix = ""): string {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const bytes = crypto.randomBytes(10);
+    let code = "";
+    for (let i = 0; i < 10; i++) code += alphabet[bytes[i] % alphabet.length];
+    return prefix + code;
+}
+
 function getUserIdFromRequest(req: express.Request, jwtSecret: string): number | null {
     let token: string | undefined;
     const authHeader = req.headers.authorization;
@@ -89,7 +99,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     const itemId = parseInt(metadata.itemId, 10);
                     const itemType = metadata.type; // 'track', 'album', or 'asset'
 
-                    const code = Math.random().toString(36).substring(2, 12).toUpperCase();
+                    const code = generateUnlockCode();
                     let releaseId: number | undefined;
                     let trackId: number | undefined;
                     let assetId: number | undefined;
@@ -400,7 +410,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
 
             if (success) {
                 // Generate and record unlock code to block replay attacks
-                const code = "SUB-" + Math.random().toString(36).substring(2, 12).toUpperCase();
+                const code = generateUnlockCode("SUB-");
                 integration.createUnlockCode(code, undefined, undefined, txHash);
 
                 const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -478,6 +488,12 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 if (!feeTxHash) {
                     console.warn(`[Verify] Missing feeTxHash for split payment to artist ${artistWallet}`);
                     return res.status(400).json({ error: "Label fee transaction hash is required for split payments." });
+                }
+                // Replay protection: a fee tx can back exactly one purchase,
+                // otherwise one fee payment unlocks unlimited split purchases.
+                if (integration.getUnlockCodeByTxHash(feeTxHash)) {
+                    console.warn(`[Verify] Replay attempt detected for feeTxHash: ${feeTxHash}`);
+                    return res.status(400).json({ error: "This label fee transaction has already been used." });
                 }
                 const [feeTx, feeReceipt] = await Promise.all([
                     provider.getTransaction(feeTxHash),
@@ -598,12 +614,16 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             }
 
             // 4. Success: Generate unlock code
-            const code = Math.random().toString(36).substring(2, 12).toUpperCase();
+            const code = generateUnlockCode();
             const tid = parseInt(trackId, 10);
             const albumId = track.album_id;
             
             // Check if this was an album purchase or track purchase
             integration.createUnlockCode(code, albumId || undefined, tid, txHash);
+            // Burn the fee tx as well so it cannot back another purchase
+            if (feeTxHash && !integration.getUnlockCodeByTxHash(feeTxHash)) {
+                integration.createUnlockCode(generateUnlockCode("FEE-"), undefined, undefined, feeTxHash);
+            }
                 console.log(`✅ Verified ${verificationResult.method} payment for track ${trackId}. Code: ${code}`);
 
             return res.json({
