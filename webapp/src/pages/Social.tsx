@@ -39,10 +39,11 @@ const Social = () => {
       return;
     }
     
-    // Guard: Users without an artist profile cannot access Social
+    // Guard: Social is artist-centric — curator+ with an artist profile only
+    const isCuratorPlus = role === 'super_user' || role === 'admin' || role === 'root_admin' || user?.isRootAdmin;
     const hasArtistId = !!user?.artistId;
-    if (!hasArtistId) {
-      console.warn("Access denied: Users without artist profile cannot access Social Hub");
+    if (!isCuratorPlus || !hasArtistId) {
+      console.warn("Access denied: Social Hub requires a Curator or Manager account with an artist profile");
       navigate("/");
       return;
     }

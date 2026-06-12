@@ -1423,8 +1423,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Post not found" });
             }
 
-            // Permission Check
-            if (req.artistId && !req.isAdmin && post.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all posts; Curators only those of their own artist
+            const ownsPost = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && post.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsPost) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1451,6 +1453,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         try {
             const { artistId, content, visibility, title, summary } = req.body;
 
+            // Posting is artist-centric: reserved to Managers/Root Admins and Curators linked to an artist
+            if (!VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })) {
+                return res.status(403).json({ error: "Access denied: posting requires a Curator or Manager account" });
+            }
             if (!req.isAdmin && !req.isActive) {
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to create posts" });
             }
@@ -1509,8 +1515,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Post not found" });
             }
 
-            // Permission Check
-            if (req.artistId && !req.isAdmin && post.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all posts; Curators only those of their own artist
+            const ownsPost = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && post.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsPost) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
