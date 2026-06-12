@@ -1314,9 +1314,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     /**
      * POST /api/admin/system/users/:id/approve-artist
      * One-click approval of a listener's artist-profile request: creates an
-     * artist named after the user (selling disabled until verified) and links
-     * it. The user keeps the standard role — uploads work via the artist link
-     * and stay owner-scoped.
+     * artist named after the user (selling disabled until verified), links it,
+     * and promotes the account to Curator — publishing requires the role, not
+     * just the artist link, and the approval is the direct admin–artist contact.
      */
     router.post("/system/users/:id/approve-artist", async (req: AuthenticatedRequest, res: any) => {
         try {
@@ -1335,10 +1335,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
             library.setArtistCanSell(artistId, false);
-            authService.updateAdmin(id, artistId, user.role, user.storage_quota);
+            // Promote listeners to Curator: the artist link alone doesn't grant publishing
+            const newRole = user.role === UserRole.NORMAL_USER ? UserRole.SUPER_USER : user.role;
+            authService.updateAdmin(id, artistId, newRole, user.storage_quota);
             authService.setArtistRequest(id, false);
 
-            res.json({ success: true, artistId, message: `Artist profile created for ${user.username}` });
+            res.json({ success: true, artistId, message: `Artist profile created for ${user.username} (promoted to Curator)` });
         } catch (error: any) {
             console.error("Error approving artist request:", error);
             res.status(500).json({ error: error.message || "Failed to approve artist request" });
@@ -1480,8 +1482,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Post not found" });
             }
 
-            // Permission Check
-            if (req.artistId && !req.isAdmin && post.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all posts; Curators only those of their own artist
+            const ownsPost = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && post.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsPost) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1508,6 +1512,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         try {
             const { artistId, content, visibility, title, summary } = req.body;
 
+            // Posting is artist-centric: reserved to Managers/Root Admins and Curators linked to an artist
+            if (!VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })) {
+                return res.status(403).json({ error: "Access denied: posting requires a Curator or Manager account" });
+            }
             if (!req.isAdmin && !req.isActive) {
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin to create posts" });
             }
@@ -1566,8 +1574,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Post not found" });
             }
 
-            // Permission Check
-            if (req.artistId && !req.isAdmin && post.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all posts; Curators only those of their own artist
+            const ownsPost = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && post.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsPost) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1608,6 +1618,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      */
     router.post("/assets", upload.single("file"), async (req: AuthenticatedRequest, res: any) => {
         try {
+            // Selling assets is reserved to Managers/Root Admins and Curators linked to an artist
+            if (!VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })) {
+                return res.status(403).json({ error: "Access denied: publishing requires a Curator or Manager account" });
+            }
             if (!req.isAdmin && !req.isActive) {
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -1655,8 +1669,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
 
-            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all assets; Curators only those of their own artist
+            const ownsAsset = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && asset.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsAsset) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1695,8 +1711,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (!asset) return res.status(404).json({ error: "Asset not found" });
             if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all assets; Curators only those of their own artist
+            const ownsAsset = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && asset.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsAsset) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1724,8 +1742,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
 
-            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all assets; Curators only those of their own artist
+            const ownsAsset = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && asset.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsAsset) {
                 return res.status(403).json({ error: "Access denied" });
             }
 

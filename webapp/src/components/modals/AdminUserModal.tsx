@@ -21,8 +21,13 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [initialIsActive, setInitialIsActive] = useState(true);
     const [storageQuota, setStorageQuota] = useState<number>(0);
 
-    // Listeners CAN have an artist profile linked (community artists):
-    // uploads work via the link and stay scoped to their own content.
+    // Publishing requires Curator+ with an artist link: listeners are
+    // consumers, so changing the role to Listener clears the artist link.
+    useEffect(() => {
+        if (role === 'user') {
+            setArtistId('');
+        }
+    }, [role]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -190,7 +195,9 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                         </div>
                          <label className="label">
                             <span className="label-text-alt opacity-50">
-                                Linking to an artist lets this user manage that artist's profile and upload their own music (scoped to their own content for Listeners).
+                                {role === 'user'
+                                    ? "Listeners (Standard Users) cannot be linked to an artist profile — promote them to Curator first."
+                                    : "Linking to an artist lets this user manage that artist's profile and publish music for it."}
                             </span>
                         </label>
                     </div>

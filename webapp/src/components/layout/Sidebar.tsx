@@ -193,7 +193,7 @@ export const Sidebar = () => {
           </div>
         )}
 
-        {isAuthenticated && (isAdmin || !!user?.artistId) && (
+        {isAuthenticated && isAdmin && (
           <div>
             <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Studio</h3>
             <ul className="menu menu-sm p-0 gap-1">

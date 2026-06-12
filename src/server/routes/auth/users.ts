@@ -62,38 +62,31 @@ export function createUsersRoutes(container: ServiceContainer): Router {
 
             const DEFAULT_QUOTA = 1024 * 1024 * 1024; // 1GB
 
-            // In community mode every new user gets an artist profile right away
-            // (publishing allowed, selling disabled until an admin verifies them).
-            // In label mode users are standard listeners: an admin must promote
-            // them, or they can ask via POST /api/users/request-artist.
-            const isCommunity = identity.getSetting("mode") === "community";
-            let artistId: number | null = null;
-            if (isCommunity) {
-                artistId = database.createArtist(username, undefined, undefined, undefined, undefined, undefined, 'public');
-                database.setArtistCanSell(artistId, false);
-            }
-
-            const { id: userId } = await authService.createUser(username, password, artistId, DEFAULT_QUOTA);
+            // New users are standard listeners (consumers). Publishing requires
+            // a Curator account with an artist link: either an admin promotes
+            // them manually, or they ask via POST /api/users/me/artist-request
+            // and approval promotes them to Curator.
+            const { id: userId } = await authService.createUser(username, password, null, DEFAULT_QUOTA);
 
             // 3. Generate JWT token for auto-login
             const token = authService.generateToken({
                 userId,
                 isAdmin: false,
                 username,
-                artistId,
+                artistId: null,
                 role: UserRole.NORMAL_USER,
                 isActive: true,
                 tokenVersion: 0
             });
 
-            console.log(`🆕 New user registered: ${username} (userId: ${userId})${isCommunity ? ` with community artist profile ${artistId}` : ''}`);
+            console.log(`🆕 New user registered: ${username} (userId: ${userId})`);
 
             res.json({
                 success: true,
                 token,
                 expiresIn: "7d",
                 username,
-                artistId,
+                artistId: null,
                 role: UserRole.NORMAL_USER,
                 isActive: true,
                 storageQuota: DEFAULT_QUOTA,

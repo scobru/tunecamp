@@ -42,34 +42,33 @@ The **Curator** is a specialized role focused on library quality and content org
 ---
 
 ## 4. Listener (Standard User)
-The **Listener** is the base role for registered users.
+The **Listener** is the base role for users who consume music and interact with the platform. Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, selling store assets, and social posting are reserved to Curators and Managers, who have that direct line to the artist.
 
 ### Capabilities:
-- **Streaming:** Access music via the web player or Subsonic-compatible apps.
-- **Collection:** Purchase albums, manage favorites and playlists.
-- **Social Interaction:** Comment and follow artists.
+- **Listening & Collection:** Stream music via the web player or Subsonic-compatible apps, purchase content, and manage favorites.
+- **Social Interaction:** Create playlists, comment, follow artists, and manage their own profile.
 
-### Listener + Artist Profile ("Community Artist")
-A Listener can have an **artist profile linked** to their account. This happens in three ways:
-1. The admin links one manually (Admin → Users → Edit).
-2. The listener requests one from **Profile → Settings → Become an Artist** and the admin approves it with one click from the Users panel.
-3. In **community mode** (`mode: community`), every new registration gets an artist profile automatically.
+### Becoming an Artist
+An artist account is a **Curator** (or higher) linked to an artist profile. There are two paths:
+1. The admin promotes a user to Curator and links an artist profile manually (Admin → Users → Edit).
+2. The listener requests one from **Profile → Settings → Become an Artist**; when the admin approves it from the Users panel, the account is **promoted to Curator** and a non-sellable artist profile is created and linked. The approval is the direct admin–artist contact that publishing requires.
 
-With a linked artist profile the user can upload music and manage their own releases — reads and writes stay **owner-scoped** (public content + their own). Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor). See [community-mode.md](community-mode.md).
+Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor).
 
 ---
 
 ## Permission Matrix (Summary)
 
-| Capability | Instance Owner | Manager | Curator | Listener + Artist | Listener |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| Modify Site Settings | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manage Users | ✅ | ✅ (view) | ❌ | ❌ | ❌ |
-| Edit Others' Content | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Upload Music | ✅ | ✅ | ✅ | ✅ (own only) | ❌ |
-| Sell Music | ✅ | ✅ | ✅ | only if `can_sell` enabled by admin | ❌ |
-| Access Server Keys | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Manage Federation | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Capability | Instance Owner | Manager | Curator | Listener |
+| :--- | :---: | :---: | :---: | :---: |
+| Modify Site Settings | ✅ | ❌ | ❌ | ❌ |
+| Manage Users | ✅ | ✅ (view) | ❌ | ❌ |
+| Edit Others' Content | ✅ | ✅ | ✅ | ❌ |
+| Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ❌ |
+| Sell Music / Store Assets | ✅ | ✅ | ✅ (with artist link + `can_sell`) | ❌ |
+| Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ❌ |
+| Access Server Keys | ✅ | ❌ | ❌ | ❌ |
+| Manage Federation | ✅ | ✅ | ❌ | ❌ |
 
 ---
 

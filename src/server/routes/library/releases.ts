@@ -4,7 +4,7 @@ import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
-import { VisibilityProfile } from "../../common/visibility.js";
+import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
 import path from "path";
 import fs from "fs-extra";
@@ -41,6 +41,19 @@ interface CreateReleaseBody {
 }
 
 import type { ServiceContainer } from "../../core/container.js";
+
+/**
+ * Publishing gate: only Managers/Root Admins, or Curators linked to an artist
+ * profile, may create or manage formal releases. Listeners (role 'user') are
+ * consumers and are rejected even if a stale artist_id is on their account.
+ */
+function canPublish(req: any): boolean {
+    return VisibilityGuardian.canPublishContent({
+        userId: req.userId,
+        artistId: req.artistId,
+        role: req.role
+    });
+}
 
 /**
  * The release category lives on the `type` column (album | single | ep | liveset | podcast).
@@ -132,7 +145,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
      * Create a new formal release (Admin/Artist only)
      */
     router.post("/", wrapAsync(async (req: any, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!canPublish(req)) throw new ForbiddenError("Unauthorized");
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
 
         const body = req.body as CreateReleaseBody;
@@ -316,8 +329,8 @@ export function createReleaseRouter(container: ServiceContainer): Router {
      * PUT /api/admin/releases/:id
      */
     router.put("/:id", wrapAsync(async (req: any, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
-        
+        if (!canPublish(req)) throw new ForbiddenError("Unauthorized");
+
         const id = parseInt(req.params.id);
         const release = library.getRelease(id);
         if (!release) throw new NotFoundError("Release not found");
@@ -349,7 +362,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
      * DELETE /api/admin/releases/:id
      */
     router.delete("/:id", wrapAsync(async (req: any, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!canPublish(req)) throw new ForbiddenError("Unauthorized");
 
         const id = parseInt(req.params.id);
         const release = library.getRelease(id);
