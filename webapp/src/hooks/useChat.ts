@@ -70,9 +70,9 @@ export function useChat() {
     }, [loadHistory]);
 
     // Send a message
-    const sendMessage = useCallback(async (messageText: string) => {
+    const sendMessage = useCallback(async (messageText: string, trackMetadata?: { artist?: string; title?: string; album?: string; url?: string }) => {
         try {
-            await API.sendChatMessage(messageText);
+            await API.sendChatMessage(messageText, trackMetadata);
             return true;
         } catch (err: any) {
             console.error('Failed to send message:', err);

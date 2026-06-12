@@ -107,7 +107,7 @@ export class MediaEngine {
         
         // 2. If not in DB, handle as direct external stream (e.g. from global search)
         if (!track) {
-            return this.handleExternalStream(options.externalId);
+            return this.handleExternalStream(options.externalId, undefined, options.range);
         }
     }
 
@@ -118,7 +118,7 @@ export class MediaEngine {
     // 1. Handle External IDs / Linked Tracks
     const extId = track.external_id || track.url;
     if (extId && extId.startsWith("ext:")) {
-      return this.handleExternalStream(extId);
+      return this.handleExternalStream(extId, track, options.range);
     }
 
     // 2. Handle Google Drive
@@ -141,12 +141,46 @@ export class MediaEngine {
     throw new NotFoundError("Audio source not found");
   }
 
-  private async handleExternalStream(extId: string): Promise<StreamResult> {
-    if (!this.streamingService) throw new Error("Streaming service not available");
-    
+  private async handleExternalStream(extId: string, track?: Track, range?: string): Promise<StreamResult> {
     const parts = extId.split(":");
     const providerId = parts[1];
     const originalId = parts.slice(2).join(":");
+
+    // If providerId is 'link', 'gdrive', or 'dropbox', the originalId is already the direct stream/download URL.
+    if (providerId === 'link' || providerId === 'gdrive' || providerId === 'dropbox') {
+      const url = originalId;
+      
+      // If it is a Google Drive URL, extract file ID and stream/proxy
+      if (url.includes("drive.google.com")) {
+        const gdriveMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                            url.match(/id=([a-zA-Z0-9_-]+)/) ||
+                            url.match(/\/uc\?export=download&id=([a-zA-Z0-9_-]+)/);
+        const gdriveFileId = gdriveMatch ? gdriveMatch[1] : null;
+
+        if (gdriveFileId) {
+          if (this.gdriveService) {
+            const ownerId = track?.owner_id || this.database.getPrimaryAdminId() || 1;
+            const { stream, status, headers } = await this.gdriveService.getFileStream(ownerId, gdriveFileId, range);
+            return {
+              stream: stream as Readable,
+              contentType: headers['content-type'] || 'audio/mpeg',
+              contentLength: headers['content-length'] ? parseInt(headers['content-length'] as string) : undefined,
+              contentRange: headers['content-range'] as string,
+              statusCode: status
+            };
+          } else {
+            // Fallback to Google Drive public export link via proxy
+            const downloadUrl = `https://drive.google.com/uc?export=download&id=${gdriveFileId}`;
+            throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(downloadUrl)}`);
+          }
+        }
+      }
+
+      // Otherwise, redirect to proxy for direct stream
+      throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(url)}`);
+    }
+
+    if (!this.streamingService) throw new Error("Streaming service not available");
 
     let url: string | null = null;
     if (providerId === 'search') {
@@ -158,11 +192,6 @@ export class MediaEngine {
 
     if (!url) throw new NotFoundError("External stream not found");
 
-    // For now, we return a redirect-like response or we could proxy it here.
-    // The current implementation redirects to /api/proxy/stream.
-    // To keep the interface clean, we'll return a 302-like result or handle the proxying.
-    // Let's proxy it for true depth, or just signal the redirect.
-    // Actually, the MediaEngine should probably return the proxy stream if we want it deep.
     throw new Error(`REDIRECT:/api/proxy/stream?url=${encodeURIComponent(url)}`);
   }
 

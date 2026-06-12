@@ -44,29 +44,53 @@ export function createChatRoutes(container: ServiceContainer): Router {
         return fallbackTitle || "External Audio";
     };
 
-    const syncBoardExternalTracks = async (content: string, userId: number | null) => {
+    const syncBoardExternalTracks = async (
+        content: string, 
+        userId: number | null, 
+        trackMetadata?: { artist?: string; title?: string; album?: string; url?: string }
+    ) => {
         try {
-            const audioUrls = extractAudioUrls(content);
-            if (audioUrls.length === 0) return;
+            const urls = trackMetadata?.url ? [trackMetadata.url] : extractAudioUrls(content);
+            if (urls.length === 0) return;
 
             const library = container.library;
             const artists = library.getArtists(VisibilityProfile.ALL_ACCESS).filter(a => a.id !== -1);
-            const artistId = artists.length > 0 ? artists[0].id : -1;
+            const primaryArtistId = artists.length > 0 ? artists[0].id : -1;
 
-            for (const url of audioUrls) {
+            for (const url of urls) {
                 const extId = `ext:link:${url}`;
                 const existing = library.getTrackByExternalId(extId);
                 if (!existing) {
-                    const trackTitle = getTitleFromUrl(url, "External Track");
+                    const trackTitle = trackMetadata?.title || getTitleFromUrl(url, "External Track");
+                    
+                    let artistId = primaryArtistId;
+                    const artistName = trackMetadata?.artist || null;
+                    if (artistName) {
+                        const dbArtist = library.getArtistByName(artistName);
+                        if (dbArtist) {
+                            artistId = dbArtist.id;
+                        } else {
+                            artistId = library.createArtist(artistName);
+                        }
+                    }
+
+                    let albumId: number | null = null;
+                    if (trackMetadata?.album) {
+                        const dbAlbum = library.getAlbums().find(a => a.title.toLowerCase() === trackMetadata.album!.toLowerCase());
+                        if (dbAlbum) {
+                            albumId = dbAlbum.id;
+                        }
+                    }
+
                     const service = url.includes("drive.google.com") ? "gdrive" : url.includes("dropbox.com") ? "dropbox" : "link";
                     
-                    console.log(`📡 [ChatRoutes] Extracting external track from board message: "${trackTitle}" -> ${url}`);
+                    console.log(`📡 [ChatRoutes] Extracting external track with metadata: "${trackTitle}" by "${artistName || 'Unknown'}" -> ${url}`);
                     library.createTrack({
                         title: trackTitle,
-                        album_id: null,
+                        album_id: albumId,
                         artist_id: artistId,
                         owner_id: userId,
-                        artist_name: null,
+                        artist_name: artistName,
                         track_num: null,
                         duration: 0,
                         file_path: null,
@@ -115,7 +139,7 @@ export function createChatRoutes(container: ServiceContainer): Router {
      * Send a new chat message (requires authentication)
      */
     router.post('/messages', authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
-        const { message } = req.body;
+        const { message, trackMetadata } = req.body;
 
         if (!message || typeof message !== 'string' || !message.trim()) {
             return res.status(400).json({ error: 'Message content is required' });
@@ -140,7 +164,7 @@ export function createChatRoutes(container: ServiceContainer): Router {
         }
 
         // Extract and sync external tracks from board messages
-        syncBoardExternalTracks(message.trim(), req.userId || null);
+        syncBoardExternalTracks(message.trim(), req.userId || null, trackMetadata);
 
         res.json(savedMessage);
     }));

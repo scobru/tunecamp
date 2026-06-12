@@ -13,7 +13,9 @@ import {
   Clock,
   Trash2,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Music,
+  Youtube
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -65,13 +67,48 @@ const getRoleBadgeClass = (role: string) => {
   }
 };
 
+const getYoutubeId = (text: string): string | null => {
+  if (!text) return null;
+  const match = text.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+};
+
+const renderMessageWithLinks = (text: string) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (part.startsWith("http://") || part.startsWith("https://")) {
+      const cleanUrl = part.replace(/[.,!?;:()]+$/, "");
+      return (
+        <a
+          key={i}
+          href={cleanUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="link link-primary break-all"
+        >
+          {cleanUrl}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 const Board = () => {
   const { messages, isLoading, error, sendMessage, deleteMessage } = useChat();
   const { user, isAuthenticated, role } = useAuthStore();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
   
+  const [activeTab, setActiveTab] = useState<'message' | 'track' | 'youtube'>('message');
   const [messageText, setMessageText] = useState("");
+  const [audioUrl, setAudioUrl] = useState("");
+  const [trackTitle, setTrackTitle] = useState("");
+  const [trackArtist, setTrackArtist] = useState("");
+  const [trackAlbum, setTrackAlbum] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
 
@@ -81,7 +118,7 @@ const Board = () => {
     if (!window.confirm("Are you sure you want to delete this message?")) return;
     try {
       await deleteMessage(id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       notify.error(err, "Failed to delete message");
     }
   };
@@ -100,18 +137,50 @@ const Board = () => {
       });
   }, []);
 
+  const isFormValid = () => {
+    if (activeTab === 'message') return !!messageText.trim();
+    if (activeTab === 'track') return !!audioUrl.trim() && !!trackTitle.trim() && !!trackArtist.trim();
+    if (activeTab === 'youtube') return !!youtubeUrl.trim();
+    return false;
+  };
+
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    
+    let textToSubmit = "";
+    let trackMeta: { artist: string; title: string; album?: string; url: string } | undefined = undefined;
+
+    if (activeTab === 'message') {
+      if (!messageText.trim()) return;
+      textToSubmit = messageText.trim();
+    } else if (activeTab === 'track') {
+      if (!audioUrl.trim() || !trackTitle.trim() || !trackArtist.trim()) return;
+      textToSubmit = `Shared Track: ${trackArtist.trim()} - ${trackTitle.trim()}${trackAlbum.trim() ? ` (from "${trackAlbum.trim()}")` : ''}\n${audioUrl.trim()}${messageText.trim() ? `\n\nComment: ${messageText.trim()}` : ''}`;
+      trackMeta = {
+        artist: trackArtist.trim(),
+        title: trackTitle.trim(),
+        album: trackAlbum.trim() || undefined,
+        url: audioUrl.trim()
+      };
+    } else if (activeTab === 'youtube') {
+      if (!youtubeUrl.trim()) return;
+      textToSubmit = `Shared Video:\n${youtubeUrl.trim()}${messageText.trim() ? `\n\nComment: ${messageText.trim()}` : ''}`;
+    }
 
     setIsPosting(true);
     setPostError(null);
 
     try {
-      await sendMessage(messageText.trim());
+      await sendMessage(textToSubmit, trackMeta);
       setMessageText("");
-    } catch (err: any) {
-      setPostError(err.message || "Failed to post message. Please try again.");
+      setAudioUrl("");
+      setTrackTitle("");
+      setTrackArtist("");
+      setTrackAlbum("");
+      setYoutubeUrl("");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setPostError(errMsg || "Failed to post message. Please try again.");
     } finally {
       setIsPosting(false);
     }
@@ -185,42 +254,175 @@ const Board = () => {
             </h3>
             
             {isAuthenticated ? (
-              <form onSubmit={handlePost} className="space-y-4">
-                <div className="form-control">
-                  <textarea
-                    className="textarea textarea-bordered bg-base-300/30 w-full min-h-[120px] text-base rounded-2xl border-base-content/10 focus:outline-none focus:border-primary p-4 resize-none transition-all"
-                    placeholder="Write your message here..."
-                    maxLength={500}
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    disabled={isPosting}
-                  />
-                  <div className="flex justify-between items-center px-1 mt-1 text-[11px] opacity-40 font-bold">
-                    <span>Max 500 characters</span>
-                    <span>{messageText.length}/500</span>
-                  </div>
+              <div className="space-y-4">
+                {/* Tabs for post types */}
+                <div className="flex border-b border-base-content/10 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('message'); setPostError(null); }}
+                    className={clsx(
+                      "flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-all",
+                      activeTab === 'message'
+                        ? "border-primary text-primary"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <MessageSquare size={14} />
+                    Message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('track'); setPostError(null); }}
+                    className={clsx(
+                      "flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-all",
+                      activeTab === 'track'
+                        ? "border-primary text-primary"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <Music size={14} />
+                    Audio Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('youtube'); setPostError(null); }}
+                    className={clsx(
+                      "flex-1 py-2 text-xs font-bold flex items-center justify-center gap-1.5 border-b-2 transition-all",
+                      activeTab === 'youtube'
+                        ? "border-primary text-primary"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    <Youtube size={14} />
+                    YouTube
+                  </button>
                 </div>
 
-                {postError && (
-                  <p className="text-xs text-error font-semibold flex items-center gap-1.5">
-                    <AlertCircle size={14} />
-                    {postError}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-block rounded-xl gap-2 font-bold shadow-level-1 hover:scale-[1.01] active:scale-[0.99] transition-all"
-                  disabled={isPosting || !messageText.trim()}
-                >
-                  {isPosting ? (
-                    <span className="loading loading-spinner loading-xs"></span>
-                  ) : (
-                    <Send size={16} />
+                <form onSubmit={handlePost} className="space-y-4">
+                  {activeTab === 'message' && (
+                    <div className="form-control">
+                      <textarea
+                        className="textarea textarea-bordered bg-base-300/30 w-full min-h-[120px] text-base rounded-2xl border-base-content/10 focus:outline-none focus:border-primary p-4 resize-none transition-all"
+                        placeholder="Write your message here..."
+                        maxLength={500}
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        disabled={isPosting}
+                      />
+                      <div className="flex justify-between items-center px-1 mt-1 text-[11px] opacity-40 font-bold">
+                        <span>Max 500 characters</span>
+                        <span>{messageText.length}/500</span>
+                      </div>
+                    </div>
                   )}
-                  Post Message
-                </button>
-              </form>
+
+                  {activeTab === 'track' && (
+                    <div className="space-y-3">
+                      <div className="form-control">
+                        <input
+                          type="url"
+                          className="input input-bordered bg-base-300/30 w-full text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 transition-all"
+                          placeholder="Audio URL (Google Drive, Dropbox, direct link...)"
+                          value={audioUrl}
+                          onChange={(e) => setAudioUrl(e.target.value)}
+                          disabled={isPosting}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="form-control">
+                          <input
+                            type="text"
+                            className="input input-bordered bg-base-300/30 w-full text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 transition-all"
+                            placeholder="Track Title"
+                            value={trackTitle}
+                            onChange={(e) => setTrackTitle(e.target.value)}
+                            disabled={isPosting}
+                            required
+                          />
+                        </div>
+                        <div className="form-control">
+                          <input
+                            type="text"
+                            className="input input-bordered bg-base-300/30 w-full text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 transition-all"
+                            placeholder="Artist Name"
+                            value={trackArtist}
+                            onChange={(e) => setTrackArtist(e.target.value)}
+                            disabled={isPosting}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="form-control">
+                        <input
+                          type="text"
+                          className="input input-bordered bg-base-300/30 w-full text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 transition-all"
+                          placeholder="Album (Optional)"
+                          value={trackAlbum}
+                          onChange={(e) => setTrackAlbum(e.target.value)}
+                          disabled={isPosting}
+                        />
+                      </div>
+                      <div className="form-control">
+                        <textarea
+                          className="textarea textarea-bordered bg-base-300/30 w-full min-h-[80px] text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary p-3 resize-none transition-all"
+                          placeholder="Comment / Message... (Optional)"
+                          maxLength={300}
+                          value={messageText}
+                          onChange={(e) => setMessageText(e.target.value)}
+                          disabled={isPosting}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'youtube' && (
+                    <div className="space-y-3">
+                      <div className="form-control">
+                        <input
+                          type="url"
+                          className="input input-bordered bg-base-300/30 w-full text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary px-4 py-2 transition-all"
+                          placeholder="YouTube Video URL..."
+                          value={youtubeUrl}
+                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                          disabled={isPosting}
+                          required
+                        />
+                      </div>
+                      <div className="form-control">
+                        <textarea
+                          className="textarea textarea-bordered bg-base-300/30 w-full min-h-[80px] text-sm rounded-xl border-base-content/10 focus:outline-none focus:border-primary p-3 resize-none transition-all"
+                          placeholder="Comment / Message... (Optional)"
+                          maxLength={300}
+                          value={messageText}
+                          onChange={(e) => setMessageText(e.target.value)}
+                          disabled={isPosting}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {postError && (
+                    <p className="text-xs text-error font-semibold flex items-center gap-1.5">
+                      <AlertCircle size={14} />
+                      {postError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-block rounded-xl gap-2 font-bold shadow-level-1 hover:scale-[1.01] active:scale-[0.99] transition-all"
+                    disabled={isPosting || !isFormValid()}
+                  >
+                    {isPosting ? (
+                      <span className="loading loading-spinner loading-xs"></span>
+                    ) : (
+                      <Send size={16} />
+                    )}
+                    Post Message
+                  </button>
+                </form>
+              </div>
             ) : (
               <div className="text-center py-6 space-y-4">
                 <div className="w-12 h-12 rounded-full bg-base-content/5 text-base-content/40 flex items-center justify-center mx-auto">
@@ -303,9 +505,27 @@ const Board = () => {
                         </div>
                       </div>
 
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium break-words pt-1 opacity-90 text-base-content">
-                        {msg.message}
-                      </p>
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap font-medium break-words pt-1 opacity-90 text-base-content">
+                        {renderMessageWithLinks(msg.message)}
+                      </div>
+
+                      {(() => {
+                        const ytId = getYoutubeId(msg.message);
+                        if (ytId) {
+                          return (
+                            <div className="mt-3 aspect-video w-full max-w-lg rounded-2xl overflow-hidden shadow-md border border-base-content/10">
+                              <iframe
+                                className="w-full h-full"
+                                src={`https://www.youtube.com/embed/${ytId}`}
+                                title="YouTube video player"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              ></iframe>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 );
