@@ -34,6 +34,7 @@ export interface SyncResult {
  */
 export class LibrarySync {
   private readonly LOSSLESS_EXTENSIONS = ['.wav', '.flac'];
+  private readonly AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
 
   constructor(
     private database: DatabaseService,
@@ -76,7 +77,8 @@ export class LibrarySync {
 
     // Resolve duration with FFmpeg fallback if missing/falsy
     let duration = format.duration || null;
-    if (!duration || duration <= 0 || isNaN(duration)) {
+    const isAudio = this.AUDIO_EXTENSIONS.includes(ext);
+    if (isAudio && (!duration || duration <= 0 || isNaN(duration))) {
       try {
         const ffDuration = await getDurationFromFfmpeg(filePath);
         if (ffDuration && ffDuration > 0 && !isNaN(ffDuration)) {

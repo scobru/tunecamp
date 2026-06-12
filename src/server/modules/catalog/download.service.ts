@@ -57,7 +57,7 @@ export class DownloadService {
             throw new Error(`[DownloadService] No provider registered for source: "${result.source}"`);
         }
         if (!this.registry.isEnabled(result.source)) {
-            throw new Error(`[DownloadService] Provider "${result.source}" is disabled. Enable it under System → Plugins.`);
+            throw new Error(`[DownloadService] Provider "${result.source}" is disabled. Enable it under Admin → Integrations.`);
         }
 
         console.log(`[DownloadService] ⬇️ Downloading via "${provider.name}": ${result.title}`);
@@ -94,7 +94,7 @@ export function initDownloadService(soulseekService: SoulseekService, torrentSer
     _downloadService = new DownloadService();
     // P2P sources are an explicit admin opt-in: legally grey for a
     // music-selling platform, so they ship disabled until toggled on
-    // (Admin → System → Plugins). syncRegistryWithDatabase below restores
+    // (Admin → Integrations). syncRegistryWithDatabase below restores
     // the persisted choice of admins who already opted in.
     _downloadService.getRegistry().register(new SoulseekDownloadProvider(soulseekService), false);
     if (torrentService) {
