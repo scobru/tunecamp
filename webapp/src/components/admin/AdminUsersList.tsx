@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { User, Trash2 } from "lucide-react";
+import { User, Trash2, Check, X } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { notify } from "../../utils/notify";
@@ -46,6 +46,26 @@ export const AdminUsersList = () => {
     } catch (e: any) {
       console.error(e);
       notify.error(e, "Failed to delete user");
+    }
+  };
+
+  const handleApproveArtist = async (id: string | number, username: string) => {
+    try {
+      await API.approveArtistRequest(id);
+      notify.success(`Artist profile created for ${username}`);
+      loadUsers();
+      window.dispatchEvent(new CustomEvent("refresh-admin-artists"));
+    } catch (e: any) {
+      notify.error(e, "Failed to approve artist request");
+    }
+  };
+
+  const handleDismissArtist = async (id: string | number) => {
+    try {
+      await API.dismissArtistRequest(id);
+      loadUsers();
+    } catch (e: any) {
+      notify.error(e, "Failed to dismiss artist request");
     }
   };
 
@@ -139,6 +159,28 @@ export const AdminUsersList = () => {
                 {u.artist_id ? (
                   <span className="flex items-center gap-1">
                     <User size={12} /> {u.artist_name || "Linked"}
+                  </span>
+                ) : u.artist_requested_at ? (
+                  <span className="flex items-center gap-2">
+                    <span className="badge badge-warning badge-outline badge-sm">Artist requested</span>
+                    {isRootAdmin && (
+                      <>
+                        <button
+                          className="btn btn-xs btn-success btn-outline gap-1 tooltip"
+                          data-tip="Approve: create artist profile and link it"
+                          onClick={() => handleApproveArtist(u.id, u.username)}
+                        >
+                          <Check size={12} /> Approve
+                        </button>
+                        <button
+                          className="btn btn-xs btn-ghost text-error tooltip"
+                          data-tip="Dismiss request"
+                          onClick={() => handleDismissArtist(u.id)}
+                        >
+                          <X size={12} />
+                        </button>
+                      </>
+                    )}
                   </span>
                 ) : (
                   "-"

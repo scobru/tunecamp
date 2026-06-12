@@ -128,6 +128,9 @@ export interface Artist {
     isReleasing?: boolean;
     starred?: boolean;
     rating?: number;
+    /** 0 = sales disabled (unverified artist). Admin-only on update (sent as canSell). */
+    can_sell?: number;
+    canSell?: boolean;
 }
 
 export interface ArtistLink {
@@ -215,6 +218,8 @@ export interface SiteSettings {
     coverImage?: string;
     publicUrl?: string;
     allowPublicRegistration?: boolean;
+    /** 'label' (curated storefront, default) or 'community' (registrations get an artist profile, selling opt-in per artist) */
+    mode?: string;
     backgroundImage?: string;
     themeFont?: string;
     communityLink?: string;

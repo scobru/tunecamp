@@ -41,26 +41,35 @@ The **Curator** is a specialized role focused on library quality and content org
 
 ---
 
-## 4. Listener (Standard User / Artist)
-The **Listener** (or Artist) is the base role for users who publish music and interact with the platform.
+## 4. Listener (Standard User)
+The **Listener** is the base role for registered users.
 
 ### Capabilities:
-- **Discography Management:** Upload tracks, create albums, and manage their own releases.
-- **Social Interaction:** Create posts, follow others, and manage their own profile.
 - **Streaming:** Access music via the web player or Subsonic-compatible apps.
+- **Collection:** Purchase albums, manage favorites and playlists.
+- **Social Interaction:** Comment and follow artists.
+
+### Listener + Artist Profile ("Community Artist")
+A Listener can have an **artist profile linked** to their account. This happens in three ways:
+1. The admin links one manually (Admin → Users → Edit).
+2. The listener requests one from **Profile → Settings → Become an Artist** and the admin approves it with one click from the Users panel.
+3. In **community mode** (`mode: community`), every new registration gets an artist profile automatically.
+
+With a linked artist profile the user can upload music and manage their own releases — reads and writes stay **owner-scoped** (public content + their own). Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor). See [community-mode.md](community-mode.md).
 
 ---
 
 ## Permission Matrix (Summary)
 
-| Capability | Instance Owner | Manager | Curator | Listener |
-| :--- | :---: | :---: | :---: | :---: |
-| Modify Site Settings | ✅ | ❌ | ❌ | ❌ |
-| Manage Users | ✅ | ✅ (view) | ❌ | ❌ |
-| Edit Others' Content | ✅ | ✅ | ✅ | ❌ |
-| Upload Music | ✅ | ✅ | ✅ | ✅ |
-| Access Server Keys | ✅ | ❌ | ❌ | ❌ |
-| Manage Federation | ✅ | ✅ | ❌ | ❌ |
+| Capability | Instance Owner | Manager | Curator | Listener + Artist | Listener |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Modify Site Settings | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Manage Users | ✅ | ✅ (view) | ❌ | ❌ | ❌ |
+| Edit Others' Content | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Upload Music | ✅ | ✅ | ✅ | ✅ (own only) | ❌ |
+| Sell Music | ✅ | ✅ | ✅ | only if `can_sell` enabled by admin | ❌ |
+| Access Server Keys | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Manage Federation | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ---
 

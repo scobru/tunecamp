@@ -109,6 +109,37 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
 
+    /** Sales gate: the item's artist must have can_sell enabled. Items without
+     *  a linked artist (label/admin-owned content) remain sellable; the flag
+     *  exists to stop unverified community artists from selling, so hiding the
+     *  Buy button client-side is not enough — checkout must refuse too. */
+    function isSaleAllowed(type: string, itemId: number): boolean {
+        try {
+            let artistId: number | null | undefined;
+            if (type === 'track') {
+                const track: any = library.getTrack(itemId);
+                if (!track) return true; // the 404 path below handles missing items
+                artistId = track.artist_id || null;
+                if (track.album_id) {
+                    const album: any = library.getAlbum(track.album_id);
+                    artistId = album?.artist_id ?? artistId;
+                }
+            } else if (type === 'album') {
+                const album: any = library.getAlbum(itemId);
+                artistId = album?.artist_id ?? null;
+            } else {
+                return true; // assets are admin-managed
+            }
+            if (!artistId) return true;
+            const artist: any = database.getArtistSimple(artistId);
+            if (!artist) return true;
+            return artist.can_sell !== 0;
+        } catch (e) {
+            console.error("Sales gate check failed:", e);
+            return true;
+        }
+    }
+
     // 1. Stripe Webhook (needs raw body, NO JSON PARSER)
     // This route MUST be mounted before the global express.json() in server.ts
     router.post("/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
@@ -210,6 +241,10 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             const sitePublicUrl = identity.getSetting("publicUrl") || config.publicUrl;
             if (!isAllowedReturnUrl(successUrl, req, sitePublicUrl) || !isAllowedReturnUrl(cancelUrl, req, sitePublicUrl)) {
                 return res.status(400).json({ error: "successUrl and cancelUrl must point to this instance." });
+            }
+
+            if (!isSaleAllowed(type, parseInt(itemId, 10))) {
+                return res.status(403).json({ error: "Sales are not enabled for this artist." });
             }
 
             const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
@@ -529,6 +564,10 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             const track = library.getTrack(parseInt(trackId, 10));
             if (!track) {
                 return res.status(404).json({ error: "Track not found" });
+            }
+
+            if (!isSaleAllowed('track', parseInt(trackId, 10))) {
+                return res.status(403).json({ error: "Sales are not enabled for this artist." });
             }
 
             // Resolve the effective price the same way the Stripe path does:

@@ -569,6 +569,12 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating artists table: adding moved_to column...");
                 db.exec("ALTER TABLE artists ADD COLUMN moved_to TEXT");
             }
+            if (!cols.some(col => col.name === 'can_sell')) {
+                console.log("📦 [Database] Migrating artists table: adding can_sell column...");
+                // Existing artists keep selling (default 1); community-mode
+                // auto-promoted artists are created with can_sell = 0.
+                db.exec("ALTER TABLE artists ADD COLUMN can_sell INTEGER DEFAULT 1");
+            }
             
             // Migrate unlock_codes: add asset_id column if missing
             const ucCols = db.prepare("PRAGMA table_info(unlock_codes)").all() as any[];
@@ -730,6 +736,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding ap_public_key/ap_private_key columns...");
                 db.exec("ALTER TABLE admin ADD COLUMN ap_public_key TEXT");
                 db.exec("ALTER TABLE admin ADD COLUMN ap_private_key TEXT");
+            }
+            if (!cols.some(col => col.name === 'artist_requested_at')) {
+                console.log("📦 [Database] Migrating admin table: adding artist_requested_at column...");
+                db.exec("ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL");
             }
         }
 

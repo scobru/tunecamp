@@ -183,6 +183,10 @@ export class ArtistRepository extends BaseRepository {
         this.db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKey, privateKey, id);
     }
 
+    setCanSell(id: number, canSell: boolean): void {
+        this.db.prepare("UPDATE artists SET can_sell = ? WHERE id = ?").run(canSell ? 1 : 0, id);
+    }
+
     updateMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void {
         const akaJson = alsoKnownAs ? JSON.stringify(alsoKnownAs) : null;
         this.db.prepare("UPDATE artists SET also_known_as = ?, moved_to = ? WHERE id = ?").run(akaJson, movedTo, id);

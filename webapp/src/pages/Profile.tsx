@@ -28,6 +28,7 @@ import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
+import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
 
 const Profile = () => {
   const { user, isAuthenticated, role, isInitializing } = useAuthStore();
@@ -78,6 +79,29 @@ const Profile = () => {
   const [starredTracks, setStarredTracks] = useState<Track[]>([]);
   const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [loadingTracks, setLoadingTracks] = useState(true);
+  const [artistRequestedAt, setArtistRequestedAt] = useState<string | null>(null);
+  const [requestingArtist, setRequestingArtist] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && !user?.artistId) {
+      API.getMyArtistRequest()
+        .then((data) => setArtistRequestedAt(data.requestedAt))
+        .catch(() => {});
+    }
+  }, [isAuthenticated, user?.artistId]);
+
+  const handleRequestArtist = async () => {
+    setRequestingArtist(true);
+    try {
+      await API.requestArtistProfile();
+      setArtistRequestedAt(new Date().toISOString());
+      notify.success("Request sent! An admin will review it.");
+    } catch (e) {
+      notify.error(e, "Failed to send request");
+    } finally {
+      setRequestingArtist(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -364,6 +388,43 @@ const Profile = () => {
                 </label>
               </div>
             </div>
+
+            {/* Security: change password (works for every authenticated user) */}
+            <ChangePasswordCard />
+
+            {/* Artist profile request (listeners without a linked artist) */}
+            {!user?.artistId && (
+              <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <User size={20} className="text-secondary" /> Become an Artist
+                </h3>
+                <p className="text-sm opacity-60">
+                  Want to publish your own music on this instance? Request an
+                  artist profile — an admin will review and approve it.
+                </p>
+                {artistRequestedAt ? (
+                  <div className="alert alert-info bg-primary/10 border-primary/20 text-sm">
+                    <Clock size={18} />
+                    <span>
+                      Request sent on {new Date(artistRequestedAt).toLocaleDateString()}. Waiting for admin approval.
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-secondary btn-outline w-fit gap-2"
+                    onClick={handleRequestArtist}
+                    disabled={requestingArtist}
+                  >
+                    {requestingArtist ? (
+                      <span className="loading loading-spinner loading-xs" />
+                    ) : (
+                      <ArrowRight size={16} />
+                    )}
+                    Request Artist Profile
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Role & Permissions Card */}
             <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6 md:col-span-2">

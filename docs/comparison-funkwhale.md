@@ -24,7 +24,7 @@ Questo documento analizza in modo onesto e dettagliato le differenze tra **Funkw
 
 ### 1. Filosofia e Target di Utenza
 * **Funkwhale** nasce con la visione di un "SoundCloud/Spotify decentralizzato" per la community del Fediverse. È ideale per collettivi, appassionati di musica libera, creatori di podcast e utenti che desiderano ascoltare musica in streaming condividendo le proprie librerie con altri appassionati.
-* **TuneCamp** è progettato specificamente come un'alternativa decentralizzata e self-hosted a **Bandcamp**. L'obiettivo principale è mettere l'indipendenza finanziaria dell'artista al centro, offrendo gallerie e profili personalizzati e gestiti dall'artista stesso, senza intermediari o algoritmi centralizzati.
+* **TuneCamp** è progettato specificamente come un'alternativa decentralizzata e self-hosted a **Bandcamp**. L'obiettivo principale è mettere l'indipendenza finanziaria dell'artista al centro, offrendo gallerie e profili personalizzati e gestiti dall'artista stesso, senza intermediari o algoritmi centralizzati. Per chi vuole un'istanza in stile community (più vicina al modello Funkwhale), esiste una **community mode** opt-in: ogni utente registrato ottiene un profilo artista e può pubblicare musica gratuita, mentre la vendita resta disabilitata per artista finché l'admin non lo verifica (vedi [community-mode.md](community-mode.md)).
 
 ### 2. Architettura e Semplicità di Hosting
 * **Funkwhale** richiede un'infrastruttura di dimensioni medio-grandi. Per funzionare necessita del backend in Django, del database PostgreSQL, di Redis per le code di task in background (Celery) e di un web server per gestire i file statici e i media. Questo lo rende più oneroso da manutenere per un singolo artista.
