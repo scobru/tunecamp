@@ -134,6 +134,7 @@ describe('isArtworkOrAvatar helper', () => {
         expect(isArtworkOrAvatar('music/cover-al490-1780265924899.jpg')).toBe(true);
         expect(isArtworkOrAvatar('music/avatar-12.png')).toBe(true);
         expect(isArtworkOrAvatar('music/track-12345-456.jpg')).toBe(true);
+        expect(isArtworkOrAvatar('music/artwork-tr20-1780127924482.jpg')).toBe(true);
         expect(isArtworkOrAvatar('music/background.png')).toBe(true);
         expect(isArtworkOrAvatar('music/site-cover.jpg')).toBe(true);
         expect(isArtworkOrAvatar('music/site-logo.png')).toBe(true);
