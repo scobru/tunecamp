@@ -120,11 +120,10 @@ export function createAuthRoutes(container: ServiceContainer): Router {
 
     /**
      * POST /api/auth/password
-     * Change admin password (requires auth)
+     * Change own password (any authenticated user)
      */
-    router.post("/password", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), authMiddleware.requireAdmin, async (req: AuthenticatedRequest, res) => {
+    router.post("/password", rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }), authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
         try {
-            // This route should be protected by requireAdmin middleware
             const { currentPassword, newPassword } = req.body;
             // Get username from the token (injected by middleware)
             const username = req.username;
@@ -157,10 +156,10 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             const tokenVersion = (authResult && authResult.success) ? authResult.tokenVersion : 0;
 
             const token = authService.generateToken({
-                isAdmin: true,
+                isAdmin: req.isAdmin ?? false,
                 username,
                 artistId,
-                role: req.role || UserRole.ADMIN,
+                role: req.role || UserRole.NORMAL_USER,
                 isActive: req.isActive ?? true,
                 userId: req.userId || 0,
                 tokenVersion: tokenVersion

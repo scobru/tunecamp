@@ -168,12 +168,12 @@ export const ActivityPubPanel = () => {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row gap-4 items-end md:items-center justify-between">
                 <div>
-                     <h2 className="text-2xl font-bold flex items-center gap-2">ActivityPub Status</h2>
-                     <p className="opacity-70 text-sm font-medium">Manage content published to the Fediverse (Mastodon, etc)</p>
+                     <h2 className="text-2xl font-bold flex items-center gap-2">Artist Publishing</h2>
+                     <p className="opacity-70 text-sm font-medium">Followers and content published to the Fediverse by the selected artist.</p>
                 </div>
-                
+
                 <div className="flex gap-2 w-full md:w-auto">
-                    <select 
+                    <select
                         className="select select-bordered w-full md:w-64 bg-base-200/50 focus:border-primary"
                         value={selectedArtistId}
                         onChange={(e) => setSelectedArtistId(e.target.value)}
@@ -182,21 +182,13 @@ export const ActivityPubPanel = () => {
                             <option key={artist.id} value={artist.id}>{artist.name}</option>
                         ))}
                     </select>
-                    <button 
+                    <button
                         className="btn btn-primary btn-outline gap-2 shadow-sm tooltip tooltip-bottom"
                         onClick={handleSync}
                         disabled={loading}
-                        data-tip="Synchronize with Fediverse"
+                        data-tip="Re-broadcast all public content to the Fediverse"
                     >
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''}/> Sync
-                    </button>
-                    <button 
-                        className="btn btn-square btn-ghost hover:bg-base-300 tooltip tooltip-bottom"
-                        onClick={() => selectedArtistId && loadNotes(selectedArtistId)}
-                        disabled={loading}
-                        data-tip="Refresh list"
-                    >
-                        <RefreshCw size={20} className={loading && !processingId ? 'animate-spin' : ''}/>
                     </button>
                 </div>
             </div>
@@ -221,14 +213,17 @@ export const ActivityPubPanel = () => {
             <div className="card card-m3 bg-base-200/30">
                 <div className="card-body p-6">
                     <h3 className="font-bold mb-2 flex items-center gap-2">
-                        <Globe size={18} className="text-accent" /> Federation & Peers
+                        <Globe size={18} className="text-accent" /> Instance Federation & Peers
+                        <span className="badge badge-outline badge-sm font-mono opacity-70">@site@{window.location.hostname}</span>
                     </h3>
-                    <p className="text-sm opacity-70 mb-4 font-medium">Connect to other TuneCamp instances or ActivityPub Relays to discover music in your Community tab.</p>
+                    <p className="text-sm opacity-70 mb-4 font-medium">
+                        Follow other TuneCamp instances, Funkwhale channels or ActivityPub Relays. These follows are sent by the <b>instance actor</b> (@site), not by the artist selected above. Discovered music appears in the Network page for everyone on this instance.
+                    </p>
                     <form onSubmit={handleFollowPeer} className="flex gap-2 mb-6">
                         <input 
                             type="url" 
                             className="input input-bordered flex-1 bg-base-100/50 focus:border-primary transition-all" 
-                            placeholder="https://another-instance.com/users/site"
+                            placeholder="https://another-instance.com/users/site or https://funkwhale.it/@channel"
                             value={peerUrl}
                             onChange={(e) => setPeerUrl(e.target.value)}
                         />
@@ -243,7 +238,7 @@ export const ActivityPubPanel = () => {
 
                     {peers.length > 0 && (
                         <div className="space-y-3 mt-4">
-                            <h4 className="text-xs font-bold opacity-40 tracking-normal mb-2">Followed Peers</h4>
+                            <h4 className="text-xs font-bold opacity-40 tracking-normal mb-2">Peers followed by this instance</h4>
                             <div className="grid gap-2">
                                 {peers.map(peer => (
                                     <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-base-content/5 group hover:bg-base-100/60 transition-colors">
