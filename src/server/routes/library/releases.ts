@@ -77,6 +77,20 @@ export function createReleaseRouter(container: ServiceContainer): Router {
     const router = Router();
     router.use(json());
 
+    /** Artists with can_sell disabled publish free releases only: price fields
+     *  are stripped here so the catalog never advertises a Buy button that
+     *  checkout (which enforces the same flag) would refuse. */
+    function stripPricesIfNotSellable(artistId: number | null | undefined, body: any): void {
+        if (!artistId || typeof database.getArtistSimple !== 'function') return;
+        const artist: any = database.getArtistSimple(artistId);
+        if (artist && artist.can_sell === 0) {
+            body.price = 0;
+            body.priceUsdc = 0;
+            body.price_usdc = 0;
+            body.price_usdt = 0;
+        }
+    }
+
     /**
      * GET /api/releases
      * Returns all releases the user is allowed to see.
@@ -126,6 +140,8 @@ export function createReleaseRouter(container: ServiceContainer): Router {
 
         // Keep the release category (type) and the legacy product_type in sync.
         syncReleaseCategory(body);
+
+        stripPricesIfNotSellable(body.artist_id || body.artistId, body);
 
         // Prevent rapid duplicate creation (double-submission prevention)
         const checkArtistId = body.artist_id || body.artistId || null;
@@ -312,6 +328,8 @@ export function createReleaseRouter(container: ServiceContainer): Router {
 
         // Keep the release category (type) and the legacy product_type in sync.
         syncReleaseCategory(body);
+
+        stripPricesIfNotSellable(body.artist_id ?? body.artistId ?? release.artist_id, body);
 
         database.transaction(() => {
             library.updateRelease(id, body);

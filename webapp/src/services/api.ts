@@ -528,6 +528,12 @@ const API = {
     createUser: (data: Partial<User> & { password: string }) => handleResponse(api.post<User>('admin/system/users', data)),
     updateUser: (id: string, data: Partial<User>) => handleResponse(api.put<User>(`admin/system/users/${id}`, data)),
     updateUserStatus: (id: string, active: boolean) => handleResponse(api.put(`admin/system/users/${id}/status`, { active })),
+
+    // --- Artist profile requests (listener -> admin approval) ---
+    getMyArtistRequest: () => handleResponse(api.get<{ requestedAt: string | null, hasArtist: boolean }>('users/me/artist-request')),
+    requestArtistProfile: () => handleResponse(api.post('users/me/artist-request')),
+    approveArtistRequest: (userId: string | number) => handleResponse(api.post<{ artistId: number }>(`admin/system/users/${userId}/approve-artist`)),
+    dismissArtistRequest: (userId: string | number) => handleResponse(api.delete(`admin/system/users/${userId}/artist-request`)),
     deleteUser: (id: string) => handleResponse(api.delete(`admin/system/users/${id}`)),
     deleteUsersBatch: (ids: (string | number)[]) =>
         handleResponse(api.delete('admin/system/users/batch', { data: { ids } })),

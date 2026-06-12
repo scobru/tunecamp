@@ -33,8 +33,10 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const [loading, setLoading] = useState(false);
     const [currentUser, setCurrentUser] = useState<DbUser | null>(null);
     const [isLibraryOnly, setIsLibraryOnly] = useState(false);
+    const [canSell, setCanSell] = useState(true);
 
     const isRootAdmin = !!currentUser?.isRootAdmin;
+    const isAdminUser = isRootAdmin || !!currentUser?.isAdmin;
     const isSelf = currentUser && editId && String(currentUser.artistId) === String(editId);
     const canEditSensitive = !isEditing || isSelf || isRootAdmin; // Can edit sensitive fields on create, if it's self, or if root admin
 
@@ -86,6 +88,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 
                 setWalletAddress(artist.walletAddress || '');
                 setIsLibraryOnly(!!artist.isLibraryArtist);
+                setCanSell(artist.can_sell !== 0);
 
             } else {
                 // Create Mode
@@ -100,6 +103,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 setSocialLinks([]);
                 setWalletAddress('');
                 setIsLibraryOnly(false); // Manually created artists get all fields
+                setCanSell(true);
             }
             
             setAvatarFile(null);
@@ -198,7 +202,8 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                     bio,
                     links: allLinks,
                     postParams: postParamsValue,
-                    walletAddress: walletAddress || undefined
+                    walletAddress: walletAddress || undefined,
+                    ...(isAdminUser ? { canSell } : {})
                 });
             } else {
                 artist = await API.createArtist({ 
@@ -404,14 +409,33 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 />
                                 <label className="label">
                                     <span className="label-text-alt opacity-70">
-                                        {(!canEditSensitive && walletAddress !== '') ? 
-                                            "Only the artist can change their wallet once set." : 
+                                        {(!canEditSensitive && walletAddress !== '') ?
+                                            "Only the artist can change their wallet once set." :
                                             "If provided, payments for this artist's releases will be sent directly to this address."
                                         }
                                     </span>
                                 </label>
                             </div>
-                            
+
+                            {isEditing && isAdminUser && (
+                                <div className="form-control bg-base-200/50 rounded-lg p-4 border border-base-content/5">
+                                    <label className="label cursor-pointer justify-between py-0">
+                                        <div>
+                                            <span className="label-text font-bold">Sales enabled (verified artist)</span>
+                                            <p className="text-xs opacity-50 mt-1">
+                                                Off: this artist publishes free content only — prices are stripped and checkout refuses purchases. Turn on once you have verified the artist owns the rights to what they sell.
+                                            </p>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            className="toggle toggle-success"
+                                            checked={canSell}
+                                            onChange={e => setCanSell(e.target.checked)}
+                                        />
+                                    </label>
+                                </div>
+                            )}
+
                             <div className="divider text-xs opacity-50 tracking-normal">ActivityPub / Mastodon Config</div>
                             <div className="bg-base-200 p-4 rounded-lg space-y-4">
                                 <div className="alert alert-info py-2 text-xs bg-info/10 border-info/20 mb-2">
