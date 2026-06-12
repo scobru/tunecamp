@@ -1314,9 +1314,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     /**
      * POST /api/admin/system/users/:id/approve-artist
      * One-click approval of a listener's artist-profile request: creates an
-     * artist named after the user (selling disabled until verified) and links
-     * it. The user keeps the standard role — uploads work via the artist link
-     * and stay owner-scoped.
+     * artist named after the user (selling disabled until verified), links it,
+     * and promotes the account to Curator — publishing requires the role, not
+     * just the artist link, and the approval is the direct admin–artist contact.
      */
     router.post("/system/users/:id/approve-artist", async (req: AuthenticatedRequest, res: any) => {
         try {
@@ -1335,10 +1335,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
             library.setArtistCanSell(artistId, false);
-            authService.updateAdmin(id, artistId, user.role, user.storage_quota);
+            // Promote listeners to Curator: the artist link alone doesn't grant publishing
+            const newRole = user.role === UserRole.NORMAL_USER ? UserRole.SUPER_USER : user.role;
+            authService.updateAdmin(id, artistId, newRole, user.storage_quota);
             authService.setArtistRequest(id, false);
 
-            res.json({ success: true, artistId, message: `Artist profile created for ${user.username}` });
+            res.json({ success: true, artistId, message: `Artist profile created for ${user.username} (promoted to Curator)` });
         } catch (error: any) {
             console.error("Error approving artist request:", error);
             res.status(500).json({ error: error.message || "Failed to approve artist request" });

@@ -400,7 +400,8 @@ const Profile = () => {
                 </h3>
                 <p className="text-sm opacity-60">
                   Want to publish your own music on this instance? Request an
-                  artist profile — an admin will review and approve it.
+                  artist profile — if an admin approves, your account is
+                  promoted to Curator with a linked artist profile.
                 </p>
                 {artistRequestedAt ? (
                   <div className="alert alert-info bg-primary/10 border-primary/20 text-sm">
