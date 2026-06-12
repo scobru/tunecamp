@@ -768,9 +768,14 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 }
             }
             if (body.download !== undefined) updates.download = body.download;
-            if (body.price !== undefined) updates.price = body.price;
-            if (body.priceUsdc !== undefined) updates.price_usdc = body.priceUsdc;
-            if (body.priceUsdt !== undefined) updates.price_usdt = body.priceUsdt;
+            // Artists with can_sell disabled publish free content only: zero out
+            // any price submitted, mirroring the gate enforced at checkout.
+            const sellerArtistId = finalArtistId ?? item.artist_id;
+            const sellerArtist: any = sellerArtistId ? library.getArtistSimple(Number(sellerArtistId)) : null;
+            const salesAllowed = !sellerArtist || sellerArtist.can_sell !== 0;
+            if (body.price !== undefined) updates.price = salesAllowed ? body.price : 0;
+            if (body.priceUsdc !== undefined) updates.price_usdc = salesAllowed ? body.priceUsdc : 0;
+            if (body.priceUsdt !== undefined) updates.price_usdt = salesAllowed ? body.priceUsdt : 0;
             if (body.currency) updates.currency = body.currency;            if (body.use_nft !== undefined) {
                 updates.use_nft = body.use_nft ? 1 : 0;
             }
@@ -841,8 +846,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                             for (const td of body.tracks_data) {
                                 library.updateReleaseTrackMetadata(id, td.id, {
                                     title: td.title,
-                                    price: td.price,
-                                    price_usdc: td.priceUsdc,
+                                    price: salesAllowed ? td.price : 0,
+                                    price_usdc: salesAllowed ? td.priceUsdc : 0,
                                     currency: td.currency || 'ETH'
                                 });
                             }
@@ -1296,13 +1301,65 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const currentAdmin = authService.getAdminById(id);
             const targetRole = role || (isAdmin === undefined ? (currentAdmin?.role || 'user') : (isAdmin ? 'admin' : 'user'));
             const quota = storageQuota !== undefined ? Number(storageQuota) : undefined;
-            // Listeners (NORMAL_USER / 'user') cannot have an artist profile linked
-            const resolvedArtistId = targetRole === 'user' ? null : artistId;
-            authService.updateAdmin(id, resolvedArtistId, targetRole as UserRole, quota);
+            // Standard users CAN have an artist profile linked (community
+            // artists): uploads work via the link and stay owner-scoped.
+            authService.updateAdmin(id, artistId, targetRole as UserRole, quota);
             res.json({ message: "Admin user updated" });
         } catch (error) {
             console.error("Error updating admin:", error);
             res.status(500).json({ error: "Failed to update admin" });
+        }
+    });
+
+    /**
+     * POST /api/admin/system/users/:id/approve-artist
+     * One-click approval of a listener's artist-profile request: creates an
+     * artist named after the user (selling disabled until verified) and links
+     * it. The user keeps the standard role — uploads work via the artist link
+     * and stay owner-scoped.
+     */
+    router.post("/system/users/:id/approve-artist", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+                return res.status(403).json({ error: "Only the primary admin can approve artist requests" });
+            }
+            const id = parseInt(req.params.id, 10);
+            const user = authService.getAdminById(id);
+            if (!user) {
+                return res.status(404).json({ error: "User not found" });
+            }
+            if (user.artist_id) {
+                authService.setArtistRequest(id, false);
+                return res.status(400).json({ error: "User already has an artist profile" });
+            }
+
+            const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
+            library.setArtistCanSell(artistId, false);
+            authService.updateAdmin(id, artistId, user.role, user.storage_quota);
+            authService.setArtistRequest(id, false);
+
+            res.json({ success: true, artistId, message: `Artist profile created for ${user.username}` });
+        } catch (error: any) {
+            console.error("Error approving artist request:", error);
+            res.status(500).json({ error: error.message || "Failed to approve artist request" });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/system/users/:id/artist-request
+     * Dismiss a pending artist-profile request without creating anything.
+     */
+    router.delete("/system/users/:id/artist-request", (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+                return res.status(403).json({ error: "Only the primary admin can manage artist requests" });
+            }
+            const id = parseInt(req.params.id, 10);
+            authService.setArtistRequest(id, false);
+            res.json({ success: true });
+        } catch (error) {
+            console.error("Error dismissing artist request:", error);
+            res.status(500).json({ error: "Failed to dismiss artist request" });
         }
     });
 

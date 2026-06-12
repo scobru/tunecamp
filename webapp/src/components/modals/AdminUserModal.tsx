@@ -21,12 +21,8 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [initialIsActive, setInitialIsActive] = useState(true);
     const [storageQuota, setStorageQuota] = useState<number>(0);
 
-    // Auto-clear artist link if role is changed to Listener (Standard User)
-    useEffect(() => {
-        if (role === 'user' && artistId !== '') {
-            setArtistId('');
-        }
-    }, [role]);
+    // Listeners CAN have an artist profile linked (community artists):
+    // uploads work via the link and stay scoped to their own content.
 
     useEffect(() => {
         const loadData = async () => {
@@ -171,43 +167,32 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                             <span className="label-text">Link to Artist</span>
                         </label>
                         <div className="flex gap-2">
-                            <select 
+                            <select
                                 className="select select-bordered w-full"
                                 value={artistId}
                                 onChange={e => setArtistId(e.target.value)}
-                                disabled={role === 'user'}
                             >
-                                <option value="">None (Managers/Curators only)</option>
+                                <option value="">None</option>
                                 {artists.map(artist => (
                                     <option key={artist.id} value={artist.id}>
                                         {artist.name}
                                     </option>
                                 ))}
                             </select>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 className="btn btn-square btn-outline btn-primary"
                                 title="Create New Artist"
                                 onClick={() => document.dispatchEvent(new CustomEvent('open-admin-artist-modal'))}
-                                disabled={role === 'user'}
                             >
                                 +
                             </button>
                         </div>
                          <label className="label">
                             <span className="label-text-alt opacity-50">
-                                {role === 'user'
-                                    ? "Listeners (Standard Users) cannot be linked to an artist profile."
-                                    : "Linking to an artist allows this user to manage that artist's profile."}
+                                Linking to an artist lets this user manage that artist's profile and upload their own music (scoped to their own content for Listeners).
                             </span>
                         </label>
-                        {artistId && (
-                            <label className="label py-0">
-                                <span className="label-text-alt text-info font-medium">
-                                    Note: This user will manage an artist profile. Make sure they are at least a Curator to upload music.
-                                </span>
-                            </label>
-                        )}
                     </div>
 
                     <div className="form-control">

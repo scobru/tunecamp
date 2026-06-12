@@ -42,14 +42,18 @@ The **Curator** is a specialized role focused on library quality and content org
 ---
 
 ## 4. Listener (Standard User)
-The **Listener** is the base role for users who consume music and interact with the platform. Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, and selling store assets are reserved to Curators and Managers, who have that direct line to the artist. Listeners cannot be linked to an artist profile.
+The **Listener** is the base role for users who consume music and interact with the platform. Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, selling store assets, and social posting are reserved to Curators and Managers, who have that direct line to the artist.
 
 ### Capabilities:
 - **Listening & Collection:** Stream music via the web player or Subsonic-compatible apps, purchase content, and manage favorites.
-- **Social Interaction:** Create playlists, follow others, and manage their own profile.
+- **Social Interaction:** Create playlists, comment, follow artists, and manage their own profile.
 
-### Artists
-An artist account is a **Curator** (or higher) linked to an artist profile by an admin. Publishing requires both the role and the artist link.
+### Becoming an Artist
+An artist account is a **Curator** (or higher) linked to an artist profile. There are two paths:
+1. The admin promotes a user to Curator and links an artist profile manually (Admin → Users → Edit).
+2. The listener requests one from **Profile → Settings → Become an Artist**; when the admin approves it from the Users panel, the account is **promoted to Curator** and a non-sellable artist profile is created and linked. The approval is the direct admin–artist contact that publishing requires.
+
+Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor).
 
 ---
 
@@ -61,7 +65,8 @@ An artist account is a **Curator** (or higher) linked to an artist profile by an
 | Manage Users | ✅ | ✅ (view) | ❌ | ❌ |
 | Edit Others' Content | ✅ | ✅ | ✅ | ❌ |
 | Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ❌ |
-| Sell Store Assets | ✅ | ✅ | ✅ (with artist link) | ❌ |
+| Sell Music / Store Assets | ✅ | ✅ | ✅ (with artist link + `can_sell`) | ❌ |
+| Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ❌ |
 | Access Server Keys | ✅ | ❌ | ❌ | ❌ |
 | Manage Federation | ✅ | ✅ | ❌ | ❌ |
 

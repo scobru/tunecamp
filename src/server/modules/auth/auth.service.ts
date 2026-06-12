@@ -56,6 +56,10 @@ export interface AuthService {
     deleteAdmin(id: number): void;
     deleteUsersBatch(ids: number[]): void;
     toggleUserStatus(id: number, active: boolean): void;
+    /** Marks (or clears) a listener's pending request for an artist profile. */
+    setArtistRequest(userId: number, requested: boolean): void;
+    /** Returns the timestamp of the user's pending artist request, or null. */
+    getArtistRequest(userId: number): string | null;
     changePassword(username: string, newPassword: string): Promise<void>;
     isFirstRun(): boolean;
     /** Returns true if the username belongs to the root admin (id=1, first created). */
@@ -497,7 +501,7 @@ export function createAuthService(
 
         listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean }[] {
             const rows = db.prepare(`
-                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, ar.name as artist_name
+                SELECT a.id, a.username, a.artist_id, a.role, a.storage_quota, a.is_active, a.created_at, a.artist_requested_at, ar.name as artist_name
                 FROM admin a
                 LEFT JOIN artists ar ON a.artist_id = ar.id
                 ORDER BY a.username
@@ -508,6 +512,19 @@ export function createAuthService(
                 role: r.role || 'admin',
                 is_root: r.id === 1
             }));
+        },
+
+        setArtistRequest(userId: number, requested: boolean): void {
+            if (requested) {
+                db.prepare("UPDATE admin SET artist_requested_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
+            } else {
+                db.prepare("UPDATE admin SET artist_requested_at = NULL WHERE id = ?").run(userId);
+            }
+        },
+
+        getArtistRequest(userId: number): string | null {
+            const row = db.prepare("SELECT artist_requested_at FROM admin WHERE id = ?").get(userId) as { artist_requested_at: string | null } | undefined;
+            return row?.artist_requested_at ?? null;
         },
 
         deleteAdmin(id: number): void {

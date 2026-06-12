@@ -173,12 +173,19 @@ export function createAuthMiddleware(authService: AuthService) {
                 next();
                 return;
             }
-            
-            // Standard users can't write to private library by default
+
+            // Standard users can't write to private library by default.
+            // Exception: users with a linked artist profile (community-mode
+            // artists) may upload — their reads stay OWNER_SCOPED, so they
+            // only ever see public content plus their own.
             if (req.role === UserRole.NORMAL_USER) {
+                 if (req.artistId) {
+                     next();
+                     return;
+                 }
                  return res.status(403).json({ error: "Access denied: Write access required" });
             }
-            
+
             next();
         },
 

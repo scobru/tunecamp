@@ -279,6 +279,23 @@ export const AdminSettingsPanel = () => {
           </div>
 
           <div className="form-control pt-2 border-t border-base-content/5 mt-4">
+            <label className="label">
+              <span className="label-text font-medium">Instance Mode</span>
+            </label>
+            <select
+              className="select select-bordered bg-base-300/50"
+              value={settings.mode || "label"}
+              onChange={(e) => setSettings({ ...settings, mode: e.target.value })}
+            >
+              <option value="label">Label / Artist (curated storefront)</option>
+              <option value="community">Community (open publishing)</option>
+            </select>
+            <p className="text-[11px] opacity-40 px-1 mt-1">
+              Community: new registrations get an artist profile right away and can publish free music. Selling stays off per artist until you verify them ("Sales enabled" in the artist editor). Label: you create and curate every artist.
+            </p>
+          </div>
+
+          <div className="form-control pt-2 border-t border-base-content/5 mt-4">
             <label className="label cursor-pointer justify-between">
               <div className="flex items-center gap-2">
                 <Shield size={16} className="opacity-60" />

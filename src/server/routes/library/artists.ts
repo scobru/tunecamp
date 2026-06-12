@@ -132,7 +132,7 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Forbidden: You can only edit your own profile" });
             }
 
-            const { name, bio, photoPath, links, postParams, walletAddress, visibility } = req.body;
+            const { name, bio, photoPath, links, postParams, walletAddress, visibility, canSell } = req.body;
 
             library.updateArtist(
                 id,
@@ -144,6 +144,12 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
                 walletAddress,
                 visibility
             );
+
+            // Sales verification is an admin trust decision: artists must not be
+            // able to enable selling on their own profile.
+            if (canSell !== undefined && (req.isAdmin || req.isRootAdmin)) {
+                library.setArtistCanSell(id, canSell === true || canSell === 'true' || canSell === 1);
+            }
 
             const updated = library.getArtist(id);
             res.json(updated);

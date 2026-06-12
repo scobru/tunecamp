@@ -473,11 +473,17 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             else {
                 const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
                 const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-                if (!canSeePrivate && !isOwner && !req.userId) {
+                if (!canSeePrivate && !isOwner) {
                     if (track.album_id) {
                         const album = library.getRelease(track.album_id) || library.getAlbum(track.album_id);
                         if (album && album.visibility === 'private' && !library.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
-                    } else throw new ForbiddenError("Access denied");
+                    } else if (track.file_path) {
+                        // Orphan local-library file: streamable only if published via a public playlist
+                        if (!library.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
+                    } else if (!req.userId) {
+                        // External/link tracks require login
+                        throw new ForbiddenError("Access denied");
+                    }
                 }
             }
         } else if (!externalId) throw new BadRequestError("Invalid track ID");
@@ -508,11 +514,17 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (!track) throw new NotFoundError("Track not found");
         const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
         const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        if (!canSeePrivate && !isOwner && !req.userId) {
+        if (!canSeePrivate && !isOwner) {
             if (track.album_id) {
                 const album = library.getRelease(track.album_id) || library.getAlbum(track.album_id);
                 if (album && album.visibility === 'private' && !library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
-            } else throw new ForbiddenError("Access denied");
+            } else if (track.file_path) {
+                // Orphan local-library file: downloadable only if published via a public playlist
+                if (!library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
+            } else if (!req.userId) {
+                // External/link tracks require login
+                throw new ForbiddenError("Access denied");
+            }
         }
 
         if (!track.file_path) throw new NotFoundError("Track file not found");

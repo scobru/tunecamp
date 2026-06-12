@@ -47,8 +47,9 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: passwordValidation.error });
             }
 
-            // Check if registration is enabled
-            const allowRegistration = identity.getSetting("allowRegistration");
+            // Check if registration is enabled. The admin UI toggle writes
+            // "allowPublicRegistration"; "allowRegistration" is the legacy key.
+            const allowRegistration = identity.getSetting("allowPublicRegistration") ?? identity.getSetting("allowRegistration");
             if (allowRegistration === "false") {
                 return res.status(403).json({ error: "Registration is currently disabled" });
             }
@@ -59,30 +60,40 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 return res.status(409).json({ error: "Username already taken" });
             }
 
-            // Create DB user without artist link (null) + storage quota (1GB)
-            // Users are now standard listeners by default. Admin must promote them to artists.
             const DEFAULT_QUOTA = 1024 * 1024 * 1024; // 1GB
-            const { id: userId } = await authService.createUser(username, password, null, DEFAULT_QUOTA);
+
+            // In community mode every new user gets an artist profile right away
+            // (publishing allowed, selling disabled until an admin verifies them).
+            // In label mode users are standard listeners: an admin must promote
+            // them, or they can ask via POST /api/users/request-artist.
+            const isCommunity = identity.getSetting("mode") === "community";
+            let artistId: number | null = null;
+            if (isCommunity) {
+                artistId = database.createArtist(username, undefined, undefined, undefined, undefined, undefined, 'public');
+                database.setArtistCanSell(artistId, false);
+            }
+
+            const { id: userId } = await authService.createUser(username, password, artistId, DEFAULT_QUOTA);
 
             // 3. Generate JWT token for auto-login
             const token = authService.generateToken({
                 userId,
                 isAdmin: false,
                 username,
-                artistId: null,
+                artistId,
                 role: UserRole.NORMAL_USER,
                 isActive: true,
                 tokenVersion: 0
             });
 
-            console.log(`🆕 New user registered: ${username} (userId: ${userId})`);
+            console.log(`🆕 New user registered: ${username} (userId: ${userId})${isCommunity ? ` with community artist profile ${artistId}` : ''}`);
 
             res.json({
                 success: true,
                 token,
                 expiresIn: "7d",
                 username,
-                artistId: null,
+                artistId,
                 role: UserRole.NORMAL_USER,
                 isActive: true,
                 storageQuota: DEFAULT_QUOTA,
@@ -93,6 +104,38 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 return res.status(409).json({ error: "Username already taken" });
             }
             res.status(500).json({ error: "Registration failed" });
+        }
+    });
+
+    /**
+     * GET /api/users/me/artist-request
+     * Returns the current user's pending artist-profile request, if any.
+     */
+    router.get("/me/artist-request", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            const requestedAt = authService.getArtistRequest(req.userId!);
+            res.json({ requestedAt, hasArtist: !!req.artistId });
+        } catch (error) {
+            console.error("Artist request status error:", error);
+            res.status(500).json({ error: "Failed to get artist request status" });
+        }
+    });
+
+    /**
+     * POST /api/users/me/artist-request
+     * A listener asks the admin for an artist profile. The admin approves it
+     * with one click from the Users panel.
+     */
+    router.post("/me/artist-request", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            if (req.artistId) {
+                return res.status(400).json({ error: "You already have an artist profile" });
+            }
+            authService.setArtistRequest(req.userId!, true);
+            res.json({ success: true, message: "Request sent. An admin will review it." });
+        } catch (error) {
+            console.error("Artist request error:", error);
+            res.status(500).json({ error: "Failed to submit artist request" });
         }
     });
 

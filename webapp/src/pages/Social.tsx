@@ -11,7 +11,6 @@ import {
   Network,
 } from "lucide-react";
 import { IdentityPanel } from "../components/admin/IdentityPanel";
-import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
 import { ArtistFediversePanel } from "../components/artist/ArtistFediversePanel";
 import { ActivityPubPanel } from "../components/admin/ActivityPubPanel";
 import { CreatePostModal } from "../components/modals/CreatePostModal";
@@ -164,7 +163,6 @@ const Social = () => {
               </span>
             </div>
             <IdentityPanel isRootAdmin={user?.isRootAdmin} />
-            <ChangePasswordCard />
           </div>
         )}
 

@@ -53,6 +53,8 @@ export interface Artist {
     private_key?: string;
     also_known_as?: string[] | null;
     moved_to?: string | null;
+    /** 0 = sales disabled (unverified artist), 1 = sales enabled. Enforced server-side at checkout. */
+    can_sell?: number;
     created_at?: string;
     // Computed fields
     isLibraryArtist?: boolean;
@@ -432,6 +434,7 @@ export interface LibraryManager {
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
+    setArtistCanSell(id: number, canSell: boolean): void;
     updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;
     deleteArtist(id: number): void;
     deleteArtistsBatch(ids: number[]): void;
