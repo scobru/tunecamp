@@ -62,7 +62,7 @@ const MyMusic = () => {
   return (
     <div className="space-y-8 animate-fade-in">
       <PageHeader 
-        title="My Music" 
+        title="My Catalog"
         subtitle="Manage your artist profiles, releases, and audio files"
         icon={Upload}
         iconColor="text-primary"

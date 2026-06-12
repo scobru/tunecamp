@@ -18,6 +18,8 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
      * List all playlists
      */
     router.get("/", (req: AuthenticatedRequest, res) => {
+        // Playlists are a members-only feature: no anonymous access
+        if (!req.isAdmin && !req.username) return res.status(401).json({ error: "Unauthorized" });
         try {
             const isAdmin = req.isAdmin || req.isSuperUser;
             const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
@@ -38,10 +40,10 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
 
             if (req.isAdmin || req.isSuperUser) {
                 res.json([...library.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS), ...dynamicPlaylists]);
-            } else if (req.username) {
+            } else {
                 const myPlaylists = library.getPlaylists(req.username, VisibilityProfile.ALL_ACCESS);
                 const publicPlaylists = library.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE);
-                
+
                 const seenIds = new Set(myPlaylists.map(p => p.id));
                 const combined = [...myPlaylists];
                 for (const p of publicPlaylists) {
@@ -50,8 +52,6 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                     }
                 }
                 res.json([...combined, ...dynamicPlaylists]);
-            } else {
-                res.json([...library.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE), ...dynamicPlaylists]);
             }
         } catch (error) {
             console.error("Error getting playlists:", error);
@@ -130,6 +130,8 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
      * Get playlist with tracks
      */
     router.get("/:id", (req: AuthenticatedRequest, res) => {
+        // Playlists are a members-only feature: no anonymous access
+        if (!req.isAdmin && !req.username) return res.status(401).json({ error: "Unauthorized" });
         try {
             const idStr = req.params.id as string;
             

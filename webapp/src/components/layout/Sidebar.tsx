@@ -168,61 +168,46 @@ export const Sidebar = () => {
             <NavItem to="/network" icon={Globe} label="Network" />
             <NavItem to="/live" icon={Radio} label="Live" />
             <NavItem to="/store" icon={ShoppingBag} label="Store" />
-            {isAuthenticated && (
-              <NavItem to="/dig" icon={Shovel} label="Dig" />
-            )}
             <NavItem to="/board" icon={MessageSquare} label="Board" />
-            <ExternalNavItem href="/feed.xml" icon={Rss} label="RSS Feed" />
-            {communityLink && (
-              <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
-            )}
           </ul>
         </div>
- 
+
         <div>
           <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Catalog</h3>
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/albums" icon={Disc} label="Releases" />
+            <NavItem to="/artists" icon={User} label="Artists" />
+            <NavItem to="/tracks" icon={Music} label="Tracks" />
           </ul>
         </div>
 
-        <div>
-          <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Collection</h3>
-          <ul className="menu menu-sm p-0 gap-1">
-            {(isAdmin || isSuperUser || isRoot || !!user?.artistId) && (
-              <NavItem to="/library" icon={Library} label="Library" />
-            )}
-            <NavItem to="/artists" icon={User} label="Artists" />
-            <NavItem to="/tracks" icon={Music} label="Tracks" />
-            <NavItem to="/playlists" icon={ListMusic} label="Playlists" />
-            {isAuthenticated && (
+        {isAuthenticated && (
+          <div>
+            <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">My Music</h3>
+            <ul className="menu menu-sm p-0 gap-1">
+              <NavItem to="/playlists" icon={ListMusic} label="Playlists" />
               <NavItem to="/favorites" icon={Heart} label="Favorites" />
-            )}
-            {isAuthenticated && (
-              <NavItem to="/my-playlists" icon={ListMusic} label="My Playlists" />
-            )}
-            <NavItem to="/stats" icon={BarChart2} label="Stats" />
-          </ul>
-        </div>
+              <NavItem to="/stats" icon={BarChart2} label="Stats" />
+              <NavItem to="/dig" icon={Shovel} label="Dig" />
+            </ul>
+          </div>
+        )}
 
         {isAuthenticated && (isAdmin || !!user?.artistId) && (
           <div>
-            <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Management</h3>
+            <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">Studio</h3>
             <ul className="menu menu-sm p-0 gap-1">
-              {isRoot && (
-                <NavItem to="/browser" icon={Folder} label="Files" />
-              )}
-              {(isAdmin || !!user?.artistId) && (
-                <>
-                  <NavItem to="/publish" icon={Upload} label="Publish" />
-                  <NavItem to="/my-music" icon={Music} label="My Music" />
-                </>
-              )}
+              <NavItem to="/publish" icon={Upload} label="Publish" />
+              <NavItem to="/my-music" icon={Music} label="My Catalog" />
               {!!user?.artistId && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
+              <NavItem to="/library" icon={Library} label="Archive" />
               {(isRoot || role === 'admin') && (
                 <NavItem to="/search/content" icon={Globe} label="Search Content" />
+              )}
+              {isRoot && (
+                <NavItem to="/browser" icon={Folder} label="Files" />
               )}
             </ul>
           </div>
@@ -233,6 +218,10 @@ export const Sidebar = () => {
         <ul className="menu menu-sm p-0">
           <NavItem to="/support" icon={LifeBuoy} label="Support" />
           <NavItem to="/tools" icon={Wrench} label="Tools" />
+          <ExternalNavItem href="/feed.xml" icon={Rss} label="RSS Feed" />
+          {communityLink && (
+            <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
+          )}
         </ul>
 
         {/* User Footer */}

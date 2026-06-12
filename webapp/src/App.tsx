@@ -21,7 +21,6 @@ const Network = lazy(() => import("./pages/Network"));
 const Support = lazy(() => import("./pages/Support"));
 const Playlists = lazy(() => import("./pages/Playlists"));
 const PlaylistDetails = lazy(() => import("./pages/PlaylistDetails"));
-const MyPlaylists = lazy(() => import("./pages/MyPlaylists"));
 const MyPlaylistDetails = lazy(() => import("./pages/MyPlaylistDetails"));
 const Post = lazy(() => import("./pages/Post")); // Special case
 const Wallet = lazy(() => import("./pages/Wallet"));
@@ -178,7 +177,7 @@ function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/playlists" element={<Playlists />} />
             <Route path="/playlists/:id" element={<PlaylistDetails />} />
-            <Route path="/my-playlists" element={<MyPlaylists />} />
+            <Route path="/my-playlists" element={<Navigate to="/playlists" replace />} />
             <Route path="/my-playlists/:id" element={<MyPlaylistDetails />} />
             {/* Purchased tracks view is now in the User Profile Collection tab */}
             <Route path="/post/:slug" element={<Post />} />
