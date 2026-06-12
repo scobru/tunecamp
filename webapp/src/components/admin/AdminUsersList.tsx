@@ -156,9 +156,9 @@ export const AdminUsersList = () => {
                 )}
               </td>
               <td className="opacity-70">
-                {u.artist_id ? (
+                {u.artist_id && u.artist_name ? (
                   <span className="flex items-center gap-1">
-                    <User size={12} /> {u.artist_name || "Linked"}
+                    <User size={12} /> {u.artist_name}
                   </span>
                 ) : u.artist_requested_at ? (
                   <span className="flex items-center gap-2">

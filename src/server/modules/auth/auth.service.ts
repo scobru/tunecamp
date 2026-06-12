@@ -324,14 +324,17 @@ export function createAuthService(
 
             let artistId = user.artist_id;
 
-            // Handle Artist Profile (Actor) Management
-            if (!artistId) {
+            // Handle Artist Profile (Actor) Management.
+            // Reserved to curators and admins: listeners must never be auto-linked
+            // to an artist that happens to share their username — they become
+            // artists only through the request + approval flow (which promotes them).
+            if (!artistId && (userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN || userRole === UserRole.ADMIN)) {
                 console.log(`🔍 Checking for existing artist profile for ${userRole} ${username}...`);
-                
+
                 // Check if an artist with the same name exists
                 let existingArtist = db.prepare("SELECT id FROM artists WHERE name = ? COLLATE NOCASE").get(username) as { id: number } | undefined;
-                
-                if (!existingArtist && (userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN || userRole === UserRole.ADMIN)) {
+
+                if (!existingArtist) {
                     console.log(`🎨 Auto-creating artist profile for ${userRole}: ${username}`);
                     
                     const slug = username.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
@@ -361,8 +364,6 @@ export function createAuthService(
                     console.log(`🔗 Linking artist profile for ${username}, id: ${existingArtist.id}`);
                     artistId = existingArtist.id;
                     db.prepare("UPDATE admin SET artist_id = ? WHERE id = ?").run(artistId, user.id);
-                } else {
-                    console.log(`👤 User ${username} is a standard listener (no artist profile).`);
                 }
             }
 

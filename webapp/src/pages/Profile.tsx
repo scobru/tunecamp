@@ -42,9 +42,12 @@ const Profile = () => {
   const [artistLoading, setArtistLoading] = useState(false);
 
   const isRoot = role === 'root_admin' || user?.isRootAdmin;
-  
+  // Listeners are pure consumers: even a stale artistId on their account must
+  // not surface artist features — they see the "Become an Artist" card instead.
+  const hasArtistProfile = !!user?.artistId && role !== 'user';
+
   const activeHandle = useMemo(() => {
-    if (user?.artistId && artistData) {
+    if (hasArtistProfile && artistData) {
       return `@${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, '')}@${window.location.host}`;
     }
     if (isRoot) {
@@ -54,7 +57,7 @@ const Profile = () => {
   }, [user, artistData, isRoot]);
 
   const activeActorUri = useMemo(() => {
-    if (user?.artistId && artistData) {
+    if (hasArtistProfile && artistData) {
       return `${window.location.origin}/users/${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, '')}`;
     }
     if (isRoot) {
@@ -69,10 +72,10 @@ const Profile = () => {
 
   // Ensure active tab is valid if user is not an artist
   useEffect(() => {
-    if (!user?.artistId && activeTab === "artist") {
+    if (!hasArtistProfile && activeTab === "artist") {
       setActiveTab("settings");
     }
-  }, [user?.artistId, activeTab]);
+  }, [hasArtistProfile, activeTab]);
   const [alias, setAlias] = useState(user?.alias || "");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
   const [isSaving, setIsSaving] = useState(false);
@@ -83,12 +86,12 @@ const Profile = () => {
   const [requestingArtist, setRequestingArtist] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && !user?.artistId) {
+    if (isAuthenticated && !hasArtistProfile) {
       API.getMyArtistRequest()
         .then((data) => setArtistRequestedAt(data.requestedAt))
         .catch(() => {});
     }
-  }, [isAuthenticated, user?.artistId]);
+  }, [isAuthenticated, hasArtistProfile]);
 
   const handleRequestArtist = async () => {
     setRequestingArtist(true);
@@ -123,7 +126,7 @@ const Profile = () => {
         .finally(() => setLoadingTracks(false));
 
       // Load artist data if user is linked to an artist
-      if (user?.artistId) {
+      if (hasArtistProfile && user?.artistId) {
         setArtistLoading(true);
         API.getArtist(user.artistId)
           .then(setArtistData)
@@ -131,7 +134,7 @@ const Profile = () => {
           .finally(() => setArtistLoading(false));
       }
     }
-  }, [isAuthenticated, user?.artistId]);
+  }, [isAuthenticated, hasArtistProfile, user?.artistId]);
 
   const { ownedNFTs } = useOwnedNFTs(activeAddress);
 
@@ -294,7 +297,7 @@ const Profile = () => {
         >
           <Download size={18} /> Collection
         </button>
-        {user?.artistId && (
+        {hasArtistProfile && (
           <button
             className={clsx(
               "tab tab-lg px-8 gap-2",
@@ -393,7 +396,7 @@ const Profile = () => {
             <ChangePasswordCard />
 
             {/* Artist profile request (listeners without a linked artist) */}
-            {!user?.artistId && (
+            {!hasArtistProfile && (
               <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <User size={20} className="text-secondary" /> Become an Artist
@@ -450,7 +453,7 @@ const Profile = () => {
                      role === 'super_user' ? "Curator (Super User)" :
                      "Listener (Standard)"}
                   </div>
-                  {user?.artistId && (
+                  {hasArtistProfile && (
                     <div className="badge badge-outline gap-1 py-3 px-4 mt-1 font-semibold text-xs border-base-content/10">
                       🎨 Linked Artist
                     </div>
@@ -463,13 +466,13 @@ const Profile = () => {
                       {role === 'root_admin' && "Instance Owner (Root Admin)"}
                       {role === 'admin' && "Manager (Full Admin)"}
                       {role === 'super_user' && "Curator (Super User)"}
-                      {role === 'user' && "Listener (Standard User / Artist)"}
+                      {role === 'user' && "Listener (Standard User)"}
                     </h4>
                     <p className="text-sm opacity-70 mt-1">
                       {role === 'root_admin' && "You have complete administrative and security control over this TuneCamp instance."}
                       {role === 'admin' && "You have administrative privileges to moderate the community, manage releases, and support artists."}
                       {role === 'super_user' && "You are responsible for music catalog quality, organization, and correcting track metadata."}
-                      {role === 'user' && "You are a standard user. You can listen to music, purchase albums, and, if you are an artist, upload your own tracks."}
+                      {role === 'user' && "You are a standard user. You can listen to music and purchase albums. Want to publish your own music? Request an artist profile to become a Curator."}
                     </p>
                   </div>
                   
@@ -520,7 +523,7 @@ const Profile = () => {
                       {role === 'user' && [
                         "Listen to public music (Arena) and purchase tracks",
                         "Create and manage personal playlists and favorites",
-                        "Upload and manage your music (if linked to an Artist)",
+                        "Request an artist profile to publish your own music",
                         "Customize your profile, alias, and avatar"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">
@@ -616,7 +619,7 @@ const Profile = () => {
           </div>
         )}
 
-        {activeTab === "artist" && user?.artistId && (
+        {activeTab === "artist" && hasArtistProfile && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                 {artistLoading ? (
                     <div className="p-12 text-center opacity-50">Loading artist profile...</div>
