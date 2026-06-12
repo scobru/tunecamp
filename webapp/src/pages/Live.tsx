@@ -20,8 +20,10 @@ const CHUNK_MS = 1000;
 
 const Live = () => {
     const { isAuthenticated, role, user } = useAuthStore();
+    // Mirrors the server gate: managers/root always, curators only when linked
+    // to an artist profile. Listeners never broadcast, even with a stale artistId.
     const canBroadcast = isAuthenticated && (
-        role === "admin" || role === "root_admin" || role === "super_user" || !!user?.artistId
+        role === "admin" || role === "root_admin" || (role === "super_user" && !!user?.artistId)
     );
 
     const [enabled, setEnabled] = useState(true);

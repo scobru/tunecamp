@@ -4,6 +4,7 @@ import type { ServiceContainer } from '../../core/container.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { wrapAsync } from '../../middleware/error-handling.js';
 import { HlsLiveService } from '../../modules/live/hls.service.js';
+import { VisibilityGuardian } from '../../common/visibility.js';
 
 export function createLiveRoutes(container: ServiceContainer): Router {
     const liveService = container.liveService;
@@ -12,8 +13,14 @@ export function createLiveRoutes(container: ServiceContainer): Router {
     const hls = new HlsLiveService();
     const router = Router();
 
+    // Same gate as publishing: managers/root always, curators only when linked
+    // to an artist profile. Listeners can never go live, even with a stale artistId.
     const canBroadcast = (req: AuthenticatedRequest) =>
-        req.isAdmin || req.isSuperUser || !!req.artistId;
+        VisibilityGuardian.canPublishContent({
+            userId: req.userId ?? null,
+            artistId: req.artistId ?? null,
+            role: req.role!,
+        });
 
     /**
      * GET /api/live/sessions

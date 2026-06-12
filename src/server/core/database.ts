@@ -741,6 +741,16 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding artist_requested_at column...");
                 db.exec("ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL");
             }
+            // Repair stale artist links: artist_id pointing to a deleted artist,
+            // and listeners auto-linked by older login logic (listeners become
+            // artists only via the request + approval flow, which promotes them).
+            const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
+            if (artistsTableExists) {
+                const dangling = db.prepare("UPDATE admin SET artist_id = NULL WHERE artist_id IS NOT NULL AND artist_id NOT IN (SELECT id FROM artists)").run();
+                if (dangling.changes > 0) console.log(`🧹 [Database] Cleared ${dangling.changes} dangling artist link(s) on admin accounts`);
+            }
+            const listenerLinks = db.prepare("UPDATE admin SET artist_id = NULL WHERE role = 'user' AND artist_id IS NOT NULL AND id != 1").run();
+            if (listenerLinks.changes > 0) console.log(`🧹 [Database] Unlinked ${listenerLinks.changes} listener account(s) from artist profiles`);
         }
 
         const remoteActorsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='remote_actors'").get();
