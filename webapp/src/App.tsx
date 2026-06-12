@@ -102,7 +102,7 @@ function EditorGuard({ children }: { children: React.ReactNode }) {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated || (role !== 'admin' && role !== 'user' && role !== 'super_user' && role !== 'root_admin')) {
+  if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

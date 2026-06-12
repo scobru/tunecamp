@@ -36,7 +36,7 @@ const MyMusic = () => {
   useEffect(() => {
     if (isLoading) return;
     const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin' || user?.isRootAdmin;
-    if (!isAuthenticated || (!isAdmin && !user?.artistId)) {
+    if (!isAuthenticated || !isAdmin) {
       navigate("/");
       return;
     }

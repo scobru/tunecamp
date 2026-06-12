@@ -1551,6 +1551,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      */
     router.post("/assets", upload.single("file"), async (req: AuthenticatedRequest, res: any) => {
         try {
+            // Selling assets is reserved to Managers/Root Admins and Curators linked to an artist
+            if (!VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })) {
+                return res.status(403).json({ error: "Access denied: publishing requires a Curator or Manager account" });
+            }
             if (!req.isAdmin && !req.isActive) {
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -1598,8 +1602,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
 
-            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all assets; Curators only those of their own artist
+            const ownsAsset = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && asset.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsAsset) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1638,8 +1644,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (!asset) return res.status(404).json({ error: "Asset not found" });
             if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all assets; Curators only those of their own artist
+            const ownsAsset = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && asset.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsAsset) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -1667,8 +1675,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const asset = integration.getAsset(id);
             if (!asset) return res.status(404).json({ error: "Asset not found" });
 
-            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            if (!isSystemAdmin && req.artistId && asset.artist_id !== req.artistId) {
+            // Managers/Root Admins manage all assets; Curators only those of their own artist
+            const ownsAsset = VisibilityGuardian.canPublishContent({ userId: req.userId, artistId: req.artistId, role: req.role! })
+                && asset.artist_id === req.artistId;
+            if (!req.isAdmin && !ownsAsset) {
                 return res.status(403).json({ error: "Access denied" });
             }
 

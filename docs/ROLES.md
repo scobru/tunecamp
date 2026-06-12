@@ -41,13 +41,15 @@ The **Curator** is a specialized role focused on library quality and content org
 
 ---
 
-## 4. Listener (Standard User / Artist)
-The **Listener** (or Artist) is the base role for users who publish music and interact with the platform.
+## 4. Listener (Standard User)
+The **Listener** is the base role for users who consume music and interact with the platform. Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, and selling store assets are reserved to Curators and Managers, who have that direct line to the artist. Listeners cannot be linked to an artist profile.
 
 ### Capabilities:
-- **Discography Management:** Upload tracks, create albums, and manage their own releases.
-- **Social Interaction:** Create posts, follow others, and manage their own profile.
-- **Streaming:** Access music via the web player or Subsonic-compatible apps.
+- **Listening & Collection:** Stream music via the web player or Subsonic-compatible apps, purchase content, and manage favorites.
+- **Social Interaction:** Create playlists, follow others, and manage their own profile.
+
+### Artists
+An artist account is a **Curator** (or higher) linked to an artist profile by an admin. Publishing requires both the role and the artist link.
 
 ---
 
@@ -58,7 +60,8 @@ The **Listener** (or Artist) is the base role for users who publish music and in
 | Modify Site Settings | ✅ | ❌ | ❌ | ❌ |
 | Manage Users | ✅ | ✅ (view) | ❌ | ❌ |
 | Edit Others' Content | ✅ | ✅ | ✅ | ❌ |
-| Upload Music | ✅ | ✅ | ✅ | ✅ |
+| Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ❌ |
+| Sell Store Assets | ✅ | ✅ | ✅ (with artist link) | ❌ |
 | Access Server Keys | ✅ | ❌ | ❌ | ❌ |
 | Manage Federation | ✅ | ✅ | ❌ | ❌ |
 

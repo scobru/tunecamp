@@ -107,6 +107,19 @@ export class VisibilityGuardian {
   }
 
   /**
+   * Checks if a viewer can publish content (releases, uploads, store assets).
+   * Publishing is reserved to roles with a direct relationship to the artist:
+   * Managers (admin) and Root Admins always can; Curators (super_user) only
+   * when linked to an artist profile. Listeners never can, even with a stale
+   * artist_id on their account.
+   */
+  static canPublishContent(context: ViewerContext): boolean {
+    const role = context.role;
+    if (role === UserRole.ROOT_ADMIN || role === UserRole.ADMIN) return true;
+    return role === UserRole.SUPER_USER && !!context.artistId;
+  }
+
+  /**
    * Checks if a viewer has a specific capability.
    */
   static can(context: ViewerContext, capability: Capability): boolean {

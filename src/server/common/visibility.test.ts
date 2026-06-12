@@ -34,6 +34,24 @@ describe("VisibilityGuardian", () => {
     });
   });
 
+  describe("canPublishContent", () => {
+    test("Root Admin and Admin can publish without an artist link", () => {
+      expect(VisibilityGuardian.canPublishContent(rootAdmin)).toBe(true);
+      expect(VisibilityGuardian.canPublishContent({ userId: 6, role: UserRole.ADMIN })).toBe(true);
+    });
+
+    test("Curator can publish only when linked to an artist", () => {
+      expect(VisibilityGuardian.canPublishContent(artist)).toBe(true);
+      expect(VisibilityGuardian.canPublishContent(superUser)).toBe(false);
+    });
+
+    test("Listener cannot publish, even with a stale artist link", () => {
+      expect(VisibilityGuardian.canPublishContent(normalUser)).toBe(false);
+      expect(VisibilityGuardian.canPublishContent({ userId: 7, artistId: 10, role: UserRole.NORMAL_USER })).toBe(false);
+      expect(VisibilityGuardian.canPublishContent(guest)).toBe(false);
+    });
+  });
+
   describe("Context Derivation", () => {
     test("should derive correct context from user object", () => {
       const user = { userId: 5, role: 'super_user', isActive: true };
