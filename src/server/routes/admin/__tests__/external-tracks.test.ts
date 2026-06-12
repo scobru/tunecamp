@@ -18,6 +18,7 @@ jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
 const { createAdminRoutes } = await import('../admin.js');
 const { createProxyRoutes } = await import('../../network/proxy.js');
 const { createDatabase } = await import('../../../core/database.js');
+const { createChatRoutes } = await import('../../api/chat.js');
 
 describe('External Tracks & Self-Healing Integration Test', () => {
     let app: express.Express;
@@ -60,6 +61,19 @@ describe('External Tracks & Self-Healing Integration Test', () => {
             authMiddleware: mockAuthMiddleware,
             publishingService: {
                 syncPost: jest.fn(() => Promise.resolve())
+            },
+            chatService: {
+                addMessage: jest.fn((username: string, role: string, message: string) => {
+                    return {
+                        id: 1,
+                        username,
+                        role,
+                        message,
+                        source: 'webapp',
+                        telegram_message_id: null,
+                        created_at: new Date().toISOString()
+                    };
+                })
             }
         };
 
@@ -77,8 +91,18 @@ describe('External Tracks & Self-Healing Integration Test', () => {
             next();
         });
 
+        // Pre-populate req for chat/board messages
+        app.use('/api/chat', (req: any, res, next) => {
+            req.username = 'admin';
+            req.role = UserRole.ADMIN;
+            req.userId = 1;
+            req.context = { role: UserRole.ADMIN, userId: 1, artistId };
+            next();
+        });
+
         app.use('/api/admin', createAdminRoutes(container));
         app.use('/api/proxy', createProxyRoutes(container));
+        app.use('/api/chat', createChatRoutes(container));
 
         mockFetch.mockReset();
     });
@@ -89,18 +113,15 @@ describe('External Tracks & Self-Healing Integration Test', () => {
         }
     });
 
-    it('should parse external audio URLs from posts and register them as external tracks', async () => {
-        // 1. Create a post with a public audio link
-        const postRes = await request(app)
-            .post('/api/admin/posts')
+    it('should parse external audio URLs from board messages and register them as external tracks', async () => {
+        // 1. Send a board message with public audio links
+        const msgRes = await request(app)
+            .post('/api/chat/messages')
             .send({
-                artistId,
-                title: 'New Demo Post',
-                content: 'Check out my new track here: https://example.com/my-test-song.mp3 and another link http://example.org/cool-groove.wav!',
-                visibility: 'public'
+                message: 'Check out my new track here: https://example.com/my-test-song.mp3 and another link http://example.org/cool-groove.wav!'
             });
 
-        expect(postRes.status).toBe(201);
+        expect(msgRes.status).toBe(200);
 
         // 2. Check if the tracks were registered in the database
         const tracks = database.library.getTracksByArtist(artistId, VisibilityProfile.ALL_ACCESS);

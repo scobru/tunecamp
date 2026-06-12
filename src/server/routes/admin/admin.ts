@@ -40,89 +40,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const router = Router();
     router.use(json({ limit: "10mb" }));
 
-    const extractAudioUrls = (content: string): string[] => {
-        if (!content) return [];
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const rawUrls = content.match(urlRegex) || [];
-        const urls = rawUrls.map(url => url.replace(/[.,!?;:()]+$/, ""));
-        return urls.filter(url => {
-            const lower = url.toLowerCase();
-            if (lower.includes(".mp3") || lower.includes(".wav") || lower.includes(".flac") || lower.includes(".ogg") || lower.includes(".m4a") || lower.includes(".aac")) {
-                return true;
-            }
-            if (lower.includes("drive.google.com/file/d/") || lower.includes("drive.google.com/open?id=") || lower.includes("drive.google.com/uc?")) {
-                return true;
-            }
-            if (lower.includes("dropbox.com/s/") || lower.includes("dropbox.com/scl/fi/")) {
-                return true;
-            }
-            return false;
-        });
-    };
 
-    const getTitleFromUrl = (url: string, fallbackTitle: string): string => {
-        try {
-            const decoded = decodeURIComponent(url);
-            const u = new URL(decoded);
-            const pathname = u.pathname;
-            const filename = pathname.split('/').pop();
-            if (filename && filename.includes(".")) {
-                const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
-                if (nameWithoutExt) return nameWithoutExt.replace(/[-_]/g, ' ');
-            }
-        } catch {}
-        return fallbackTitle || "External Audio";
-    };
-
-    const syncPostExternalTracks = async (artistId: number, content: string, postTitle: string, userId: number | null) => {
-        try {
-            const audioUrls = extractAudioUrls(content);
-            for (const url of audioUrls) {
-                const extId = `ext:link:${url}`;
-                const existing = library.getTrackByExternalId(extId);
-                if (!existing) {
-                    const trackTitle = getTitleFromUrl(url, postTitle || "External Track");
-                    const service = url.includes("drive.google.com") ? "gdrive" : url.includes("dropbox.com") ? "dropbox" : "link";
-                    
-                    console.log(`📡 [AdminRoutes] Extracting external track from post: "${trackTitle}" -> ${url}`);
-                    library.createTrack({
-                        title: trackTitle,
-                        album_id: null,
-                        artist_id: artistId,
-                        owner_id: userId,
-                        artist_name: null,
-                        track_num: null,
-                        duration: 0,
-                        file_path: null,
-                        format: null,
-                        bitrate: null,
-                        sample_rate: null,
-                        price: 0,
-                        price_usdc: 0,
-                        currency: 'ETH',
-                        waveform: null,
-                        url: url,
-                        service: service,
-                        external_artwork: null,
-                        lyrics: null,
-                        lossless_path: null,
-                        external_id: extId,
-                        hash: null,
-                        fingerprint: null,
-                        genre: null,
-                        year: null,
-                        mime_type: 'audio/mpeg',
-                        file_size: 0,
-                        file_hash: null,
-                        version: null,
-                        description: `Condiviso tramite post: ${postTitle || 'Senza Titolo'}`
-                    });
-                }
-            }
-        } catch (err) {
-            console.error("❌ Error parsing external tracks from post:", err);
-        }
-    };
     const authMiddleware = createAuthMiddleware(authService);
 
     /**
@@ -1503,7 +1421,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const updatedPost = social.getPost(id);
 
             if (updatedPost) {
-                syncPostExternalTracks(updatedPost.artist_id, content, title || '', req.userId || null);
                 // Use PublishingService
                 publishingService.syncPost(id).catch(e => console.error("Failed to sync post update:", e));
             }
@@ -1553,7 +1470,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const post = social.getPost(postId);
 
             if (post) {
-                syncPostExternalTracks(resolvedArtistId, content, title || '', req.userId || null);
                 // Use PublishingService
                 publishingService.syncPost(postId).catch(e => console.error("Failed to sync new post:", e));
             }

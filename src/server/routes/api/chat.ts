@@ -2,12 +2,103 @@ import { Router, json, Request, Response } from 'express';
 import type { ServiceContainer } from '../../core/container.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { wrapAsync } from '../../middleware/error-handling.js';
+import { VisibilityProfile } from '../../common/visibility.js';
 
 export function createChatRoutes(container: ServiceContainer): Router {
     const chatService = container.chatService;
     const authMiddleware = container.authMiddleware;
     const router = Router();
     router.use(json());
+
+    const extractAudioUrls = (content: string): string[] => {
+        if (!content) return [];
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const rawUrls = content.match(urlRegex) || [];
+        const urls = rawUrls.map(url => url.replace(/[.,!?;:()]+$/, ""));
+        return urls.filter(url => {
+            const lower = url.toLowerCase();
+            if (lower.includes(".mp3") || lower.includes(".wav") || lower.includes(".flac") || lower.includes(".ogg") || lower.includes(".m4a") || lower.includes(".aac")) {
+                return true;
+            }
+            if (lower.includes("drive.google.com/file/d/") || lower.includes("drive.google.com/open?id=") || lower.includes("drive.google.com/uc?")) {
+                return true;
+            }
+            if (lower.includes("dropbox.com/s/") || lower.includes("dropbox.com/scl/fi/")) {
+                return true;
+            }
+            return false;
+        });
+    };
+
+    const getTitleFromUrl = (url: string, fallbackTitle: string): string => {
+        try {
+            const decoded = decodeURIComponent(url);
+            const u = new URL(decoded);
+            const pathname = u.pathname;
+            const filename = pathname.split('/').pop();
+            if (filename && filename.includes(".")) {
+                const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
+                if (nameWithoutExt) return nameWithoutExt.replace(/[-_]/g, ' ');
+            }
+        } catch {}
+        return fallbackTitle || "External Audio";
+    };
+
+    const syncBoardExternalTracks = async (content: string, userId: number | null) => {
+        try {
+            const audioUrls = extractAudioUrls(content);
+            if (audioUrls.length === 0) return;
+
+            const library = container.library;
+            const artists = library.getArtists(VisibilityProfile.ALL_ACCESS).filter(a => a.id !== -1);
+            const artistId = artists.length > 0 ? artists[0].id : -1;
+
+            for (const url of audioUrls) {
+                const extId = `ext:link:${url}`;
+                const existing = library.getTrackByExternalId(extId);
+                if (!existing) {
+                    const trackTitle = getTitleFromUrl(url, "External Track");
+                    const service = url.includes("drive.google.com") ? "gdrive" : url.includes("dropbox.com") ? "dropbox" : "link";
+                    
+                    console.log(`📡 [ChatRoutes] Extracting external track from board message: "${trackTitle}" -> ${url}`);
+                    library.createTrack({
+                        title: trackTitle,
+                        album_id: null,
+                        artist_id: artistId,
+                        owner_id: userId,
+                        artist_name: null,
+                        track_num: null,
+                        duration: 0,
+                        file_path: null,
+                        format: null,
+                        bitrate: null,
+                        sample_rate: null,
+                        price: 0,
+                        price_usdc: 0,
+                        currency: 'ETH',
+                        waveform: null,
+                        url: url,
+                        service: service,
+                        external_artwork: null,
+                        lyrics: null,
+                        lossless_path: null,
+                        external_id: extId,
+                        hash: null,
+                        fingerprint: null,
+                        genre: null,
+                        year: null,
+                        mime_type: 'audio/mpeg',
+                        file_size: 0,
+                        file_hash: null,
+                        version: null,
+                        description: `Condiviso tramite Board`
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("❌ Error parsing external tracks from board message:", err);
+        }
+    };
 
     /**
      * GET /api/chat/history
@@ -47,6 +138,9 @@ export function createChatRoutes(container: ServiceContainer): Router {
         if (!savedMessage) {
             return res.status(500).json({ error: 'Failed to send message' });
         }
+
+        // Extract and sync external tracks from board messages
+        syncBoardExternalTracks(message.trim(), req.userId || null);
 
         res.json(savedMessage);
     }));
