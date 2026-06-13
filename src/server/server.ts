@@ -99,6 +99,7 @@ import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { createTorrentSearchRouter } from "./routes/admin/torrent-search.js";
 import { torrentSearchService } from "./modules/integrations/torrent-search.service.js";
 import { PublicScraperTorrentProvider } from "./providers/torrent/public-scraper.provider.js";
+import { ApibayTorrentProvider } from "./providers/torrent/apibay.provider.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { kprs } from "./modules/network/zen-network.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
@@ -266,8 +267,12 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const downloadService = initDownloadService(soulseekService, torrentService, 1, database);
 
+    // apibay (TPB JSON API) is the primary provider: a single stable endpoint
+    // reachable from datacenter IPs where the HTML scrapers silently return zero.
+    // The scrapers stay registered as a fallback.
+    torrentSearchService.registerProvider(new ApibayTorrentProvider());
     torrentSearchService.registerProvider(new PublicScraperTorrentProvider());
-    console.log(`🔌 [Integrations] TorrentSearch initialized with PublicScraper provider`);
+    console.log(`🔌 [Integrations] TorrentSearch initialized with Apibay + PublicScraper providers`);
 
     const chatService = new ChatService(database);
     const liveService = new LiveService();

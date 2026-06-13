@@ -16,11 +16,13 @@ class TorrentSearchService {
         
         // Run searches in parallel
         const searchPromises = this.providers.map(async (p) => {
+            const t0 = Date.now();
             try {
                 const results = await p.search(query, category);
+                console.log(`🔎 [TorrentSearch] ${p.id} → ${results.length} results (${Date.now() - t0}ms)`);
                 return results.map((r: TorrentSearchResult) => ({ ...r, searchProviderId: p.id }));
             } catch (err) {
-                console.error(`[TorrentSearch] Provider ${p.id} failed:`, err);
+                console.error(`[TorrentSearch] Provider ${p.id} failed after ${Date.now() - t0}ms:`, err);
                 return [];
             }
         });
