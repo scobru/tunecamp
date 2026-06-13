@@ -32,7 +32,13 @@ interface ConfigStore {
 export const useConfigStore = create<ConfigStore>((set, get) => ({
   status: null,
   isLoading: false,
-  cacheBuster: Date.now(),
+  // Start at 0 (falsy) so cover/asset URLs are emitted WITHOUT a `?v=` query param,
+  // keeping them stable and cacheable across page loads (the server sets a 1-day
+  // Cache-Control on covers). A fresh `Date.now()` here would change the URL on every
+  // page load, defeating the browser cache and forcing full-res covers to be
+  // re-downloaded each time — which showed up as blank/slow covers until a refresh.
+  // `bumpCacheBuster()` is still called after an edit/upload to invalidate on demand.
+  cacheBuster: 0,
   fetchStatus: async () => {
     set({ isLoading: true });
     try {

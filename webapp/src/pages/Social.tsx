@@ -8,7 +8,6 @@ import {
   User,
   MessageSquare,
   PenTool,
-  Network,
 } from "lucide-react";
 import { IdentityPanel } from "../components/admin/IdentityPanel";
 import { ArtistFediversePanel } from "../components/artist/ArtistFediversePanel";
@@ -136,8 +135,8 @@ const Social = () => {
             className={`tab ${activeTab === "federation" ? "tab-active" : ""}`}
             onClick={() => setActiveTab("federation")}
           >
-            <Network size={16} className="mr-2" />
-            Federation
+            <PenTool size={16} className="mr-2" />
+            Publishing
           </a>
         )}
         <a
