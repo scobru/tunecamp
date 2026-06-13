@@ -632,7 +632,7 @@ const ContentSearch: React.FC = () => {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
                                 <input 
                                     type="text" 
-                                    placeholder={`Search public trackers (1337x, TPB)...`}
+                                    placeholder={`Search public trackers (TPB, Limetorrents)...`}
                                     className="input input-bordered w-full pl-10"
                                     value={query}
                                     onChange={e => setQuery(e.target.value)}

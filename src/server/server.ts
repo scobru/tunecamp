@@ -105,6 +105,7 @@ import { LocalizationService } from "./modules/catalog/localization.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
 import { taskManager } from "./modules/workers/task-manager.js";
+import { createRssService } from "./modules/network/rss.service.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
 
 
@@ -199,6 +200,16 @@ export async function startServer(config: ServerConfig): Promise<void> {
             console.error("❌ [Scheduler] Scheduled scan check failed:", e);
         }
     }, 15 * 60 * 1000);
+
+    // Periodically refresh followed RSS/Atom sources (podcasts, Owncast, blogs)
+    // so new items show up in the Network feed without manual sync.
+    const rssService = createRssService(database);
+    setTimeout(() => {
+        taskManager.run('rss-refresh', () => rssService.refreshAll());
+    }, 90 * 1000);
+    setInterval(() => {
+        taskManager.run('rss-refresh', () => rssService.refreshAll());
+    }, 30 * 60 * 1000);
 
     app.get("/api/peers", (req, res) => {
         res.status(200).json(Array.from(kprs));

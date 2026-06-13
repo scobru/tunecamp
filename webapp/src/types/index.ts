@@ -325,14 +325,14 @@ export interface NetworkSite {
     version: string;
     lastSeen: string;
     coverImage?: string;
-    federation?: 'zen' | 'activitypub' | 'local' | 'http';
+    federation?: 'zen' | 'activitypub' | 'local' | 'http' | 'rss';
 }
 
 export interface NetworkTrack {
     track: Track;
     siteName: string;
     siteUrl: string;
-    federation?: 'zen' | 'activitypub' | 'local' | 'http';
+    federation?: 'zen' | 'activitypub' | 'local' | 'http' | 'rss';
     // For ActivityPub/Local tracks/posts (flattened structure)
     type?: 'release' | 'post';
     audioUrl?: string;

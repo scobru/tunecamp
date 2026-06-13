@@ -275,6 +275,9 @@ const API = {
     followRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/follow', { url })),
     unfollowRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/unfollow', { url })),
     syncPeer: (url?: string) => handleResponse(api.post('admin/network/ap/sync', { url })),
+    followRssFeed: (url: string) => handleResponse(api.post<{ message: string; name: string; items: number }>('admin/network/rss/follow', { url })),
+    unfollowRssFeed: (url: string) => handleResponse(api.post('admin/network/rss/unfollow', { url })),
+    syncRssFeed: (url?: string) => handleResponse(api.post('admin/network/rss/sync', { url })),
 
     // --- Admin: Releases & Content ---
     getAdminReleases: (options: { mine?: boolean, includeLibrary?: boolean } = {}) => {

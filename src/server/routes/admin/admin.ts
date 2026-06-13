@@ -13,6 +13,7 @@ import { getDownloadService } from "../../modules/catalog/download.service.js";
 import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
+import { createRssService } from "../../modules/network/rss.service.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -38,6 +39,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const social: ServiceContainer['social'] = (container as any).social || (container as any);
     const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const rssService = createRssService(database);
     const router = Router();
     router.use(json({ limit: "10mb" }));
 
@@ -1932,15 +1934,82 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 await apService.fetchRemoteOutbox(url);
                 res.json({ message: `Sync triggered for ${url}` });
             } else {
-                const peers = social.getFollowedActors();
+                // RSS feeds are refreshed by the RSS service, not the AP outbox fetcher.
+                const peers = social.getFollowedActors().filter(p => p.type !== 'rss');
                 for (const peer of peers) {
                     apService.fetchRemoteOutbox(peer.uri).catch(e => console.error(`Failed to sync ${peer.uri}:`, e));
                 }
+                rssService.refreshAll().catch(e => console.error("Failed to refresh RSS feeds:", e));
                 res.json({ message: `Sync triggered for ${peers.length} peers` });
             }
         } catch (error: any) {
             console.error("Error syncing AP actors:", error);
             res.status(500).json({ error: error.message || "Failed to sync remote actors" });
+        }
+    });
+
+    /**
+     * POST /api/admin/network/rss/follow
+     * Follow a plain RSS/Atom source (podcast, Owncast, blog).
+     */
+    router.post("/network/rss/follow", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can follow feeds" });
+            }
+            const { url } = req.body;
+            if (!url || typeof url !== "string") {
+                return res.status(400).json({ error: "Feed URL is required" });
+            }
+            const result = await rssService.addFeed(url);
+            res.json({ message: `Now following "${result.name}" (${result.items} items)`, ...result });
+        } catch (error: any) {
+            console.error("Error following RSS feed:", error);
+            res.status(400).json({ error: error.message || "Failed to follow RSS feed" });
+        }
+    });
+
+    /**
+     * POST /api/admin/network/rss/unfollow
+     * Stop following an RSS source.
+     */
+    router.post("/network/rss/unfollow", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can unfollow feeds" });
+            }
+            const { url } = req.body;
+            if (!url) {
+                return res.status(400).json({ error: "URL is required" });
+            }
+            rssService.removeFeed(url);
+            res.json({ message: `Unfollowed ${url}` });
+        } catch (error: any) {
+            console.error("Error unfollowing RSS feed:", error);
+            res.status(500).json({ error: error.message || "Failed to unfollow RSS feed" });
+        }
+    });
+
+    /**
+     * POST /api/admin/network/rss/sync
+     * Refresh one feed (with url) or all followed feeds.
+     */
+    router.post("/network/rss/sync", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can sync feeds" });
+            }
+            const { url } = req.body;
+            if (url) {
+                const n = await rssService.refreshFeed(url);
+                res.json({ message: `Refreshed ${url}: ${n} items` });
+            } else {
+                rssService.refreshAll().catch(e => console.error("Failed to refresh RSS feeds:", e));
+                res.json({ message: "RSS refresh triggered for all feeds" });
+            }
+        } catch (error: any) {
+            console.error("Error syncing RSS feeds:", error);
+            res.status(500).json({ error: error.message || "Failed to sync RSS feeds" });
         }
     });
 
