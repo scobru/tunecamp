@@ -667,7 +667,7 @@ export interface SocialManager {
     deletePost(id: number): void;
 
     // ActivityPub Metadata Notes
-    createApNote(artistId: number, noteId: string, noteType: 'post' | 'release', contentId: number, contentSlug: string, contentTitle: string): number;
+    createApNote(artistId: number, noteId: string, noteType: 'post' | 'release' | 'board', contentId: number, contentSlug: string, contentTitle: string): number;
     getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
     getApNote(noteId: string): ApNote | undefined;
     markApNoteDeleted(noteId: string): void;

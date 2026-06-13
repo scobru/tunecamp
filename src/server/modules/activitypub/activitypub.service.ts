@@ -1135,6 +1135,79 @@ export class ActivityPubService {
         await Promise.all(followers.map(follower => this.sendActivity(artist, follower.inbox_uri, activity)));
     }
 
+    /**
+     * Broadcast a Community Board message as a Create(Note) ActivityPub activity
+     * from the linked artist actor. Only called when the posting user has a
+     * linked artist account with AP keys. Fire-and-forget from the chat route.
+     */
+    public async broadcastBoardMessage(artistId: number, messageText: string): Promise<void> {
+        const artist = this.db.getArtist(artistId);
+        if (!artist) return;
+        if (!artist.public_key) {
+            console.log(`ℹ️ [AP] Skipping board broadcast for artist "${artist.name}" — no AP keys`);
+            return;
+        }
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        const noteId = `${baseUrl}/api/ap/notes/board-${artist.slug}-${Date.now()}`;
+
+        // Escape HTML to prevent injection, then wrap as paragraph(s)
+        const safeText = this.escapeHtml(messageText);
+        const contentHtml = `<p>${safeText.replace(/\r?\n/g, "<br />")}</p>`;
+
+        const published = new Date().toISOString();
+
+        const note = {
+            type: "Note",
+            id: noteId,
+            attributedTo: artistActorUrl,
+            content: contentHtml,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`],
+            published,
+            url: `${baseUrl}/board`,
+            tag: [{
+                type: "Hashtag",
+                name: "#CommunityBoard",
+                href: `${baseUrl}/board`
+            }]
+        };
+
+        const activity = {
+            "@context": "https://www.w3.org/ns/activitystreams",
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Create",
+            actor: artistActorUrl,
+            object: note,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`]
+        };
+
+        // Deliver to all accepted followers
+        const followers = this.db.getFollowers(artist.id);
+        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+
+        if (inboxes.length > 0) {
+            console.log(`📢 [AP] Broadcasting board message from ${artist.name} to ${inboxes.length} inbox(es)`);
+            await Promise.all(inboxes.map(inbox =>
+                this.sendActivity(artist, inbox, activity)
+                    .catch(e => console.error(`[AP] Board delivery failed → ${inbox}:`, e))
+            ));
+        } else {
+            console.log(`ℹ️ [AP] No followers for ${artist.name}, skipping direct board broadcast.`);
+        }
+
+        // Announce to relay for wider discovery
+        await this.announceToRelay(activity);
+
+        // Record the note so it appears in the artist's outbox and prevents duplicates
+        // Using content_id = 0 since board messages don't have a numeric content ID
+        this.db.createApNote(artist.id, noteId, 'board', 0, `board-${Date.now()}`, messageText.substring(0, 50) + (messageText.length > 50 ? '...' : ''));
+
+        console.log(`✅ [AP] Board message federated from artist "${artist.name}"`);
+    }
+
     /** Best-effort: fetch a remote actor's profile and cache it for display (does not change follow state). */
     public async cacheRemoteActor(actorUri: string): Promise<void> {
         if (!actorUri || !actorUri.startsWith("http")) return;

@@ -166,6 +166,12 @@ export function createChatRoutes(container: ServiceContainer): Router {
         // Extract and sync external tracks from board messages
         syncBoardExternalTracks(message.trim(), req.userId || null, trackMetadata);
 
+        // Federate to Fediverse if the user has a linked artist account (fire-and-forget)
+        if (req.artistId) {
+            container.apService.broadcastBoardMessage(req.artistId, message.trim())
+                .catch(err => console.error('[Chat] Board→Fediverse federation failed:', err));
+        }
+
         res.json(savedMessage);
     }));
 
