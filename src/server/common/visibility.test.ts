@@ -35,9 +35,10 @@ describe("VisibilityGuardian", () => {
   });
 
   describe("canPublishContent", () => {
-    test("Root Admin and Admin can publish without an artist link", () => {
+    test("Root Admin can publish without an artist link, but Admin cannot", () => {
       expect(VisibilityGuardian.canPublishContent(rootAdmin)).toBe(true);
-      expect(VisibilityGuardian.canPublishContent({ userId: 6, role: UserRole.ADMIN })).toBe(true);
+      expect(VisibilityGuardian.canPublishContent({ userId: 6, role: UserRole.ADMIN })).toBe(false);
+      expect(VisibilityGuardian.canPublishContent({ userId: 6, artistId: 10, role: UserRole.ADMIN })).toBe(true);
     });
 
     test("Curator can publish only when linked to an artist", () => {

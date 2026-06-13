@@ -64,6 +64,8 @@ describe('Release Routes - Creation and Publishing', () => {
             req.isAdmin = true;
             req.isActive = true;
             req.role = 'admin';
+            req.userId = 1;
+            req.artistId = 1;
             req.context = { role: 'admin' as any, userId: 1, artistId: 1 };
             req.isRootAdmin = true;
             next();

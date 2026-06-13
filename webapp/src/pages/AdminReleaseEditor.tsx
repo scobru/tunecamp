@@ -153,12 +153,21 @@ export default function AdminReleaseEditor() {
         navigate("/");
         return;
       }
+
+      const isRoot = role === 'root_admin' || user?.isRootAdmin;
+      const hasArtist = !!user?.artistId;
+
+      if (isNew && !isRoot && !hasArtist) {
+        navigate("/admin");
+        return;
+      }
+
       loadArtists();
       if (!isNew && id) {
         loadRelease(parseInt(id));
       }
     }
-  }, [id, isLoading, isAuthenticated, role, isAdmin, user]);
+  }, [id, isLoading, isAuthenticated, role, isAdmin, user, isNew]);
 
   useEffect(() => {
     if (metadata.use_nft && tracks.length > 0 && isReady) {

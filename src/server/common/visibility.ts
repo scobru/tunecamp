@@ -115,8 +115,8 @@ export class VisibilityGuardian {
    */
   static canPublishContent(context: ViewerContext): boolean {
     const role = context.role;
-    if (role === UserRole.ROOT_ADMIN || role === UserRole.ADMIN) return true;
-    return role === UserRole.SUPER_USER && !!context.artistId;
+    if (role === UserRole.ROOT_ADMIN) return true;
+    return (role === UserRole.ADMIN || role === UserRole.SUPER_USER) && !!context.artistId;
   }
 
   /**
