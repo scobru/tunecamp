@@ -333,59 +333,99 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
         });
 
         if (orphans.length > 0) {
-            console.log(`📦 [Maintenance] Found ${orphans.length} orphaned files on disk. Restoring...`);
-            let restored = 0;
+            console.log(`📦 [Maintenance] Found ${orphans.length} orphaned files on disk. Filtering duplicates...`);
 
-            // Pre-cache artists for faster lookup
-            const artists = database.db.prepare("SELECT id, name FROM artists").all() as any[];
-            const artistMap = new Map(artists.map(a => [a.name.toLowerCase(), a.id]));
+            // Phase A: Delete obvious filesystem duplicates (e.g. "song (1).mp3", "track (2).flac")
+            // These are created by download managers or OS copy operations and cause the
+            // infinite scan/dedup/restore loop when re-imported as new tracks.
+            const genuineOrphans: string[] = [];
+            const DUPE_PATTERN = /^(.+?)\s*\(\d+\)(\.[^.]+)$/;
+            let physicalDupesDeleted = 0;
 
             for (const file of orphans) {
-                const fullPath = path.join(musicDir, file);
-                try {
-                    const metadata = await mm.parseFile(fullPath);
-                    const common = metadata.common;
-                    const format = metadata.format;
-                    const artistName = common.artist || "Unknown Artist";
-                    
-                    let artistId = artistMap.get(artistName.toLowerCase());
-                    if (!artistId) {
-                        artistId = database.createArtist(artistName);
-                        artistMap.set(artistName.toLowerCase(), artistId);
+                const basename = path.basename(file);
+                const dir = path.dirname(file);
+                const match = basename.match(DUPE_PATTERN);
+                if (match) {
+                    const originalBasename = match[1].trimEnd() + match[2];
+                    const originalPath = dir ? `${dir}/${originalBasename}` : originalBasename;
+                    // If the original file (without suffix) exists in the DB, this is a true duplicate
+                    if (dbPaths.has(originalPath.toLowerCase())) {
+                        const fullPath = path.join(musicDir, file);
+                        try {
+                            await fs.unlink(fullPath);
+                            physicalDupesDeleted++;
+                            console.log(`🗑️ [Maintenance] Deleted filesystem duplicate: ${file}`);
+                        } catch (e) {
+                            console.warn(`[Maintenance] Could not delete duplicate ${file}:`, (e as any).message);
+                        }
+                        continue;
                     }
-
-                    const normalizedPath = file.replace(/\\/g, '/');
-                    const hash = await getFastFileHash(fullPath);
-
-                    console.log(`📂 [Maintenance] Restoring orphan: ${path.basename(file)} -> Artist: ${artistName || 'Unknown'}`);
-                    database.createTrack({
-                        title: common.title || path.basename(file, path.extname(file)),
-                        album_id: null, // Scanned later by main scanner
-                        artist_id: artistId,
-                        owner_id: primaryAdmin ? primaryAdmin.id : null,
-                        track_num: common.track?.no || null,
-                        duration: format.duration || 0,
-                        file_path: normalizedPath,
-                        format: format.codec || path.extname(file).substring(1),
-                        bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
-                        sample_rate: format.sampleRate || null,
-                        lossless_path: ['.wav', '.flac'].includes(path.extname(file).toLowerCase()) ? normalizedPath : null,
-                        waveform: null,
-                        url: null,
-                        service: null,
-                        external_artwork: null,
-                        hash: hash,
-                        price: 0,
-                        price_usdc: 0,
-                        currency: 'ETH'
-                    });
-                    restored++;
-
-                } catch (e) {
-                    console.error(`❌ [Maintenance] Failed to restore orphan: ${file}`, e);
                 }
+                genuineOrphans.push(file);
             }
-            console.log(`✅ [Maintenance] Restored ${restored} tracks to the library.`);
+            if (physicalDupesDeleted > 0) {
+                console.log(`🧹 [Maintenance] Removed ${physicalDupesDeleted} filesystem duplicate files.`);
+            }
+
+            // Phase B: Restore genuine orphans (files that are truly missing from the DB)
+            if (genuineOrphans.length > 0) {
+                console.log(`📦 [Maintenance] Restoring ${genuineOrphans.length} genuine orphaned files...`);
+                let restored = 0;
+
+                // Pre-cache artists for faster lookup
+                const artists = database.db.prepare("SELECT id, name FROM artists").all() as any[];
+                const artistMap = new Map(artists.map(a => [a.name.toLowerCase(), a.id]));
+
+                for (const file of genuineOrphans) {
+                    const fullPath = path.join(musicDir, file);
+                    try {
+                        const metadata = await mm.parseFile(fullPath);
+                        const common = metadata.common;
+                        const format = metadata.format;
+                        const artistName = common.artist || "Unknown Artist";
+                        
+                        let artistId = artistMap.get(artistName.toLowerCase());
+                        if (!artistId) {
+                            artistId = database.createArtist(artistName);
+                            artistMap.set(artistName.toLowerCase(), artistId);
+                        }
+
+                        const normalizedPath = file.replace(/\\/g, '/');
+                        const hash = await getFastFileHash(fullPath);
+
+                        console.log(`📂 [Maintenance] Restoring orphan: ${path.basename(file)} -> Artist: ${artistName || 'Unknown'}`);
+                        database.createTrack({
+                            title: common.title || path.basename(file, path.extname(file)),
+                            album_id: null, // Scanned later by main scanner
+                            artist_id: artistId,
+                            owner_id: primaryAdmin ? primaryAdmin.id : null,
+                            track_num: common.track?.no || null,
+                            duration: format.duration || 0,
+                            file_path: normalizedPath,
+                            format: format.codec || path.extname(file).substring(1),
+                            bitrate: format.bitrate ? Math.round(format.bitrate / 1000) : null,
+                            sample_rate: format.sampleRate || null,
+                            lossless_path: ['.wav', '.flac'].includes(path.extname(file).toLowerCase()) ? normalizedPath : null,
+                            waveform: null,
+                            url: null,
+                            service: null,
+                            external_artwork: null,
+                            hash: hash,
+                            price: 0,
+                            price_usdc: 0,
+                            currency: 'ETH'
+                        });
+                        restored++;
+
+                    } catch (e) {
+                        console.error(`❌ [Maintenance] Failed to restore orphan: ${file}`, e);
+                    }
+                }
+                console.log(`✅ [Maintenance] Restored ${restored} tracks to the library.`);
+            } else {
+                console.log(`✨ [Maintenance] All orphans were filesystem duplicates. Library is clean.`);
+            }
         } else {
             console.log(`✨ [Maintenance] Library is clean. No orphans found.`);
         }

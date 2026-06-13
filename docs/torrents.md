@@ -32,3 +32,11 @@ Admin-only routes are available under `/api/admin/torrents`:
 4. **Completion**: When 100% reached, the `done` event is fired.
 5. **Import**: The service iterates through files. Any file with a valid audio extension (`.mp3`, `.flac`, etc.) is passed to `scanner.processAudioFile`.
 6. **Library Update**: The scanner moves/copies the file to the library and updates the database.
+
+## 5. Configuration & Mirrors
+
+TuneCamp uses the official Pirate Bay JSON API (`apibay.org`) as its primary search backend. Since Cloudflare protections on `apibay.org` may occasionally return `HTTP 403` to datacenter and VPS IPs:
+
+- **Default API URL**: `https://apibay.org`
+- **Custom Mirror/Proxy**: You can override the API URL by setting the `TORRENT_APIBAY_URL` environment variable (e.g., `TORRENT_APIBAY_URL=https://apibay.someproxy.com` or a local proxy) to bypass IP blocks.
+

@@ -715,10 +715,62 @@ export class Scanner implements ScannerService {
         return { successful, failed };
     }
 
+    /**
+     * Collects the physical file paths of a "loser" track that should be deleted
+     * after its DB record has been merged into the keeper. Only queues paths that
+     * differ from the keeper's own paths to avoid accidentally deleting the
+     * canonical file.
+     */
+    private queueOrphanFileDeletion(
+        loserTrack: Track,
+        keeperId: number,
+        queue: string[]
+    ): void {
+        const keeper = this.database.getTrack(keeperId);
+        if (!keeper || !this.musicDirectory) return;
+
+        const keeperPaths = new Set<string>(
+            [keeper.file_path, keeper.lossless_path]
+                .filter((p): p is string => !!p)
+                .map(p => p.toLowerCase())
+        );
+
+        for (const p of [loserTrack.file_path, loserTrack.lossless_path]) {
+            if (!p) continue;
+            if (keeperPaths.has(p.toLowerCase())) continue; // Same file as keeper — keep it
+            const abs = path.join(this.musicDirectory, p);
+            queue.push(abs);
+        }
+    }
+
+    /**
+     * Deletes physical files that were queued for removal after deduplication.
+     * Failures are logged but never fatal — stale files will simply be retried
+     * on the next scan cycle.
+     */
+    private async deleteOrphanFiles(files: string[]): Promise<void> {
+        let deleted = 0;
+        for (const f of files) {
+            try {
+                if (await this.storage.pathExists(f)) {
+                    await fs.unlink(f);
+                    deleted++;
+                    console.log(`🗑️ [Scanner] Deleted duplicate file: ${path.basename(f)}`);
+                }
+            } catch (e) {
+                console.warn(`[Scanner] Could not delete duplicate file ${f}:`, (e as any).message);
+            }
+        }
+        if (deleted > 0) {
+            console.log(`🧹 [Scanner] Cleaned up ${deleted} duplicate physical files.`);
+        }
+    }
+
     private async deduplicateLibraryTracks() {
         console.log("🧹 [Scanner] Running memory-efficient deduplication...");
         const groups = new Map<string, { id: number, score: number }[]>();
         const tracksIter = this.database.iterateTracks();
+        const filesToDelete: string[] = [];
 
         for (const t of tracksIter) {
             const k = `${t.album_id}|${t.artist_id}|${t.title.toLowerCase().trim()}`;
@@ -743,17 +795,26 @@ export class Scanner implements ScannerService {
             for (let i = 1; i < entries.length; i++) {
                 const otherId = entries[i].id;
                 try {
+                    // Capture paths BEFORE merge deletes the row from the DB
+                    const loserTrack = this.database.getTrack(otherId);
                     // mergeTracks transfers ownership/plays/bookmarks/ratings/release_tracks
                     // and carries over metadata fields the keeper is missing.
                     // It also handles the lossless_path carry-over.
                     this.database.mergeTracks(otherId, primaryId);
+                    // Queue physical file deletion for the merged-away track
+                    if (loserTrack && this.musicDirectory) {
+                        this.queueOrphanFileDeletion(loserTrack, primaryId, filesToDelete);
+                    }
                 } catch (e) {
                     console.error(`[Scanner] Dedup merge failed (${otherId} -> ${primaryId}):`, e);
                 }
             }
         }
 
-        await this.softMergeUntaggedDuplicates();
+        await this.softMergeUntaggedDuplicates(filesToDelete);
+
+        // Delete all queued physical files after all DB merges are complete
+        await this.deleteOrphanFiles(filesToDelete);
     }
 
     /**
@@ -762,7 +823,7 @@ export class Scanner implements ScannerService {
      * Common cause: a file scanned without tags before a tagged copy was imported.
      * The strict pass above never catches these because the keys differ on NULLs.
      */
-    private async softMergeUntaggedDuplicates() {
+    private async softMergeUntaggedDuplicates(filesToDelete: string[]) {
         const titleGroups = new Map<string, number[]>();
         for (const t of this.database.iterateTracks()) {
             if (!t.title) continue;
@@ -796,6 +857,10 @@ export class Scanner implements ScannerService {
 
                 try {
                     this.database.mergeTracks(other.id, primary.id);
+                    // Queue physical file deletion for the merged-away track
+                    if (this.musicDirectory) {
+                        this.queueOrphanFileDeletion(other, primary.id, filesToDelete);
+                    }
                 } catch (e) {
                     console.error(`[Scanner] Soft-merge failed (${other.id} -> ${primary.id}):`, e);
                 }
