@@ -324,12 +324,25 @@ export class MediaEngine {
 
     const command = transcode(trackPath, format, bitrate, seek);
     const stream = command.pipe() as Readable;
-    stream.on('error', (err: any) => {
-      if (!err.message?.includes('Output stream closed') && !err.message?.includes('EPIPE')) {
-        console.error('[MediaEngine] Transcoding error:', err.message);
+
+    const onError = (err: any) => {
+      const msg = err?.message || '';
+      if (!msg.includes('Output stream closed') && !msg.includes('EPIPE') && !msg.includes('SIGKILL')) {
+        console.error('[MediaEngine] Transcoding error:', msg);
       }
+      // fluent-ffmpeg emits 'error' on the COMMAND, not on the piped stream.
+      // Without a listener on the command an ffmpeg failure (e.g. a corrupt
+      // source file) becomes an uncaughtException and crashes the whole server.
+      // Tear the output stream down so the HTTP response ends instead of hanging.
+      if (!stream.destroyed) stream.destroy();
       release();
-    });
+    };
+
+    // Listen on BOTH: the command surfaces ffmpeg process failures (the crash
+    // source), the stream surfaces downstream pipe errors (client disconnect /
+    // EPIPE). The `released` guard makes a double-fire harmless.
+    command.on('error', onError);
+    stream.on('error', onError);
     stream.on('close', release);
     stream.on('end', release);
     return { stream, contentType, statusCode: 200 };
