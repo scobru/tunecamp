@@ -5,7 +5,7 @@ import type { DatabaseService } from "../../core/database.js";
 import { resolveSafePath } from "../../../utils/fileUtils.js";
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
-const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
 
 import type { ServiceContainer } from "../../core/container.js";
 

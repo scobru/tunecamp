@@ -13,7 +13,7 @@ import type { StorageEngine } from "../../modules/storage/storage.engine.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
-const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
 const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"];
 
 /**
@@ -119,6 +119,10 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     });
 
+    // Multer fileFilter/limit errors would otherwise bubble to the global 500 handler
+    const rejectAs400 = (mw: any) => (req: any, res: any, next: any) =>
+        mw(req, res, (err: any) => err ? res.status(400).json({ error: err.message || "Upload rejected" }) : next());
+
     /**
      * Helper for site-wide image uploads (background, site cover)
      */
@@ -170,7 +174,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/tracks
      * Upload one or more audio files
      */
-    router.post("/tracks", upload.array("files", 50) as any, async (req: any, res: any) => {
+    router.post("/tracks", rejectAs400(upload.array("files", 50)), async (req: any, res: any) => {
         try {
             const files = req.files as Express.Multer.File[];
             const { releaseSlug, artistId: bodyArtistId, artist: bodyArtistName, album: bodyAlbumTitle } = req.body;
@@ -403,7 +407,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     router.post("/cover", (req: any, res: any, next: any) => {
         console.log("🔍 [Debug] Upload Request Headers:", req.headers['content-type']);
         next();
-    }, imageUpload.single("file") as any, async (req: any, res: any) => {
+    }, rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
         try {
             console.log("🔍 [Debug] Inside /cover handler");
             console.log("🔍 [Debug] req.file:", req.file ? `${req.file.originalname} (${req.file.size} bytes)` : "undefined");
@@ -528,7 +532,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/avatar
      * Upload avatar for an artist
      */
-    router.post("/avatar", imageUpload.single("file") as any, async (req: any, res: any) => {
+    router.post("/avatar", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
         try {
             const file = req.file;
             const artistIdRaw = req.body.artistId;
@@ -603,7 +607,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/track-artwork
      * Upload custom artwork for a track
      */
-    router.post("/track-artwork", imageUpload.single("file") as any, async (req: any, res: any) => {
+    router.post("/track-artwork", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
         try {
             const file = req.file;
             const trackIdRaw = req.body.trackId;
@@ -745,7 +749,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/background
      * Upload site background image (saved to server, URL stored in settings)
      */
-    router.post("/background", imageUpload.single("file") as any, async (req: any, res: any) => {
+    router.post("/background", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
         await handleSiteSettingImageUpload(req, res, {
             type: "background",
             settingKey: "backgroundImage",
@@ -758,7 +762,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/site-cover
      * Upload site cover image (Node Cover)
      */
-    router.post("/site-cover", imageUpload.single("file") as any, async (req: any, res: any) => {
+    router.post("/site-cover", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
         await handleSiteSettingImageUpload(req, res, {
             type: "site-cover",
             settingKey: "coverImage",
@@ -771,7 +775,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
      * POST /api/admin/upload/site-logo
      * Upload site logo image (for sidebar)
      */
-    router.post("/site-logo", imageUpload.single("file") as any, async (req: any, res: any) => {
+    router.post("/site-logo", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
         await handleSiteSettingImageUpload(req, res, {
             type: "site-logo",
             settingKey: "siteLogo",
