@@ -128,7 +128,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 }
 
                 // 0.6 Auto-create and link artist profile for admins without one
-                const adminsWithoutArtist = database.db.prepare("SELECT id, username FROM admin WHERE artist_id IS NULL").all() as { id: number, username: string }[];
+                const adminsWithoutArtist = database.db.prepare("SELECT id, username FROM admin WHERE artist_id IS NULL AND COALESCE(artist_unlinked, 0) = 0").all() as { id: number, username: string }[];
                 for (const adm of adminsWithoutArtist) {
                     const artistName = adm.username;
                     let existingArtist = database.getArtistByName(artistName);

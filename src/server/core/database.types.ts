@@ -36,6 +36,7 @@ export interface User {
     // Phase 4: ActivityPub actor keys
     ap_public_key?: string | null;
     ap_private_key?: string | null;
+    artist_unlinked?: number;
 }
 
 export interface Artist {
