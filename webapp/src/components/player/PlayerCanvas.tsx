@@ -115,7 +115,24 @@ export const PlayerCanvas = () => {
                 </div>
 
                 {/* Large Waveform */}
-                <div className="w-full h-48 md:h-64 group cursor-pointer relative">
+                <div
+                    className="w-full h-48 md:h-64 group cursor-pointer relative"
+                    role="slider"
+                    aria-label="Seek"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(progress)}
+                    onClick={(e) => {
+                        // The inner <canvas> uses pointer-events-none, so this click
+                        // fires on the full-width container and maps 1:1 to track position.
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        if (rect.width <= 0) return;
+                        const percent = (e.clientX - rect.left) / rect.width;
+                        window.dispatchEvent(
+                            new CustomEvent("player:seek", { detail: { percent } })
+                        );
+                    }}
+                >
                     <Waveform 
                         data={currentTrack.waveform} 
                         progress={progress / 100}

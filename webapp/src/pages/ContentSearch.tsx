@@ -279,6 +279,8 @@ const ContentSearch: React.FC = () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
+    const seedingTorrents = torrents.filter((t: any) => t.status === 'seeding');
+
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <header className="mb-8 flex justify-between items-center">
@@ -424,8 +426,9 @@ const ContentSearch: React.FC = () => {
             )}
 
             {activeTab === 'seeding' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-8">
+                    {/* Seed form + explainer side by side; the active seeds get the full width below */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="card bg-base-200 border border-base-300 shadow-sm p-6">
                             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                                 <Upload size={20} className="text-success" /> Seed Files
@@ -474,7 +477,7 @@ const ContentSearch: React.FC = () => {
                                 </div>
                             )}
                         </div>
-                        <div className="card bg-primary/5 border border-primary/20 p-5">
+                        <div className="card bg-primary/5 border border-primary/20 p-5 h-fit">
                             <h3 className="text-sm font-bold text-primary mb-2 flex items-center gap-2">
                                 <Upload size={16} /> How seeding works
                             </h3>
@@ -484,20 +487,28 @@ const ContentSearch: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
-                            <div className="p-4 bg-base-300 font-bold text-xs tracking-normal flex items-center gap-2">
-                                <Upload size={14} className="text-success" /> Active Seeds
-                            </div>
-                            <div className="divide-y divide-base-content/5">
-                                {torrents.filter((t: any) => t.status === 'seeding').length === 0 && (
-                                    <div className="p-8 text-center opacity-30 text-xs italic">No active seeds</div>
+                    {/* Active seeds — full-width responsive grid that scales as seeds grow */}
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-base-content/10 pb-3">
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                <Upload size={18} className="text-success" /> Active Seeds
+                                {seedingTorrents.length > 0 && (
+                                    <span className="badge badge-sm badge-neutral">{seedingTorrents.length}</span>
                                 )}
-                                {torrents.filter((t: any) => t.status === 'seeding').map((t: any) => (
-                                    <div key={t.infoHash || t.info_hash} className="p-4 space-y-2">
+                            </h2>
+                        </div>
+                        {seedingTorrents.length === 0 ? (
+                            <div className="text-center py-16 bg-base-200/40 border border-dashed border-base-300 rounded-2xl">
+                                <Upload className="opacity-20 mx-auto mb-3" size={28} />
+                                <p className="opacity-40 text-sm font-medium">No active seeds. Start seeding files above.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                {seedingTorrents.map((t: any) => (
+                                    <div key={t.infoHash || t.info_hash} className="card bg-base-200/50 border border-base-300/50 hover:border-success/30 transition-colors p-4 space-y-2">
                                         <div className="flex justify-between items-start gap-2">
                                             <div className="min-w-0 flex-1">
-                                                <div className="text-xs font-bold truncate" title={t.name}>{t.name || t.infoHash || t.info_hash}</div>
+                                                <div className="text-sm font-bold truncate" title={t.name}>{t.name || t.infoHash || t.info_hash}</div>
                                                 <div className="text-xs opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
                                             </div>
                                             <div className="flex gap-1 flex-shrink-0">
@@ -526,8 +537,8 @@ const ContentSearch: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
+                        )}
+                    </section>
                 </div>
             )}
 
@@ -625,33 +636,28 @@ const ContentSearch: React.FC = () => {
             )}
 
             {activeTab === 'torrents' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-6">
-                        <form onSubmit={handleSearch} className="flex gap-2 mb-8">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
-                                <input 
-                                    type="text" 
-                                    placeholder={`Search public trackers (TPB, Limetorrents)...`}
-                                    className="input input-bordered w-full pl-10"
-                                    value={query}
-                                    onChange={e => setQuery(e.target.value)}
-                                />
-                            </div>
-                            <button type="submit" className="btn btn-primary gap-2 min-w-[120px]" disabled={loading}>
-                                {loading ? <span className="loading loading-spinner loading-xs"></span> : <Search size={18} />}
-                                Search
-                            </button>
-                        </form>
+                <div className="space-y-8">
+                    {/* Search public trackers */}
+                    <form onSubmit={handleSearch} className="flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
+                            <input
+                                type="text"
+                                placeholder={`Search public trackers (TPB, Limetorrents)...`}
+                                className="input input-bordered w-full pl-10"
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                            />
+                        </div>
+                        <button type="submit" className="btn btn-primary gap-2 min-w-[120px]" disabled={loading}>
+                            {loading ? <span className="loading loading-spinner loading-xs"></span> : <Search size={18} />}
+                            Search
+                        </button>
+                    </form>
 
-                        <div className="grid gap-3">
-                            {torrentResults.length === 0 && !loading && (
-                                <div className="text-center py-20 bg-base-200/50 border border-dashed border-base-300 rounded-2xl">
-                                    <RefreshCw className="opacity-20 mx-auto mb-4" size={32} />
-                                    <p className="opacity-40 font-medium">Search for torrents or add a magnet below.</p>
-                                </div>
-                            )}
-
+                    {/* Search results — full width, two columns on wide screens */}
+                    {torrentResults.length > 0 && (
+                        <div className="grid gap-3 lg:grid-cols-2">
                             {torrentResults.map((res: any, i: number) => (
                                 <div key={i} className="group card bg-base-200/50 hover:bg-base-200 border border-base-300/50 hover:border-primary/30 transition-all duration-200">
                                     <div className="card-body p-4 flex-row justify-between items-center overflow-hidden">
@@ -667,7 +673,7 @@ const ContentSearch: React.FC = () => {
                                                 <span>{res.time}</span>
                                             </div>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => handleDownloadTorrentResult(res)}
                                             className="btn btn-circle btn-sm btn-ghost hover:bg-primary hover:text-primary-content transition-all flex-shrink-0"
                                             title="Download"
@@ -678,58 +684,61 @@ const ContentSearch: React.FC = () => {
                                 </div>
                             ))}
                         </div>
+                    )}
 
-                        <div className="divider opacity-20">OR</div>
-
-                        <div className="card bg-base-200 border border-base-300 shadow-sm p-6">
-                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                <RefreshCw size={20} className="text-primary" /> Add Manually
-                            </h2>
-                            <form onSubmit={handleAddTorrent} className="flex gap-2">
-                                <input 
-                                    type="text" 
-                                    placeholder="Paste magnet link here..."
-                                    className="input input-bordered flex-1"
-                                    value={magnetUri}
-                                    onChange={e => setMagnetUri(e.target.value)}
-                                />
-                                <button type="submit" className="btn btn-primary gap-2" disabled={loading || !magnetUri}>
-                                    {loading ? <span className="loading loading-spinner loading-xs"></span> : <Download size={18} />}
-                                    Add
-                                </button>
-                            </form>
+                    {/* Add a magnet manually — compact inline bar */}
+                    <form onSubmit={handleAddTorrent} className="flex gap-2 items-center">
+                        <div className="relative flex-1">
+                            <RefreshCw className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Or paste a magnet link to add it directly…"
+                                className="input input-bordered w-full pl-10"
+                                value={magnetUri}
+                                onChange={e => setMagnetUri(e.target.value)}
+                            />
                         </div>
-                    </div>
+                        <button type="submit" className="btn btn-primary btn-outline gap-2 min-w-[120px]" disabled={loading || !magnetUri}>
+                            {loading ? <span className="loading loading-spinner loading-xs"></span> : <Download size={18} />}
+                            Add
+                        </button>
+                    </form>
 
-                    <div className="space-y-6">
-                        <div className="card bg-base-200 border border-base-300 shadow-sm overflow-hidden">
-                            <div className="p-4 bg-base-300 font-bold text-xs tracking-normal flex items-center justify-between gap-2">
-                                <span className="flex items-center gap-2">
-                                    <Activity size={14} className="text-primary"/> Active Torrents
-                                </span>
-                                {torrents.some((t: any) => t.status === 'metadata' || t.status === 'error' || t.status === 'failed') && (
-                                    <button
-                                        onClick={handlePurgeStuck}
-                                        className="btn btn-ghost btn-xs text-error gap-1 normal-case"
-                                        title="Remove all errored or stuck-on-metadata torrents"
-                                    >
-                                        <Trash2 size={12} /> Purge Stuck
-                                    </button>
+                    {/* Active torrents — full-width responsive grid that scales as downloads grow */}
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-base-content/10 pb-3">
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                <Activity size={18} className="text-primary" /> Active Torrents
+                                {torrents.length > 0 && (
+                                    <span className="badge badge-sm badge-neutral">{torrents.length}</span>
                                 )}
+                            </h2>
+                            {torrents.some((t: any) => t.status === 'metadata' || t.status === 'error' || t.status === 'failed') && (
+                                <button
+                                    onClick={handlePurgeStuck}
+                                    className="btn btn-ghost btn-xs text-error gap-1 normal-case"
+                                    title="Remove all errored or stuck-on-metadata torrents"
+                                >
+                                    <Trash2 size={12} /> Purge Stuck
+                                </button>
+                            )}
+                        </div>
+                        {torrents.length === 0 ? (
+                            <div className="text-center py-16 bg-base-200/40 border border-dashed border-base-300 rounded-2xl">
+                                <Activity className="opacity-20 mx-auto mb-3" size={28} />
+                                <p className="opacity-40 text-sm font-medium">No active downloads. Search or paste a magnet above.</p>
                             </div>
-                            <div className="divide-y divide-base-content/5">
-                                {torrents.length === 0 && (
-                                    <div className="p-8 text-center opacity-30 text-xs italic">No active downloads</div>
-                                )}
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                                 {torrents.map((t: any) => {
                                     const isMetadata = t.status === 'metadata' || t.ready === false;
                                     const isStuck = isMetadata && (t.numPeers ?? 0) === 0;
                                     const displayName = t.name && t.name !== 'Fetching metadata...' ? t.name : (isStuck ? 'Stuck — no peers found' : (isMetadata ? 'Fetching metadata…' : (t.infoHash || t.info_hash)));
                                     return (
-                                        <div key={t.infoHash || t.info_hash} className="p-4 space-y-2">
+                                        <div key={t.infoHash || t.info_hash} className="card bg-base-200/50 border border-base-300/50 hover:border-primary/30 transition-colors p-4 space-y-2">
                                             <div className="flex justify-between items-start gap-2">
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="text-xs font-bold truncate" title={t.name || t.infoHash || t.info_hash}>{displayName}</div>
+                                                    <div className="text-sm font-bold truncate" title={t.name || t.infoHash || t.info_hash}>{displayName}</div>
                                                     <div className="text-xs opacity-40 font-mono truncate">{t.infoHash || t.info_hash}</div>
                                                 </div>
                                                 <button
@@ -767,8 +776,8 @@ const ContentSearch: React.FC = () => {
                                     );
                                 })}
                             </div>
-                        </div>
-                    </div>
+                        )}
+                    </section>
                 </div>
             )}
 

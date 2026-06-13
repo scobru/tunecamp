@@ -322,6 +322,20 @@ export const PlayerBar = () => {
     [duration],
   );
 
+  // Allow other components (e.g. the full-screen PlayerCanvas waveform) to request
+  // a seek, since the <audio> element lives here. They dispatch a `player:seek`
+  // CustomEvent with `{ percent: 0..1 }`.
+  useEffect(() => {
+    const onSeek = (e: Event) => {
+      const detail = (e as CustomEvent<{ percent: number }>).detail;
+      if (detail && typeof detail.percent === "number") {
+        handleSeek(Math.min(1, Math.max(0, detail.percent)));
+      }
+    };
+    window.addEventListener("player:seek", onSeek);
+    return () => window.removeEventListener("player:seek", onSeek);
+  }, [handleSeek]);
+
   let coverUrl = currentTrack ? (
     currentTrack.coverImage ||
     currentTrack.coverUrl ||

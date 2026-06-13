@@ -248,8 +248,18 @@ const AlbumDetails = () => {
                 src={isRelease ? API.getReleaseCoverUrl(album.id, cacheBuster) : API.getAlbumCoverUrl(album.id, cacheBuster)}
                 alt={album.title}
                 className="w-56 h-56 md:w-72 md:h-72 rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] object-cover ring-1 ring-base-content/10"
+                loading="eager"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://placehold.co/500x500?text=No+Cover";
+                  // Use a LOCAL inline SVG placeholder instead of an external service
+                  // (placehold.co): self-hosted/federated instances may be offline or
+                  // block third-party requests via CSP, which left the cover box blank.
+                  const img = e.target as HTMLImageElement;
+                  const FALLBACK =
+                    "data:image/svg+xml;charset=utf-8," +
+                    encodeURIComponent(
+                      "<svg xmlns='http://www.w3.org/2000/svg' width='500' height='500'><rect width='100%' height='100%' fill='#1f2937'/><text x='50%' y='50%' fill='#9ca3af' font-family='sans-serif' font-size='28' text-anchor='middle' dominant-baseline='middle'>No Cover</text></svg>"
+                    );
+                  if (img.src !== FALLBACK) img.src = FALLBACK;
                 }}
               />
               
