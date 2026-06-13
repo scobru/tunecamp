@@ -541,6 +541,11 @@ const API = {
     deleteUsersBatch: (ids: (string | number)[]) =>
         handleResponse(api.delete('admin/system/users/batch', { data: { ids } })),
     resetUserPassword: (id: string, password: string) => handleResponse(api.put(`admin/system/users/${id}/password`, { password })),
+    
+    // --- API Tokens ---
+    getApiTokens: () => handleResponse(api.get<any[]>('users/me/api-tokens')),
+    createApiToken: (name: string) => handleResponse(api.post<{ token: string }>('users/me/api-tokens', { name })),
+    deleteApiToken: (id: number) => handleResponse(api.delete(`users/me/api-tokens/${id}`)),
 
     // --- Unlock Codes ---
     validateUnlockCode: (code: string) => handleResponse(api.post('unlock/validate', { code })),

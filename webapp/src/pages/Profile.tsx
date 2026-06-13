@@ -21,6 +21,7 @@ import {
   Trash2,
   ArrowRight,
   ShieldCheck,
+  Key,
 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
@@ -45,6 +46,7 @@ const Profile = () => {
   // Listeners are pure consumers: even a stale artistId on their account must
   // not surface artist features — they see the "Become an Artist" card instead.
   const hasArtistProfile = !!user?.artistId && role !== 'user';
+  const isCuratorOrAbove = role === 'super_user' || role === 'admin' || role === 'root_admin';
 
   const activeHandle = useMemo(() => {
     if (hasArtistProfile && artistData) {
@@ -84,6 +86,60 @@ const Profile = () => {
   const [loadingTracks, setLoadingTracks] = useState(true);
   const [artistRequestedAt, setArtistRequestedAt] = useState<string | null>(null);
   const [requestingArtist, setRequestingArtist] = useState(false);
+
+  // API Tokens State & Logic
+  const [apiTokens, setApiTokens] = useState<any[]>([]);
+  const [loadingTokens, setLoadingTokens] = useState(false);
+  const [newTokenName, setNewTokenName] = useState("");
+  const [newlyCreatedToken, setNewlyCreatedToken] = useState<string | null>(null);
+  const [isCreatingToken, setIsCreatingToken] = useState(false);
+
+  const loadApiTokens = async () => {
+    setLoadingTokens(true);
+    try {
+      const data = await API.getApiTokens();
+      setApiTokens(data);
+    } catch (err) {
+      console.error("Failed to load API tokens", err);
+    } finally {
+      setLoadingTokens(false);
+    }
+  };
+
+  const handleCreateToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTokenName.trim() || isCreatingToken) return;
+    setIsCreatingToken(true);
+    setNewlyCreatedToken(null);
+    try {
+      const data = await API.createApiToken(newTokenName.trim());
+      setNewlyCreatedToken(data.token);
+      setNewTokenName("");
+      loadApiTokens();
+      notify.success("API token generated successfully!");
+    } catch (err: any) {
+      notify.error(err, "Failed to generate API token");
+    } finally {
+      setIsCreatingToken(false);
+    }
+  };
+
+  const handleDeleteToken = async (id: number) => {
+    if (!confirm("Are you sure you want to revoke this API token? Any applications using it will lose access.")) return;
+    try {
+      await API.deleteApiToken(id);
+      loadApiTokens();
+      notify.success("API token revoked successfully!");
+    } catch (err: any) {
+      notify.error(err, "Failed to revoke API token");
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && isCuratorOrAbove) {
+      loadApiTokens();
+    }
+  }, [isAuthenticated, role]);
 
   useEffect(() => {
     if (isAuthenticated && !hasArtistProfile) {
@@ -595,6 +651,125 @@ const Profile = () => {
               </div>
             </div>
           </div>
+
+          {/* API Tokens Panel */}
+          {isCuratorOrAbove && (
+            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4 mt-8">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Key size={20} className="text-primary" /> API Tokens
+              </h3>
+              <p className="text-sm opacity-60">
+                Create personal API tokens to programmatically interact with the TuneCamp API.
+                These tokens will run with your role's permissions ({role === 'root_admin' ? "Root Admin" : role === 'admin' ? "Manager" : "Curator"}).
+              </p>
+
+              {newlyCreatedToken && (
+                <div className="alert alert-warning bg-warning/10 border-warning/20 flex flex-col items-start gap-3 p-4 rounded-2xl">
+                  <div className="flex gap-2 items-center text-warning font-bold">
+                    <ShieldCheck size={18} />
+                    <span>Copy your API token now!</span>
+                  </div>
+                  <p className="text-sm opacity-90">
+                    For security reasons, this token will not be shown again.
+                  </p>
+                  <div className="flex gap-2 w-full">
+                    <input
+                      type="text"
+                      readOnly
+                      value={newlyCreatedToken}
+                      className="input input-bordered flex-1 font-mono text-sm bg-base-300"
+                    />
+                    <button
+                      className="btn btn-ghost btn-square tooltip tooltip-left"
+                      onClick={() => {
+                        navigator.clipboard.writeText(newlyCreatedToken);
+                        notify.success("API token copied!");
+                      }}
+                      data-tip="Copy token"
+                    >
+                      <Copy size={18} />
+                    </button>
+                    <button
+                      className="btn btn-sm btn-ghost self-center"
+                      onClick={() => setNewlyCreatedToken(null)}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateToken} className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="form-control flex-1">
+                  <label className="label py-1">
+                    <span className="label-text opacity-60">Token Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. My Script, Third Party App"
+                    className="input input-bordered w-full"
+                    value={newTokenName}
+                    onChange={(e) => setNewTokenName(e.target.value)}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="btn btn-primary gap-2 w-full sm:w-auto"
+                  disabled={isCreatingToken || !newTokenName.trim()}
+                >
+                  {isCreatingToken ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    <Plus size={16} />
+                  )}
+                  Generate Token
+                </button>
+              </form>
+
+              <div className="divider opacity-5 my-4"></div>
+
+              {loadingTokens ? (
+                <div className="text-center opacity-50 py-4">Loading active tokens...</div>
+              ) : apiTokens.length === 0 ? (
+                <div className="text-center opacity-40 py-6 text-sm italic">
+                  No active API tokens found. Generate one above.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="table w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="bg-transparent opacity-60">Name</th>
+                        <th className="bg-transparent opacity-60">Token</th>
+                        <th className="bg-transparent opacity-60">Created At</th>
+                        <th className="bg-transparent opacity-60 w-16 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {apiTokens.map((t) => (
+                        <tr key={t.id} className="hover:bg-base-200/30">
+                          <td className="font-bold">{t.name}</td>
+                          <td className="font-mono text-xs opacity-75">{t.token}</td>
+                          <td>{new Date(t.created_at).toLocaleDateString()}</td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-square btn-sm text-error"
+                              onClick={() => handleDeleteToken(t.id)}
+                              title="Revoke Token"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           </>
         )}
 

@@ -196,4 +196,96 @@ describe('Users Routes', () => {
             expect(res.body.storage_used).toBe(123456);
         });
     });
+
+    describe('API Tokens endpoints', () => {
+        let mockPrepare: any;
+
+        beforeEach(() => {
+            mockPrepare = jest.fn();
+            mockDatabase.db = {
+                prepare: mockPrepare
+            };
+        });
+
+        test('GET /api/users/me/api-tokens returns 403 for standard user role', async () => {
+            mockAuthService.getUserByUsername.mockReturnValue({
+                id: 10,
+                username: 'testuser',
+                role: UserRole.NORMAL_USER,
+                is_active: 1
+            });
+
+            const res = await request(app)
+                .get('/api/users/me/api-tokens')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(403);
+            expect(res.body.error).toContain('Access denied');
+        });
+
+        test('GET /api/users/me/api-tokens returns masked tokens for curator/admin', async () => {
+            mockAuthService.getUserByUsername.mockReturnValue({
+                id: 10,
+                username: 'testuser',
+                role: UserRole.SUPER_USER,
+                is_active: 1
+            });
+
+            const mockAll = jest.fn().mockReturnValue([
+                { id: 1, name: 'Token 1', token: 'tc_12345678901234567890', created_at: '2026-06-13' }
+            ]);
+            mockPrepare.mockReturnValue({ all: mockAll });
+
+            const res = await request(app)
+                .get('/api/users/me/api-tokens')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('SELECT id, name'));
+            expect(res.body[0].name).toBe('Token 1');
+            expect(res.body[0].token).toBe('tc_1234...7890'); // masked
+        });
+
+        test('POST /api/users/me/api-tokens creates a new token', async () => {
+            mockAuthService.getUserByUsername.mockReturnValue({
+                id: 10,
+                username: 'testuser',
+                role: UserRole.ADMIN,
+                is_active: 1
+            });
+
+            const mockRun = jest.fn().mockReturnValue({ changes: 1 });
+            mockPrepare.mockReturnValue({ run: mockRun });
+
+            const res = await request(app)
+                .post('/api/users/me/api-tokens')
+                .set('Authorization', 'Bearer token')
+                .send({ name: 'Script Key' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.name).toBe('Script Key');
+            expect(res.body.token).toMatch(/^tc_[a-f0-9]+$/);
+            expect(mockRun).toHaveBeenCalledWith(10, expect.stringMatching(/^tc_/), 'Script Key');
+        });
+
+        test('DELETE /api/users/me/api-tokens/:id revokes the token', async () => {
+            mockAuthService.getUserByUsername.mockReturnValue({
+                id: 10,
+                username: 'testuser',
+                role: UserRole.ROOT_ADMIN,
+                is_active: 1
+            });
+
+            const mockRun = jest.fn().mockReturnValue({ changes: 1 });
+            mockPrepare.mockReturnValue({ run: mockRun });
+
+            const res = await request(app)
+                .delete('/api/users/me/api-tokens/1')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(mockRun).toHaveBeenCalledWith('1', 10);
+        });
+    });
 });

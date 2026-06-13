@@ -253,6 +253,30 @@ export function createAuthService(
 
         async verifyToken(token: string): Promise<TokenPayload | null> {
             try {
+                if (token.startsWith("tc_")) {
+                    const apiTokenRow = db.prepare("SELECT user_id FROM api_tokens WHERE token = ?").get(token) as { user_id: number } | undefined;
+                    if (!apiTokenRow) {
+                        return null;
+                    }
+                    const user = db.prepare("SELECT * FROM admin WHERE id = ?").get(apiTokenRow.user_id) as any;
+                    if (!user || user.is_active === 0) {
+                        return null;
+                    }
+                    const role = (user.role as UserRole) || UserRole.NORMAL_USER;
+                    const isRoot = role === UserRole.ROOT_ADMIN || user.id === 1;
+
+                    return {
+                        isAdmin: role === UserRole.ADMIN || role === UserRole.SUPER_USER || role === UserRole.ROOT_ADMIN || isRoot,
+                        username: user.username,
+                        artistId: user.artist_id ?? null,
+                        role: role,
+                        isActive: user.is_active === 1,
+                        userId: user.id,
+                        tokenVersion: user.token_version,
+                        isRootAdmin: isRoot
+                    };
+                }
+
                 const decoded = jwt.verify(token, jwtSecret) as TokenPayload;
                 const role = (decoded.role as UserRole) || UserRole.NORMAL_USER;
                 const isRoot = decoded.isRootAdmin ?? (role === UserRole.ROOT_ADMIN || decoded.userId === 1);

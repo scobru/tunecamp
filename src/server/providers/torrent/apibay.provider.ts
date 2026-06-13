@@ -95,7 +95,19 @@ export class ApibayTorrentProvider implements TorrentSearchProvider {
         try {
             const res = await fetch(url, {
                 signal: controller.signal,
-                headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Referer': 'https://thepiratebay.org/',
+                    'Origin': 'https://thepiratebay.org',
+                    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                    'Sec-Ch-Ua-Mobile': '?0',
+                    'Sec-Ch-Ua-Platform': '"Windows"',
+                    'Sec-Fetch-Dest': 'empty',
+                    'Sec-Fetch-Mode': 'cors',
+                    'Sec-Fetch-Site': 'cross-site'
+                },
             });
             if (!res.ok) {
                 console.error(`[Apibay] HTTP ${res.status} for "${query}"`);

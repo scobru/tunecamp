@@ -306,6 +306,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             value TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS api_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            token TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT DEFAULT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS oauth_clients (
             instance_url TEXT PRIMARY KEY,
             client_id TEXT NOT NULL,
@@ -984,6 +993,8 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_album_ownership_owner ON album_ownership(owner_id);
         CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks(lower(title));
         CREATE INDEX IF NOT EXISTS idx_albums_visibility ON albums(visibility);
+        CREATE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token);
+        CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
         -- Legacy indexes on releases removed (releases is now a view)
     `);
 

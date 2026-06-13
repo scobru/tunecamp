@@ -1,4 +1,5 @@
 import { Router, json } from "express";
+import crypto from "crypto";
 import { validateUsername } from "../../../utils/audioUtils.js";
 import type { ZenDBService } from "../../modules/network/zendb.service.js";
 import type { DatabaseService } from "../../core/database.js";
@@ -190,6 +191,95 @@ export function createUsersRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Storage info error:", error);
             res.status(500).json({ error: "Failed to get storage info" });
+        }
+    });
+
+    /**
+     * GET /api/users/me/api-tokens
+     * Get API tokens for current user (Curator, Manager, Admin only)
+     */
+    router.get("/me/api-tokens", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            const role = req.role;
+            if (role !== UserRole.ROOT_ADMIN && role !== UserRole.ADMIN && role !== UserRole.SUPER_USER) {
+                return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
+            }
+
+            const tokens = database.db.prepare("SELECT id, name, token, created_at, expires_at FROM api_tokens WHERE user_id = ? ORDER BY created_at DESC").all(req.userId!) as any[];
+            
+            // Mask the tokens in the response so they are not fully exposed in subsequent listings
+            const maskedTokens = tokens.map(t => {
+                const tokenStr = t.token;
+                const masked = tokenStr.length > 10
+                    ? `${tokenStr.substring(0, 7)}...${tokenStr.substring(tokenStr.length - 4)}`
+                    : tokenStr;
+                return {
+                    id: t.id,
+                    name: t.name,
+                    token: masked,
+                    created_at: t.created_at,
+                    expires_at: t.expires_at
+                };
+            });
+
+            res.json(maskedTokens);
+        } catch (error) {
+            console.error("Failed to get API tokens:", error);
+            res.status(500).json({ error: "Failed to get API tokens" });
+        }
+    });
+
+    /**
+     * POST /api/users/me/api-tokens
+     * Create a new API token for the current user (Curator, Manager, Admin only)
+     */
+    router.post("/me/api-tokens", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            const role = req.role;
+            if (role !== UserRole.ROOT_ADMIN && role !== UserRole.ADMIN && role !== UserRole.SUPER_USER) {
+                return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
+            }
+
+            const { name } = req.body;
+            if (!name || typeof name !== 'string' || !name.trim()) {
+                return res.status(400).json({ error: "Token name is required" });
+            }
+
+            // Generate a secure random token prefixed with tc_
+            const randomBytes = crypto.randomBytes(32).toString("hex");
+            const token = `tc_${randomBytes}`;
+
+            database.db.prepare("INSERT INTO api_tokens (user_id, token, name) VALUES (?, ?, ?)").run(req.userId!, token, name.trim());
+
+            res.json({ token, name: name.trim() });
+        } catch (error) {
+            console.error("Failed to create API token:", error);
+            res.status(500).json({ error: "Failed to create API token" });
+        }
+    });
+
+    /**
+     * DELETE /api/users/me/api-tokens/:id
+     * Delete/revoke an API token (Curator, Manager, Admin only)
+     */
+    router.delete("/me/api-tokens/:id", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            const role = req.role;
+            if (role !== UserRole.ROOT_ADMIN && role !== UserRole.ADMIN && role !== UserRole.SUPER_USER) {
+                return res.status(403).json({ error: "Access denied: API tokens are only available for Curators, Managers, and Admins" });
+            }
+
+            const tokenId = req.params.id;
+            const result = database.db.prepare("DELETE FROM api_tokens WHERE id = ? AND user_id = ?").run(tokenId, req.userId!);
+            
+            if (result.changes === 0) {
+                return res.status(404).json({ error: "API token not found or not owned by you" });
+            }
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error("Failed to delete API token:", error);
+            res.status(500).json({ error: "Failed to delete API token" });
         }
     });
 
