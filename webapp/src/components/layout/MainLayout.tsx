@@ -15,6 +15,7 @@ import { CheckoutModal } from "../modals/CheckoutModal";
 import { CommandPalette } from "../modals/CommandPalette";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useUIStore } from "../../stores/useUIStore";
+import { applyThemeFont } from "../../utils/themeFont";
 
 export const MainLayout = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
@@ -40,23 +41,8 @@ export const MainLayout = () => {
     if (!siteSettings) return;
 
     // Dynamic Font Loading from Google Fonts
-    const font = siteSettings.themeFont || "Outfit";
-    if (font !== "Outfit" && font !== "sans-serif") {
-      const fontId = "dynamic-google-font";
-      let linkElement = document.getElementById(fontId) as HTMLLinkElement;
-      if (!linkElement) {
-        linkElement = document.createElement("link");
-        linkElement.id = fontId;
-        linkElement.rel = "stylesheet";
-        document.head.appendChild(linkElement);
-      }
-      const fontQuery = font.replace(/\s+/g, "+");
-      linkElement.href = `https://fonts.googleapis.com/css2?family=${fontQuery}:wght@100..900&display=swap`;
-    }
+    applyThemeFont(siteSettings.themeFont);
 
-    // Dynamic CSS Custom Properties
-    document.documentElement.style.setProperty("--font-sans", `"${font}", sans-serif`);
-    
     if (siteSettings.themeBlur) {
       document.documentElement.style.setProperty("--custom-bg-blur", siteSettings.themeBlur);
     } else {
