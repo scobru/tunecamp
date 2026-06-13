@@ -56,7 +56,12 @@ export function isNonFatalError(err: any): boolean {
         msg.includes('database is busy') ||
         msg.includes('ECONNRESET') ||
         msg.includes('EPIPE') ||
-        msg.includes('ENOTFOUND')
+        msg.includes('ENOTFOUND') ||
+        // A single failed transcode (corrupt/unsupported source file) must never
+        // take down the whole server. ffmpeg failures are per-request, not process-wide.
+        msg.includes('ffmpeg exited with code') ||
+        msg.includes('Conversion failed') ||
+        msg.includes('Output stream closed')
     );
 }
 

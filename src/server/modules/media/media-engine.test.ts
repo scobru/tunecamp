@@ -16,8 +16,8 @@ import path from 'path';
  */
 
 // --- Mock ./ffmpeg.js: a fake transcode command + always-available live slot ---
-const fakeTranscodeStream: any = { on: jest.fn().mockReturnThis() };
-const fakeCommand: any = { pipe: jest.fn(() => fakeTranscodeStream) };
+const fakeTranscodeStream: any = { on: jest.fn().mockReturnThis(), destroy: jest.fn(), destroyed: false };
+const fakeCommand: any = { pipe: jest.fn(() => fakeTranscodeStream), on: jest.fn().mockReturnThis() };
 const transcode = jest.fn((..._args: any[]) => fakeCommand);
 const transcodeToFile = jest.fn(() => Promise.resolve());
 const tryAcquireLiveSlot = jest.fn(() => true);
@@ -142,6 +142,23 @@ describe('MediaEngine.getStream — local format routing', () => {
       expect(result.statusCode).toBe(200);
       expect(result.stream).toBe(fakeFileStream);
     });
+  });
+
+  // Regression guard: ffmpeg emits 'error' on the COMMAND object, not on the
+  // piped stream. If the live path only listened on the stream, an ffmpeg
+  // failure on a corrupt source became an uncaughtException and crash-looped
+  // the server. The command MUST carry an 'error' listener.
+  it('registers an error listener on the ffmpeg command (crash guard)', async () => {
+    const engine = makeEngine(track('mp4', 'mp3'));
+    await engine.getStream({ trackId: 152 });
+
+    const errorListener = fakeCommand.on.mock.calls.find((c: any[]) => c[0] === 'error');
+    expect(errorListener).toBeDefined();
+    expect(typeof errorListener[1]).toBe('function');
+
+    // Simulating the ffmpeg failure must not throw out of the handler.
+    expect(() => errorListener[1](new Error('ffmpeg exited with code 234'))).not.toThrow();
+    expect(fakeTranscodeStream.destroy).toHaveBeenCalled();
   });
 
   it('honours an explicit ?format override even for a safe source', async () => {
