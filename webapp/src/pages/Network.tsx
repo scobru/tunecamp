@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { Globe, Server, Music, ExternalLink, Play } from "lucide-react";
+import { Globe, Server, Music, ExternalLink, Play, ChevronDown } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
@@ -44,6 +44,7 @@ const getFederationBadge = (federation?: string) => {
   switch (federation) {
     case "local": return { label: "LOCAL", class: "badge-primary" };
     case "activitypub": return { label: "AP", class: "badge-accent" };
+    case "rss": return { label: "RSS", class: "badge-warning" };
     case "http": return { label: "HTTP", class: "badge-info" };
     case "gundb": return { label: "ZEN", class: "badge-secondary" };
     default: return { label: "NET", class: "badge-ghost" };
@@ -311,6 +312,130 @@ const TrackCard = memo(({
   );
 });
 
+/**
+ * A collapsible group of tracks by a single artist within an instance.
+ * Collapsed by default unless its parent instance only has this one artist,
+ * so a channel with many tracks doesn't flood the view.
+ */
+const ArtistGroup = memo(({
+  artist,
+  tracks,
+  defaultOpen,
+  onPlay,
+  onToggleVisibility,
+  hiddenTracks,
+  isAdmin,
+}: {
+  artist: string;
+  tracks: NetworkTrack[];
+  defaultOpen: boolean;
+  onPlay: (item: NetworkTrack) => void;
+  onToggleVisibility: (id: string) => void;
+  hiddenTracks: string[];
+  isAdmin: boolean;
+}) => {
+  const firstWithCover = tracks.find((t) => t.coverUrl);
+  const baseUrl = tracks[0]?.siteUrl ? tracks[0].siteUrl.replace(/\/$/, "") : "";
+  const coverUrl = resolveUrl(firstWithCover?.coverUrl, baseUrl);
+
+  return (
+    <details open={defaultOpen} className="group/artist bg-base-200/40 rounded-xl border border-base-content/5 overflow-hidden">
+      <summary className="flex items-center gap-3 p-3 cursor-pointer hover:bg-base-200/70 transition-colors list-none [&::-webkit-details-marker]:hidden">
+        <div className="w-9 h-9 rounded-md bg-base-300 overflow-hidden flex-shrink-0 flex items-center justify-center text-sm font-bold opacity-70">
+          {coverUrl ? <img src={coverUrl} className="w-full h-full object-cover" alt={artist} /> : <span>{artist.charAt(0)}</span>}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-sm truncate">{artist}</div>
+          <div className="text-xs opacity-50">{tracks.length} track{tracks.length === 1 ? "" : "s"}</div>
+        </div>
+        <ChevronDown size={16} className="opacity-40 transition-transform group-open/artist:rotate-180" />
+      </summary>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 p-3 pt-0">
+        {tracks.map((item, i) => {
+          const uniqueId = item.slug || (item.siteUrl + "::" + item.track?.id);
+          return (
+            <TrackCard
+              key={uniqueId || i}
+              item={item}
+              onPlay={onPlay}
+              onToggleVisibility={onToggleVisibility}
+              isHidden={hiddenTracks.includes(uniqueId)}
+              isAdmin={isAdmin}
+            />
+          );
+        })}
+      </div>
+    </details>
+  );
+});
+
+/**
+ * A collapsible section for one federated instance, with its tracks grouped by
+ * artist inside. Keeps the Network page navigable as the number of followed
+ * instances and artists grows.
+ */
+const InstanceGroup = memo(({
+  host,
+  name,
+  federation,
+  tracks,
+  onPlay,
+  onToggleVisibility,
+  hiddenTracks,
+  isAdmin,
+}: {
+  host: string;
+  name?: string;
+  federation?: string;
+  tracks: NetworkTrack[];
+  onPlay: (item: NetworkTrack) => void;
+  onToggleVisibility: (id: string) => void;
+  hiddenTracks: string[];
+  isAdmin: boolean;
+}) => {
+  const byArtist = new Map<string, NetworkTrack[]>();
+  for (const t of tracks) {
+    const a = t.artistName || t.track?.artistName || "Unknown Artist";
+    if (!byArtist.has(a)) byArtist.set(a, []);
+    byArtist.get(a)!.push(t);
+  }
+  const artists = Array.from(byArtist.entries()).sort((a, b) => b[1].length - a[1].length);
+  const singleArtist = artists.length === 1;
+  const badge = getFederationBadge(federation);
+
+  return (
+    <details open className="group bg-base-200/30 rounded-2xl border border-base-content/10 overflow-hidden">
+      <summary className="flex items-center gap-3 p-4 cursor-pointer hover:bg-base-200/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
+        <Server size={18} className="text-accent flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="font-bold truncate flex items-center gap-2">
+            {name || host}
+            <span className={`badge badge-xs ${badge.class}`}>{badge.label}</span>
+          </div>
+          <div className="text-xs opacity-50 truncate">
+            {host} · {tracks.length} track{tracks.length === 1 ? "" : "s"} · {artists.length} artist{artists.length === 1 ? "" : "s"}
+          </div>
+        </div>
+        <ChevronDown size={18} className="opacity-40 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="space-y-2 p-4 pt-0">
+        {artists.map(([artist, artistTracks]) => (
+          <ArtistGroup
+            key={artist}
+            artist={artist}
+            tracks={artistTracks}
+            defaultOpen={singleArtist}
+            onPlay={onPlay}
+            onToggleVisibility={onToggleVisibility}
+            hiddenTracks={hiddenTracks}
+            isAdmin={isAdmin}
+          />
+        ))}
+      </div>
+    </details>
+  );
+});
+
 const Network = () => {
   const [sites, setSites] = useState<NetworkSite[]>([]);
   const [tracks, setTracks] = useState<NetworkTrack[]>([]);
@@ -396,8 +521,8 @@ const Network = () => {
   }, []);
 
   const handlePlayNetworkTrack = useCallback((networkTrack: NetworkTrack) => {
-    // AP, local, or HTTP tracks — use the flat data structure
-    if (networkTrack.federation === "activitypub" || networkTrack.federation === "local" || networkTrack.federation === "http") {
+    // AP, local, HTTP and RSS tracks — use the flat data structure
+    if (networkTrack.federation === "activitypub" || networkTrack.federation === "local" || networkTrack.federation === "http" || networkTrack.federation === "rss") {
       const track = {
         id: networkTrack.slug || "",
         title: networkTrack.title || "",
@@ -460,6 +585,26 @@ const Network = () => {
   // Separate local from remote for sections
   const localReleases = allReleases.filter(t => t.federation === "local");
   const remoteReleases = allReleases.filter(t => t.federation !== "local");
+
+  // Group remote releases by instance (hostname), preserving a friendly name
+  // from the site directory when we have one. Each group renders its tracks
+  // grouped by artist, so following many instances stays navigable.
+  const siteNameByHost = new Map<string, string>();
+  for (const s of sites) {
+    try {
+      const h = getHostname((s as any).url);
+      if (h && (s as any).name) siteNameByHost.set(h, (s as any).name);
+    } catch { /* ignore */ }
+  }
+  const remoteByHost = new Map<string, NetworkTrack[]>();
+  for (const t of remoteReleases) {
+    const host = getHostname(t.siteUrl);
+    if (!remoteByHost.has(host)) remoteByHost.set(host, []);
+    remoteByHost.get(host)!.push(t);
+  }
+  const instanceGroups = Array.from(remoteByHost.entries())
+    .map(([host, items]) => ({ host, items, name: siteNameByHost.get(host) }))
+    .sort((a, b) => b.items.length - a.items.length);
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">
@@ -551,20 +696,20 @@ const Network = () => {
         </div>
 
         {remoteReleases.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {remoteReleases.map((item, i) => {
-              const uniqueId = item.slug || (item.siteUrl + "::" + item.track?.id);
-              return (
-                <TrackCard 
-                  key={uniqueId || i} 
-                  item={item} 
-                  onPlay={handlePlayNetworkTrack}
-                  onToggleVisibility={toggleTrackVisibility}
-                  isHidden={hiddenTracks.includes(uniqueId)}
-                  isAdmin={isAdminAuthenticated}
-                />
-              );
-            })}
+          <div className="space-y-4">
+            {instanceGroups.map((g) => (
+              <InstanceGroup
+                key={g.host}
+                host={g.host}
+                name={g.name}
+                federation={g.items[0]?.federation}
+                tracks={g.items}
+                onPlay={handlePlayNetworkTrack}
+                onToggleVisibility={toggleTrackVisibility}
+                hiddenTracks={hiddenTracks}
+                isAdmin={isAdminAuthenticated}
+              />
+            ))}
           </div>
         ) : (
           <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">

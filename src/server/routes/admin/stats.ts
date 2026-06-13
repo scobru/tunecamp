@@ -183,8 +183,8 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 audioUrl: content.stream_url || null,
                 duration: content.duration || 0,
                 siteUrl: content.url || null,
-                pubKey: content.actor_uri, 
-                federation: "activitypub",
+                pubKey: content.actor_uri,
+                federation: (content as any).actor_type === "rss" ? "rss" : "activitypub",
                 type: "release"
             }));
 
@@ -210,7 +210,10 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 
                 // 1. Site actors are allowed
                 if (actor.username === 'site') return true;
-                
+
+                // 1b. Followed RSS feeds (podcasts/blogs) are allowed
+                if (actor.type === 'rss') return true;
+
                 // 2. Music artists (with releases) are allowed
                 if (actorsWithReleases.has(content.actor_uri)) return true;
                 
@@ -232,7 +235,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 siteUrl: content.url || null,
                 pubKey: content.actor_uri,
                 published_at: content.published_at,
-                federation: "activitypub",
+                federation: (content as any).actor_type === "rss" ? "rss" : "activitypub",
                 type: "post"
             }));
 

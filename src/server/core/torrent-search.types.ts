@@ -5,6 +5,8 @@ export interface TorrentSearchResult {
     seeds: number;
     peers: number;
     magnet?: string;
+    /** Torrent page URL — required by torrent-search-api to resolve the magnet on download. */
+    link?: string;
     desc?: string;
     provider: string;
     searchProviderId?: string;

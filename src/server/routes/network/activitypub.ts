@@ -168,6 +168,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                     const audioAttachment = attachments.find((a: any) => hasType(a.type, "Audio") || a.mediaType?.startsWith("audio/"));
 
                     // Map to RemoteContent
+                    const coverUrl = await apService.resolveRemoteCover(obj);
                     const remoteContent = {
                         ap_id: obj.id,
                         actor_uri: typeof activity.actor === 'string' ? activity.actor : activity.actor.id,
@@ -175,7 +176,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                         title: obj.name || obj.title || obj.content?.replace(/<[^>]*>?/gm, '').substring(0, 50),
                         content: obj.content || obj.summary || "",
                         url: obj.url || (Array.isArray(obj.url) ? obj.url[0]?.href : obj.url?.href),
-                        cover_url: obj.image?.url || obj.icon?.url || (attachments.find((a: any) => hasType(a.type, "Image") || a.mediaType?.startsWith("image/"))?.url),
+                        cover_url: coverUrl,
                         stream_url: hasType(obj.type, "Audio") ? obj.url : audioAttachment?.url || audioAttachment?.href,
                         artist_name: obj.attributedTo?.name || "Remote Artist",
                         album_name: obj.name || obj.title || null,
@@ -355,6 +356,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                     const attachments = Array.isArray(obj.attachment) ? obj.attachment : (obj.attachment ? [obj.attachment] : []);
                     const audioAttachment = attachments.find((a: any) => hasType(a.type, "Audio") || a.mediaType?.startsWith("audio/"));
 
+                    const coverUrl = await apService.resolveRemoteCover(obj);
                     const remoteContent = {
                         ap_id: obj.id,
                         actor_uri: typeof activity.actor === 'string' ? activity.actor : activity.actor?.id,
@@ -362,7 +364,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                         title: obj.name || obj.title || obj.content?.replace(/<[^>]*>?/gm, '').substring(0, 50) || "Untitled",
                         content: obj.content || obj.summary || "",
                         url: obj.url || (Array.isArray(obj.url) ? obj.url[0]?.href : obj.url?.href),
-                        cover_url: obj.image?.url || obj.icon?.url || (attachments.find((a: any) => hasType(a.type, "Image") || a.mediaType?.startsWith("image/"))?.url),
+                        cover_url: coverUrl,
                         stream_url: hasType(obj.type, "Audio") ? obj.url : audioAttachment?.url || audioAttachment?.href,
                         artist_name: obj.attributedTo?.name || "Remote Artist",
                         album_name: obj.name || obj.title || null,

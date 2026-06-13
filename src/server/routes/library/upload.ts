@@ -116,12 +116,19 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     const imageUpload = multer({
         storage: createTempStorage(),
         fileFilter: imageFileFilter,
-        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+        limits: { fileSize: 25 * 1024 * 1024 }, // 25MB — high-res backgrounds/covers
     });
 
-    // Multer fileFilter/limit errors would otherwise bubble to the global 500 handler
+    // Multer fileFilter/limit errors would otherwise bubble to the global 500 handler.
+    // Translate them into a clean 400 with a human-readable reason the UI can display.
     const rejectAs400 = (mw: any) => (req: any, res: any, next: any) =>
-        mw(req, res, (err: any) => err ? res.status(400).json({ error: err.message || "Upload rejected" }) : next());
+        mw(req, res, (err: any) => {
+            if (!err) return next();
+            const message = err.code === "LIMIT_FILE_SIZE"
+                ? "File too large (max 25MB)"
+                : err.message || "Upload rejected";
+            res.status(400).json({ error: message });
+        });
 
     /**
      * Helper for site-wide image uploads (background, site cover)

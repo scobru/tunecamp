@@ -329,6 +329,44 @@ export class ActivityPubService {
     /**
      * Fetches and parses a remote actor's outbox to populate the local feed.
      */
+    /**
+     * Resolves the best cover-art URL for a remote AP music object.
+     * Funkwhale leaves `image: null` on the Audio object and references the Album
+     * by URI, so when there's no direct image we fetch the album and read its
+     * cover. Returns null when nothing usable is found.
+     */
+    public async resolveRemoteCover(obj: any): Promise<string | null> {
+        if (!obj || typeof obj !== 'object') return null;
+        const imgFrom = (o: any): string | null => {
+            if (!o) return null;
+            return this.getString(
+                o.image?.url || o.image ||
+                o.cover?.url || o.cover?.href || o.cover ||
+                o.icon?.url || o.icon
+            );
+        };
+        let cover = imgFrom(obj);
+        if (!cover) {
+            const attachments = Array.isArray(obj.attachment) ? obj.attachment : (obj.attachment ? [obj.attachment] : []);
+            const imgAtt = attachments.find((a: any) => {
+                const t = typeof a?.type === 'string' ? a.type.toLowerCase() : '';
+                return t === 'image' || a?.mediaType?.startsWith?.('image/');
+            });
+            cover = this.getString(imgAtt?.url || imgAtt?.href);
+        }
+        if (!cover && obj.album) {
+            let album: any = obj.album;
+            if (typeof album === 'string') {
+                try {
+                    const r = await this.fetchWithSignature(album);
+                    album = r.ok ? await r.json() : null;
+                } catch { album = null; }
+            }
+            if (album) cover = imgFrom(album);
+        }
+        return cover || null;
+    }
+
     public async fetchRemoteOutbox(actorUri: string): Promise<void> {
         console.log(`📥 Fetching remote outbox for: ${actorUri}`);
         
@@ -340,6 +378,27 @@ export class ActivityPubService {
             // Normalize to string values for comparison if they are objects
             const typeStrings = types.map(t => typeof t === 'string' ? t.toLowerCase() : (t.type || t.toString()).toLowerCase());
             return targets.some(t => typeStrings.includes(t.toLowerCase()));
+        };
+
+        // Funkwhale (and similar) leave `image: null` on the Audio/Track object and
+        // reference the Album by URI — the cover art lives on that Album object.
+        // Resolve it lazily and cache per album URI so a release's tracks don't each
+        // trigger a separate fetch.
+        const albumCache = new Map<string, any>();
+        const resolveAlbumObject = async (albumRef: any): Promise<any | null> => {
+            if (!albumRef) return null;
+            if (typeof albumRef === 'object') return albumRef; // already embedded
+            if (typeof albumRef !== 'string') return null;
+            if (albumCache.has(albumRef)) return albumCache.get(albumRef);
+            let album: any = null;
+            try {
+                const r = await this.fetchWithSignature(albumRef);
+                if (r.ok) album = await r.json();
+            } catch (e) {
+                console.warn(`⚠️ Failed to fetch album ${albumRef} for cover:`, e);
+            }
+            albumCache.set(albumRef, album);
+            return album;
         };
 
         try {
@@ -463,6 +522,30 @@ export class ActivityPubService {
                                     finalStreamUrl = this.getString(streamUrlCandidate.href || streamUrlCandidate.url);
                                 }
 
+                                    // Cover + album name: prefer fields on the object itself, then
+                                    // fall back to the referenced Album object (Funkwhale puts the
+                                    // cover there and leaves image:null on the track).
+                                    let coverUrl = this.getString(
+                                        resolvedObj.image?.url || resolvedObj.image ||
+                                        resolvedObj.icon?.url || resolvedObj.icon ||
+                                        (attachments.find((a: any) => hasType(a.type, "Image") || a.mediaType?.startsWith("image/"))?.url) ||
+                                        resolvedObj.track?.album?.image?.url
+                                    );
+                                    let albumName = this.getString(resolvedObj.album?.name || resolvedObj.track?.album?.name);
+                                    if ((!coverUrl || !albumName) && resolvedObj.album) {
+                                        const albumObj = await resolveAlbumObject(resolvedObj.album);
+                                        if (albumObj) {
+                                            if (!coverUrl) {
+                                                coverUrl = this.getString(
+                                                    albumObj.image?.url || albumObj.image ||
+                                                    albumObj.cover?.url || albumObj.cover?.href || albumObj.cover ||
+                                                    albumObj.icon?.url || albumObj.icon
+                                                );
+                                            }
+                                            if (!albumName) albumName = this.getString(albumObj.name || albumObj.title);
+                                        }
+                                    }
+
                                     const remoteContent = {
                                         ap_id: this.getString(resolvedObj.id),
                                         actor_uri: this.getString(actorUri),
@@ -470,10 +553,10 @@ export class ActivityPubService {
                                         title: this.getString(resolvedObj.name || resolvedObj.title || resolvedObj.content?.replace(/<[^>]*>?/gm, '').substring(0, 50) || "Untitled"),
                                         content: this.getString(resolvedObj.content || resolvedObj.summary || ""),
                                         url: this.getString(resolvedObj.url || (Array.isArray(resolvedObj.url) ? resolvedObj.url[0]?.href : resolvedObj.url?.href)),
-                                        cover_url: this.getString(resolvedObj.image?.url || resolvedObj.icon?.url || (attachments.find((a: any) => hasType(a.type, "Image") || a.mediaType?.startsWith("image/"))?.url) || resolvedObj.track?.album?.image?.url),
+                                        cover_url: coverUrl,
                                         stream_url: finalStreamUrl,
                                         artist_name: this.getString(resolvedObj.attributedTo?.name || actor.name || actor.preferredUsername || resolvedObj.track?.artists?.[0]?.name || "Remote Artist"),
-                                        album_name: this.getString(resolvedObj.album?.name || resolvedObj.name || resolvedObj.title || resolvedObj.track?.album?.name || null),
+                                        album_name: albumName || this.getString(resolvedObj.name || resolvedObj.title || null),
                                         duration: this.getString(resolvedObj.duration || audioAttachment?.duration || null),
                                         published_at: this.getString(resolvedObj.published || activity.published || new Date().toISOString())
                                     };

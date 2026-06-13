@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle, Globe } from 'lucide-react';
+import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle, Globe, Rss } from 'lucide-react';
 import API from '../../services/api';
 import type { Artist } from '../../types';
 import { notify } from '../../utils/notify';
@@ -26,6 +26,8 @@ export const ActivityPubPanel = () => {
     const [peerUrl, setPeerUrl] = useState('');
     const [peerLoading, setPeerLoading] = useState(false);
     const [peersLoading, setPeersLoading] = useState(false);
+    const [feedUrl, setFeedUrl] = useState('');
+    const [feedLoading, setFeedLoading] = useState(false);
     const [followersCount, setFollowersCount] = useState<number | null>(null);
 
     useEffect(() => {
@@ -118,6 +120,45 @@ export const ActivityPubPanel = () => {
         }
     };
 
+    const handleFollowFeed = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!feedUrl) return;
+
+        setFeedLoading(true);
+        try {
+            const res = await API.followRssFeed(feedUrl);
+            notify.success(res?.message || `Now following ${feedUrl}`);
+            setFeedUrl('');
+            loadPeers();
+        } catch (e: any) {
+            console.error(e);
+            notify.error(e, `Failed to follow feed`);
+        } finally {
+            setFeedLoading(false);
+        }
+    };
+
+    const handleUnfollowFeed = async (url: string) => {
+        if (!confirm(`Stop following ${url}?`)) return;
+        try {
+            await API.unfollowRssFeed(url);
+            setPeers(prev => prev.filter(p => p.uri !== url));
+        } catch (e: any) {
+            console.error(e);
+            notify.error(e, `Failed to unfollow feed`);
+        }
+    };
+
+    const handleSyncFeed = async (url?: string) => {
+        try {
+            await API.syncRssFeed(url);
+            notify.success(url ? `Refresh triggered for ${url}` : 'RSS refresh triggered');
+        } catch (e: any) {
+            console.error(e);
+            notify.error(e, `Failed to refresh feed`);
+        }
+    };
+
     const loadNotes = async (artistId: string) => {
         setLoading(true);
         try {
@@ -163,6 +204,8 @@ export const ActivityPubPanel = () => {
     };
 
     const selectedArtist = artists.find(a => a.id.toString() === selectedArtistId);
+    const apPeers = peers.filter(p => p.type !== 'rss');
+    const rssFeeds = peers.filter(p => p.type === 'rss');
 
     return (
         <div className="space-y-6">
@@ -236,11 +279,11 @@ export const ActivityPubPanel = () => {
                         </button>
                     </form>
 
-                    {peers.length > 0 && (
+                    {apPeers.length > 0 && (
                         <div className="space-y-3 mt-4">
                             <h4 className="text-xs font-bold opacity-40 tracking-normal mb-2">Peers followed by this instance</h4>
                             <div className="grid gap-2">
-                                {peers.map(peer => (
+                                {apPeers.map(peer => (
                                     <div key={peer.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-base-content/5 group hover:bg-base-100/60 transition-colors">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="avatar placeholder">
@@ -283,6 +326,79 @@ export const ActivityPubPanel = () => {
                     {peersLoading && peers.length === 0 && (
                         <div className="flex justify-center py-4">
                             <span className="loading loading-spinner loading-md opacity-30"/>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="card card-m3 bg-base-200/30">
+                <div className="card-body p-6">
+                    <h3 className="font-bold mb-2 flex items-center gap-2">
+                        <Rss size={18} className="text-warning" /> RSS &amp; Podcast Feeds
+                    </h3>
+                    <p className="text-sm opacity-70 mb-4 font-medium">
+                        Follow plain RSS/Atom sources that aren't on the Fediverse — podcasts (Castopod, etc.), Owncast streams or blogs. Paste the feed URL or just the page URL (the feed is auto-detected). Episodes with audio become playable tracks; everything else appears as posts in the Network page. Feeds refresh automatically.
+                    </p>
+                    <form onSubmit={handleFollowFeed} className="flex gap-2 mb-6">
+                        <input
+                            type="url"
+                            className="input input-bordered flex-1 bg-base-100/50 focus:border-warning transition-all"
+                            placeholder="https://example.com/feed.xml"
+                            value={feedUrl}
+                            onChange={(e) => setFeedUrl(e.target.value)}
+                        />
+                        <button
+                            type="submit"
+                            className="btn btn-warning shadow-level-1"
+                            disabled={feedLoading || !feedUrl}
+                        >
+                            {feedLoading ? <span className="loading loading-spinner loading-xs"/> : 'Follow Feed'}
+                        </button>
+                    </form>
+
+                    {rssFeeds.length > 0 && (
+                        <div className="space-y-3 mt-4">
+                            <h4 className="text-xs font-bold opacity-40 tracking-normal mb-2">Followed feeds</h4>
+                            <div className="grid gap-2">
+                                {rssFeeds.map(feed => (
+                                    <div key={feed.uri} className="flex items-center justify-between p-3 bg-base-100/40 rounded-lg border border-base-content/5 group hover:bg-base-100/60 transition-colors">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="avatar placeholder">
+                                                <div className="w-8 h-8 rounded-full bg-warning/20 text-warning shadow-sm overflow-hidden flex items-center justify-center">
+                                                    {feed.icon_url
+                                                        ? <img src={feed.icon_url} alt="" className="w-full h-full object-cover" />
+                                                        : <Rss size={14}/>}
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-sm truncate">{feed.name || feed.uri}</div>
+                                                <div className="text-xs opacity-40 truncate flex items-center gap-1 font-mono">
+                                                    <span className="truncate">{feed.uri}</span>
+                                                    <a href={feed.uri} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 hover:text-warning transition-opacity">
+                                                        <ExternalLink size={10}/>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                className="btn btn-ghost btn-xs btn-square tooltip tooltip-top"
+                                                onClick={() => handleSyncFeed(feed.uri)}
+                                                data-tip="Refresh Feed"
+                                            >
+                                                <RefreshCw size={14}/>
+                                            </button>
+                                            <button
+                                                className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error tooltip tooltip-top"
+                                                onClick={() => handleUnfollowFeed(feed.uri)}
+                                                data-tip="Unfollow Feed"
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

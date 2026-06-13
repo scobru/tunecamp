@@ -4,6 +4,7 @@ import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, Octago
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory, TuneCampCheckout } from "shogun-contracts-sdk";
+import { applyThemeFont } from "../../utils/themeFont";
 
 export const AdminSettingsPanel = () => {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -191,9 +192,12 @@ export const AdminSettingsPanel = () => {
       setLogoFile(null);
       // Refresh settings to get new bg url if needed
       API.getAdminSettings().then(setSettings);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setMessage("Failed to save settings.");
+      // Surface the backend's reason (e.g. "File too large", "Unsupported image type")
+      // instead of a generic failure so the user knows how to fix it.
+      const reason = e?.message || "Unknown error";
+      setMessage(`Failed to save settings: ${reason}`);
     } finally {
       setLoading(false);
     }
@@ -451,19 +455,7 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => {
                     const font = e.target.value;
                     setSettings({ ...settings, themeFont: font });
-                    if (font !== "Outfit" && font !== "sans-serif") {
-                      const fontId = "dynamic-google-font";
-                      let linkElement = document.getElementById(fontId) as HTMLLinkElement;
-                      if (!linkElement) {
-                        linkElement = document.createElement("link");
-                        linkElement.id = fontId;
-                        linkElement.rel = "stylesheet";
-                        document.head.appendChild(linkElement);
-                      }
-                      const fontQuery = font.replace(/\s+/g, "+");
-                      linkElement.href = `https://fonts.googleapis.com/css2?family=${fontQuery}:wght@100..900&display=swap`;
-                    }
-                    document.documentElement.style.setProperty("--font-sans", `"${font}", sans-serif`);
+                    applyThemeFont(font);
                   }}
                 >
                   <option value="Outfit">Outfit (Default)</option>
