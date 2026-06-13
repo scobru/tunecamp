@@ -532,10 +532,37 @@ export const ArtistFediversePanel = () => {
                                 </div>
                             </div>
 
-                            {/* Social Sync Status Info */}
-                            <div className="flex items-center gap-2 p-3 rounded-xl bg-base-300/40 text-xs leading-normal opacity-70">
-                                <Globe size={16} className="text-accent flex-shrink-0" />
-                                <span>Linked globally via ActivityPub. Posts will push to Mastodon and followings in real-time.</span>
+                            {/* Federation status — two distinct things that are easy to conflate:
+                                native ActivityPub (always on for a published profile) vs. the
+                                optional Mastodon cross-posting bridge configured under Automation. */}
+                            <div className="space-y-2">
+                                {/* 1. Native ActivityPub federation — always active */}
+                                <div className="flex items-center gap-2 p-3 rounded-xl bg-base-300/40 text-xs leading-normal">
+                                    <Globe size={16} className="text-success flex-shrink-0" />
+                                    <span className="opacity-80">
+                                        <span className="font-semibold">Federated via ActivityPub.</span>{' '}
+                                        Followable from Mastodon/Pleroma{fediverseHandle ? <> at <span className="font-mono">{fediverseHandle}</span></> : null}; posts reach your followers in real-time.
+                                    </span>
+                                </div>
+
+                                {/* 2. Mastodon cross-posting — separate, optional bridge to an external account */}
+                                {artist?.postParams?.instance ? (
+                                    <div className="flex items-center gap-2 p-3 rounded-xl bg-base-300/40 text-xs leading-normal">
+                                        <Repeat size={16} className="text-success flex-shrink-0" />
+                                        <span className="opacity-80">
+                                            <span className="font-semibold">Mastodon cross-posting active.</span>{' '}
+                                            Mirroring to <span className="font-mono">{artist.postParams.instance}</span>.
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 p-3 rounded-xl bg-base-300/40 text-xs leading-normal">
+                                        <Repeat size={16} className="text-base-content/40 flex-shrink-0" />
+                                        <span className="opacity-60">
+                                            <span className="font-semibold">Mastodon cross-posting not configured.</span>{' '}
+                                            Optional — connect an external Mastodon account under the Automation tab to also mirror posts there.
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
