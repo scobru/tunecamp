@@ -241,9 +241,19 @@ export class MediaEngine {
   ): Promise<StreamResult> {
     const ext = path.extname(trackPath).toLowerCase();
     const sourceFormat = (track.format || ext.substring(1)).toLowerCase();
-    const targetFormat = options.format || ( (ext === '.wav' || isLosslessFallback) ? 'mp3' : sourceFormat );
-    
-    const needsTranscode = options.seek! > 0 || 
+
+    // Formats a browser <audio> element can decode from a raw byte stream.
+    // Anything else must be transcoded to mp3, even when no explicit target
+    // format is requested. In particular MP4/M4A containers (which may hold
+    // ALAC — unsupported by Chrome) and some cloud imports whose body is an
+    // M4A mislabeled .mp3 with an ID3 tag glued on the front; served raw as
+    // audio/mpeg these fail with DEMUXER_ERROR_COULD_NOT_OPEN. ffmpeg reads
+    // past the ID3 tag and decodes the real container.
+    const directlyStreamable = new Set(["mp3", "ogg", "opus", "flac", "aac"]);
+    const targetFormat = options.format ||
+      ((isLosslessFallback || !directlyStreamable.has(sourceFormat)) ? "mp3" : sourceFormat);
+
+    const needsTranscode = options.seek! > 0 ||
                            (targetFormat !== sourceFormat) || 
                            (options.bitrate && this.isBitrateReductionNeeded(track.bitrate, options.bitrate));
 
