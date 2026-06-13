@@ -331,40 +331,54 @@ export class ActivityPubService {
      */
     /**
      * Resolves the best cover-art URL for a remote AP music object.
-     * Funkwhale leaves `image: null` on the Audio object and references the Album
-     * by URI, so when there's no direct image we fetch the album and read its
-     * cover. Returns null when nothing usable is found.
+     *
+     * Funkwhale federates an `Audio` object that carries `image: null` and nests
+     * the real artwork on the *album*, which itself lives under `track.album`
+     * (not the top-level `album`) and exposes it as a `cover` Link (`{href}`),
+     * not an `image`. So we scan, in order, the object itself, its `track`, its
+     * `album`, and `track.album`, reading image/cover/icon at each. If an album
+     * is only a URI reference we dereference it once. Returns null when nothing
+     * usable is found.
      */
     public async resolveRemoteCover(obj: any): Promise<string | null> {
         if (!obj || typeof obj !== 'object') return null;
         const imgFrom = (o: any): string | null => {
-            if (!o) return null;
+            if (!o || typeof o !== 'object') return null;
             return this.getString(
-                o.image?.url || o.image ||
+                o.image?.url || o.image?.href || o.image ||
                 o.cover?.url || o.cover?.href || o.cover ||
-                o.icon?.url || o.icon
+                o.icon?.url || o.icon?.href || o.icon
             );
         };
-        let cover = imgFrom(obj);
-        if (!cover) {
-            const attachments = Array.isArray(obj.attachment) ? obj.attachment : (obj.attachment ? [obj.attachment] : []);
+        const attachmentImg = (o: any): string | null => {
+            if (!o) return null;
+            const attachments = Array.isArray(o.attachment) ? o.attachment : (o.attachment ? [o.attachment] : []);
             const imgAtt = attachments.find((a: any) => {
                 const t = typeof a?.type === 'string' ? a.type.toLowerCase() : '';
                 return t === 'image' || a?.mediaType?.startsWith?.('image/');
             });
-            cover = this.getString(imgAtt?.url || imgAtt?.href);
+            return this.getString(imgAtt?.url || imgAtt?.href);
+        };
+
+        // Candidate carriers in priority order. Funkwhale puts the cover on
+        // track.album, so include the nested track/album objects too.
+        const carriers = [obj, obj.track, obj.album, obj.track?.album];
+        for (const c of carriers) {
+            const hit = imgFrom(c) || attachmentImg(c);
+            if (hit) return hit;
         }
-        if (!cover && obj.album) {
-            let album: any = obj.album;
-            if (typeof album === 'string') {
-                try {
-                    const r = await this.fetchWithSignature(album);
-                    album = r.ok ? await r.json() : null;
-                } catch { album = null; }
-            }
-            if (album) cover = imgFrom(album);
+
+        // Last resort: an album referenced only by URI (some non-Funkwhale peers).
+        const albumRef = obj.album ?? obj.track?.album;
+        if (typeof albumRef === 'string') {
+            try {
+                const r = await this.fetchWithSignature(albumRef);
+                const album = r.ok ? await r.json() : null;
+                const hit = imgFrom(album) || attachmentImg(album);
+                if (hit) return hit;
+            } catch { /* ignore */ }
         }
-        return cover || null;
+        return null;
     }
 
     public async fetchRemoteOutbox(actorUri: string): Promise<void> {
@@ -522,24 +536,20 @@ export class ActivityPubService {
                                     finalStreamUrl = this.getString(streamUrlCandidate.href || streamUrlCandidate.url);
                                 }
 
-                                    // Cover + album name: prefer fields on the object itself, then
-                                    // fall back to the referenced Album object (Funkwhale puts the
-                                    // cover there and leaves image:null on the track).
-                                    let coverUrl = this.getString(
-                                        resolvedObj.image?.url || resolvedObj.image ||
-                                        resolvedObj.icon?.url || resolvedObj.icon ||
-                                        (attachments.find((a: any) => hasType(a.type, "Image") || a.mediaType?.startsWith("image/"))?.url) ||
-                                        resolvedObj.track?.album?.image?.url
-                                    );
+                                    // Cover: handled by the shared resolver, which scans the object,
+                                    // its track, its album, and track.album (where Funkwhale hides the
+                                    // cover as a `cover` Link with image:null on the track itself).
+                                    let coverUrl = await this.resolveRemoteCover(resolvedObj);
                                     let albumName = this.getString(resolvedObj.album?.name || resolvedObj.track?.album?.name);
-                                    if ((!coverUrl || !albumName) && resolvedObj.album) {
-                                        const albumObj = await resolveAlbumObject(resolvedObj.album);
+                                    const albumRef = resolvedObj.album ?? resolvedObj.track?.album;
+                                    if ((!coverUrl || !albumName) && typeof albumRef === 'string') {
+                                        const albumObj = await resolveAlbumObject(albumRef);
                                         if (albumObj) {
                                             if (!coverUrl) {
                                                 coverUrl = this.getString(
-                                                    albumObj.image?.url || albumObj.image ||
+                                                    albumObj.image?.url || albumObj.image?.href || albumObj.image ||
                                                     albumObj.cover?.url || albumObj.cover?.href || albumObj.cover ||
-                                                    albumObj.icon?.url || albumObj.icon
+                                                    albumObj.icon?.url || albumObj.icon?.href || albumObj.icon
                                                 );
                                             }
                                             if (!albumName) albumName = this.getString(albumObj.name || albumObj.title);
