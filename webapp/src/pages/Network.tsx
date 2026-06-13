@@ -469,8 +469,10 @@ const Network = () => {
 
         // Process Tracks — unified across all federation types
         const validTracks = tracksData.filter((t: any) => {
-          // AP/local/HTTP tracks — must have either audioUrl or slug
-          if (t.federation === "activitypub" || t.federation === "local" || t.federation === "http") {
+          // AP/local/HTTP/RSS tracks — must have either audioUrl or slug.
+          // RSS posts have no audio but carry a slug (the feed item guid), so
+          // they pass on the slug check just like AP posts do.
+          if (t.federation === "activitypub" || t.federation === "local" || t.federation === "http" || t.federation === "rss") {
             return !!t.audioUrl || !!t.slug;
           }
           // Legacy the Zen network tracks (if any remain)
