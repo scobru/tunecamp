@@ -287,4 +287,71 @@ describe('Auth Routes', () => {
             expect(res.body.pair).toEqual({ pub: 'user-pub-key' });
         });
     });
+
+    describe('Artist Unlinking (integration, real auth service)', () => {
+        test('prevents auto-linking on subsequent logins after explicit unlinking by root admin', async () => {
+            const sqlite3 = (await import('better-sqlite3')).default;
+            const { createAuthService } = await import('../../../modules/auth/auth.service.js');
+
+            const db = new sqlite3(':memory:');
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS gun_users (
+                    pub TEXT PRIMARY KEY,
+                    epub TEXT NOT NULL,
+                    alias TEXT UNIQUE NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS artists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    slug TEXT UNIQUE NOT NULL,
+                    visibility TEXT DEFAULT 'public'
+                );
+            `);
+            const realAuthService = createAuthService(db, 'secret', 'admin', 'tunecamp');
+            await realAuthService.init();
+
+            // 1. Create an artist with name "curator1"
+            const artistInsert = db.prepare("INSERT INTO artists (name, slug, visibility) VALUES ('curator1', 'curator1', 'public')").run();
+            const artistId = Number(artistInsert.lastInsertRowid);
+
+            // 2. Create curator1 admin user with no artist linked initially
+            const curatorResult = await realAuthService.createUser('curator1', 'CuratorPass123!', null, 1024, undefined, UserRole.SUPER_USER);
+            const curatorId = curatorResult.id;
+
+            // 3. Authenticate the user (first login). This should auto-link because artist_unlinked is 0 and artist curator1 exists.
+            const firstAuth = await realAuthService.authenticateUser('curator1', 'CuratorPass123!');
+            expect(firstAuth).toBeTruthy();
+            if (firstAuth) {
+                expect(firstAuth.artistId).toBe(artistId);
+            }
+
+            // Verify database has the link
+            let curatorRow = db.prepare("SELECT artist_id, artist_unlinked FROM admin WHERE id = ?").get(curatorId) as any;
+            expect(curatorRow.artist_id).toBe(artistId);
+            expect(curatorRow.artist_unlinked).toBe(0);
+
+            // 4. Update curator (Root Admin unlinks the artist by setting it to null/None)
+            realAuthService.updateAdmin(curatorId, null, UserRole.SUPER_USER);
+
+            // Verify database has unlinked and marked as unlinked
+            curatorRow = db.prepare("SELECT artist_id, artist_unlinked FROM admin WHERE id = ?").get(curatorId) as any;
+            expect(curatorRow.artist_id).toBeNull();
+            expect(curatorRow.artist_unlinked).toBe(1);
+
+            // 5. Authenticate user again (subsequent login). Since artist_unlinked is 1, it should NOT auto-link.
+            const secondAuth = await realAuthService.authenticateUser('curator1', 'CuratorPass123!');
+            expect(secondAuth).toBeTruthy();
+            if (secondAuth) {
+                expect(secondAuth.artistId).toBeNull();
+            }
+
+            // Verify database still has no link
+            curatorRow = db.prepare("SELECT artist_id, artist_unlinked FROM admin WHERE id = ?").get(curatorId) as any;
+            expect(curatorRow.artist_id).toBeNull();
+            expect(curatorRow.artist_unlinked).toBe(1);
+
+            db.close();
+        });
+    });
 });
+

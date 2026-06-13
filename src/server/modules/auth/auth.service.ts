@@ -113,6 +113,7 @@ export function createAuthService(
                     username TEXT NOT NULL UNIQUE,
                     password_hash TEXT NOT NULL,
                     artist_id INTEGER DEFAULT NULL,
+                    artist_unlinked INTEGER DEFAULT 0,
                     role TEXT NOT NULL DEFAULT 'admin',
                     storage_quota INTEGER NOT NULL DEFAULT 0,
                     storage_used INTEGER NOT NULL DEFAULT 0,
@@ -147,6 +148,16 @@ export function createAuthService(
                 }
             }
 
+            const hasArtistUnlinked = columns.some(c => c.name === 'artist_unlinked');
+            if (!hasArtistUnlinked) {
+                console.log("📦 Migrating admin table: Adding artist_unlinked column...");
+                try {
+                    db.exec("ALTER TABLE admin ADD COLUMN artist_unlinked INTEGER DEFAULT 0");
+                } catch (e) {
+                    console.error("Failed to add artist_unlinked column:", e);
+                }
+            }
+
             if (!hasUsername || !hasArtistId || !hasRole || !hasGunPub || !hasSubsonic || !hasIsActive) {
                 console.log("📦 Migrating admin table to multi-user support (with roles, quotas, keys, and status)...");
                 // We need to recreate the table
@@ -160,6 +171,7 @@ export function createAuthService(
                         username TEXT NOT NULL UNIQUE,
                         password_hash TEXT NOT NULL,
                         artist_id INTEGER DEFAULT NULL,
+                        artist_unlinked INTEGER DEFAULT 0,
                         role TEXT NOT NULL DEFAULT 'admin',
                         storage_quota INTEGER NOT NULL DEFAULT 0,
                         storage_used INTEGER NOT NULL DEFAULT 0,
@@ -311,11 +323,11 @@ export function createAuthService(
 
         async authenticateUser(username: string, password: string): Promise<{ success: boolean; artistId: number | null; isAdmin: boolean; id: number; role: UserRole; isActive: boolean; tokenVersion: number } | false> {
             console.log(`[AUTH] Attempting login for user: '${username}'`);
-            let user = db.prepare("SELECT id, username, password_hash, artist_id, role, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; username: string; password_hash: string; artist_id: number | null; role: UserRole; is_active: number; token_version: number } | undefined;
+            let user = db.prepare("SELECT id, username, password_hash, artist_id, artist_unlinked, role, is_active, token_version FROM admin WHERE username = ?").get(username) as { id: number; username: string; password_hash: string; artist_id: number | null; artist_unlinked?: number; role: UserRole; is_active: number; token_version: number } | undefined;
 
             if (!user) {
                 // Try case-insensitive fallback
-                user = db.prepare("SELECT id, username, password_hash, artist_id, role, is_active, token_version FROM admin WHERE username = ? COLLATE NOCASE").get(username) as any;
+                user = db.prepare("SELECT id, username, password_hash, artist_id, artist_unlinked, role, is_active, token_version FROM admin WHERE username = ? COLLATE NOCASE").get(username) as any;
                 if (user) console.log(`[AUTH] Found user '${user.username}' via case-insensitive lookup for '${username}'`);
             }
 
@@ -352,7 +364,7 @@ export function createAuthService(
             // Reserved to curators and admins: listeners must never be auto-linked
             // to an artist that happens to share their username — they become
             // artists only through the request + approval flow (which promotes them).
-            if (!artistId && (userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN || userRole === UserRole.ADMIN)) {
+            if (!artistId && !user?.artist_unlinked && (userRole === UserRole.SUPER_USER || userRole === UserRole.ROOT_ADMIN || userRole === UserRole.ADMIN)) {
                 console.log(`🔍 Checking for existing artist profile for ${userRole} ${username}...`);
 
                 // Check if an artist with the same name exists
@@ -434,8 +446,8 @@ export function createAuthService(
         },
 
         updateAdmin(id: number, artistId: number | null, role?: UserRole, storageQuota?: number): void {
-            const updates: string[] = ["artist_id = ?", "updated_at = CURRENT_TIMESTAMP"];
-            const params: any[] = [artistId];
+            const updates: string[] = ["artist_id = ?", "artist_unlinked = ?", "updated_at = CURRENT_TIMESTAMP"];
+            const params: any[] = [artistId, artistId === null ? 1 : 0];
             
             if (role) {
                 if (id === 1 && role !== 'admin' && role !== 'root_admin') {
