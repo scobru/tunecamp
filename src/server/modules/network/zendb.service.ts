@@ -1,11 +1,9 @@
 import { Worker } from "worker_threads";
 import * as Sentry from "@sentry/node";
-import fetch from "node-fetch";
-import { drainResponse } from "../../common/network.js";
+import { isLiveTuneCamp } from "../../common/network.js";
 import { kprs } from "./zen-network.js";
 
 import type { DatabaseService } from "../../core/database.js";
-import { isSafeUrl } from "../../../utils/networkUtils.js";
 
 // Public Zen peers for the community registry
 const REGISTRY_PEERS = [
@@ -477,28 +475,12 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         }
     }
 
+    // "Reachable" means a live TuneCamp answers on /api/catalog — not just that
+    // the domain returns 200. A reverse proxy / CapRover placeholder / replaced
+    // app would pass a HEAD check and keep a dead instance in the registry
+    // forever; the catalog probe prunes it. (SSRF + timeout handled inside.)
     async function checkSiteReachability(url: string): Promise<boolean> {
-        try {
-            if (!(await isSafeUrl(url))) {
-                return false;
-            }
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-            const response = await fetch(url, {
-                method: 'HEAD',
-                signal: controller.signal,
-                headers: { 'User-Agent': 'TuneCamp-HealthCheck/2.0' }
-            });
-
-            clearTimeout(timeoutId);
-            const ok = response.ok;
-            await drainResponse(response);
-            return ok;
-        } catch (error) {
-            return false;
-        }
+        return isLiveTuneCamp(url);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -534,42 +516,10 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 continue;
             }
 
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for remote health check
-
-                // Try to HEAD the site first
-                const res = await fetch(site.url, {
-                    method: 'HEAD',
-                    signal: controller.signal
-                }).catch(() => null);
-
-                if (!res) {
-                    // Try a GET if HEAD fails (some servers block HEAD)
-                    const getRes = await fetch(site.url, {
-                        method: 'GET',
-                        signal: controller.signal
-                    }).catch(() => null);
-
-                    if (!getRes || getRes.status >= 500) {
-                        throw new Error("Unreachable");
-                    }
-
-                    if (getRes.status === 404) {
-                        console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
-                        await pruneSite(site.id);
-                        pruned++;
-                        continue;
-                    }
-                } else if (res.status === 404) {
-                    console.log(`❌ [ZenDB] Site ${site.url} returned 404. Pruning from registry...`);
-                    await pruneSite(site.id);
-                    pruned++;
-                }
-
-                clearTimeout(timeoutId);
-            } catch (err) {
-                console.log(`❌ [ZenDB] Site ${site.url} is unreachable. Pruning from registry...`);
+            // Prune anything that isn't a live TuneCamp. A domain that still
+            // answers HTTP from a proxy/placeholder is NOT a reason to keep it.
+            if (!(await checkSiteReachability(site.url))) {
+                console.log(`❌ [ZenDB] Site ${site.url} is not a live TuneCamp. Pruning from registry...`);
                 await pruneSite(site.id);
                 pruned++;
             }

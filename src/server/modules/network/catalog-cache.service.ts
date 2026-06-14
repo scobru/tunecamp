@@ -15,7 +15,7 @@ import { isSafeUrl } from "../../../utils/networkUtils.js";
  */
 
 const TTL_MS = 60 * 60 * 1000;                 // 1h: entry considered fresh
-const HARD_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7d: drop entries never refreshed since
+const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;     // 48h: drop entries not refreshed since (a peer offline >2d stops showing)
 const FETCH_TIMEOUT = 5000;                     // 5s per instance
 
 export interface PeerSite {
@@ -46,6 +46,7 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
         ON CONFLICT(site_url) DO UPDATE SET tracks_json = excluded.tracks_json, fetched_at = excluded.fetched_at
     `);
     const pruneStmt = db.prepare("DELETE FROM peer_catalog_cache WHERE fetched_at < ?");
+    const deleteStmt = db.prepare("DELETE FROM peer_catalog_cache WHERE site_url = ?");
 
     // Dedup concurrent refreshes for the same peer
     const inFlight = new Map<string, Promise<any[] | null>>();
@@ -132,6 +133,15 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
             }
 
             if (cached) {
+                // Past the hard expiry the peer has been unrefreshed (offline)
+                // too long — stop serving its tracks and drop the entry, instead
+                // of waiting for the next restart-time prune().
+                if (now - cached.fetched_at > HARD_EXPIRY_MS) {
+                    try { deleteStmt.run(siteUrl); } catch { /* best effort */ }
+                    void fetchCatalog(site); // give it one more chance to come back
+                    continue;
+                }
+
                 try {
                     results.push(...JSON.parse(cached.tracks_json));
                 } catch { /* corrupted entry, refetch below */ }
