@@ -12,6 +12,7 @@ import type { FederationProvider } from "./federation.provider.js";
 import { ActivityPubRenderer } from "./activitypub.renderer.js";
 import { ActivityPubTransport } from "./activitypub.transport.js";
 import { DeliveryQueue } from "./activitypub.delivery-queue.js";
+import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 
 export class ActivityPubService {
     private renderer: ActivityPubRenderer;
@@ -31,7 +32,8 @@ export class ActivityPubService {
             () => ({
                 privateKey: this.db.getSetting("site_private_key") || null,
                 publicKey: this.db.getSetting("site_public_key") || null
-            })
+            }),
+            () => getSiteHandle(this.db)
         );
 
         // Durable retry queue for outbound delivery (#4). Backed by the same
@@ -54,7 +56,7 @@ export class ActivityPubService {
     /** Re-attempt a queued delivery by re-signing and POSTing the stored JSON-LD. */
     private async retryDeliver(actorSlug: string, inboxUri: string, activityJson: any): Promise<boolean> {
         let actor: any = { slug: actorSlug };
-        if (actorSlug && actorSlug !== "site") {
+        if (actorSlug && actorSlug !== getSiteHandle(this.db)) {
             const a = this.db.getArtistBySlug(actorSlug);
             if (a) actor = a;
         }
@@ -132,7 +134,7 @@ export class ActivityPubService {
     /**
      * Follow a remote ActivityPub Actor (Site or Person)
      */
-    public async followRemoteActor(actorUri: string, followerHandle: string = "site") {
+    public async followRemoteActor(actorUri: string, followerHandle: string = getSiteHandle(this.db)) {
         try {
             console.log(`📡 Attempting to follow remote actor: ${actorUri} as ${followerHandle}`);
             const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
@@ -172,7 +174,16 @@ export class ActivityPubService {
             }
 
             // Check for self-follow
-            if (resolvedActorUri === baseUrl || resolvedActorUri === `${baseUrl}/` || resolvedActorUri === `${baseUrl}/users/site` || resolvedActorUri === `${baseUrl}/api/ap/users/site`) {
+            const ownHandle = getSiteHandle(this.db);
+            const selfUris = new Set([
+                baseUrl,
+                `${baseUrl}/`,
+                `${baseUrl}/users/${ownHandle}`,
+                `${baseUrl}/api/ap/users/${ownHandle}`,
+                `${baseUrl}/users/site`,
+                `${baseUrl}/api/ap/users/site`,
+            ]);
+            if (selfUris.has(resolvedActorUri)) {
                 console.warn(`🛑 Self-following is disabled: ${resolvedActorUri}`);
                 return;
             }
@@ -213,8 +224,8 @@ export class ActivityPubService {
             });
 
             // Send Follow activity using the shared helper
-            if (followerHandle === "site") {
-                await this.sendActivity({ id: -1, slug: "site" } as any, inboxUri, follow);
+            if (followerHandle === getSiteHandle(this.db)) {
+                await this.sendActivity({ id: SITE_ACTOR_ID, slug: getSiteHandle(this.db) } as any, inboxUri, follow);
             } else {
                 const artist = this.db.getArtistBySlug(followerHandle);
                 if (artist) {
@@ -259,7 +270,7 @@ export class ActivityPubService {
             }
 
             // Record per-artist following (artist_id, actor_uri) so follow-back state is tracked independently per local artist
-            const followerArtistId = followerHandle === "site" ? -1 : this.db.getArtistBySlug(followerHandle)?.id;
+            const followerArtistId = followerHandle === getSiteHandle(this.db) ? SITE_ACTOR_ID : this.db.getArtistBySlug(followerHandle)?.id;
             if (followerArtistId !== undefined && followerArtistId !== null) {
                 this.db.addFollowing(followerArtistId, finalActorUri, inboxUri);
             }
@@ -273,14 +284,14 @@ export class ActivityPubService {
     /**
      * Unfollow a remote ActivityPub Actor
      */
-    public async unfollowRemoteActor(actorUri: string, followerHandle: string = "site") {
+    public async unfollowRemoteActor(actorUri: string, followerHandle: string = getSiteHandle(this.db)) {
         try {
             console.log(`📡 Attempting to unfollow remote actor: ${actorUri} as ${followerHandle}`);
             const baseUrl = this.getBaseUrl();
             const followerId = new URL(`/users/${followerHandle}`, baseUrl);
 
             // Resolve which local artist is unfollowing so we can clear the per-artist following record
-            const followerArtistId = followerHandle === "site" ? -1 : this.db.getArtistBySlug(followerHandle)?.id;
+            const followerArtistId = followerHandle === getSiteHandle(this.db) ? SITE_ACTOR_ID : this.db.getArtistBySlug(followerHandle)?.id;
             const clearFollowing = () => {
                 if (followerArtistId !== undefined && followerArtistId !== null) {
                     this.db.removeFollowing(followerArtistId, actorUri);
@@ -308,8 +319,8 @@ export class ActivityPubService {
                 }
             };
 
-            if (followerHandle === "site") {
-                await this.sendActivity({ id: -1, slug: "site" } as any, inboxUri, undo);
+            if (followerHandle === getSiteHandle(this.db)) {
+                await this.sendActivity({ id: SITE_ACTOR_ID, slug: getSiteHandle(this.db) } as any, inboxUri, undo);
             } else {
                 const artist = this.db.getArtistBySlug(followerHandle);
                 if (artist) {
@@ -600,7 +611,7 @@ export class ActivityPubService {
      * Subscribe the instance (Site Actor) to an ActivityPub Relay
      */
     public async subscribeToRelay(relayUrl: string) {
-        return this.followRemoteActor(relayUrl, "site");
+        return this.followRemoteActor(relayUrl, getSiteHandle(this.db));
     }
 
     /**
@@ -617,7 +628,7 @@ export class ActivityPubService {
                 return;
             }
             const baseUrl = new URL(publicUrl);
-            const siteActorId = new URL(`/users/site`, baseUrl);
+            const siteActorId = new URL(`/users/${getSiteHandle(this.db)}`, baseUrl);
 
             const announce = new Announce({
                 actor: siteActorId,
@@ -625,7 +636,7 @@ export class ActivityPubService {
             });
 
             if (relayUrl) {
-                await this.sendActivity({ id: -1, slug: "site" } as any, relayUrl, announce);
+                await this.sendActivity({ id: SITE_ACTOR_ID, slug: getSiteHandle(this.db) } as any, relayUrl, announce);
                 console.log(`📡 Announced activity to relay: ${relayUrl}`);
             }
         } catch (e) {
@@ -655,15 +666,16 @@ export class ActivityPubService {
             ? resource.replace("acct:", "").split("@")[0] 
             : resource;
             
+        const siteHandle = getSiteHandle(this.db);
         const artist = this.db.getArtistBySlug(username);
-        if (!artist && username !== "site") return null;
+        if (!artist && username !== siteHandle) return null;
 
-        return this.renderer.renderWebFinger(resource, artist || { slug: "site", name: "Site" } as any);
+        return this.renderer.renderWebFinger(resource, artist || { slug: siteHandle, name: this.db.getSetting("siteName") || "Instance" } as any);
     }
 
     public generateActor(artist: Artist | { slug: string, name: string, bio?: string, photo_path?: string }): any {
         const artistWithKeys = { ...artist } as any;
-        if (artist.slug === "site" && !artistWithKeys.public_key) {
+        if (artist.slug === getSiteHandle(this.db) && !artistWithKeys.public_key) {
             artistWithKeys.public_key = this.db.getSetting("site_public_key");
         }
         return this.renderer.renderActor(artistWithKeys);
@@ -1547,7 +1559,7 @@ export class ActivityPubService {
         if (!ok) {
             // Immediate delivery failed — persist for durable background retry
             // instead of silently dropping the activity.
-            await this.deliveryQueue?.enqueue((actor as any).slug || "site", inboxUri, activity);
+            await this.deliveryQueue?.enqueue((actor as any).slug || getSiteHandle(this.db), inboxUri, activity);
         }
     }
 
@@ -1558,7 +1570,7 @@ export class ActivityPubService {
     private async discoverSiteActor(origin: string): Promise<string | null> {
         try {
             const domain = new URL(origin).hostname;
-            const wellKnownAliases = ["site", "instance", domain];
+            const wellKnownAliases = [getSiteHandle(this.db), "site", "instance", domain];
             for (const alias of wellKnownAliases) {
                 const actorId = await this.getActorIdFromWebFinger(domain, alias);
                 if (actorId) return actorId;

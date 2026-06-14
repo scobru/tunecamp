@@ -5,6 +5,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { VisibilityProfile } from "../../common/visibility.js";
+import { getSiteHandle } from "../../core/site-actor.js";
 
 export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     const db = dbService.db;
@@ -12,10 +13,10 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
     const getAuthenticatedLoader = async (ctx: any, localHandle?: string) => {
         try {
-            const identifier = localHandle || "site";
+            const identifier = localHandle || getSiteHandle(dbService);
             return await ctx.getDocumentLoader({ identifier });
         } catch (e: any) {
-            console.warn(`⚠️ Failed to get authenticated document loader for ${localHandle || "site"}:`, e.message);
+            console.warn(`⚠️ Failed to get authenticated document loader for ${localHandle || getSiteHandle(dbService)}:`, e.message);
             return ctx.documentLoader;
         }
     };
@@ -53,7 +54,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         let alsoKnownAs: string[] | null = null;
         let movedTo: string | null = null;
 
-        if (handle === "site") {
+        if (handle === getSiteHandle(dbService)) {
             name = dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance";
             summary = dbService.getSetting("siteDescription") || "Tunecamp Federation Actor";
             publicKey = dbService.getSetting("site_public_key") || null;
@@ -109,7 +110,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             following: new URL(`/users/${slug}/following`, baseUrl),
             icon: new Image({ url: new URL(`/api/artists/${slug}/cover`, baseUrl) }),
             image: new Image({ url: new URL(`/api/artists/${slug}/cover`, baseUrl) }),
-            url: new URL(handle === "site" ? "/" : `/@${slug}`, baseUrl),
+            url: new URL(handle === getSiteHandle(dbService) ? "/" : `/@${slug}`, baseUrl),
             endpoints: new Endpoints({
                 sharedInbox: new URL("/inbox", baseUrl)
             }),
@@ -128,7 +129,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             let publicKey: string | null = null;
             let privateKeyStr: string | null = null;
 
-            if (handle === "site") {
+            if (handle === getSiteHandle(dbService)) {
                 publicKey = dbService.getSetting("site_public_key") || null;
                 privateKeyStr = dbService.getSetting("site_private_key") || null;
             } else {
@@ -194,7 +195,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
     // Outbox Dispatcher - allows other instances to fetch historical content
     federation.setOutboxDispatcher("/users/{handle}/outbox", async (ctx, handle, cursor) => {
-        const isSite = handle === "site";
+        const isSite = handle === getSiteHandle(dbService);
         const artist = isSite ? null : dbService.getArtistBySlug(handle);
         if (!artist && !isSite) return null;
 
@@ -337,8 +338,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             const handle = parsed.identifier;
 
             // Handle site follow (relay or other instances)
-            if (handle === "site") {
-                const docLoader = await getAuthenticatedLoader(ctx, "site");
+            if (handle === getSiteHandle(dbService)) {
+                const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
                 if (!follower) return;
 
@@ -354,7 +355,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 }
 
                 await ctx.sendActivity(
-                    { handle: "site" },
+                    { handle: getSiteHandle(dbService) },
                     follower,
                     new Accept({
                         actor: follow.objectId,
@@ -395,7 +396,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         })
         .on(Accept, async (ctx, accept) => {
             // Handle Accept from a Relay
-            const docLoader = await getAuthenticatedLoader(ctx, "site");
+            const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
             const actor = await accept.getActor({ documentLoader: docLoader }).catch(() => null) || await accept.getActor(ctx).catch(() => null);
             if (!actor) return;
 
@@ -419,7 +420,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (objectUri) {
                     const note = dbService.getApNote(objectUri);
                     if (note) {
-                        const docLoader = await getAuthenticatedLoader(ctx, "site");
+                        const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                         const actor = await announce.getActor({ documentLoader: docLoader }).catch(() => null) || await announce.getActor(ctx).catch(() => null);
                         const actorUri = actor?.id?.toString();
                         if (actor && actorUri) {
@@ -447,7 +448,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             // This is where "Discovery" happens via Relay or Federating Instances
             try {
-                const docLoader = await getAuthenticatedLoader(ctx, "site");
+                const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const object = await announce.getObject({ documentLoader: docLoader }).catch(() => null) || await announce.getObject(ctx).catch(() => null);
                 if (!(object instanceof Note) && !(object instanceof Audio)) return;
 
@@ -539,7 +540,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             }
 
             const artist = note.artist_id ? dbService.getArtist(note.artist_id) : null;
-            const docLoader = await getAuthenticatedLoader(ctx, artist?.slug || "site");
+            const docLoader = await getAuthenticatedLoader(ctx, artist?.slug || getSiteHandle(dbService));
             const actor = await like.getActor({ documentLoader: docLoader }).catch(() => null) || await like.getActor(ctx).catch(() => null);
             if (!actor || !actor.id) return;
             const actorUri = actor.id.toString();
@@ -561,7 +562,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             });
         })
         .on(Undo, async (ctx, undo) => {
-            const docLoader = await getAuthenticatedLoader(ctx, "site");
+            const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
             const object = await undo.getObject({ documentLoader: docLoader }).catch(() => null) || await undo.getObject(ctx).catch(() => null);
 
             if (object instanceof Follow) {
@@ -572,8 +573,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (parsed?.type !== "actor") return;
 
                 const handle = parsed.identifier;
-                if (handle === "site") {
-                    const docLoaderFollow = await getAuthenticatedLoader(ctx, "site");
+                if (handle === getSiteHandle(dbService)) {
+                    const docLoaderFollow = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                     const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
                     const unfollowerUri = unfollower?.id?.toString();
                     console.log(`📥 Site unfollowed by: ${unfollowerUri}`);
@@ -603,7 +604,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (!note) return;
 
                 const artist = note.artist_id ? dbService.getArtist(note.artist_id) : null;
-                const docLoaderLike = await getAuthenticatedLoader(ctx, artist?.slug || "site");
+                const docLoaderLike = await getAuthenticatedLoader(ctx, artist?.slug || getSiteHandle(dbService));
                 const actor = await undo.getActor({ documentLoader: docLoaderLike }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
                 const actorUri = actor?.id?.toString();
                 if (!actorUri) return;
@@ -619,7 +620,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 const note = dbService.getApNote(objectUri);
                 if (!note) return;
 
-                const docLoaderAnnounce = await getAuthenticatedLoader(ctx, "site");
+                const docLoaderAnnounce = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const actor = await undo.getActor({ documentLoader: docLoaderAnnounce }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
                 const actorUri = actor?.id?.toString();
                 if (!actorUri) return;
@@ -641,7 +642,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 console.log(`📥 Received Move activity via Fedify: ${oldActorUri} is moving to ${newActorUri}`);
 
                 // 1. Fetch the target actor (new profile) to verify the backlink (alsoKnownAs/aliases)
-                const documentLoader = await getAuthenticatedLoader(ctx, "site");
+                const documentLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const newActor = await move.getTarget({ documentLoader }).catch(() => null);
 
                 if (!newActor || !(newActor instanceof Person || newActor instanceof Service)) {

@@ -5,6 +5,7 @@ import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import type { ServerConfig } from "../../core/config.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
+import { getSiteHandle } from "../../core/site-actor.js";
 
 export class PublishingService {
     constructor(
@@ -345,7 +346,7 @@ export class PublishingService {
                 if (!existingUris.has(siteActorUri)) {
                     console.log(`📡 Discovered new instance: ${site.title} (${siteUrl}). Sending follow request...`);
                     try {
-                        await this.ap.followRemoteActor(siteActorUri, "site");
+                        await this.ap.followRemoteActor(siteActorUri, getSiteHandle(this.db));
                         followedCount++;
                     } catch (e) {
                         console.error(`❌ Failed to follow discovered instance ${siteUrl}:`, e);

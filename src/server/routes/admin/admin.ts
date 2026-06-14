@@ -14,6 +14,7 @@ import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 import { createRssService } from "../../modules/network/rss.service.js";
+import { getSiteHandle, slugifySiteName, SITE_ACTOR_ID } from "../../core/site-actor.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -444,7 +445,25 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                     const finalName = identity.getSetting("siteName") || config.siteName || "TuneCamp Instance";
                     const finalBio = identity.getSetting("siteDescription") || config.siteDescription || "Welcome to our TuneCamp community hub!";
                     const finalPhoto = identity.getSetting("siteLogo") || undefined;
-                    library.updateArtist(-1, finalName, finalBio, finalPhoto);
+                    library.updateArtist(SITE_ACTOR_ID, finalName, finalBio, finalPhoto);
+
+                    // Keep the instance federation handle in sync with the instance name.
+                    // The handle is a stable slug derived from siteName; it is (re)derived only
+                    // when the admin explicitly edits the site name, and falls back to "site"
+                    // until then. No remote Move is sent (instance has no remote followers).
+                    if (siteName !== undefined) {
+                        let desiredHandle = slugifySiteName(finalName);
+                        const collision = database.getArtistBySlug(desiredHandle);
+                        if (collision && collision.id !== SITE_ACTOR_ID) {
+                            desiredHandle = `${desiredHandle}-instance`;
+                        }
+                        const currentHandle = getSiteHandle(database);
+                        if (desiredHandle !== currentHandle) {
+                            identity.setSetting("siteHandle", desiredHandle);
+                            (database as any).db.prepare("UPDATE artists SET slug = ? WHERE id = ?").run(desiredHandle, SITE_ACTOR_ID);
+                            console.log(`📡 [Settings] Site Actor handle updated: @${currentHandle} → @${desiredHandle}`);
+                        }
+                    }
                     console.log("📡 [Settings] Synchronized Site Actor in artists table");
                 } catch (e) {
                     console.error("❌ [Settings] Failed to sync Site Actor in artists table:", e);
@@ -472,7 +491,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "URL is required" });
             }
 
-            await apService.followRemoteActor(url, "site");
+            await apService.followRemoteActor(url, getSiteHandle(database));
             res.json({ message: `Successfully sent follow request to ${url}` });
         } catch (error: any) {
             console.error("Error following AP actor:", error);
@@ -510,7 +529,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             const publicKey = identity.getSetting("site_public_key");
             const privateKey = identity.getSetting("site_private_key");
-            res.json({ publicKey, privateKey });
+            res.json({ publicKey, privateKey, handle: getSiteHandle(database) });
         } catch (error) {
             console.error("Error getting site AP identity:", error);
             res.status(500).json({ error: "Failed to get site AP identity" });
@@ -1912,7 +1931,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "URL is required" });
             }
 
-            await apService.unfollowRemoteActor(url, "site");
+            await apService.unfollowRemoteActor(url, getSiteHandle(database));
             res.json({ message: `Successfully sent unfollow request to ${url}` });
         } catch (error: any) {
             console.error("Error unfollowing AP actor:", error);

@@ -23,8 +23,10 @@ export function createSocialManager(
                     console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
                     const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
                     const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                    db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Site', 'site', 'public', ?, ?)")
-                      .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+                    const siteSlug = (db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined)?.value || 'site';
+                    const siteActorName = (db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined)?.value || 'Site';
+                    db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
+                      .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
                 }
             }
             socialRepository.addFollower(id, u, i, si, fid);
@@ -107,8 +109,10 @@ export function createSocialManager(
                     console.log("📡 [Database] Self-healing: Re-creating virtual artist record for Site Actor...");
                     const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
                     const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                    db.prepare("INSERT OR IGNORE INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Site', 'site', 'public', ?, ?)")
-                      .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+                    const siteSlug = (db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined)?.value || 'site';
+                    const siteActorName = (db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined)?.value || 'Site';
+                    db.prepare("INSERT OR IGNORE INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
+                      .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
                 }
             }
             const baseSlug = t ? t : c;

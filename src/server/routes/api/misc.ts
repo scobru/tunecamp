@@ -6,6 +6,7 @@ import { kprs } from "../../modules/network/zen-network.js";
 import type { ServiceContainer } from "../../core/container.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
 import { create } from "xmlbuilder2";
+import { getSiteHandle } from "../../core/site-actor.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../../../package.json");
@@ -101,10 +102,10 @@ export function createMiscRoutes(container: ServiceContainer): Router {
                 uploads_count: stats.tracks,
                 size: 0,
                 actor: {
-                    fid: `${publicUrl}/users/site`,
+                    fid: `${publicUrl}/users/${getSiteHandle(identity)}`,
                     url: publicUrl,
                     name: identity.getSetting("siteName") || "TuneCamp",
-                    preferred_username: "site",
+                    preferred_username: getSiteHandle(identity),
                     domain: new URL(publicUrl).hostname,
                 }
             }]

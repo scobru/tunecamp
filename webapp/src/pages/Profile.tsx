@@ -41,6 +41,13 @@ const Profile = () => {
 
   const [artistData, setArtistData] = useState<any>(null);
   const [artistLoading, setArtistLoading] = useState(false);
+  const [siteHandle, setSiteHandle] = useState("site");
+
+  useEffect(() => {
+    API.getSiteSettings()
+      .then((s) => { if (s?.siteHandle) setSiteHandle(s.siteHandle); })
+      .catch(() => {});
+  }, []);
 
   const isRoot = role === 'root_admin' || user?.isRootAdmin;
   // Listeners are pure consumers: even a stale artistId on their account must
@@ -53,20 +60,20 @@ const Profile = () => {
       return `@${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, '')}@${window.location.host}`;
     }
     if (isRoot) {
-      return `@site@${window.location.host}`;
+      return `@${siteHandle}@${window.location.host}`;
     }
     return `@${user?.username || 'admin'}@${window.location.host}`;
-  }, [user, artistData, isRoot]);
+  }, [user, artistData, isRoot, siteHandle]);
 
   const activeActorUri = useMemo(() => {
     if (hasArtistProfile && artistData) {
       return `${window.location.origin}/users/${artistData.slug || artistData.name.toLowerCase().replace(/\s+/g, '')}`;
     }
     if (isRoot) {
-      return `${window.location.origin}/users/site`;
+      return `${window.location.origin}/users/${siteHandle}`;
     }
     return `${window.location.origin}/users/${user?.username || 'admin'}`;
-  }, [user, artistData, isRoot]);
+  }, [user, artistData, isRoot, siteHandle]);
 
   const [activeTab, setActiveTab] = useState<
     "settings" | "collection" | "artist"
