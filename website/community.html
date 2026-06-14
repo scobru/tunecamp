@@ -213,8 +213,6 @@
 
                 const siteInfo = normalizeSiteData(siteId, directoryData, !!directoryData.pub);
                 if (validateSite(siteInfo)) {
-                    sitesMap.set(siteId, siteInfo);
-                    renderSites();
                     fetchCatalog(siteUrl, siteId, siteInfo);
                 }
             });
@@ -227,9 +225,21 @@
 
         async function fetchCatalog(siteUrl, siteId, siteInfo) {
             try {
-                const response = await fetch(`${siteUrl}/api/catalog`, { headers: { 'Accept': 'application/json' } });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+                const response = await fetch(`${siteUrl}/api/catalog`, { 
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
                 if (!response.ok) return;
                 const catalog = await response.json();
+
+                // Only add to sitesMap and render if the instance is reachable and returns catalog data
+                sitesMap.set(siteId, siteInfo);
+                renderSites();
                 const releases = catalog.releases || catalog.recentReleases || [];
                 if (Array.isArray(releases)) releases.forEach(rel => { if (Array.isArray(rel.tracks)) rel.tracks.forEach(t => processTrackFromApi(t, rel, siteInfo)); });
                 const albums = catalog.recentAlbums || catalog.albums || [];

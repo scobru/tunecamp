@@ -379,19 +379,44 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
                 minLastSeen: sevenDaysAgo
             }, 20_000);
 
+            // Filter reachable sites in parallel
+            let reachableSites: any[] = [];
             if (sites.length > 0) {
-                console.log(`⏱️ Discovery: Found ${sites.length} sites. Updating cache.`);
-                database.setGunCache(CACHE_KEY, JSON.stringify(sites), "sites", TTL);
-                cache.sites = { data: sites, timestamp: Date.now() };
+                const reachabilityResults = await Promise.all(
+                    sites.map(async (site) => {
+                        if (!site.url) return { site, ok: false };
+                        if (site.url.includes("localhost") || site.url.includes("127.0.0.1") || site.url.includes("192.168.")) {
+                            return { site, ok: true };
+                        }
+                        const ok = await checkSiteReachability(site.url);
+                        return { site, ok };
+                    })
+                );
+                for (const res of reachabilityResults) {
+                    if (res.ok) {
+                        reachableSites.push(res.site);
+                    } else {
+                        console.log(`🧹 [ZenDB] Site ${res.site.url} is offline. Filtering from cache and pruning registry.`);
+                        pruneSite(res.site.id).catch((err) => {
+                            console.warn(`⚠️ [ZenDB] Failed to prune offline site ${res.site.url}:`, err.message);
+                        });
+                    }
+                }
+            }
+
+            if (reachableSites.length > 0) {
+                console.log(`⏱️ Discovery: Found ${reachableSites.length} online sites (out of ${sites.length} total). Updating cache.`);
+                database.setGunCache(CACHE_KEY, JSON.stringify(reachableSites), "sites", TTL);
+                cache.sites = { data: reachableSites, timestamp: Date.now() };
             } else {
-                // No sites found — schedule a retry in 60s so we don't stay
+                // No online sites found — schedule a retry in 60s so we don't stay
                 // blind until the next cache-miss driven refresh (up to 10 min).
-                console.warn("⚠️ [ZenDB] Discovery found 0 sites. Will retry in 60s.");
+                console.warn("⚠️ [ZenDB] Discovery found 0 online sites. Will retry in 60s.");
                 setTimeout(() => {
                     refreshCommunitySitesInBackground().catch(() => {});
                 }, 60_000).unref();
             }
-            return sites;
+            return reachableSites;
         } catch (e: any) {
             console.warn("⚠️ [ZenDB] Site discovery failed:", e.message);
             return cache.sites.data;
