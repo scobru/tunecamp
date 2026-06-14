@@ -63,6 +63,9 @@ import { loadPlugins } from "./core/plugin-loader.js";
 import { storageService, initStorageService } from "./modules/storage/storage.service.js";
 import { aiService, initAIService } from "./modules/ai/ai.service.js";
 import { createZenDBService } from "./modules/network/zendb.service.js";
+import { createFederatedDiscoveryService } from "./modules/network/federated-discovery.service.js";
+import { createCommunityRoutes } from "./routes/network/community.js";
+import { getSiteHandle } from "./core/site-actor.js";
 import { createLibraryStatsRoutes } from "./routes/admin/library-stats.js";
 import { createBrowserRoutes } from "./routes/admin/browser.js";
 import { createMetadataRoutes } from "./routes/admin/metadata.js";
@@ -160,6 +163,22 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const zendbService = createZenDBService(database, undefined, config.zenPeers, config.publicUrl);
     await zendbService.init();
 
+    // Federated (HTTP/NodeInfo gossip) instance discovery. Runs alongside Zen
+    // during Phase A; bootstraps from ActivityPub-followed TuneCamp site actors
+    // plus TUNECAMP_FEDERATION_SEEDS — no central relay.
+    const federatedDiscoveryService = createFederatedDiscoveryService(database.db, {
+        seeds: config.federationSeeds,
+        getOwnOrigin: () => {
+            const u = database.getSetting("publicUrl") || config.publicUrl;
+            try { return u ? new URL(u).origin : undefined; } catch { return undefined; }
+        },
+        getApSeedOrigins: () =>
+            database.getFollowedActors()
+                .filter((a: any) => a.username === "site" || a.username === getSiteHandle(database))
+                .map((a: any) => { try { return new URL(a.uri).origin; } catch { return null; } })
+                .filter((o: any): o is string => !!o),
+    });
+
     let gdriveService: GoogleDriveService | undefined;
 
     setTimeout(() => {
@@ -169,6 +188,15 @@ export async function startServer(config: ServerConfig): Promise<void> {
     setInterval(() => {
         taskManager.run('zendb-cleanup', () => zendbService.cleanupRegistry());
     }, 12 * 60 * 60 * 1000);
+
+    // Federated discovery crawl: shortly after boot, then periodically.
+    setTimeout(() => {
+        taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl());
+    }, 45000);
+
+    setInterval(() => {
+        taskManager.run('federated-discovery', () => federatedDiscoveryService.crawl());
+    }, 6 * 60 * 60 * 1000);
 
     // Scheduled off-peak library scan: when the admin sets `scheduledScanHour`
     // (0-23, server local time), a full scan runs once a day in that hour.
@@ -294,6 +322,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         publishingService,
         apService,
         zendbService,
+        federatedDiscoveryService,
         lifecycleService,
         telegramBotService,
         chatService,
@@ -391,6 +420,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/releases", authMiddleware.requireUser, releaseRouter);
     app.use("/api/stats", createStatsRoutes(container));
     app.use("/api/stats/library", createLibraryStatsRoutes(container));
+    app.use("/api/community", createCommunityRoutes(container));
     app.use("/api/browser", authMiddleware.requireRootAdmin, createBrowserRoutes(container));
     app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
     app.use("/api/users", createUsersRoutes(container));

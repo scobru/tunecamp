@@ -46,7 +46,9 @@ const getFederationBadge = (federation?: string) => {
     case "activitypub": return { label: "AP", class: "badge-accent" };
     case "rss": return { label: "RSS", class: "badge-warning" };
     case "http": return { label: "HTTP", class: "badge-info" };
-    case "gundb": return { label: "ZEN", class: "badge-secondary" };
+    case "federated": return { label: "FED", class: "badge-success" };
+    case "gundb":
+    case "zen": return { label: "ZEN", class: "badge-secondary" };
     default: return { label: "NET", class: "badge-ghost" };
   }
 };
