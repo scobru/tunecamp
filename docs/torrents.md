@@ -4,7 +4,14 @@ TuneCamp integrates **WebTorrent** to allow administrators to download music via
 
 ## 1. Architecture
 
-The system is managed by the `TorrentService` (`src/server/modules/integrations/torrent.service.ts`), which wraps a WebTorrent client instance. Search uses `torrent-search.service.ts` in the same directory.
+The system is managed by the `TorrentService` (`src/server/modules/integrations/torrent.service.ts`), which wraps a WebTorrent client instance.
+
+> **No in-app search.** Searching public trackers from the server was removed:
+> it relied on reaching ThePirateBay/`apibay.org`, which is blocked at the ISP
+> level in many regions (e.g. Italy/AGCOM), so it silently returned zero
+> results. The Content Search → WebTorrent tab now links out to external torrent
+> search engines; the user copies a magnet and pastes it into the "Add magnet"
+> box, which downloads via WebTorrent independently of any blocked host.
 
 > **Opt-in:** Like Soulseek, the torrent plugin is disabled by default for legal
 > reasons and must be enabled explicitly from the Admin panel.
@@ -36,10 +43,11 @@ Admin-only routes are available under `/api/admin/torrents`:
 5. **Import**: The service iterates through files. Any file with a valid audio extension (`.mp3`, `.flac`, etc.) is passed to `scanner.processAudioFile`.
 6. **Library Update**: The scanner moves/copies the file to the library and updates the database.
 
-## 5. Configuration & Mirrors
+## 5. Finding torrents
 
-TuneCamp uses the official Pirate Bay JSON API (`apibay.org`) as its primary search backend. Since Cloudflare protections on `apibay.org` may occasionally return `HTTP 403` to datacenter and VPS IPs:
-
-- **Default API URL**: `https://apibay.org`
-- **Custom Mirror/Proxy**: You can override the API URL by setting the `TORRENT_APIBAY_URL` environment variable (e.g., `TORRENT_APIBAY_URL=https://apibay.someproxy.com` or a local proxy) to bypass IP blocks.
+In-app search has been removed (see the note in §1). The WebTorrent tab in
+Content Search instead lists external search engines (BTDigg, 1337x, Knaben,
+Solid Torrents, and a ThePirateBay proxy list) that open in a new tab,
+pre-filled with the typed query. Find a release there, copy its magnet link,
+and paste it into the "Add magnet" box to start the download.
 

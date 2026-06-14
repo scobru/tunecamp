@@ -96,10 +96,6 @@ import { GoogleDriveService } from "./modules/storage/google-drive.service.js";
 import { createStorageRouter } from "./routes/library/storage.js";
 import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
-import { createTorrentSearchRouter } from "./routes/admin/torrent-search.js";
-import { torrentSearchService } from "./modules/integrations/torrent-search.service.js";
-import { PublicScraperTorrentProvider } from "./providers/torrent/public-scraper.provider.js";
-import { ApibayTorrentProvider } from "./providers/torrent/apibay.provider.js";
 import { errorHandler } from "./middleware/error-handling.js";
 import { kprs } from "./modules/network/zen-network.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
@@ -267,13 +263,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const downloadService = initDownloadService(soulseekService, torrentService, 1, database);
 
-    // apibay (TPB JSON API) is the primary provider: a single stable endpoint
-    // reachable from datacenter IPs where the HTML scrapers silently return zero.
-    // The scrapers stay registered as a fallback.
-    torrentSearchService.registerProvider(new ApibayTorrentProvider());
-    torrentSearchService.registerProvider(new PublicScraperTorrentProvider());
-    console.log(`🔌 [Integrations] TorrentSearch initialized with Apibay + PublicScraper providers`);
-
     const chatService = new ChatService(database);
     const liveService = new LiveService();
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
@@ -321,7 +310,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
         process.exit(0);
     }));
     app.use("/api/admin/torrents", authMiddleware.requireManager, express.json(), createTorrentRoutes(container));
-    app.use("/api/admin/torrent-search", authMiddleware.requireManager, express.json(), createTorrentSearchRouter(container));
 
     // Health endpoint MUST be before fedify middleware to avoid blocking
     app.get("/health", (req, res) => {
