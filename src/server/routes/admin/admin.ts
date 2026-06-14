@@ -1406,10 +1406,18 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             const base = (identity.getSetting("publicUrl") || config.publicUrl || "").replace(/\/$/, "");
+            const origin = base || `${req.protocol}://${req.get("host")}`;
+            // Caller may ask to be returned to its own page (e.g. the artist's
+            // /profile) instead of /admin. Only accept a same-origin relative
+            // path — never an absolute or protocol-relative URL — so a crafted
+            // returnTo can't bounce the artist to an attacker page after KYC.
+            const rawReturn = typeof req.body?.returnTo === "string" ? req.body.returnTo : "";
+            const safePath = /^\/(?![/\\])/.test(rawReturn) ? rawReturn : "/admin";
+            const returnUrl = `${origin}${safePath}`;
             const accountLink = await stripe.accountLinks.create({
                 account: accountId,
-                refresh_url: `${base}/admin?stripeConnect=refresh&artist=${artistId}`,
-                return_url: `${base}/admin?stripeConnect=done&artist=${artistId}`,
+                refresh_url: returnUrl,
+                return_url: returnUrl,
                 type: "account_onboarding"
             });
 
