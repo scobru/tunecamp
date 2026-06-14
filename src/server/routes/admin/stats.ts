@@ -4,7 +4,7 @@ import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 import type { ServerConfig } from "../../core/config.js";
 import { createCatalogCacheService } from "../../modules/network/catalog-cache.service.js";
-import { isLiveTuneCamp } from "../../common/network.js";
+import { buildCommunitySites } from "../../modules/network/community-sites.js";
 import { getSiteHandle } from "../../core/site-actor.js";
 
 import type { ServiceContainer } from "../../core/container.js";
@@ -13,6 +13,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
     const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const dbService: ServiceContainer['database'] = (container as any).database || (container as any);
     const config: ServiceContainer['config'] = (container as any).config || (container as any);
+    const federatedDiscoveryService: ServiceContainer['federatedDiscoveryService'] = (container as any).federatedDiscoveryService;
     const catalogCache = createCatalogCacheService(dbService.db);
     const router = Router();
 
@@ -112,52 +113,11 @@ export function createStatsRoutes(container: ServiceContainer): Router {
      */
     router.get("/network/sites", async (req, res) => {
         try {
-            const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;
-            
-            // 1. Get sites from Zen (signaling — just URLs and basic metadata)
-            const gunSites = await zendbService.getCommunitySites();
-            const formattedGunSites = gunSites.map(s => ({
-                url: s.url,
-                name: s.name || s.title || "Untitled",
-                description: s.description || "",
-                version: s.version || "2.0",
-                lastSeen: s.lastSeen,
-                coverImage: s.coverImage || null,
-                communityLink: s.communityLink || null,
-                federation: "zen"
-            }));
-
-            // 2. Get actors from ActivityPub (Local DB of remote actors).
-            // Health-check them too: a followed instance that went dark should
-            // not linger in the directory just because we once followed it.
-            const apActorsAll = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
-            const apLiveness = await Promise.all(apActorsAll.map(async a => {
-                try { return await isLiveTuneCamp(new URL(a.uri).origin, 3000); } catch { return false; }
-            }));
-            const apActors = apActorsAll.filter((_, i) => apLiveness[i]);
-            const formattedApSites = apActors.map(a => ({
-                url: a.uri,
-                name: a.name || a.username || "AP Actor",
-                description: a.summary || "",
-                version: "ActivityPub",
-                lastSeen: a.last_seen || new Date().toISOString(),
-                coverImage: a.icon_url || null,
-                federation: "activitypub"
-            }));
-
-            // 3. Include local site
-            const localSite = {
-                url: publicUrl,
-                name: dbService.getSetting("siteName") || "Local Instance",
-                description: dbService.getSetting("siteDescription") || "My TuneCamp Server",
-                version: "2.0 (Local)",
-                lastSeen: new Date().toISOString(),
-                coverImage: dbService.getSetting("coverImage") || null,
-                communityLink: dbService.getSetting("communityLink") || null,
-                federation: "local"
-            };
-
-            res.json([localSite, ...formattedGunSites, ...formattedApSites]);
+            // Aggregates local + Zen + federated (HTTP gossip) + ActivityPub
+            // (with AP-actor liveness filtering). Shared with the public
+            // GET /api/community/sites.
+            const sites = await buildCommunitySites({ dbService, config, zendbService, federatedDiscoveryService });
+            res.json(sites);
         } catch (error) {
             console.error("Error getting community sites:", error);
             res.status(500).json({ error: "Failed to get community sites" });
@@ -213,6 +173,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
             gunSites.forEach(addSite);
             followedSites.forEach(addSite);
+            (federatedDiscoveryService?.getCommunitySites?.() ?? []).forEach(addSite);
 
             const remoteSites = Array.from(combinedSitesMap.values());
             const httpTracks = await catalogCache.getTracks(remoteSites);

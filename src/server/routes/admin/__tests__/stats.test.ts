@@ -178,6 +178,28 @@ describe('Stats Routes', () => {
             expect(res.body[2].federation).toBe('activitypub');
         });
 
+        test('includes federated (HTTP gossip) sites with federation "federated"', async () => {
+            const fedApp = express();
+            fedApp.use('/api/stats', createStatsRoutes({
+                zendbService: mockZenDBService,
+                database: mockDbService,
+                config: mockConfig,
+                federatedDiscoveryService: {
+                    getCommunitySites: () => [
+                        { url: 'https://fed.example.com', name: 'Fed Peer', description: 'D', version: '2.0.1', lastSeen: 123 }
+                    ],
+                    getPeers: () => [],
+                },
+            } as any));
+
+            const res = await request(fedApp).get('/api/stats/network/sites');
+
+            expect(res.status).toBe(200);
+            const fed = res.body.find((s: any) => s.federation === 'federated');
+            expect(fed).toBeDefined();
+            expect(fed.url).toBe('https://fed.example.com');
+        });
+
         test('a dead followed AP instance is dropped from the directory', async () => {
             mockZenDBService.getCommunitySites.mockResolvedValue([]);
             mockDbService.getFollowedActors.mockReturnValue([
