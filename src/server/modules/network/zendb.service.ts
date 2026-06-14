@@ -334,10 +334,14 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         if (cached) {
             try {
                 const sites = JSON.parse(cached.value);
-                if (Date.now() - cache.sites.timestamp > cache.itemsTTL) {
-                    refreshCommunitySitesInBackground();
+                // Treat an empty cached array as a miss — don't let a failed
+                // first discovery block retries for the entire TTL window.
+                if (Array.isArray(sites) && sites.length > 0) {
+                    if (Date.now() - cache.sites.timestamp > cache.itemsTTL) {
+                        refreshCommunitySitesInBackground();
+                    }
+                    return sites;
                 }
-                return sites;
             } catch (e) {
                 console.error("Failed to parse cached sites:", e);
             }
@@ -365,17 +369,27 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
 
         try {
             const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            // Use 8s collection window (up from 3s) — Zen peers need time to
+            // propagate registry entries across relays. The RPC timeout (20s)
+            // gives headroom above the collect window for serialisation overhead.
             const sites: any[] = await rpc("listSites", {
                 sitesPath: SITES_PATH,
-                collectMs: 3000,
+                collectMs: 8000,
                 maxSites: 50,
                 minLastSeen: sevenDaysAgo
-            }, 10_000);
+            }, 20_000);
 
             if (sites.length > 0) {
                 console.log(`⏱️ Discovery: Found ${sites.length} sites. Updating cache.`);
                 database.setGunCache(CACHE_KEY, JSON.stringify(sites), "sites", TTL);
                 cache.sites = { data: sites, timestamp: Date.now() };
+            } else {
+                // No sites found — schedule a retry in 60s so we don't stay
+                // blind until the next cache-miss driven refresh (up to 10 min).
+                console.warn("⚠️ [ZenDB] Discovery found 0 sites. Will retry in 60s.");
+                setTimeout(() => {
+                    refreshCommunitySitesInBackground().catch(() => {});
+                }, 60_000).unref();
             }
             return sites;
         } catch (e: any) {
@@ -416,10 +430,10 @@ export function createZenDBService(database: DatabaseService, server?: any, peer
         try {
             const sites: any[] = await rpc("listSites", {
                 sitesPath: SITES_PATH,
-                collectMs: 3000,
+                collectMs: 8000,
                 maxSites: 200,
                 minLastSeen: 0
-            }, 10_000);
+            }, 20_000);
 
             let removed = 0;
             for (const site of sites) {
