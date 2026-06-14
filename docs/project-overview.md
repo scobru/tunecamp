@@ -1,14 +1,14 @@
 # Panoramica del Progetto TuneCamp
 
-TuneCamp è una piattaforma musicale decentralizzata e federata che combina le funzionalità di un server musicale personale con le capacità dei protocolli social moderni (ActivityPub) e del web3 (IPFS/Zen).
+TuneCamp è una piattaforma musicale federata e self-hosted che combina un server musicale personale con i protocolli social del Fediverso (ActivityPub), la discovery decentralizzata delle istanze (Zen) e la monetizzazione web3 (pagamenti on-chain su Base).
 
 ## Obiettivi del Progetto
 
 - **Proprietà dei Dati**: Consentire agli utenti di ospitare e controllare la propria libreria musicale.
 - **Federazione**: Permettere l'interazione tra diversi server TuneCamp tramite il protocollo ActivityPub (Fediverse).
-- **Decentralizzazione**: Utilizzare tecnologie come Zen/IPFS per la distribuzione e la resilienza dei contenuti.
+- **Discovery Decentralizzata**: Usare Zen come livello di signaling per scoprire altre istanze TuneCamp; i cataloghi vengono poi scambiati direttamente via HTTP.
 - **Supporto agli Artisti**: Facilitare la pubblicazione diretta, il crowdfunding e la gestione dei diritti tramite contratti intelligenti e sistemi di sblocco.
-- **Arricchimento Metadati**: Integrazione con iTunes e Lyrics.ovh per automatizzare il recupero di cover ad alta risoluzione e testi delle canzoni.
+- **Arricchimento Metadati**: Integrazione con più provider (MusicBrainz, Discogs, iTunes, TheAudioDB, Spotify, Bandcamp, SoundCloud) e Lyrics.ovh per cover ad alta risoluzione e testi.
 
 ## Stack Tecnologico
 
@@ -24,7 +24,7 @@ TuneCamp è una piattaforma musicale decentralizzata e federata che combina le f
 - **Build Tool**: Vite
 - **Styling**: CSS (con supporto per temi)
 - **State Management**: Zustand
-- **Decentralizzazione**: Integrazione Zen.js per reti P2P
+- **Discovery**: Zen.js (solo per scoprire altre istanze; nessuna distribuzione P2P dei contenuti)
 
 ### Blockchain & Smart Contracts
 - **Linguaggio**: Solidity

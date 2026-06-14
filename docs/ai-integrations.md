@@ -6,7 +6,7 @@ TuneCamp leverages Artificial Intelligence to automate metadata enrichment, impr
 
 The primary AI engine is **OpenRouter**, which provides a unified API access to multiple LLMs (Large Language Models).
 
-- **Service**: `src/server/services/openrouter.service.ts`
+- **Service**: `src/server/modules/ai/openrouter.service.ts`
 - **Default Model**: Configurable via `openrouter_model` (defaults to `openrouter/free` models like `meta-llama/llama-3-8b-instruct:free`).
 
 ## 2. Key Features

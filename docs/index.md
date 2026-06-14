@@ -11,7 +11,7 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 ### Architettura Tecnica
 
 - [**Architettura Backend**](./architecture-backend.md): Dettagli sul server Express, SQLite, ActivityPub e integrazione Zen.
-- [**Architettura Webapp**](./architecture-webapp.md): Dettagli sull'applicazione React, gestione dello stato e integrazione P2P.
+- [**Architettura Webapp**](./architecture-webapp.md): Dettagli sull'applicazione React, gestione dello stato e discovery delle istanze.
 - [**Modelli Dati**](./data-models.md): Schema del database e relazioni tra le entità.
 
 ### Riferimenti API e Componenti
@@ -40,15 +40,16 @@ Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come
 - [Scaling & Limiti di Concorrenza](./scaling.md): Limiti pratici di SQLite/single-process e come mitigarli.
 - [Security Review Pagamenti](./security-review-payments.md): Finding corretti e aperti del flusso pagamenti.
 - [Federazione](./FEDERATION.md): Dettagli sul protocollo ActivityPub in TuneCamp.
-- [Subsonic](./SUBSONIC.md): Supporto al protocollo Subsonic per client esterni.
+- [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.
 - [Nginx](./NGINX.md): Esempi di configurazione per reverse proxy.
-- [Audio Fingerprinting](./audio-fingerprinting.md): Identificazione automatica e registro community.
+- [Audio Fingerprinting](./audio-fingerprinting.md): Impronta audio interna usata per la deduplicazione della libreria.
 - [Monitoring & Alerting](./monitoring.md): Health endpoint, crash reporting Sentry e uptime check esterni.
 - [Telegram Bot](./telegram.md): Ingestione rapida di file musicali e gestione remota.
 - [Plugin](./PLUGINS.md): Provider custom (streaming, metadata, storage) da una directory plugins.
-- [Ruoli & Permessi](./ROLES.md): RBAC — Root Admin, Admin, Artist/User.
+- [Ruoli & Permessi](./ROLES.md): RBAC — Instance Owner, Manager, Curator, Listener.
+- [Diventare Artista & Vendite](./community-mode.md): Flusso richiesta artista e gate di vendita `can_sell`.
+- [Confronto con Funkwhale](./comparison-funkwhale.md): Differenze di modello e funzionalità.
 
 ---
 
-*Ultimo aggiornamento: 11 Giugno 2026*
-*Generato tramite il workflow `bmad-document-project`*
+*Ultimo aggiornamento: 14 Giugno 2026*

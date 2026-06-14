@@ -53,6 +53,19 @@ ActivityPub allows Tunecamp to communicate with other platforms like Mastodon, P
 
 ---
 
+## RSS / Atom Feeds
+
+Beyond ActivityPub, Tunecamp can follow plain **RSS/Atom feeds** (podcasts, Owncast
+streams, blogs) so their items show up alongside federated content.
+
+- **Follow a feed**: `POST /api/admin/network/rss/follow` with the feed URL.
+- **Storage**: a followed feed is stored as a remote actor with `type = 'rss'`; each item
+  becomes a `remote_content` row.
+- **Refresh**: feeds are refreshed by the RSS service (`src/server/modules/network/rss.service.ts`),
+  independently of the ActivityPub outbox fetcher.
+
+---
+
 ## Funkwhale Compatibility
 
 Tunecamp is compatible with **Funkwhale** instances for music-specific federation.

@@ -29,7 +29,9 @@ docker-compose up -d --build
 # Open http://localhost:1970 in your browser
 ```
 
-> **First Run**: Tunecamp will create a default admin account (`admin`/`admin`). You will be prompted to change the password on first login.
+> **First Run**: Tunecamp creates a default admin account (`admin`/`admin`, configurable via `TUNECAMP_ADMIN_USER` / `TUNECAMP_ADMIN_PASS`). Change the password right after logging in, from the admin settings.
+>
+> The forced "change your password" setup wizard triggers for any account whose password is the temporary sentinel `tunecamp` — for example after an admin resets a user's password (see [docs/ROLES.md](docs/ROLES.md)).
 
 ## Features
 
@@ -52,7 +54,7 @@ docker-compose up -d --build
 - 🔊 **Subsonic/OpenSubsonic API**: Full compatibility (v1.16.1) with mobile apps like DSub, Symfonium, Tempo, Substreamer, Amuse, and play:Sub.
 - 🎧 **Built-in Player**: Waveform visualization, queue management, lyrics display, and keyboard shortcuts.
 - 📋 **Playlists**: Create and share playlists (public/private).
-- 🎙️ **Live Streaming (P2P)**: Artists broadcast live audio straight from the browser to listeners over WebRTC (Trystero) — the server only announces sessions, media never touches it.
+- 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners — a single encode shared across the audience, instead of one stream copy per listener.
 - 💬 **Community Chat**: Built-in instance chat with persistent history and role badges.
 
 ### Web3 & Monetization

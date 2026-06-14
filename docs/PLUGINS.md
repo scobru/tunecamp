@@ -98,7 +98,7 @@ export default class MyYouTubeProvider {
 While plugins are designed to be decoupled, you can occasionally access internal services via the singleton exports if needed (though not recommended for maximum portability).
 
 ```javascript
-import { database } from '../dist/server/database.js'; // Use with caution
+import { database } from '../dist/server/core/database.js'; // Use with caution
 ```
 
 ## Admin Panel

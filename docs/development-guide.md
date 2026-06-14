@@ -28,10 +28,16 @@ Questa guida fornisce le istruzioni necessarie per configurare l'ambiente di svi
 ## Esecuzione in Sviluppo
 
 ### Backend
-Dalla root del progetto:
+Dalla root del progetto, in due terminali separati:
 ```bash
+# Terminale 1 — compila TypeScript in watch + ricostruisce la CSS
 npm run dev
+
+# Terminale 2 — avvia il server (esegue le migrazioni automaticamente)
+npm start
 ```
+> Nota: `npm run dev` esegue solo `tsc --watch` + il watcher CSS, **non** avvia il server. Serve `npm start` (oppure `node dist/index.js`) per eseguirlo.
+
 Il server sarà disponibile di default su `http://localhost:1970` (configurabile via `TUNECAMP_PORT`).
 
 ### Webapp
@@ -66,7 +72,7 @@ Sono disponibili diversi script per compiti comuni:
 - Utilizzare **TypeScript** per tutto il nuovo codice.
 - Seguire lo stile esistente basato su **Functional Components** in React.
 - Documentare le nuove API in `docs/api-contracts.md`.
-- Assicurarsi che ogni nuova tabella database sia aggiunta a `src/server/database.ts` con i relativi indici.
+- Assicurarsi che ogni nuova tabella database sia aggiunta a `src/server/core/database.ts` con i relativi indici.
 
 ## Contribuire
 

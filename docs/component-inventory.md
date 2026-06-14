@@ -1,47 +1,70 @@
 # Inventario Componenti UI
 
-Questo documento elenca i componenti principali dell'interfaccia utente di TuneCamp, organizzati per categoria e responsabilità.
+Catalogo dei principali componenti React della webapp (`webapp/src/`), organizzati per
+directory. Per la struttura generale vedi [architecture-webapp.md](architecture-webapp.md).
 
-## Componenti Globali e Layout (`layout/`)
+## Layout (`components/layout/`)
 
-- **`AppLayout.tsx`**: Struttura principale dell'applicazione (Sidebar, Player, Content area).
-- **`Sidebar.tsx`**: Navigazione principale tra le diverse sezioni (Home, Libreria, Social).
-- **`Header.tsx`**: Barra superiore con ricerca e profilo utente.
+- **`MainLayout.tsx`**: Struttura principale dell'app (sidebar, player bar, area contenuti).
+- **`Sidebar.tsx`**: Navigazione principale tra le sezioni.
 
-## Player Musicale (`player/`)
+## Player Musicale (`components/player/`)
 
-- **`Player.tsx`**: Il controller principale della riproduzione.
-- **`ProgressBar.tsx`**: Visualizzazione del progresso e seeking.
-- **`VolumeControl.tsx`**: Gestione del volume.
-- **`QueueManager.tsx`**: Visualizzazione e gestione della coda di riproduzione.
-- **`Waveform.tsx`**: Visualizzazione della forma d'onda della traccia corrente.
+- **`PlayerBar.tsx`**: Barra del player globale (controlli, progresso, volume, coda).
+- **`PlayerCanvas.tsx`**: Vista espansa / visualizzazione del player.
+- **`QueuePanel.tsx`**: Visualizzazione e gestione della coda di riproduzione.
+- **`LyricsPanel.tsx`**: Pannello dei testi sincronizzati.
+- **`Waveform.tsx`**: Visualizzazione della forma d'onda della traccia.
 
-## Visualizzazione Contenuti (`artist/`, `albums/`)
+## Artista (`components/artist/`)
 
-- **`AlbumCard.tsx`**: Rappresentazione visuale di un album/release.
-- **`TrackList.tsx`**: Elenco delle tracce all'interno di un album o playlist.
-- **`ArtistProfile.tsx`**: Intestazione e informazioni sull'artista.
+- **`ArtistFediversePanel.tsx`**: Pannello delle interazioni Fediverso per l'artista.
 
-## Amministrazione e Gestione (`admin/`)
+## Amministrazione (`components/admin/`)
 
-- **`UserList.tsx`**: Gestione degli utenti registrati sul server.
-- **`ScannerProgress.tsx`**: Monitoraggio dello stato della scansione della libreria.
-- **`SettingsForm.tsx`**: Configurazione dei parametri del server.
+- **Liste libreria**: `AdminArtistsList`, `AdminAlbumsList`, `AdminTracksList`,
+  `AdminReleasesList`, `AdminAssetsList`, `AdminUsersList`.
+- **Pannelli**: `AdminSettingsPanel`, `IntegrationsPanel`, `StoragePanel`,
+  `AdminFederationPanel`, `ActivityPubPanel`, `IdentityPanel`, `AdminMaintenancePanel`,
+  `BackupPanel`.
+- **`CurationQueue.tsx`**: Coda di curation per promuovere i draft a release.
 
-## Componenti Social (`social/`, `Comments.tsx`)
+## Modali (`components/modals/`)
 
-- **`Feed.tsx`**: Visualizzazione dei post dal Fediverso.
-- **`CommentSection.tsx`**: Sistema di commenti per album e tracce.
-- **`FollowButton.tsx`**: Gestione delle relazioni tra attori ActivityPub.
+Le finestre di dialogo sono raccolte qui. Le principali:
+- **Auth & setup**: `AuthModal`, `SetupWizardModal`, `ChangePasswordCard` (in `ui/`), `ArtistKeysModal`.
+- **Pubblicazione**: `UploadTracksModal`, `AdminReleaseModal`, `AdminTrackModal`,
+  `AdminArtistModal`, `AdminAssetModal`, `BatchTrackEditModal`, `ArtistMetadataPickerModal`,
+  `CreatePostModal`.
+- **Acquisto/sblocco**: `CheckoutModal`, `UnlockModal`, `UnlockCodeManager`, `SubscriptionModal`.
+- **Playlist & tracce**: `CreateUserPlaylistModal`, `PlaylistModal`,
+  `AddTrackToUserPlaylistModal`, `TrackPickerModal`, `AddBandcampTrackModal`, `AddYouTubeTrackModal`.
+- **`CommandPalette.tsx`**: Palette comandi rapida (ricerca/azioni).
 
-## Componenti UI Base (`ui/`)
+## UI Base (`components/ui/`)
 
-- **`Button.tsx`**: Pulsante standard con varianti (primary, secondary, danger).
-- **`Input.tsx`**: Campo di testo personalizzato.
-- **`Modal.tsx`**: Wrapper per finestre di dialogo.
-- **`WalletPill.tsx`**: Indicatore dello stato del wallet blockchain.
-- **`ScrollingText.tsx`**: Testo a scorrimento per titoli lunghi.
+- **`PageHeader.tsx`**: Intestazione standard delle pagine.
+- **`ReleaseCard.tsx`**: Card di una release/album.
+- **`ThemeSwitcher.tsx`**: Selettore tema chiaro/scuro.
+- **`WalletPill.tsx`**: Indicatore dello stato del wallet.
+- **`ChangePasswordCard.tsx`**: Form di cambio password.
+
+## Componenti radice (`components/`)
+
+- **`Comments.tsx`**: Sezione commenti per tracce/album.
+- **`RelatedTracks.tsx`**: Suggerimenti di tracce correlate.
+- **`MetadataMatchModal.tsx`**: Abbinamento metadati da provider esterni.
+
+## Pagine (`pages/`)
+
+Ogni file è una route. Principali: `Home`, `Library`, `Artists`, `ArtistDetails`,
+`AlbumDetails`, `Tracks`, `Releases`, `Store`, `Playlists`, `PlaylistDetails`,
+`MyPlaylistDetails`, `MyMusic`, `Favorites`, `Search`, `ContentSearch`, `Network`,
+`Social`, `Post`, `Board`, `Dig` (crate digging), `Live` (live streaming HLS),
+`Stats`, `Profile`, `Wallet`, `Support`, `About`, `SharePage`, `Files`, `Tools`,
+`Publish`, `Admin`, `AdminReleaseEditor`.
 
 ## Note sullo Sviluppo
 
-I componenti sono scritti in **TypeScript** utilizzando **Functional Components** e **Hooks**. Per lo styling viene utilizzato CSS standard con variabili per il supporto al tema scuro/chiaro.
+I componenti sono scritti in **TypeScript** con **Functional Components** e **Hooks**.
+Lo styling usa CSS standard con variabili per il tema chiaro/scuro.
