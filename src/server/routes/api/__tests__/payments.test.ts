@@ -17,6 +17,10 @@ jest.unstable_mockModule('stripe', () => {
             sessions: {
                 create: jest.fn()
             }
+        },
+        accounts: {
+            create: jest.fn(),
+            retrieve: jest.fn()
         }
     };
     return {
@@ -238,6 +242,47 @@ describe('Payments Routes', () => {
             expect(res.status).toBe(200);
             expect(res.body.id).toBe('sess_123');
             expect(res.body.url).toBe('https://checkout.stripe.com/sess_123');
+            // No connected account → charge on the instance's own account (no Connect option)
+            const [, opts] = mockStripe.checkout.sessions.create.mock.calls[0];
+            expect(opts).toBeUndefined();
+        });
+
+        test('routes to artist connected account as a direct charge with the instance fee', async () => {
+            mockDatabase.getTrack.mockReturnValue({ id: 5, title: 'Track Five', price: 10, currency: 'USD', artist_id: 7 });
+            mockDatabase.getArtistSimple = jest.fn().mockReturnValue({ id: 7, name: 'Artist Seven', stripe_account_id: 'acct_artist7' });
+            // 15% instance fee, same setting as on-chain
+            mockDatabase.getSetting.mockImplementation((k: string) => (k === 'adminFeePercentage' ? '15' : null));
+            mockStripe.accounts.retrieve.mockResolvedValue({ id: 'acct_artist7', country: 'US', charges_enabled: true });
+            mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'sess_dc', url: 'https://checkout.stripe.com/sess_dc' });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 5, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(200);
+            const [params, opts] = mockStripe.checkout.sessions.create.mock.calls[0];
+            // Direct charge on the connected account
+            expect(opts).toEqual({ stripeAccount: 'acct_artist7' });
+            // $10 * 15% = $1.50 = 150 cents application fee
+            expect(params.payment_intent_data.application_fee_amount).toBe(150);
+        });
+
+        test('skips the application fee for cross-border countries Stripe rejects (e.g. BR)', async () => {
+            mockDatabase.getTrack.mockReturnValue({ id: 5, title: 'Track Five', price: 10, currency: 'USD', artist_id: 7 });
+            mockDatabase.getArtistSimple = jest.fn().mockReturnValue({ id: 7, name: 'Artist Seven', stripe_account_id: 'acct_br' });
+            mockDatabase.getSetting.mockImplementation((k: string) => (k === 'adminFeePercentage' ? '15' : null));
+            mockStripe.accounts.retrieve.mockResolvedValue({ id: 'acct_br', country: 'BR', charges_enabled: true });
+            mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'sess_br', url: 'https://checkout.stripe.com/sess_br' });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 5, type: 'track', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(200);
+            const [params, opts] = mockStripe.checkout.sessions.create.mock.calls[0];
+            // Still a direct charge, but no application fee (would be rejected cross-border)
+            expect(opts).toEqual({ stripeAccount: 'acct_br' });
+            expect(params.payment_intent_data).toBeUndefined();
         });
     });
 
