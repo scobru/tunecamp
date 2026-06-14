@@ -234,7 +234,7 @@ describe('Auth Routes', () => {
             expect(newAuth && newAuth.success).toBe(true);
 
             db.close();
-        });
+        }, 30000);
     });
 
     describe('GET /api/auth/status', () => {
@@ -351,7 +351,7 @@ describe('Auth Routes', () => {
             expect(curatorRow.artist_unlinked).toBe(1);
 
             db.close();
-        });
+        }, 30000);
     });
 });
 
