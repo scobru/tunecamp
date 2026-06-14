@@ -30,6 +30,44 @@ export async function fetchSafe(url: string, init?: RequestInit): Promise<Respon
 }
 
 /**
+ * Liveness probe that distinguishes a *running TuneCamp instance* from any host
+ * that merely answers HTTP (a reverse proxy, a CapRover placeholder, or a
+ * different app that replaced the instance on the same domain).
+ *
+ * A plain `HEAD /` returns 200 in all those cases, which is why dead instances
+ * survived registry pruning. Instead we GET `/api/catalog` and require a JSON
+ * body shaped like a catalog (a `releases` or `tracks` array — exactly what the
+ * federation catalog parser keys on). An empty catalog still has `releases: []`,
+ * so quiet-but-alive instances pass; HTML error pages and unrelated JSON fail.
+ */
+export async function isLiveTuneCamp(url: string, timeoutMs = 5000): Promise<boolean> {
+    if (!url) return false;
+    const base = url.replace(/\/$/, "");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        if (!(await isSafeUrl(base))) return false;
+        // Use the global fetch (same as the peer catalog cache) — NOT the
+        // node-fetch import above — so liveness and catalog retrieval behave
+        // identically and stay mockable in tests.
+        const res: any = await (globalThis as any).fetch(`${base}/api/catalog`, {
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json', 'User-Agent': 'TuneCamp-HealthCheck/2.0' }
+        });
+        if (!res || !res.ok) {
+            try { await res?.text?.(); } catch { /* drain */ }
+            return false;
+        }
+        const data: any = await res.json();
+        return !!data && (Array.isArray(data.releases) || Array.isArray(data.tracks));
+    } catch {
+        return false;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
  * Safely fetches JSON, ensuring the body is always consumed or drained.
  */
 export async function fetchJsonSafe<T>(url: string, init?: RequestInit): Promise<T | null> {

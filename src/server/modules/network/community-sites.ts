@@ -3,6 +3,7 @@ import type { ServerConfig } from "../../core/config.js";
 import type { ZenDBService } from "./zendb.service.js";
 import type { FederatedDiscoveryService } from "./federated-discovery.service.js";
 import { getSiteHandle } from "../../core/site-actor.js";
+import { isLiveTuneCamp } from "../../common/network.js";
 
 /**
  * Builds the aggregated community site list from every discovery source:
@@ -50,10 +51,15 @@ export async function buildCommunitySites(deps: CommunitySitesDeps): Promise<any
             federation: "federated",
         }));
 
-    // 3. ActivityPub site actors
-    const apActors = dbService
+    // 3. ActivityPub site actors — health-checked so a followed instance that
+    // went dark doesn't linger in the directory just because we once followed it.
+    const apActorsAll = dbService
         .getFollowedActors()
         .filter((a: any) => a.username === "site" || a.username === getSiteHandle(dbService));
+    const apLiveness = await Promise.all(apActorsAll.map(async (a: any) => {
+        try { return await isLiveTuneCamp(new URL(a.uri).origin, 3000); } catch { return false; }
+    }));
+    const apActors = apActorsAll.filter((_: any, i: number) => apLiveness[i]);
     const formattedApSites = apActors.map((a: any) => ({
         url: a.uri,
         name: a.name || a.username || "AP Actor",

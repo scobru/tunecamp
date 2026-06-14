@@ -1,5 +1,6 @@
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { Router, json } from "express";
+import Stripe from "stripe";
 import path from "path";
 import fs from "fs-extra";
 import type { ServiceContainer } from "../../core/container.js";
@@ -1365,6 +1366,114 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         } catch (error: any) {
             console.error("Error approving artist request:", error);
             res.status(500).json({ error: error.message || "Failed to approve artist request" });
+        }
+    });
+
+    // --- Stripe Connect onboarding (fiat direct charges to artist accounts) ---
+    const getStripe = () => {
+        const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
+        return sKey ? new Stripe(sKey) : null;
+    };
+    const canManageConnect = (req: AuthenticatedRequest): boolean =>
+        !!req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
+
+    /**
+     * POST /api/admin/artists/:id/stripe-connect/onboard
+     * Create (or reuse) the artist's Stripe Express account and return a hosted
+     * onboarding link. Once onboarding completes, fiat checkouts for the
+     * artist's items are charged directly on their account (see payments.ts).
+     */
+    router.post("/artists/:id/stripe-connect/onboard", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!canManageConnect(req)) return res.status(403).json({ error: "Access denied." });
+            const stripe = getStripe();
+            if (!stripe) return res.status(501).json({ error: "Stripe not configured on this server." });
+
+            const artistId = parseInt(req.params.id, 10);
+            if (!artistId || artistId < 0) return res.status(400).json({ error: "Invalid artist id." });
+            const artist: any = library.getArtistSimple(artistId);
+            if (!artist) return res.status(404).json({ error: "Artist not found." });
+
+            let accountId: string | null = artist.stripe_account_id || null;
+            if (!accountId) {
+                const account = await stripe.accounts.create({
+                    type: "express",
+                    metadata: { artistId: String(artistId), artistName: artist.name || "" }
+                });
+                accountId = account.id;
+                library.setArtistStripeAccountId(artistId, accountId);
+                console.log(`[Stripe Connect] Created Express account ${accountId} for artist ${artistId}`);
+            }
+
+            const base = (identity.getSetting("publicUrl") || config.publicUrl || "").replace(/\/$/, "");
+            const origin = base || `${req.protocol}://${req.get("host")}`;
+            // Caller may ask to be returned to its own page (e.g. the artist's
+            // /profile) instead of /admin. Only accept a same-origin relative
+            // path — never an absolute or protocol-relative URL — so a crafted
+            // returnTo can't bounce the artist to an attacker page after KYC.
+            const rawReturn = typeof req.body?.returnTo === "string" ? req.body.returnTo : "";
+            const safePath = /^\/(?![/\\])/.test(rawReturn) ? rawReturn : "/admin";
+            const returnUrl = `${origin}${safePath}`;
+            const accountLink = await stripe.accountLinks.create({
+                account: accountId,
+                refresh_url: returnUrl,
+                return_url: returnUrl,
+                type: "account_onboarding"
+            });
+
+            res.json({ url: accountLink.url, accountId });
+        } catch (error: any) {
+            console.error("Stripe Connect onboard error:", error);
+            res.status(500).json({ error: error.message || "Failed to start Stripe onboarding." });
+        }
+    });
+
+    /**
+     * GET /api/admin/artists/:id/stripe-connect/status
+     * Report whether the artist's connected account can accept charges.
+     */
+    router.get("/artists/:id/stripe-connect/status", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!canManageConnect(req)) return res.status(403).json({ error: "Access denied." });
+            const artistId = parseInt(req.params.id, 10);
+            const artist: any = artistId ? library.getArtistSimple(artistId) : null;
+            if (!artist) return res.status(404).json({ error: "Artist not found." });
+            const accountId: string | null = artist.stripe_account_id || null;
+            if (!accountId) return res.json({ connected: false });
+
+            const stripe = getStripe();
+            if (!stripe) return res.status(501).json({ error: "Stripe not configured on this server." });
+            const acct: any = await stripe.accounts.retrieve(accountId);
+            res.json({
+                connected: true,
+                accountId,
+                chargesEnabled: acct.charges_enabled,
+                payoutsEnabled: acct.payouts_enabled,
+                detailsSubmitted: acct.details_submitted,
+                country: acct.country || null
+            });
+        } catch (error: any) {
+            console.error("Stripe Connect status error:", error);
+            res.status(500).json({ error: error.message || "Failed to fetch Stripe status." });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/artists/:id/stripe-connect
+     * Unlink the connected account from the artist (does NOT delete it on
+     * Stripe). The artist's fiat checkouts revert to the instance's own account.
+     */
+    router.delete("/artists/:id/stripe-connect", (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!canManageConnect(req)) return res.status(403).json({ error: "Access denied." });
+            const artistId = parseInt(req.params.id, 10);
+            const artist: any = artistId ? library.getArtistSimple(artistId) : null;
+            if (!artist) return res.status(404).json({ error: "Artist not found." });
+            library.setArtistStripeAccountId(artistId, null);
+            res.json({ success: true });
+        } catch (error: any) {
+            console.error("Stripe Connect disconnect error:", error);
+            res.status(500).json({ error: error.message || "Failed to unlink Stripe account." });
         }
     });
 

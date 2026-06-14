@@ -30,6 +30,7 @@ import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
+import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
 
 const Profile = () => {
   const { user, isAuthenticated, role, isInitializing } = useAuthStore();
@@ -1107,6 +1108,10 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                 placeholder="https://..."
               />
             </div>
+
+            {initialData?.id && (
+              <ArtistStripeConnectCard artistId={initialData.id} returnTo="/profile" />
+            )}
           </div>
 
           {/* Social Section */}

@@ -10,9 +10,10 @@ TuneCamp supports a hybrid payment system combining traditional Fiat (via Stripe
 - **Mechanism**:
   1. Frontend requests a session for an `itemId` and `type` (track/album).
   2. Backend calculates the price (converting ETH to USD if necessary via `price.ts`).
-  3. A Stripe Checkout session is created and the URL is returned to the client.
-  4. Upon successful payment, Stripe sends a webhook to `/api/payments/stripe/webhook`.
-  5. Backend generates an **Unlock Code** and stores it in the database.
+  3. Backend resolves the item's artist. **If the artist has a connected Stripe account** (`artists.stripe_account_id`), the session is created as a **Stripe Connect direct charge** on that account, with the instance fee taken as an `application_fee_amount`. **Otherwise** the session is created on the instance's own Stripe account (single-artist / self-host fallback — the operator already keeps 100%).
+  4. A Stripe Checkout session is created and the URL is returned to the client.
+  5. Upon successful payment, Stripe sends a webhook to `/api/payments/stripe/webhook`. For direct charges this arrives as a **connected-account event** (enable "Listen to events on connected accounts" on the endpoint).
+  6. Backend generates an **Unlock Code** and stores it in the database.
 
 ### Crypto Onramp (Stripe & MoonPay)
 - **Purpose**: Enables users to buy USDC directly on the Base network to use for Web3 purchases.
@@ -45,7 +46,10 @@ TuneCamp implements a universal fee split mechanism that applies to **all paymen
 
 - **Platform Policy**: By default, the platform takes a percentage of every sale (e.g., 15%).
 - **Web3 Payments (On-chain)**: The split is enforced directly by the `TuneCampCheckout` smart contract. Funds are distributed instantly: the artist's share goes to their wallet, and the platform's share goes to the `adminTreasuryAddress`.
-- **Stripe Payments (Fiat)**: The user pays the full amount via credit card. The platform receives the funds in its Stripe account. The split is then managed via the platform's financial logic (e.g., Stripe Connect payouts or internal accounting), with the artist's share being credited to their balance or paid out periodically.
+- **Stripe Payments (Fiat)**: The split is enforced by **Stripe Connect**, mirroring the on-chain contract:
+  - **Multi-artist instances** (artist has a connected account): the charge is a **direct charge** on the artist's Stripe account — funds land in the artist's balance directly, never in the instance's account. The instance's cut is collected automatically as `application_fee_amount`, using the **same `adminFeePercentage` setting as the on-chain split** so fiat and crypto take an identical percentage. No manual payout or custody.
+  - **Single-artist / self-hosted instances** (no connected account): the charge stays on the instance's own Stripe account. The operator *is* the artist, so they already keep 100% (minus Stripe's processing fee) — Connect would only add onboarding friction.
+  - **Cross-border guard**: Stripe rejects application fees for direct charges in a few countries/currencies (e.g. `MX`, `BR` / `mxn`, `brl`). For connected accounts based there, the fee is skipped so checkout never hard-fails — the artist simply receives the full amount.
 - **Direct Verification**: Even for direct txHash verification, the backend checks if the appropriate "Label Fee" has been sent to the treasury before generating an unlock code.
 
 ## 3.1 What an artist actually keeps (honest cost breakdown)
@@ -62,6 +66,16 @@ TuneCamp's pitch is "no platform middleman fees", not "100% of revenue". Here is
 **Example** — €10 album sold via Stripe on your own self-hosted instance: €10 − €0.59 Stripe ≈ **€9.41 to you (~94%)**. The same sale on Bandcamp: 10% revenue share + ~5% payment processing ≈ **€8.50**. The difference compounds with volume, but be honest with yourself about the fixed hosting cost: below roughly €10–20/month in sales, a hosted platform may net you more.
 
 **On-chain payments: near-zero fees, with caveats.** A buyer who already holds USDC on Base pays only gas (cents), and you receive ~100% — the best case of any payment path, beating Stripe's ~94%. Two caveats keep it from being the default recommendation: (1) buyers *without* crypto who use the onramp (MoonPay/Stripe Onramp) pay ~1–4.5% conversion fees plus extra UX friction, often worse than a plain card checkout; (2) you receive USDC/ETH, so cashing out to EUR has its own exchange/withdrawal costs, and holding ETH carries price risk until you convert (USDC largely avoids this). The instance fee split (85/15 default) applies on-chain too — it is enforced by the `TuneCampCheckout` contract itself.
+
+## 3.2 Stripe Connect onboarding (artist accounts)
+
+For multi-artist instances, each artist connects their own Stripe (Express) account so card payments can be routed to them directly. This is admin-managed (the same gate as artist publishing):
+
+- `POST /api/admin/artists/:id/stripe-connect/onboard` — creates (or reuses) the artist's Express account, stores its id in `artists.stripe_account_id`, and returns a hosted Stripe onboarding link. The artist completes KYC on Stripe's side.
+- `GET /api/admin/artists/:id/stripe-connect/status` — reports `connected`, `chargesEnabled`, `payoutsEnabled`, `detailsSubmitted`, and `country`.
+- `DELETE /api/admin/artists/:id/stripe-connect` — unlinks the account from the artist (does **not** delete it on Stripe); their checkouts revert to the instance's own account.
+
+No new environment variables are required — onboarding reuses the instance's `stripe_secret_key`. Until an artist completes onboarding (`chargesEnabled = false`), their fiat checkouts use the single-artist fallback (instance account).
 
 ## 4. Configuration
 

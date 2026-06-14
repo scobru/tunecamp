@@ -36,6 +36,18 @@ function generateUnlockCode(prefix = ""): string {
     return prefix + code;
 }
 
+// Stripe rejects `application_fee_amount` for cross-border direct charges in a
+// few countries/currencies it doesn't allow platform fees for. Routing the
+// payment to the artist still works there — we just skip the instance cut so
+// the checkout doesn't hard-fail. Mirrors Mirlo's guard.
+const CONNECT_FEE_SKIP_COUNTRIES = new Set(["MX", "BR"]);
+const CONNECT_FEE_SKIP_CURRENCIES = new Set(["mxn", "brl"]);
+
+function shouldSkipPlatformFee(currency: string, country?: string | null): boolean {
+    if (country && CONNECT_FEE_SKIP_COUNTRIES.has(country.toUpperCase())) return true;
+    return CONNECT_FEE_SKIP_CURRENCIES.has((currency || "").toLowerCase());
+}
+
 /** Stripe return URLs must point back at this instance, otherwise a crafted
  *  checkout link can bounce a paying user to an attacker page after payment. */
 function isAllowedReturnUrl(url: string, req: express.Request, publicUrl?: string | null): boolean {
@@ -140,6 +152,36 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
         }
     }
 
+    /** Resolve the artist who should receive funds for a checkout item, so fiat
+     *  payments can be routed to their connected Stripe account. Mirrors the
+     *  artist resolution in isSaleAllowed. Returns undefined for admin-owned
+     *  content (assets) or items with no linked artist — those stay on the
+     *  instance's own Stripe account. */
+    function resolveArtistForCheckout(type: string, itemId: number, albumId?: number): any | undefined {
+        try {
+            let artistId: number | null | undefined;
+            if (type === 'track') {
+                const track: any = library.getTrack(itemId);
+                artistId = track?.artist_id || null;
+                const linkedAlbumId = albumId || track?.album_id;
+                if (linkedAlbumId) {
+                    const album: any = library.getAlbum(linkedAlbumId);
+                    artistId = album?.artist_id ?? artistId;
+                }
+            } else if (type === 'album') {
+                const album: any = library.getAlbum(itemId);
+                artistId = album?.artist_id ?? null;
+            } else {
+                return undefined; // assets are admin-managed
+            }
+            if (!artistId || artistId < 0) return undefined; // site actor / unlinked → instance account
+            return database.getArtistSimple(artistId);
+        } catch (e) {
+            console.error("Checkout artist resolution failed:", e);
+            return undefined;
+        }
+    }
+
     // 1. Stripe Webhook (needs raw body, NO JSON PARSER)
     // This route MUST be mounted before the global express.json() in server.ts
     router.post("/stripe/webhook", express.raw({ type: 'application/json' }), async (req, res) => {
@@ -160,6 +202,12 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             return res.status(400).send(`Webhook Error: ${err.message}`);
         }
 
+        // Connect direct-charge checkouts complete on the connected account, so
+        // their `checkout.session.completed` arrives as a connected-account event
+        // (event.account set, same signing secret). Enable "Listen to events on
+        // connected accounts" on this webhook endpoint in the Stripe dashboard.
+        // Unlock-code generation below keys off session.metadata, which is
+        // identical for platform and connected sessions — no branching needed.
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object as any;
             const metadata = session.metadata;
@@ -331,7 +379,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Item price must be greater than zero for card payments. This item might be free or price is not set." });
             }
 
-            const session = await stripe.checkout.sessions.create({
+            const baseSessionParams: any = {
                 payment_method_types: ['card'],
                 line_items: [{
                     price_data: {
@@ -352,7 +400,51 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     type: type,
                     albumId: albumId ? albumId.toString() : ""
                 }
-            });
+            };
+
+            // Stripe Connect: if the item's artist has a connected account, charge
+            // it directly so the money lands in the artist's own Stripe balance,
+            // and take only the instance fee as an application fee. This makes the
+            // fiat split trustless and identical to the on-chain contract split.
+            // No connected account (single-artist / self-host) → fall back to the
+            // instance's own account, where the operator already keeps 100%.
+            const sellerArtist = resolveArtistForCheckout(
+                type,
+                parseInt(itemId, 10),
+                albumId ? parseInt(albumId, 10) : undefined
+            );
+            const connectedAccountId: string | null = sellerArtist?.stripe_account_id || null;
+
+            let session;
+            if (connectedAccountId) {
+                // Same fee setting as on-chain (adminFeePercentage) → fiat and
+                // crypto take an identical cut. Skip the fee where Stripe rejects
+                // cross-border application fees, so checkout never hard-fails.
+                const feePct = Number(identity.getSetting("adminFeePercentage") || 0);
+                let applicationFeeAmount = 0;
+                if (feePct > 0) {
+                    let accountCountry: string | null = null;
+                    try {
+                        const acct = await stripe.accounts.retrieve(connectedAccountId);
+                        accountCountry = (acct as any)?.country || null;
+                    } catch (e: any) {
+                        console.warn(`[Stripe Connect] Could not retrieve account ${connectedAccountId}: ${e.message}`);
+                    }
+                    if (!shouldSkipPlatformFee('usd', accountCountry)) {
+                        applicationFeeAmount = Math.round((amount * 100 * feePct) / 100);
+                    }
+                }
+
+                session = await stripe.checkout.sessions.create({
+                    ...baseSessionParams,
+                    ...(applicationFeeAmount > 0 && {
+                        payment_intent_data: { application_fee_amount: applicationFeeAmount }
+                    })
+                }, { stripeAccount: connectedAccountId });
+                console.log(`[Stripe] Direct charge on ${connectedAccountId} — app fee ${applicationFeeAmount} cents (${feePct}%)`);
+            } else {
+                session = await stripe.checkout.sessions.create(baseSessionParams);
+            }
 
             res.json({ id: session.id, url: session.url });
         } catch (error: any) {

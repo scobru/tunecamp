@@ -113,8 +113,9 @@ export function createStatsRoutes(container: ServiceContainer): Router {
      */
     router.get("/network/sites", async (req, res) => {
         try {
-            // Aggregates local + Zen + federated (HTTP gossip) + ActivityPub.
-            // Shared with the public GET /api/community/sites.
+            // Aggregates local + Zen + federated (HTTP gossip) + ActivityPub
+            // (with AP-actor liveness filtering). Shared with the public
+            // GET /api/community/sites.
             const sites = await buildCommunitySites({ dbService, config, zendbService, federatedDiscoveryService });
             res.json(sites);
         } catch (error) {

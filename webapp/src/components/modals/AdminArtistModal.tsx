@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { User, Image as ImageIcon, Globe, AlertTriangle, Search } from 'lucide-react';
 import type { User as DbUser, ArtistLink } from '../../types';
+import { ArtistStripeConnectCard } from '../artist/ArtistStripeConnectCard';
 
 interface AdminArtistModalProps {
     onArtistUpdated: () => void;
@@ -416,6 +417,10 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                     </span>
                                 </label>
                             </div>
+
+                            {isEditing && isAdminUser && editId && (
+                                <ArtistStripeConnectCard artistId={editId} />
+                            )}
 
                             {isEditing && isAdminUser && (
                                 <div className="form-control bg-base-200/50 rounded-lg p-4 border border-base-content/5">

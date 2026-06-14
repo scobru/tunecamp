@@ -80,6 +80,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             public_key TEXT,
             private_key TEXT,
             wallet_address TEXT,
+            stripe_account_id TEXT,
             visibility TEXT DEFAULT 'public',
             post_params TEXT,
             external_id TEXT,
@@ -569,6 +570,13 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'wallet_address')) {
                 console.log("📦 [Database] Migrating artists table: adding wallet_address column...");
                 db.exec("ALTER TABLE artists ADD COLUMN wallet_address TEXT");
+            }
+            if (!cols.some(col => col.name === 'stripe_account_id')) {
+                console.log("📦 [Database] Migrating artists table: adding stripe_account_id column...");
+                // Stripe Connect (Express) account id for fiat direct charges. NULL
+                // means the artist has no connected account, so checkout falls back
+                // to the instance's own Stripe account (single-artist / self-host).
+                db.exec("ALTER TABLE artists ADD COLUMN stripe_account_id TEXT");
             }
             if (!cols.some(col => col.name === 'also_known_as')) {
                 console.log("📦 [Database] Migrating artists table: adding also_known_as column...");

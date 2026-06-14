@@ -48,6 +48,9 @@ export interface Artist {
     links: any | null; // Parsed JSON
     post_params: any | null; // Parsed JSON
     wallet_address: string | null;
+    /** Stripe Connect (Express) account id. NULL = no connected account; fiat
+     *  checkout then falls back to the instance's own Stripe account. */
+    stripe_account_id?: string | null;
     visibility: 'public' | 'private' | 'unlisted';
     external_id?: string | null;
     public_key?: string;
@@ -436,6 +439,7 @@ export interface LibraryManager {
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     setArtistCanSell(id: number, canSell: boolean): void;
+    setArtistStripeAccountId(id: number, stripeAccountId: string | null): void;
     updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;
     deleteArtist(id: number): void;
     deleteArtistsBatch(ids: number[]): void;
