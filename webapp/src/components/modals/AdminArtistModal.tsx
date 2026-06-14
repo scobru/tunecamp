@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { User, Image as ImageIcon, Globe, AlertTriangle, Search } from 'lucide-react';
 import type { User as DbUser, ArtistLink } from '../../types';
+import { ArtistStripeConnectCard } from '../artist/ArtistStripeConnectCard';
 
 interface AdminArtistModalProps {
     onArtistUpdated: () => void;
@@ -34,8 +35,6 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const [currentUser, setCurrentUser] = useState<DbUser | null>(null);
     const [isLibraryOnly, setIsLibraryOnly] = useState(false);
     const [canSell, setCanSell] = useState(true);
-    const [stripeStatus, setStripeStatus] = useState<{ connected: boolean; chargesEnabled?: boolean; detailsSubmitted?: boolean; country?: string | null } | null>(null);
-    const [stripeBusy, setStripeBusy] = useState(false);
 
     const isRootAdmin = !!currentUser?.isRootAdmin;
     const isAdminUser = isRootAdmin || !!currentUser?.isAdmin;
@@ -119,45 +118,6 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
         document.addEventListener('open-admin-artist-modal', handleOpen as EventListener);
         return () => document.removeEventListener('open-admin-artist-modal', handleOpen as EventListener);
     }, []);
-
-    // Load Stripe Connect status when editing as an admin. Server-gated too;
-    // we just avoid showing the section to non-admins.
-    useEffect(() => {
-        if (isEditing && editId && isAdminUser) {
-            API.getArtistStripeStatus(editId)
-                .then(setStripeStatus)
-                .catch(() => setStripeStatus(null));
-        } else {
-            setStripeStatus(null);
-        }
-    }, [isEditing, editId, isAdminUser]);
-
-    const handleStripeConnect = async () => {
-        if (!editId) return;
-        setStripeBusy(true);
-        setError('');
-        try {
-            const { url } = await API.startArtistStripeOnboarding(editId);
-            if (url) window.location.href = url; // hosted Stripe onboarding
-        } catch (e: unknown) {
-            setError((e as Error).message || 'Failed to start Stripe onboarding');
-            setStripeBusy(false);
-        }
-    };
-
-    const handleStripeUnlink = async () => {
-        if (!editId) return;
-        setStripeBusy(true);
-        setError('');
-        try {
-            await API.unlinkArtistStripe(editId);
-            setStripeStatus({ connected: false });
-        } catch (e: unknown) {
-            setError((e as Error).message || 'Failed to unlink Stripe account');
-        } finally {
-            setStripeBusy(false);
-        }
-    };
 
     const handleSelectCandidate = (match: any) => {
         if (match.bioIT || match.bio) {
@@ -458,45 +418,8 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 </label>
                             </div>
 
-                            {isEditing && isAdminUser && (
-                                <div className="form-control bg-base-200/50 rounded-lg p-4 border border-base-content/5">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <span className="label-text font-bold text-primary">Stripe Connect (card payouts)</span>
-                                            <p className="text-xs opacity-50 mt-1">
-                                                Connect this artist's own Stripe account so card payments for their releases are charged <strong>directly to them</strong>, with only the instance fee withheld. Without it, card sales land in the instance's Stripe account (single-artist / self-host).
-                                            </p>
-                                        </div>
-                                        {stripeStatus?.connected && (
-                                            <span className={`badge badge-sm shrink-0 ${stripeStatus.chargesEnabled ? 'badge-success' : 'badge-warning'}`}>
-                                                {stripeStatus.chargesEnabled ? 'Connected' : 'Pending'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                                        {!stripeStatus?.connected && (
-                                            <button type="button" className="btn btn-sm btn-primary" onClick={handleStripeConnect} disabled={stripeBusy}>
-                                                {stripeBusy ? 'Redirecting…' : 'Connect Stripe account'}
-                                            </button>
-                                        )}
-                                        {stripeStatus?.connected && !stripeStatus.chargesEnabled && (
-                                            <>
-                                                <span className="text-xs text-warning">Onboarding incomplete — charges not yet enabled.</span>
-                                                <button type="button" className="btn btn-sm btn-warning" onClick={handleStripeConnect} disabled={stripeBusy}>
-                                                    {stripeBusy ? 'Redirecting…' : 'Continue onboarding'}
-                                                </button>
-                                            </>
-                                        )}
-                                        {stripeStatus?.connected && stripeStatus.chargesEnabled && (
-                                            <span className="text-xs text-success">Card payments go directly to this artist's Stripe account.</span>
-                                        )}
-                                        {stripeStatus?.connected && (
-                                            <button type="button" className="btn btn-sm btn-ghost text-error" onClick={handleStripeUnlink} disabled={stripeBusy}>
-                                                Unlink
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                            {isEditing && isAdminUser && editId && (
+                                <ArtistStripeConnectCard artistId={editId} />
                             )}
 
                             {isEditing && isAdminUser && (

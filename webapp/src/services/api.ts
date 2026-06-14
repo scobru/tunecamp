@@ -329,8 +329,8 @@ const API = {
     // --- Admin: Artist Stripe Connect (fiat direct charges) ---
     getArtistStripeStatus: (id: string | number) =>
         handleResponse(api.get<{ connected: boolean; accountId?: string; chargesEnabled?: boolean; payoutsEnabled?: boolean; detailsSubmitted?: boolean; country?: string | null }>(`admin/artists/${id}/stripe-connect/status`)),
-    startArtistStripeOnboarding: (id: string | number) =>
-        handleResponse(api.post<{ url: string; accountId: string }>(`admin/artists/${id}/stripe-connect/onboard`)),
+    startArtistStripeOnboarding: (id: string | number, returnTo?: string) =>
+        handleResponse(api.post<{ url: string; accountId: string }>(`admin/artists/${id}/stripe-connect/onboard`, returnTo ? { returnTo } : {})),
     unlinkArtistStripe: (id: string | number) =>
         handleResponse(api.delete(`admin/artists/${id}/stripe-connect`)),
 
