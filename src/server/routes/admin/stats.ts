@@ -4,6 +4,7 @@ import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 import type { ServerConfig } from "../../core/config.js";
 import { createCatalogCacheService } from "../../modules/network/catalog-cache.service.js";
+import { isLiveTuneCamp } from "../../common/network.js";
 import { getSiteHandle } from "../../core/site-actor.js";
 
 import type { ServiceContainer } from "../../core/container.js";
@@ -126,8 +127,14 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 federation: "zen"
             }));
 
-            // 2. Get actors from ActivityPub (Local DB of remote actors)
-            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
+            // 2. Get actors from ActivityPub (Local DB of remote actors).
+            // Health-check them too: a followed instance that went dark should
+            // not linger in the directory just because we once followed it.
+            const apActorsAll = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
+            const apLiveness = await Promise.all(apActorsAll.map(async a => {
+                try { return await isLiveTuneCamp(new URL(a.uri).origin, 3000); } catch { return false; }
+            }));
+            const apActors = apActorsAll.filter((_, i) => apLiveness[i]);
             const formattedApSites = apActors.map(a => ({
                 url: a.uri,
                 name: a.name || a.username || "AP Actor",

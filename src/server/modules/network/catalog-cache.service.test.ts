@@ -114,7 +114,7 @@ describe('CatalogCacheService', () => {
 
     test('prune drops entries older than the hard expiry', async () => {
         const cache = createCatalogCacheService(db);
-        const ancient = Date.now() - 8 * 24 * 60 * 60 * 1000; // 8d ago, expiry is 7d
+        const ancient = Date.now() - 8 * 24 * 60 * 60 * 1000; // 8d ago, expiry is 48h
         db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
             .run('https://dead.example.com', '[]', ancient);
 
@@ -122,5 +122,20 @@ describe('CatalogCacheService', () => {
 
         const count = db.prepare('SELECT COUNT(*) as c FROM peer_catalog_cache').get() as any;
         expect(count.c).toBe(0);
+    });
+
+    test('entry past the hard expiry is not served and is dropped at request time', async () => {
+        mockFetch.mockRejectedValue(new Error('ECONNREFUSED')); // still offline
+        const cache = createCatalogCacheService(db);
+        const ancient = Date.now() - 3 * 24 * 60 * 60 * 1000; // 3d ago, expiry is 48h
+        db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
+            .run(SITE.url, JSON.stringify([{ title: 'Long Dead Song' }]), ancient);
+
+        const tracks = await cache.getTracks([SITE]);
+
+        // Not served, and the stale entry is removed without waiting for a restart
+        expect(tracks).toHaveLength(0);
+        const row = db.prepare('SELECT * FROM peer_catalog_cache WHERE site_url = ?').get(SITE.url) as any;
+        expect(row).toBeUndefined();
     });
 });

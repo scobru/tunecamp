@@ -165,6 +165,9 @@ describe('Stats Routes', () => {
             mockDbService.getFollowedActors.mockReturnValue([
                 { uri: 'https://siteb.com/actor', name: 'Actor B', username: 'site', summary: 'Summary B', last_seen: 'yesterday' }
             ]);
+            // The followed AP site-actor is health-checked via /api/catalog.
+            (isSafeUrl as any).mockResolvedValue(true);
+            mockFetch.mockResolvedValue({ ok: true, json: async () => ({ releases: [] }) });
 
             const res = await request(app).get('/api/stats/network/sites');
 
@@ -173,6 +176,22 @@ describe('Stats Routes', () => {
             expect(res.body[0].federation).toBe('local');
             expect(res.body[1].federation).toBe('zen');
             expect(res.body[2].federation).toBe('activitypub');
+        });
+
+        test('a dead followed AP instance is dropped from the directory', async () => {
+            mockZenDBService.getCommunitySites.mockResolvedValue([]);
+            mockDbService.getFollowedActors.mockReturnValue([
+                { uri: 'https://dead-ap.com/actor', name: 'Dead', username: 'site', summary: '', last_seen: 'long ago' }
+            ]);
+            // Domain answers HTTP but is not a live TuneCamp (no catalog shape).
+            (isSafeUrl as any).mockResolvedValue(true);
+            mockFetch.mockResolvedValue({ ok: true, json: async () => ({ message: 'hello from nginx' }) });
+
+            const res = await request(app).get('/api/stats/network/sites');
+
+            expect(res.status).toBe(200);
+            expect(res.body).toHaveLength(1); // local only
+            expect(res.body.some((s: any) => s.federation === 'activitypub')).toBe(false);
         });
     });
 
