@@ -5,7 +5,7 @@ TuneCamp allows administrators to link a Google Drive account to stream, import,
 ## 1. OAuth2 Workflow
 
 The integration uses the Google OAuth2 protocol to securely access user files.
-- **Service**: `src/server/services/google-drive.service.ts`
+- **Service**: `src/server/modules/storage/google-drive.service.ts`
 - **Scopes**:
   - `drive.readonly`: To list and download files.
   - `drive.file`: To upload files (if needed).
@@ -40,7 +40,13 @@ TuneCamp supports streaming directly from Google Drive without downloading the f
 
 ## 4. Configuration
 
-Required Environment Variables:
-- `GOOGLE_CLIENT_ID`: From Google Cloud Console.
-- `GOOGLE_CLIENT_SECRET`: From Google Cloud Console.
-- `GOOGLE_REDIRECT_URI`: Usually `https://your-domain.com/api/storage/gdrive/callback`.
+Credentials can be set either via environment variables or in the Admin UI
+(Storage tab → `google_drive_client_id` / `google_drive_client_secret` settings,
+which take precedence over the env vars).
+
+Environment variables:
+- `TUNECAMP_GDRIVE_CLIENT_ID`: From Google Cloud Console.
+- `TUNECAMP_GDRIVE_CLIENT_SECRET`: From Google Cloud Console.
+
+The OAuth redirect URI is derived from the instance public URL:
+`https://your-domain.com/api/storage/gdrive/callback`.

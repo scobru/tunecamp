@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# TuneCamp Webapp
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React frontend for [TuneCamp](../README.md) — the self-hosted, federated music
+platform. This is an npm workspace of the root project; it builds to static assets
+that the TuneCamp backend serves.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React** + **TypeScript**
+- **Vite** (build tool & dev server with HMR)
+- **Zustand** for state (`src/stores/`)
+- **React Router** for navigation
+- **ethers** v6 for the in-browser wallet (any injected EIP-1193 provider, e.g. MetaMask)
+- Plain CSS with theme variables (light/dark)
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From the **repository root** (recommended), install once for both root and webapp:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then run the Vite dev server from this directory:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd webapp
+npm run dev      # http://localhost:5173
 ```
+
+The dev server proxies API calls to the backend, so start the backend too (from the
+repo root: `npm run dev` to watch + `npm start` to run). See the root
+[README](../README.md#using-nodejs-development) for the full dev workflow.
+
+## Build
+
+```bash
+npm run build -w webapp   # from repo root
+# or, from this directory:
+npm run build
+```
+
+The production bundle is emitted to `dist/` and served by the backend.
+
+## Layout
+
+```
+src/
+├── components/   # UI by domain (admin/, artist/, player/, layout/, modals/, ui/)
+├── pages/        # route entry points (Home, Library, Network, Admin, Dig, Live, ...)
+├── stores/       # Zustand stores (useAuthStore, usePlayerStore, useWalletStore, ...)
+├── services/     # api.ts (REST client), wallet.ts, zen.ts (instance discovery)
+├── hooks/        # custom React hooks
+└── main.tsx      # app mount point
+```
+
+## Configuration
+
+Frontend build-time variables use the `VITE_` prefix (set in `.env` at the repo root):
+
+| Variable | Description | Default |
+|:---------|:------------|:--------|
+| `VITE_TUNECAMP_RPC_URL` | Base RPC endpoint used by the in-browser wallet | `https://mainnet.base.org` |
+| `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+
+See the root [README](../README.md#configuration) for the complete configuration reference.

@@ -4,7 +4,10 @@ TuneCamp integrates with the **Soulseek** P2P network to allow administrators to
 
 ## 1. Architecture
 
-The Soulseek integration is implemented in `src/server/soulseek.ts`. It uses a custom client to connect to the Soulseek server and handle peer-to-peer file transfers.
+The Soulseek integration is implemented in `src/server/modules/integrations/soulseek.ts` (with a `DownloadProvider` wrapper at `src/server/providers/download/soulseek.provider.ts`). It uses a custom client to connect to the Soulseek server and handle peer-to-peer file transfers.
+
+> **Opt-in:** Soulseek is disabled by default for legal reasons and must be enabled
+> explicitly via the plugin toggles in the Admin panel.
 
 ### Key Features
 - **Global Search**: Search for tracks or albums across the entire Soulseek network.
@@ -19,9 +22,9 @@ Downloads from Soulseek are stored in:
 
 ## 3. Configuration
 
-Required settings in the Admin UI or Environment Variables:
-- `SOULSEEK_USERNAME`: Your Soulseek account username.
-- `SOULSEEK_PASSWORD`: Your Soulseek account password.
+Normally configured via the Admin UI → Integrations panel. Fallback environment variables:
+- `SLSK_USER`: Your Soulseek account username.
+- `SLSK_PASS`: Your Soulseek account password.
 
 ## 4. Rate Limiting & Safety
 

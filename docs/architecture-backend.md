@@ -43,7 +43,7 @@ Responsabile della scansione e dell'organizzazione della musica locale.
 
 ### 6. Community: Chat e Live (`modules/chat/`, `modules/live/`)
 - **Chat**: chat di istanza standalone con cronologia persistente in SQLite.
-- **Live**: registry in-memory delle sessioni live; l'audio viaggia P2P via WebRTC (Trystero) tra i browser, il server non tocca mai il media.
+- **Live**: registry in-memory delle sessioni live (`live.service.ts`); il media **passa dal server**. Il browser dell'artista cattura l'audio con `MediaRecorder` e invia i chunk webm, che `HlsLiveService` (`hls.service.ts`) dà in pasto a un processo FFmpeg persistente. FFmpeg produce una playlist HLS rolling (segmenti AAC) servita a tutti gli ascoltatori: un solo encode condiviso, non una copia per ascoltatore come nella vecchia mesh WebRTC.
 
 ### 7. Integrazione Blockchain (`modules/publishing/`, routes `api/payments.ts`)
 Interfaccia con gli smart contract per gestire prezzi, pagamenti e sblocchi di contenuti.

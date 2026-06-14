@@ -23,10 +23,14 @@ Users can leave comments on individual tracks to provide feedback or discuss the
 ## 3. Engagement Feed
 
 The main "Feed" combines local artist posts with social interactions (likes, shares) from the federated network.
-- **Implementation**: Managed by the `SocialService` and routes in `src/server/routes/posts.ts` and `comments.ts`.
+- **Implementation**: Managed by the social manager (`src/server/core/managers/social.ts`, backed by `social.repository.ts`); posts are exposed through `src/server/routes/network/activitypub.ts` and comments through `src/server/routes/network/comments.ts`.
 
 ## 4. Federated Identity
 
-Every user in TuneCamp is also an **ActivityPub Actor**.
+Each **artist** in TuneCamp is an **ActivityPub Actor** (a "Person") — federation is at the artist level, not per user account.
 - Profile: `https://your-domain.com/actor/@username`
-- Social interactions are cryptographically signed using the user's Zen keypair.
+- Outgoing activities are signed with the artist's **RSA 4096-bit keypair**, generated automatically per artist.
+
+> Note: earlier versions tied identity to Zen (SEA) keypairs. That has been removed —
+> authentication is username/password (JWT) and federation signing uses RSA keys.
+> See [FEDERATION.md](FEDERATION.md).

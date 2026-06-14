@@ -8,8 +8,8 @@ La webapp di TuneCamp è una Single Page Application (SPA) moderna costruita con
 - **Build Tool**: Vite
 - **Gestione Stato**: Zustand
 - **Routing**: React Router
-- **Integrazione P2P**: Zen.js (WebAssembly/JS)
-- **Wallet**: Ethers.js / Wagmi (per interazioni blockchain)
+- **Discovery istanze**: Zen.js (WebAssembly/JS) — solo per scoprire altre istanze TuneCamp
+- **Wallet**: Ethers.js v6 (provider iniettato EIP-1193, es. MetaMask)
 
 ## Organizzazione del Codice
 
@@ -28,20 +28,24 @@ Ogni file rappresenta una rotta principale:
 
 ### 3. Store di Stato (`stores/`)
 Utilizziamo Zustand per uno stato leggero e performante:
-- `usePlayerStore`: Stato della riproduzione corrente.
-- `useAuthStore`: Stato dell'utente loggato.
-- `useZenStore`: Stato della connessione alla rete P2P.
+- `usePlayerStore`: Stato della riproduzione corrente (coda, traccia attiva).
+- `useAuthStore`: Stato dell'utente loggato e del token JWT.
+- `useWalletStore`: Stato del wallet connesso (account, rete).
+- `useConfigStore`: Configurazione dell'istanza (branding, feature flag).
+- `useUIStore`: Stato dell'interfaccia (modali, pannelli).
+- `useDigStore`: Stato della modalità "Dig" (crate digging).
 
 ### 4. Servizi (`services/`)
 - `api.ts`: Wrapper per le chiamate REST al backend TuneCamp.
-- `zen.ts`: Interfaccia con il protocollo Zen per la distribuzione decentralizzata dei contenuti.
+- `wallet.ts`: Gestione del wallet del browser (connessione, firma, transazioni on-chain via ethers).
+- `zen.ts`: Interfaccia con la rete Zen, usata **solo per la discovery delle istanze** della community (pagina Network).
 
 ## Integrazione Zen.js
 
-La webapp integra `zen.js` per permettere la distribuzione dei file tramite P2P. Utilizza file WebAssembly (`pen.wasm`, `crypto.wasm`) caricati all'avvio per operazioni crittografiche e di rete efficienti direttamente nel browser.
+La webapp integra `zen.js` esclusivamente per leggere il registry decentralizzato delle istanze TuneCamp (signaling/discovery): i cataloghi vengono poi recuperati direttamente via HTTP. Carica i file WebAssembly (`pen.wasm`, `crypto.wasm`) all'avvio per le operazioni crittografiche. **I contenuti audio non transitano su Zen**: lo streaming avviene sempre dal backend (o dai provider di fallback configurati).
 
 ## Flusso di Navigazione e Riproduzione
 
 1. **Navigazione**: L'utente clicca su un album -> `AlbumDetails.tsx` richiede dati a `api.ts` -> Dati visualizzati tramite componenti `artist/`.
-2. **Riproduzione**: Clic su "Play" -> Traccia aggiunta a `usePlayerStore` -> Componente `player/` avvia lo streaming dal backend o tramite Zen P2P.
+2. **Riproduzione**: Clic su "Play" -> Traccia aggiunta a `usePlayerStore` -> Componente `player/` avvia lo streaming dal backend (`/api/tracks/:id/stream`), con eventuale fallback ai provider esterni se il file locale manca.
 3. **Interazione Web3**: Connessione wallet -> `wallet.ts` gestisce l'account -> Possibilità di acquistare release o sbloccare contenuti.

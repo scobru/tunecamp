@@ -38,7 +38,7 @@ payable(artistWallet).transfer(artistShare);
 
 ## 4. Integration with Backend
 
-The backend (`src/server/routes/payments.ts`) interacts with these contracts via **Ethers.js**:
+The backend (`src/server/routes/api/payments.ts`) interacts with these contracts via **Ethers.js**:
 - **Verification**: It parses transaction logs to confirm that a specific `trackId` was paid for.
 - **Publishing**: It calls the NFT contract to mint new editions when an artist releases music on-chain.
 

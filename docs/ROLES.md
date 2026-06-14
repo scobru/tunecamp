@@ -74,7 +74,9 @@ Selling is controlled separately by the per-artist `can_sell` flag, which only M
 
 ## First Login: Setup Wizard
 
-When a user logs in and their account still has the default password (`tunecamp`), the web app blocks access behind a setup wizard until the password is changed. The backend signals this via the `mustChangePassword` flag returned by `POST /api/auth/login` (computed by `isDefaultPassword` in `auth.service.ts`).
+When a user logs in and their account password is the temporary sentinel `tunecamp`, the web app blocks access behind a setup wizard until the password is changed. The backend signals this via the `mustChangePassword` flag returned by `POST /api/auth/login` (computed by `isDefaultPassword` in `auth.service.ts`, which checks for the `tunecamp` sentinel).
+
+> Note: the bootstrap admin created on first run uses `admin`/`admin` (or `TUNECAMP_ADMIN_USER`/`TUNECAMP_ADMIN_PASS`), **not** `tunecamp` — so that account is not forced through the wizard automatically; change its password manually after the first login. The wizard fires for accounts an admin has reset to `tunecamp` (see below).
 
 What the wizard shows depends on the role:
 

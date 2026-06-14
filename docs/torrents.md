@@ -4,7 +4,10 @@ TuneCamp integrates **WebTorrent** to allow administrators to download music via
 
 ## 1. Architecture
 
-The system is managed by the `TorrentService` (`src/server/services/torrent.service.ts`), which wraps a WebTorrent client instance.
+The system is managed by the `TorrentService` (`src/server/modules/integrations/torrent.service.ts`), which wraps a WebTorrent client instance. Search uses `torrent-search.service.ts` in the same directory.
+
+> **Opt-in:** Like Soulseek, the torrent plugin is disabled by default for legal
+> reasons and must be enabled explicitly from the Admin panel.
 
 ### Key Components
 - **WebTorrent Client**: Handles the peer-to-peer download protocol.

@@ -13,12 +13,16 @@ tunecamp/
 ├── docs/               # Documentazione tecnica (Markdown, JSON)
 ├── src/                # Sorgenti del Backend e strumenti
 │   ├── server/         # Logica core del Server Express
-│   │   ├── common/     # Utilità e configurazioni condivise
+│   │   ├── common/     # Utilità ed errori condivisi
+│   │   ├── core/       # Config, container DI, database, plugin-loader
 │   │   ├── middleware/ # Middleware Express (Auth, Error handling, Rate limit)
-│   │   ├── modules/    # Moduli funzionali (ActivityPub, Catalog, Storage)
+│   │   ├── modules/    # Logica di business per dominio (ActivityPub, Catalog, AI, Live, Storage, ...)
+│   │   ├── providers/  # Implementazioni dei provider plugin (metadata, streaming, storage, ...)
 │   │   ├── repositories/ # Layer di accesso ai dati (Album, Artist, Track)
-│   │   ├── routes/     # Endpoint API REST
-│   │   └── services/   # Logica di business
+│   │   ├── routes/     # Endpoint API REST (admin, api, auth, library, network)
+│   │   ├── server.ts   # Bootstrap del server Express
+│   │   ├── types/      # Tipi condivisi del backend
+│   │   └── utils/      # Funzioni di utilità del server
 │   ├── tools/          # Script di manutenzione, backup e migrazione
 │   └── utils/          # Funzioni di utilità generale
 ├── webapp/             # Applicazione Frontend React
@@ -44,7 +48,7 @@ Contiene tutta la logica server-side. Utilizza un'architettura a layer:
 ### `webapp/src/`
 Il cuore dell'interfaccia utente.
 - **Pages**: Directory fondamentale che mappa le rotte del frontend.
-- **Components**: Suddivisi in `ui/` (base) e directory tematiche (`player/`, `artist/`, `admin/`).
+- **Components**: Suddivisi in `ui/` (base), `layout/`, `modals/` e directory tematiche (`player/`, `artist/`, `admin/`).
 - **Services**: `api.ts` è il gateway principale per la comunicazione col backend.
 
 ### `contracts/`
@@ -55,6 +59,6 @@ Essenziale per la gestione della libreria musicale (relink dei percorsi, migrazi
 
 ## Punti di Ingresso (Entry Points)
 
-- **Backend**: `src/server/server.ts` - Avvia il server Express e i servizi correlati.
-- **Webapp**: `webapp/src/main.tsx` - Punto di mount dell'applicazione React.
-- **CLI/Tools**: Vari script in `src/tools/` e `index.ts` nella root.
+- **Backend**: `src/index.ts` — entry point: carica la config e chiama `startServer` da `src/server/server.ts`.
+- **Webapp**: `webapp/src/main.tsx` — punto di mount dell'applicazione React.
+- **CLI/Tools**: Vari script in `src/tools/` (backup, restore, generate-codes, relink-tracks, migrazioni).
