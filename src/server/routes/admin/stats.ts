@@ -4,6 +4,7 @@ import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 import type { ServerConfig } from "../../core/config.js";
 import { createCatalogCacheService } from "../../modules/network/catalog-cache.service.js";
+import { getSiteHandle } from "../../core/site-actor.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -126,7 +127,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             }));
 
             // 2. Get actors from ActivityPub (Local DB of remote actors)
-            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site');
+            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
             const formattedApSites = apActors.map(a => ({
                 url: a.uri,
                 name: a.name || a.username || "AP Actor",
@@ -209,7 +210,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 if (!actor) return false;
                 
                 // 1. Site actors are allowed
-                if (actor.username === 'site') return true;
+                if (actor.username === 'site' || actor.username === getSiteHandle(dbService)) return true;
 
                 // 1b. Followed RSS feeds (podcasts/blogs) are allowed
                 if (actor.type === 'rss') return true;
@@ -295,7 +296,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
     router.get("/network/status", async (req, res) => {
         try {
             const gunSites = await zendbService.getCommunitySites();
-            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site');
+            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
             const apTracks = dbService.getRemoteTracks();
             const localReleases = dbService.getReleases(VisibilityProfile.PUBLIC_STAGE);
 

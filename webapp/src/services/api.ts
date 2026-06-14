@@ -522,7 +522,7 @@ const API = {
 
     // --- Identity ---
     getIdentity: () => handleResponse(api.get<{ pub: string, priv: string, epub: string, epriv: string, alias: string }>('admin/system/identity')),
-    getSiteApIdentity: () => handleResponse(api.get<{ publicKey: string, privateKey: string }>('admin/system/ap-identity')),
+    getSiteApIdentity: () => handleResponse(api.get<{ publicKey: string, privateKey: string, handle?: string }>('admin/system/ap-identity')),
     importIdentity: (pair: any) => handleResponse(api.post('admin/system/identity', pair)),
 
     // --- Admin: Users ---

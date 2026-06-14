@@ -591,16 +591,24 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE unlock_codes ADD COLUMN asset_id INTEGER REFERENCES assets(id)");
             }
 
-            // Site Actor Initialization (id = -1, slug = 'site')
+            // Site Actor Initialization (id = -1). The public handle defaults to
+            // 'site' but follows the configured `siteHandle` setting when present
+            // (kept in sync with the instance name on settings save).
             const hasSiteActor = db.prepare("SELECT 1 FROM artists WHERE id = -1").get();
+            const siteHandleRow = db.prepare("SELECT value FROM settings WHERE key = 'siteHandle'").get() as { value: string } | undefined;
+            const siteNameRow = db.prepare("SELECT value FROM settings WHERE key = 'siteName'").get() as { value: string } | undefined;
+            const siteSlug = siteHandleRow?.value || 'site';
+            const siteActorName = siteNameRow?.value || 'Site';
             if (!hasSiteActor) {
-                console.log("📡 [Database] Creating virtual artist record for Site Actor (@site)...");
+                console.log(`📡 [Database] Creating virtual artist record for Site Actor (@${siteSlug})...`);
                 const pubKey = db.prepare("SELECT value FROM settings WHERE key = 'site_public_key'").get() as { value: string } | undefined;
                 const privKey = db.prepare("SELECT value FROM settings WHERE key = 'site_private_key'").get() as { value: string } | undefined;
-                db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, 'Site', 'site', 'public', ?, ?)")
-                  .run(pubKey ? pubKey.value : null, privKey ? privKey.value : null);
+                db.prepare("INSERT INTO artists (id, name, slug, visibility, public_key, private_key) VALUES (-1, ?, ?, 'public', ?, ?)")
+                  .run(siteActorName, siteSlug, pubKey ? pubKey.value : null, privKey ? privKey.value : null);
             } else {
                 db.prepare("UPDATE artists SET name = 'Site' WHERE id = -1 AND name = 'Instance Actor'").run();
+                // Reconcile the stored slug with the configured handle if they drifted.
+                db.prepare("UPDATE artists SET slug = ? WHERE id = -1 AND slug != ?").run(siteSlug, siteSlug);
             }
         }
 

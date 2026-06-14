@@ -399,9 +399,9 @@ export class CatalogService {
 
     getSettings() {
         const settings = [
-            "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage", 
+            "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage",
             "siteLogo", "mode", "siteId", "zenPeers", "web3_checkout_address", "web3_nft_address",
-            "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled"
+            "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "siteHandle"
         ];
         const res: any = {};
         settings.forEach(k => {

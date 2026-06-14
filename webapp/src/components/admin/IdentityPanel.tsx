@@ -29,6 +29,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
   const [siteApIdentity, setSiteApIdentity] = useState<{
     publicKey: string;
     privateKey: string;
+    handle?: string;
   } | null>(null);
   const [artistIdentities, setArtistIdentities] = useState<any[]>([]);
   const [showPrivateKeys, setShowPrivateKeys] = useState<{
@@ -397,7 +398,7 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                     <div>
                       <h3 className="font-bold">Site Actor</h3>
                       <p className="text-xs opacity-40 font-mono mt-0.5">
-                        @site@{window.location.hostname}
+                        @{siteApIdentity.handle || "site"}@{window.location.hostname}
                       </p>
                     </div>
                   </div>

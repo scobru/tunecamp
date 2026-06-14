@@ -213,6 +213,8 @@ export interface AuthStatus {
 
 export interface SiteSettings {
     siteName: string;
+    /** Public federation handle of the instance actor (defaults to "site"). */
+    siteHandle?: string;
     siteDescription?: string;
     siteLogo?: string;
     coverImage?: string;

@@ -3,6 +3,7 @@ import type { DatabaseService, Track } from "../../core/database.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
+import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -17,11 +18,11 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
     router.get("/users/:slug", async (req, res) => {
         const { slug } = req.params;
         let actor;
-        if (slug === "site") {
+        if (slug === getSiteHandle(db)) {
             const siteName = db.getSetting("siteName") || "TuneCamp Instance";
             const siteDescription = db.getSetting("siteDescription") || "Tunecamp Federation Actor";
             actor = apService.generateActor({
-                slug: "site",
+                slug: getSiteHandle(db),
                 name: siteName,
                 bio: siteDescription
             });
@@ -47,7 +48,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
     // Inbox Endpoint
     router.post("/users/:slug/inbox", async (req, res) => {
         const { slug } = req.params;
-        const isSite = slug === "site";
+        const isSite = slug === getSiteHandle(db);
         const artist = isSite ? null : db.getArtistBySlug(slug);
 
         if (!artist && !isSite) {
@@ -75,7 +76,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
 
         try {
             if (hasType(activity.type, "Follow")) {
-                const targetActor = artist || { id: -1, slug: "site", name: "Site" } as any;
+                const targetActor = artist || { id: SITE_ACTOR_ID, slug: getSiteHandle(db), name: db.getSetting("siteName") || "Instance" } as any;
                 await apService.acceptFollow(targetActor, activity);
                 return res.status(202).send("Accepted");
             } else if (hasType(activity.type, "Undo")) {
@@ -199,7 +200,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
     // Outbox Endpoint
     router.get("/users/:slug/outbox", async (req, res) => {
         const { slug } = req.params;
-        const isSite = slug === "site";
+        const isSite = slug === getSiteHandle(db);
         const artist = isSite ? null : db.getArtistBySlug(slug);
 
         if (!artist && !isSite) return res.status(404).send("Not found");
@@ -282,7 +283,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
     // Followers Endpoint
     router.get("/users/:slug/followers", async (req, res) => {
         const { slug } = req.params;
-        const isSite = slug === "site";
+        const isSite = slug === getSiteHandle(db);
         const artist = isSite ? null : db.getArtistBySlug(slug);
 
         if (!artist && !isSite) return res.status(404).send("Not found");
@@ -304,7 +305,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
     // Following Endpoint
     router.get("/users/:slug/following", async (req, res) => {
         const { slug } = req.params;
-        const isSite = slug === "site";
+        const isSite = slug === getSiteHandle(db);
         const artist = isSite ? null : db.getArtistBySlug(slug);
 
         if (!artist && !isSite) return res.status(404).send("Not found");
@@ -813,8 +814,8 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
             return res.status(400).json({ error: "Reply content is required" });
         }
         try {
-            const artist = note.artist_id === -1
-                ? ({ id: -1, slug: "site", name: "Site" } as any)
+            const artist = note.artist_id === SITE_ACTOR_ID
+                ? ({ id: SITE_ACTOR_ID, slug: getSiteHandle(db), name: db.getSetting("siteName") || "Instance" } as any)
                 : db.getArtist(note.artist_id);
             if (!artist) return res.status(404).json({ error: "Artist not found" });
             const result = await apService.postReply(artist, note.note_id, String(content));
@@ -838,8 +839,8 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         const parentNote = db.getApNote(reply.note_id);
         if (!parentNote) return res.status(404).json({ error: "Parent note not found" });
 
-        const artist = parentNote.artist_id === -1
-            ? ({ id: -1, slug: "site", name: "Site" } as any)
+        const artist = parentNote.artist_id === SITE_ACTOR_ID
+            ? ({ id: SITE_ACTOR_ID, slug: getSiteHandle(db), name: db.getSetting("siteName") || "Instance" } as any)
             : db.getArtist(parentNote.artist_id);
         if (!artist) return res.status(404).json({ error: "Artist not found" });
 
@@ -864,7 +865,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
 
     // Follow back / unfollow a remote actor as the artist (sends a real Follow / Undo(Follow))
     const resolveFollowerHandle = (parsedArtistId: number): string | null => {
-        if (parsedArtistId === -1) return "site";
+        if (parsedArtistId === SITE_ACTOR_ID) return getSiteHandle(db);
         const artist = db.getArtist(parsedArtistId);
         return artist?.slug ?? null;
     };

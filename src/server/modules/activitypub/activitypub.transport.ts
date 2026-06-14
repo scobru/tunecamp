@@ -13,7 +13,8 @@ export class ActivityPubTransport {
     constructor(
         private federation: Federation<void>,
         private baseUrl: string,
-        private getSiteKeys: () => { privateKey: string | null, publicKey: string | null }
+        private getSiteKeys: () => { privateKey: string | null, publicKey: string | null },
+        private getSiteHandle: () => string = () => "site"
     ) {}
 
     /**
@@ -100,10 +101,10 @@ export class ActivityPubTransport {
         }
 
         let signingActor = actor;
-        if (!signingActor || (signingActor.slug === "site" && !signingActor.private_key)) {
+        if (!signingActor || (signingActor.slug === this.getSiteHandle() && !signingActor.private_key)) {
             const { privateKey, publicKey } = this.getSiteKeys();
             if (!signingActor) {
-                signingActor = { slug: "site", private_key: privateKey || undefined, public_key: publicKey || undefined };
+                signingActor = { slug: this.getSiteHandle(), private_key: privateKey || undefined, public_key: publicKey || undefined };
             } else {
                 signingActor.private_key = privateKey || undefined;
                 signingActor.public_key = publicKey || undefined;
