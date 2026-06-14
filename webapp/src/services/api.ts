@@ -326,6 +326,14 @@ const API = {
     updateArtistsVisibilityBatch: (ids: (string | number)[], visibility: string) =>
         handleResponse(api.put('admin/artists/batch/visibility', { ids, visibility })),
 
+    // --- Admin: Artist Stripe Connect (fiat direct charges) ---
+    getArtistStripeStatus: (id: string | number) =>
+        handleResponse(api.get<{ connected: boolean; accountId?: string; chargesEnabled?: boolean; payoutsEnabled?: boolean; detailsSubmitted?: boolean; country?: string | null }>(`admin/artists/${id}/stripe-connect/status`)),
+    startArtistStripeOnboarding: (id: string | number) =>
+        handleResponse(api.post<{ url: string; accountId: string }>(`admin/artists/${id}/stripe-connect/onboard`)),
+    unlinkArtistStripe: (id: string | number) =>
+        handleResponse(api.delete(`admin/artists/${id}/stripe-connect`)),
+
     // --- Admin: Tracks ---
     getBatchPricing: () => handleResponse(api.get<any[]>('tracks/pricing/batch')),
     createTrack: (data: { title: string, albumId?: number, artistId?: number, trackNum?: number, url?: string, service?: string, externalArtwork?: string, duration?: number }) =>

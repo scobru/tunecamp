@@ -28,6 +28,7 @@ export function createLibraryManager(
         updateArtist: (id: number, n?: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v?: any) => artistRepository.update(id, n, b, p, l, pp, w, v),
         updateArtistKeys: (id: number, publicKey: string, privateKey: string) => artistRepository.updateKeys(id, publicKey, privateKey),
         setArtistCanSell: (id: number, canSell: boolean) => artistRepository.setCanSell(id, canSell),
+        setArtistStripeAccountId: (id: number, stripeAccountId: string | null) => artistRepository.setStripeAccountId(id, stripeAccountId),
         updateArtistMigrationStatus: (id: number, alsoKnownAs: string[] | null, movedTo: string | null) => artistRepository.updateMigrationStatus(id, alsoKnownAs, movedTo),
         deleteArtist: (id: number) => artistRepository.delete(id),
         deleteArtistsBatch: (ids: number[]) => { ids.forEach(id => artistRepository.delete(id)); },
