@@ -162,15 +162,52 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;
             const baseUrl = publicUrl.replace(/\/$/, "");
 
-            // 1. Get remote catalogs via HTTP from discovered Zen instances
+            // 1. Get remote catalogs via HTTP from discovered Zen instances and followed AP site actors
             const gunSites = await zendbService.getCommunitySites();
-            const myUrl = baseUrl.replace(/\/$/, "");
-            const remoteSites = gunSites.filter((s: any) => {
-                if (!s.url || !s.url.startsWith("https://")) return false;
-                const siteUrl = s.url.replace(/\/$/, "");
-                return siteUrl !== myUrl && !siteUrl.includes("localhost") && !siteUrl.includes("127.0.0.1");
-            });
+            
+            // Get followed TuneCamp site actors
+            const apActors = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
+            const followedSites = apActors.map(a => {
+                try {
+                    const origin = new URL(a.uri).origin;
+                    return {
+                        url: origin,
+                        name: a.name || a.username || "Followed Instance",
+                        description: a.summary || ""
+                    };
+                } catch {
+                    return null;
+                }
+            }).filter(Boolean) as any[];
 
+            const myUrl = baseUrl.replace(/\/$/, "");
+            const combinedSitesMap = new Map<string, { url: string; name: string; description: string }>();
+
+            const addSite = (site: any) => {
+                if (!site.url) return;
+                // Allow http or https urls
+                if (!site.url.startsWith("https://") && !site.url.startsWith("http://")) return;
+                const siteUrl = site.url.replace(/\/$/, "");
+
+                // Allow local development bypass for private IPs
+                const allowPrivate = process.env.TUNECAMP_ALLOW_PRIVATE_IP === 'true' || 
+                                     (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
+
+                if (siteUrl !== myUrl) {
+                    if (allowPrivate || (!siteUrl.includes("localhost") && !siteUrl.includes("127.0.0.1"))) {
+                        combinedSitesMap.set(siteUrl, {
+                            url: siteUrl,
+                            name: site.name || site.title || "Untitled",
+                            description: site.description || ""
+                        });
+                    }
+                }
+            };
+
+            gunSites.forEach(addSite);
+            followedSites.forEach(addSite);
+
+            const remoteSites = Array.from(combinedSitesMap.values());
             const httpTracks = await catalogCache.getTracks(remoteSites);
 
             // 2. Get tracks from ActivityPub (Standard Federation - Remote)

@@ -74,6 +74,13 @@ export function isSafeUrl(urlStr: string): Promise<boolean> {
         // If hostname is empty, invalid
         if (!hostname) return Promise.resolve(false);
 
+        // Bypass security/SSRF checks for local development to allow local multi-instance federation
+        const allowPrivate = process.env.TUNECAMP_ALLOW_PRIVATE_IP === 'true' || 
+                             (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test');
+        if (allowPrivate) {
+            return Promise.resolve(true);
+        }
+
         // If hostname is localhost, block it
         if (hostname === 'localhost') {
             return Promise.resolve(false);
