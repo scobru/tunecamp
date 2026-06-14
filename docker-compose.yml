@@ -10,7 +10,6 @@ services:
         - TUNECAMP_CURRENCY_CONTRACT=${TUNECAMP_CURRENCY_CONTRACT:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
         - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
         - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}
-        - TORRENT_APIBAY_URL=${TORRENT_APIBAY_URL:-}
     image: tunecamp:latest
     container_name: tunecamp
     ports:
@@ -51,8 +50,6 @@ services:
       - STRIPE_ONRAMP_SECRET_KEY=
       # YouTube Bot Detection Bypass
       - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
-      # Torrent APIBay Mirror Override (defaults to https://apibay.org)
-      - TORRENT_APIBAY_URL=${TORRENT_APIBAY_URL:-}
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 

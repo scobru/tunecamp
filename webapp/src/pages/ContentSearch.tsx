@@ -3,10 +3,36 @@ import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause, Upload, Copy } from 'lucide-react';
+import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause, Upload, Copy, ExternalLink } from 'lucide-react';
 import { notify } from '../utils/notify';
 import clsx from 'clsx';
-import type { TorrentSearchResult, Track } from '../types';
+import type { Track } from '../types';
+
+/**
+ * Public torrent search engines opened in a new tab.
+ *
+ * In-app torrent search was removed: the server resolved magnets by reaching
+ * ThePirateBay/apibay, which is blocked at the ISP level in many regions
+ * (e.g. Italy/AGCOM), so the search silently returned zero results. Instead we
+ * link out to working indexes; the user copies a magnet and pastes it into the
+ * "Add magnet" field below, which downloads via WebTorrent independently of any
+ * blocked host.
+ *
+ * `{q}` is replaced with the URL-encoded query. Entries without `{q}` just open
+ * their landing page (useful for proxy-list aggregators whose mirrors rotate).
+ */
+const TORRENT_SEARCH_ENGINES: { name: string; url: string; note: string }[] = [
+    { name: 'BTDigg', url: 'https://btdig.com/search?q={q}', note: 'DHT search — magnets directly' },
+    { name: '1337x', url: 'https://1337x.to/search/{q}/1/', note: 'General tracker' },
+    { name: 'Knaben', url: 'https://knaben.org/search/{q}/0/1/seeders', note: 'Meta-search aggregator' },
+    { name: 'Solid Torrents', url: 'https://solidtorrents.to/search?q={q}', note: 'DHT + indexes' },
+    { name: 'TPB proxy list', url: 'https://piratebayproxy.info/', note: 'Live ThePirateBay mirrors' },
+];
+
+const buildEngineUrl = (template: string, query: string): string =>
+    template.includes('{q}')
+        ? template.replace('{q}', encodeURIComponent(query.trim()))
+        : template;
 
 const getPathSegments = (pathStr: string) => {
     if (!pathStr) return { filename: 'Unknown File', folder: '' };
@@ -21,7 +47,6 @@ const ContentSearch: React.FC = () => {
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'soulseek' | 'torrents' | 'seeding' | 'streaming' | 'downloads'>('soulseek');
     const [results, setResults] = useState<any[]>([]);
-    const [torrentResults, setTorrentResults] = useState<TorrentSearchResult[]>([]);
     const [streamingResults, setStreamingResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [downloads, setDownloads] = useState<any[]>([]);
@@ -81,16 +106,12 @@ const ContentSearch: React.FC = () => {
 
         setLoading(true);
         setResults([]);
-        setTorrentResults([]);
         setStreamingResults([]);
         setSearchError(null);
         try {
             if (activeTab === 'soulseek') {
                 const data = await API.searchSoulseek(query);
                 setResults(data);
-            } else if (activeTab === 'torrents') {
-                const data = await API.searchTorrents(query);
-                setTorrentResults(data);
             } else if (activeTab === 'streaming') {
                 const data = await API.globalSearch(query);
                 setStreamingResults([
@@ -174,18 +195,6 @@ const ContentSearch: React.FC = () => {
             notify.error(err, "Failed to add torrent");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleDownloadTorrentResult = async (torrent: any) => {
-        try {
-            await API.downloadTorrentResult(torrent, 'public-scraper');
-            notify.success('Torrent added to download queue!');
-            setActiveTab('torrents');
-            fetchTorrents();
-        } catch (err: any) {
-            console.error(`Failed to start torrent download: ${err.message}`);
-            notify.error(err, "Download failed");
         }
     };
 
@@ -637,54 +646,56 @@ const ContentSearch: React.FC = () => {
 
             {activeTab === 'torrents' && (
                 <div className="space-y-8">
-                    {/* Search public trackers */}
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                        <div className="relative flex-1">
+                    {/* Find torrents on external engines. In-app search was removed
+                        because the server can't reach ThePirateBay/apibay where it's
+                        ISP-blocked; users copy a magnet and paste it below. */}
+                    <div className="card bg-base-200/50 border border-base-300 p-5 space-y-4">
+                        <div>
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                <Globe size={18} className="text-primary" /> Find Torrents
+                            </h2>
+                            <p className="text-xs opacity-60 mt-1 leading-relaxed">
+                                Type a query, open an engine to search, then copy the magnet link
+                                and paste it into the box below to start the download.
+                            </p>
+                        </div>
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (!query.trim()) return;
+                                window.open(buildEngineUrl(TORRENT_SEARCH_ENGINES[0].url, query), '_blank', 'noopener,noreferrer');
+                            }}
+                            className="relative"
+                        >
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
                             <input
                                 type="text"
-                                placeholder={`Search public trackers (TPB, Limetorrents)...`}
+                                placeholder="Search query (e.g. marilyn manson)…"
                                 className="input input-bordered w-full pl-10"
                                 value={query}
                                 onChange={e => setQuery(e.target.value)}
                             />
-                        </div>
-                        <button type="submit" className="btn btn-primary gap-2 min-w-[120px]" disabled={loading}>
-                            {loading ? <span className="loading loading-spinner loading-xs"></span> : <Search size={18} />}
-                            Search
-                        </button>
-                    </form>
+                        </form>
 
-                    {/* Search results — full width, two columns on wide screens */}
-                    {torrentResults.length > 0 && (
-                        <div className="grid gap-3 lg:grid-cols-2">
-                            {torrentResults.map((res: any, i: number) => (
-                                <div key={i} className="group card bg-base-200/50 hover:bg-base-200 border border-base-300/50 hover:border-primary/30 transition-all duration-200">
-                                    <div className="card-body p-4 flex-row justify-between items-center overflow-hidden">
-                                        <div className="flex-1 min-w-0 pr-4">
-                                            <h3 className="font-bold truncate text-sm lg:text-base group-hover:text-primary transition-colors" title={res.title}>
-                                                {res.title}
-                                            </h3>
-                                            <div className="text-xs opacity-50 flex flex-wrap gap-x-4 gap-y-1 mt-1 font-bold">
-                                                <span className="text-primary">{res.provider}</span>
-                                                <span>{res.size}</span>
-                                                <span className="text-success">S: {res.seeds}</span>
-                                                <span className="text-warning">P: {res.peers}</span>
-                                                <span>{res.time}</span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => handleDownloadTorrentResult(res)}
-                                            className="btn btn-circle btn-sm btn-ghost hover:bg-primary hover:text-primary-content transition-all flex-shrink-0"
-                                            title="Download"
-                                        >
-                                            <Download size={18} />
-                                        </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {TORRENT_SEARCH_ENGINES.map((engine) => (
+                                <a
+                                    key={engine.name}
+                                    href={buildEngineUrl(engine.url, query)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group card bg-base-200 hover:bg-base-300 border border-base-300/50 hover:border-primary/40 transition-all p-3 flex-row items-center justify-between gap-2"
+                                >
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-sm group-hover:text-primary transition-colors truncate">{engine.name}</div>
+                                        <div className="text-[11px] opacity-50 truncate">{engine.note}</div>
                                     </div>
-                                </div>
+                                    <ExternalLink size={16} className="opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all flex-shrink-0" />
+                                </a>
                             ))}
                         </div>
-                    )}
+                    </div>
 
                     {/* Add a magnet manually — compact inline bar */}
                     <form onSubmit={handleAddTorrent} className="flex gap-2 items-center">

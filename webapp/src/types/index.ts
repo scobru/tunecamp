@@ -419,18 +419,6 @@ export interface StorageAccount {
     created_at: string;
 }
 
-export interface TorrentSearchResult {
-    title: string;
-    time?: string;
-    size: string;
-    seeds: number;
-    peers: number;
-    magnet?: string;
-    desc?: string;
-    provider: string;
-    searchProviderId?: string;
-}
-
 export interface GoogleDriveFile {
     id: string;
     name: string;
