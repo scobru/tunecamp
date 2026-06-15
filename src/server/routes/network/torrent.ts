@@ -1,10 +1,13 @@
 import express, { Router } from "express";
+import fetch from "node-fetch";
 import type { TorrentService } from "../../modules/integrations/torrent.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 import { requireDownloadProvider } from "../../middleware/provider-gate.js";
+
+const KNABEN_API = "https://knaben.org/api/v1";
 
 export function createTorrentRoutes(container: ServiceContainer): Router {
     const torrentService: ServiceContainer['torrentService'] = (container as any).torrentService || (container as any);
@@ -17,6 +20,41 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
     // BitTorrent is disabled by default (grey-area P2P): all its endpoints
     // require the plugin to be explicitly enabled by the admin.
     router.use(requireDownloadProvider("torrent"));
+
+    /**
+     * GET /api/admin/torrents/search?q=...&page=0&size=20
+     * Proxy to Knaben aggregator API — avoids CORS and ISP blocks client-side.
+     */
+    router.get("/search", async (req, res) => {
+        const q = String(req.query.q ?? "").trim();
+        if (!q) return res.status(400).json({ error: "Query required" });
+
+        const page = Math.max(0, parseInt(String(req.query.page ?? "0"), 10) || 0);
+        const size = Math.min(50, Math.max(1, parseInt(String(req.query.size ?? "20"), 10) || 20));
+
+        const params = new URLSearchParams({
+            query: q,
+            size: String(size),
+            from: String(page * size),
+            orderBy: "seeders",
+            orderDirection: "desc",
+        });
+
+        try {
+            const upstream = await fetch(`${KNABEN_API}/search?${params}`, {
+                headers: { Accept: "application/json", "User-Agent": "TuneCamp/1.0" },
+                signal: AbortSignal.timeout(10_000),
+            });
+            if (!upstream.ok) {
+                return res.status(502).json({ error: `Knaben returned ${upstream.status}` });
+            }
+            const data = await upstream.json();
+            res.json(data);
+        } catch (err: any) {
+            console.error("[torrent-search] Knaben fetch error:", err.message);
+            res.status(502).json({ error: "Could not reach Knaben API" });
+        }
+    });
 
     /**
      * GET /api/admin/torrents
