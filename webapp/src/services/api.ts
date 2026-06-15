@@ -273,6 +273,7 @@ const API = {
     getNetworkStatus: () => handleResponse(api.get<NetworkStatus>('stats/network/status')),
     getFollowedPeers: () => handleResponse(api.get<any[]>('admin/network/ap/peers')),
     followRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/follow', { url })),
+    followTuneCampInstance: (url: string) => handleResponse(api.post<{ message: string }>('admin/network/tunecamp/follow', { url })),
     unfollowRemoteActor: (url: string) => handleResponse(api.post('admin/network/ap/unfollow', { url })),
     syncPeer: (url?: string) => handleResponse(api.post('admin/network/ap/sync', { url })),
     followRssFeed: (url: string) => handleResponse(api.post<{ message: string; name: string; items: number }>('admin/network/rss/follow', { url })),

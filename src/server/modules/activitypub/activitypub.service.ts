@@ -213,9 +213,10 @@ export class ActivityPubService {
             const inboxUri = await this.getInboxFromActor(finalActorUri);
             if (!inboxUri) {
                 console.error(`❌ Could not resolve inbox for actor: ${finalActorUri}`);
-                // Proceed to fetch remote outbox directly (for instances like Funkwhale libraries that don't have an inbox)
+                // Funkwhale libraries and similar have no inbox: pull their outbox directly,
+                // but still surface the failure so the caller (and UI) don't report a false success.
                 this.fetchRemoteOutbox(finalActorUri).catch(e => console.error(`⚠️ Failed to pre-fetch outbox for ${finalActorUri}:`, e));
-                return;
+                throw new Error(`Could not resolve an ActivityPub actor at ${actorUri}. If it's a TuneCamp instance, follow it by its full handle (e.g. https://host/@handle) instead of the bare domain.`);
             }
 
             const follow = new Follow({

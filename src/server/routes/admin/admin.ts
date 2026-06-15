@@ -40,6 +40,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const social: ServiceContainer['social'] = (container as any).social || (container as any);
     const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const federatedDiscoveryService: ServiceContainer['federatedDiscoveryService'] = (container as any).federatedDiscoveryService || (container as any);
     const rssService = createRssService(database);
     const router = Router();
     router.use(json({ limit: "10mb" }));
@@ -471,6 +472,55 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         } catch (error: any) {
             console.error("Error following AP actor:", error);
             res.status(500).json({ error: error.message || "Failed to follow remote actor" });
+        }
+    });
+
+    /**
+     * POST /api/admin/network/tunecamp/follow
+     * Follow another TuneCamp instance by its website URL alone (Any Admin).
+     *
+     * Does the resolution under the hood: validates the origin is a TuneCamp
+     * instance via NodeInfo, follows its site actor over ActivityPub, and kicks
+     * off an immediate federated-discovery crawl so it shows up right away
+     * instead of waiting for the next scheduled crawl.
+     */
+    router.post("/network/tunecamp/follow", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can follow instances" });
+            }
+            const { url } = req.body;
+            if (!url || typeof url !== "string") {
+                return res.status(400).json({ error: "Instance URL is required" });
+            }
+
+            // Accept a bare domain or any URL; we only care about the origin.
+            let origin: string;
+            try {
+                const normalized = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+                origin = new URL(normalized).origin;
+            } catch {
+                return res.status(400).json({ error: "Invalid instance URL" });
+            }
+
+            // Validate it's actually a TuneCamp instance (and store it immediately).
+            const isTuneCamp = await federatedDiscoveryService.probeOrigin(origin);
+            if (!isTuneCamp) {
+                return res.status(400).json({
+                    error: `${origin} doesn't look like a reachable TuneCamp instance. Check the URL, or use "Instances & Peers" to follow a non-TuneCamp ActivityPub actor.`,
+                });
+            }
+
+            // Follow the site actor over ActivityPub (now resolves via NodeInfo actorId).
+            await apService.followRemoteActor(origin, getSiteHandle(database));
+
+            // Expand discovery now rather than on the 6h schedule.
+            taskManager.run("federated-discovery", () => federatedDiscoveryService.crawl());
+
+            res.json({ message: `Following TuneCamp instance ${origin}. Its catalog will appear in the Network.` });
+        } catch (error: any) {
+            console.error("Error following TuneCamp instance:", error);
+            res.status(500).json({ error: error.message || "Failed to follow TuneCamp instance" });
         }
     });
 
