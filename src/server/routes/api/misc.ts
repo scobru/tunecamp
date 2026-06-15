@@ -108,6 +108,7 @@ export function createMiscRoutes(container: ServiceContainer): Router {
     });
 
     router.get("/api/v1/instance/nodeinfo/2.0", async (req, res) => {
+        const publicUrl = (identity.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`).trim().replace(/\/$/, "");
         const stats = await library.getStats();
         res.json({
             version: "2.0",
@@ -121,6 +122,9 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             },
             metadata: {
                 nodeName: identity.getSetting("siteName") || config.siteName || "TuneCamp",
+                // Site-actor URI so peers following us by bare domain can resolve our
+                // instance actor when WebFinger handle guesses miss (discoverSiteActor fallback).
+                actorId: `${publicUrl}/users/${getSiteHandle(identity)}`,
                 library: { federationEnabled: true },
             }
         });

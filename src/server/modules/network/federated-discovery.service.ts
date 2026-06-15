@@ -42,6 +42,12 @@ export interface FederatedDiscoveryOptions {
 export interface FederatedDiscoveryService {
     /** Crawl the network from the seeds; returns the number of reachable instances found. */
     crawl(): Promise<number>;
+    /**
+     * Probe a single origin on demand: validates it's a TuneCamp instance via NodeInfo
+     * and, if so, stores its metadata immediately (so it appears without waiting for a
+     * full crawl). Returns true when the origin is a reachable TuneCamp instance.
+     */
+    probeOrigin(rawOrigin: string): Promise<boolean>;
     /** Discovered instances, served from SQLite (same shape stats.ts expects from Zen sites). */
     getCommunitySites(): FederatedInstance[];
     /** Known instance origins, for the public `/api/community/peers` gossip endpoint. */
@@ -257,6 +263,14 @@ export function createFederatedDiscoveryService(
         }
     };
 
+    const probeOrigin = async (rawOrigin: string): Promise<boolean> => {
+        const o = normalizeOrigin(rawOrigin);
+        if (!o) return false;
+        const own = normalizeOrigin(options.getOwnOrigin?.());
+        if (o === own) return false;
+        return (await probe(o)) !== null;
+    };
+
     const getCommunitySites = (): FederatedInstance[] => {
         const since = Date.now() - HARD_EXPIRY_MS;
         let rows: any[] = [];
@@ -308,5 +322,5 @@ export function createFederatedDiscoveryService(
 
     prune();
 
-    return { crawl, getCommunitySites, getPeers, prune };
+    return { crawl, probeOrigin, getCommunitySites, getPeers, prune };
 }

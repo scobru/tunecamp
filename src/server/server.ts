@@ -169,7 +169,16 @@ export async function startServer(config: ServerConfig): Promise<void> {
         },
         getApSeedOrigins: () =>
             database.getFollowedActors()
-                .filter((a: any) => a.username === "site" || a.username === getSiteHandle(database))
+                // Seed the crawl from followed instance actors. TuneCamp's site actor is a
+                // 'Service' (see fedify actor dispatcher); we also keep the legacy handle
+                // checks for instances followed before the handle became name-derived.
+                // probe() re-validates each origin via NodeInfo, so non-TuneCamp Services
+                // (e.g. relays) are dropped harmlessly rather than excluded up front.
+                .filter((a: any) =>
+                    a.type === "Service" ||
+                    a.username === "site" ||
+                    a.username === getSiteHandle(database)
+                )
                 .map((a: any) => { try { return new URL(a.uri).origin; } catch { return null; } })
                 .filter((o: any): o is string => !!o),
     });
