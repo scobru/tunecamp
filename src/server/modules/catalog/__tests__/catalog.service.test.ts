@@ -35,7 +35,6 @@ describe('CatalogService.batchUpdateTracks', () => {
         catalogService = new CatalogService(
             mockDb as any,
             mockPublishing as any,
-            {} as any, // zendb
             {} as any, // storage
             '/music', // musicDir
             {} as any, // openRouter

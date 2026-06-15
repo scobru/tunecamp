@@ -19,19 +19,6 @@ vi.mock('../../services/api', () => ({
     }
 }));
 
-vi.mock('../../services/zen', () => ({
-    ZenAuth: {
-        init: vi.fn(),
-        login: vi.fn(),
-        loginWithPair: vi.fn(),
-        logout: vi.fn(),
-        getProfile: vi.fn(),
-        subscribeProfile: vi.fn(),
-        subscribeAlias: vi.fn(),
-        sign: vi.fn(),
-    }
-}));
-
 const mockClearWallet = vi.fn();
 vi.mock('../useWalletStore', () => ({
     useWalletStore: {

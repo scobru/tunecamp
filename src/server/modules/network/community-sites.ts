@@ -1,45 +1,30 @@
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
-import type { ZenDBService } from "./zendb.service.js";
 import type { FederatedDiscoveryService } from "./federated-discovery.service.js";
 import { getSiteHandle } from "../../core/site-actor.js";
 import { isLiveTuneCamp } from "../../common/network.js";
 
 /**
  * Builds the aggregated community site list from every discovery source:
- * local + Zen signaling + federated (HTTP/NodeInfo gossip) + ActivityPub site actors.
+ * local + federated (HTTP/NodeInfo gossip) + ActivityPub site actors.
  *
  * Shared by `/api/stats/network/sites` (admin/webapp) and `/api/community/sites`
- * (public, for the static website). Zen is kept in parallel during Phase A.
+ * (public, for the static website).
  */
 export interface CommunitySitesDeps {
     dbService: DatabaseService;
     config: ServerConfig;
-    zendbService: ZenDBService;
     federatedDiscoveryService: FederatedDiscoveryService;
 }
 
 export async function buildCommunitySites(deps: CommunitySitesDeps): Promise<any[]> {
-    const { dbService, config, zendbService, federatedDiscoveryService } = deps;
+    const { dbService, config, federatedDiscoveryService } = deps;
     const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;
+    const myUrl = publicUrl.replace(/\/$/, "");
 
-    // 1. Zen signaling sites (legacy — kept in parallel during Phase A)
-    const gunSites = await zendbService.getCommunitySites();
-    const formattedGunSites = gunSites.map((s: any) => ({
-        url: s.url,
-        name: s.name || s.title || "Untitled",
-        description: s.description || "",
-        version: s.version || "2.0",
-        lastSeen: s.lastSeen,
-        coverImage: s.coverImage || null,
-        communityLink: s.communityLink || null,
-        federation: "zen",
-    }));
-
-    // 2. Federated (HTTP/NodeInfo gossip) sites — deduped against Zen-discovered ones
-    const knownUrls = new Set(formattedGunSites.map((s) => (s.url || "").replace(/\/$/, "")));
+    // 1. Federated (HTTP/NodeInfo gossip) sites
     const formattedFedSites = (federatedDiscoveryService?.getCommunitySites?.() ?? [])
-        .filter((s) => s.url && !knownUrls.has(s.url.replace(/\/$/, "")))
+        .filter((s) => s.url && s.url.replace(/\/$/, "") !== myUrl)
         .map((s) => ({
             url: s.url,
             name: s.name || "Untitled",
@@ -51,7 +36,7 @@ export async function buildCommunitySites(deps: CommunitySitesDeps): Promise<any
             federation: "federated",
         }));
 
-    // 3. ActivityPub site actors — health-checked so a followed instance that
+    // 2. ActivityPub site actors — health-checked so a followed instance that
     // went dark doesn't linger in the directory just because we once followed it.
     const apActorsAll = dbService
         .getFollowedActors()
@@ -70,7 +55,7 @@ export async function buildCommunitySites(deps: CommunitySitesDeps): Promise<any
         federation: "activitypub",
     }));
 
-    // 4. Local site
+    // 3. Local site
     const localSite = {
         url: publicUrl,
         name: dbService.getSetting("siteName") || "Local Instance",
@@ -82,5 +67,5 @@ export async function buildCommunitySites(deps: CommunitySitesDeps): Promise<any
         federation: "local",
     };
 
-    return [localSite, ...formattedGunSites, ...formattedFedSites, ...formattedApSites];
+    return [localSite, ...formattedFedSites, ...formattedApSites];
 }

@@ -3,8 +3,6 @@ import jwt from "jsonwebtoken";
 import type { Database } from "better-sqlite3";
 import fetch from "node-fetch";
 import crypto from "crypto";
-import { Zen } from "../network/zen.js";
-// ZEN handles its own crypto natively
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
 
@@ -625,14 +623,6 @@ export function createAuthService(
         async changePassword(username: string, newPassword: string): Promise<void> {
             const hash = await this.hashPassword(newPassword);
             db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(hash, username);
-
-            // Generate ZEN identity if missing (First Login / Password Change flow)
-            const user = db.prepare("SELECT id, gun_pub FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { id: number, gun_pub: string | null } | undefined;
-            if (user && !user.gun_pub) {
-                console.log(`🔐 [AUTH] Generating new ZEN Identity for ${username} during password change...`);
-                const gunPair = await (Zen as any).pair();
-                this.updateZenPair(username, gunPair);
-            }
         },
 
         isFirstRun(): boolean {
@@ -776,36 +766,7 @@ export function createAuthService(
         },
 
         async loginWithMastodon(instanceUrl: string, redirectUri: string, code: string): Promise<{ pair: any; alias: string }> {
-            // 1. Get Client
-            const client = await this.registerMastodonApp(instanceUrl, redirectUri);
-
-            // 2. Exchange Code
-            const { accessToken, user } = await this.exchangeMastodonCode(instanceUrl, client.clientId, client.clientSecret, redirectUri, code);
-
-            const subject = user.acct;
-            const provider = AuthProvider.MASTODON;
-
-            // 3. Check for existing link
-            const link = db.prepare("SELECT * FROM oauth_links WHERE provider = ? AND subject = ?").get(provider, subject) as { gun_pub: string; gun_priv: string } | undefined;
-
-            if (link) {
-                // Decrypt and return
-                const pair = this.decryptZenPriv(link.gun_priv);
-                console.log(`🔓 Mastodon Login: Found existing user ${subject} -> ${pair.pub.slice(0, 8)}...`);
-                return { pair, alias: user.display_name || user.acct };
-            }
-
-            // 4. Create new library identity (ZEN / secp256k1)
-            console.log(`🆕 Mastodon Login: Creating NEW ZEN identity for ${subject}`);
-            const pair = await (Zen as any).pair();
-            const encryptedPriv = this.encryptZenPriv(pair);
-
-            db.prepare("INSERT INTO oauth_links (provider, subject, gun_pub, gun_priv) VALUES (?, ?, ?, ?)").run(provider, subject, pair.pub, encryptedPriv);
-
-            // Register in gun_users table
-            db.prepare(`INSERT OR IGNORE INTO gun_users (pub, epub, alias) VALUES (?, ?, ?)`).run(pair.pub, pair.epub, user.display_name || user.acct);
-
-            return { pair, alias: user.display_name || user.acct };
+            throw new Error("Mastodon login is not supported in Phase B");
         },
 
 

@@ -22,7 +22,6 @@ const upload = multer({ dest: "uploads/" });
 export function createAdminRoutes(container: ServiceContainer): Router {
     const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
     const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const config: ServiceContainer['config'] = (container as any).config || (container as any);
     const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
@@ -255,8 +254,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             const { 
-                siteName, siteDescription, publicUrl, artistName, coverImage, mode, 
-                zenPeers, web3_checkout_address, web3_nft_address,
+                siteName, siteDescription, publicUrl, artistName, coverImage, mode,
+                web3_checkout_address, web3_nft_address,
                 telegram_bot_token, telegram_allowed_channels,
                 adminFeePercentage, adminTreasuryAddress,
                 soulseek_username, soulseek_password,
@@ -341,10 +340,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 identity.setSetting("communityLink", communityLink);
                 settingsChanged = true;
             }
-            if (zenPeers !== undefined) {
-                identity.setSetting("zenPeers", zenPeers);
-                settingsChanged = true;
-            }
             if (web3_checkout_address !== undefined) {
                 identity.setSetting("web3_checkout_address", web3_checkout_address);
             }
@@ -420,27 +415,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 }
             }
 
-            // Re-register on GunDB if settings changed and publicUrl is available
-            const currentPublicUrl = publicUrl !== undefined ? publicUrl : identity.getSetting("publicUrl") || config.publicUrl;
-
-            if (settingsChanged && currentPublicUrl) {
-                const currentSiteName = siteName !== undefined ? siteName : identity.getSetting("siteName") || config.siteName || "TuneCamp Server";
-                const currentArtistName = artistName !== undefined ? artistName : identity.getSetting("artistName") || "";
-                const effectiveArtistName = currentArtistName || (library.getArtists()[0]?.name || "");
-
-                const siteInfo = {
-                    url: currentPublicUrl,
-                    title: currentSiteName,
-                    description: siteDescription !== undefined ? siteDescription : identity.getSetting("siteDescription") || "",
-                    artistName: effectiveArtistName,
-                    coverImage: coverImage !== undefined ? coverImage : identity.getSetting("coverImage") || "",
-                    communityLink: communityLink !== undefined ? communityLink : identity.getSetting("communityLink") || ""
-                };
-
-                await zendbService.registerSite(siteInfo);
-                console.log(`🌐 Re-registered site on Zen with updated settings: ${currentPublicUrl}`);
-            }
-
             if (settingsChanged) {
                 try {
                     const finalName = identity.getSetting("siteName") || config.siteName || "TuneCamp Instance";
@@ -501,24 +475,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     });
 
     /**
-     * GET /api/admin/system/identity
-     * Get server identity keypair (ROOT ADMIN ONLY)
-     */
-    router.get("/system/identity", async (req: AuthenticatedRequest, res: any) => {
-        try {
-            // Only root admin can access system identity
-            if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only root admin can access system identity" });
-            }
-            const pair = await zendbService.getIdentityKeyPair();
-            res.json(pair);
-        } catch (error) {
-            console.error("Error getting identity:", error);
-            res.status(500).json({ error: "Failed to get identity" });
-        }
-    });
-
-    /**
      * GET /api/admin/system/ap-identity
      * Get site actor ActivityPub identity keypair (ROOT ADMIN ONLY)
      */
@@ -537,27 +493,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         }
     });
 
-    /**
-     * POST /api/admin/system/identity
-     * Import server identity keypair (ROOT ADMIN ONLY)
-     */
-    router.post("/system/identity", async (req: AuthenticatedRequest, res: any) => {
-        try {
-            // Only root admin can import system identity
-            if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only root admin can import system identity" });
-            }
-            const pair = req.body;
-            const success = await zendbService.setIdentityKeyPair(pair);
-            if (success) {
-                res.json({ message: "Identity imported successfully" });
-            } else {
-                res.status(400).json({ error: "Invalid keypair or authentication failed" });
-            }
-        } catch (error) {
-            console.error("Error setting identity:", error);
-        }
-    });
 
     /**
      * POST /api/admin/system/rescan
@@ -644,44 +579,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Error pruning orphan records:", error);
             res.status(500).json({ error: "Failed to prune orphan records" });
-        }
-    });
-
-    /**
-     * POST /api/admin/system/sync
-     * Force sync with Zen network (Any Admin)
-     */
-    router.post("/system/sync", async (req: AuthenticatedRequest, res: any) => {
-        try {
-            // Only super root admin can force sync
-            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
-                return res.status(403).json({ error: "Only super root admin can force sync" });
-            }
-            zendbService.syncNetwork().catch((err: any) => console.error("[Admin] Background ZenDB sync error:", err));
-            res.json({ message: "Network sync triggered in background" });
-        } catch (error) {
-            console.error("Error syncing network:", error);
-            res.status(500).json({ error: "Failed to sync network" });
-        }
-    });
-
-    /**
-     * POST /api/admin/network/cleanup
-     * Force global cleanup of unreachable sites in Zen network (Any Admin)
-     */
-    router.post("/network/cleanup", async (req: AuthenticatedRequest, res: any) => {
-        try {
-            // Only super root admin can trigger global cleanup
-            if (!req.isRootAdmin) {
-                return res.status(403).json({ error: "Only super root admin can trigger global network cleanup" });
-            }
-
-            zendbService.cleanupGlobalNetwork().catch((err: any) => console.error("[Admin] Background network cleanup error:", err));
-
-            res.json({ message: "Global network cleanup triggered in background" });
-        } catch (error) {
-            console.error("Error in global network cleanup:", error);
-            res.status(500).json({ error: "Global cleanup failed" });
         }
     });
 

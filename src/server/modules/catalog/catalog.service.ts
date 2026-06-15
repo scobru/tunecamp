@@ -2,7 +2,6 @@ import type { DatabaseService, Album, Release, Track, TrackDTO, AlbumDTO } from 
 import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { MetadataService } from "./metadata.service.js";
 import type { PublishingService } from "../publishing/publishing.service.js";
-import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import { VisibilityGuardian, Capability, VisibilityProfile, UserRole } from "../../common/visibility.js";
@@ -20,7 +19,6 @@ export class CatalogService {
     constructor(
         private database: DatabaseService,
         private publishing: PublishingService,
-        private zendb: ZenDBService,
         private storage: StorageEngine,
         private musicDir: string,
         private openRouter: OpenRouterService,
@@ -400,7 +398,7 @@ export class CatalogService {
     getSettings() {
         const settings = [
             "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage",
-            "siteLogo", "mode", "siteId", "zenPeers", "web3_checkout_address", "web3_nft_address",
+            "siteLogo", "mode", "siteId", "web3_checkout_address", "web3_nft_address",
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "siteHandle"
         ];
         const res: any = {};

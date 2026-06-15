@@ -91,7 +91,6 @@ export interface Release {
     external_links?: string;
     visibility: 'public' | 'private' | 'unlisted';
     published_at?: string;
-    published_to_zen?: boolean;
     published_to_ap?: boolean;
     use_nft?: boolean;
     useNft?: boolean;
@@ -207,7 +206,6 @@ export interface AuthStatus {
     isRootAdmin?: boolean;
     firstRun?: boolean;
     mustChangePassword?: boolean;
-    pair?: any; // Added Zen identity pair
     isActive?: boolean;
 }
 
@@ -228,8 +226,6 @@ export interface SiteSettings {
     themeBlur?: string;
     themeOverlayOpacity?: string | number;
     donationLinks?: ArtistLink[];
-    zenPeers?: string;
-    gunPeers?: string;
     web3Enabled?: boolean | string;
     web3_checkout_address?: string;
     web3_nft_address?: string;
@@ -327,14 +323,14 @@ export interface NetworkSite {
     version: string;
     lastSeen: string;
     coverImage?: string;
-    federation?: 'zen' | 'activitypub' | 'local' | 'http' | 'rss';
+    federation?: 'federated' | 'activitypub' | 'local' | 'http' | 'rss';
 }
 
 export interface NetworkTrack {
     track: Track;
     siteName: string;
     siteUrl: string;
-    federation?: 'zen' | 'activitypub' | 'local' | 'http' | 'rss';
+    federation?: 'federated' | 'activitypub' | 'local' | 'http' | 'rss';
     // For ActivityPub/Local tracks/posts (flattened structure)
     type?: 'release' | 'post';
     audioUrl?: string;
@@ -399,10 +395,6 @@ export interface NetworkStatus {
     sites: number;
     tracks: number;
     lastUpdate: string;
-    zen?: {
-        connected: boolean;
-        peers: number;
-    };
     activitypub?: {
         enabled: boolean;
     };

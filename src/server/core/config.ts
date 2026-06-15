@@ -12,7 +12,6 @@ export interface ServerConfig {
     siteName?: string;   // Site name for community registry    
     siteDescription?: string;
     relayUrl?: string;
-    zenPeers?: string[];
     // Federated discovery bootstrap seeds (HTTP origins of known TuneCamp
     // instances). Used alongside ActivityPub-followed instances; no central
     // default — discovery is gossip-based from these starting points.
@@ -109,7 +108,6 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         corsOrigins: process.env.TUNECAMP_CORS_ORIGINS?.split(",") || [],
         publicUrl: process.env.TUNECAMP_PUBLIC_URL || overrides?.publicUrl,
         siteName: process.env.TUNECAMP_SITE_NAME || overrides?.siteName,
-        zenPeers: process.env.TUNECAMP_ZEN_PEERS?.split(/[,\s]+/).map(p => p.trim()).filter(p => p.length > 0) || overrides?.zenPeers,
         federationSeeds: process.env.TUNECAMP_FEDERATION_SEEDS?.split(/[,\s]+/).map(p => p.trim()).filter(p => p.length > 0) || overrides?.federationSeeds,
         adminUser: process.env.TUNECAMP_ADMIN_USER || overrides?.adminUser || "admin",
         adminPass: process.env.TUNECAMP_ADMIN_PASS || overrides?.adminPass || "admin",

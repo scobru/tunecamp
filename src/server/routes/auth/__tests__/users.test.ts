@@ -6,19 +6,11 @@ import { UserRole } from '../../../common/visibility.js';
 
 describe('Users Routes', () => {
     let app: express.Express;
-    let mockZenDBService: any;
     let mockDatabase: any;
     let mockAuthService: any;
     let mockAPService: any;
 
     beforeEach(() => {
-        mockZenDBService = {
-            getUser: jest.fn(),
-            registerUser: jest.fn(),
-            getComments: jest.fn(),
-            addComment: jest.fn(),
-            deleteComment: jest.fn()
-        };
 
         mockDatabase = {
             getSetting: jest.fn().mockReturnValue('true'),
@@ -41,7 +33,6 @@ describe('Users Routes', () => {
         app = express();
         app.use(express.json());
         app.use('/api/users', createUsersRoutes({
-            zendbService: mockZenDBService,
             database: mockDatabase,
             authService: mockAuthService,
             apService: mockAPService
@@ -126,7 +117,7 @@ describe('Users Routes', () => {
 
     describe('GET /api/users/:pubKey', () => {
         test('returns 404 if user profile not found', async () => {
-            mockZenDBService.getUser.mockResolvedValue(null);
+
 
             const res = await request(app).get('/api/users/pub-key-not-found');
 
@@ -175,7 +166,6 @@ describe('Users Routes', () => {
                 next();
             });
             authApp.use('/api/users', createUsersRoutes({
-                zendbService: mockZenDBService,
                 database: mockDatabase,
                 authService: mockAuthService,
                 apService: mockAPService

@@ -67,7 +67,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   };
 
   const handleFinalize = async (id: number) => {
-    if (!confirm("Finalize release? This will broadcast it to the Fediverse and Zen network.")) return;
+    if (!confirm("Finalize release? This will broadcast it to the Fediverse.")) return;
     try {
         await API.finalizeRelease(id);
         notify.success("Release finalized!");

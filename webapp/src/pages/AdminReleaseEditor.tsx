@@ -70,7 +70,6 @@ interface LocalRelease {
   genre?: string;
   visibility: "public" | "private" | "unlisted";
   is_public: boolean;
-  published_to_gundb?: boolean;
   published_to_ap?: boolean;
   use_nft?: boolean;
   price?: number | string;
@@ -223,10 +222,6 @@ export default function AdminReleaseEditor() {
         description: data.description,
         visibility: data.visibility || (data.is_public ? "public" : "private"),
         is_public: !!data.is_public,
-        published_to_gundb:
-          data.published_to_gundb !== undefined
-            ? !!data.published_to_gundb
-            : true,
         published_to_ap:
           data.published_to_ap !== undefined ? !!data.published_to_ap : true,
         price: data.price,
@@ -894,15 +889,6 @@ export default function AdminReleaseEditor() {
 
                 {(metadata.visibility === "public" || metadata.visibility === "unlisted") && (
                   <div className="space-y-2 mt-4 pt-4 border-t border-base-content/5">
-                    <label className="flex items-center gap-3 p-2 cursor-pointer hover:bg-base-200 rounded-lg transition-colors">
-                      <input
-                        type="checkbox"
-                        className="checkbox checkbox-xs checkbox-primary"
-                        checked={metadata.published_to_gundb !== false}
-                        onChange={(e) => setMetadata((prev) => ({ ...prev, published_to_gundb: e.target.checked }))}
-                      />
-                      <span className="text-xs font-bold tracking-normal opacity-70">Push to Zen (P2P)</span>
-                    </label>
                     <label className="flex items-center gap-3 p-2 cursor-pointer hover:bg-base-200 rounded-lg transition-colors">
                       <input
                         type="checkbox"

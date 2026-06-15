@@ -2,7 +2,6 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import fs from "fs-extra";
 import { createRequire } from "module";
-import { kprs } from "../../modules/network/zen-network.js";
 import type { ServiceContainer } from "../../core/container.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
 import { create } from "xmlbuilder2";
@@ -25,10 +24,6 @@ export function createMiscRoutes(container: ServiceContainer): Router {
     const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
     const social: ServiceContainer['social'] = (container as any).social || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
-
-    router.get("/api/peers", (req, res) => {
-        res.status(200).json(Array.from(kprs));
-    });
 
     router.get("/api/waveform/:id(*)", async (req, res) => {
         try {

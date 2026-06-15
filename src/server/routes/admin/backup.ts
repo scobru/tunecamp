@@ -258,12 +258,6 @@ function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbB
             }
         });
         archive.append(JSON.stringify(artistsKeys, null, 2), { name: "keys/artists_keys.json" });
-
-        // System Identity (Zen)
-        const systemKeys = database.identity.getSetting("zenPair") || database.identity.getSetting("gunPair");
-        if (systemKeys) {
-            archive.append(systemKeys, { name: "keys/system_identity.json" });
-        }
     } catch (e) {
         console.warn("Failed to backup keys:", e);
         archive.append(JSON.stringify({ error: String(e) }), { name: "keys/error.log" });

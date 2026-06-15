@@ -11,7 +11,6 @@ describe('Catalog Track Artist Update Synchronization', () => {
         
         // Mock all dependencies other than database
         const mockPublishing: any = { syncRelease: (jest.fn() as any).mockResolvedValue(undefined) };
-        const mockZendb: any = {};
         const mockStorage: any = {};
         const mockOpenRouter: any = {};
         const mockMetadataService: any = { syncPhysicalTags: (jest.fn() as any).mockResolvedValue(undefined) };
@@ -19,7 +18,6 @@ describe('Catalog Track Artist Update Synchronization', () => {
         catalogService = new CatalogService(
             db,
             mockPublishing,
-            mockZendb,
             mockStorage,
             'musicDir',
             mockOpenRouter,

@@ -1,7 +1,6 @@
 import { Router, json } from "express";
 import crypto from "crypto";
 import { validateUsername } from "../../../utils/audioUtils.js";
-import type { ZenDBService } from "../../modules/network/zendb.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
@@ -13,7 +12,6 @@ import { createAuthMiddleware, type AuthenticatedRequest } from "../../middlewar
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createUsersRoutes(container: ServiceContainer): Router {
-    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);

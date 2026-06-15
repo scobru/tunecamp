@@ -9,7 +9,6 @@ import type { AuthService } from '../../modules/auth/auth.service.js';
 import type { MediaEngine } from '../../modules/media/media-engine.js';
 import { sendStreamResult } from '../../modules/media/media-engine.js';
 import type { SubsonicService } from '../../modules/subsonic/subsonic.service.js';
-import type { ZenDBService } from '../../modules/network/zendb.service.js';
 import { UserRole, VisibilityGuardian, VisibilityProfile } from '../../common/visibility.js';
 
 import type { ServiceContainer } from '../../core/container.js';
@@ -25,7 +24,6 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
     const subsonicService: ServiceContainer['subsonicService'] = (container as any).subsonicService || (container as any);
     const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (container as any);
     const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
 
     // --- Helpers ---
 
