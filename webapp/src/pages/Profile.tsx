@@ -33,7 +33,7 @@ import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
 import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
 
 const Profile = () => {
-  const { user, isAuthenticated, role, isInitializing } = useAuthStore();
+  const { user, isAuthenticated, role, isInitializing, checkAuth } = useAuthStore();
   // const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin' || user?.isRootAdmin;
   const { address } = useWalletStore();
   const activeAddress = address;
@@ -46,7 +46,10 @@ const Profile = () => {
 
   useEffect(() => {
     API.getSiteSettings()
-      .then((s) => { if (s?.siteHandle) setSiteHandle(s.siteHandle); })
+      .then((s) => {
+        if (s?.siteHandle) setSiteHandle(s.siteHandle);
+        setSelfPublishEnabled(s?.listenerSelfPublish === true || (s?.listenerSelfPublish as any) === "true");
+      })
       .catch(() => {});
   }, []);
 
@@ -94,6 +97,7 @@ const Profile = () => {
   const [loadingTracks, setLoadingTracks] = useState(true);
   const [artistRequestedAt, setArtistRequestedAt] = useState<string | null>(null);
   const [requestingArtist, setRequestingArtist] = useState(false);
+  const [selfPublishEnabled, setSelfPublishEnabled] = useState(false);
 
   // API Tokens State & Logic
   const [apiTokens, setApiTokens] = useState<any[]>([]);
@@ -160,9 +164,15 @@ const Profile = () => {
   const handleRequestArtist = async () => {
     setRequestingArtist(true);
     try {
-      await API.requestArtistProfile();
-      setArtistRequestedAt(new Date().toISOString());
-      notify.success("Request sent! An admin will review it.");
+      const result = await API.requestArtistProfile();
+      if (result?.autoApproved && result?.token) {
+        API.setToken(result.token);
+        await checkAuth();
+        notify.success("Artist profile created! Your account has been promoted to Curator.");
+      } else {
+        setArtistRequestedAt(new Date().toISOString());
+        notify.success("Request sent! An admin will review it.");
+      }
     } catch (e) {
       notify.error(e, "Failed to send request");
     } finally {
@@ -466,9 +476,9 @@ const Profile = () => {
                   <User size={20} className="text-secondary" /> Become an Artist
                 </h3>
                 <p className="text-sm opacity-60">
-                  Want to publish your own music on this instance? Request an
-                  artist profile — if an admin approves, your account is
-                  promoted to Curator with a linked artist profile.
+                  {selfPublishEnabled
+                    ? "Want to publish your own music on this instance? Create an artist profile instantly — your account will be promoted to Curator right away."
+                    : "Want to publish your own music on this instance? Request an artist profile — if an admin approves, your account is promoted to Curator with a linked artist profile."}
                 </p>
                 {artistRequestedAt ? (
                   <div className="alert alert-info bg-primary/10 border-primary/20 text-sm">
