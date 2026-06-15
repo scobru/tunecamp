@@ -218,6 +218,7 @@ export interface SiteSettings {
     coverImage?: string;
     publicUrl?: string;
     allowPublicRegistration?: boolean;
+    listenerSelfPublish?: boolean | string;
     /** 'label' (curated storefront, default) or 'community' (registrations get an artist profile, selling opt-in per artist) */
     mode?: string;
     backgroundImage?: string;
