@@ -19,6 +19,7 @@ export const AdminFederationPanel = () => {
     const [instanceUrl, setInstanceUrl] = useState('');
     const [instanceLoading, setInstanceLoading] = useState(false);
     const [siteHandle, setSiteHandle] = useState('site');
+    const [refreshingCatalogs, setRefreshingCatalogs] = useState(false);
 
     useEffect(() => {
         loadPeers();
@@ -97,6 +98,19 @@ export const AdminFederationPanel = () => {
         }
     };
 
+    const handleRefreshCatalogs = async () => {
+        setRefreshingCatalogs(true);
+        try {
+            const res = await API.refreshNetworkCatalogs();
+            notify.success(res?.message || 'Network catalogs will refetch on next load');
+        } catch (e: any) {
+            console.error(e);
+            notify.error(e, 'Failed to refresh catalogs');
+        } finally {
+            setRefreshingCatalogs(false);
+        }
+    };
+
     const handleFollowFeed = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!feedUrl) return;
@@ -152,11 +166,25 @@ export const AdminFederationPanel = () => {
 
             <div className="card card-m3 bg-base-200/30">
                 <div className="card-body p-6">
-                    <h3 className="font-bold mb-2 flex items-center gap-2">
-                        <Server size={18} className="text-primary" /> TuneCamp Instances
-                    </h3>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                        <h3 className="font-bold flex items-center gap-2">
+                            <Server size={18} className="text-primary" /> TuneCamp Instances
+                        </h3>
+                        <button
+                            type="button"
+                            className="btn btn-ghost btn-xs gap-1 normal-case"
+                            onClick={handleRefreshCatalogs}
+                            disabled={refreshingCatalogs}
+                            data-tip="Clear cached catalogs and refetch"
+                        >
+                            {refreshingCatalogs
+                                ? <span className="loading loading-spinner loading-xs"/>
+                                : <RefreshCw size={14}/>}
+                            Refresh catalogs
+                        </button>
+                    </div>
                     <p className="text-sm opacity-70 mb-4 font-medium">
-                        Connect to another TuneCamp instance — just paste its website address. We verify it's a TuneCamp server, follow it, and start pulling its catalog into your Network automatically.
+                        Connect to another TuneCamp instance — just paste its website address. We verify it's a TuneCamp server, follow it, and start pulling its catalog into your Network automatically. Catalogs are cached for up to an hour; use <b>Refresh catalogs</b> to pull the latest immediately (e.g. after a release was deleted on another instance).
                     </p>
                     <form onSubmit={handleFollowInstance} className="flex gap-2">
                         <input

@@ -124,6 +124,41 @@ describe('CatalogCacheService', () => {
         expect(count.c).toBe(0);
     });
 
+    test('invalidate(url) drops one peer and forces a live refetch', async () => {
+        const cache = createCatalogCacheService(db);
+        db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
+            .run(SITE.url, JSON.stringify([{ title: 'Old Song' }]), Date.now());
+        db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
+            .run('https://other.example.com', '[]', Date.now());
+
+        const removed = cache.invalidate(SITE.url);
+        expect(removed).toBe(1);
+
+        // The invalidated peer is gone; the other peer is untouched
+        expect(db.prepare('SELECT * FROM peer_catalog_cache WHERE site_url = ?').get(SITE.url)).toBeUndefined();
+        expect(db.prepare('SELECT * FROM peer_catalog_cache WHERE site_url = ?').get('https://other.example.com')).toBeDefined();
+
+        // Next load refetches live instead of serving the dropped cache
+        mockFetch.mockResolvedValue(catalogResponse('New Song'));
+        const tracks = await cache.getTracks([SITE]);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(tracks[0].title).toBe('New Song');
+    });
+
+    test('invalidate() with no url clears all peers', async () => {
+        const cache = createCatalogCacheService(db);
+        db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
+            .run(SITE.url, '[]', Date.now());
+        db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
+            .run('https://other.example.com', '[]', Date.now());
+
+        const removed = cache.invalidate();
+        expect(removed).toBe(2);
+
+        const count = db.prepare('SELECT COUNT(*) as c FROM peer_catalog_cache').get() as any;
+        expect(count.c).toBe(0);
+    });
+
     test('entry past the hard expiry is not served and is dropped at request time', async () => {
         mockFetch.mockRejectedValue(new Error('ECONNREFUSED')); // still offline
         const cache = createCatalogCacheService(db);

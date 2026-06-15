@@ -21,6 +21,7 @@ import type { StreamingService } from "../modules/streaming/streaming.service.js
 import type { PublishingService } from "../modules/publishing/publishing.service.js";
 import type { ActivityPubService } from "../modules/activitypub/activitypub.service.js";
 import type { FederatedDiscoveryService } from "../modules/network/federated-discovery.service.js";
+import type { CatalogCacheService } from "../modules/network/catalog-cache.service.js";
 import type { LifecycleService } from "../modules/catalog/lifecycle.service.js";
 import type { TelegramBotService } from "../modules/integrations/telegram-bot.js";
 import type { SoulseekService } from "../modules/integrations/soulseek.js";
@@ -72,6 +73,7 @@ export interface ServiceContainer {
     publishingService: PublishingService;
     apService: ActivityPubService;
     federatedDiscoveryService: FederatedDiscoveryService;
+    catalogCache: CatalogCacheService;
     lifecycleService: LifecycleService;
 
     // Integrations

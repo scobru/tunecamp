@@ -28,6 +28,14 @@ export interface CatalogCacheService {
     getTracks(sites: PeerSite[]): Promise<any[]>;
     /** Drops expired entries. Called automatically on creation. */
     prune(): void;
+    /**
+     * Forces the next getTracks() to refetch a peer live by dropping its cached
+     * entry. Pass a site URL to invalidate one peer, or omit to clear all peers.
+     * Returns the number of entries removed. Use this when a peer's catalog is
+     * known to have changed (e.g. a release was deleted upstream) so the change
+     * shows up immediately instead of after the TTL window.
+     */
+    invalidate(siteUrl?: string): number;
 }
 
 export function createCatalogCacheService(db: DatabaseType): CatalogCacheService {
@@ -47,6 +55,7 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
     `);
     const pruneStmt = db.prepare("DELETE FROM peer_catalog_cache WHERE fetched_at < ?");
     const deleteStmt = db.prepare("DELETE FROM peer_catalog_cache WHERE site_url = ?");
+    const deleteAllStmt = db.prepare("DELETE FROM peer_catalog_cache");
 
     // Dedup concurrent refreshes for the same peer
     const inFlight = new Map<string, Promise<any[] | null>>();
@@ -168,9 +177,24 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
         return results;
     };
 
+    const invalidate = (siteUrl?: string): number => {
+        try {
+            if (siteUrl) {
+                const normalized = siteUrl.replace(/\/$/, "");
+                inFlight.delete(normalized);
+                return deleteStmt.run(normalized).changes;
+            }
+            inFlight.clear();
+            return deleteAllStmt.run().changes;
+        } catch (e) {
+            console.error("❌ [CatalogCache] Invalidate failed:", e);
+            return 0;
+        }
+    };
+
     prune();
 
-    return { getTracks, prune };
+    return { getTracks, prune, invalidate };
 }
 
 /**

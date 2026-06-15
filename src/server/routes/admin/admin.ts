@@ -41,6 +41,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const federatedDiscoveryService: ServiceContainer['federatedDiscoveryService'] = (container as any).federatedDiscoveryService || (container as any);
+    const catalogCache: ServiceContainer['catalogCache'] = (container as any).catalogCache;
     const rssService = createRssService(database);
     const router = Router();
     router.use(json({ limit: "10mb" }));
@@ -2085,6 +2086,35 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         } catch (error: any) {
             console.error("Error syncing RSS feeds:", error);
             res.status(500).json({ error: error.message || "Failed to sync RSS feeds" });
+        }
+    });
+
+    /**
+     * POST /api/admin/network/catalog/refresh
+     * Drops the cached HTTP catalog for one peer (with url) or all peers, forcing
+     * the next Network load to refetch live. Use this when a remote instance's
+     * catalog changed (e.g. a release was deleted there) and you don't want to wait
+     * for the stale-while-revalidate TTL to expire.
+     */
+    router.post("/network/catalog/refresh", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can refresh peer catalogs" });
+            }
+            if (!catalogCache) {
+                return res.status(503).json({ error: "Catalog cache unavailable" });
+            }
+            const { url } = req.body;
+            const removed = catalogCache.invalidate(url || undefined);
+            res.json({
+                message: url
+                    ? `Cleared cached catalog for ${url} — it will refetch on next load`
+                    : `Cleared ${removed} cached peer catalog(s) — they will refetch on next load`,
+                removed
+            });
+        } catch (error: any) {
+            console.error("Error refreshing peer catalogs:", error);
+            res.status(500).json({ error: error.message || "Failed to refresh peer catalogs" });
         }
     });
 
