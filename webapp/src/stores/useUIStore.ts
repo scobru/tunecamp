@@ -8,6 +8,8 @@ interface UIState {
   setTheme: (theme: Theme) => void;
   sidebarOpen: boolean;
   toggleSidebar: () => void;
+  sidebarCollapsed: boolean;
+  toggleSidebarCollapsed: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -20,6 +22,8 @@ export const useUIStore = create<UIState>()(
       },
       sidebarOpen: true,
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      sidebarCollapsed: false,
+      toggleSidebarCollapsed: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),
     {
       name: 'tunecamp-ui-storage',
