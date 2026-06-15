@@ -147,7 +147,35 @@ export class MaintenanceService {
     }
 
     /**
-     * Applies specific metadata to an album.
+     * Propagates album-level genre/year to linked tracks that are missing those fields.
+     * Only overwrites track fields that are null/empty, unless force=true.
+     */
+    async propagateAlbumMetadataToTracks(
+        albumId: number,
+        albumData: { genre?: string | null; year?: number | null },
+        force = false
+    ): Promise<void> {
+        const tracks = this.db.getTracksByAlbum(albumId);
+        if (!tracks.length) return;
+
+        for (const track of tracks) {
+            const trackUpdate: any = {};
+
+            if (albumData.genre && (force || !track.genre || track.genre === 'Library')) {
+                trackUpdate.genre = albumData.genre;
+            }
+            if (albumData.year && (force || !track.year || track.year === 0)) {
+                trackUpdate.year = albumData.year;
+            }
+
+            if (Object.keys(trackUpdate).length > 0) {
+                await this.catalogService.updateTrack(track.id, trackUpdate);
+            }
+        }
+    }
+
+    /**
+     * Applies specific metadata to an album and propagates genre/year to its tracks.
      */
     async applyMetadataToAlbum(albumId: number, metadata: any): Promise<void> {
         const updateData: any = {};
@@ -160,6 +188,11 @@ export class MaintenanceService {
         if (metadata.mbid) updateData.external_id = metadata.mbid;
 
         await this.catalogService.updateAlbum(albumId, updateData);
+
+        await this.propagateAlbumMetadataToTracks(albumId, {
+            genre: updateData.genre,
+            year: updateData.year
+        });
     }
 
     /**
@@ -368,6 +401,10 @@ export class MaintenanceService {
 
                 if (updated) {
                     await this.catalogService.updateAlbum(album.id, updateData);
+                    await this.propagateAlbumMetadataToTracks(album.id, {
+                        genre: updateData.genre,
+                        year: updateData.year
+                    }, options.force);
                     results.success++;
                 } else {
                     results.skipped++;
@@ -424,6 +461,10 @@ export class MaintenanceService {
 
                 if (updated) {
                     await this.catalogService.updateAlbum(album.id, updateData);
+                    await this.propagateAlbumMetadataToTracks(album.id, {
+                        genre: updateData.genre,
+                        year: updateData.year
+                    }, options.force);
                     results.success++;
                 } else {
                     results.skipped++;
