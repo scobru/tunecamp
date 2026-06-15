@@ -5,31 +5,6 @@ import { useAuthStore } from '../stores/useAuthStore'
 import { MemoryRouter } from 'react-router-dom'
 
 // Mock the stores and services
-vi.mock('zen', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    get: vi.fn().mockReturnThis(),
-    put: vi.fn().mockReturnThis(),
-    on: vi.fn().mockReturnThis(),
-    once: vi.fn().mockReturnThis(),
-    map: vi.fn().mockReturnThis(),
-  })),
-}))
-
-vi.mock('../services/zen', () => ({
-  ZenAuth: {
-    init: vi.fn(),
-    login: vi.fn(),
-    logout: vi.fn(),
-    getProfile: vi.fn(),
-  },
-  ZenSocial: {
-    isLiked: vi.fn(),
-  },
-  ZenPlaylists: {
-    getMyPlaylists: vi.fn(),
-  }
-}))
-
 vi.mock('../stores/useAuthStore')
 vi.mock('../stores/usePlayerStore', () => ({
   usePlayerStore: vi.fn(() => ({

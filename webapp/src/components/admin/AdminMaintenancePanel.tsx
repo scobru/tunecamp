@@ -281,19 +281,6 @@ export const AdminMaintenancePanel = () => {
         }
     };
 
-    const handleNetworkCleanup = async () => {
-        if (!confirm("Are you sure you want to cleanup the network? This will check reachability of all registered sites.")) return;
-        setIsProcessing(true);
-        try {
-            await API.cleanupNetwork();
-            notify.success("Network cleanup finished successfully.");
-        } catch (e: any) {
-            notify.error(e, "Cleanup failed");
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     const handleRescan = async () => {
         if (!confirm("Trigger a full library rescan? This deep scan finds new files and updates existing metadata.")) return;
         setIsProcessing(true);
@@ -353,19 +340,7 @@ export const AdminMaintenancePanel = () => {
                         Scan
                     </button>
 
-                    <div className="divider divider-horizontal mx-0"></div>
-
-                    <button 
-                        className="btn btn-sm btn-outline btn-accent tooltip tooltip-bottom"
-                        onClick={handleNetworkCleanup}
-                        disabled={isProcessing}
-                        data-tip="Cleanup network site reachability"
-                    >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
-                        Cleanup Network
-                    </button>
-
-                    <button 
+                    <button
                         className="btn btn-sm btn-outline btn-error tooltip tooltip-bottom"
                         onClick={handleOptimizeDB}
                         disabled={isProcessing}

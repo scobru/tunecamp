@@ -431,7 +431,6 @@ const API = {
 
     // --- Admin: System ---
     getListeningStats: () => handleResponse(api.get<any>('stats/library/overview')),
-    cleanupNetwork: () => handleResponse(api.post('admin/network/cleanup')),
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     pruneOrphans: () => handleResponse(api.post<{ message: string }>('admin/system/prune-orphans')),
     syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),
@@ -529,9 +528,7 @@ const API = {
     backupToGDrive: () => handleResponse(api.post<{ success: boolean, fileId: string, fileName: string }>('admin/backup/gdrive')),
 
     // --- Identity ---
-    getIdentity: () => handleResponse(api.get<{ pub: string, priv: string, epub: string, epriv: string, alias: string }>('admin/system/identity')),
     getSiteApIdentity: () => handleResponse(api.get<{ publicKey: string, privateKey: string, handle?: string }>('admin/system/ap-identity')),
-    importIdentity: (pair: any) => handleResponse(api.post('admin/system/identity', pair)),
 
     // --- Admin: Users ---
     getUsers: () => handleResponse(api.get<User[]>('admin/system/users')),

@@ -49,7 +49,6 @@ describe('Subsonic Podcast API', () => {
                 database: database,
                 authService: authService,
                 musicDir: './music',
-                zendbService: {},
                 scrobbleService: {},
                 subsonicService: subsonicService
             } as any));

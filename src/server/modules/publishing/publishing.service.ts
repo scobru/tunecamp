@@ -1,7 +1,7 @@
 import { stringify } from "yaml";
 import path from "path";
 import type { DatabaseService, Post, Release, Artist } from "../../core/database.js";
-import type { ZenDBService, SiteInfo } from "../network/zendb.service.js";
+import type { FederatedDiscoveryService } from "../network/federated-discovery.service.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import type { ServerConfig } from "../../core/config.js";
 import type { StorageEngine } from "../storage/storage.engine.js";
@@ -10,13 +10,13 @@ import { getSiteHandle } from "../../core/site-actor.js";
 export class PublishingService {
     constructor(
         private db: DatabaseService,
-        private zendb: ZenDBService,
+        private federatedDiscovery: FederatedDiscoveryService,
         private ap: ActivityPubService,
         private config: ServerConfig,
         private storage: StorageEngine
     ) {}
 
-    private getSiteInfo(artistName?: string): SiteInfo | null {
+    private getSiteInfo(artistName?: string): { url: string; title: string; description: string; artistName: string; coverImage: string } | null {
         const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
         if (!publicUrl) return null;
 
@@ -106,17 +106,6 @@ export class PublishingService {
         }
     }
 
-    /**
-     * Ensures the instance is registered in the Zen community directory.
-     * Called during release sync to keep our instance visible.
-     */
-    private async ensureSiteRegistered(artistName?: string): Promise<void> {
-        const siteInfo = this.getSiteInfo(artistName);
-        if (siteInfo) {
-            await this.zendb.registerSite(siteInfo);
-        }
-    }
-
     private async crossPostToMastodon(artistId: number, statusText: string): Promise<void> {
         try {
             const artist = this.db.getArtist(artistId);
@@ -179,9 +168,6 @@ export class PublishingService {
             await this.generateReleaseYaml(release);
 
             const isPublic = release.visibility === 'public' || release.visibility === 'unlisted';
-
-            // Ensure our instance is registered in Zen for discovery
-            await this.ensureSiteRegistered(release.artist_name);
 
             // ActivityPub Logic
             try {
@@ -322,8 +308,8 @@ export class PublishingService {
     }
 
     async syncCommunityFollows(): Promise<{ discovered: number, followed: number }> {
-        console.log("🌐 Starting decentralized community discovery via Zen...");
-        
+        console.log("🌐 Starting community discovery via federated instance directory...");
+
         const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
         if (!publicUrl) {
             console.warn("⚠️ Skipping community sync: No public URL configured.");
@@ -331,7 +317,7 @@ export class PublishingService {
         }
 
         try {
-            const sites = await this.zendb.getCommunitySites();
+            const sites = this.federatedDiscovery.getCommunitySites();
             const myUrl = publicUrl.replace(/\/$/, "");
             
             let followedCount = 0;
@@ -344,7 +330,7 @@ export class PublishingService {
                 if (siteUrl === myUrl || siteUrl.includes("localhost") || siteUrl.includes("127.0.0.1")) continue;
                 const siteActorUri = `${siteUrl}/users/site`;
                 if (!existingUris.has(siteActorUri)) {
-                    console.log(`📡 Discovered new instance: ${site.title} (${siteUrl}). Sending follow request...`);
+                    console.log(`📡 Discovered new instance: ${site.name || siteUrl} (${siteUrl}). Sending follow request...`);
                     try {
                         await this.ap.followRemoteActor(siteActorUri, getSiteHandle(this.db));
                         followedCount++;
@@ -363,10 +349,10 @@ export class PublishingService {
 
 export function createPublishingService(
     db: DatabaseService,
-    zendb: ZenDBService,
+    federatedDiscovery: FederatedDiscoveryService,
     ap: ActivityPubService,
     config: ServerConfig,
     storage: StorageEngine
 ): PublishingService {
-    return new PublishingService(db, zendb, ap, config, storage);
+    return new PublishingService(db, federatedDiscovery, ap, config, storage);
 }

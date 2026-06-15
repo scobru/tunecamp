@@ -62,7 +62,6 @@ import { initDownloadService } from "./modules/catalog/download.service.js";
 import { loadPlugins } from "./core/plugin-loader.js";
 import { storageService, initStorageService } from "./modules/storage/storage.service.js";
 import { aiService, initAIService } from "./modules/ai/ai.service.js";
-import { createZenDBService } from "./modules/network/zendb.service.js";
 import { createFederatedDiscoveryService } from "./modules/network/federated-discovery.service.js";
 import { createCommunityRoutes } from "./routes/network/community.js";
 import { getSiteHandle } from "./core/site-actor.js";
@@ -100,7 +99,6 @@ import { createStorageRouter } from "./routes/library/storage.js";
 import { TorrentService } from "./modules/integrations/torrent.service.js";
 import { createTorrentRoutes } from "./routes/network/torrent.js";
 import { errorHandler } from "./middleware/error-handling.js";
-import { kprs } from "./modules/network/zen-network.js";
 import { LocalizationService } from "./modules/catalog/localization.service.js";
 import { MediaEngine } from "./modules/media/media-engine.js";
 import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
@@ -160,12 +158,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const waveformService = new WaveformService(path.dirname(config.dbPath));
 
-    const zendbService = createZenDBService(database, undefined, config.zenPeers, config.publicUrl);
-    await zendbService.init();
-
-    // Federated (HTTP/NodeInfo gossip) instance discovery. Runs alongside Zen
-    // during Phase A; bootstraps from ActivityPub-followed TuneCamp site actors
-    // plus TUNECAMP_FEDERATION_SEEDS — no central relay.
+    // Federated (HTTP/NodeInfo gossip) instance discovery. Bootstraps from
+    // ActivityPub-followed TuneCamp site actors plus TUNECAMP_FEDERATION_SEEDS —
+    // no central relay.
     const federatedDiscoveryService = createFederatedDiscoveryService(database.db, {
         seeds: config.federationSeeds,
         getOwnOrigin: () => {
@@ -180,14 +175,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     });
 
     let gdriveService: GoogleDriveService | undefined;
-
-    setTimeout(() => {
-        taskManager.run('zendb-cleanup', () => zendbService.cleanupRegistry());
-    }, 60000);
-
-    setInterval(() => {
-        taskManager.run('zendb-cleanup', () => zendbService.cleanupRegistry());
-    }, 12 * 60 * 60 * 1000);
 
     // Federated discovery crawl: shortly after boot, then periodically.
     setTimeout(() => {
@@ -236,21 +223,17 @@ export async function startServer(config: ServerConfig): Promise<void> {
         taskManager.run('rss-refresh', () => rssService.refreshAll());
     }, 30 * 60 * 1000);
 
-    app.get("/api/peers", (req, res) => {
-        res.status(200).json(Array.from(kprs));
-    });
-
     const federation = createFedify(database, config);
 
     const apService = createActivityPubService(database as any, config, federation);
     await apService.generateKeysForAllArtists();
     apService.startDeliveryQueue();
 
-    const publishingService = createPublishingService(database, zendbService, apService, config, storage);
+    const publishingService = createPublishingService(database, federatedDiscoveryService, apService, config, storage);
 
     const lifecycleService = new LifecycleService(database, publishingService, apService);
 
-    const catalogService = new CatalogService(database, publishingService, zendbService, storage, config.musicDir, openRouterService, metadataService, apService);
+    const catalogService = new CatalogService(database, publishingService, storage, config.musicDir, openRouterService, metadataService, apService);
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
     const digService = new DigService(database);
 
@@ -321,7 +304,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
         playlistService,
         publishingService,
         apService,
-        zendbService,
         federatedDiscoveryService,
         lifecycleService,
         telegramBotService,
@@ -508,15 +490,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
         const publicUrl = (dbPublicUrl || config.publicUrl || "").trim().replace(/\/$/, "");
 
         if (publicUrl) {
-            const siteInfo = {
-                url: publicUrl,
-                title: database.getSetting("siteName") || config.siteName || "TuneCamp Server",
-                description: database.getSetting("siteDescription") || "TuneCamp music server",
-                artistName: database.getSetting("artistName") || "",
-                coverImage: database.getSetting("coverImage") || ""
-            };
-            await zendbService.registerSite(siteInfo);
-            setTimeout(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 20000);
+            // Auto-follow discovered community instances over ActivityPub. Runs
+            // after the first federated crawl (~45s) so the directory is populated.
+            setTimeout(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000);
         }
 
         loadPlugins().catch(() => {});

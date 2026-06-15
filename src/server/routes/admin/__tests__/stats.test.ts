@@ -13,7 +13,7 @@ const { createStatsRoutes } = await import('../stats.js');
 
 describe('Stats Routes', () => {
     let app: express.Express;
-    let mockZenDBService: any;
+    let mockFederatedDiscoveryService: any;
     let mockDbService: any;
     let mockConfig: any;
     let consoleErrorSpy: any;
@@ -21,9 +21,9 @@ describe('Stats Routes', () => {
     let mockFetch: any;
 
     beforeEach(() => {
-        mockZenDBService = {
-            getCommunitySites: jest.fn<any>().mockResolvedValue([]),
-            getPeerCount: jest.fn().mockReturnValue(0)
+        mockFederatedDiscoveryService = {
+            getCommunitySites: jest.fn<any>().mockReturnValue([]),
+            getPeers: jest.fn().mockReturnValue([])
         };
 
         mockDbService = {
@@ -58,9 +58,9 @@ describe('Stats Routes', () => {
         app = express();
         app.use(express.json());
         app.use('/api/stats', createStatsRoutes({
-            zendbService: mockZenDBService,
             database: mockDbService,
-            config: mockConfig
+            config: mockConfig,
+            federatedDiscoveryService: mockFederatedDiscoveryService
         } as any));
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -159,7 +159,7 @@ describe('Stats Routes', () => {
 
     describe('GET /api/stats/network/sites', () => {
         test('returns community and local sites combined', async () => {
-            mockZenDBService.getCommunitySites.mockResolvedValue([
+            mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([
                 { url: 'https://sitea.com', name: 'Site A', description: 'Desc A', version: '2.0', lastSeen: 'today' }
             ]);
             mockDbService.getFollowedActors.mockReturnValue([
@@ -172,16 +172,15 @@ describe('Stats Routes', () => {
             const res = await request(app).get('/api/stats/network/sites');
 
             expect(res.status).toBe(200);
-            expect(res.body).toHaveLength(3); // local + gun + ap
+            expect(res.body).toHaveLength(3); // local + federated + ap
             expect(res.body[0].federation).toBe('local');
-            expect(res.body[1].federation).toBe('zen');
+            expect(res.body[1].federation).toBe('federated');
             expect(res.body[2].federation).toBe('activitypub');
         });
 
         test('includes federated (HTTP gossip) sites with federation "federated"', async () => {
             const fedApp = express();
             fedApp.use('/api/stats', createStatsRoutes({
-                zendbService: mockZenDBService,
                 database: mockDbService,
                 config: mockConfig,
                 federatedDiscoveryService: {
@@ -201,7 +200,7 @@ describe('Stats Routes', () => {
         });
 
         test('a dead followed AP instance is dropped from the directory', async () => {
-            mockZenDBService.getCommunitySites.mockResolvedValue([]);
+            mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([]);
             mockDbService.getFollowedActors.mockReturnValue([
                 { uri: 'https://dead-ap.com/actor', name: 'Dead', username: 'site', summary: '', last_seen: 'long ago' }
             ]);
@@ -219,7 +218,7 @@ describe('Stats Routes', () => {
 
     describe('GET /api/stats/network/tracks', () => {
         test('returns local and federated tracks and posts', async () => {
-            mockZenDBService.getCommunitySites.mockResolvedValue([
+            mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([
                 { url: 'https://remotesite.com', name: 'Remote' }
             ]);
             (isSafeUrl as any).mockResolvedValue(true);
@@ -264,18 +263,16 @@ describe('Stats Routes', () => {
 
     describe('GET /api/stats/network/status', () => {
         test('returns network status counts', async () => {
-            mockZenDBService.getCommunitySites.mockResolvedValue([{}, {}]);
+            mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([{}, {}]);
             mockDbService.getFollowedActors.mockReturnValue([{ username: 'site' }]);
             mockDbService.getRemoteTracks.mockReturnValue([{}, {}]);
             mockDbService.getReleases.mockReturnValue([{}]);
-            mockZenDBService.getPeerCount.mockReturnValue(5);
 
             const res = await request(app).get('/api/stats/network/status');
 
             expect(res.status).toBe(200);
-            expect(res.body.sites).toBe(4); // 2 gun + 1 ap + 1 local
+            expect(res.body.sites).toBe(4); // 2 federated + 1 ap + 1 local
             expect(res.body.tracks).toBe(3); // 2 ap + 1 local
-            expect(res.body.zen.peers).toBe(5);
             expect(res.body.activitypub.enabled).toBe(true);
         });
     });

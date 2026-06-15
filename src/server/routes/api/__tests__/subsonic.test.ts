@@ -14,7 +14,6 @@ describe('Subsonic Scrobbling', () => {
     let app: any;
     let testArtistId: number;
     let testAlbumId: number;
-    let mockZendbService: any;
     const dbPath = './test-subsonic-scrobble.db';
 
     beforeAll(async () => {
@@ -27,10 +26,7 @@ describe('Subsonic Scrobbling', () => {
             const passHash = await authService.hashPassword('password');
             database.db.prepare("INSERT OR IGNORE INTO admin (username, password_hash) VALUES (?, ?)").run('user', passHash);
 
-            mockZendbService = {
-                incrementTrackPlayCount: jest.fn().mockReturnValue(Promise.resolve(1)),
-                getTrackPlayCount: jest.fn().mockReturnValue(Promise.resolve(1))
-            };
+
 
             app = express();
             app.use(express.json()); // Add JSON parser for testing
@@ -43,7 +39,6 @@ describe('Subsonic Scrobbling', () => {
                 database: database,
                 authService: authService,
                 musicDir: './music',
-                zendbService: mockZendbService,
                 scrobbleService: mockScrobbleService
             } as any));
         } catch (e) {

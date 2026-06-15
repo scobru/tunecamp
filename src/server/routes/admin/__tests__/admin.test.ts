@@ -5,7 +5,6 @@ import { jest } from '@jest/globals';
 import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.service.js';
 import type { ServerConfig } from '../../../core/config.js';
-import type { ZenDBService } from '../../../modules/network/zendb.service.js';
 import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
 import type { AuthService } from '../../../modules/auth/auth.service.js';
 
@@ -32,15 +31,6 @@ const mockScanner = {
     scanAll: jest.fn(),
     getRegistry: jest.fn(() => ({ getEnabled: () => [] }))
 } as unknown as ScannerService;
-
-const mockZenDBService = {
-    registerSite: jest.fn(),
-    registerTracks: jest.fn(),
-    unregisterTracks: jest.fn(),
-    syncNetwork: jest.fn(),
-    getIdentityKeyPair: jest.fn(),
-    setIdentityKeyPair: jest.fn(),
-} as unknown as ZenDBService;
 
 const mockConfig = {
     publicUrl: 'http://localhost',
@@ -115,7 +105,6 @@ describe('Admin Routes Vulnerability Check', () => {
             integration: mockDatabase.integration || mockDatabase,
             scannerService: mockScanner,
             musicDir: '/tmp/music',
-            zendbService: mockZenDBService,
             config: mockConfig,
             authService: mockAuthService,
             publishingService: mockPublishingService,

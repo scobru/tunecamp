@@ -11,7 +11,6 @@ import { buildCommunitySites } from "../../modules/network/community-sites.js";
 export function createCommunityRoutes(container: ServiceContainer): Router {
     const dbService = container.database;
     const config = container.config;
-    const zendbService = container.zendbService;
     const federatedDiscoveryService = container.federatedDiscoveryService;
     const router = Router();
 
@@ -60,7 +59,7 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
      */
     router.get("/sites", async (req, res) => {
         try {
-            const sites = await buildCommunitySites({ dbService, config, zendbService, federatedDiscoveryService });
+            const sites = await buildCommunitySites({ dbService, config, federatedDiscoveryService });
             res.json(sites);
         } catch (error) {
             console.error("Error getting community sites:", error);

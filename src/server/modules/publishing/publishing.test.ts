@@ -1,7 +1,7 @@
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { PublishingService } from './publishing.service.js';
 import { createDatabase } from '../../core/database.js';
-import type { ZenDBService } from '../network/zendb.service.js';
+import type { FederatedDiscoveryService } from '../network/federated-discovery.service.js';
 import type { ActivityPubService } from '../activitypub/activitypub.service.js';
 import type { ServerConfig } from '../../core/config.js';
 
@@ -9,7 +9,7 @@ const TEST_DB_PATH = ':memory:';
 
 describe('PublishingService', () => {
     let db: ReturnType<typeof createDatabase>;
-    let zendbMock: ZenDBService;
+    let federatedDiscoveryMock: FederatedDiscoveryService;
     let apMock: ActivityPubService;
     let configMock: ServerConfig;
     let storageMock: any;
@@ -21,10 +21,10 @@ describe('PublishingService', () => {
         // Setup DB
         db = createDatabase(TEST_DB_PATH);
 
-        // Setup Mock ZenDB
-        zendbMock = {
-            registerSite: jest.fn().mockReturnValue(Promise.resolve()),
-        } as unknown as ZenDBService;
+        // Setup Mock FederatedDiscovery
+        federatedDiscoveryMock = {
+            getCommunitySites: jest.fn<any>().mockReturnValue([]),
+        } as unknown as FederatedDiscoveryService;
 
         // Setup Mock ActivityPub
         apMock = {
@@ -61,7 +61,7 @@ describe('PublishingService', () => {
         } as any;
 
         // Create Service
-        publishingService = new PublishingService(db, zendbMock, apMock, configMock, storageMock);
+        publishingService = new PublishingService(db, federatedDiscoveryMock, apMock, configMock, storageMock);
 
         // Populate minimal data
         db.createArtist('Test Artist');
@@ -105,7 +105,7 @@ describe('PublishingService', () => {
         });
     }
 
-    test('should call zendb.registerSite and ap.broadcastRelease when album is public and published_to_ap', async () => {
+    test('should call ap.broadcastRelease when album is public and published_to_ap', async () => {
         const albumId = db.createAlbum({
             title: 'Test Album',
             slug: 'test-album',
@@ -139,7 +139,6 @@ describe('PublishingService', () => {
 
         await publishingService.syncRelease(albumId);
 
-        expect(zendbMock.registerSite).toHaveBeenCalled();
         expect(apMock.broadcastRelease).toHaveBeenCalled();
     });
 

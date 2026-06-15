@@ -355,22 +355,7 @@ export const AdminSettingsPanel = () => {
               placeholder="https://sudorecords.dev"
             />
             <label className="label">
-              <span className="label-text-alt opacity-40">Required for ActivityPub and remote ZEN peers.</span>
-            </label>
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text font-medium text-sm">ZEN Peers</span>
-            </label>
-            <textarea
-              className="textarea textarea-bordered bg-base-300/50 h-28 font-mono text-xs"
-              value={settings.zenPeers || ""}
-              onChange={(e) => setSettings({ ...settings, zenPeers: e.target.value })}
-              placeholder="wss://peer1.com/zen, wss://peer2.com/zen"
-            />
-            <label className="label">
-              <span className="label-text-alt opacity-40 text-[11px]">Comma-separated list of relay nodes.</span>
+              <span className="label-text-alt opacity-40">Required for ActivityPub federation.</span>
             </label>
           </div>
         </div>

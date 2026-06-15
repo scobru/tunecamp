@@ -1,5 +1,4 @@
 import { Router } from "express";
-import type { ZenDBService } from "../../modules/network/zendb.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile } from "../../common/visibility.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -10,7 +9,6 @@ import { getSiteHandle } from "../../core/site-actor.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createStatsRoutes(container: ServiceContainer): Router {
-    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const dbService: ServiceContainer['database'] = (container as any).database || (container as any);
     const config: ServiceContainer['config'] = (container as any).config || (container as any);
     const federatedDiscoveryService: ServiceContainer['federatedDiscoveryService'] = (container as any).federatedDiscoveryService;
@@ -116,7 +114,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             // Aggregates local + Zen + federated (HTTP gossip) + ActivityPub
             // (with AP-actor liveness filtering). Shared with the public
             // GET /api/community/sites.
-            const sites = await buildCommunitySites({ dbService, config, zendbService, federatedDiscoveryService });
+            const sites = await buildCommunitySites({ dbService, config, federatedDiscoveryService });
             res.json(sites);
         } catch (error) {
             console.error("Error getting community sites:", error);
@@ -129,8 +127,8 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;
             const baseUrl = publicUrl.replace(/\/$/, "");
 
-            // 1. Get remote catalogs via HTTP from discovered Zen instances and followed AP site actors
-            const gunSites = await zendbService.getCommunitySites();
+            // 1. Get remote catalogs via HTTP from federated-discovered instances and followed AP site actors
+            const discoveredSites = federatedDiscoveryService?.getCommunitySites?.() ?? [];
             
             // Get followed TuneCamp site actors
             const apActors = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
@@ -171,9 +169,8 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 }
             };
 
-            gunSites.forEach(addSite);
+            discoveredSites.forEach(addSite);
             followedSites.forEach(addSite);
-            (federatedDiscoveryService?.getCommunitySites?.() ?? []).forEach(addSite);
 
             const remoteSites = Array.from(combinedSitesMap.values());
             const httpTracks = await catalogCache.getTracks(remoteSites);
@@ -196,7 +193,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
             // 3. Get posts from ActivityPub (Standard Federation - Remote)
             const communityDomains = new Set<string>();
-            for (const s of gunSites) {
+            for (const s of discoveredSites) {
                 if (s.url) {
                     try {
                         const hostname = new URL(s.url).hostname;
@@ -300,7 +297,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
      */
     router.get("/network/status", async (req, res) => {
         try {
-            const gunSites = await zendbService.getCommunitySites();
+            const discoveredSites = federatedDiscoveryService?.getCommunitySites?.() ?? [];
             const apActors = dbService.getFollowedActors().filter(a => a.username === 'site' || a.username === getSiteHandle(dbService));
             const apTracks = dbService.getRemoteTracks();
             const localReleases = dbService.getReleases(VisibilityProfile.PUBLIC_STAGE);
@@ -309,13 +306,9 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const apEnabled = !!publicUrl;
 
             res.json({
-                sites: gunSites.length + apActors.length + 1, // +1 for local
+                sites: discoveredSites.length + apActors.length + 1, // +1 for local
                 tracks: apTracks.length + localReleases.length,
                 lastUpdate: new Date().toISOString(),
-                zen: {
-                    connected: zendbService.getPeerCount() > 0,
-                    peers: zendbService.getPeerCount()
-                },
                 activitypub: {
                     enabled: apEnabled
                 }

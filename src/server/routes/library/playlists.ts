@@ -2,12 +2,10 @@ import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
-import type { ZenDBService } from "../../modules/network/zendb.service.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createPlaylistsRoutes(container: ServiceContainer): Router {
-    const zendbService: ServiceContainer['zendbService'] = (container as any).zendbService || (container as any);
     const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
