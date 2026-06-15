@@ -59,10 +59,12 @@ export interface Artist {
     moved_to?: string | null;
     /** 0 = sales disabled (unverified artist), 1 = sales enabled. Enforced server-side at checkout. */
     can_sell?: number;
+    banner_path?: string | null;
     created_at?: string;
     // Computed fields
     isLibraryArtist?: boolean;
     coverImage?: string;
+    bannerImage?: string;
     starred?: boolean;
     rating?: number;
 }
@@ -437,6 +439,7 @@ export interface LibraryManager {
     getArtistsByIds(ids: number[]): Artist[];
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
+    updateArtistBanner(id: number, bannerPath: string | null): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     setArtistCanSell(id: number, canSell: boolean): void;
     setArtistStripeAccountId(id: number, stripeAccountId: string | null): void;

@@ -305,7 +305,7 @@ const Profile = () => {
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-24 p-6 md:px-0 md:pt-0 md:pb-16">
       {/* Profile Header */}
-      <div className="flex flex-col md:flex-row items-center gap-8 border-b border-base-content/5 pb-10">
+      <div className="flex flex-col md:flex-row items-center gap-8 border-b border-base-content/10 pb-10">
         <div className="relative group">
           <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-primary/20 bg-neutral flex items-center justify-center text-4xl font-black">
             {avatar ? (
@@ -389,7 +389,7 @@ const Profile = () => {
         {activeTab === "settings" && (
           <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6">
+            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <User size={20} className="text-primary" /> Account Settings
               </h3>
@@ -436,7 +436,7 @@ const Profile = () => {
               </div>
             </div>
 
-            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6">
+            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Camera size={20} className="text-secondary" /> Profile Visuals
               </h3>
@@ -471,7 +471,7 @@ const Profile = () => {
 
             {/* Artist profile request (listeners without a linked artist) */}
             {!hasArtistProfile && (
-              <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
+              <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <User size={20} className="text-secondary" /> Become an Artist
                 </h3>
@@ -505,7 +505,7 @@ const Profile = () => {
             )}
 
             {/* Role & Permissions Card */}
-            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6 md:col-span-2">
+            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-6 md:col-span-2">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Shield size={20} className="text-secondary" /> Account Role & Permissions
               </h3>
@@ -513,7 +513,7 @@ const Profile = () => {
                 Here you can view your current role within the TuneCamp platform and see what actions you can perform.
               </p>
               
-              <div className="bg-base-200/30 rounded-2xl p-6 border border-base-content/5 flex flex-col md:flex-row gap-6 items-start">
+              <div className="bg-base-300/40 rounded-2xl p-6 border border-base-content/10 flex flex-col md:flex-row gap-6 items-start">
                 <div className="flex flex-col gap-2 min-w-[200px]">
                   <span className="text-xs opacity-50 tracking-normal font-black">Current Role</span>
                   <div className={clsx("badge badge-lg gap-2 font-bold py-4 px-5 text-sm tracking-normal rounded-xl shadow-sm border-0", 
@@ -613,7 +613,7 @@ const Profile = () => {
           </div>
 
           {/* Fediverse Identity — full-width panel below the 2-col grid */}
-          <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
+          <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Globe size={20} className="text-secondary" /> Fediverse Identity
             </h3>
@@ -672,7 +672,7 @@ const Profile = () => {
 
           {/* API Tokens Panel */}
           {isCuratorOrAbove && (
-            <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4 mt-8">
+            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4 mt-8">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Key size={20} className="text-primary" /> API Tokens
               </h3>
@@ -799,7 +799,7 @@ const Profile = () => {
                 Loading collection...
               </div>
             ) : purchasedTracks.length === 0 ? (
-              <div className="p-20 text-center opacity-40 bg-base-200/20 rounded-3xl border border-dashed border-base-content/10">
+              <div className="p-20 text-center opacity-40 bg-base-200/50 rounded-3xl border border-dashed border-base-content/20">
                 <Download size={48} className="mx-auto mb-4" />
                 <p>Your collection is empty.</p>
               </div>
@@ -838,6 +838,8 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
   const [message, setMessage] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [followersCount, setFollowersCount] = useState<number | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -946,6 +948,16 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     }
   };
 
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBannerFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setBannerPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSync = async () => {
     if (!initialData?.id || isSyncing) return;
     if (!confirm("Synchronize your releases and posts with the Fediverse?")) return;
@@ -990,10 +1002,16 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
         await API.uploadArtistAvatar(initialData.id, avatarFile);
       }
 
+      if (bannerFile) {
+        await API.uploadArtistBanner(initialData.id, bannerFile);
+      }
+
       setMessage("Artist profile updated successfully!");
       onSaved({ ...initialData, ...updated });
       setAvatarFile(null);
       setAvatarPreview(null);
+      setBannerFile(null);
+      setBannerPreview(null);
     } catch (err: any) {
       console.error("Failed to update artist profile:", err);
       setMessage(`Update failed: ${err.message}`);
@@ -1006,7 +1024,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
     <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Left Column: Profile & Identity */}
       <div className="lg:col-span-4 space-y-6">
-        <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-6">
+        <div className="card bg-base-200 border border-base-content/10 p-6 space-y-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
             <User size={20} className="text-primary" /> Artist Identity
           </h3>
@@ -1054,6 +1072,30 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           </div>
         </div>
 
+        {/* Page Appearance: Banner */}
+        <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Camera size={20} className="text-primary" /> Page Banner
+          </h3>
+          <p className="text-xs opacity-50">Custom background image shown at the top of your artist page.</p>
+          <div className="relative w-full h-28 rounded-xl overflow-hidden bg-neutral border border-base-content/10 shadow-level-1 group cursor-pointer">
+            {bannerPreview ? (
+              <img src={bannerPreview} className="w-full h-full object-cover" />
+            ) : initialData?.bannerImage ? (
+              <img src={API.getArtistBannerUrl(initialData.id, Date.now())} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center opacity-40">
+                <span className="text-xs font-bold">No banner set</span>
+              </div>
+            )}
+            <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+              <Camera size={20} className="text-white" />
+              <input type="file" className="hidden" accept="image/*" onChange={handleBannerChange} />
+            </label>
+          </div>
+          <p className="text-xs opacity-40">Wide images work best (16:9 or panoramic). PNG/JPG.</p>
+        </div>
+
         {/* Status Section */}
         <div className="card bg-primary/5 border border-primary/10 p-6 space-y-4">
           <h3 className="text-sm font-bold tracking-normal opacity-40">Digital Presence</h3>
@@ -1082,7 +1124,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
       <div className="lg:col-span-8 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Monetization Section */}
-          <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
+          <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <span className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
                 <Check size={18} />
@@ -1125,7 +1167,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           </div>
 
           {/* Social Section */}
-          <div className="card bg-base-100/50 border border-base-content/5 p-6 space-y-4">
+          <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Globe size={20} className="text-sky-400" /> Web Links
             </h3>
@@ -1158,8 +1200,8 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
         </div>
 
         {/* Federation Section */}
-        <div className="card bg-base-100/50 border border-base-content/5 overflow-hidden">
-          <div className="bg-base-200/40 p-6 border-b border-base-content/5">
+        <div className="card bg-base-200 border border-base-content/10 overflow-hidden">
+          <div className="bg-base-300/50 p-6 border-b border-base-content/10">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Play size={20} className="text-indigo-400" /> Federation & Automation
             </h3>
@@ -1194,8 +1236,8 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
         </div>
 
         {/* Identity & Migration Section */}
-        <div className="card bg-base-100/50 border border-base-content/5 overflow-hidden">
-          <div className="bg-base-200/40 p-6 border-b border-base-content/5">
+        <div className="card bg-base-200 border border-base-content/10 overflow-hidden">
+          <div className="bg-base-300/50 p-6 border-b border-base-content/10">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Globe size={20} className="text-violet-400" /> Identity Migration (ActivityPub)
             </h3>
@@ -1217,7 +1259,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                         type="text"
                         readOnly
                         value={`@${initialData?.slug}@${window.location.host}`}
-                        className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-200/50"
+                        className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-300/60"
                       />
                       <button
                         type="button"
@@ -1239,7 +1281,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                         type="text"
                         readOnly
                         value={`${window.location.origin}/api/ap/users/${initialData?.slug}`}
-                        className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-200/50"
+                        className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-300/60"
                       />
                       <button
                         type="button"
@@ -1267,7 +1309,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                   ) : (
                     <div className="flex flex-col gap-2 max-h-36 overflow-y-auto">
                       {aliases.map((aliasUri, idx) => (
-                        <div key={idx} className="flex items-center justify-between gap-2 bg-base-200/50 p-2 rounded-lg border border-base-content/5">
+                        <div key={idx} className="flex items-center justify-between gap-2 bg-base-300/50 p-2 rounded-lg border border-base-content/10">
                           <span className="text-xs font-mono truncate flex-1" title={aliasUri}>{aliasUri}</span>
                           <button
                             type="button"
@@ -1309,7 +1351,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
             {/* Import & Move Sections */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-base-200/30 p-4 rounded-xl border border-base-content/5 space-y-3">
+              <div className="bg-base-300/40 p-4 rounded-xl border border-base-content/10 space-y-3">
                 <h4 className="text-sm font-bold flex items-center gap-2 text-violet-400">
                   <ShieldCheck size={16} /> Import Profile Details
                 </h4>
@@ -1342,7 +1384,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
               </div>
 
               {/* Export/Move Section */}
-              <div className="bg-base-200/30 p-4 rounded-xl border border-base-content/5 space-y-3">
+              <div className="bg-base-300/40 p-4 rounded-xl border border-base-content/10 space-y-3">
                 <h4 className="text-sm font-bold flex items-center gap-2 text-warning">
                   <ArrowRight size={16} /> Migrate Out (Move)
                 </h4>
@@ -1418,7 +1460,7 @@ const TrackList = ({
   onPlay: (t: Track) => void;
 }) => {
   return (
-    <div className="overflow-x-auto bg-base-200/30 rounded-2xl border border-base-content/5 min-h-[300px]">
+    <div className="overflow-x-auto bg-base-200/60 rounded-2xl border border-base-content/10 min-h-[300px]">
       <table className="table w-full">
         <thead>
           <tr className="border-b border-base-content/10 opacity-50 text-xs tracking-normal">

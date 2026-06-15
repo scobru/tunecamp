@@ -103,6 +103,7 @@ const API = {
     getArtists: () => handleResponse(api.get<Artist[]>('artists')),
     getArtist: (idOrSlug: string | number) => handleResponse(api.get<Artist>(`artists/${idOrSlug}`)),
     getArtistCoverUrl: (idOrSlug: string | number, timestamp?: number) => idOrSlug ? `${API_URL}/artists/${idOrSlug}/cover${timestamp ? `?v=${timestamp}` : ''}` : '',
+    getArtistBannerUrl: (idOrSlug: string | number, timestamp?: number) => idOrSlug ? `${API_URL}/artists/${idOrSlug}/banner${timestamp ? `?v=${timestamp}` : ''}` : '',
 
     // --- Lifecycle ---
     requestPromotion: (id: number) => handleResponse(api.post(`lifecycle/promote/${id}`)),
@@ -412,6 +413,12 @@ const API = {
         formData.append('file', file);
         formData.append('artistId', artistId);
         return handleResponse(api.post('admin/upload/avatar', formData));
+    },
+    uploadArtistBanner: (artistId: string | number, file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('artistId', String(artistId));
+        return handleResponse(api.post('admin/upload/artist-banner', formData));
     },
     uploadArtistAvatarUrl: (artistId: string | number, url: string) =>
         handleResponse(api.post('admin/upload/avatar-url', { artistId, url })),

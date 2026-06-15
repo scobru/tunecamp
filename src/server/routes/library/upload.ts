@@ -611,6 +611,69 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     // Removed createSiteCoverStorage
 
     /**
+     * POST /api/admin/upload/artist-banner
+     * Upload a custom page-header banner for an artist (user-linked artists only)
+     */
+    router.post("/artist-banner", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
+        try {
+            const file = req.file;
+            const artistIdRaw = req.body.artistId;
+            const artistId = artistIdRaw ? parseInt(artistIdRaw as string, 10) : undefined;
+
+            if (!file) return res.status(400).json({ error: "No file uploaded" });
+            if (!artistId) return res.status(400).json({ error: "Artist ID required" });
+
+            if (!req.isAdmin && !req.isActive) {
+                if (file) await safeRemove(file.path);
+                return res.status(403).json({ error: "Access denied: Account must be activated by admin" });
+            }
+
+            const isAuthorized = req.isRootAdmin ||
+                (req.artistId !== undefined && req.artistId !== null && Number(req.artistId) === Number(artistId));
+            if (!isAuthorized) {
+                await storage.remove(file.path);
+                return res.status(403).json({ error: "Access denied: You can only upload banners for your own artist" });
+            }
+
+            const artist = library.getArtist(artistId);
+            if (!artist) {
+                await storage.remove(file.path);
+                return res.status(404).json({ error: "Artist not found" });
+            }
+
+            // Only user-linked artists can have a custom banner
+            if (!library.isArtistLinkedToUser(artistId) && !req.isRootAdmin) {
+                await storage.remove(file.path);
+                return res.status(403).json({ error: "Banner customization is only available for user-linked artist profiles" });
+            }
+
+            const ext = path.extname(file.originalname).toLowerCase();
+            const assetsDir = path.join(musicDir, "assets");
+            await storage.ensureDir(assetsDir);
+
+            const bannerFilename = `banner-${artistId}${ext}`;
+            const bannerPath = path.join(assetsDir, bannerFilename);
+
+            if (file.path !== bannerPath) {
+                await storage.move(file.path, bannerPath, { overwrite: true });
+            }
+
+            const dbPath = path.relative(musicDir, bannerPath).replace(/\\/g, "/");
+            library.updateArtistBanner(artistId, dbPath);
+
+            res.json({
+                message: "Banner uploaded",
+                file: { name: bannerFilename, path: bannerPath, size: file.size },
+            });
+            console.log(`✅ Banner upload completed for artist ${artistId}`);
+        } catch (error) {
+            console.error("❌ Artist banner upload error:", error);
+            if (req.file) await safeRemove(req.file.path);
+            res.status(500).json({ error: "Banner upload failed" });
+        }
+    });
+
+    /**
      * POST /api/admin/upload/track-artwork
      * Upload custom artwork for a track
      */
