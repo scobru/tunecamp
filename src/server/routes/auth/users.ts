@@ -5,7 +5,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { ActivityPubService } from "../../modules/activitypub/activitypub.service.js";
 import { validatePassword } from "../../common/validators.js";
-import { UserRole } from "../../common/visibility.js";
+import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 
@@ -132,14 +132,16 @@ export function createUsersRoutes(container: ServiceContainer): Router {
 
                 const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
                 library.setArtistCanSell(artistId, false);
-                const newRole = (user.role as UserRole) === UserRole.NORMAL_USER ? UserRole.SUPER_USER : user.role;
+                // Keep the listener's role unchanged — the artist profile link grants
+                // publishing rights; curator/manager elevation requires root admin.
+                const newRole = user.role as UserRole;
                 authService.updateAdmin(req.userId!, artistId, newRole, user.storage_quota);
                 authService.setArtistRequest(req.userId!, false);
 
                 // Issue a fresh token so the caller can update their session immediately
                 const token = authService.generateToken({
                     userId: req.userId!,
-                    isAdmin: newRole !== UserRole.NORMAL_USER,
+                    isAdmin: VisibilityGuardian.isAdminRole(newRole),
                     username: user.username,
                     artistId,
                     role: newRole,

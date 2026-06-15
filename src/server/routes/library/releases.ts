@@ -244,10 +244,10 @@ export function createReleaseRouter(container: ServiceContainer): Router {
         const idParam = req.params.id;
         let release;
 
-        if (isNaN(parseInt(idParam))) {
-            release = library.getReleaseBySlug(idParam);
+        if (/^\d+$/.test(idParam)) {
+            release = library.getRelease(parseInt(idParam, 10));
         } else {
-            release = library.getRelease(parseInt(idParam));
+            release = library.getReleaseBySlug(idParam);
         }
 
         if (!release) throw new NotFoundError("Release not found");
@@ -287,11 +287,11 @@ export function createReleaseRouter(container: ServiceContainer): Router {
             }
 
             let release = null;
-            if (isNaN(parseInt(param, 10))) {
-                release = library.getReleaseBySlug(param) || library.getAlbumBySlug(param);
-            } else {
+            if (/^\d+$/.test(param)) {
                 const releaseId = parseInt(param, 10);
                 release = library.getRelease(releaseId) || library.getAlbum(releaseId);
+            } else {
+                release = library.getReleaseBySlug(param) || library.getAlbumBySlug(param);
             }
             
             let releaseCoverPath = release?.cover_path;

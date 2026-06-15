@@ -108,15 +108,15 @@ export class VisibilityGuardian {
 
   /**
    * Checks if a viewer can publish content (releases, uploads, store assets).
-   * Publishing is reserved to roles with a direct relationship to the artist:
-   * Managers (admin) and Root Admins always can; Curators (super_user) only
-   * when linked to an artist profile. Listeners never can, even with a stale
-   * artist_id on their account.
+   * The gate is the artist profile link, not the role: any user (including
+   * listeners in self-publish mode) can publish when they have an artistId.
+   * Elevation to Curator/Manager is a separate step done only by root admin.
    */
   static canPublishContent(context: ViewerContext): boolean {
     const role = context.role;
     if (role === UserRole.ROOT_ADMIN) return true;
-    return (role === UserRole.ADMIN || role === UserRole.SUPER_USER) && !!context.artistId;
+    return !!context.artistId &&
+      [UserRole.ADMIN, UserRole.SUPER_USER, UserRole.NORMAL_USER].includes(role);
   }
 
   /**
@@ -133,10 +133,12 @@ export class VisibilityGuardian {
         return [UserRole.ROOT_ADMIN, UserRole.ADMIN, UserRole.SUPER_USER].includes(role);
 
       case Capability.CREATE_RELEASES:
-        // Artists are Super Users or Admins with an associated artist_id.
-        // Root Admin is omnipotent.
+        // Any user with a linked artist profile can publish their own releases.
+        // Curator/Manager elevation grants additional capabilities but is not
+        // required for publishing. Root Admin is omnipotent.
         if (role === UserRole.ROOT_ADMIN) return true;
-        return [UserRole.ADMIN, UserRole.SUPER_USER].includes(role) && !!context.artistId;
+        return !!context.artistId &&
+          [UserRole.ADMIN, UserRole.SUPER_USER, UserRole.NORMAL_USER].includes(role);
 
       case Capability.MANAGE_ALL_CONTENT:
         return [UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role);
