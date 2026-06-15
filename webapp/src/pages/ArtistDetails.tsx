@@ -142,7 +142,9 @@ const ArtistDetails = () => {
              {/* Header */}
              <div className="relative h-80 rounded-2xl overflow-hidden flex items-end p-8 border border-base-content/5">
                  <div className="absolute inset-0 z-0">
-                     {artist.coverImage ? (
+                     {artist.bannerImage ? (
+                        <img src={API.getArtistBannerUrl(artist.id, cacheBuster)} className="w-full h-full object-cover" />
+                     ) : artist.coverImage ? (
                         <img src={API.getArtistCoverUrl(artist.id, cacheBuster)} className="w-full h-full object-cover opacity-30 blur-sm scale-105" />
                      ) : (
                           <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20"/>

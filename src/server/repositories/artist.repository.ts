@@ -183,6 +183,10 @@ export class ArtistRepository extends BaseRepository {
         `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, visibility ?? null, id);
     }
 
+    updateBanner(id: number, bannerPath: string | null): void {
+        this.db.prepare("UPDATE artists SET banner_path = ? WHERE id = ?").run(bannerPath, id);
+    }
+
     updateKeys(id: number, publicKey: string, privateKey: string): void {
         this.db.prepare("UPDATE artists SET public_key = ?, private_key = ? WHERE id = ?").run(publicKey, privateKey, id);
     }

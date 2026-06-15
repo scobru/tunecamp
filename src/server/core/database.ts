@@ -592,6 +592,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 // auto-promoted artists are created with can_sell = 0.
                 db.exec("ALTER TABLE artists ADD COLUMN can_sell INTEGER DEFAULT 1");
             }
+            if (!cols.some(col => col.name === 'banner_path')) {
+                console.log("📦 [Database] Migrating artists table: adding banner_path column...");
+                db.exec("ALTER TABLE artists ADD COLUMN banner_path TEXT");
+            }
             
             // Migrate unlock_codes: add asset_id column if missing
             const ucCols = db.prepare("PRAGMA table_info(unlock_codes)").all() as any[];

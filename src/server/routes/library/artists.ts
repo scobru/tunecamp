@@ -75,6 +75,7 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
             res.json(filtered.map(a => ({
                 ...a,
                 coverImage: `/api/artists/${a.id}/cover`,
+                bannerImage: a.banner_path ? `/api/artists/${a.id}/banner` : null,
                 starred: username ? social.isStarred(username, 'artist', String(a.id)) : false,
                 rating: username ? social.getItemRating(username, 'artist', String(a.id)) : 0
             })));
@@ -239,6 +240,7 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
              res.json({
                  ...artist,
                  coverImage: `/api/artists/${artist.id}/cover`,
+                 bannerImage: artist.banner_path ? `/api/artists/${artist.id}/banner` : null,
                  releases: publicFormalReleases.map(r => ({ ...r, coverImage: r.cover_path })),
                  albums: libraryAlbums.map(a => ({ ...a, coverImage: a.cover_path })),
                  tracks: looseTracks,
@@ -250,6 +252,39 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
              res.status(500).json({ error: "Failed to fetch artist" });
          }
      });
+
+    /**
+     * GET /api/artists/:id/banner
+     * Serve the custom page-header banner image for an artist
+     */
+    router.get("/:id/banner", (req, res) => {
+        try {
+            const param = req.params.id;
+            let artist;
+            if (/^\d+$/.test(param)) {
+                artist = library.getArtist(parseInt(param, 10));
+            } else {
+                artist = library.getArtistBySlug(param);
+            }
+
+            if (!artist || !artist.banner_path) {
+                return res.status(404).json({ error: "No banner image" });
+            }
+
+            if (artist.banner_path.startsWith('http')) {
+                return res.redirect(artist.banner_path);
+            }
+
+            const bannerPath = path.join(musicDir, artist.banner_path);
+            if (fs.existsSync(bannerPath)) {
+                return res.sendFile(path.resolve(bannerPath), { maxAge: 86400000 });
+            }
+
+            return res.status(404).json({ error: "Banner file not found" });
+        } catch (e) {
+            res.status(500).send("Error loading banner");
+        }
+    });
 
     /**
      * GET /api/artists/:id/cover
