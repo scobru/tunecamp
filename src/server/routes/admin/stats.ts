@@ -12,7 +12,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
     const dbService: ServiceContainer['database'] = (container as any).database || (container as any);
     const config: ServiceContainer['config'] = (container as any).config || (container as any);
     const federatedDiscoveryService: ServiceContainer['federatedDiscoveryService'] = (container as any).federatedDiscoveryService;
-    const catalogCache = createCatalogCacheService(dbService.db);
+    const catalogCache: ServiceContainer['catalogCache'] = (container as any).catalogCache || createCatalogCacheService(dbService.db);
     const router = Router();
 
     /**

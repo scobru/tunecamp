@@ -63,6 +63,7 @@ import { loadPlugins } from "./core/plugin-loader.js";
 import { storageService, initStorageService } from "./modules/storage/storage.service.js";
 import { aiService, initAIService } from "./modules/ai/ai.service.js";
 import { createFederatedDiscoveryService } from "./modules/network/federated-discovery.service.js";
+import { createCatalogCacheService } from "./modules/network/catalog-cache.service.js";
 import { createCommunityRoutes } from "./routes/network/community.js";
 import { getSiteHandle } from "./core/site-actor.js";
 import { createLibraryStatsRoutes } from "./routes/admin/library-stats.js";
@@ -182,6 +183,10 @@ export async function startServer(config: ServerConfig): Promise<void> {
                 .map((a: any) => { try { return new URL(a.uri).origin; } catch { return null; } })
                 .filter((o: any): o is string => !!o),
     });
+
+    // Shared stale-while-revalidate cache for remote peer catalogs (HTTP federation).
+    // Single instance so the Network page and admin invalidation operate on the same state.
+    const catalogCache = createCatalogCacheService(database.db);
 
     let gdriveService: GoogleDriveService | undefined;
 
@@ -314,6 +319,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         publishingService,
         apService,
         federatedDiscoveryService,
+        catalogCache,
         lifecycleService,
         telegramBotService,
         chatService,

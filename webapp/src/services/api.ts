@@ -279,6 +279,7 @@ const API = {
     followRssFeed: (url: string) => handleResponse(api.post<{ message: string; name: string; items: number }>('admin/network/rss/follow', { url })),
     unfollowRssFeed: (url: string) => handleResponse(api.post('admin/network/rss/unfollow', { url })),
     syncRssFeed: (url?: string) => handleResponse(api.post('admin/network/rss/sync', { url })),
+    refreshNetworkCatalogs: (url?: string) => handleResponse(api.post<{ message: string; removed: number }>('admin/network/catalog/refresh', { url })),
 
     // --- Admin: Releases & Content ---
     getAdminReleases: (options: { mine?: boolean, includeLibrary?: boolean } = {}) => {
