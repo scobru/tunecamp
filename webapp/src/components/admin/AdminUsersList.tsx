@@ -10,11 +10,15 @@ export const AdminUsersList = () => {
   const isRootAdmin = !!user?.isRootAdmin || role === 'root_admin';
   const [users, setUsers] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [selfPublishEnabled, setSelfPublishEnabled] = useState(false);
 
   const loadUsers = () => API.getUsers().then(setUsers).catch(console.error);
 
   useEffect(() => {
     loadUsers();
+    API.getSiteSettings()
+      .then((s) => setSelfPublishEnabled(s?.listenerSelfPublish === true || (s?.listenerSelfPublish as any) === "true"))
+      .catch(() => {});
     window.addEventListener("refresh-admin-users", loadUsers);
     return () => window.removeEventListener("refresh-admin-users", loadUsers);
   }, []);
@@ -160,7 +164,7 @@ export const AdminUsersList = () => {
                   <span className="flex items-center gap-1">
                     <User size={12} /> {u.artist_name}
                   </span>
-                ) : u.artist_requested_at ? (
+                ) : u.artist_requested_at && !selfPublishEnabled ? (
                   <span className="flex items-center gap-2">
                     <span className="badge badge-warning badge-outline badge-sm">Artist requested</span>
                     {isRootAdmin && (

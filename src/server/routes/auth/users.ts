@@ -16,6 +16,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
     const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const identity: ServiceContainer['identity'] = (container as any).identity || (database as any).identity || database;
+    const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const router = Router();
     router.use(json());
     const authMiddleware = createAuthMiddleware(authService);
@@ -123,6 +124,33 @@ export function createUsersRoutes(container: ServiceContainer): Router {
             if (req.artistId) {
                 return res.status(400).json({ error: "You already have an artist profile" });
             }
+
+            // When self-publish is enabled, auto-approve immediately instead of queuing
+            if (identity?.getSetting("listenerSelfPublish") === "true") {
+                const user = authService.getAdminById(req.userId!);
+                if (!user) return res.status(404).json({ error: "User not found" });
+
+                const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
+                library.setArtistCanSell(artistId, false);
+                const newRole = (user.role as UserRole) === UserRole.NORMAL_USER ? UserRole.SUPER_USER : user.role;
+                authService.updateAdmin(req.userId!, artistId, newRole, user.storage_quota);
+                authService.setArtistRequest(req.userId!, false);
+
+                // Issue a fresh token so the caller can update their session immediately
+                const token = authService.generateToken({
+                    userId: req.userId!,
+                    isAdmin: newRole !== UserRole.NORMAL_USER,
+                    username: user.username,
+                    artistId,
+                    role: newRole,
+                    isActive: true,
+                    tokenVersion: (user as any).token_version ?? 0,
+                });
+
+                console.log(`[Self-Publish] Auto-approved artist request for ${user.username} (artistId=${artistId})`);
+                return res.json({ success: true, autoApproved: true, token, artistId, message: "Artist profile created!" });
+            }
+
             authService.setArtistRequest(req.userId!, true);
             res.json({ success: true, message: "Request sent. An admin will review it." });
         } catch (error) {
