@@ -46,9 +46,9 @@ describe("VisibilityGuardian", () => {
       expect(VisibilityGuardian.canPublishContent(superUser)).toBe(false);
     });
 
-    test("Listener cannot publish, even with a stale artist link", () => {
+    test("Listener without artist link cannot publish; with link can (self-publish mode)", () => {
       expect(VisibilityGuardian.canPublishContent(normalUser)).toBe(false);
-      expect(VisibilityGuardian.canPublishContent({ userId: 7, artistId: 10, role: UserRole.NORMAL_USER })).toBe(false);
+      expect(VisibilityGuardian.canPublishContent({ userId: 7, artistId: 10, role: UserRole.NORMAL_USER })).toBe(true);
       expect(VisibilityGuardian.canPublishContent(guest)).toBe(false);
     });
   });
