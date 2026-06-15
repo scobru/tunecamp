@@ -13,6 +13,7 @@ import { AdminTrackModal } from "../modals/AdminTrackModal";
 import { AdminArtistModal } from "../modals/AdminArtistModal";
 import { CheckoutModal } from "../modals/CheckoutModal";
 import { CommandPalette } from "../modals/CommandPalette";
+import { UpdateBanner } from "../UpdateBanner";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useUIStore } from "../../stores/useUIStore";
 import { applyThemeFont } from "../../utils/themeFont";
@@ -138,6 +139,7 @@ export const MainLayout = () => {
         <Sidebar />
       </div>
 
+      <UpdateBanner />
       <PlayerBar />
       <PlayerCanvas />
 

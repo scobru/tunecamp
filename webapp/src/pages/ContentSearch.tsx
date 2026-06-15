@@ -57,6 +57,11 @@ const ContentSearch: React.FC = () => {
     const [seedName, setSeedName] = useState('');
     const [seedingResult, setSeedingResult] = useState<string | null>(null);
     const [seedLoading, setSeedLoading] = useState(false);
+    const [knabenHits, setKnabenHits] = useState<any[]>([]);
+    const [knabenTotal, setKnabenTotal] = useState(0);
+    const [knabenPage, setKnabenPage] = useState(0);
+    const [knabenLoading, setKnabenLoading] = useState(false);
+    const [knabenError, setKnabenError] = useState<string | null>(null);
     const { user, isAuthenticated, isLoading: authLoading, role } = useAuthStore();
     const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
     const navigate = useNavigate();
@@ -85,6 +90,25 @@ const ContentSearch: React.FC = () => {
             setTorrents(data);
         } catch (err) {
             console.error(err);
+        }
+    };
+
+    const handleKnabenSearch = async (e?: React.FormEvent, page = 0) => {
+        e?.preventDefault();
+        if (!query.trim()) return;
+        setKnabenLoading(true);
+        setKnabenError(null);
+        if (page === 0) setKnabenHits([]);
+        try {
+            const data = await API.searchTorrents(query.trim(), page);
+            const hits = data?.hits ?? data?.results ?? [];
+            setKnabenHits(page === 0 ? hits : (prev: any[]) => [...prev, ...hits]);
+            setKnabenTotal(data?.total ?? hits.length);
+            setKnabenPage(page);
+        } catch (err: any) {
+            setKnabenError(err?.message ?? "Search failed");
+        } finally {
+            setKnabenLoading(false);
         }
     };
 
@@ -646,55 +670,120 @@ const ContentSearch: React.FC = () => {
 
             {activeTab === 'torrents' && (
                 <div className="space-y-8">
-                    {/* Find torrents on external engines. In-app search was removed
-                        because the server can't reach ThePirateBay/apibay where it's
-                        ISP-blocked; users copy a magnet and paste it below. */}
+                    {/* Knaben in-app search */}
                     <div className="card bg-base-200/50 border border-base-300 p-5 space-y-4">
                         <div>
                             <h2 className="text-lg font-bold flex items-center gap-2">
-                                <Globe size={18} className="text-primary" /> Find Torrents
+                                <Search size={18} className="text-primary" /> Search Torrents
                             </h2>
                             <p className="text-xs opacity-60 mt-1 leading-relaxed">
-                                Type a query, open an engine to search, then copy the magnet link
-                                and paste it into the box below to start the download.
+                                Powered by <span className="font-semibold">Knaben</span> aggregator. Results are sorted by seeders — click Add to start the download.
                             </p>
                         </div>
 
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                if (!query.trim()) return;
-                                window.open(buildEngineUrl(TORRENT_SEARCH_ENGINES[0].url, query), '_blank', 'noopener,noreferrer');
-                            }}
-                            className="relative"
-                        >
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search query (e.g. marilyn manson)…"
-                                className="input input-bordered w-full pl-10"
-                                value={query}
-                                onChange={e => setQuery(e.target.value)}
-                            />
+                        <form onSubmit={handleKnabenSearch} className="flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Artist, album, release… (e.g. pink floyd dark side)"
+                                    className="input input-bordered w-full pl-10"
+                                    value={query}
+                                    onChange={e => setQuery(e.target.value)}
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary gap-2 min-w-[100px]" disabled={knabenLoading || !query.trim()}>
+                                {knabenLoading ? <span className="loading loading-spinner loading-xs" /> : <Search size={16} />}
+                                Search
+                            </button>
                         </form>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {TORRENT_SEARCH_ENGINES.map((engine) => (
-                                <a
-                                    key={engine.name}
-                                    href={buildEngineUrl(engine.url, query)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group card bg-base-200 hover:bg-base-300 border border-base-300/50 hover:border-primary/40 transition-all p-3 flex-row items-center justify-between gap-2"
-                                >
-                                    <div className="min-w-0">
-                                        <div className="font-bold text-sm group-hover:text-primary transition-colors truncate">{engine.name}</div>
-                                        <div className="text-[11px] opacity-50 truncate">{engine.note}</div>
-                                    </div>
-                                    <ExternalLink size={16} className="opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all flex-shrink-0" />
-                                </a>
-                            ))}
-                        </div>
+                        {knabenError && (
+                            <div className="alert alert-error text-sm py-2">{knabenError}</div>
+                        )}
+
+                        {knabenHits.length > 0 && (
+                            <div className="space-y-2">
+                                <div className="text-xs opacity-50 pb-1">{knabenTotal} result{knabenTotal !== 1 ? 's' : ''} — showing {knabenHits.length}</div>
+                                <div className="divide-y divide-base-content/5 rounded-xl overflow-hidden border border-base-content/10">
+                                    {knabenHits.map((hit: any, i: number) => {
+                                        const magnet = hit.magnet ?? hit.magnetUri ?? hit.magnet_uri ?? '';
+                                        const seeders = hit.seeders ?? hit.seeds ?? 0;
+                                        const size = hit.size ?? hit.fileSize ?? 0;
+                                        const sizeFmt = size > 0
+                                            ? size / 1024 / 1024 < 1000
+                                                ? `${(size / 1024 / 1024).toFixed(0)} MB`
+                                                : `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
+                                            : '';
+                                        return (
+                                            <div key={hit.id ?? hit.info_hash ?? i} className="flex items-center gap-3 px-4 py-3 bg-base-200/40 hover:bg-base-200 transition-colors">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium truncate" title={hit.title ?? hit.name}>{hit.title ?? hit.name}</div>
+                                                    <div className="flex items-center gap-3 mt-0.5 text-[11px] opacity-50">
+                                                        {sizeFmt && <span>{sizeFmt}</span>}
+                                                        <span className="text-success font-semibold">{seeders}S</span>
+                                                        {(hit.leechers ?? hit.peers) != null && <span>{hit.leechers ?? hit.peers}L</span>}
+                                                        {hit.indexer && <span>{hit.indexer}</span>}
+                                                    </div>
+                                                </div>
+                                                {magnet ? (
+                                                    <button
+                                                        className="btn btn-primary btn-xs gap-1 shrink-0"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await API.addTorrent(magnet);
+                                                                notify.success("Torrent added");
+                                                                fetchTorrents();
+                                                            } catch (err: any) {
+                                                                notify.error(err, "Failed to add torrent");
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Download size={12} /> Add
+                                                    </button>
+                                                ) : (
+                                                    <a
+                                                        href={`https://knaben.org/search/${encodeURIComponent(hit.title ?? hit.name ?? '')}/0/1/seeders`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn btn-ghost btn-xs gap-1 shrink-0"
+                                                    >
+                                                        <ExternalLink size={12} /> Open
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {knabenHits.length < knabenTotal && (
+                                    <button
+                                        className="btn btn-ghost btn-sm w-full"
+                                        disabled={knabenLoading}
+                                        onClick={() => handleKnabenSearch(undefined, knabenPage + 1)}
+                                    >
+                                        {knabenLoading ? <span className="loading loading-spinner loading-xs" /> : 'Load more'}
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Fallback: external engines */}
+                        <details className="text-xs opacity-60">
+                            <summary className="cursor-pointer hover:opacity-100 transition-opacity">External engines (fallback)</summary>
+                            <div className="pt-2 flex flex-wrap gap-2">
+                                {TORRENT_SEARCH_ENGINES.map((engine) => (
+                                    <a
+                                        key={engine.name}
+                                        href={buildEngineUrl(engine.url, query)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="badge badge-outline hover:badge-primary transition-colors gap-1"
+                                    >
+                                        {engine.name} <ExternalLink size={10} />
+                                    </a>
+                                ))}
+                            </div>
+                        </details>
                     </div>
 
                     {/* Add a magnet manually — compact inline bar */}

@@ -47,6 +47,10 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         }
     });
 
+    router.get("/api/version", (_req: Request, res: Response) => {
+        res.json({ version: pkg.version });
+    });
+
     // Public assets store
     router.get("/api/assets", (req: Request, res: Response) => {
         try { res.json(integration.getPublicAssets()); }
