@@ -183,10 +183,10 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
             const param = req.params.id;
             let artist;
             
-            if (isNaN(parseInt(param))) {
-                artist = library.getArtistBySlug(param);
+            if (/^\d+$/.test(param)) {
+                artist = library.getArtist(parseInt(param, 10));
             } else {
-                artist = library.getArtist(parseInt(param));
+                artist = library.getArtistBySlug(param);
             }
 
             if (!artist) {
@@ -258,10 +258,10 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
         try {
             const param = req.params.id;
             let artist;
-            if (isNaN(parseInt(param))) {
-                artist = library.getArtistBySlug(param);
+            if (/^\d+$/.test(param)) {
+                artist = library.getArtist(parseInt(param, 10));
             } else {
-                artist = library.getArtist(parseInt(param));
+                artist = library.getArtistBySlug(param);
             }
             
             let photoPathToUse = artist?.photo_path;
@@ -378,10 +378,10 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
             const param = req.params.id;
             let artist;
             
-            if (isNaN(parseInt(param))) {
-                artist = library.getArtistBySlug(param);
+            if (/^\d+$/.test(param)) {
+                artist = library.getArtist(parseInt(param, 10));
             } else {
-                artist = library.getArtist(parseInt(param));
+                artist = library.getArtistBySlug(param);
             }
 
             if (!artist) return res.status(404).json({ error: "Artist not found" });
