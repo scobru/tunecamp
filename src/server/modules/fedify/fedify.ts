@@ -28,6 +28,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     federation.setNodeInfoDispatcher("/nodeinfo/2.1", async (ctx) => {
         const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl;
         const baseUrl = publicUrl ? new URL(publicUrl) : ctx.url;
+        const siteHandle = getSiteHandle(dbService);
         return {
             software: {
                 name: "tunecamp",
@@ -39,6 +40,13 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 users: { total: 0 },
                 localPosts: 0,
                 localComments: 0,
+            },
+            metadata: {
+                // Expose the site-actor URI so remote TuneCamp instances can
+                // resolve our instance actor when bare-domain WebFinger guesses
+                // miss (discoverSiteActor fallback via getActorIdFromNodeInfo).
+                actorId: new URL(`/users/${siteHandle}`, baseUrl).href,
+                nodeName: dbService.getSetting("siteName") || config.siteName || "TuneCamp",
             },
         };
     });

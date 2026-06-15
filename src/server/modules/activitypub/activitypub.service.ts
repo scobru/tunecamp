@@ -435,6 +435,12 @@ export class ActivityPubService {
                 console.error(`❌ Failed to fetch actor profile ${actorUri}: ${res.status}`);
                 return;
             }
+            // Guard against non-JSON responses (e.g. SPA index.html when hitting a bare domain)
+            const contentType = res.headers?.get?.("content-type") || "";
+            if (!contentType.includes("json") && !contentType.includes("activity")) {
+                console.warn(`⚠️ Skipping outbox fetch for ${actorUri}: got non-JSON content-type "${contentType}"`);
+                return;
+            }
             const actor = await res.json() as any;
             
             // Collect outboxes/libraries to scan
@@ -1571,12 +1577,24 @@ export class ActivityPubService {
     private async discoverSiteActor(origin: string): Promise<string | null> {
         try {
             const domain = new URL(origin).hostname;
-            const wellKnownAliases = [getSiteHandle(this.db), "site", "instance", domain];
+            // Only try well-known generic handles — NOT our own local handle,
+            // which has no reason to exist on a remote instance.
+            const wellKnownAliases = ["site", "instance", domain];
             for (const alias of wellKnownAliases) {
                 const actorId = await this.getActorIdFromWebFinger(domain, alias);
                 if (actorId) return actorId;
             }
-            return await this.getActorIdFromNodeInfo(origin);
+
+            // Fedify-served NodeInfo at /.well-known/nodeinfo → /nodeinfo/2.1
+            const fromNodeInfo = await this.getActorIdFromNodeInfo(origin);
+            if (fromNodeInfo) return fromNodeInfo;
+
+            // TuneCamp also exposes a custom NodeInfo at /api/v1/instance/nodeinfo/2.0
+            // with a metadata.actorId field. Try it as a secondary source.
+            const fromCustomNodeInfo = await this.getActorIdFromCustomNodeInfo(origin);
+            if (fromCustomNodeInfo) return fromCustomNodeInfo;
+
+            return null;
         } catch { return null; }
     }
 
@@ -1611,6 +1629,28 @@ export class ActivityPubService {
                 return null;
             }
             const ni = await niRes.json() as any;
+            return ni.metadata?.actorId || null;
+        } catch { return null; }
+    }
+
+    /**
+     * TuneCamp instances expose a custom NodeInfo at /api/v1/instance/nodeinfo/2.0
+     * that always includes metadata.actorId. This is a secondary fallback in case
+     * the Fedify-served /.well-known/nodeinfo → /nodeinfo/2.1 doesn't include it
+     * (e.g. an older deployment that hasn't been rebuilt yet).
+     */
+    private async getActorIdFromCustomNodeInfo(origin: string): Promise<string | null> {
+        try {
+            const res = await fetch(`${origin}/api/v1/instance/nodeinfo/2.0`, {
+                headers: { "Accept": "application/json" },
+            });
+            if (!res.ok) {
+                await drainResponse(res);
+                return null;
+            }
+            const ni = await res.json() as any;
+            // Only trust if it's actually a TuneCamp instance
+            if (ni.software?.name !== "tunecamp") return null;
             return ni.metadata?.actorId || null;
         } catch { return null; }
     }
