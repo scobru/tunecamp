@@ -15,19 +15,21 @@ export function createStorageRouter(container: ServiceContainer) {
     const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
     const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
     if (!gdriveService) throw new Error("GDriveService must be configured to use storage router");
     
     const router = Router();
     router.use(json());
 
-    router.get("/gdrive/auth", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
+    router.get("/gdrive/auth", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
         // Pass userId as state to identify the user in the callback
         const state = req.userId ? String(req.userId) : "";
         const url = gdriveService.getAuthUrl(state);
         res.json({ url });
     });
 
-    router.get("/gdrive/accounts", authMiddleware.requireAdmin, (req: AuthenticatedRequest, res) => {
+    router.get("/gdrive/accounts", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
         const accounts = integration.getStorageAccounts(req.userId);
         res.json(accounts.filter(a => a.provider === "google"));
     });
@@ -39,17 +41,27 @@ export function createStorageRouter(container: ServiceContainer) {
         try {
             // Use the userId passed via the state parameter
             let userId = state ? parseInt(state as string, 10) : null;
-            
+
             // Fallback to primary admin only if no state was provided (legacy/direct call)
             if (!userId) {
                 userId = integration.getPrimaryAdminId();
             }
-            
+
             if (!userId) return res.status(500).send("No user context found for authentication");
 
             await gdriveService.exchangeCode(code as string, userId);
-            
-            // Redirect back to the UI (assuming /admin/settings exists)
+
+            // If self-publish is enabled and the user has no artist profile, auto-create one
+            if (identity?.getSetting("listenerSelfPublish") === "true") {
+                const user = authService.getAdminById(userId);
+                if (user && !user.artist_id) {
+                    const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
+                    library.setArtistCanSell(artistId, false);
+                    authService.updateAdmin(userId, artistId, user.role, user.storage_quota);
+                    console.log(`[Self-Publish] Auto-created artist profile for user ${user.username} (id=${userId})`);
+                }
+            }
+
             res.send("<h1>Google Drive Connected!</h1><p>You can close this window and return to TuneCamp.</p><script>setTimeout(() => window.location.href='/', 2000)</script>");
         } catch (error: any) {
             console.error("GDrive OAuth Error:", error.response?.data || error.message);

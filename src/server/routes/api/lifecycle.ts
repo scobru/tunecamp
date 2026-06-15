@@ -7,16 +7,21 @@ import type { ServiceContainer } from "../../core/container.js";
 
 export function createLifecycleRoutes(container: ServiceContainer): Router {
     const lifecycleService: ServiceContainer['lifecycleService'] = (container as any).lifecycleService || (container as any);
+    const identity = (container as any).identity;
     const router = Router();
     router.use(json());
     router.post("/promote/:id", wrapAsync(async (req: any, res: any) => {
         const albumId = parseInt(req.params.id);
+        const autoPublish = identity?.getSetting("listenerSelfPublish") === "true";
         await lifecycleService.requestPromotion(albumId, {
             userId: req.userId,
             artistId: req.artistId,
             role: req.role
-        });
-        res.json({ success: true, message: "Promotion requested. Awaiting Admin approval." });
+        }, autoPublish);
+        const message = autoPublish
+            ? "Release published successfully."
+            : "Promotion requested. Awaiting Admin approval.";
+        res.json({ success: true, message });
     }));
 
     /**

@@ -274,7 +274,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 communityLink,
                 web3Enabled,
                 chatEnabled,
-                scheduledScanHour
+                scheduledScanHour,
+                listenerSelfPublish
             } = req.body;
             let settingsChanged = false;
 
@@ -383,6 +384,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (allowPublicRegistration !== undefined) {
                 identity.setSetting("allowPublicRegistration", allowPublicRegistration ? "true" : "false");
                 settingsChanged = true;
+            }
+
+            if (listenerSelfPublish !== undefined) {
+                identity.setSetting("listenerSelfPublish", listenerSelfPublish ? "true" : "false");
             }
 
             if (lastfm_api_key !== undefined) {

@@ -13,17 +13,17 @@ export class LifecycleService {
 
     /**
      * Artist requests promotion of a library album or existing release to a public release.
-     * Transitions from 'draft' to 'pending'.
+     * Transitions from 'draft' to 'pending', or directly to released when autoPublish is true.
      */
-    async requestPromotion(id: number, user: { userId: number, artistId?: number, role: string }): Promise<void> {
+    async requestPromotion(id: number, user: { userId: number, artistId?: number, role: string }, autoPublish = false): Promise<void> {
         const album = this.db.getAlbum(id);
         const release = this.db.getRelease(id);
         const item = album || release;
-        
+
         if (!item) throw new Error("Item not found");
 
         const context: ViewerContext = VisibilityGuardian.deriveContext(user as any);
-        
+
         // Only owners (Super Users or Artists) or Library Managers can request promotion
         if (item.owner_id !== user.userId && !VisibilityGuardian.can(context, Capability.MANAGE_PRIVATE_LIBRARY)) {
             throw new Error("Only the owner can request promotion");
@@ -33,12 +33,18 @@ export class LifecycleService {
             throw new Error(`Cannot request promotion: current status is ${item.status}`);
         }
 
+        if (autoPublish) {
+            console.log(`[Lifecycle] Item ${id} auto-publishing (self-publish mode enabled).`);
+            await this.finalizeRelease(id, user);
+            return;
+        }
+
         if (album) {
             this.db.updateAlbumStatus(id, 'pending');
         } else {
             this.db.updateReleaseStatus(id, 'pending');
         }
-        
+
         console.log(`[Lifecycle] Item ${id} is now PENDING approval.`);
     }
 
