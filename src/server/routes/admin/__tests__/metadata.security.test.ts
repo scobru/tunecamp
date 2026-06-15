@@ -24,6 +24,10 @@ const mockCatalogService = {
     updateAlbum: jest.fn<any>().mockResolvedValue(undefined),
 } as any;
 
+const mockMaintenanceService = {
+    propagateAlbumMetadataToTracks: jest.fn<any>().mockResolvedValue(undefined),
+} as any;
+
 describe('Metadata Security', () => {
     let app: express.Express;
 
@@ -41,7 +45,8 @@ describe('Metadata Security', () => {
             library: mockDb.library || mockDb,
             musicDir: '/tmp/music',
             metadataService: { scanTracks: jest.fn(), scanDirectory: jest.fn() },
-            catalogService: mockCatalogService
+            catalogService: mockCatalogService,
+            maintenanceService: mockMaintenanceService
         } as any));
     });
 
