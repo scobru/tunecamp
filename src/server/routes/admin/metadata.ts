@@ -68,13 +68,20 @@ export function createMetadataRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Invalid or unsafe cover URL" });
             }
 
+            const year = date ? parseInt(date.substring(0, 4)) : undefined;
             await catalogService.updateAlbum(albumId, {
                 external_id: mbid,
                 title,
                 artist,
                 date,
-                year: date ? parseInt(date.substring(0, 4)) : undefined,
+                year,
                 cover_path: coverUrl
+            });
+
+            const updatedAlbum = library.getAlbum(albumId) || library.getRelease(albumId);
+            await maintenance.propagateAlbumMetadataToTracks(albumId, {
+                genre: updatedAlbum?.genre ?? null,
+                year: (typeof updatedAlbum?.year === 'number' ? updatedAlbum.year : null) ?? year ?? null
             });
 
             res.json({ success: true, message: "Metadata applied and synced" });
