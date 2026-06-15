@@ -541,7 +541,7 @@ const API = {
 
     // --- Artist profile requests (listener -> admin approval) ---
     getMyArtistRequest: () => handleResponse(api.get<{ requestedAt: string | null, hasArtist: boolean }>('users/me/artist-request')),
-    requestArtistProfile: () => handleResponse(api.post('users/me/artist-request')),
+    requestArtistProfile: () => handleResponse(api.post<{ success: boolean; autoApproved?: boolean; token?: string; artistId?: number; message?: string }>('users/me/artist-request')),
     approveArtistRequest: (userId: string | number) => handleResponse(api.post<{ artistId: number }>(`admin/system/users/${userId}/approve-artist`)),
     dismissArtistRequest: (userId: string | number) => handleResponse(api.delete(`admin/system/users/${userId}/artist-request`)),
     deleteUser: (id: string) => handleResponse(api.delete(`admin/system/users/${id}`)),
