@@ -5,12 +5,12 @@ TuneCamp supports a hybrid payment system combining traditional Fiat (via Stripe
 ## 1. Hybrid Payment Flows
 
 ### Stripe Checkout (Fiat)
-- **Purpose**: Allows users to buy tracks or albums using credit/debit cards.
+- **Purpose**: Allows users to buy tracks, albums, or store assets using credit/debit cards.
 - **Route**: `POST /api/payments/stripe/create-session`
 - **Mechanism**:
-  1. Frontend requests a session for an `itemId` and `type` (track/album).
+  1. Frontend requests a session for an `itemId` and `type` (track/album/asset).
   2. Backend calculates the price (converting ETH to USD if necessary via `price.ts`).
-  3. Backend resolves the item's artist. **If the artist has a connected Stripe account** (`artists.stripe_account_id`), the session is created as a **Stripe Connect direct charge** on that account, with the instance fee taken as an `application_fee_amount`. **Otherwise** the session is created on the instance's own Stripe account (single-artist / self-host fallback — the operator already keeps 100%).
+  3. Backend resolves the item's artist. For assets this is the asset's `artist_id` if it was self-published by an artist; admin-created assets (no `artist_id`) have no resolvable artist. **If the artist has a connected Stripe account** (`artists.stripe_account_id`), the session is created as a **Stripe Connect direct charge** on that account, with the instance fee taken as an `application_fee_amount`. **Otherwise** the session is created on the instance's own Stripe account (single-artist / self-host fallback, or admin-managed assets — the operator already keeps 100%).
   4. A Stripe Checkout session is created and the URL is returned to the client.
   5. Upon successful payment, Stripe sends a webhook to `/api/payments/stripe/webhook`. For direct charges this arrives as a **connected-account event** (enable "Listen to events on connected accounts" on the endpoint).
   6. Backend generates an **Unlock Code** and stores it in the database.
@@ -33,6 +33,7 @@ TuneCamp supports a hybrid payment system combining traditional Fiat (via Stripe
   - **Direct USDC**: Sending USDC (ERC-20) to the artist's wallet.
   - **Checkout Contract**: Calling the `purchaseWithETH` or `purchaseWithUSDC` methods on the `TuneCampCheckout` smart contract.
 - **Mechanism**: Backend fetches the transaction and receipt from the Base RPC, parses the transaction data (using `ethers.js`), and verifies the recipient and amount.
+- **Note**: Store assets have no on-chain verify endpoint yet — the crypto tab is hidden for asset checkouts, which are Stripe-only.
 
 ## 2. Unlock Codes
 
