@@ -29,6 +29,7 @@ interface CheckoutTrack {
   walletAddress?: string;
   use_nft?: boolean;
   useNft?: boolean;
+  _assetType?: boolean;
 }
 
 export const CheckoutModal = () => {
@@ -138,8 +139,9 @@ export const CheckoutModal = () => {
 
   const handleDownload = () => {
     if (!track || !unlockCode) return;
+    const downloadPath = track._assetType ? `/api/payments/download/asset/${track.id}` : `/api/payments/download/${track.id}`;
     window.open(
-      `/api/payments/download/${track.id}?code=${unlockCode}`,
+      `${downloadPath}?code=${unlockCode}`,
       "_blank",
     );
     handleClose();
@@ -155,7 +157,7 @@ export const CheckoutModal = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemId: track.id,
-          type: "track",
+          type: track._assetType ? "asset" : "track",
           albumId: (track as any).albumId,
           successUrl: window.location.origin + "/#/purchases?stripe_success=true",
           cancelUrl: window.location.href,
@@ -441,7 +443,7 @@ export const CheckoutModal = () => {
                 directly. Choose your preferred payment method.
               </p>
 
-              {hasStripe && web3Available && (
+              {hasStripe && web3Available && !track._assetType && (
                 <div className="flex bg-base-200/50 p-1 rounded-2xl w-full mb-6 border border-base-content/5">
                   <button
                     className={`flex-1 py-2 text-sm font-bold rounded-xl transition-all ${paymentType === 'fiat' ? 'bg-primary text-white shadow-level-1' : 'text-base-content/50 hover:text-base-content'}`}

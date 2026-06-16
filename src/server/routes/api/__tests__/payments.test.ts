@@ -80,6 +80,7 @@ describe('Payments Routes', () => {
             getSetting: jest.fn(),
             getTrack: jest.fn(),
             getAlbum: jest.fn(),
+            getAsset: jest.fn(),
             getTrackPriceFromRelease: jest.fn(),
             createUnlockCode: jest.fn(),
             validateUnlockCode: jest.fn(),
@@ -283,6 +284,36 @@ describe('Payments Routes', () => {
             // Still a direct charge, but no application fee (would be rejected cross-border)
             expect(opts).toEqual({ stripeAccount: 'acct_br' });
             expect(params.payment_intent_data).toBeUndefined();
+        });
+
+        test('routes an artist-published asset to their connected account', async () => {
+            mockDatabase.getAsset.mockReturnValue({ id: 9, title: 'Sticker Pack', price_usdc: 10, currency: 'USD', artist_id: 7 });
+            mockDatabase.getArtistSimple = jest.fn().mockReturnValue({ id: 7, name: 'Artist Seven', stripe_account_id: 'acct_artist7' });
+            mockDatabase.getSetting.mockImplementation((k: string) => (k === 'adminFeePercentage' ? '15' : null));
+            mockStripe.accounts.retrieve.mockResolvedValue({ id: 'acct_artist7', country: 'US', charges_enabled: true });
+            mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'sess_asset', url: 'https://checkout.stripe.com/sess_asset' });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 9, type: 'asset', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(200);
+            const [params, opts] = mockStripe.checkout.sessions.create.mock.calls[0];
+            expect(opts).toEqual({ stripeAccount: 'acct_artist7' });
+            expect(params.payment_intent_data.application_fee_amount).toBe(150);
+        });
+
+        test('keeps an admin-published asset (no artist_id) on the instance account', async () => {
+            mockDatabase.getAsset.mockReturnValue({ id: 10, title: 'Label Poster', price_usdc: 10, currency: 'USD', artist_id: null });
+            mockStripe.checkout.sessions.create.mockResolvedValue({ id: 'sess_admin_asset', url: 'https://checkout.stripe.com/sess_admin_asset' });
+
+            const res = await request(app)
+                .post('/api/payments/stripe/create-session')
+                .send({ itemId: 10, type: 'asset', successUrl: 'https://site.com/ok', cancelUrl: 'https://site.com/no' });
+
+            expect(res.status).toBe(200);
+            const [, opts] = mockStripe.checkout.sessions.create.mock.calls[0];
+            expect(opts).toBeUndefined();
         });
     });
 
