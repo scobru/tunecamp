@@ -139,8 +139,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             } else if (type === 'album') {
                 const album: any = library.getAlbum(itemId);
                 artistId = album?.artist_id ?? null;
+            } else if (type === 'asset') {
+                const asset: any = integration.getAsset(itemId);
+                artistId = asset?.artist_id ?? null; // no artist_id → admin-managed, always sellable
             } else {
-                return true; // assets are admin-managed
+                return true;
             }
             if (!artistId) return true;
             const artist: any = database.getArtistSimple(artistId);
@@ -155,8 +158,10 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     /** Resolve the artist who should receive funds for a checkout item, so fiat
      *  payments can be routed to their connected Stripe account. Mirrors the
      *  artist resolution in isSaleAllowed. Returns undefined for admin-owned
-     *  content (assets) or items with no linked artist — those stay on the
-     *  instance's own Stripe account. */
+     *  content (no linked artist) — those stay on the instance's own Stripe
+     *  account. Assets follow the same rule: if an artist self-published the
+     *  asset (artist_id set), funds go to them; admin-created assets (no
+     *  artist_id) stay with the instance. */
     function resolveArtistForCheckout(type: string, itemId: number, albumId?: number): any | undefined {
         try {
             let artistId: number | null | undefined;
@@ -171,8 +176,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             } else if (type === 'album') {
                 const album: any = library.getAlbum(itemId);
                 artistId = album?.artist_id ?? null;
+            } else if (type === 'asset') {
+                const asset: any = integration.getAsset(itemId);
+                artistId = asset?.artist_id ?? null;
             } else {
-                return undefined; // assets are admin-managed
+                return undefined;
             }
             if (!artistId || artistId < 0) return undefined; // site actor / unlinked → instance account
             return database.getArtistSimple(artistId);
@@ -406,8 +414,8 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             // it directly so the money lands in the artist's own Stripe balance,
             // and take only the instance fee as an application fee. This makes the
             // fiat split trustless and identical to the on-chain contract split.
-            // No connected account (single-artist / self-host) → fall back to the
-            // instance's own account, where the operator already keeps 100%.
+            // Applies to tracks/albums/assets alike — only items with no linked
+            // artist (admin-managed) fall back to the instance's own account.
             const sellerArtist = resolveArtistForCheckout(
                 type,
                 parseInt(itemId, 10),
