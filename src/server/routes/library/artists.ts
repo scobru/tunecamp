@@ -183,8 +183,8 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
         try {
             const param = req.params.id;
             let artist;
-            
-            if (/^\d+$/.test(param)) {
+
+            if (/^-?\d+$/.test(param)) {
                 artist = library.getArtist(parseInt(param, 10));
             } else {
                 artist = library.getArtistBySlug(param);
@@ -261,7 +261,7 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
         try {
             const param = req.params.id;
             let artist;
-            if (/^\d+$/.test(param)) {
+            if (/^-?\d+$/.test(param)) {
                 artist = library.getArtist(parseInt(param, 10));
             } else {
                 artist = library.getArtistBySlug(param);
@@ -293,12 +293,12 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
         try {
             const param = req.params.id;
             let artist;
-            if (/^\d+$/.test(param)) {
+            if (/^-?\d+$/.test(param)) {
                 artist = library.getArtist(parseInt(param, 10));
             } else {
                 artist = library.getArtistBySlug(param);
             }
-            
+
             let photoPathToUse = artist?.photo_path;
             
             // Fallback: If no custom artist photo, try to find cover art from their releases, albums, or tracks
@@ -412,8 +412,8 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
         try {
             const param = req.params.id;
             let artist;
-            
-            if (/^\d+$/.test(param)) {
+
+            if (/^-?\d+$/.test(param)) {
                 artist = library.getArtist(parseInt(param, 10));
             } else {
                 artist = library.getArtistBySlug(param);
