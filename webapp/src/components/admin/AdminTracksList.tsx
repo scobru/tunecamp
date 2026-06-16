@@ -156,10 +156,10 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === tracks.length) {
+    if (selectedIds.size === filteredAndSortedTracks.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(tracks.map(t => t.id)));
+      setSelectedIds(new Set(filteredAndSortedTracks.map(t => t.id)));
     }
   };
 
@@ -249,7 +249,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
               <input 
                 type="checkbox" 
                 className="checkbox checkbox-xs" 
-                checked={selectedIds.size === tracks.length && tracks.length > 0}
+                checked={selectedIds.size === filteredAndSortedTracks.length && filteredAndSortedTracks.length > 0}
                 onChange={toggleSelectAll}
               />
             </th>
