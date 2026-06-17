@@ -996,6 +996,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
           : null;
 
       const updated = await API.updateArtist(initialData.id, {
+        name: name.trim() || undefined,
         bio,
         links: allLinks,
         walletAddress: walletAddress || undefined,
@@ -1060,7 +1061,18 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
             <label className="label">
               <span className="label-text opacity-60">Artist Name</span>
             </label>
-            <input type="text" className="input input-bordered opacity-50 bg-base-300" value={name} readOnly title="Managed by library metadata" />
+            <input
+              type="text"
+              className="input input-bordered"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Artist display name"
+            />
+            <label className="label">
+              <span className="label-text-alt opacity-40 italic">
+                Display name only — URL slug (<code>/{initialData?.slug}</code>) does not change.
+              </span>
+            </label>
           </div>
 
           <div className="form-control">
