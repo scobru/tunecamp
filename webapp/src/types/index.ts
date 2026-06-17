@@ -220,6 +220,8 @@ export interface SiteSettings {
     publicUrl?: string;
     allowPublicRegistration?: boolean;
     listenerSelfPublish?: boolean | string;
+    /** Default storage quota (in MB) granted to listeners auto-approved via self-publish. Default 1024 (1GB). */
+    listenerSelfPublishQuota?: number | string;
     /** 'label' (curated storefront, default) or 'community' (registrations get an artist profile, selling opt-in per artist) */
     mode?: string;
     backgroundImage?: string;

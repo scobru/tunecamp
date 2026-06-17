@@ -316,6 +316,25 @@ export const AdminSettingsPanel = () => {
               />
             </label>
             <p className="text-[11px] opacity-40 px-1 mt-1">If enabled, listeners can create an artist profile and publish releases directly without admin approval.</p>
+
+            {(settings.listenerSelfPublish === true || (settings.listenerSelfPublish as unknown) === "true") && (
+              <div className="mt-3 pl-6">
+                <label className="label py-1">
+                  <span className="label-text text-sm">Default storage quota (MB)</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  className="input input-bordered input-sm w-40"
+                  value={settings.listenerSelfPublishQuota ?? 1024}
+                  onChange={(e) =>
+                    setSettings({ ...settings, listenerSelfPublishQuota: e.target.value })
+                  }
+                />
+                <p className="text-[11px] opacity-40 px-1 mt-1">Physical-upload quota assigned to a listener when they self-publish. Default 1024 MB (1&nbsp;GB); 0 = unlimited. Per-user quotas can still be adjusted in the Users panel.</p>
+              </div>
+            )}
           </div>
 
           <div className="form-control pt-2 border-t border-base-content/5 mt-4">

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
+import { canPublish } from "../utils/permissions";
 import { UploadCloud, Disc, PackagePlus, ArrowUpCircle } from "lucide-react";
 import { PageHeader } from "../components/ui/PageHeader";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
@@ -12,8 +13,7 @@ const Publish = () => {
 
   useEffect(() => {
     if (isLoading) return;
-    const isAdmin = role === "admin" || role === "super_user" || role === "root_admin" || user?.isRootAdmin;
-    if (!isAuthenticated || !isAdmin) {
+    if (!isAuthenticated || !canPublish(user, role)) {
       navigate("/");
       return;
     }

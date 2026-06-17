@@ -275,7 +275,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 web3Enabled,
                 chatEnabled,
                 scheduledScanHour,
-                listenerSelfPublish
+                listenerSelfPublish,
+                listenerSelfPublishQuota
             } = req.body;
             let settingsChanged = false;
 
@@ -388,6 +389,15 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             if (listenerSelfPublish !== undefined) {
                 identity.setSetting("listenerSelfPublish", listenerSelfPublish ? "true" : "false");
+            }
+
+            if (listenerSelfPublishQuota !== undefined) {
+                // Stored as MB. Reject negatives/non-numbers; "" or 0 means unlimited.
+                const quotaMb = Number(listenerSelfPublishQuota);
+                if (!Number.isFinite(quotaMb) || quotaMb < 0) {
+                    return res.status(400).json({ error: "listenerSelfPublishQuota must be a non-negative number (MB)" });
+                }
+                identity.setSetting("listenerSelfPublishQuota", String(Math.floor(quotaMb)));
             }
 
             if (lastfm_api_key !== undefined) {

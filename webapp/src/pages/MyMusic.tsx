@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useConfigStore } from "../stores/useConfigStore";
+import { canPublish } from "../utils/permissions";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart2,
@@ -35,8 +36,7 @@ const MyMusic = () => {
 
   useEffect(() => {
     if (isLoading) return;
-    const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin' || user?.isRootAdmin;
-    if (!isAuthenticated || !isAdmin) {
+    if (!isAuthenticated || !canPublish(user, role)) {
       navigate("/");
       return;
     }

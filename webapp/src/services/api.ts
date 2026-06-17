@@ -347,6 +347,9 @@ const API = {
         handleResponse(api.post<Track>('tracks/external', { url, albumId })),
     importBandcamp: (url: string) =>
         handleResponse(api.post<any>('import/bandcamp', { url })),
+    /** Downloads a remote image through the same-origin proxy (avoids CORS) and returns it as a Blob. */
+    proxyImageBlob: (url: string): Promise<Blob> =>
+        api.get('proxy/stream', { params: { url }, responseType: 'blob' }).then(r => r.data),
     updateTrack: (id: string | number, data: Partial<Track>) => handleResponse(api.put<Track>(`tracks/${encodeURIComponent(String(id))}`, data)),
     updateTracksBatch: (trackIds: (string | number)[], data: any) => handleResponse(api.put('tracks/batch', { trackIds, data })),
     deleteTrack: (id: string | number, deleteFile = false) =>
