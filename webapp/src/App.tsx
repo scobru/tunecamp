@@ -29,6 +29,7 @@ const MyMusic = lazy(() => import("./pages/MyMusic"));
 const Publish = lazy(() => import("./pages/Publish"));
 const Social = lazy(() => import("./pages/Social"));
 const About = lazy(() => import("./pages/About"));
+const Guide = lazy(() => import("./pages/Guide"));
 const SharePage = lazy(() => import("./pages/SharePage"));
 const ContentSearch = lazy(() => import("./pages/ContentSearch"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -162,6 +163,7 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
+            <Route path="/guide" element={<Guide />} />
 
             {/* Catalog & Library */}
             <Route path="/albums" element={<Releases />} />

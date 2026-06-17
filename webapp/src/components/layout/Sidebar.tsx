@@ -26,6 +26,7 @@ import {
   Shovel,
   Radio,
   Rss,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -276,6 +277,7 @@ export const Sidebar = () => {
 
       <div className="mt-auto space-y-4">
         <ul className="menu menu-sm p-0">
+          <NavItem to="/guide" icon={BookOpen} label="Guide" />
           <NavItem to="/support" icon={LifeBuoy} label="Support" />
           <NavItem to="/tools" icon={Wrench} label="Tools" />
           <ExternalNavItem href="/feed.xml" icon={Rss} label="RSS Feed" />
