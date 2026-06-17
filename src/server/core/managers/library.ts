@@ -360,6 +360,10 @@ export function createLibraryManager(
         createPlaylist: (n: string, u: string, d?: string, ip = false) => Number(db.prepare("INSERT INTO playlists (name, username, description, is_public) VALUES (?, ?, ?, ?)").run(n, u, d || null, ip ? 1 : 0).lastInsertRowid),
         updatePlaylistVisibility: (id: number, ip: boolean) => { db.prepare("UPDATE playlists SET is_public = ? WHERE id = ?").run(ip ? 1 : 0, id); },
         updatePlaylistCover: (id: number, p: string | null) => { db.prepare("UPDATE playlists SET cover_path = ? WHERE id = ?").run(p, id); },
+        updatePlaylistDetails: (id: number, name?: string, description?: string) => {
+            if (name !== undefined) db.prepare("UPDATE playlists SET name = ? WHERE id = ?").run(name, id);
+            if (description !== undefined) db.prepare("UPDATE playlists SET description = ? WHERE id = ?").run(description || null, id);
+        },
         deletePlaylist: (id: number) => { db.prepare("DELETE FROM playlists WHERE id = ?").run(id); },
         getPlaylistTracks: (id: number) => db.prepare("SELECT t.* FROM tracks t JOIN playlist_tracks pt ON t.id = pt.track_id WHERE pt.playlist_id = ? ORDER BY pt.position").all(id) as any[],
         isTrackInPublicPlaylist: (id: number) => !!db.prepare("SELECT 1 FROM playlist_tracks pt JOIN playlists p ON pt.playlist_id = p.id WHERE pt.track_id = ? AND p.is_public = 1").get(id),

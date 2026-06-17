@@ -122,13 +122,20 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Not your playlist" });
             }
 
-            const { isPublic, coverPath } = req.body;
+            const { isPublic, coverPath, name, description } = req.body;
 
             if (isPublic !== undefined) {
                 library.updatePlaylistVisibility(id, isPublic);
             }
             if (coverPath !== undefined) {
                 library.updatePlaylistCover(id, coverPath || null);
+            }
+            if (name !== undefined || description !== undefined) {
+                const trimmedName = typeof name === "string" ? name.trim() : undefined;
+                if (trimmedName !== undefined && trimmedName.length === 0) {
+                    return res.status(400).json({ error: "Name cannot be empty" });
+                }
+                library.updatePlaylistDetails(id, trimmedName, description);
             }
 
 

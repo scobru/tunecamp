@@ -580,6 +580,7 @@ export interface LibraryManager {
     createPlaylist(name: string, username: string, description?: string, isPublic?: boolean): number;
     updatePlaylistVisibility(id: number, isPublic: boolean): void;
     updatePlaylistCover(id: number, coverPath: string | null): void;
+    updatePlaylistDetails(id: number, name?: string, description?: string): void;
     deletePlaylist(id: number): void;
     getPlaylistTracks(playlistId: number): Track[];
     isTrackInPublicPlaylist(trackId: number): boolean;

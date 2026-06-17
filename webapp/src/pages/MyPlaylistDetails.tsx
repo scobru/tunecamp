@@ -15,7 +15,10 @@ import {
   Lock,
   Download,
   Image as ImageIcon,
-  Globe
+  Globe,
+  Pencil,
+  Check,
+  X
 } from "lucide-react";
 import type { UserPlaylist, Playlist, UserPlaylistTrack, Track } from "../types";
 import { AddTrackToUserPlaylistModal } from "../components/modals/AddTrackToUserPlaylistModal";
@@ -44,6 +47,8 @@ const MyPlaylistDetails = () => {
   const navigate = useNavigate();
   const [playlist, setPlaylist] = useState<Playlist | UserPlaylist | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const { isAuthenticated, user, isLoading: authLoading } = useAuthStore();
   const { playTrack } = usePlayerStore();
 
@@ -129,6 +134,34 @@ const MyPlaylistDetails = () => {
     }
   };
 
+  const startRename = () => {
+    if (!playlist) return;
+    setNameDraft(playlist.name);
+    setIsEditingName(true);
+  };
+
+  const handleRename = async () => {
+    if (!playlist) return;
+    const trimmed = nameDraft.trim();
+    if (!trimmed) {
+      notify.error(new Error("Name cannot be empty"), "Rename failed");
+      return;
+    }
+    if (trimmed === playlist.name) {
+      setIsEditingName(false);
+      return;
+    }
+    try {
+      await API.updatePlaylist(String(playlist.id), { name: trimmed });
+      setPlaylist({ ...playlist, name: trimmed });
+      setIsEditingName(false);
+      notify.success("Playlist renamed");
+    } catch (e) {
+      console.error(e);
+      notify.error(e, "Failed to rename playlist");
+    }
+  };
+
   const handlePlayTrack = (track: Track | UserPlaylistTrack) => {
     if (!playlist || !playlist.tracks) return;
     const playable = toPlayableTrack(track);
@@ -192,9 +225,48 @@ const MyPlaylistDetails = () => {
           <div className="text-xs font-bold tracking-normal opacity-70 mb-2 flex items-center gap-2">
             <Heart size={12} className="text-pink-400" /> Personal Playlist
           </div>
-          <h1 className="text-4xl lg:text-6xl font-black tracking-tighter mb-4 leading-tight">
-            {playlist.name}
-          </h1>
+          {isEditingName ? (
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename();
+                  if (e.key === "Escape") setIsEditingName(false);
+                }}
+                className="input input-bordered text-3xl lg:text-5xl font-black tracking-tighter h-auto py-2 w-full max-w-2xl"
+              />
+              <button
+                className="btn btn-sm btn-circle btn-success"
+                onClick={handleRename}
+                data-tip="Save"
+              >
+                <Check size={18} />
+              </button>
+              <button
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setIsEditingName(false)}
+                data-tip="Cancel"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <h1 className="text-4xl lg:text-6xl font-black tracking-tighter mb-4 leading-tight flex items-center gap-3 group/title">
+              {playlist.name}
+              {isOwner && (
+                <button
+                  className="btn btn-sm btn-circle btn-ghost opacity-0 group-hover/title:opacity-100 transition-opacity tooltip tooltip-top"
+                  onClick={startRename}
+                  data-tip="Rename"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
+            </h1>
+          )}
           {playlist.description && (
             <p className="opacity-70 text-lg mb-4 line-clamp-3">
               {playlist.description}
