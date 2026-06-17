@@ -2,6 +2,7 @@ import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
+import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -139,9 +140,10 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                 const isAdmin = req.isAdmin || req.isSuperUser;
                 const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
 
-                const tracks = library.getTracksByGenre(genre, profile);
+                const rawTracks = library.getTracksByGenre(genre, profile);
                 const genreCounts = library.getGenreTrackCounts(profile);
-                
+                const tracks = rawTracks.map(t => mapTrackDTO(t, database, req.username));
+
                 return res.json({
                     id: idStr,
                     name: `${genre.charAt(0).toUpperCase() + genre.slice(1)} Mix`,
@@ -166,7 +168,7 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Unauthorized" });
             }
 
-            const tracks = library.getPlaylistTracks(id);
+            const tracks = library.getPlaylistTracks(id).map(t => mapTrackDTO(t, database, req.username));
 
             res.json({
                 ...playlist,
