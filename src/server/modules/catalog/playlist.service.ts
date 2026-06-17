@@ -1,6 +1,5 @@
 import { ProviderRegistry, syncRegistryWithDatabase } from "../../core/provider.js";
 import type { PlaylistProvider, PlaylistTrack } from "../../core/provider.js";
-import { YouTubePlaylistProvider } from "../../providers/playlists/youtube.playlist.js";
 import { SpotifyProvider } from "../../providers/metadata/spotify.provider.js";
 import { DeezerProvider } from "../../providers/playlists/deezer.playlist.js";
 import type { DatabaseService } from "../../core/database.types.js";
@@ -12,7 +11,6 @@ export class PlaylistService {
     private registry = new ProviderRegistry<PlaylistProvider>();
 
     constructor() {
-        this.registry.register(new YouTubePlaylistProvider());
         this.registry.register(new SpotifyProvider());
         this.registry.register(new DeezerProvider());
     }

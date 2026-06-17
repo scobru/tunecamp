@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { notify } from "../../utils/notify";
-import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Shield, RefreshCw, Zap } from "lucide-react";
+import { Search, Database, Wand2, Loader2, AlertCircle, CheckCircle2, Activity, User, Disc, Cpu, Shield, RefreshCw, Zap, Flame } from "lucide-react";
 
 import { MetadataMatchModal } from "../MetadataMatchModal";
 import { ArtistMetadataPickerModal } from "../modals/ArtistMetadataPickerModal";
@@ -17,6 +17,7 @@ export const AdminMaintenancePanel = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isAIProcessing, setIsAIProcessing] = useState(false);
+    const [isPrewarming, setIsPrewarming] = useState(false);
     const [results, setResults] = useState<{ success: number, failed: number, skipped: number } | null>(null);
     const [auditStatus, setAuditStatus] = useState<any | null>(null);
     const [runningTasks, setRunningTasks] = useState<any[]>([]);
@@ -256,7 +257,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleOptimizeDB = async () => {
-        if (!confirm("This will remove orphaned albums and artists (records with no tracks) from the database. Continue?")) return;
+        if (!confirm("This will merge duplicate albums (same artist + title), remove orphaned albums and artists. Continue?")) return;
         setIsProcessing(true);
         try {
             const res = await API.pruneOrphans();
@@ -278,6 +279,19 @@ export const AdminMaintenancePanel = () => {
             notify.error(e, "Tag sync failed");
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const handlePrewarmCache = async () => {
+        if (!confirm("Pre-warm the transcode cache for all tracks that need it? This runs in the background and may take a while.")) return;
+        setIsPrewarming(true);
+        try {
+            const res = await API.prewarmCache();
+            notify.success(res.message);
+        } catch (e: any) {
+            notify.error(e, "Pre-warm failed");
+        } finally {
+            setIsPrewarming(false);
         }
     };
 
@@ -341,10 +355,20 @@ export const AdminMaintenancePanel = () => {
                     </button>
 
                     <button
+                        className="btn btn-sm btn-outline tooltip tooltip-bottom"
+                        onClick={handlePrewarmCache}
+                        disabled={isPrewarming}
+                        data-tip="Pre-transcode all tracks in the background so first-play is instant"
+                    >
+                        {isPrewarming ? <Loader2 className="animate-spin" size={18} /> : <Flame size={18} />}
+                        Pre-warm Cache
+                    </button>
+
+                    <button
                         className="btn btn-sm btn-outline btn-error tooltip tooltip-bottom"
                         onClick={handleOptimizeDB}
                         disabled={isProcessing}
-                        data-tip="Optimize database and remove orphan records"
+                        data-tip="Merge duplicate albums, remove orphan records"
                     >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
                         Optimize DB
@@ -478,7 +502,7 @@ export const AdminMaintenancePanel = () => {
                                         <button className="btn btn-sm btn-primary" onClick={() => handleStartAudit(false, false)}>
                                             Start Audit
                                         </button>
-                                        <button className="btn btn-sm btn-outline btn-secondary" onClick={() => handleStartAudit(true, hasAI)}>
+                                        <button className="btn btn-sm btn-outline btn-secondary" onClick={() => handleStartAudit(true, hasAI)} disabled={!hasAI}>
                                             <Wand2 size={14} /> Repair & AI
                                         </button>
                                     </>

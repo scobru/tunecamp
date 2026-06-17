@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useParams, Link } from 'react-router-dom';
-import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart, ShoppingBag, Rss } from 'lucide-react';
+import { Play, Disc, Globe, Shield, Wallet, Copy, Twitter, Instagram, Youtube, Facebook, Github, Mail, Heart, ShoppingBag, Rss, Calendar, MapPin, Ticket } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { useConfigStore } from '../stores/useConfigStore';
 import { formatDuration } from '../utils/format';
 import { notify } from '../utils/notify';
-import type { Artist, Album, Post, Track, Release, Asset } from '../types';
+import type { Artist, Album, Post, Track, Release, Asset, ArtistEvent } from '../types';
 import { AssetCard, AssetViewerModal } from './Store';
 import { SubscriptionModal } from '../components/modals/SubscriptionModal';
 import { renderMarkdown } from '../utils/markdown';
@@ -31,6 +31,7 @@ const ArtistDetails = () => {
     const [libraryAlbums, setLibraryAlbums] = useState<Album[]>([]);
     const [looseTracks, setLooseTracks] = useState<Track[]>([]);
     const [posts, setPosts] = useState<Post[]>([]);
+    const [events, setEvents] = useState<ArtistEvent[]>([]);
     const [assets, setAssets] = useState<Asset[]>([]);
     const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
     const [loading, setLoading] = useState(true);
@@ -66,8 +67,9 @@ const ArtistDetails = () => {
         Promise.all([
             API.getArtist(idOrSlug),
             API.getArtistPosts(idOrSlug),
-            API.getPublicAssets()
-        ]).then(([artistData, artistPosts, allAssets]) => {
+            API.getPublicAssets(),
+            API.getArtistEvents(idOrSlug).catch(() => [])
+        ]).then(([artistData, artistPosts, allAssets, artistEvents]) => {
             setArtist(artistData);
             setStarred(!!artistData.starred);
             
@@ -94,6 +96,7 @@ const ArtistDetails = () => {
                 setLooseTracks(artistData.tracks);
             }
             setPosts(artistPosts);
+            setEvents(artistEvents as ArtistEvent[]);
         })
         .catch(console.error)
         .finally(() => setLoading(false));
@@ -318,6 +321,53 @@ const ArtistDetails = () => {
                                 </div>
                             )
                         ))}
+                    </div>
+                </section>
+             )}
+
+              {/* Upcoming Live Events */}
+             {events.length > 0 && (
+                <section>
+                    <div className="flex items-center gap-2 mb-6 opacity-80 border-b border-base-content/5 pb-2">
+                        <Calendar />
+                        <h2 className="text-xl font-bold">Upcoming Events</h2>
+                    </div>
+                    <div className="grid gap-3">
+                        {events.map(ev => {
+                            const d = new Date(ev.event_date);
+                            const where = [ev.venue, ev.city, ev.country].filter(Boolean).join(", ");
+                            return (
+                                <div key={ev.id} className="flex items-center gap-4 p-4 rounded-xl bg-base-200/40 border border-base-content/5 hover:border-primary/20 transition-colors">
+                                    {/* Date badge */}
+                                    <div className="flex flex-col items-center justify-center shrink-0 w-16 h-16 rounded-lg bg-primary/10 text-primary">
+                                        <span className="text-xs font-bold uppercase">{d.toLocaleDateString(undefined, { month: 'short' })}</span>
+                                        <span className="text-2xl font-black leading-none">{d.getDate()}</span>
+                                        <span className="text-[10px] opacity-70">{d.getFullYear()}</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-bold truncate">{ev.title}</h3>
+                                        {where && (
+                                            <p className="text-sm opacity-60 flex items-center gap-1 truncate">
+                                                <MapPin size={13} /> {where}
+                                            </p>
+                                        )}
+                                        {ev.description && (
+                                            <p className="text-xs opacity-50 line-clamp-2 mt-1">{ev.description}</p>
+                                        )}
+                                    </div>
+                                    {ev.ticket_url && (
+                                        <a
+                                            href={ev.ticket_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-sm btn-primary gap-2 shrink-0"
+                                        >
+                                            <Ticket size={14} /> Tickets
+                                        </a>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
              )}

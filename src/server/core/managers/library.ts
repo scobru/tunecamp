@@ -360,6 +360,10 @@ export function createLibraryManager(
         createPlaylist: (n: string, u: string, d?: string, ip = false) => Number(db.prepare("INSERT INTO playlists (name, username, description, is_public) VALUES (?, ?, ?, ?)").run(n, u, d || null, ip ? 1 : 0).lastInsertRowid),
         updatePlaylistVisibility: (id: number, ip: boolean) => { db.prepare("UPDATE playlists SET is_public = ? WHERE id = ?").run(ip ? 1 : 0, id); },
         updatePlaylistCover: (id: number, p: string | null) => { db.prepare("UPDATE playlists SET cover_path = ? WHERE id = ?").run(p, id); },
+        updatePlaylistDetails: (id: number, name?: string, description?: string) => {
+            if (name !== undefined) db.prepare("UPDATE playlists SET name = ? WHERE id = ?").run(name, id);
+            if (description !== undefined) db.prepare("UPDATE playlists SET description = ? WHERE id = ?").run(description || null, id);
+        },
         deletePlaylist: (id: number) => { db.prepare("DELETE FROM playlists WHERE id = ?").run(id); },
         getPlaylistTracks: (id: number) => db.prepare("SELECT t.* FROM tracks t JOIN playlist_tracks pt ON t.id = pt.track_id WHERE pt.playlist_id = ? ORDER BY pt.position").all(id) as any[],
         isTrackInPublicPlaylist: (id: number) => !!db.prepare("SELECT 1 FROM playlist_tracks pt JOIN playlists p ON pt.playlist_id = p.id WHERE pt.track_id = ? AND p.is_public = 1").get(id),
@@ -565,8 +569,55 @@ export function createLibraryManager(
         },
         pruneOrphans(): void {
             db.transaction(() => {
+                // 1. Deduplicate library albums (same artist + title → keep richest, merge tracks)
+                type AlbumRow = { id: number; artist_id: number | null; title: string; cover_path: string | null; genre: string | null; year: number | null; description: string | null; track_count: number };
+                const albums = db.prepare(`
+                    SELECT a.id, a.artist_id, a.title, a.cover_path, a.genre, a.year, a.description,
+                           COUNT(t.id) as track_count
+                    FROM albums a
+                    LEFT JOIN tracks t ON t.album_id = a.id
+                    WHERE a.is_release = 0
+                    GROUP BY a.id
+                `).all() as AlbumRow[];
+
+                const groups = new Map<string, AlbumRow[]>();
+                for (const a of albums) {
+                    const key = `${a.artist_id ?? 'null'}|${a.title.toLowerCase().trim()}`;
+                    if (!groups.has(key)) groups.set(key, []);
+                    groups.get(key)!.push(a);
+                }
+
+                const score = (a: AlbumRow) =>
+                    (a.cover_path ? 8 : 0) + (a.genre ? 4 : 0) + (a.year ? 2 : 0) + (a.description ? 1 : 0) + a.track_count;
+
+                for (const [, group] of groups) {
+                    if (group.length <= 1) continue;
+                    group.sort((a, b) => score(b) - score(a) || a.id - b.id);
+                    const winner = group[0];
+
+                    // Carry missing metadata from losers to winner
+                    const patch: Record<string, any> = {};
+                    for (const loser of group.slice(1)) {
+                        if (!winner.cover_path && loser.cover_path) patch.cover_path = loser.cover_path;
+                        if (!winner.genre && loser.genre) patch.genre = loser.genre;
+                        if (!winner.year && loser.year) patch.year = loser.year;
+                        if (!winner.description && loser.description) patch.description = loser.description;
+                    }
+                    if (Object.keys(patch).length > 0) {
+                        const sets = Object.keys(patch).map(k => `${k} = @${k}`).join(', ');
+                        db.prepare(`UPDATE albums SET ${sets} WHERE id = @id`).run({ ...patch, id: winner.id });
+                    }
+
+                    for (const loser of group.slice(1)) {
+                        db.prepare("UPDATE tracks SET album_id = ? WHERE album_id = ?").run(winner.id, loser.id);
+                        db.prepare("DELETE FROM albums WHERE id = ?").run(loser.id);
+                    }
+                }
+
+                // 2. Remove truly orphaned albums (no tracks)
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL) AND is_release = 0").run();
                 db.prepare("DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT release_id FROM release_tracks WHERE release_id IS NOT NULL) AND is_release = 1").run();
+                // 3. Remove artists with no albums and no tracks
                 db.prepare("DELETE FROM artists WHERE id != -1 AND id NOT IN (SELECT artist_id FROM albums) AND id NOT IN (SELECT artist_id FROM tracks)").run();
             })();
         },

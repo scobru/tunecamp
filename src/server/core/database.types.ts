@@ -234,6 +234,29 @@ export interface Post {
     artist_photo?: string | null;
 }
 
+export interface ArtistEvent {
+    id: number;
+    artist_id: number;
+    title: string;
+    event_date: string;
+    venue: string | null;
+    city: string | null;
+    country: string | null;
+    ticket_url: string | null;
+    description: string | null;
+    created_at: string;
+}
+
+export interface ArtistEventInput {
+    title: string;
+    event_date: string;
+    venue?: string | null;
+    city?: string | null;
+    country?: string | null;
+    ticket_url?: string | null;
+    description?: string | null;
+}
+
 export interface ApNote {
     id: number;
     artist_id: number;
@@ -580,6 +603,7 @@ export interface LibraryManager {
     createPlaylist(name: string, username: string, description?: string, isPublic?: boolean): number;
     updatePlaylistVisibility(id: number, isPublic: boolean): void;
     updatePlaylistCover(id: number, coverPath: string | null): void;
+    updatePlaylistDetails(id: number, name?: string, description?: string): void;
     deletePlaylist(id: number): void;
     getPlaylistTracks(playlistId: number): Track[];
     isTrackInPublicPlaylist(trackId: number): boolean;
@@ -673,6 +697,13 @@ export interface SocialManager {
     updatePost(id: number, content: string, visibility?: 'public' | 'private' | 'unlisted', title?: string | null, summary?: string | null): void;
     updatePostVisibility(id: number, visibility: 'public' | 'private' | 'unlisted'): void;
     deletePost(id: number): void;
+
+    // Artist Live Events
+    getEventsByArtist(artistId: number, upcomingOnly?: boolean): ArtistEvent[];
+    getEvent(id: number): ArtistEvent | undefined;
+    createEvent(artistId: number, event: ArtistEventInput): number;
+    updateEvent(id: number, event: ArtistEventInput): void;
+    deleteEvent(id: number): void;
 
     // ActivityPub Metadata Notes
     createApNote(artistId: number, noteId: string, noteType: 'post' | 'release' | 'board', contentId: number, contentSlug: string, contentTitle: string): number;

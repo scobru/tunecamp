@@ -309,15 +309,15 @@ const AlbumDetails = () => {
                 </div>
               )}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-lg lg:text-2xl font-medium tracking-tight">
-                {album.album_artist || album.albumArtist ? (
-                  <span className="text-primary font-bold">{album.album_artist || album.albumArtist}</span>
-                ) : album.artistId ? (
+                {album.artistId ? (
                   <Link
                     to={`/artists/${album.artist_slug || album.artistSlug || album.artistId}`}
-                    className="hover:text-primary transition-colors underline decoration-base-content/10 underline-offset-8"
+                    className="text-primary font-bold hover:text-primary transition-colors underline decoration-base-content/10 underline-offset-8"
                   >
-                    {album.artistName || album.artist_name}
+                    {album.album_artist || album.albumArtist || album.artistName || album.artist_name}
                   </Link>
+                ) : album.album_artist || album.albumArtist ? (
+                  <span className="text-primary font-bold">{album.album_artist || album.albumArtist}</span>
                 ) : (
                   <span className="opacity-80">{album.artistName || album.artist_name}</span>
                 )}

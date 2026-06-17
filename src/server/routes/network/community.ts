@@ -25,7 +25,7 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
             const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || null;
             res.json({
                 software: "tunecamp",
-                version: "2.0.1",
+                version: "2.3.0",
                 url: publicUrl,
                 name: dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance",
                 description: dbService.getSetting("siteDescription") || config.siteDescription || "",
@@ -54,8 +54,8 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
 
     /**
      * GET /api/community/sites
-     * Aggregated discovery list (local + zen + federated + AP). Public payload
-     * the static website consumes instead of reading the Zen registry directly.
+     * Aggregated discovery list (local + federated + AP). Public payload
+     * the static website consumes for cross-origin discovery.
      */
     router.get("/sites", async (req, res) => {
         try {
