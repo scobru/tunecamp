@@ -6,6 +6,26 @@ import { Plus, ListMusic, Lock, Globe, Check, Loader2 } from 'lucide-react';
 import { notify } from '../../utils/notify';
 import clsx from 'clsx';
 
+const renderPlaylistCover = (p: Playlist) => {
+    const trackCovers = p.trackCovers || [];
+    if (p.coverPath) {
+        return <img src={p.coverPath} className="w-full h-full object-cover" alt="" />;
+    }
+    if (trackCovers.length >= 4) {
+        return (
+            <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                {trackCovers.map((url, i) => (
+                    <img key={i} src={url} className="w-full h-full object-cover" alt="" />
+                ))}
+            </div>
+        );
+    }
+    if (trackCovers.length > 0) {
+        return <img src={trackCovers[0]} className="w-full h-full object-cover" alt="" />;
+    }
+    return <ListMusic size={20} className="opacity-20" />;
+};
+
 export const PlaylistModal = () => {
     const dialogRef = useRef<HTMLDialogElement>(null);
     const { user, isAuthenticated } = useAuthStore();
@@ -135,11 +155,7 @@ export const PlaylistModal = () => {
                                         disabled={!!successId}
                                     >
                                         <div className="w-12 h-12 rounded-xl bg-base-300 flex items-center justify-center overflow-hidden shrink-0 border border-base-content/5">
-                                            {p.coverPath ? (
-                                                <img src={p.coverPath} className="w-full h-full object-cover" alt="" />
-                                            ) : (
-                                                <ListMusic size={20} className="opacity-20" />
-                                            )}
+                                            {renderPlaylistCover(p)}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-bold truncate flex items-center gap-2">

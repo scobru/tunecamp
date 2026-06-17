@@ -42,19 +42,43 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
             const genres = library.getGenres(profile);
             const genreCounts = library.getGenreTrackCounts(profile);
             
-            const dynamicPlaylists = genres.map(genre => ({
-                id: `genre:${genre}`,
-                name: `${genre.charAt(0).toUpperCase() + genre.slice(1)} Mix`,
-                username: "system",
-                description: `Dynamic playlist for ${genre}`,
-                isPublic: true,
-                coverPath: null,
-                created_at: new Date().toISOString(),
-                trackCount: genreCounts.get(genre.toLowerCase()) || 0 
-            }));
+            const dynamicPlaylists = genres.map(genre => {
+                const rawTracks = library.getTracksByGenre(genre, profile);
+                const trackCovers = Array.from(
+                    new Map(
+                        rawTracks
+                            .filter((t: any) => t.album_id || t.albumId)
+                            .map((t: any) => [t.album_id ?? t.albumId, `/api/tracks/${t.id}/cover`])
+                    ).values()
+                ).slice(0, 4);
+
+                return {
+                    id: `genre:${genre}`,
+                    name: `${genre.charAt(0).toUpperCase() + genre.slice(1)} Mix`,
+                    username: "system",
+                    description: `Dynamic playlist for ${genre}`,
+                    isPublic: true,
+                    coverPath: null,
+                    created_at: new Date().toISOString(),
+                    trackCount: genreCounts.get(genre.toLowerCase()) || 0,
+                    trackCovers
+                };
+            });
 
             if (req.isAdmin || req.isSuperUser) {
-                res.json([...library.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS), ...dynamicPlaylists]);
+                const playlists = library.getPlaylists(undefined, VisibilityProfile.ALL_ACCESS);
+                const mappedPlaylists = playlists.map(p => {
+                    const tracks = library.getPlaylistTracks(Number(p.id));
+                    const trackCovers = Array.from(
+                        new Map(
+                            tracks
+                                .filter((t: any) => t.album_id || t.albumId)
+                                .map((t: any) => [t.album_id ?? t.albumId, `/api/tracks/${t.id}/cover`])
+                        ).values()
+                    ).slice(0, 4);
+                    return { ...p, trackCovers };
+                });
+                res.json([...mappedPlaylists, ...dynamicPlaylists]);
             } else {
                 const myPlaylists = library.getPlaylists(req.username, VisibilityProfile.ALL_ACCESS);
                 const publicPlaylists = library.getPlaylists(undefined, VisibilityProfile.PUBLIC_STAGE);
@@ -66,7 +90,18 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                         combined.push(p);
                     }
                 }
-                res.json([...combined, ...dynamicPlaylists]);
+                const mappedPlaylists = combined.map(p => {
+                    const tracks = library.getPlaylistTracks(Number(p.id));
+                    const trackCovers = Array.from(
+                        new Map(
+                            tracks
+                                .filter((t: any) => t.album_id || t.albumId)
+                                .map((t: any) => [t.album_id ?? t.albumId, `/api/tracks/${t.id}/cover`])
+                        ).values()
+                    ).slice(0, 4);
+                    return { ...p, trackCovers };
+                });
+                res.json([...mappedPlaylists, ...dynamicPlaylists]);
             }
         } catch (error) {
             console.error("Error getting playlists:", error);

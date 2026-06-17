@@ -13,6 +13,34 @@ type Tab = "mine" | "public";
 const isGenreMix = (p: Playlist) =>
   p.username === "system" || String(p.id).startsWith("genre:");
 
+const renderPlaylistCover = (p: Playlist, iconSize: number) => {
+  const trackCovers = p.trackCovers || [];
+  if (p.coverPath) {
+    return (
+      <img
+        src={p.coverPath}
+        className="w-full h-full object-cover"
+        alt=""
+      />
+    );
+  }
+  if (trackCovers.length >= 4) {
+    return (
+      <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+        {trackCovers.map((url, i) => (
+          <img key={i} src={url} className="w-full h-full object-cover" alt="" />
+        ))}
+      </div>
+    );
+  }
+  if (trackCovers.length > 0) {
+    return (
+      <img src={trackCovers[0]} className="w-full h-full object-cover" alt="" />
+    );
+  }
+  return <Music size={iconSize} className="text-secondary" />;
+};
+
 const Playlists = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,15 +229,7 @@ const Playlists = () => {
                 <div className="card-body">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center overflow-hidden shrink-0">
-                      {p.coverPath ? (
-                        <img
-                          src={p.coverPath}
-                          className="w-full h-full object-cover"
-                          alt=""
-                        />
-                      ) : (
-                        <Music size={20} className="text-secondary" />
-                      )}
+                      {renderPlaylistCover(p, 20)}
                     </div>
                     <h2 className="card-title text-xl group-hover:text-primary transition-colors truncate">
                       {p.name}
@@ -237,15 +257,7 @@ const Playlists = () => {
                     "rounded-lg bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center overflow-hidden shrink-0",
                     viewMode === 'list' ? "w-12 h-12" : "w-8 h-8"
                   )}>
-                    {p.coverPath ? (
-                      <img
-                        src={p.coverPath}
-                        className="w-full h-full object-cover"
-                        alt=""
-                      />
-                    ) : (
-                      <Music size={viewMode === 'list' ? 20 : 14} className="text-secondary" />
-                    )}
+                    {renderPlaylistCover(p, viewMode === 'list' ? 20 : 14)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className={clsx(

@@ -174,6 +174,12 @@ export function createAuthMiddleware(authService: AuthService) {
                 return;
             }
 
+            // If user has a linked artist profile, they can publish content (e.g. self-publishing artist)
+            if (req.context && VisibilityGuardian.canPublishContent(req.context)) {
+                next();
+                return;
+            }
+
             // Listeners are consumers: publishing requires a Curator account
             // with an artist link, so no upload — even with a stale artist_id.
             if (req.role === UserRole.NORMAL_USER) {

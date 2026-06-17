@@ -182,6 +182,7 @@ export interface Playlist {
     trackCount: number;
     createdAt: string;
     updatedAt: string;
+    trackCovers?: string[];
 }
 
 export interface ArtistEvent {

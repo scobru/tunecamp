@@ -6,4 +6,4 @@
 
 4. nella mia pagina utente potrei abilitare una funzione di nowlistening dove se decido di attivarla tunecamp mostra in una pagina cosa sta ascoltando ogni utente. eventualmetne se ce integrazione con lastfm un utente potrebbe connettere il suo account?
 
-6. non so se ha sensato separare la parte di app dalla parte di amministrazione in maniera piu decisa.
+5. Hash strategy utilizzare indexeddb lato client che non viene affatto utilizzato idea: al posto di interrogare il db sempre riguardo lsita tracce lista artisti e varie liste etc potremmo interrogarlo una volta quando serve e poi salvarle in indexeddb? la syncronia non è fondamentale dato che la musica o i dati son letti da db. puoi hashare le liste e quando carichi una pagina confronti hash se e cambiato fetchi il db e memroizzi in index altrimenti usi indexed in locale, dovremmo guadagnare velocita con questa strategia si o no?

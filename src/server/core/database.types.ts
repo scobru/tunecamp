@@ -217,6 +217,7 @@ export interface Playlist {
     created_at: string;
     createdAt?: string;
     trackCount?: number;
+    trackCovers?: string[];
 }
 
 export interface Post {
