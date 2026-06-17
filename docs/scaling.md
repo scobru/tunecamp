@@ -29,7 +29,7 @@ SQLite runs with `journal_mode=WAL`, `synchronous=NORMAL` and `busy_timeout=5000
 
 ## Outgrowing one instance: scale by federating
 
-If a single instance genuinely hits its limits, the answer that fits TuneCamp's architecture is not a bigger database — it is **more instances**. Split by label, collective, or artist roster: each instance keeps its own SQLite file and its own ffmpeg budget, and the federated catalog (Zen discovery + `/api/catalog`) already presents them as one network to listeners. This is the intended scaling model, and it is why a PostgreSQL backend is deliberately out of scope: it would double the schema maintenance burden to solve a problem federation already solves, while sacrificing the zero-ops simplicity that is TuneCamp's main advantage over Funkwhale.
+If a single instance genuinely hits its limits, the answer that fits TuneCamp's architecture is not a bigger database — it is **more instances**. Split by label, collective, or artist roster: each instance keeps its own SQLite file and its own ffmpeg budget, and the federated catalog (gossip-based discovery + `/api/catalog`) already presents them as one network to listeners. This is the intended scaling model, and it is why a PostgreSQL backend is deliberately out of scope: it would double the schema maintenance burden to solve a problem federation already solves, while sacrificing the zero-ops simplicity that is TuneCamp's main advantage over Funkwhale.
 
 ## If you hit limits
 

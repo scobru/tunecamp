@@ -23,3 +23,9 @@ All notable changes to this project will be documented in this file.
   - Premium design additions (hover animations, styled transitions, unified form styling).
 - **Navigation Menu Filtering**:
   - Dynamic filtering of sidebar links based on active instance modules.
+- **Performance Tuning & Cache Pre-warming**:
+  - Added support for pre-warming the transcode cache (`POST /api/admin/system/prewarm-cache`) for lossless tracks (FLAC/WAV).
+  - Configurable cache size (`TUNECAMP_TRANSCODE_CACHE_MAX_BYTES` up to 5GB) and timeout limits (`TUNECAMP_TRANSCODE_TIMEOUT_MS`).
+  - Added support for Nginx `X-Accel-Redirect` to offload audio streaming from Node.js.
+  - Added `env_file` integration in `docker-compose.yml` for seamless local configuration loading.
+  - Cleaned up obsolete build args and environment variables related to Zen/GunDB in `Dockerfile` and `docker-compose.yml` while preserving standard CapRover deployment arguments.

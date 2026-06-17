@@ -6,6 +6,4 @@
 
 4. nella mia pagina utente potrei abilitare una funzione di nowlistening dove se decido di attivarla tunecamp mostra in una pagina cosa sta ascoltando ogni utente. eventualmetne se ce integrazione con lastfm un utente potrebbe connettere il suo account?
 
-5. Che strategie hai per velocizzare tunecamp attualmente?
-
 6. non so se ha sensato separare la parte di app dalla parte di amministrazione in maniera piu decisa.

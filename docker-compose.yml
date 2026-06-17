@@ -19,37 +19,31 @@ services:
       - /path/to/your/music:/music
       # Persistent data (database, uploads)
       - tunecamp_data:/data
+    env_file:
+      - .env
     environment:
       # Base Mainnet RPC
-      - TUNECAMP_RPC_URL=https://mainnet.base.org
+      - TUNECAMP_RPC_URL=${TUNECAMP_RPC_URL:-https://mainnet.base.org}
       # Base Network Currency Contract (e.g. USDC)
-      - TUNECAMP_CURRENCY_CONTRACT=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - TUNECAMP_CURRENCY_CONTRACT=${TUNECAMP_CURRENCY_CONTRACT:-0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913}
       # Optional: Set public URL for community registration
-      - TUNECAMP_PUBLIC_URL=https://sudorecords.scobrudot.dev/
+      - TUNECAMP_PUBLIC_URL=${TUNECAMP_PUBLIC_URL:-}
       # Optional: Site name for community
-      - TUNECAMP_SITE_NAME=My TuneCamp Server
+      - TUNECAMP_SITE_NAME=${TUNECAMP_SITE_NAME:-TuneCamp}
       # Optional: JWT secret (auto-generated if not set)
-      - TUNECAMP_JWT_SECRET=
+      - TUNECAMP_JWT_SECRET=${TUNECAMP_JWT_SECRET:-}
       - DISCOGS_TOKEN=${DISCOGS_TOKEN:-}
       - TUNECAMP_DOWNLOAD_DIR=${TUNECAMP_DOWNLOAD_DIR:-/data/downloads}
-      # ZEN Relay peer - must use /zen WebSocket path
-      - TUNECAMP_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://delay.scobrudot.dev/zen}
-      - VITE_ZEN_PEERS=${TUNECAMP_ZEN_PEERS:-wss://delay.scobrudot.dev/zen}
-      - TUNECAMP_ZEN_MEMORY_LIMIT=${TUNECAMP_ZEN_MEMORY_LIMIT:-128}
-      - TUNECAMP_ZEN_EXT_THRESHOLD_MB=${TUNECAMP_ZEN_EXT_THRESHOLD_MB:-30}
-      - TUNECAMP_ZEN_EXT_EMERGENCY_MB=${TUNECAMP_ZEN_EXT_EMERGENCY_MB:-45}
       # Telegram Integration
-      - TUNECAMP_TELEGRAM_BOT_TOKEN=
-      - TUNECAMP_TELEGRAM_MASTER_ID=
+      - TUNECAMP_TELEGRAM_BOT_TOKEN=${TUNECAMP_TELEGRAM_BOT_TOKEN:-}
+      - TUNECAMP_TELEGRAM_MASTER_ID=${TUNECAMP_TELEGRAM_MASTER_ID:-}
       # OpenRouter AI Integration
-      - OPENROUTER_API_KEY=
-      - OPENROUTER_MODEL=openai/gpt-4o-mini
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openai/gpt-4o-mini}
       # Payments: Stripe
-      - STRIPE_SECRET_KEY=
-      - STRIPE_WEBHOOK_SECRET=
-      - STRIPE_ONRAMP_SECRET_KEY=
-      # YouTube Bot Detection Bypass
-      - YOUTUBE_COOKIES_PATH=${YOUTUBE_COOKIES_PATH:-}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_ONRAMP_SECRET_KEY=${STRIPE_ONRAMP_SECRET_KEY:-}
     restart: unless-stopped
     # Optional: healthcheck configured in Dockerfile
 

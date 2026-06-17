@@ -1,6 +1,6 @@
 # Nginx Configuration Guide for Tunecamp
 
-To run Tunecamp in a production environment, it is highly recommended to use a reverse proxy like Nginx. This allows for SSL/TLS termination (required for ActivityPub federation), better performance for serving static assets, and WebSocket support for Zen.
+To run Tunecamp in a production environment, it is highly recommended to use a reverse proxy like Nginx. This allows for SSL/TLS termination (required for ActivityPub federation) and better performance for serving static assets.
 
 ## Recommended Nginx Configuration
 
@@ -37,9 +37,7 @@ server {
         proxy_pass http://localhost:1970; # Default Tunecamp port
         proxy_http_version 1.1;
 
-        # WebSocket support (Required for Zen real-time sync)
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+
 
         # Forward headers for correct IP and protocol detection
         proxy_set_header Host $host;
@@ -66,8 +64,7 @@ TUNECAMP_PUBLIC_URL=https://your-domain.com
 ### 2. Trusting the Proxy
 Tunecamp is already configured to trust proxies (via `app.set('trust proxy', true)`), which allows it to correctly identify the original IP of your visitors from the `X-Forwarded-For` header.
 
-### 3. Zen WebSockets
-If you notice that peers or signaling are not syncing in real-time, double-check that the `Upgrade` and `Connection` headers are correctly set in your `location /` block. These are vital for the Zen peer-to-peer network to function.
+
 
 ## Offloading Audio Delivery with X-Accel-Redirect (optional)
 
