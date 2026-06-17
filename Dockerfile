@@ -56,7 +56,6 @@ RUN apk add --no-cache python3 make g++ curl git libc6-compat gcompat unzip
 
 # Copy package files and local dependencies
 COPY package*.json ./
-COPY deps ./deps
 COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
