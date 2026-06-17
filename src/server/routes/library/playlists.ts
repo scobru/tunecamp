@@ -1,4 +1,8 @@
 import { Router, json } from "express";
+import multer from "multer";
+import path from "path";
+import fs from "fs-extra";
+import crypto from "crypto";
 import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
@@ -6,11 +10,23 @@ import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
+
 export function createPlaylistsRoutes(container: ServiceContainer): Router {
     const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const config: ServiceContainer['config'] = (container as any).config || (container as any);
     const router = Router();
     router.use(json());
+
+    const coverUpload = multer({
+        storage: multer.memoryStorage(),
+        fileFilter: (_req, file, cb) => {
+            const ext = path.extname(file.originalname).toLowerCase();
+            cb(null, IMAGE_EXTENSIONS.includes(ext));
+        },
+        limits: { fileSize: 10 * 1024 * 1024 },
+    });
 
     /**
      * GET /api/playlists
@@ -206,6 +222,65 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Error deleting playlist:", error);
             res.status(500).json({ error: "Failed to delete playlist" });
+        }
+    });
+
+    /**
+     * GET /api/playlists/:id/cover
+     * Serve the playlist cover image (or 404 if none set).
+     */
+    router.get("/:id/cover", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const playlist = library.getPlaylist(id);
+            if (!playlist?.coverPath) return res.status(404).end();
+
+            if (playlist.coverPath.startsWith("http")) return res.redirect(playlist.coverPath);
+
+            const abs = path.isAbsolute(playlist.coverPath)
+                ? playlist.coverPath
+                : path.join(config.musicDir, playlist.coverPath);
+            if (await fs.pathExists(abs)) {
+                return res.sendFile(path.resolve(abs), { maxAge: 86400000 });
+            }
+            return res.status(404).end();
+        } catch {
+            res.status(500).end();
+        }
+    });
+
+    /**
+     * POST /api/playlists/:id/cover
+     * Upload a custom cover image for a playlist (admin or owner).
+     */
+    router.post("/:id/cover", coverUpload.single("file"), async (req: AuthenticatedRequest, res: any) => {
+        if (!req.isAdmin && !req.username) return res.status(401).json({ error: "Unauthorized" });
+        try {
+            const id = parseInt(req.params.id as string, 10);
+            const playlist = library.getPlaylist(id);
+            if (!playlist) return res.status(404).json({ error: "Playlist not found" });
+            if (!req.isAdmin && playlist.username !== req.username) {
+                return res.status(403).json({ error: "Not your playlist" });
+            }
+
+            const file = (req as any).file as Express.Multer.File | undefined;
+            if (!file) return res.status(400).json({ error: "No file uploaded" });
+
+            const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+            const coversDir = path.join(config.musicDir, "playlists", "covers");
+            await fs.ensureDir(coversDir);
+
+            const filename = `${id}-${crypto.randomBytes(4).toString("hex")}${ext}`;
+            const dest = path.join(coversDir, filename);
+            await fs.writeFile(dest, file.buffer);
+
+            const relativePath = path.join("playlists", "covers", filename);
+            library.updatePlaylistCover(id, relativePath);
+
+            res.json({ coverPath: `/api/playlists/${id}/cover` });
+        } catch (err: any) {
+            console.error("[Playlists] Cover upload failed:", err);
+            res.status(500).json({ error: "Cover upload failed" });
         }
     });
 

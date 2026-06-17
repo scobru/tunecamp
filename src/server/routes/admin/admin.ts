@@ -675,6 +675,43 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/admin/system/prewarm-cache
+     * Pre-transcode all non-streamable tracks to fill the transcode cache in the background.
+     */
+    router.post("/system/prewarm-cache", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)) {
+                return res.status(403).json({ error: "Only admin can trigger cache pre-warming" });
+            }
+
+            const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine;
+            if (!mediaEngine) return res.status(503).json({ error: "MediaEngine not available" });
+
+            if (taskManager.isRunning('prewarm-cache')) {
+                return res.status(409).json({ error: "Pre-warm already running" });
+            }
+
+            const tracks = database.getAllTracks().filter((t: any) => t.file_path);
+            console.log(`🔥 [Admin] Cache pre-warm triggered by ${req.username} — ${tracks.length} tracks`);
+
+            taskManager.run('prewarm-cache', async () => {
+                let aborted = false;
+                const warmed = await mediaEngine.prewarmCache(
+                    tracks,
+                    (done, total, current) => taskManager.updateProgress('prewarm-cache', done, total, current),
+                    () => aborted
+                );
+                return { warmed, total: tracks.length };
+            });
+
+            res.json({ message: `Pre-warm started for ${tracks.length} tracks`, taskId: 'prewarm-cache' });
+        } catch (error) {
+            console.error("Error starting cache pre-warm:", error);
+            res.status(500).json({ error: "Failed to start cache pre-warm" });
+        }
+    });
+
+    /**
      * POST /api/admin/network/sync-community
      * Discover other Tunecamp instances via GunDB and follow them via ActivityPub (Any Admin)
      */
@@ -1946,8 +1983,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
         // 6. OpenRouter
         const orKey = identity.getSetting("openrouter_api_key") || config.openrouterApiKey;
-        results.openrouter = { 
-            configured: !!orKey,
+        const orPluginState = identity.getPluginState("openrouter");
+        const isOrPluginEnabled = orPluginState ? orPluginState.enabled : true;
+        results.openrouter = {
+            configured: !!orKey && isOrPluginEnabled,
             model: identity.getSetting("openrouter_model") || config.openrouterModel || "openrouter/free"
         };
 
@@ -1964,6 +2003,22 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             configured: !!(config.gdriveClientId && config.gdriveClientSecret),
             active: !!gdriveService
         };
+
+        // 9. YouTube
+        try {
+            const ytRes = await fetch("https://www.youtube.com", { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+            results.youtube = { online: ytRes.ok };
+        } catch {
+            results.youtube = { online: false };
+        }
+
+        // 10. Bandcamp
+        try {
+            const bcRes = await fetch("https://bandcamp.com", { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+            results.bandcamp = { online: bcRes.ok };
+        } catch {
+            results.bandcamp = { online: false };
+        }
 
         // 11. Deezer
         try {

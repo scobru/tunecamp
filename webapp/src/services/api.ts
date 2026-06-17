@@ -119,6 +119,11 @@ const API = {
     createPlaylist: (name: string, description?: string, isPublic = false) =>
         handleResponse(api.post<Playlist>('playlists', { name, description, isPublic })),
     updatePlaylist: (id: string, data: Partial<Playlist>) => handleResponse(api.put<Playlist>(`playlists/${id}`, data)),
+    uploadPlaylistCover: (id: string, file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return handleResponse(api.post<{ coverPath: string }>(`playlists/${id}/cover`, formData));
+    },
     deletePlaylist: (id: string) => handleResponse(api.delete(`playlists/${id}`)),
     addTrackToPlaylist: (playlistId: string, trackId: string, metadata?: any) =>
         handleResponse(api.post(`playlists/${playlistId}/tracks`, { trackId, metadata })),
@@ -445,6 +450,7 @@ const API = {
     getListeningStats: () => handleResponse(api.get<any>('stats/library/overview')),
     triggerRescan: () => handleResponse(api.post<{ message: string }>('admin/system/rescan')),
     pruneOrphans: () => handleResponse(api.post<{ message: string }>('admin/system/prune-orphans')),
+    prewarmCache: () => handleResponse(api.post<{ message: string; taskId: string }>('admin/system/prewarm-cache')),
     syncTagsToFiles: () => handleResponse(api.post<{ message: string }>('admin/system/sync-tags')),
     getTasks: () => handleResponse(api.get<any[]>('admin/tasks')),
     getRunningTasks: () => handleResponse(api.get<any[]>('admin/tasks/running')),

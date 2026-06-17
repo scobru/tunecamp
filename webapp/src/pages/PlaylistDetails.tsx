@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -72,21 +72,25 @@ const PlaylistDetails = () => {
     }
   };
 
-  const handleEditCover = async () => {
-    if (!playlist || !isAdminAuthenticated) return;
-    const url = window.prompt(
-      "Enter the URL or path for the playlist cover image:",
-      playlist.coverPath || "",
-    );
-    if (url === null) return; // user cancelled
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleEditCover = () => {
+    if (!playlist || !isAdminAuthenticated || id?.startsWith("genre:")) return;
+    coverInputRef.current?.click();
+  };
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !playlist) return;
     try {
-      await API.updatePlaylist(String(playlist.id), { coverPath: url });
-      setPlaylist({ ...playlist, coverPath: url });
-      notify.success("Playlist cover updated successfully");
-    } catch (e) {
-      console.error(e);
-      notify.error(e, "Failed to update playlist cover");
+      const res = await API.uploadPlaylistCover(String(playlist.id), file);
+      // Bust the browser cache by appending a timestamp
+      setPlaylist({ ...playlist, coverPath: res.coverPath + `?v=${Date.now()}` });
+      notify.success("Playlist cover updated");
+    } catch (err) {
+      notify.error(err, "Failed to upload cover");
     }
+    e.target.value = "";
   };
 
   if (loading)
@@ -95,25 +99,57 @@ const PlaylistDetails = () => {
     );
   if (!playlist) return null;
 
+  // Collect unique track cover URLs for the collage (up to 4)
+  const trackCovers = Array.from(
+    new Map(
+      (playlist.tracks ?? [])
+        .filter((t: any) => t.album_id || t.albumId)
+        .map((t: any) => [t.album_id ?? t.albumId, `/api/tracks/${t.id}/cover`])
+    ).values()
+  ).slice(0, 4);
+
   return (
     <div className="space-y-8 animate-fade-in p-6">
+      {/* Hidden file input for cover upload */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        className="hidden"
+        accept="image/jpeg,image/png,image/webp,image/avif"
+        onChange={handleCoverFileChange}
+      />
+
       <div className="flex flex-col md:flex-row gap-8 items-end">
-        <div className="w-52 h-52 bg-gradient-to-br from-primary to-secondary rounded-2xl shadow-level-1 flex items-center justify-center text-6xl text-base-100/50 shrink-0 overflow-hidden relative group">
+        <div className="w-52 h-52 rounded-2xl shadow-level-1 shrink-0 overflow-hidden relative group">
           {playlist.coverPath ? (
+            // Custom cover set by admin
             <img
               src={playlist.coverPath}
               className="w-full h-full object-cover"
               alt="Playlist Cover"
             />
+          ) : trackCovers.length >= 4 ? (
+            // 2×2 collage with first 4 distinct album covers
+            <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+              {trackCovers.map((url, i) => (
+                <img key={i} src={url} className="w-full h-full object-cover" alt="" />
+              ))}
+            </div>
+          ) : trackCovers.length > 0 ? (
+            // Fewer than 4 covers — show the first one full-size
+            <img src={trackCovers[0]} className="w-full h-full object-cover" alt="Playlist Cover" />
           ) : (
-            <Music size={64} />
+            // No covers available — gradient placeholder
+            <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-base-100/50">
+              <Music size={64} />
+            </div>
           )}
           {isAdminAuthenticated && !id?.startsWith("genre:") && (
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
               <button
                 className="btn btn-sm btn-circle btn-ghost text-white tooltip tooltip-top"
                 onClick={handleEditCover}
-                data-tip="Edit Cover"
+                data-tip="Upload Cover"
               >
                 <ImageIcon size={20} />
               </button>

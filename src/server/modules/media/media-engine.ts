@@ -476,6 +476,53 @@ export class MediaEngine {
     } catch { /* pruning is best-effort */ }
   }
 
+  /**
+   * Pre-warm the transcode cache for a list of tracks.
+   * Processes one at a time at low priority so live playback is not impacted.
+   * Returns the number of tracks actually transcoded (cache misses).
+   */
+  async prewarmCache(
+    tracks: Track[],
+    onProgress: (done: number, total: number, current: string) => void,
+    shouldAbort: () => boolean
+  ): Promise<number> {
+    const directlyStreamable = new Set(["mp3", "ogg", "opus", "flac", "aac"]);
+    let warmed = 0;
+
+    for (let i = 0; i < tracks.length; i++) {
+      if (shouldAbort()) break;
+
+      const track = tracks[i];
+      const filePath = track.file_path;
+      if (!filePath) { onProgress(i + 1, tracks.length, track.title); continue; }
+
+      const ext = path.extname(filePath).toLowerCase().replace('.', '');
+      const sourceFormat = (track.format || ext).toLowerCase();
+
+      // Skip tracks that play directly without transcoding
+      if (directlyStreamable.has(sourceFormat)) { onProgress(i + 1, tracks.length, track.title); continue; }
+
+      const targetFormat = "mp3";
+      const cacheFile = this.transcodeCacheFile(filePath, targetFormat, undefined);
+
+      try {
+        if (!(await fs.pathExists(cacheFile))) {
+          await this.produceTranscode(filePath, cacheFile, targetFormat, undefined);
+          warmed++;
+        }
+      } catch (err: any) {
+        console.warn(`[MediaEngine] Prewarm failed for "${track.title}": ${err?.message}`);
+      }
+
+      onProgress(i + 1, tracks.length, track.title);
+
+      // Yield between tracks to avoid starving the event loop
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    return warmed;
+  }
+
   private async handleStreamingFallback(track: Track): Promise<StreamResult | null> {
     if (!this.streamingService) return null;
     

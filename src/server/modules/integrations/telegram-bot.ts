@@ -578,7 +578,7 @@ ${(this.database.db.prepare("SELECT title, artist_name FROM tracks ORDER BY id D
 
                 // If no hashtags found, try AI parsing or line-based fallback
                 if (!metadataHints.artist && !metadataHints.album) {
-                    if (this.ai) {
+                    if (this.ai && this.ai.isEnabled()) {
                         console.log(`[TelegramBot] No hashtags found. Attempting AI parsing for: "${caption.substring(0, 100)}..."`);
                         const aiMetadata = await this.ai.parseMetadataFromText(caption);
                         if (aiMetadata) {
