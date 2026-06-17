@@ -291,7 +291,7 @@ export const AdminSettingsPanel = () => {
                 </label>
                 <input
                   type="text"
-                  className="input input-bordered bg-base-300/50"
+                  className="input input-bordered bg-base-300/50 w-full"
                   value={settings.siteName}
                   onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
                   placeholder="My Music Label"
@@ -303,7 +303,7 @@ export const AdminSettingsPanel = () => {
                   <span className="label-text font-medium text-sm">Site Description</span>
                 </label>
                 <textarea
-                  className="textarea textarea-bordered bg-base-300/50 h-28"
+                  className="textarea textarea-bordered bg-base-300/50 h-28 w-full"
                   value={settings.siteDescription || ""}
                   onChange={(e) => setSettings({ ...settings, siteDescription: e.target.value })}
                   placeholder="Describe your site for search engines and social sharing..."
@@ -316,7 +316,7 @@ export const AdminSettingsPanel = () => {
                 </label>
                 <input
                   type="url"
-                  className="input input-bordered bg-base-300/50"
+                  className="input input-bordered bg-base-300/50 w-full"
                   value={settings.communityLink || ""}
                   onChange={(e) => setSettings({ ...settings, communityLink: e.target.value })}
                   placeholder="https://t.me/yourgroup or https://chat.whatsapp.com/..."
@@ -329,7 +329,7 @@ export const AdminSettingsPanel = () => {
                 </label>
                 <input
                   type="url"
-                  className="input input-bordered bg-base-300/50"
+                  className="input input-bordered bg-base-300/50 w-full"
                   value={settings.publicUrl || ""}
                   onChange={(e) => setSettings({ ...settings, publicUrl: e.target.value })}
                   placeholder="https://sudorecords.dev"
@@ -532,7 +532,7 @@ export const AdminSettingsPanel = () => {
                     </label>
                     <input
                       type="text"
-                      className="input input-bordered bg-base-300/50"
+                      className="input input-bordered bg-base-300/50 w-full"
                       value={settings.backgroundImage || ""}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -736,7 +736,7 @@ export const AdminSettingsPanel = () => {
                       </label>
                       <input
                         type="text"
-                        className="input input-bordered bg-base-300/50 font-mono text-xs"
+                        className="input input-bordered bg-base-300/50 font-mono text-xs w-full"
                         value={settings.web3_checkout_address !== undefined ? settings.web3_checkout_address : checkoutAddress}
                         onChange={(e) => setSettings({ ...settings, web3_checkout_address: e.target.value })}
                         placeholder="0x..."
@@ -749,7 +749,7 @@ export const AdminSettingsPanel = () => {
                       </label>
                       <input
                         type="text"
-                        className="input input-bordered bg-base-300/50 font-mono text-xs"
+                        className="input input-bordered bg-base-300/50 font-mono text-xs w-full"
                         value={settings.web3_nft_address !== undefined ? settings.web3_nft_address : nftAddress}
                         onChange={(e) => setSettings({ ...settings, web3_nft_address: e.target.value })}
                         placeholder="0x..."
@@ -813,7 +813,7 @@ export const AdminSettingsPanel = () => {
                       min="0"
                       max="100"
                       step="0.1"
-                      className="input input-bordered bg-base-300/50"
+                      className="input input-bordered bg-base-300/50 w-full"
                       value={settings.adminFeePercentage || 0}
                       onChange={(e) => setSettings({ ...settings, adminFeePercentage: e.target.value })}
                       placeholder="0"
@@ -829,7 +829,7 @@ export const AdminSettingsPanel = () => {
                     </label>
                     <input
                       type="text"
-                      className="input input-bordered bg-base-300/50 font-mono text-xs"
+                      className="input input-bordered bg-base-300/50 font-mono text-xs w-full"
                       value={settings.adminTreasuryAddress || ""}
                       onChange={(e) => setSettings({ ...settings, adminTreasuryAddress: e.target.value })}
                       placeholder="0x..."
