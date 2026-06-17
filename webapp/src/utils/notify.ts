@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 /**
  * Extracts a human-readable message from a caught error object (like an Axios error or standard Error).
  */
-export function getErrorMessage(error: unknown, fallback = "An unexpected error occurred"): string {
+function getErrorMessage(error: unknown, fallback = "An unexpected error occurred"): string {
   if (!error) return fallback;
 
   if (typeof error === "string") return error;

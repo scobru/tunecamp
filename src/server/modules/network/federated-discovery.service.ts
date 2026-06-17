@@ -19,7 +19,7 @@ const FETCH_TIMEOUT = 5000;                     // 5s per request
 const MAX_INSTANCES = 100;                      // crawl breadth safety cap
 const MAX_DEPTH = 3;                            // crawl depth safety cap
 
-export interface FederatedInstance {
+interface FederatedInstance {
     url: string;            // instance origin (https://host)
     name?: string;
     description?: string;

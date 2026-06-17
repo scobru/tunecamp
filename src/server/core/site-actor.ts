@@ -15,7 +15,7 @@
 export const SITE_ACTOR_ID = -1;
 
 /** Legacy/default handle used as fallback when `siteHandle` is not set. */
-export const DEFAULT_SITE_HANDLE = "site";
+const DEFAULT_SITE_HANDLE = "site";
 
 interface SettingReader {
     getSetting(key: string): string | undefined | null;

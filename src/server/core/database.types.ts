@@ -234,7 +234,7 @@ export interface Post {
     artist_photo?: string | null;
 }
 
-export interface ArtistEvent {
+interface ArtistEvent {
     id: number;
     artist_id: number;
     title: string;
@@ -247,7 +247,7 @@ export interface ArtistEvent {
     created_at: string;
 }
 
-export interface ArtistEventInput {
+interface ArtistEventInput {
     title: string;
     event_date: string;
     venue?: string | null;

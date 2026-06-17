@@ -26,4 +26,4 @@ if (dsn) {
     console.log("📟 Sentry crash reporting enabled");
 }
 
-export const sentryEnabled = Boolean(dsn);
+const sentryEnabled = Boolean(dsn);
