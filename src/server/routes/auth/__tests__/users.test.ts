@@ -287,6 +287,7 @@ describe('Users Routes', () => {
         const buildApp = (settings: Record<string, string | undefined>) => {
             const identity = { getSetting: jest.fn((k: string) => settings[k]) };
             const library = {
+                getArtistByName: jest.fn().mockReturnValue(null),
                 createArtist: jest.fn().mockReturnValue(42),
                 setArtistCanSell: jest.fn(),
             };
