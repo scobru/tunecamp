@@ -204,6 +204,15 @@ const AlbumDetails = () => {
     }
   })();
 
+  // External Showcase: purchases happen off-platform (Bandcamp) via the
+  // configured "External Buy URL". No file is served by TuneCamp, so the
+  // track row links to the buy URL instead of offering a download.
+  const isExternalShowcase = album?.download === "external";
+  const externalBuyUrl: string | undefined = isExternalShowcase ? externalLinks[0]?.url : undefined;
+  const buyLabel = externalLinks[0]?.label
+    ? `Buy on ${externalLinks[0].label}`
+    : "Buy on Bandcamp";
+
   const licenseInfo = (() => {
     if (!album?.license || album.license === 'copyright') return { name: 'All Rights Reserved', url: null };
     
@@ -375,14 +384,14 @@ const AlbumDetails = () => {
               )}
 
 
-              {album.download === "external" && externalLinks.length > 0 && (
+              {isExternalShowcase && externalBuyUrl && (
                 <a
-                  href={externalLinks[0].url}
+                  href={externalBuyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-secondary btn-lg rounded-2xl px-10 hover:scale-105 transition-all gap-2"
                 >
-                  <ExternalLink size={20} /> Buy on Bandcamp
+                  <ExternalLink size={20} /> {buyLabel}
                 </a>
               )}
 
@@ -526,8 +535,21 @@ const AlbumDetails = () => {
                     <Heart size={18} fill={likedTrackIds.has(String(track.id)) ? "currentColor" : "none"} aria-hidden="true" />
                   </button>
 
-                  {unlocked && (
-                    <button 
+                  {isExternalShowcase && externalBuyUrl && (
+                    <a
+                      href={externalBuyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-sm btn-circle text-secondary"
+                      aria-label={`${buyLabel} — ${track.title}`}
+                      title={buyLabel}
+                    >
+                      <ExternalLink size={18} aria-hidden="true" />
+                    </a>
+                  )}
+
+                  {!isExternalShowcase && unlocked && (
+                    <button
                       onClick={async () => {
                         if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
                           window.open(API.getTrackDownloadUrl(track.id), "_blank");
@@ -544,7 +566,7 @@ const AlbumDetails = () => {
                     </button>
                   )}
 
-                  {!unlocked && album.download === "free" && (
+                  {!isExternalShowcase && !unlocked && album.download === "free" && (
                     <a 
                       href={`/api/albums/${album.slug || album.id}/download?format=${downloadFormat}`} 
                       target="_blank"
