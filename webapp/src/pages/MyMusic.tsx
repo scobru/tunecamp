@@ -93,6 +93,25 @@ const MyMusic = () => {
             <div className="stat-value text-accent text-2xl">
               {(stats.storageUsed / 1024 / 1024 / 1024).toFixed(3)} GB
             </div>
+            {stats.storageQuota > 0 && (
+              <>
+                <div className="stat-desc mt-1">
+                  of {(stats.storageQuota / 1024 / 1024 / 1024).toFixed(2)} GB
+                  {" · "}
+                  {Math.max(0, ((stats.storageQuota - stats.storageUsed) / 1024 / 1024 / 1024)).toFixed(2)} GB free
+                </div>
+                {(() => {
+                  const pct = Math.min(100, Math.round((stats.storageUsed / stats.storageQuota) * 100));
+                  return (
+                    <progress
+                      className={`progress mt-1 ${pct >= 90 ? 'progress-error' : pct >= 70 ? 'progress-warning' : 'progress-success'}`}
+                      value={pct}
+                      max={100}
+                    />
+                  );
+                })()}
+              </>
+            )}
           </div>
           <div className="stat bg-base-200/50 rounded-box border border-base-content/5 shadow-m3-1">
             <div className="stat-title opacity-60 text-xs font-bold tracking-normal">Genres</div>

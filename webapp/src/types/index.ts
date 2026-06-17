@@ -386,9 +386,34 @@ export interface AdminStats {
     tracks?: number;
     publicAlbums?: number;
     storageUsed: number;
+    storageQuota?: number; // requesting user's quota in bytes (0 = unlimited)
     networkSites: number;
     genresCount?: number;
     genres?: string[];
+}
+
+export interface UserStorageRow {
+    id: number;
+    username: string;
+    role: string;
+    used: number;
+    quota: number;
+    trackCount: number;
+}
+
+export interface InstanceStorage {
+    diskUsed: number;
+    dbTotal: number;
+    quotaAllocated: number;
+    trackCount: number;
+    byUser: UserStorageRow[];
+}
+
+export interface RecomputeStorageResult {
+    scanned: number;
+    updated: number;
+    missing: number;
+    overview: InstanceStorage;
 }
 
 

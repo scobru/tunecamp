@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile,
+    StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
     LiveSession, ArtistEvent, ArtistEventInput
 } from '../types';
@@ -611,6 +611,8 @@ const API = {
     importGDriveFolderRecursive: (folderId: string, artistId?: number, albumId?: number) => handleResponse(api.post<{ success: boolean, count: number, message: string }>('storage/gdrive/import-folder', { folderId, artistId, albumId })),
     localizeGDriveTrack: (trackId: string | number) => handleResponse(api.post<{ success: boolean, track: Track }>(`storage/gdrive/localize/${trackId}`)),
     deleteGDriveAccount: (id: number) => handleResponse(api.delete(`storage/gdrive/accounts/${id}`)),
+    getStorageOverview: () => handleResponse(api.get<InstanceStorage>('admin/storage/overview')),
+    recomputeStorage: () => handleResponse(api.post<RecomputeStorageResult>('admin/storage/recompute')),
     
     // --- Torrents ---
     getTorrents: () => handleResponse(api.get<any[]>('admin/torrents')),
