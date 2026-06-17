@@ -4,7 +4,7 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession
+    LiveSession, ArtistEvent, ArtistEventInput
 } from '../types';
 
 const API_URL = '/api';
@@ -211,6 +211,13 @@ const API = {
     acceptFollower: (artistId: string | number, actorUri: string) => handleResponse(api.post(`ap/followers/accept`, { artistId, actorUri })),
     rejectFollower: (artistId: string | number, actorUri: string) => handleResponse(api.post(`ap/followers/reject`, { artistId, actorUri })),
     getArtistPosts: (idOrSlug: string) => handleResponse(api.get<Post[]>(`artists/${idOrSlug}/posts`)),
+    getArtistEvents: (idOrSlug: string) => handleResponse(api.get<ArtistEvent[]>(`artists/${idOrSlug}/events`)),
+    createArtistEvent: (idOrSlug: string, data: ArtistEventInput & { announce?: boolean }) =>
+        handleResponse(api.post<ArtistEvent>(`artists/${idOrSlug}/events`, data)),
+    updateArtistEvent: (idOrSlug: string, eventId: number, data: ArtistEventInput) =>
+        handleResponse(api.put<ArtistEvent>(`artists/${idOrSlug}/events/${eventId}`, data)),
+    deleteArtistEvent: (idOrSlug: string, eventId: number) =>
+        handleResponse(api.delete(`artists/${idOrSlug}/events/${eventId}`)),
     getPostBySlug: (slug: string) => handleResponse(api.get<Post>(`posts/${slug}`)),
     createPost: (artistId: number, content: string, visibility: string, title?: string, summary?: string) => handleResponse(api.post('admin/posts', { artistId, content, visibility, title, summary })),
     updatePost: (id: number, content: string, visibility: string, title?: string, summary?: string) => handleResponse(api.put(`admin/posts/${id}`, { content, visibility, title, summary })),

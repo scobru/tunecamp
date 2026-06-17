@@ -23,6 +23,7 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
     const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const social: ServiceContainer['social'] = (container as any).social || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService;
     const router = Router();
     router.use(json());
 
@@ -441,6 +442,119 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Error getting artist posts:", error);
             res.status(500).json({ error: "Failed to get artist posts" });
+        }
+    });
+
+    // Resolve an artist by numeric id or slug
+    const resolveArtist = (param: string) =>
+        /^-?\d+$/.test(param) ? library.getArtist(parseInt(param, 10)) : library.getArtistBySlug(param);
+
+    // Owner = the artist themselves (artistId match) or any admin
+    const canManageArtist = (req: AuthenticatedRequest, artistId: number) =>
+        req.isAdmin || req.isSuperUser || (req.artistId != null && Number(req.artistId) === Number(artistId));
+
+    /**
+     * GET /api/artists/:id/events
+     * Public list of upcoming events (admins/owner see past events too).
+     */
+    router.get("/:id/events", (req: AuthenticatedRequest, res) => {
+        try {
+            const artist = resolveArtist(req.params.id);
+            if (!artist) return res.status(404).json({ error: "Artist not found" });
+            const showAll = canManageArtist(req, artist.id);
+            res.json(social.getEventsByArtist(artist.id, !showAll));
+        } catch (error) {
+            console.error("Error getting artist events:", error);
+            res.status(500).json({ error: "Failed to get events" });
+        }
+    });
+
+    /**
+     * POST /api/artists/:id/events
+     * Create a live event (owner/admin). Optionally announce it to the Fediverse.
+     */
+    router.post("/:id/events", async (req: AuthenticatedRequest, res) => {
+        try {
+            const artist = resolveArtist(req.params.id);
+            if (!artist) return res.status(404).json({ error: "Artist not found" });
+            if (!canManageArtist(req, artist.id)) return res.status(403).json({ error: "Not authorized for this artist" });
+
+            const { title, event_date, venue, city, country, ticket_url, description, announce } = req.body;
+            if (!title || !event_date) {
+                return res.status(400).json({ error: "title and event_date are required" });
+            }
+
+            const id = social.createEvent(artist.id, { title, event_date, venue, city, country, ticket_url, description });
+
+            // Federate as a post announcement (reuses the proven posts → ActivityPub pipeline)
+            if (announce && publishingService) {
+                try {
+                    const when = new Date(event_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+                    const where = [venue, city, country].filter(Boolean).join(", ");
+                    const lines = [
+                        `🎤 **${artist.name}** live: ${title}`,
+                        `📅 ${when}${where ? ` — 📍 ${where}` : ""}`,
+                        description ? `\n${description}` : "",
+                        ticket_url ? `\n🎟️ Tickets: ${ticket_url}` : "",
+                    ].filter(Boolean);
+                    const postId = social.createPost(artist.id, lines.join("\n"), 'public', `Live: ${title}`, where || undefined);
+                    publishingService.syncPost(postId).catch(e => console.error("Failed to federate event post:", e));
+                } catch (e) {
+                    console.error("Failed to build event announcement:", e);
+                }
+            }
+
+            res.status(201).json(social.getEvent(id));
+        } catch (error) {
+            console.error("Error creating artist event:", error);
+            res.status(500).json({ error: "Failed to create event" });
+        }
+    });
+
+    /**
+     * PUT /api/artists/:id/events/:eventId
+     * Update a live event (owner/admin).
+     */
+    router.put("/:id/events/:eventId", (req: AuthenticatedRequest, res) => {
+        try {
+            const artist = resolveArtist(req.params.id);
+            if (!artist) return res.status(404).json({ error: "Artist not found" });
+            if (!canManageArtist(req, artist.id)) return res.status(403).json({ error: "Not authorized for this artist" });
+
+            const eventId = parseInt(req.params.eventId, 10);
+            const existing = social.getEvent(eventId);
+            if (!existing || existing.artist_id !== artist.id) return res.status(404).json({ error: "Event not found" });
+
+            const { title, event_date, venue, city, country, ticket_url, description } = req.body;
+            if (!title || !event_date) return res.status(400).json({ error: "title and event_date are required" });
+
+            social.updateEvent(eventId, { title, event_date, venue, city, country, ticket_url, description });
+            res.json(social.getEvent(eventId));
+        } catch (error) {
+            console.error("Error updating artist event:", error);
+            res.status(500).json({ error: "Failed to update event" });
+        }
+    });
+
+    /**
+     * DELETE /api/artists/:id/events/:eventId
+     * Delete a live event (owner/admin).
+     */
+    router.delete("/:id/events/:eventId", (req: AuthenticatedRequest, res) => {
+        try {
+            const artist = resolveArtist(req.params.id);
+            if (!artist) return res.status(404).json({ error: "Artist not found" });
+            if (!canManageArtist(req, artist.id)) return res.status(403).json({ error: "Not authorized for this artist" });
+
+            const eventId = parseInt(req.params.eventId, 10);
+            const existing = social.getEvent(eventId);
+            if (!existing || existing.artist_id !== artist.id) return res.status(404).json({ error: "Event not found" });
+
+            social.deleteEvent(eventId);
+            res.json({ message: "Event deleted" });
+        } catch (error) {
+            console.error("Error deleting artist event:", error);
+            res.status(500).json({ error: "Failed to delete event" });
         }
     });
 

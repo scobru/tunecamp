@@ -184,6 +184,29 @@ export interface Playlist {
     updatedAt: string;
 }
 
+export interface ArtistEvent {
+    id: number;
+    artist_id: number;
+    title: string;
+    event_date: string;
+    venue: string | null;
+    city: string | null;
+    country: string | null;
+    ticket_url: string | null;
+    description: string | null;
+    created_at: string;
+}
+
+export interface ArtistEventInput {
+    title: string;
+    event_date: string;
+    venue?: string | null;
+    city?: string | null;
+    country?: string | null;
+    ticket_url?: string | null;
+    description?: string | null;
+}
+
 export interface User {
     id: string;
     username: string;

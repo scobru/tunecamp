@@ -140,6 +140,23 @@ export function createSocialManager(
         updatePostVisibility: (id: number, v: any) => { db.prepare("UPDATE posts SET visibility = ? WHERE id = ?").run(v, id); },
         deletePost: (id: number) => { db.prepare("DELETE FROM posts WHERE id = ?").run(id); },
 
+        // Artist Live Events
+        getEventsByArtist: (aid: number, upcomingOnly = false) => db.prepare(
+            upcomingOnly
+                ? "SELECT * FROM artist_events WHERE artist_id = ? AND event_date >= date('now', '-1 day') ORDER BY event_date ASC"
+                : "SELECT * FROM artist_events WHERE artist_id = ? ORDER BY event_date ASC"
+        ).all(aid) as any[],
+        getEvent: (id: number) => db.prepare("SELECT * FROM artist_events WHERE id = ?").get(id) as any,
+        createEvent: (aid: number, e: any) => Number(db.prepare(
+            "INSERT INTO artist_events (artist_id, title, event_date, venue, city, country, ticket_url, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        ).run(aid, e.title, e.event_date, e.venue || null, e.city || null, e.country || null, e.ticket_url || null, e.description || null).lastInsertRowid),
+        updateEvent: (id: number, e: any) => {
+            db.prepare(
+                "UPDATE artist_events SET title = ?, event_date = ?, venue = ?, city = ?, country = ?, ticket_url = ?, description = ? WHERE id = ?"
+            ).run(e.title, e.event_date, e.venue || null, e.city || null, e.country || null, e.ticket_url || null, e.description || null, id);
+        },
+        deleteEvent: (id: number) => { db.prepare("DELETE FROM artist_events WHERE id = ?").run(id); },
+
         // AP Metadata
         createApNote: (aid: number, nid: string, nt: any, cid: number, cs: string, ct: string) => Number(db.prepare("INSERT OR IGNORE INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title) VALUES (?, ?, ?, ?, ?, ?)").run(aid, nid, nt, cid, cs, ct).lastInsertRowid),
         getApNotes: (aid: number, id = false) => db.prepare(id ? "SELECT * FROM ap_notes WHERE artist_id = ?" : "SELECT * FROM ap_notes WHERE artist_id = ? AND deleted_at IS NULL").all(aid) as any[],

@@ -8,9 +8,11 @@ import {
   User,
   MessageSquare,
   PenTool,
+  Calendar,
 } from "lucide-react";
 import { IdentityPanel } from "../components/admin/IdentityPanel";
 import { ArtistFediversePanel } from "../components/artist/ArtistFediversePanel";
+import { ArtistEventsManager } from "../components/artist/ArtistEventsManager";
 import { ActivityPubPanel } from "../components/admin/ActivityPubPanel";
 import { CreatePostModal } from "../components/modals/CreatePostModal";
 import API from "../services/api";
@@ -19,7 +21,7 @@ const Social = () => {
   const { user, isAuthenticated, isLoading, role } = useAuthStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
-    "community" | "identity" | "automation" | "federation"
+    "community" | "events" | "identity" | "automation" | "federation"
   >("community");
 
   const [artistData, setArtistData] = useState<any>(null);
@@ -150,6 +152,14 @@ const Social = () => {
         </a>
         <a
           role="tab"
+          className={`tab ${activeTab === "events" ? "tab-active" : ""}`}
+          onClick={() => setActiveTab("events")}
+        >
+          <Calendar size={16} className="mr-2" />
+          Events
+        </a>
+        <a
+          role="tab"
           className={`tab ${activeTab === "identity" ? "tab-active" : ""}`}
           onClick={() => setActiveTab("identity")}
         >
@@ -178,6 +188,8 @@ const Social = () => {
 
       <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
         {activeTab === "community" && <ArtistFediversePanel />}
+
+        {activeTab === "events" && <ArtistEventsManager />}
 
         {activeTab === "identity" && (
           <div className="space-y-4">

@@ -247,6 +247,21 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS artist_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            artist_id INTEGER NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            venue TEXT,
+            city TEXT,
+            country TEXT,
+            ticket_url TEXT,
+            description TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_artist_events_artist ON artist_events(artist_id, event_date);
+
         CREATE TABLE IF NOT EXISTS ap_notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,

@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from "react";
+import { Link } from "react-router-dom";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useShallow } from "zustand/react/shallow";
@@ -420,7 +421,16 @@ export const PlayerBar = () => {
 
           <div className="min-w-0">
             <h3 className="font-black text-title-small lg:text-title-medium truncate tracking-tight">{currentTrack.title}</h3>
-            <p className="text-xs lg:text-label-small font-medium opacity-60 text-primary truncate tracking-normal">{currentTrack.artistName}</p>
+            {currentTrack.artistId ? (
+              <Link
+                to={`/artists/${(currentTrack as any).artistSlug || (currentTrack as any).artist_slug || currentTrack.artistId}`}
+                className="text-xs lg:text-label-small font-medium opacity-60 text-primary truncate tracking-normal hover:opacity-100 hover:underline block"
+              >
+                {currentTrack.artistName}
+              </Link>
+            ) : (
+              <p className="text-xs lg:text-label-small font-medium opacity-60 text-primary truncate tracking-normal">{currentTrack.artistName}</p>
+            )}
           </div>
         </div>
 
