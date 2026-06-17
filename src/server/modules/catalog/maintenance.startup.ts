@@ -480,7 +480,11 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 "SELECT m.name as tbl FROM sqlite_master m WHERE m.type='table' AND m.name NOT LIKE 'sqlite_%'"
             ).all() as { tbl: string }[])
                 .filter(r => {
-                    if (r.tbl === 'artists') return false;
+                    // 'artists' is the target table. 'admin' holds USER accounts: their
+                    // artist_id must be re-pointed (handled separately below) but the row
+                    // must NEVER be deleted by the generic sweep, or merging two same-named
+                    // artists would delete the linked user account.
+                    if (r.tbl === 'artists' || r.tbl === 'admin') return false;
                     try {
                         const cols = database.db.prepare(`PRAGMA table_info(${r.tbl})`).all() as { name: string }[];
                         return cols.some(c => c.name === 'artist_id');
@@ -506,6 +510,9 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                                         console.warn(`⚠️ [Maintenance] Could not re-point artist_id in ${tbl}:`, (e as any).message);
                                     }
                                 }
+                                // Re-point linked user accounts to the surviving artist —
+                                // never delete the admin row.
+                                database.db.prepare("UPDATE admin SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
                                 database.db.prepare("DELETE FROM artists WHERE id = ?").run(fromId);
                             })();
                             mergeCount++;
