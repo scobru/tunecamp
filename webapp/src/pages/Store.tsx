@@ -193,12 +193,19 @@ const Store = () => {
     const [search, setSearch] = useState('');
     const [subscribed, setSubscribed] = useState(false);
     const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
+    const [enabled, setEnabled] = useState(true);
     const hasSubscription = subscribed || !!(user as any)?.subscriptionStatus === true;
 
     useEffect(() => {
         const load = async () => {
             try {
-                const data = await API.getPublicAssets();
+                const [s, data] = await Promise.all([
+                    API.getSiteSettings(),
+                    API.getPublicAssets()
+                ]);
+                if (s.hideStore === true || s.hideStore === "true") {
+                    setEnabled(false);
+                }
                 setAssets(data);
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
@@ -237,6 +244,22 @@ const Store = () => {
             !(a.artist_name || a.artistName || '').toLowerCase().includes(search.toLowerCase())) return false;
         return true;
     });
+
+    if (!enabled) {
+        return (
+            <div className="space-y-8 animate-fade-in">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                        <ShoppingBag size={32} className="text-primary" /> Store
+                    </h1>
+                </div>
+                <div className="alert alert-warning max-w-xl shadow-level-1 rounded-xl">
+                    <ShoppingBag size={18} />
+                    <span>The store is disabled on this instance.</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8 animate-fade-in">

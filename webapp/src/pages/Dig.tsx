@@ -4,6 +4,7 @@ import { useDigStore } from "../stores/useDigStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { detectBpmFromUrl } from "../utils/bpm";
 import type { Track, DigStrategy, RankedRelease } from "../types";
+import API from "../services/api";
 
 const STRATEGIES: { id: DigStrategy; label: string; hint: string }[] = [
     { id: "fast", label: "Fast", hint: "~15 collectors" },
@@ -26,10 +27,18 @@ export default function Dig() {
     const { playTrack } = usePlayerStore();
     const [bpms, setBpms] = useState<Record<string, number | "loading">>({});
     const [newSessionName, setNewSessionName] = useState("");
+    const [enabled, setEnabled] = useState(true);
 
     useEffect(() => {
         loadSessions();
         loadHistory();
+        API.getSiteSettings()
+            .then((s) => {
+                if (s.hideDig === true || s.hideDig === "true") {
+                    setEnabled(false);
+                }
+            })
+            .catch(console.error);
     }, []);
 
     const playPreview = (r: { url: string; title: string; artist: string; coverUrl: string; previewUrl: string | null }) => {
@@ -66,6 +75,22 @@ export default function Dig() {
         if (isBandcampUrl(q)) runDig(q);
         else search(q);
     };
+
+    if (!enabled) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
+                <header className="mb-6">
+                    <h1 className="text-3xl font-bold flex items-center gap-3">
+                        <Shovel className="text-primary" /> Dig
+                    </h1>
+                </header>
+                <div className="alert alert-warning max-w-xl shadow-level-1 rounded-xl">
+                    <Shovel size={18} />
+                    <span>Crate digging is disabled on this instance.</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-6">

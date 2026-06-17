@@ -9,7 +9,8 @@ export interface BandcampReleaseMetadata {
   date?: string;
   cover?: string;
   genre?: string;
-  tracks?: { title: string }[];
+  tracks?: { title: string; duration: number; streamUrl?: string; position: number }[];
+  url?: string;
 }
 
 /**
@@ -51,7 +52,7 @@ export const ImportBandcampReleaseModal = ({
 
     try {
       const data = await API.importBandcamp(url);
-      setMetadata(data);
+      setMetadata({ ...data, url });
     } catch (e: any) {
       setError(e.message || "Failed to fetch Bandcamp metadata");
     } finally {

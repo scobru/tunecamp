@@ -375,6 +375,17 @@ const AlbumDetails = () => {
               )}
 
 
+              {album.download === "external" && externalLinks.length > 0 && (
+                <a
+                  href={externalLinks[0].url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary btn-lg rounded-2xl px-10 hover:scale-105 transition-all gap-2"
+                >
+                  <ExternalLink size={20} /> Buy on Bandcamp
+                </a>
+              )}
+
               {(album.download === "free" || album.download === "codes") && (
                 <div className="flex gap-1 bg-base-300/50 p-1 rounded-[1.25rem] border border-base-content/5 backdrop-blur-md">
                   {album.download === "free" && (
@@ -411,7 +422,7 @@ const AlbumDetails = () => {
 
               {externalLinks.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                   {externalLinks.map((link: any, i: number) => (
+                   {externalLinks.slice(album.download === "external" ? 1 : 0).map((link: any, i: number) => (
                     <a
                       key={i}
                       href={link.url}
@@ -545,7 +556,7 @@ const AlbumDetails = () => {
                     </a>
                   )}
 
-                  {!unlocked && album.download !== "free" && isRelease && (
+                  {!unlocked && album.download !== "free" && album.download !== "external" && isRelease && (
                     <button 
                       onClick={() => {
                         if (!isAdmin && !useAuthStore.getState().isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));

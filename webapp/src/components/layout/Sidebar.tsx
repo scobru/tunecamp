@@ -41,6 +41,11 @@ export const Sidebar = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteLogo, setSiteLogo] = useState<string | null>(null);
   const [communityLink, setCommunityLink] = useState<string | null>(null);
+  const [hideLive, setHideLive] = useState(false);
+  const [hideStore, setHideStore] = useState(false);
+  const [hideSocial, setHideSocial] = useState(false);
+  const [hideNetwork, setHideNetwork] = useState(false);
+  const [hideDig, setHideDig] = useState(false);
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -54,7 +59,7 @@ export const Sidebar = () => {
       case "root_admin": return "Root Admin";
       case "admin": return "Manager";
       case "super_user": return "Curator";
-      case "user": return "Listener";
+      case "user": return user?.artistId ? "Artist" : "Listener";
       default: return "Listener";
     }
   };
@@ -65,6 +70,8 @@ export const Sidebar = () => {
       case "admin": return "bg-primary/10 text-primary border-primary/20";
       case "super_user": return "bg-secondary/10 text-secondary border-secondary/20";
       case "user":
+        if (user?.artistId) return "bg-accent/10 text-accent border-accent/20";
+        return "bg-base-content/5 text-base-content/60 border-base-content/10";
       default: return "bg-base-content/5 text-base-content/60 border-base-content/10";
     }
   };
@@ -75,6 +82,11 @@ export const Sidebar = () => {
         if (s.siteName) setSiteName(s.siteName);
         if (s.siteLogo) setSiteLogo(s.siteLogo);
         if (s.communityLink) setCommunityLink(s.communityLink);
+        setHideLive(s.hideLive === true || s.hideLive === "true");
+        setHideStore(s.hideStore === true || s.hideStore === "true");
+        setHideSocial(s.hideSocial === true || s.hideSocial === "true");
+        setHideNetwork(s.hideNetwork === true || s.hideNetwork === "true");
+        setHideDig(s.hideDig === true || s.hideDig === "true");
       })
       .catch(console.error);
   }, []);
@@ -209,9 +221,9 @@ export const Sidebar = () => {
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/" icon={Home} label="Home" />
             <NavItem to="/search" icon={Search} label="Search" />
-            <NavItem to="/network" icon={Globe} label="Network" />
-            <NavItem to="/live" icon={Radio} label="Live" />
-            <NavItem to="/store" icon={ShoppingBag} label="Store" />
+            {!hideNetwork && <NavItem to="/network" icon={Globe} label="Network" />}
+            {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
+            {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
             <NavItem to="/board" icon={MessageSquare} label="Board" />
           </ul>
         </div>
@@ -232,7 +244,7 @@ export const Sidebar = () => {
               <NavItem to="/playlists" icon={ListMusic} label="Playlists" />
               <NavItem to="/favorites" icon={Heart} label="Favorites" />
               <NavItem to="/stats" icon={BarChart2} label="Stats" />
-              <NavItem to="/dig" icon={Shovel} label="Dig" />
+              {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
             </ul>
           </div>
         )}
@@ -243,7 +255,7 @@ export const Sidebar = () => {
             <ul className="menu menu-sm p-0 gap-1">
               <NavItem to="/publish" icon={Upload} label="Publish" />
               <NavItem to="/my-music" icon={Music} label="My Catalog" />
-              {!!user?.artistId && (
+              {!!user?.artistId && !hideSocial && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
               {/* Archive = full private library; admin-only. Self-publish

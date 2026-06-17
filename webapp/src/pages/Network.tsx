@@ -447,15 +447,20 @@ const Network = () => {
   const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
   const [status, setStatus] = useState<NetworkStatus | null>(null);
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [sitesData, tracksData, statusData] = await Promise.all([
+        const [sitesData, tracksData, statusData, s] = await Promise.all([
           API.getNetworkSites(),
           API.getNetworkTracks(),
           API.getNetworkStatus().catch(() => null),
+          API.getSiteSettings().catch(() => ({} as any)),
         ]);
+        if (s && (s.hideNetwork === true || s.hideNetwork === "true")) {
+          setEnabled(false);
+        }
         setStatus(statusData);
 
         // Deduplicate Sites
@@ -609,6 +614,25 @@ const Network = () => {
   const instanceGroups = Array.from(remoteByHost.entries())
     .map(([host, items]) => ({ host, items, name: siteNameByHost.get(host) }))
     .sort((a, b) => b.items.length - a.items.length);
+
+  if (!enabled) {
+    return (
+      <div className="space-y-12 animate-fade-in pb-12">
+        <PageHeader
+          title="Federated Network"
+          subtitle="Discover music across the decentralized TuneCamp network."
+          icon={Globe}
+          iconColor="text-blue-400"
+          gradientFrom="from-blue-500/20"
+          gradientTo="to-purple-500/20"
+        />
+        <div className="alert alert-warning max-w-xl shadow-level-1 rounded-xl">
+          <Globe size={18} />
+          <span>The network is disabled on this instance.</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">
