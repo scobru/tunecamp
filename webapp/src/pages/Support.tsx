@@ -1,4 +1,4 @@
-import { LifeBuoy, Github, Coffee } from 'lucide-react';
+import { LifeBuoy, Github, Coffee, Send } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 
 const Support = () => {
@@ -39,6 +39,14 @@ const Support = () => {
                                 className="btn btn-outline btn-block gap-3 text-lg h-14"
                              >
                                 <Github size={20} /> GitHub Sponsors
+                             </a>
+                             <a 
+                                href="https://t.me/tunecamp" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="btn btn-outline btn-info btn-block gap-3 text-lg h-14"
+                             >
+                                <Send size={20} /> Telegram Channel
                              </a>
                         </div>
                     </div>
