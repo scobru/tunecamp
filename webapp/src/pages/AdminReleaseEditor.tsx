@@ -643,6 +643,8 @@ export default function AdminReleaseEditor() {
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
+  const colSpanCount = 5 + (metadata.use_nft ? 1 : 0) + (metadata.download !== "external" ? 1 : 0);
+
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* Header / Toolbar - Sticky and Responsive */}
@@ -1008,14 +1010,14 @@ export default function AdminReleaseEditor() {
                         <th className="hidden md:table-cell">Duration</th>
                         <th className="hidden lg:table-cell">Format</th>
                         {metadata.use_nft && <th className="w-20">NFT</th>}
-                        <th className="w-48 text-center">Pricing</th>
+                        {metadata.download !== "external" && <th className="w-48 text-center">Pricing</th>}
                         <th className="w-20 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody onDragOver={(e) => e.preventDefault()} onDrop={handleDropAudio}>
                       {tracks.length === 0 && filesToUpload.length === 0 && (
                         <tr>
-                          <td colSpan={metadata.use_nft ? 7 : 6} className="py-20 text-center opacity-40">
+                          <td colSpan={colSpanCount} className="py-20 text-center opacity-40">
                              <Music className="w-12 h-12 mx-auto mb-4 opacity-10" />
                              <p className="text-lg font-bold">No tracks added yet</p>
                              <p className="text-sm">Drag audio files here or use the buttons above</p>
@@ -1108,42 +1110,44 @@ export default function AdminReleaseEditor() {
                                   <span className="loading loading-dots loading-xs opacity-20"></span>
                                 )}
                               </td>
-                            )}
-                            <td>
-                              <div className="flex items-center gap-1 justify-center">
-                                <select
-                                  className="select select-ghost select-xs px-1 opacity-50 focus:opacity-100 font-bold"
-                                  value={track.currency || (track.priceUsdc ? "USDC" : "ETH")}
-                                  onChange={(e) => {
-                                    const newTracks = [...tracks];
-                                    newTracks[idx].currency = e.target.value as any;
-                                    newTracks[idx].isDirty = true;
-                                    setTracks(newTracks);
-                                  }}
-                                >
-                                  <option value="ETH">ETH</option>
-                                  <option value="USD">USD</option>
-                                  <option value="USDC">USDC</option>
-                                </select>
-                                <label className={`input input-xs input-bordered flex items-center gap-1 w-24 ${metadata.use_nft && track.registrationStatus !== 'registered' ? 'opacity-30' : ''}`}>
-                                  <input
-                                    type="number" step="any" min="0"
-                                    className="w-full bg-transparent text-right py-0 h-6"
-                                    placeholder="0.00"
-                                    disabled={metadata.use_nft && track.registrationStatus !== 'registered'}
-                                    value={track.currency === "USDC" ? (track.priceUsdc ?? "") : (track.price ?? "")}
+                            )}                            {metadata.download !== "external" && (
+                              <td>
+                                <div className="flex items-center gap-1 justify-center">
+                                  <select
+                                    className="select select-ghost select-xs px-1 opacity-50 focus:opacity-100 font-bold"
+                                    value={track.currency || (track.priceUsdc ? "USDC" : "ETH")}
                                     onChange={(e) => {
                                       const newTracks = [...tracks];
-                                      const val = e.target.value === "" ? "" : e.target.value;
-                                      if (track.currency === "USDC") newTracks[idx].priceUsdc = val;
-                                      else newTracks[idx].price = val;
+                                      newTracks[idx].currency = e.target.value as any;
                                       newTracks[idx].isDirty = true;
                                       setTracks(newTracks);
                                     }}
-                                  />
-                                </label>
-                              </div>
-                            </td>                             <td className="text-right">
+                                  >
+                                    <option value="ETH">ETH</option>
+                                    <option value="USD">USD</option>
+                                    <option value="USDC">USDC</option>
+                                  </select>
+                                  <label className={`input input-xs input-bordered flex items-center gap-1 w-24 ${metadata.use_nft && track.registrationStatus !== 'registered' ? 'opacity-30' : ''}`}>
+                                    <input
+                                      type="number" step="any" min="0"
+                                      className="w-full bg-transparent text-right py-0 h-6"
+                                      placeholder="0.00"
+                                      disabled={metadata.use_nft && track.registrationStatus !== 'registered'}
+                                      value={track.currency === "USDC" ? (track.priceUsdc ?? "") : (track.price ?? "")}
+                                      onChange={(e) => {
+                                        const newTracks = [...tracks];
+                                        const val = e.target.value === "" ? "" : e.target.value;
+                                        if (track.currency === "USDC") newTracks[idx].priceUsdc = val;
+                                        else newTracks[idx].price = val;
+                                        newTracks[idx].isDirty = true;
+                                        setTracks(newTracks);
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </td>
+                            )}
+                            <td className="text-right">
                               <div className="flex gap-1 justify-end">
                                 {metadata.type === "podcast" && (
                                   <button
@@ -1180,7 +1184,7 @@ export default function AdminReleaseEditor() {
                           </tr>
                           {metadata.type === "podcast" && track.showPodcastFields && (
                             <tr className="bg-base-200/20">
-                              <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">
+                              <td colSpan={colSpanCount} className="p-4">
                                 <div className="card bg-base-300/40 p-4 rounded-xl border border-secondary/10 space-y-3">
                                   <label className="text-xs font-black tracking-normal text-secondary">Episode Settings: {track.title}</label>
                                   <div className="grid grid-cols-3 gap-4">
@@ -1252,7 +1256,7 @@ export default function AdminReleaseEditor() {
                           )}
                           {track.showLyrics && (
                             <tr className="bg-base-200/20">
-                              <td colSpan={metadata.use_nft ? 7 : 6} className="p-4">
+                              <td colSpan={colSpanCount} className="p-4">
                                 <div className="card bg-base-300/40 p-4 rounded-xl border border-primary/10 space-y-3">
                                   <div className="flex justify-between items-center">
                                     <label className="text-xs font-black tracking-normal text-primary">Lyrics: {track.title}</label>
@@ -1362,7 +1366,12 @@ export default function AdminReleaseEditor() {
                     </h3>
                     <div className="form-control">
                       <label className="label-text-alt font-black tracking-normal opacity-40 mb-2">Payment Mode</label>
-                      {web3Enabled ? (
+                      {metadata.download === "external" ? (
+                        <div className="bg-base-200 p-3 rounded-xl border border-base-content/5 text-[11px] opacity-60 leading-relaxed">
+                          <span className="font-bold text-secondary">Payments Disabled</span> — External Showcase is active.
+                          Purchasers will be redirected to the external URL.
+                        </div>
+                      ) : web3Enabled ? (
                         <div className="flex items-center justify-between bg-base-200 p-3 rounded-xl border border-base-content/5">
                           <span className={`text-xs font-bold ${metadata.use_nft === false ? 'text-primary' : 'opacity-40'}`}>Direct Payment</span>
                           <input
@@ -1410,7 +1419,7 @@ export default function AdminReleaseEditor() {
                             <input
                               type="radio" name="download_method" className="radio radio-primary radio-sm"
                               checked={metadata.download === d || (!metadata.download && d === "none")}
-                              onChange={() => setMetadata((prev) => ({ ...prev, download: d as any, price: 0 }))}
+                              onChange={() => setMetadata((prev) => ({ ...prev, download: d as any, price: 0, use_nft: d === "external" ? false : prev.use_nft }))}
                             />
                             <div className="flex flex-col">
                               <span className="text-sm font-bold capitalize">

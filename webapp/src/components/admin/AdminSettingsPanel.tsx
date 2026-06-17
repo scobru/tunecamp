@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Globe, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy } from "lucide-react";
+import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory, TuneCampCheckout } from "shogun-contracts-sdk";
@@ -9,7 +9,7 @@ import { applyThemeFont } from "../../utils/themeFont";
 export const AdminSettingsPanel = () => {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(false);
-  const [subTab, setSubTab] = useState<"general" | "features" | "branding" | "federation" | "payments" | "security">("general");
+  const [subTab, setSubTab] = useState<"general" | "features" | "branding" | "payments" | "security">("general");
   const [message, setMessage] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -218,7 +218,6 @@ export const AdminSettingsPanel = () => {
     { id: "general", label: "General Config", icon: Layout },
     { id: "features", label: "Customize Modules", icon: Cog },
     { id: "branding", label: "Branding & Theme", icon: Palette },
-    { id: "network", label: "Federation & Network", icon: Globe },
     { id: "payments", label: "Payments & Web3", icon: Wallet },
     { id: "security", label: "Security & Keys", icon: Shield },
   ];
@@ -322,6 +321,22 @@ export const AdminSettingsPanel = () => {
                   onChange={(e) => setSettings({ ...settings, communityLink: e.target.value })}
                   placeholder="https://t.me/yourgroup or https://chat.whatsapp.com/..."
                 />
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Public URL</span>
+                </label>
+                <input
+                  type="url"
+                  className="input input-bordered bg-base-300/50"
+                  value={settings.publicUrl || ""}
+                  onChange={(e) => setSettings({ ...settings, publicUrl: e.target.value })}
+                  placeholder="https://sudorecords.dev"
+                />
+                <label className="label">
+                  <span className="label-text-alt opacity-40">Required for ActivityPub federation. Must contain protocol (e.g. https://) and domain.</span>
+                </label>
               </div>
 
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
@@ -683,32 +698,6 @@ export const AdminSettingsPanel = () => {
                     <span className="truncate">Site Logo: {settings.siteLogo}</span>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* Federation Settings */}
-          {subTab === "federation" && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center gap-2 mb-4 text-secondary/80 border-b border-base-content/5 pb-2">
-                <Globe size={20} />
-                <h4 className="font-bold text-base tracking-normal">Federation & Network</h4>
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-sm">Public URL</span>
-                </label>
-                <input
-                  type="url"
-                  className="input input-bordered bg-base-300/50"
-                  value={settings.publicUrl || ""}
-                  onChange={(e) => setSettings({ ...settings, publicUrl: e.target.value })}
-                  placeholder="https://sudorecords.dev"
-                />
-                <label className="label">
-                  <span className="label-text-alt opacity-40">Required for ActivityPub federation. Must contain protocol (e.g. https://) and domain.</span>
-                </label>
               </div>
             </div>
           )}

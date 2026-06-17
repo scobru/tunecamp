@@ -130,7 +130,10 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 const user = authService.getAdminById(req.userId!);
                 if (!user) return res.status(404).json({ error: "User not found" });
 
-                const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
+                const existingArtist = library.getArtistByName(user.username);
+                const artistId = existingArtist 
+                    ? existingArtist.id 
+                    : library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
                 library.setArtistCanSell(artistId, false);
                 // Keep the listener's role unchanged — the artist profile link grants
                 // publishing rights; curator/manager elevation requires root admin.
