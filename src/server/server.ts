@@ -84,6 +84,7 @@ import { createProxyRoutes } from "./routes/network/proxy.js";
 import { createMiscRoutes } from "./routes/api/misc.js";
 import { WaveformService } from "./modules/waveform/waveform.service.js";
 import { securityHeaders } from "./middleware/security.js";
+import { requireModuleEnabled } from "./middleware/moduleGuard.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { SoulseekService } from "./modules/integrations/soulseek.js";
 import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
@@ -402,7 +403,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/artists", authMiddleware.optionalAuth, createArtistsRoutes(container));
     app.use("/api/albums", authMiddleware.optionalAuth, createAlbumsRoutes(container));
     app.use("/api/tracks", authMiddleware.optionalAuth, createTracksRoutes(container));
-    app.use("/api/dig", authMiddleware.requireUser, createDigRoutes(container));
+    app.use("/api/dig", authMiddleware.requireUser, requireModuleEnabled(container, "hideDig"), createDigRoutes(container));
     app.use("/api/playlists", authMiddleware.optionalAuth, createPlaylistsRoutes(container));
 
 
@@ -422,7 +423,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
     app.use("/api/users", createUsersRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
-    app.use("/api/chat", authMiddleware.optionalAuth, createChatRoutes(container));
+    app.use("/api/chat", authMiddleware.optionalAuth, requireModuleEnabled(container, "chatEnabled", { invert: true, allowAdmin: true }), createChatRoutes(container));
     app.use("/api/live", createLiveRoutes(container));
     app.use("/api/unlock", createUnlockRoutes(container));
 

@@ -3,6 +3,7 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { lazy, Suspense, useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
 import { useConfigStore } from "./stores/useConfigStore";
+import { useSiteSettingsStore, type ModuleFlag } from "./stores/useSiteSettingsStore";
 import { SetupWizardModal } from "./components/modals/SetupWizardModal";
 import { Toaster } from "react-hot-toast";
 
@@ -98,12 +99,33 @@ function ManagerOrRootGuard({ children }: { children: React.ReactNode }) {
 
 function EditorGuard({ children }: { children: React.ReactNode }) {
   const { role, isAuthenticated, isLoading } = useAuthStore();
-  
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+/**
+ * Blocks a route when its module is disabled in admin "Customize Modules".
+ * Hiding the sidebar link is not enough — without this guard the page still
+ * loads by typing the URL. Server-side endpoints are guarded separately.
+ */
+function ModuleGuard({ flag, children }: { flag: ModuleFlag; children: React.ReactNode }) {
+  const { flags, fetchFlags } = useSiteSettingsStore();
+
+  useEffect(() => {
+    if (!flags) fetchFlags();
+  }, [flags, fetchFlags]);
+
+  if (!flags) {
+    return <LoadingSpinner />;
+  }
+  if (flags[flag]) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
@@ -183,15 +205,15 @@ function App() {
             <Route path="/my-playlists/:id" element={<MyPlaylistDetails />} />
             {/* Purchased tracks view is now in the User Profile Collection tab */}
             <Route path="/post/:slug" element={<Post />} />
-            <Route path="/network" element={<Network />} />
-            <Route path="/live" element={<Live />} />
+            <Route path="/network" element={<ModuleGuard flag="hideNetwork"><Network /></ModuleGuard>} />
+            <Route path="/live" element={<ModuleGuard flag="hideLive"><Live /></ModuleGuard>} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/my-music" element={<MyMusic />} />
             <Route path="/publish" element={<Publish />} />
-            <Route path="/social" element={<Social />} />
+            <Route path="/social" element={<ModuleGuard flag="hideSocial"><Social /></ModuleGuard>} />
             <Route path="/board" element={<Board />} />
             <Route path="/share/:id" element={<SharePage />} />
 
@@ -207,8 +229,8 @@ function App() {
             <Route path="/search/content" element={<ManagerOrRootGuard><ContentSearch /></ManagerOrRootGuard>} />
 
             {/* Store */}
-            <Route path="/store" element={<Store />} />
-            <Route path="/dig" element={<Dig />} />
+            <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />
+            <Route path="/dig" element={<ModuleGuard flag="hideDig"><Dig /></ModuleGuard>} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />
