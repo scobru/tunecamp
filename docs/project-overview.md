@@ -1,51 +1,51 @@
-# Panoramica del Progetto TuneCamp
+# TuneCamp Project Overview
 
-TuneCamp è una piattaforma musicale federata e self-hosted che combina un server musicale personale con i protocolli social del Fediverso (ActivityPub), la discovery decentralizzata delle istanze (Zen) e la monetizzazione web3 (pagamenti on-chain su Base).
+TuneCamp is a federated, self-hosted music platform that combines a personal music server with Fediverse social protocols (ActivityPub), HTTP gossip-based instance discovery, and web3 monetization (on-chain payments on Base).
 
-## Obiettivi del Progetto
+## Project Goals
 
-- **Proprietà dei Dati**: Consentire agli utenti di ospitare e controllare la propria libreria musicale.
-- **Federazione**: Permettere l'interazione tra diversi server TuneCamp tramite il protocollo ActivityPub (Fediverse).
-- **Discovery Decentralizzata**: Usare Zen come livello di signaling per scoprire altre istanze TuneCamp; i cataloghi vengono poi scambiati direttamente via HTTP.
-- **Supporto agli Artisti**: Facilitare la pubblicazione diretta, il crowdfunding e la gestione dei diritti tramite contratti intelligenti e sistemi di sblocco.
-- **Arricchimento Metadati**: Integrazione con più provider (MusicBrainz, Discogs, iTunes, TheAudioDB, Spotify, Bandcamp, SoundCloud) e Lyrics.ovh per cover ad alta risoluzione e testi.
+- **Data Ownership**: Allow users to host and control their own music library.
+- **Federation**: Enable interaction between different TuneCamp servers via the ActivityPub (Fediverse) protocol.
+- **Decentralized Discovery**: Use an HTTP gossip protocol to discover other TuneCamp instances; catalogs are then exchanged directly over HTTP.
+- **Artist Support**: Facilitate direct publishing, crowdfunding, and rights management via smart contracts and unlock systems.
+- **Metadata Enrichment**: Integration with multiple providers (MusicBrainz, Discogs, iTunes, TheAudioDB, Spotify, Bandcamp, SoundCloud) and Lyrics.ovh for high-resolution covers and lyrics.
 
-## Stack Tecnologico
+## Tech Stack
 
 ### Backend
-- **Linguaggio**: TypeScript
+- **Language**: TypeScript
 - **Runtime**: Node.js (Express)
-- **Database**: SQLite (tramite `better-sqlite3`)
-- **Federazione**: Fedify (ActivityPub)
-- **Multimedia**: FFmpeg (per transcodifica e generazione waveform)
+- **Database**: SQLite (via `better-sqlite3`)
+- **Federation**: Fedify (ActivityPub)
+- **Multimedia**: FFmpeg (for transcoding and waveform generation)
 
 ### Webapp (Frontend)
 - **Framework**: React
 - **Build Tool**: Vite
-- **Styling**: CSS (con supporto per temi)
+- **Styling**: CSS (with theme support)
 - **State Management**: Zustand
-- **Discovery**: Zen.js (solo per scoprire altre istanze; nessuna distribuzione P2P dei contenuti)
+- **Discovery**: HTTP Gossip (only to discover other instances; no P2P distribution of audio content)
 
 ### Blockchain & Smart Contracts
-- **Linguaggio**: Solidity
-- **Contratti**: Checkout, Factory, NFT per la gestione delle vendite e della proprietà.
+- **Language**: Solidity
+- **Contracts**: Checkout, Factory, NFT for sales and ownership management.
 
-## Struttura del Repository
+## Repository Structure
 
-Il progetto è organizzato come un monorepo con le seguenti directory principali:
+The project is organized as a monorepo with the following main directories:
 
-- `src/server/`: Logica core del backend, database, rotte e protocolli.
-- `webapp/`: Applicazione frontend React.
-- `contracts/`: Smart contracts per le funzionalità web3.
-- `website/`: Sito web statico di presentazione.
-- `docs/`: Documentazione tecnica del progetto.
+- `src/server/`: Core backend logic, database, routes, and protocols.
+- `webapp/`: React frontend application.
+- `contracts/`: Smart contracts for web3 functionality.
+- `website/`: Static presentation website.
+- `docs/`: Technical project documentation.
 
-## Documentazione Correlata
+## Related Documentation
 
-- [Analisi dell'Albero dei Sorgenti](./source-tree-analysis.md)
-- [Architettura Backend](./architecture-backend.md)
-- [Architettura Webapp](./architecture-webapp.md)
-- [Inventario Componenti](./component-inventory.md)
-- [Contratti API](./api-contracts.md)
-- [Modelli Dati](./data-models.md)
-- [Guida allo Sviluppo](./development-guide.md)
+- [Source Tree Analysis](./source-tree-analysis.md)
+- [Backend Architecture](./architecture-backend.md)
+- [Webapp Architecture](./architecture-webapp.md)
+- [UI Component Inventory](./component-inventory.md)
+- [API Contracts](./api-contracts.md)
+- [Data Models](./data-models.md)
+- [Development Guide](./development-guide.md)

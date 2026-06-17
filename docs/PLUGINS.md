@@ -15,7 +15,7 @@ There are 8 main types of providers you can implement:
 7.  **ScrobbleProvider**: Sends listening history to scrobbling services (e.g., Last.fm, ListenBrainz).
 8.  **AIProvider**: Adds support for different LLMs for metadata enrichment (e.g., Ollama, OpenAI).
 
-> **Note:** ActivityPub/Zen federation is handled internally by the platform's core modules and is not exposed as an external plugin type.
+> **Note:** ActivityPub federation is handled internally by the platform's core modules and is not exposed as an external plugin type.
 
 ---
 

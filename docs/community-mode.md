@@ -1,42 +1,42 @@
-# Diventare un artista & verifica vendite (`can_sell`)
+# Becoming an Artist & Sales Verification (`can_sell`)
 
-> Nota storica: questo documento descriveva la "community mode" (`mode: community`), in cui ogni registrazione creava automaticamente un profilo artista pubblicante. Quel modello è stato rimosso: la pubblicazione aperta in stile Funkwhale non ha senso su TuneCamp, dove chi pubblica riceve pagamenti e serve quindi un rapporto diretto admin–artista. Resta il flusso di richiesta qui sotto e il gate di vendita `can_sell`.
+> **Historical Note:** This document previously described the "community mode" (`mode: community`), where every registration automatically created a publishing artist profile. That model has been removed: open publishing in Funkwhale style does not make sense on TuneCamp, where publishers receive payments, thus requiring a direct admin–artist relationship. The request flow below and the `can_sell` sales gate remain.
 
-## Il modello: vetrina curata
+## The Model: Curated Showcase
 
-L'istanza è il negozio di un artista o di un'etichetta.
+The instance is the store of an artist or a label.
 
-- Le registrazioni pubbliche (se abilitate) creano **listener** puri: ascoltano, comprano, creano playlist, commentano, ma non pubblicano.
-- La pubblicazione (upload, release, asset in vendita, post social) richiede un account **Curator o superiore con profilo artista collegato** (vedi [ROLES.md](ROLES.md)).
-- Tutto ciò che è in vendita è stato messo lì da chi gestisce l'istanza, che ne risponde.
+- Public registrations (if enabled) create pure **listeners**: they listen, buy, create playlists, comment, but do not publish.
+- Publishing (uploading, releases, sale items, social posts) requires a **Curator or higher** account with a linked artist profile (see [ROLES.md](ROLES.md)).
+- Everything for sale has been placed there by the instance administrator, who is responsible for it.
 
-## Richiesta profilo artista
+## Artist Profile Request
 
-Per ridurre l'attrito del percorso listener → artista:
+To reduce friction in the listener → artist path:
 
-1. Il listener apre **Profile → Settings → Become an Artist** e preme *Request Artist Profile* (`POST /api/users/me/artist-request`).
-2. L'admin vede il badge "Artist requested" in **Admin → Users** e approva con un click (`POST /api/admin/system/users/:id/approve-artist`): viene creato un artista con il nome dell'utente, collegato al suo account, **e l'account è promosso a Curator**. La vendita resta disabilitata.
-3. L'admin abilita la vendita separatamente quando ha verificato l'artista.
+1. The listener opens **Profile → Settings → Become an Artist** and clicks *Request Artist Profile* (`POST /api/users/me/artist-request`).
+2. The admin sees the "Artist requested" badge in **Admin → Users** and approves it with a click (`POST /api/admin/system/users/:id/approve-artist`): an artist is created with the user's name, linked to their account, **and the account is promoted to Curator**. Sales remain disabled.
+3. The admin enables sales separately once they have verified the artist.
 
-L'approvazione è esattamente il "contatto diretto admin–artista" che la pubblicazione richiede: approvare significa prendersi la responsabilità di quell'artista sulla propria istanza.
+Approval is exactly the "direct admin–artist contact" that publishing requires: approving means taking responsibility for that artist on your instance.
 
-## Vendita = artista verificato (`can_sell`)
+## Sales = Verified Artist (`can_sell`)
 
-La vendita non è una proprietà dell'istanza ma **del singolo artista**, tramite il flag `can_sell` sulla tabella `artists`:
+Sales are not a property of the instance but **of the individual artist**, via the `can_sell` flag on the `artists` table:
 
-- `can_sell = 1` (default per artisti creati manualmente prima della feature): prezzi e checkout funzionano normalmente.
-- `can_sell = 0` (default per i profili approvati da richiesta): l'artista pubblica solo contenuti gratuiti.
+- `can_sell = 1` (default for artists created manually before the feature): prices and checkout work normally.
+- `can_sell = 0` (default for profiles approved from requests): the artist publishes free content only.
 
-L'enforcement è **lato server**, non solo UI:
+Enforcement is **server-side**, not just UI:
 
-1. **Checkout Stripe** (`POST /api/payments/stripe/create-session`) e **verifica on-chain** (`POST /api/payments/verify`) rifiutano con 403 gli item di artisti non abilitati.
-2. **Creazione/modifica release** (`POST/PUT /api/releases`, `PUT /api/admin/releases/:id`): i campi prezzo vengono azzerati se l'artista non può vendere, così il catalogo non mostra mai un bottone Buy che il checkout rifiuterebbe.
-3. Il toggle è modificabile **solo da Manager/Root Admin** ("Sales enabled" nell'editor artista) — un artista non può auto-abilitarsi.
+1. **Stripe Checkout** (`POST /api/payments/stripe/create-session`) and **on-chain verification** (`POST /api/payments/verify`) reject items from disabled artists with a 403.
+2. **Creating/editing releases** (`POST/PUT /api/releases`, `PUT /api/admin/releases/:id`): price fields are zeroed out if the artist cannot sell, so the catalog never shows a "Buy" button that checkout would reject.
+3. The toggle can **only be modified by a Manager/Root Admin** ("Sales enabled" in the artist editor) — an artist cannot self-enable.
 
-Razionale: su una piattaforma che vende musica, l'upload libero senza verifica è un rischio legale (vendita di contenuti di cui l'uploader non possiede i diritti, chargeback, DMCA). Il gate di verifica sposta la responsabilità su una decisione esplicita dell'admin, come già fatto per i plugin di ingestione "grigi" (Soulseek/Torrent, disattivati di default).
+Rationale: on a platform that sells music, open uploads without verification is a legal risk (selling content for which the uploader does not own the rights, chargebacks, DMCA). The verification gate shifts responsibility to an explicit admin decision, as is already done for "grey" ingestion plugins (Soulseek/Torrent, disabled by default).
 
-## Note di migrazione
+## Migration Notes
 
-- Gli artisti esistenti hanno `can_sell = 1` (la migrazione usa DEFAULT 1): niente cambia per le istanze attuali.
-- Il setting `mode` non viene più letto da nessuna parte: le istanze che lo avevano impostato a `community` tornano al comportamento standard alla prossima release. I profili artista auto-creati restano collegati, ma quegli account (ruolo `user`) non possono più pubblicare finché l'admin non li promuove a Curator.
-- Il toggle "Public Registration" nelle impostazioni admin ora funziona davvero: scriveva `allowPublicRegistration` mentre la registrazione controllava la chiave legacy `allowRegistration` (il check ora le legge entrambe).
+- Existing artists have `can_sell = 1` (migration uses DEFAULT 1): nothing changes for current instances.
+- The `mode` setting is no longer read anywhere: instances that had it set to `community` return to standard behavior in the next release. Auto-created artist profiles remain linked, but those accounts (role `user`) can no longer publish until the admin promotes them to Curator.
+- The "Public Registration" toggle in admin settings now works correctly: it previously wrote `allowPublicRegistration` while registration checked the legacy `allowRegistration` key (the check now reads both).

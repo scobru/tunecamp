@@ -1,39 +1,21 @@
-# Audio Fingerprinting (dedup interno)
+# Audio Fingerprinting (Internal Deduplication)
 
-TuneCamp calcola un'**impronta audio** (fingerprint) leggera per ogni traccia, usata
-come segnale interno per la **deduplicazione** della libreria.
+TuneCamp calculates a lightweight **audio fingerprint** for each track, used as an internal signal for **library deduplication**.
 
-> **Nota storica:** versioni precedenti pubblicavano le impronte su un "Community
-> Registry" decentralizzato (namespace Zen `tunecamp-fingerprints`) con strumenti di
-> manutenzione "Identify All", "Community Match" e "Share with Community" per l'auto-tagging
-> tramite la rete. **Quel sistema è stato rimosso.** Zen è ora usato solo per la discovery
-> delle istanze (vedi [FEDERATION.md](FEDERATION.md)) e il fingerprint resta un dato locale.
+> **Historical Note:** Earlier versions published fingerprints to a decentralized "Community Registry" (Zen namespace `tunecamp-fingerprints`) with maintenance tools like "Identify All", "Community Match", and "Share with Community" for auto-tagging across the network. **That system has been removed.** The fingerprint remains local.
 
-## Cos'è e a cosa serve
+## What it is and what it is used for
 
-L'impronta trasforma il contenuto audio in una firma compatta basata sull'inviluppo
-della forma d'onda, normalizzato per resistere a piccole variazioni di volume. Permette
-di riconoscere che due file rappresentano (probabilmente) la stessa registrazione anche
-con nomi o tag diversi.
+The fingerprint transforms the audio content into a compact signature based on the envelope of the waveform, normalized to withstand minor volume variations. It allows identifying that two files likely represent the same recording even with different names or tags.
 
-L'unico uso attuale è la **deduplicazione**: quando più candidati corrispondono alla
-stessa traccia, lo scanner preferisce la versione con i metadati migliori (album, durata,
-fingerprint, external_id, testi, lossless). Il fingerprint è uno dei fattori di punteggio.
+The only current use is **deduplication**: when multiple candidates match the same track, the scanner prefers the version with the best metadata (album, duration, fingerprint, external_id, lyrics, lossless). The fingerprint is one of the scoring factors.
 
-## Funzionamento
+## How it works
 
-1. **Generazione**: durante la scansione, la pipeline waveform (`WaveformService`,
-   `src/server/modules/waveform/waveform.generator.ts`) calcola un hash dell'inviluppo
-   della forma d'onda.
-2. **Persistenza**: il valore viene salvato nella colonna `fingerprint` della tabella
-   `tracks` (vedi [data-models.md](data-models.md)). La colonna viene aggiunta
-   automaticamente dalle migrazioni in `src/server/core/database.ts` se mancante.
-3. **Dedup**: lo scanner (`src/server/modules/catalog/scanner.ts`) usa il fingerprint,
-   insieme ad altri campi, per scegliere quale candidato tenere. La normalizzazione di
-   avvio è in `maintenance.startup.ts`.
+1. **Generation**: During scanning, the waveform pipeline (`WaveformService`, `src/server/modules/waveform/waveform.generator.ts`) calculates a hash of the waveform envelope.
+2. **Persistence**: The value is saved in the `fingerprint` column of the `tracks` table (see [data-models.md](data-models.md)). The column is automatically added by migrations in `src/server/core/database.ts` if missing.
+3. **Deduplication**: The scanner (`src/server/modules/catalog/scanner.ts`) uses the fingerprint, along with other fields, to choose which candidate to keep. The startup normalization is in `maintenance.startup.ts`.
 
-## Evoluzioni Future
+## Future Evolutions
 
-Il campo è progettato per ospitare in futuro fingerprint acustici più robusti (es.
-Chromaprint/`fpcalc`) qualora l'ambiente di hosting lo consenta, per un dedup più preciso
-anche in presenza di ricompressione audio.
+The field is designed to host more robust acoustic fingerprints in the future (e.g., Chromaprint/`fpcalc`) if the hosting environment permits, for more precise deduplication even in the presence of audio re-compression.

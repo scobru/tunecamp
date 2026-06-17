@@ -1,55 +1,55 @@
-# Indice della Documentazione di Progetto
+# Project Documentation Index
 
-Benvenuto nella documentazione tecnica di **TuneCamp**. Questo indice serve come punto di ingresso principale per comprendere l'architettura, le tecnologie e il funzionamento del sistema.
+Welcome to the **TuneCamp** technical documentation. This index serves as the main entry point to understand the architecture, technologies, and inner workings of the system.
 
-### Panoramica del Progetto
+### Project Overview
 
-- [**Stato del Progetto**](./STATUS.md): Maturità onesta di ogni area (stable/beta/opt-in) e limiti noti.
-- [**Panoramica Progetto**](./project-overview.md): Obiettivi, stack tecnologico e struttura generale.
-- [**Analisi dell'Albero dei Sorgenti**](./source-tree-analysis.md): Descrizione dettagliata delle directory e dei punti di ingresso.
+- [**Project Status**](./STATUS.md): Honest maturity level of each area (stable/beta/opt-in) and known limitations.
+- [**Project Overview**](./project-overview.md): Goals, tech stack, and general structure.
+- [**Source Tree Analysis**](./source-tree-analysis.md): Detailed description of directories and entry points.
 
-### Architettura Tecnica
+### Technical Architecture
 
-- [**Architettura Backend**](./architecture-backend.md): Dettagli sul server Express, SQLite, ActivityPub e integrazione Zen.
-- [**Architettura Webapp**](./architecture-webapp.md): Dettagli sull'applicazione React, gestione dello stato e discovery delle istanze.
-- [**Modelli Dati**](./data-models.md): Schema del database e relazioni tra le entità.
+- [**Backend Architecture**](./architecture-backend.md): Details on the Express server, SQLite, ActivityPub, and federated discovery.
+- [**Webapp Architecture**](./architecture-webapp.md): Details on the React application, state management, and instance discovery.
+- [**Data Models**](./data-models.md): Database schema and relationships between entities.
 
-### Riferimenti API e Componenti
+### API References and Components
 
-- [**Contratti API**](./api-contracts.md): Documentazione degli endpoint REST, autenticazione e protocolli supportati.
-- [**Inventario Componenti UI**](./component-inventory.md): Catalogo dei componenti React della webapp.
+- [**API Contracts**](./api-contracts.md): Documentation of REST endpoints, authentication, and supported protocols.
+- [**UI Component Inventory**](./component-inventory.md): Catalog of the webapp's React components.
 
-### Guida per lo Sviluppatore
+### Developer's Guide
 
-- [**Guida allo Sviluppo**](./development-guide.md): Prerequisiti, installazione, esecuzione e test.
-- [**Configurazione API**](./api-setup-guide.md): Guida passo-passo per Stripe, Google Drive, AI e altro.
-- [**CONTRIBUTING.md**](./CONTRIBUTING.md): Linee guida per la contribuzione al codice.
-
----
-
-### Documentazione Aggiuntiva (Specifica)
-
-- [Pagamenti & Monetizzazione](./payments.md): Stripe Checkout, Onramp e verifica on-chain.
-- [Integrazioni AI](./ai-integrations.md): Automazione metadati e raccomandazioni via OpenRouter.
-- [Google Drive Integration](./google-drive.md): Streaming e importazione dal cloud.
-- [Sistema Torrent](./torrents.md): Integrazione WebTorrent per il download di musica.
-- [Soulseek Integration](./soulseek.md): Ricerca e download P2P.
-- [Social & Community](./social-features.md): Post, commenti e interazioni fan.
-- [Smart Contracts](./smart-contracts.md): Guida tecnica ai contratti Solidity su Base.
-- [Backup & Migrazione](./backup-migration.md): Come salvaguardare e spostare la tua istanza.
-- [Scaling & Limiti di Concorrenza](./scaling.md): Limiti pratici di SQLite/single-process e come mitigarli.
-- [Security Review Pagamenti](./security-review-payments.md): Finding corretti e aperti del flusso pagamenti.
-- [Federazione](./FEDERATION.md): Dettagli sul protocollo ActivityPub in TuneCamp.
-- [Subsonic](./subsonic.md): Supporto al protocollo Subsonic per client esterni.
-- [Nginx](./NGINX.md): Esempi di configurazione per reverse proxy.
-- [Audio Fingerprinting](./audio-fingerprinting.md): Impronta audio interna usata per la deduplicazione della libreria.
-- [Monitoring & Alerting](./monitoring.md): Health endpoint, crash reporting Sentry e uptime check esterni.
-- [Telegram Bot](./telegram.md): Ingestione rapida di file musicali e gestione remota.
-- [Plugin](./PLUGINS.md): Provider custom (streaming, metadata, storage) da una directory plugins.
-- [Ruoli & Permessi](./ROLES.md): RBAC — Instance Owner, Manager, Curator, Listener.
-- [Diventare Artista & Vendite](./community-mode.md): Flusso richiesta artista e gate di vendita `can_sell`.
-- [Confronto con Funkwhale](./comparison-funkwhale.md): Differenze di modello e funzionalità.
+- [**Development Guide**](./development-guide.md): Prerequisites, installation, execution, and testing.
+- [**API Configuration**](./api-setup-guide.md): Step-by-step guide for Stripe, Google Drive, AI, and more.
+- [**CONTRIBUTING.md**](./CONTRIBUTING.md): Code contribution guidelines.
 
 ---
 
-*Ultimo aggiornamento: 14 Giugno 2026*
+### Additional Documentation (Specifics)
+
+- [Payments & Monetization](./payments.md): Stripe Checkout, Onramp, and on-chain verification.
+- [AI Integrations](./ai-integrations.md): Metadata automation and recommendations via OpenRouter.
+- [Google Drive Integration](./google-drive.md): Cloud storage streaming and import.
+- [Torrent System](./torrents.md): WebTorrent integration for downloading music.
+- [Soulseek Integration](./soulseek.md): P2P search and download.
+- [Social & Community](./social-features.md): Posts, comments, and fan interactions.
+- [Smart Contracts](./smart-contracts.md): Technical guide to Solidity contracts on Base.
+- [Backup & Migration](./backup-migration.md): How to safeguard and move your instance.
+- [Scaling & Concurrency Limits](./scaling.md): Practical limits of SQLite/single-process and how to mitigate them.
+- [Payments Security Review](./security-review-payments.md): Findings and review of the payments flow.
+- [Federation](./FEDERATION.md): Details on the ActivityPub protocol in TuneCamp.
+- [Subsonic](./subsonic.md): Support for the Subsonic protocol for external clients.
+- [Nginx](./NGINX.md): Configuration examples for reverse proxy.
+- [Audio Fingerprinting](./audio-fingerprinting.md): Internal audio fingerprint used for library deduplication.
+- [Monitoring & Alerting](./monitoring.md): Health endpoint, Sentry crash reporting, and external uptime checks.
+- [Telegram Bot](./telegram.md): Rapid ingestion of music files and remote management.
+- [Plugins](./PLUGINS.md): Custom providers (streaming, metadata, storage) from a plugins directory.
+- [Roles & Permissions](./ROLES.md): RBAC — Instance Owner, Manager, Curator, Listener.
+- [Becoming an Artist & Sales](./community-mode.md): Artist request flow and the `can_sell` sales gate.
+- [Comparison with Funkwhale](./comparison-funkwhale.md): Differences in models and features.
+
+---
+
+*Last updated: June 14, 2026*

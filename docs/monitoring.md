@@ -32,9 +32,6 @@ What gets captured:
   decides whether the process exits.
 - **Unhandled route errors** via the Express error handler (the JSON error
   response sent to clients is unchanged).
-- **ZEN worker incidents**: worker crashes, frozen-loop terminations, and
-  respawns are reported as warnings, so a crash-looping worker shows up in
-  Sentry instead of only in container logs.
 
 Optional variables:
 

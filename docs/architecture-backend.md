@@ -1,70 +1,69 @@
-# Architettura Backend
+# Backend Architecture
 
-Il backend di TuneCamp è un'applicazione Node.js costruita con Express, progettata per essere federata, decentralizzata e orientata ai contenuti musicali.
+The TuneCamp backend is a Node.js application built with Express, designed to be federated, decentralized, and music-content oriented.
 
-## Stack Tecnologico
+## Tech Stack
 
 - **Framework**: Express.js (TypeScript)
 - **Database**: SQLite3 (`better-sqlite3`)
-- **Protocollo Sociale**: ActivityPub (tramite Fedify)
-- **Rete P2P**: Zen (isolato in un worker thread, vedi sotto)
-- **Multimedia**: FFmpeg per transcodifica e metadati
+- **Social Protocol**: ActivityPub (via Fedify)
+- **Instance Discovery**: Gossip over HTTP (federated discovery and NodeInfo crawling)
+- **Multimedia**: FFmpeg for transcoding and metadata
 
-## Componenti Principali
+## Core Components
 
-### 1. Sistema di Database (`core/database.ts`)
-Gestisce la persistenza locale tramite SQLite. Le tabelle includono:
-- `artists`, `albums`, `tracks`: Core della libreria musicale.
-- `remote_actors`, `remote_content`: Cache per la federazione ActivityPub.
-- `unlock_codes`: Gestione degli accessi basata su chiavi.
-- `chat_messages`: Cronologia della chat community.
+### 1. Database System (`core/database.ts`)
+Manages local persistence via SQLite. Tables include:
+- `artists`, `albums`, `tracks`: Core of the music library.
+- `remote_actors`, `remote_content`: Cache for ActivityPub federation.
+- `unlock_codes`: Key-based access management.
+- `chat_messages`: Community chat history.
 
-### 2. Integrazione Zen in Worker Thread (`modules/network/zendb.service.ts`, `zen.worker.ts`)
-Zen è usato esclusivamente per il signaling/discovery delle istanze della community; il server mantiene una keypair crittografica (SEA) per firmare la propria voce nel registry. Storicamente i freeze dell'event loop di Zen bloccavano l'intero server HTTP (errori 504), quindi Zen gira **esclusivamente in un `worker_thread`** — il main thread non importa mai il modulo `zen`.
+### 2. Federated Discovery (`modules/network/federated-discovery.service.ts`)
+TuneCamp discovers other instances via **gossip over HTTP** — there is no central relay or shared registry.
+- The instance crawls starting from a set of seeds (the TuneCamp instances followed via ActivityPub plus `TUNECAMP_FEDERATION_SEEDS`).
+- Evaluates if each peer is an active TuneCamp instance via NodeInfo and stores reachable instances in the local SQLite database (`federated_instances` table).
+- Catalogs are then read and synced directly via HTTP REST.
 
-- `zendb.service.ts` (main thread) parla col worker via RPC `postMessage` con timeout.
-- Un **heartbeat** (ping ogni 30s) supervisiona il worker: dopo 3 mancate risposte il worker viene considerato congelato, terminato e **respawnato con backoff** (1s → 5s → 15s → 60s).
-- Alla re-init dopo un respawn, l'istanza si ri-registra da sola nel registry della community.
+### 3. ActivityPub Federation (`modules/fedify/`, `modules/activitypub/`)
+Allows TuneCamp to interact with other instances in the Fediverse (such as Mastodon, Funkwhale, or other TuneCamp instances).
+- Implements ActivityPub Actor, Note, and other objects.
+- Handles message delivery and retrieval of remote content.
 
-### 3. Federazione ActivityPub (`modules/fedify/`, `modules/activitypub/`)
-Permette a TuneCamp di interagire con altre istanze del Fediverso (come Mastodon, Funkwhale o altre istanze TuneCamp).
-- Implementa Actor, Note, e altri oggetti ActivityPub.
-- Gestisce la consegna dei messaggi e il recupero dei contenuti remoti.
+### 4. Catalog Module (`modules/catalog/`)
+Responsible for scanning and organizing local music.
+- **Scanner**: Scans folders for new audio files. To ensure granular control, the scanner creates albums in **Draft** mode in the local library. This content is not publicly visible until manually promoted to a **Formal Release** via the Admin Dashboard.
+- **Metadata**: Extracts tags (ID3, Vorbis), generates waveforms, and integrates external providers (MusicBrainz, Discogs, iTunes, Lyrics.ovh) to enrich data and lyrics.
 
-### 4. Modulo Catalog (`modules/catalog/`)
-Responsabile della scansione e dell'organizzazione della musica locale.
-- **Scanner**: Analizza le cartelle per nuovi file audio. Per garantire il controllo granulare, lo scanner crea album in modalità **Draft (Bozza)** nella libreria locale. Questi contenuti non sono visibili pubblicamente finché non vengono promossi manualmente a **Release Formale** tramite la Dashboard Admin.
-- **Metadata**: Estrae tag (ID3, Vorbis), genera waveform e integra provider esterni (MusicBrainz, Discogs, iTunes, Lyrics.ovh) per l'arricchimento dei dati e dei testi.
+### 5. Security & Authentication (`modules/auth/auth.service.ts`, `middleware/auth.ts`)
+- Manages local users with bcrypt passwords.
+- Authentication via JWT (secret from env, `.jwt-secret` file, or generated at first startup).
+- Role-Based Access Control (RBAC): Root Admin, Admin, Artist/User (see [ROLES.md](./ROLES.md)).
 
-### 5. Sicurezza e Autenticazione (`modules/auth/auth.service.ts`, `middleware/auth.ts`)
-- Gestione utenti locali con password bcrypt.
-- Autenticazione tramite JWT (secret da env, file `.jwt-secret`, o generato al primo avvio).
-- Controllo accessi basato sui ruoli: Root Admin, Admin, Artist/User (vedi [ROLES.md](./ROLES.md)).
+### 6. Community: Chat & Live (`modules/chat/`, `modules/live/`)
+- **Chat**: Standalone instance chat with persistent history in SQLite.
+- **Live**: In-memory registry of live sessions (`live.service.ts`); media **passes through the server**. The artist's browser captures audio with `MediaRecorder` and sends webm chunks, which `HlsLiveService` (`hls.service.ts`) feeds to a persistent FFmpeg process. FFmpeg produces a rolling HLS playlist (AAC segments) served to all listeners: a single shared encoding, not a copy per listener as in the legacy WebRTC mesh.
 
-### 6. Community: Chat e Live (`modules/chat/`, `modules/live/`)
-- **Chat**: chat di istanza standalone con cronologia persistente in SQLite.
-- **Live**: registry in-memory delle sessioni live (`live.service.ts`); il media **passa dal server**. Il browser dell'artista cattura l'audio con `MediaRecorder` e invia i chunk webm, che `HlsLiveService` (`hls.service.ts`) dà in pasto a un processo FFmpeg persistente. FFmpeg produce una playlist HLS rolling (segmenti AAC) servita a tutti gli ascoltatori: un solo encode condiviso, non una copia per ascoltatore come nella vecchia mesh WebRTC.
+### 7. Blockchain Integration (`modules/publishing/`, routes `api/payments.ts`)
+Interfaces with smart contracts to handle prices, payments, and content unlocking.
 
-### 7. Integrazione Blockchain (`modules/publishing/`, routes `api/payments.ts`)
-Interfaccia con gli smart contract per gestire prezzi, pagamenti e sblocchi di contenuti.
+## Reliability & Monitoring
 
-## Affidabilità e Monitoring
+- The `GET /health` endpoint is registered before the federation middleware, so a blocked integration cannot shadow it (used by the Docker `HEALTHCHECK`).
+- Opt-in Sentry crash reporting via `SENTRY_DSN` (see [monitoring.md](./monitoring.md)).
 
-- L'endpoint `GET /health` è registrato prima del middleware di federazione, così un'integrazione bloccata non può oscurarlo (usato dall'`HEALTHCHECK` Docker).
-- Crash reporting Sentry opt-in via `SENTRY_DSN` (vedi [monitoring.md](./monitoring.md)).
+## Data Flows
 
-## Flussi di Dati
+1. **Scanning**: The `Scanner` detects a file -> the metadata service extracts the data -> the repository saves it to the DB.
+2. **Streaming**: API request -> verify permissions -> file stream (with FFmpeg transcoding if necessary).
+3. **Social**: New post -> the ActivityPub service creates the object -> Fedify delivers it to remote actors.
 
-1. **Scansione**: Lo `Scanner` rileva un file → il servizio metadata estrae i dati → il repository salva nel DB.
-2. **Streaming**: Richiesta API → verifica permessi → stream del file (con transcodifica FFmpeg se necessario).
-3. **Social**: Nuovo post → il servizio ActivityPub crea l'oggetto → Fedify lo consegna agli attori remoti.
+## REST API
 
-## API REST
-
-Gli endpoint sono suddivisi in rotte tematiche in `src/server/routes/`:
-- `/api/tracks`, `/api/albums`, `/api/artists`: Gestione libreria.
-- `/api/admin`: Funzionalità di amministrazione.
-- `/api/ap`: Endpoint per la federazione ActivityPub.
-- `/api/chat`, `/api/live`: Community chat e sessioni live.
-- `/rest`: Compatibilità con il protocollo Subsonic/OpenSubsonic.
+Endpoints are split into thematic routes in `src/server/routes/`:
+- `/api/tracks`, `/api/albums`, `/api/artists`: Library management.
+- `/api/admin`: Administration features.
+- `/api/ap`: Endpoints for ActivityPub federation.
+- `/api/chat`, `/api/live`: Community chat and live sessions.
+- `/rest`: Compatibility with the Subsonic/OpenSubsonic protocol.
 - `/health`: Health check.
