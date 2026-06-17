@@ -55,6 +55,7 @@ interface LocalTrack {
   podcast_season_num?: number | string;
   podcast_episode_type?: string;
   showPodcastFields?: boolean;
+  track_id?: number;
 }
 
 interface LocalRelease {
@@ -83,6 +84,7 @@ interface LocalRelease {
   podcast_email?: string;
   podcast_category?: string;
   podcast_explicit?: boolean | number;
+  externalLinks?: { label: string; url: string }[];
 }
 
 export default function AdminReleaseEditor() {
@@ -127,6 +129,7 @@ export default function AdminReleaseEditor() {
     podcast_email: "",
     podcast_category: "",
     podcast_explicit: false,
+    externalLinks: [],
   });
 
   // Tracks State
@@ -237,6 +240,7 @@ export default function AdminReleaseEditor() {
         podcast_email: data.podcast_email || data.podcastEmail || "",
         podcast_category: data.podcast_category || data.podcastCategory || "",
         podcast_explicit: data.podcast_explicit !== undefined ? !!data.podcast_explicit : false,
+        externalLinks: data.external_links ? (typeof data.external_links === 'string' ? JSON.parse(data.external_links) : data.external_links) : [],
       });
 
       if (data.slug || releaseId) {
@@ -308,10 +312,8 @@ export default function AdminReleaseEditor() {
   const handleSave = async (exit: boolean = false) => {
     setSaving(true);
     try {
-      // Prepare track IDs in order.
-      // Use track_id if available (for existing release tracks) to reference the library track.
-      // Fallback to id for newly added library tracks (which use id) or ghost tracks.
-      const track_ids = tracks.map((t: any) => t.track_id || t.id);
+      // Filter out negative (temporary) IDs for the initial metadata save.
+      const track_ids = tracks.filter((t: any) => (t.track_id || t.id) > 0).map((t: any) => t.track_id || t.id);
 
       const dataToSave = {
         ...metadata,
@@ -321,13 +323,14 @@ export default function AdminReleaseEditor() {
           ? metadata.genre.split(",").map((s: string) => s.trim())
           : [],
         track_ids,
-        tracks_data: tracks.map((t: any) => ({ 
+        tracks_data: tracks.filter((t: any) => (t.track_id || t.id) > 0).map((t: any) => ({ 
           id: t.track_id || t.id, 
           title: t.title, 
           price: t.price, 
           price_usdc: t.priceUsdc,
           currency: t.currency || "ETH" 
         })),
+        externalLinks: metadata.externalLinks,
       } as any;
 
       let releaseId = id ? parseInt(id) : null;
@@ -348,6 +351,53 @@ export default function AdminReleaseEditor() {
       }
 
       if (!releaseId) throw new Error("No release ID available");
+
+      // Loop through tracks, and if any has a negative ID (imported from Bandcamp),
+      // create it in the database and get its real ID.
+      const newTracksList = [...tracks];
+      let hasNewTracks = false;
+
+      for (let i = 0; i < newTracksList.length; i++) {
+        const t = newTracksList[i];
+        const currentId = t.track_id || t.id;
+        if (typeof currentId === "number" && currentId < 0) {
+          const createdTrack = await API.createTrack({
+            title: t.title,
+            albumId: releaseId,
+            artistId: metadata.artist_id,
+            trackNum: t.position,
+            url: t.url || undefined,
+            service: t.service || undefined,
+            duration: t.duration,
+          });
+          newTracksList[i] = {
+            ...t,
+            id: Number(createdTrack.id),
+            isDirty: false,
+          };
+          hasNewTracks = true;
+        }
+      }
+
+      // If we created new tracks, perform a secondary update to sync the release tracks correctly in order.
+      if (hasNewTracks) {
+        const updatedTrackIds = newTracksList.map((t: any) => t.id);
+        const updatedTracksData = newTracksList.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          price: t.price,
+          price_usdc: t.priceUsdc,
+          currency: t.currency || "ETH"
+        }));
+
+        await API.updateRelease(String(releaseId), {
+          ...dataToSave,
+          track_ids: updatedTrackIds,
+          tracks_data: updatedTracksData,
+        });
+
+        setTracks(newTracksList);
+      }
 
       // 2. Upload Cover
       if (coverFile && currentSlug) {
@@ -1355,7 +1405,7 @@ export default function AdminReleaseEditor() {
                   <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 space-y-4">
                     <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Download Experience</h3>
                     <div className="grid grid-cols-1 gap-2">
-                       {["none", "free", "codes"].map((d) => (
+                       {["none", "free", "codes", "external"].map((d) => (
                          <label key={d} className={`flex items-center gap-3 p-3 rounded-xl border border-base-content/5 cursor-pointer transition-all ${metadata.download === d || (!metadata.download && d === "none") ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/30' : 'hover:bg-base-200'}`}>
                             <input
                               type="radio" name="download_method" className="radio radio-primary radio-sm"
@@ -1364,10 +1414,10 @@ export default function AdminReleaseEditor() {
                             />
                             <div className="flex flex-col">
                               <span className="text-sm font-bold capitalize">
-                                {d === 'none' ? 'Streaming Only' : d === 'free' ? 'Free Download' : 'Unlock Codes'}
+                                {d === 'none' ? 'Streaming Only' : d === 'free' ? 'Free Download' : d === 'codes' ? 'Unlock Codes' : 'External Showcase'}
                               </span>
                               <span className="text-xs opacity-50">
-                                {d === 'none' ? 'Basic streaming' : d === 'free' ? 'Public download' : 'Require unique code'}
+                                {d === 'none' ? 'Basic streaming' : d === 'free' ? 'Public download' : d === 'codes' ? 'Require unique code' : 'Redirect to Bandcamp/external link'}
                               </span>
                             </div>
                          </label>
@@ -1377,6 +1427,30 @@ export default function AdminReleaseEditor() {
                       <button className="btn btn-sm btn-ghost border-primary/20 w-full gap-2 bg-primary/5" onClick={() => setShowUnlockManager(true)}>
                         <Key size={14} /> Manage Codes
                       </button>
+                    )}
+                    {metadata.download === "external" && (
+                      <div className="form-control mt-4 pt-4 border-t border-base-content/5 space-y-2 animate-fade-in">
+                        <label className="label text-xs font-bold tracking-normal opacity-50">External Buy URL</label>
+                        <input
+                          type="url"
+                          className="input input-bordered w-full text-sm"
+                          placeholder="https://artist.bandcamp.com/album/..."
+                          value={metadata.externalLinks?.[0]?.url || ""}
+                          onChange={(e) => {
+                            const url = e.target.value;
+                            setMetadata(prev => {
+                              const links = [...(prev.externalLinks || [])];
+                              if (links.length === 0) {
+                                links.push({ label: "Bandcamp", url });
+                              } else {
+                                links[0] = { ...links[0], url };
+                              }
+                              return { ...prev, externalLinks: links };
+                            });
+                          }}
+                        />
+                        <span className="text-xs opacity-40">All purchase flows on TuneCamp will be disabled and redirected to this link.</span>
+                      </div>
                     )}
                   </div>
 
@@ -1418,13 +1492,34 @@ export default function AdminReleaseEditor() {
           onImport={async (m) => {
             // Import release-level metadata only — no tracks are created.
             const parsedYear = m.date ? new Date(m.date).getFullYear() : NaN;
+            const bandcampUrl = m.url || "";
             setMetadata((prev) => ({
               ...prev,
               title: m.title || prev.title,
               album_artist: m.artist || prev.album_artist,
               genre: m.genre || prev.genre,
               year: Number.isFinite(parsedYear) ? parsedYear : prev.year,
+              download: "external",
+              externalLinks: bandcampUrl ? [{ label: "Bandcamp", url: bandcampUrl }] : prev.externalLinks,
             }));
+
+            // Populate tracks state with temporary negative IDs and Bandcamp stream URLs
+            if (m.tracks && m.tracks.length > 0) {
+              const localTracks: LocalTrack[] = m.tracks.map((t: any, index: number) => ({
+                id: -(index + 1),
+                title: t.title,
+                duration: t.duration,
+                position: t.position || (index + 1),
+                price: 0,
+                priceUsdc: 0,
+                currency: "ETH" as const,
+                file_path: null,
+                url: t.streamUrl || null,
+                service: "bandcamp",
+                artistName: m.artist,
+              }));
+              setTracks(localTracks);
+            }
 
             // Cover is best-effort: pull it through the same-origin proxy and stage it
             // as a real file so the normal save flow uploads it to the server.

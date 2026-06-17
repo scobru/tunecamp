@@ -56,7 +56,7 @@ export const AdminUsersList = () => {
   const handleApproveArtist = async (id: string | number, username: string) => {
     try {
       await API.approveArtistRequest(id);
-      notify.success(`Artist profile created for ${username} (promoted to Curator)`);
+      notify.success(`Artist profile created for ${username}`);
       loadUsers();
       window.dispatchEvent(new CustomEvent("refresh-admin-artists"));
     } catch (e: any) {
@@ -155,6 +155,9 @@ export const AdminUsersList = () => {
                 ) : (
                   <span className="badge badge-ghost">Listener</span>
                 )}
+                {u.role === "user" && u.artist_id && (
+                  <span className="badge badge-accent badge-outline ml-2 text-[10px]">🎨 Artist</span>
+                )}
                 {u.is_active === 0 && (
                   <span className="badge badge-error ml-2">Disabled</span>
                 )}
@@ -171,7 +174,7 @@ export const AdminUsersList = () => {
                       <>
                         <button
                           className="btn btn-xs btn-success btn-outline gap-1 tooltip"
-                          data-tip="Approve: create artist profile, link it and promote to Curator"
+                          data-tip="Approve: create artist profile and link it"
                           onClick={() => handleApproveArtist(u.id, u.username)}
                         >
                           <Check size={12} /> Approve

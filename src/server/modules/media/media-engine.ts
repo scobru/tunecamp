@@ -117,7 +117,10 @@ export class MediaEngine {
 
     // 1. Handle External IDs / Linked Tracks
     const extId = track.external_id || track.url;
-    if (extId && extId.startsWith("ext:")) {
+    if (extId && (extId.startsWith("ext:") || extId.startsWith("http://") || extId.startsWith("https://"))) {
+      if (extId.startsWith("http://") || extId.startsWith("https://")) {
+        return this.handleExternalStream(`ext:link:${extId}`, track, options.range);
+      }
       return this.handleExternalStream(extId, track, options.range);
     }
 

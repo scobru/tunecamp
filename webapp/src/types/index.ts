@@ -83,7 +83,7 @@ export interface Release {
     genre?: string;
     type?: 'album' | 'single' | 'liveset' | 'podcast';
     year?: number;
-    download?: 'free' | 'paid' | 'codes';
+    download?: 'free' | 'paid' | 'codes' | 'external';
     price?: number;
     priceUsdc?: number;
     price_usdc?: number;
@@ -157,7 +157,7 @@ export interface Album {
     license?: string;
     is_release?: boolean;
     is_formal_release?: boolean;
-    download?: 'free' | 'paid' | 'codes';
+    download?: 'free' | 'paid' | 'codes' | 'external';
     external_links?: string; // JSON string
     price?: number;
     priceUsdc?: number;
@@ -252,6 +252,11 @@ export interface SiteSettings {
     listenbrainz_token?: string;
     google_drive_client_id?: string;
     google_drive_client_secret?: string;
+    hideLive?: boolean | string;
+    hideStore?: boolean | string;
+    hideSocial?: boolean | string;
+    hideNetwork?: boolean | string;
+    hideDig?: boolean | string;
 }
 
 export interface LiveSession {

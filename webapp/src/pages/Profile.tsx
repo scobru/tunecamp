@@ -54,9 +54,9 @@ const Profile = () => {
   }, []);
 
   const isRoot = role === 'root_admin' || user?.isRootAdmin;
-  // Listeners are pure consumers: even a stale artistId on their account must
-  // not surface artist features — they see the "Become an Artist" card instead.
-  const hasArtistProfile = !!user?.artistId && role !== 'user';
+  // A listener (role 'user') with an artistId is a Community Artist.
+  // They can publish their own music but don't have Curator privileges.
+  const hasArtistProfile = !!user?.artistId;
   const isCuratorOrAbove = role === 'super_user' || role === 'admin' || role === 'root_admin';
 
   const activeHandle = useMemo(() => {
@@ -168,7 +168,7 @@ const Profile = () => {
       if (result?.autoApproved && result?.token) {
         API.setToken(result.token);
         await checkAuth();
-        notify.success("Artist profile created! Your account has been promoted to Curator.");
+        notify.success("Artist profile created! You can now publish your music.");
       } else {
         setArtistRequestedAt(new Date().toISOString());
         notify.success("Request sent! An admin will review it.");
@@ -477,8 +477,8 @@ const Profile = () => {
                 </h3>
                 <p className="text-sm opacity-60">
                   {selfPublishEnabled
-                    ? "Want to publish your own music on this instance? Create an artist profile instantly — your account will be promoted to Curator right away."
-                    : "Want to publish your own music on this instance? Request an artist profile — if an admin approves, your account is promoted to Curator with a linked artist profile."}
+                    ? "Want to publish your own music on this instance? Create an artist profile instantly and start publishing right away."
+                    : "Want to publish your own music on this instance? Request an artist profile — if an admin approves, you'll get a linked artist profile and can start publishing."}
                 </p>
                 {artistRequestedAt ? (
                   <div className="alert alert-info bg-primary/10 border-primary/20 text-sm">
@@ -540,13 +540,15 @@ const Profile = () => {
                       {role === 'root_admin' && "Instance Owner (Root Admin)"}
                       {role === 'admin' && "Manager (Full Admin)"}
                       {role === 'super_user' && "Curator (Super User)"}
-                      {role === 'user' && "Listener (Standard User)"}
+                      {role === 'user' && (user?.artistId ? "Community Artist" : "Listener (Standard User)")}
                     </h4>
                     <p className="text-sm opacity-70 mt-1">
                       {role === 'root_admin' && "You have complete administrative and security control over this TuneCamp instance."}
                       {role === 'admin' && "You have administrative privileges to moderate the community, manage releases, and support artists."}
                       {role === 'super_user' && "You are responsible for music catalog quality, organization, and correcting track metadata."}
-                      {role === 'user' && "You are a standard user. You can listen to music and purchase albums. Want to publish your own music? Request an artist profile to become a Curator."}
+                      {role === 'user' && (user?.artistId 
+                        ? "You are a community artist. You can publish your own music, customize your artist profile, and connect Stripe to sell your tracks." 
+                        : "You are a standard user. You can listen to music and purchase albums. Want to publish your own music? Request an artist profile to start publishing.")}
                     </p>
                   </div>
                   
@@ -597,7 +599,9 @@ const Profile = () => {
                       {role === 'user' && [
                         "Listen to public music (Arena) and purchase tracks",
                         "Create and manage personal playlists and favorites",
-                        "Request an artist profile to publish your own music",
+                        ...(user?.artistId 
+                          ? ["Publish your own music and manage your releases", "Connect Stripe to sell your music"]
+                          : ["Request an artist profile to publish your own music"]),
                         "Customize your profile, alias, and avatar"
                       ].map((cap, idx) => (
                         <li key={idx} className="flex gap-2 items-start text-base-content/80">

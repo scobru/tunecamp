@@ -1,31 +1,29 @@
 # Federation & Decentralization in Tunecamp
 
-Tunecamp leverages two primary technologies to enable a decentralized music ecosystem: **ActivityPub** for social federation and **Zen** for instance discovery (signaling). It also provides full **Subsonic API** compatibility for mobile and desktop clients.
+Tunecamp leverages two primary technologies to enable a decentralized music ecosystem: **ActivityPub** for social federation and **federated HTTP/NodeInfo discovery** for finding other instances. It also provides full **Subsonic API** compatibility for mobile and desktop clients.
 
-## Zen Protocol: Instance Discovery (Signaling)
+## Federated Discovery (HTTP / NodeInfo gossip)
 
-Tunecamp uses the Zen decentralized graph **only as a signaling layer**: instances announce their public URL to a shared community registry so other instances can discover them. Everything else — accounts, playlists, comments, play history — lives in the server's local SQLite database, and catalogs are exchanged directly over HTTP.
+Tunecamp discovers other instances by **gossip over HTTP** — there is no central relay and no shared registry. An instance crawls outward from a set of seed instances (its ActivityPub-followed TuneCamp sites plus `TUNECAMP_FEDERATION_SEEDS`), validates that each peer is a live TuneCamp via its NodeInfo, and stores the reachable set in local SQLite (`federated_instances`). Implemented in `src/server/modules/network/federated-discovery.service.ts`.
 
-> **Note**: Earlier versions used Zen for user identity (SEA keypairs), Zen-first authentication, wallet derivation, and cross-instance roaming. These have been removed: authentication is now username/password (JWT), and the web client no longer connects to Zen peers. Zen runs server-side only, in a dedicated worker thread.
+> **History**: earlier versions used the **Zen** decentralized graph for instance signaling, and before that for user identity (SEA keypairs), Zen-first auth, wallet derivation, and cross-instance roaming. **Zen has been removed entirely** (PRs #369/#370/#372): authentication is username/password (JWT), discovery is the HTTP gossip described here, and catalogs are exchanged directly over HTTP. The `zen` dependency and all `TUNECAMP_ZEN_*` env vars are gone.
 
 ### Key Roles
 
-- **Community Registry**: Servers register themselves in a global decentralized directory (`tunecamp-community`).
-- **Music Discovery**: The "Network" page reads the registry to discover other Tunecamp instances, then fetches their catalogs directly via HTTP (`/api/catalog`).
-- **Instance Identity**: Each server holds a cryptographic keypair used to sign its registry entry.
+- **Seed-based crawl**: discovery starts from AP-followed TuneCamp actors and `TUNECAMP_FEDERATION_SEEDS`, then gossips outward (capped depth/breadth, dead instances pruned).
+- **Liveness check**: a peer is only added if it answers as a live TuneCamp (NodeInfo type-check), not merely HTTP 200.
+- **Music Discovery**: the "Network" page reads the federated set, then fetches catalogs directly via HTTP (`/api/catalog`), cached stale-while-revalidate.
+- **One-click follow**: an admin can follow an instance directly by URL.
 
-### Secure Graph Strategy
+### Public endpoints
 
-Tunecamp uses a "Secure Graph" approach:
-
-1.  **Authoritative Data**: Data signed by a server's public key is stored in its specific namespace.
-2.  **Public Directory**: A reference (link) is placed in a public directory namespace (`tunecamp-community`).
-3.  **Verification**: When discovery scans the network, it validates the data against the sender's public key.
+- `GET /api/community/instance` — this instance's own descriptor.
+- `GET /api/community/peers` — known peers (the gossip surface).
+- `GET /api/community/sites` — aggregated discoverable sites (local + federated + ActivityPub). CORS-enabled for external directories.
 
 ### Configuration
 
-- `TUNECAMP_ZEN_PEERS` (backend): comma/space-separated Zen relay peer URLs.
-- `TUNECAMP_ZEN_MEMORY_LIMIT` (backend): memory limit (MB) for the Zen network worker.
+- `TUNECAMP_FEDERATION_SEEDS` (backend): comma/space-separated origin URLs of seed instances to bootstrap discovery. Optional — AP-followed TuneCamp sites also seed the crawl.
 
 ---
 
@@ -106,6 +104,6 @@ When a Subsonic client scrobbles a track (`scrobble.view`), Tunecamp records the
 | Likes / Favorites    | ActivityPub  | External (Mastodon, etc)  |
 | Release Notification | ActivityPub  | External (Mastodon, etc)  |
 | Funkwhale Federation | ActivityPub  | External (Funkwhale)      |
-| Instance Discovery   | Zen          | Internal (Tunecamp Nodes) |
+| Instance Discovery   | Federated HTTP / NodeInfo gossip | Internal (Tunecamp Nodes) |
 | Mobile Streaming     | Subsonic API | External (Any client)     |
 | Starred / Favorites  | Subsonic API | Local (per user)          |

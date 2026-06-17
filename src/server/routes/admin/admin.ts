@@ -276,16 +276,42 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 chatEnabled,
                 scheduledScanHour,
                 listenerSelfPublish,
-                listenerSelfPublishQuota
+                listenerSelfPublishQuota,
+                hideLive,
+                hideStore,
+                hideSocial,
+                hideNetwork,
+                hideDig
             } = req.body;
             let settingsChanged = false;
+            const isTrue = (val: any) => val === true || val === "true";
+
+            if (hideLive !== undefined) {
+                identity.setSetting("hideLive", isTrue(hideLive) ? "true" : "false");
+            }
+
+            if (hideStore !== undefined) {
+                identity.setSetting("hideStore", isTrue(hideStore) ? "true" : "false");
+            }
+
+            if (hideSocial !== undefined) {
+                identity.setSetting("hideSocial", isTrue(hideSocial) ? "true" : "false");
+            }
+
+            if (hideNetwork !== undefined) {
+                identity.setSetting("hideNetwork", isTrue(hideNetwork) ? "true" : "false");
+            }
+
+            if (hideDig !== undefined) {
+                identity.setSetting("hideDig", isTrue(hideDig) ? "true" : "false");
+            }
 
             if (web3Enabled !== undefined) {
-                identity.setSetting("web3Enabled", web3Enabled ? "true" : "false");
+                identity.setSetting("web3Enabled", isTrue(web3Enabled) ? "true" : "false");
             }
 
             if (chatEnabled !== undefined) {
-                identity.setSetting("chatEnabled", chatEnabled ? "true" : "false");
+                identity.setSetting("chatEnabled", isTrue(chatEnabled) ? "true" : "false");
             }
 
             if (scheduledScanHour !== undefined) {
@@ -383,12 +409,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             if (allowPublicRegistration !== undefined) {
-                identity.setSetting("allowPublicRegistration", allowPublicRegistration ? "true" : "false");
+                identity.setSetting("allowPublicRegistration", isTrue(allowPublicRegistration) ? "true" : "false");
                 settingsChanged = true;
             }
 
             if (listenerSelfPublish !== undefined) {
-                identity.setSetting("listenerSelfPublish", listenerSelfPublish ? "true" : "false");
+                identity.setSetting("listenerSelfPublish", isTrue(listenerSelfPublish) ? "true" : "false");
             }
 
             if (listenerSelfPublishQuota !== undefined) {
@@ -1320,12 +1346,18 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
             library.setArtistCanSell(artistId, false);
-            // Promote listeners to Curator: the artist link alone doesn't grant publishing
-            const newRole = user.role === UserRole.NORMAL_USER ? UserRole.SUPER_USER : user.role;
-            authService.updateAdmin(id, artistId, newRole, user.storage_quota);
+            // Keep the user's role unchanged — the artist-profile link grants
+            // publishing rights; Curator/Manager elevation is a separate admin action.
+            const newRole = user.role as UserRole;
+            
+            // Grant the admin-configured default storage quota for physical uploads.
+            const quotaMb = Number(identity?.getSetting("listenerSelfPublishQuota"));
+            const quotaBytes = (Number.isFinite(quotaMb) && quotaMb >= 0 ? quotaMb : 1024) * 1024 * 1024;
+            
+            authService.updateAdmin(id, artistId, newRole, quotaBytes);
             authService.setArtistRequest(id, false);
 
-            res.json({ success: true, artistId, message: `Artist profile created for ${user.username} (promoted to Curator)` });
+            res.json({ success: true, artistId, message: `Artist profile created for ${user.username}` });
         } catch (error: any) {
             console.error("Error approving artist request:", error);
             res.status(500).json({ error: error.message || "Failed to approve artist request" });
