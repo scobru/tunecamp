@@ -135,7 +135,12 @@ export function createUsersRoutes(container: ServiceContainer): Router {
                 // Keep the listener's role unchanged — the artist profile link grants
                 // publishing rights; curator/manager elevation requires root admin.
                 const newRole = user.role as UserRole;
-                authService.updateAdmin(req.userId!, artistId, newRole, user.storage_quota);
+                // Grant the admin-configured default storage quota for physical uploads.
+                // Stored in MB (default 1024 = 1GB); 0 means unlimited. Admins can still
+                // tweak a single user's quota from the Users panel afterwards.
+                const quotaMb = Number(identity?.getSetting("listenerSelfPublishQuota"));
+                const quotaBytes = (Number.isFinite(quotaMb) && quotaMb >= 0 ? quotaMb : 1024) * 1024 * 1024;
+                authService.updateAdmin(req.userId!, artistId, newRole, quotaBytes);
                 authService.setArtistRequest(req.userId!, false);
 
                 // Issue a fresh token so the caller can update their session immediately

@@ -8,7 +8,7 @@ import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
 import { TrackPickerModal } from "../components/modals/TrackPickerModal";
 import { UnlockCodeManager } from "../components/modals/UnlockCodeManager";
-import { AddBandcampTrackModal } from "../components/modals/AddBandcampTrackModal";
+import { ImportBandcampReleaseModal } from "../components/modals/ImportBandcampReleaseModal";
 import { AddYouTubeTrackModal } from "../components/modals/AddYouTubeTrackModal";
 import {
   Image as ImageIcon,
@@ -933,9 +933,9 @@ export default function AdminReleaseEditor() {
                     </label>
                     <button
                       className="btn btn-sm bg-[#629aa9] hover:bg-[#4d7b87] text-white gap-2 border-none"
-                      onClick={() => document.dispatchEvent(new Event('open-add-bandcamp-modal'))}
+                      onClick={() => document.dispatchEvent(new Event('open-import-bandcamp-modal'))}
                     >
-                      <Globe className="w-4 h-4" /> Add Bandcamp
+                      <Globe className="w-4 h-4" /> Import from Bandcamp
                     </button>
                     <button 
                       type="button"
@@ -1414,23 +1414,30 @@ export default function AdminReleaseEditor() {
           onClose={() => setShowUnlockManager(false)}
         />
 
-        <AddBandcampTrackModal
-          albumId={metadata.id}
-          onAdd={(track: any) => {
-            setTracks(prev => [...prev, {
-              id: Number(track.id),
-              title: track.title,
-              duration: track.duration,
-              position: tracks.length + 1,
-              price: 0,
-              priceUsdc: 0,
-              currency: "ETH",
-              file_path: null,
-              url: track.url || track.streamUrl,
-              service: track.service || 'bandcamp',
-              artistName: track.artistName,
-              external_artwork: track.coverImage || track.coverUrl
-            }]);
+        <ImportBandcampReleaseModal
+          onImport={async (m) => {
+            // Import release-level metadata only — no tracks are created.
+            const parsedYear = m.date ? new Date(m.date).getFullYear() : NaN;
+            setMetadata((prev) => ({
+              ...prev,
+              title: m.title || prev.title,
+              album_artist: m.artist || prev.album_artist,
+              genre: m.genre || prev.genre,
+              year: Number.isFinite(parsedYear) ? parsedYear : prev.year,
+            }));
+
+            // Cover is best-effort: pull it through the same-origin proxy and stage it
+            // as a real file so the normal save flow uploads it to the server.
+            if (m.cover) {
+              try {
+                const blob = await API.proxyImageBlob(m.cover);
+                const file = new File([blob], "bandcamp-cover.jpg", { type: blob.type || "image/jpeg" });
+                setCoverFile(file);
+                setCoverPreview(URL.createObjectURL(file));
+              } catch (e) {
+                notify.error(e, "Imported metadata, but the cover art could not be downloaded — set it manually.");
+              }
+            }
           }}
         />
 

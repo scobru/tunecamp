@@ -278,4 +278,95 @@ describe('Users Routes', () => {
             expect(mockRun).toHaveBeenCalledWith('1', 10);
         });
     });
+
+    describe('POST /api/users/me/artist-request (self-publish auto-approve)', () => {
+        const ONE_GB = 1024 * 1024 * 1024;
+
+        // Builds an app whose listener has no artist link yet and whose instance
+        // settings are driven by `settings` (keyed by setting name).
+        const buildApp = (settings: Record<string, string | undefined>) => {
+            const identity = { getSetting: jest.fn((k: string) => settings[k]) };
+            const library = {
+                createArtist: jest.fn().mockReturnValue(42),
+                setArtistCanSell: jest.fn(),
+            };
+            mockAuthService.getUserByUsername.mockReturnValue({
+                id: 10, username: 'testuser', role: UserRole.NORMAL_USER, artist_id: null, is_active: 1,
+            });
+            mockAuthService.getAdminById = jest.fn().mockReturnValue({
+                id: 10, username: 'testuser', role: UserRole.NORMAL_USER, storage_quota: 0, token_version: 0,
+            });
+            mockAuthService.updateAdmin = jest.fn();
+            mockAuthService.setArtistRequest = jest.fn();
+            mockAuthService.getArtistRequest = jest.fn().mockReturnValue(null);
+
+            const a = express();
+            a.use(express.json());
+            a.use('/api/users', createUsersRoutes({
+                database: mockDatabase, authService: mockAuthService, apService: mockAPService,
+                identity, library,
+            } as any));
+            return { app: a, identity, library };
+        };
+
+        test('grants the admin-configured default quota (in MB) on auto-approve', async () => {
+            const { app: a } = buildApp({ listenerSelfPublish: 'true', listenerSelfPublishQuota: '512' });
+
+            const res = await request(a)
+                .post('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(res.body.autoApproved).toBe(true);
+            expect(res.body.artistId).toBe(42);
+            // role unchanged (NORMAL_USER), quota = 512 MB in bytes
+            expect(mockAuthService.updateAdmin).toHaveBeenCalledWith(10, 42, UserRole.NORMAL_USER, 512 * 1024 * 1024);
+        });
+
+        test('defaults to 1GB when no quota setting is configured', async () => {
+            const { app: a } = buildApp({ listenerSelfPublish: 'true', listenerSelfPublishQuota: undefined });
+
+            const res = await request(a)
+                .post('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(200);
+            expect(mockAuthService.updateAdmin).toHaveBeenCalledWith(10, 42, UserRole.NORMAL_USER, ONE_GB);
+        });
+
+        test('marks the new artist as not sellable and keeps the listener role', async () => {
+            const { app: a, library } = buildApp({ listenerSelfPublish: 'true' });
+
+            await request(a)
+                .post('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(library.createArtist).toHaveBeenCalled();
+            expect(library.setArtistCanSell).toHaveBeenCalledWith(42, false);
+        });
+
+        test('rejects with 400 when the user already has an artist profile', async () => {
+            const identity = { getSetting: jest.fn().mockReturnValue('true') };
+            const library = { createArtist: jest.fn(), setArtistCanSell: jest.fn() };
+            // Listener already linked to an artist → requireUser sets req.artistId
+            mockAuthService.getUserByUsername.mockReturnValue({
+                id: 10, username: 'testuser', role: UserRole.NORMAL_USER, artist_id: 7, is_active: 1,
+            });
+
+            const a = express();
+            a.use(express.json());
+            a.use('/api/users', createUsersRoutes({
+                database: mockDatabase, authService: mockAuthService, apService: mockAPService,
+                identity, library,
+            } as any));
+
+            const res = await request(a)
+                .post('/api/users/me/artist-request')
+                .set('Authorization', 'Bearer token');
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toBe('You already have an artist profile');
+            expect(library.createArtist).not.toHaveBeenCalled();
+        });
+    });
 });

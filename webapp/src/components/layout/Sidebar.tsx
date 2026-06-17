@@ -32,6 +32,7 @@ import {
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 import { WalletPill } from "../ui/WalletPill";
+import { canPublish } from "../../utils/permissions";
 
 export const Sidebar = () => {
   const location = useLocation();
@@ -44,6 +45,9 @@ export const Sidebar = () => {
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
   const isSuperUser = role === 'super_user';
+  // Publishing access follows the artist-profile link, not the role, so
+  // self-publish listeners (role 'user' + artistId) get the Studio section.
+  const canPub = canPublish(user, role);
 
   const getRoleLabel = (r: typeof role) => {
     switch (r) {
@@ -233,7 +237,7 @@ export const Sidebar = () => {
           </div>
         )}
 
-        {isAuthenticated && isAdmin && (
+        {isAuthenticated && canPub && (
           <div>
             <SectionHeader label="Studio" />
             <ul className="menu menu-sm p-0 gap-1">
@@ -242,7 +246,11 @@ export const Sidebar = () => {
               {!!user?.artistId && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
-              <NavItem to="/library" icon={Library} label="Archive" />
+              {/* Archive = full private library; admin-only. Self-publish
+                  listeners can publish but cannot browse the private library. */}
+              {isAdmin && (
+                <NavItem to="/library" icon={Library} label="Archive" />
+              )}
               {(isRoot || role === 'admin') && (
                 <NavItem to="/search/content" icon={Globe} label="Search Content" />
               )}
