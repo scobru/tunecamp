@@ -38,7 +38,7 @@ Le finestre di dialogo sono raccolte qui. Le principali:
   `CreatePostModal`.
 - **Acquisto/sblocco**: `CheckoutModal`, `UnlockModal`, `UnlockCodeManager`, `SubscriptionModal`.
 - **Playlist & tracce**: `CreateUserPlaylistModal`, `PlaylistModal`,
-  `AddTrackToUserPlaylistModal`, `TrackPickerModal`, `AddBandcampTrackModal`, `AddYouTubeTrackModal`.
+  `AddTrackToUserPlaylistModal`, `TrackPickerModal`, `ImportBandcampReleaseModal`, `AddYouTubeTrackModal`.
 - **`CommandPalette.tsx`**: Palette comandi rapida (ricerca/azioni).
 
 ## UI Base (`components/ui/`)

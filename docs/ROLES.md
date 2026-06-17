@@ -42,18 +42,21 @@ The **Curator** is a specialized role focused on library quality and content org
 ---
 
 ## 4. Listener (Standard User)
-The **Listener** is the base role for users who consume music and interact with the platform. Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, selling store assets, and social posting are reserved to Curators and Managers, who have that direct line to the artist.
+The **Listener** is the base role for users who consume music and interact with the platform. By default Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, selling store assets, and social posting are reserved to accounts with a direct line to the artist.
+
+> The publishing gate is the **artist-profile link, not the role** (`VisibilityGuardian.canPublishContent`): any account linked to an artist (`artist_id`) — including a Listener in **self-publish mode**, see below — can publish. A self-publish Listener keeps the Listener role and gets publishing UI (Publish / My Catalog / Social) but **not** access to the private library (Archive), which stays admin-only.
 
 ### Capabilities:
 - **Listening & Collection:** Stream music via the web player or Subsonic-compatible apps, purchase content, and manage favorites.
 - **Social Interaction:** Create playlists, comment, follow artists, and manage their own profile.
 
 ### Becoming an Artist
-An artist account is a **Curator** (or higher) linked to an artist profile. There are two paths:
+A publishing account is any account linked to an artist profile. There are three paths:
 1. The admin promotes a user to Curator and links an artist profile manually (Admin → Users → Edit).
 2. The listener requests one from **Profile → Settings → Become an Artist**; when the admin approves it from the Users panel, the account is **promoted to Curator** and a non-sellable artist profile is created and linked. The approval is the direct admin–artist contact that publishing requires.
+3. **Self-publish mode** (admin enables `listenerSelfPublish` in Settings): the same request is **auto-approved** without an admin click. The account **keeps the Listener role** and gets a non-sellable artist profile linked — the artist link alone grants publishing rights (no Curator promotion). At approval the account receives the admin-configured default storage quota (`listenerSelfPublishQuota`, MB, default 1 GB; `0` = unlimited) so the self-publisher can upload physically to the server like any other publisher.
 
-Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor).
+Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor). Self-published artists start with `can_sell = 0`.
 
 ---
 
@@ -64,11 +67,14 @@ Selling is controlled separately by the per-artist `can_sell` flag, which only M
 | Modify Site Settings | ✅ | ❌ | ❌ | ❌ |
 | Manage Users | ✅ | ✅ (view) | ❌ | ❌ |
 | Edit Others' Content | ✅ | ✅ | ✅ | ❌ |
-| Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ❌ |
-| Sell Music / Store Assets | ✅ | ✅ | ✅ (with artist link + `can_sell`) | ❌ |
-| Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ❌ |
+| Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ✅ (only with artist link, e.g. self-publish) |
+| Sell Music / Store Assets | ✅ | ✅ | ✅ (with artist link + `can_sell`) | ✅ (with artist link + `can_sell`) |
+| Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ✅ (with artist link) |
+| Browse Private Library (Archive) | ✅ | ✅ | ✅ | ❌ |
 | Access Server Keys | ✅ | ❌ | ❌ | ❌ |
 | Manage Federation | ✅ | ✅ | ❌ | ❌ |
+
+> A plain Listener (no artist link) cannot publish. The ✅ in the Listener column applies only once a Listener is linked to an artist (self-publish mode or manual link without role promotion). Browsing the private library is the one publishing-adjacent capability a self-publish Listener does **not** get.
 
 ---
 
@@ -96,4 +102,4 @@ TuneCamp implements these controls at the API level:
 2. **Content Ownership:** Modification APIs (`PUT`, `DELETE`) verify that `owner_id` (referencing `admin.id`) matches the requester's `userId`, unless the requester is an administrator. The system includes self-healing maintenance to ensure all content is correctly owned by a valid administrator.
 3. **SSRF Protection:** Network operations (ActivityPub follow) are protected against SSRF attacks via URL validation.
 4. **Sanitization:** File names and metadata are sanitized to prevent Path Traversal and XSS attacks.
-5. **Quota Check:** During upload, the user's available disk space is dynamically verified before accepting files.
+5. **Quota Check:** During upload, the user's remaining storage quota (`storage_quota` − `storage_used`) is verified before accepting files; a quota of `0` means unlimited. Per-user quotas are editable in Admin → Users, and the default granted to self-publish Listeners at approval is set by `listenerSelfPublishQuota` (Settings).
