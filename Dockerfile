@@ -107,7 +107,6 @@ RUN apk add --no-cache \
 
 # Copy package files, local dependencies and install production dependencies
 COPY package*.json ./
-COPY deps ./deps
 COPY scripts ./scripts
 COPY webapp/package.json ./webapp/
 
