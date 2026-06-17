@@ -577,6 +577,16 @@ export class Scanner implements ScannerService {
                 await this.getOrCreateLibraryAlbum(dir, musicDir, suggestedCoverPath, ownerId);
             }
 
+            // music-metadata does not report file size for audio files; stat the
+            // file so tracks.file_size is populated and storage metrics stay accurate.
+            if (metadata?.format && !metadata.format.fileSize) {
+                try {
+                    metadata.format.fileSize = (await fs.stat(currentFilePath)).size;
+                } catch {
+                    // Leave unset if the file is unreadable; backfill can fix it later.
+                }
+            }
+
             const syncResult = await this.librarySync.syncFile(currentFilePath, metadata, {
                 musicDir,
                 overrideArtistId,

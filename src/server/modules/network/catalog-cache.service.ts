@@ -18,7 +18,7 @@ const TTL_MS = 60 * 60 * 1000;                 // 1h: entry considered fresh
 const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;     // 48h: drop entries not refreshed since (a peer offline >2d stops showing)
 const FETCH_TIMEOUT = 5000;                     // 5s per instance
 
-export interface PeerSite {
+interface PeerSite {
     url: string;
     name?: string;
 }

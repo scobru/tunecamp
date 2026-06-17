@@ -16,6 +16,7 @@ import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
 import { createRssService } from "../../modules/network/rss.service.js";
 import { getSiteHandle, slugifySiteName, SITE_ACTOR_ID } from "../../core/site-actor.js";
+import { getInstanceStorage, recomputeFileSizes, recomputeUserStorage } from "../../modules/storage/storage-usage.service.js";
 
 const upload = multer({ dest: "uploads/" });
 
@@ -219,10 +220,55 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const ownerId = (isPrivileged) && !showMine ? undefined : req.userId;
             
             const stats = await library.getStats(artistId, ownerId);
-            res.json(stats);
+            // Surface the requesting user's quota so the client can render a
+            // used/quota/remaining gauge (0 = unlimited).
+            let storageQuota = 0;
+            if (req.userId) {
+                storageQuota = authService.getStorageInfo(req.userId)?.storage_quota || 0;
+            }
+            res.json({ ...stats, storageQuota });
         } catch (error) {
             console.error("Error getting stats:", error);
             res.status(500).json({ error: "Failed to get stats" });
+        }
+    });
+
+    /**
+     * GET /api/admin/storage/overview
+     * Instance-wide storage view: real disk usage, logical DB total, allocated
+     * quota and a per-user breakdown. Root/system admins only.
+     */
+    router.get("/storage/overview", async (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+        try {
+            const overview = await getInstanceStorage((database as any).db, musicDir);
+            res.json(overview);
+        } catch (error) {
+            console.error("Error getting storage overview:", error);
+            res.status(500).json({ error: "Failed to get storage overview" });
+        }
+    });
+
+    /**
+     * POST /api/admin/storage/recompute
+     * Backfill tracks.file_size from disk and recompute per-user storage_used,
+     * then return the refreshed overview. Root/system admins only.
+     */
+    router.post("/storage/recompute", async (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+        try {
+            const db = (database as any).db;
+            const result = recomputeFileSizes(db, musicDir);
+            recomputeUserStorage(db);
+            const overview = await getInstanceStorage(db, musicDir);
+            res.json({ ...result, overview });
+        } catch (error) {
+            console.error("Error recomputing storage:", error);
+            res.status(500).json({ error: "Failed to recompute storage" });
         }
     });
 
