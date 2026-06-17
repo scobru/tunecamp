@@ -55,7 +55,10 @@ export function createStorageRouter(container: ServiceContainer) {
             if (identity?.getSetting("listenerSelfPublish") === "true") {
                 const user = authService.getAdminById(userId);
                 if (user && !user.artist_id) {
-                    const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
+                    const existingArtist = library.getArtistByName(user.username);
+                    const artistId = existingArtist 
+                        ? existingArtist.id 
+                        : library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
                     library.setArtistCanSell(artistId, false);
                     authService.updateAdmin(userId, artistId, user.role, user.storage_quota);
                     console.log(`[Self-Publish] Auto-created artist profile for user ${user.username} (id=${userId})`);

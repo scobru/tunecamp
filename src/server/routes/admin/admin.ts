@@ -1344,7 +1344,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "User already has an artist profile" });
             }
 
-            const artistId = library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
+            const existingArtist = library.getArtistByName(user.username);
+            const artistId = existingArtist 
+                ? existingArtist.id 
+                : library.createArtist(user.username, undefined, undefined, undefined, undefined, undefined, 'public');
             library.setArtistCanSell(artistId, false);
             // Keep the user's role unchanged — the artist-profile link grants
             // publishing rights; Curator/Manager elevation is a separate admin action.

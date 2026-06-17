@@ -159,6 +159,12 @@ export class ArtistRepository extends BaseRepository {
                 if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("slug")) {
                     attempt++;
                     finalSlug = `${slug}-${attempt}`;
+                } else if (e.code === "SQLITE_CONSTRAINT_UNIQUE" && e.message.includes("name")) {
+                    // Name already taken (case/whitespace mismatch vs the NOCASE lookup,
+                    // or a concurrent create). Treat as create-or-get: return the existing row.
+                    const existing = this.getByName(name);
+                    if (existing) return existing.id;
+                    throw e;
                 } else {
                     throw e;
                 }
