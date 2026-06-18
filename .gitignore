@@ -76,3 +76,6 @@ scratch/
 *_patch
 # Exception: patch-package patches must be committed
 !patches/*.patch
+
+# Claude Code agent worktrees
+.claude/
