@@ -94,6 +94,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             artist_id INTEGER DEFAULT NULL,
+            artist_unlinked INTEGER DEFAULT 0,
             role TEXT NOT NULL DEFAULT 'admin',
             storage_quota INTEGER NOT NULL DEFAULT 0,
             storage_used INTEGER NOT NULL DEFAULT 0,
@@ -784,6 +785,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding ap_public_key/ap_private_key columns...");
                 db.exec("ALTER TABLE admin ADD COLUMN ap_public_key TEXT");
                 db.exec("ALTER TABLE admin ADD COLUMN ap_private_key TEXT");
+            }
+            if (!cols.some(col => col.name === 'artist_unlinked')) {
+                console.log("📦 [Database] Migrating admin table: adding artist_unlinked column...");
+                db.exec("ALTER TABLE admin ADD COLUMN artist_unlinked INTEGER DEFAULT 0");
             }
             if (!cols.some(col => col.name === 'artist_requested_at')) {
                 console.log("📦 [Database] Migrating admin table: adding artist_requested_at column...");

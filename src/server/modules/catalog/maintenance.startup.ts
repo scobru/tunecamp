@@ -433,17 +433,7 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
         // 2.5. Repair Database Associations (Artist propagation)
         console.log(`📦 [Maintenance] Repairing artist associations...`);
         try {
-            // A. Propagate artist_id from tracks to albums where missing
-            const albumFix = database.db.prepare(`
-                UPDATE albums 
-                SET artist_id = (SELECT artist_id FROM tracks WHERE album_id = albums.id AND artist_id IS NOT NULL LIMIT 1)
-                WHERE artist_id IS NULL AND id IN (SELECT DISTINCT album_id FROM tracks WHERE artist_id IS NOT NULL)
-            `).run();
-
-            // B. Propagate artist_id from tracks to releases where missing (handled by albums since releases is a view)
-            const releaseFix = { changes: 0 };
-
-            // C. Fix tracks that have an artist_name but null artist_id
+            // A. Fix tracks that have an artist_name but null artist_id
             const orphanTracks = database.db.prepare("SELECT DISTINCT artist_name FROM tracks WHERE artist_id IS NULL AND artist_name IS NOT NULL").all() as { artist_name: string }[];
             let trackFixCount = 0;
             for (const ot of orphanTracks) {
@@ -454,9 +444,31 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 }
             }
 
-            if (albumFix.changes > 0 || releaseFix.changes > 0 || trackFixCount > 0) {
+            // B. Fix albums that have an album_artist but null artist_id
+            const orphanAlbums = database.db.prepare("SELECT DISTINCT album_artist FROM albums WHERE artist_id IS NULL AND album_artist IS NOT NULL AND album_artist != ''").all() as { album_artist: string }[];
+            let albumFixByNameCount = 0;
+            for (const oa of orphanAlbums) {
+                const artist = database.getArtistByName(oa.album_artist);
+                if (artist) {
+                    const res = database.db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id IS NULL AND album_artist = ?").run(artist.id, oa.album_artist);
+                    albumFixByNameCount += res.changes;
+                }
+            }
+
+            // C. Propagate artist_id from tracks to albums where missing
+            const albumFix = database.db.prepare(`
+                UPDATE albums 
+                SET artist_id = (SELECT artist_id FROM tracks WHERE album_id = albums.id AND artist_id IS NOT NULL LIMIT 1)
+                WHERE artist_id IS NULL AND id IN (SELECT DISTINCT album_id FROM tracks WHERE artist_id IS NOT NULL)
+            `).run();
+
+            // D. Propagate artist_id from tracks to releases where missing (handled by albums since releases is a view)
+            const releaseFix = { changes: 0 };
+
+            if (albumFix.changes > 0 || albumFixByNameCount > 0 || releaseFix.changes > 0 || trackFixCount > 0) {
                 console.log(`✅ [Maintenance] Association repair complete:`);
-                if (albumFix.changes > 0) console.log(`   - Fixed ${albumFix.changes} albums with missing artist_id`);
+                if (albumFix.changes > 0) console.log(`   - Fixed ${albumFix.changes} albums with missing artist_id via track propagation`);
+                if (albumFixByNameCount > 0) console.log(`   - Fixed ${albumFixByNameCount} albums with missing artist_id via album_artist match`);
                 if (releaseFix.changes > 0) console.log(`   - Fixed ${releaseFix.changes} releases with missing artist_id`);
                 if (trackFixCount > 0) console.log(`   - Fixed ${trackFixCount} tracks with missing artist_id`);
             }
@@ -526,12 +538,12 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                 console.log(`✅ [Maintenance] Deduplicated ${mergeCount} artists across ${tablesWithArtistId.length} tables.`);
             }
 
-        } catch (e) {
-            console.error(`❌ [Maintenance] Failed to repair associations:`, e);
+        } catch (e: any) {
+            console.error(`❌ [Maintenance] Failed to repair associations:`, e.stack || e);
         }
 
-    } catch (error) {
-        console.error(`❌ [Maintenance] Error during startup maintenance:`, error);
+    } catch (error: any) {
+        console.error(`❌ [Maintenance] Error during startup maintenance:`, error.stack || error);
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);

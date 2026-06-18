@@ -1,75 +1,15 @@
-import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import fsExtra from 'fs-extra';
+import Stripe, { mockStripeInstance } from 'stripe';
+import { ethers, mockProviderInstance, mockInterfaceInstance } from 'ethers';
+import * as priceUtils from '../../../modules/catalog/price.js';
+import { createPaymentsRoutes } from '../payments.js';
 
-// Mock packages
-jest.unstable_mockModule('stripe', () => {
-    const mockStripeInstance = {
-        webhooks: {
-            constructEvent: jest.fn()
-        },
-        crypto: {
-            onrampSessions: {
-                create: jest.fn()
-            }
-        },
-        checkout: {
-            sessions: {
-                create: jest.fn()
-            }
-        },
-        accounts: {
-            create: jest.fn(),
-            retrieve: jest.fn()
-        }
-    };
-    return {
-        default: jest.fn().mockImplementation(() => mockStripeInstance)
-    };
-});
-
-jest.unstable_mockModule('ethers', () => {
-    const mockProviderInstance = {
-        getTransaction: jest.fn(),
-        getTransactionReceipt: jest.fn()
-    };
-    const mockInterfaceInstance = {
-        parseTransaction: jest.fn()
-    };
-    return {
-        ethers: {
-            JsonRpcProvider: jest.fn().mockImplementation(() => mockProviderInstance),
-            Interface: jest.fn().mockImplementation(() => mockInterfaceInstance),
-            formatEther: jest.fn().mockImplementation((val: any) => String(val)),
-            formatUnits: jest.fn().mockImplementation((val: any) => String(val))
-        }
-    };
-});
-
-jest.unstable_mockModule('fs-extra', () => ({
-    default: {
-        pathExists: jest.fn(),
-        createReadStream: jest.fn()
-    }
-}));
-
-jest.unstable_mockModule('../../../modules/catalog/price.js', () => ({
-    getEthUsdRate: jest.fn()
-}));
-
-let Stripe: any;
-let ethers: any;
-let fs: any;
-let getEthUsdRate: any;
-let createPaymentsRoutes: any;
-
-beforeAll(async () => {
-    ({ default: Stripe } = await import('stripe'));
-    ({ ethers } = await import('ethers'));
-    ({ default: fs } = await import('fs-extra'));
-    ({ getEthUsdRate } = await import('../../../modules/catalog/price.js'));
-    ({ createPaymentsRoutes } = await import('../payments.js'));
-});
+const pathExistsSpy = jest.spyOn(fsExtra, 'pathExists' as any).mockResolvedValue(false as any);
+const createReadStreamSpy = jest.spyOn(fsExtra, 'createReadStream' as any);
+const getEthUsdRateSpy = jest.spyOn(priceUtils, 'getEthUsdRate' as any);
 
 describe('Payments Routes', () => {
     let app: express.Express;
@@ -83,6 +23,10 @@ describe('Payments Routes', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+
+        // Re-apply default implementations after clearAllMocks
+        pathExistsSpy.mockResolvedValue(false as any);
+        (Stripe as any).mockImplementation(() => mockStripeInstance);
 
         mockDatabase = {
             getSetting: jest.fn(),
@@ -107,7 +51,6 @@ describe('Payments Routes', () => {
         };
 
         app = express();
-        // The stripe raw parser is handled by payments routes itself before router.use(json())
         app.use('/api/payments', createPaymentsRoutes({
             database: mockDatabase,
             identity: mockDatabase,
@@ -117,20 +60,17 @@ describe('Payments Routes', () => {
             config: mockConfig
         } as any));
 
-        // Get instances from mocks
-        mockStripe = new (Stripe as any)();
-        const providerInst = new (ethers.JsonRpcProvider as any)();
-        mockProvider = providerInst;
-        const interfaceInst = new (ethers.Interface as any)();
-        mockInterface = interfaceInst;
+        mockStripe = mockStripeInstance;
+        mockProvider = mockProviderInstance;
+        mockInterface = mockInterfaceInstance;
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
-        consoleErrorSpy.mockRestore();
-        consoleWarnSpy.mockRestore();
+        consoleErrorSpy?.mockRestore();
+        consoleWarnSpy?.mockRestore();
     });
 
     describe('POST /api/payments/stripe/webhook', () => {
@@ -485,8 +425,8 @@ describe('Payments Routes', () => {
             const sessionToken = jwt.sign({ userId: 42 }, 'test-jwt-secret');
             mockDatabase.getUserSubscription.mockReturnValue({ status: 'active', expiresAt: null });
             mockDatabase.getTrack.mockReturnValue({ id: 5, file_path: 'a.mp3' });
-            (fs.pathExists as any).mockResolvedValue(true);
-            (fs.createReadStream as any).mockReturnValue({ pipe: (res: any) => res.end('data') });
+            pathExistsSpy.mockResolvedValue(true as any);
+            createReadStreamSpy.mockReturnValue({ pipe: (res: any) => res.end('data') } as any);
 
             const mint = await request(app)
                 .post('/api/payments/download-token')
@@ -517,7 +457,7 @@ describe('Payments Routes', () => {
 
     describe('GET /api/payments/rate/:currency', () => {
         test('returns rate on success', async () => {
-            (getEthUsdRate as any).mockResolvedValue(3000);
+            getEthUsdRateSpy.mockResolvedValue(3000 as any);
 
             const res = await request(app).get('/api/payments/rate/usd');
 
@@ -553,14 +493,14 @@ describe('Payments Routes', () => {
                 id: 5,
                 file_path: 'artist/album/song.mp3'
             });
-            (fs.pathExists as any).mockResolvedValue(true);
+            pathExistsSpy.mockResolvedValue(true as any);
             const mockStream = {
                 pipe: jest.fn().mockImplementation((res: any) => {
                     res.write(Buffer.from('streaming-data'));
                     res.end();
                 })
             };
-            (fs.createReadStream as any).mockReturnValue(mockStream);
+            createReadStreamSpy.mockReturnValue(mockStream as any);
 
             const res = await request(app)
                 .get('/api/payments/download/5')
@@ -568,7 +508,7 @@ describe('Payments Routes', () => {
 
             expect(res.status).toBe(200);
             expect(res.body.toString()).toBe('streaming-data');
-            expect(fs.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
+            expect(fsExtra.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
         });
     });
 
@@ -661,14 +601,14 @@ describe('Payments Routes', () => {
                 id: 5,
                 file_path: 'artist/album/song.mp3'
             });
-            (fs.pathExists as any).mockResolvedValue(true);
+            pathExistsSpy.mockResolvedValue(true as any);
             const mockStream = {
                 pipe: jest.fn().mockImplementation((res: any) => {
                     res.write(Buffer.from('subscriber-data'));
                     res.end();
                 })
             };
-            (fs.createReadStream as any).mockReturnValue(mockStream);
+            createReadStreamSpy.mockReturnValue(mockStream as any);
 
             const res = await request(app)
                 .get('/api/payments/download/5')
@@ -676,7 +616,7 @@ describe('Payments Routes', () => {
 
             expect(res.status).toBe(200);
             expect(res.body.toString()).toBe('subscriber-data');
-            expect(fs.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
+            expect(fsExtra.createReadStream).toHaveBeenCalledWith(expect.stringContaining('song.mp3'));
         });
     });
 });

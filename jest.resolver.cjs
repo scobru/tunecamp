@@ -14,6 +14,21 @@
  */
 module.exports = (request, options) => {
   const { defaultResolver } = options;
+
+  // Handle file:// URLs produced by pathToFileURL() in plugin-loader.ts.
+  // ts-jest compiles dynamic import(url) → require(url) in CJS mode and
+  // Jest's resolver can't parse file:// URL strings.  fileURLToPath converts
+  // them to OS-native absolute paths (handles Windows drive letters correctly).
+  if (request.startsWith('file://')) {
+    const { fileURLToPath } = require('url');
+    try {
+      const absPath = fileURLToPath(request);
+      return defaultResolver(absPath, options);
+    } catch {
+      // fall through
+    }
+  }
+
   if (/^\.{1,2}\//.test(request) && request.endsWith('.js')) {
     const tsRequest = request.slice(0, -3) + '.ts';
     try {

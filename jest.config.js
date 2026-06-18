@@ -21,6 +21,8 @@ export default {
     '^node-fetch$': '<rootDir>/__mocks__/node-fetch.ts',
     '^disconnect$': '<rootDir>/__mocks__/disconnect.ts',
     '^fluent-ffmpeg$': '<rootDir>/__mocks__/fluent-ffmpeg.ts',
+    '^stripe$': '<rootDir>/__mocks__/stripe.ts',
+    '^ethers$': '<rootDir>/__mocks__/ethers.ts',
     '^(.*[/\\\\]workers[/\\\\]worker-pool)\\.js$': '<rootDir>/__mocks__/worker-pool.ts',
   },
   transform: {

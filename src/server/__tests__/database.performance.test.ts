@@ -1,66 +1,17 @@
-import { jest, describe, it, expect, beforeEach, beforeAll } from '@jest/globals';
-
-// Mock better-sqlite3
-const mockExec = jest.fn();
-const mockPrepare = jest.fn();
-const mockGet = jest.fn();
-const mockAll = jest.fn().mockReturnValue([]);
-const mockRun = jest.fn().mockReturnValue({ changes: 0 });
-
-// Mock return structure for prepared statements
-const mockStmt = {
-    get: mockGet,
-    all: mockAll,
-    run: mockRun,
-};
-
-mockPrepare.mockReturnValue(mockStmt);
-
-// We need to use unstable_mockModule before import
-// Note: This must be called before any imports that use the module
-jest.unstable_mockModule('better-sqlite3', () => {
-    return {
-        default: jest.fn().mockImplementation(() => ({
-            pragma: jest.fn(),
-            function: jest.fn(),
-            exec: mockExec,
-            prepare: mockPrepare,
-            transaction: (fn: any) => ((...args: any[]) => fn(...args)), // Simple pass-through
-        })),
-    };
-});
+import { describe, it, expect } from '@jest/globals';
+import { createDatabase } from '../core/database.js';
 
 describe('Database Performance Improvements', () => {
-    let createDatabase: any;
-
-    beforeAll(async () => {
-        // Dynamic import after mocking
-        const module = await import('../core/database.js');
-        createDatabase = module.createDatabase;
-    });
-
-    beforeEach(() => {
-        jest.clearAllMocks();
-        // Reset default mock behavior
-        mockPrepare.mockReturnValue(mockStmt);
-        mockGet.mockReturnValue({}); // Default empty object
-    });
-
     it('should create an index on albums(date)', () => {
         const dbService = createDatabase(':memory:');
-
-        // Verify the index creation SQL was executed
-        const calls = mockExec.mock.calls.map(c => c[0]);
-        const hasIndex = calls.some((sql: any) =>
-            sql && typeof sql === 'string' && sql.includes('CREATE INDEX IF NOT EXISTS idx_albums_date ON albums(date DESC)')
-        );
-
-        expect(hasIndex).toBe(true);
+        const index = (dbService.db as any).prepare(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_albums_date'"
+        ).get();
+        expect(index).toBeDefined();
     });
 
     it('should use optimized query for getListeningStats', () => {
         const dbService = createDatabase(':memory:');
-
         const stats = dbService.getListeningStats();
         expect(stats).toBeDefined();
         expect(stats.totalPlays).toBe(0);
