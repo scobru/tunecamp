@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { createDatabase } from '../core/database.js';
 import { Scanner } from '../modules/catalog/scanner.js';
 import { runStartupMaintenance } from '../modules/catalog/maintenance.startup.js';
@@ -34,10 +34,8 @@ describe('Orphan Release Fix Verification', () => {
     });
 
     test('Scanner should fix orphan releases with tracks linked via release_tracks and set ownership', async () => {
-        // 1. Create an artist
         const artistId = db.createArtist('Orphan Master');
 
-        // 2. Create an orphan release (artist_id is NULL)
         const albumId = db.createAlbum({
             title: 'Orphaned Release',
             slug: 'orphaned-release',
@@ -60,8 +58,7 @@ describe('Orphan Release Fix Verification', () => {
             license: null
         });
 
-        // 3. Create a track associated with the artist
-        const trackId = db.createTrack({
+        db.createTrack({
             title: 'Foundling Track',
             album_id: albumId,
             artist_id: artistId,
@@ -77,51 +74,38 @@ describe('Orphan Release Fix Verification', () => {
             waveform: null
         });
 
-        // Verify it IS an orphan currently
         let album = db.getAlbum(albumId);
         expect(album.artist_id).toBeNull();
         expect(album.owner_id).toBeNull();
 
-        // Create a default admin so runStartupMaintenance doesn't skip fixing ownership/artists
         db.db.prepare("INSERT OR IGNORE INTO admin (username, password_hash, role) VALUES (?, ?, ?)").run("admin", "admin", "admin");
 
-        // 5. Run the fixing logic (Startup Maintenance claims orphans and auto-assigns artists)
         await runStartupMaintenance(db, { musicDir: TEST_MUSIC_DIR } as any);
 
-        // 6. Verify it is FIXED
         album = db.getAlbum(albumId);
         expect(album.artist_id).toBe(artistId);
-
-        console.log('✅ Orphan release correctly fixed!');
     });
 
     test('Scanner should correctly determine artist from folder map if skiped in config', async () => {
-        // This is a regression check for existing logic
-        // 1. Create an artist
         const artistId = db.createArtist('Folder Artist');
         const artistDir = path.join(TEST_MUSIC_DIR, 'folder-artist');
         await fs.ensureDir(artistDir);
 
-        // Manually put in map as if discovered during scan
         (scanner as any).folderToArtistMap.set(artistDir, artistId);
 
         const releaseDir = path.join(artistDir, 'some-release');
         await fs.ensureDir(releaseDir);
-        const releaseYaml = path.join(releaseDir, 'release.yaml');
-        
+
         mockStorageEngine.readFile.mockResolvedValue('title: New Release\ndate: 2023-01-01' as never);
 
-        // Process config
-        await (scanner as any).processReleaseConfig(releaseYaml, TEST_MUSIC_DIR);
+        await (scanner as any).processReleaseConfig(path.join(releaseDir, 'release.yaml'), TEST_MUSIC_DIR);
 
         const album = db.getReleaseBySlug('new-release');
         expect(album).toBeDefined();
         expect(album.artist_id).toBe(artistId);
-        console.log('✅ Artist correctly inherited from folder structure!');
     });
 
     test('Scanner should delete empty implicit library albums', async () => {
-        // Create an empty library album (is_release = false) with artist_id = null
         const albumId = db.createAlbum({
             title: 'Empty Library Folder',
             slug: 'empty-library-folder',
@@ -129,7 +113,7 @@ describe('Orphan Release Fix Verification', () => {
             date: '2023-01-01',
             is_public: false,
             visibility: 'private',
-            is_release: false, // Implicit library album
+            is_release: false,
             published_to_gundb: false,
             published_to_ap: false,
             cover_path: null,
@@ -151,7 +135,6 @@ describe('Orphan Release Fix Verification', () => {
         await (scanner as any).librarySync.cleanupEmptyEntities();
 
         album = db.getAlbum(albumId);
-        expect(album).toBeUndefined(); // Should have been deleted
-        console.log('✅ Empty implicit library album correctly deleted!');
+        expect(album).toBeUndefined();
     });
 });

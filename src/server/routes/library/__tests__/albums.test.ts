@@ -13,12 +13,7 @@ jest.unstable_mockModule('music-metadata', () => ({
   parseFile: jest.fn()
 }), { virtual: true });
 
-// Mock metadataService
-jest.unstable_mockModule('../../../modules/catalog/metadata.service.js', () => ({
-  metadataService: {
-    searchRelease: jest.fn().mockImplementation(() => Promise.resolve([{ title: 'Matched Album', artist: 'Matched Artist' }]))
-  }
-}), { virtual: true });
+// metadataService is injected via container so no module mock needed
 
 // Import module under test dynamically
 let createAlbumsRoutes: any;
@@ -90,6 +85,9 @@ describe('Albums Routes - Cache Optimization', () => {
             social: mockDatabase.social || mockDatabase,
             catalogService: mockCatalogService,
             discoveryService: mockDiscoveryService,
+            metadataService: {
+                searchRelease: jest.fn().mockResolvedValue([{ title: 'Matched Album', artist: 'Matched Artist' }] as any)
+            },
             musicDir: tempMusicDir
         } as any);
         app.use('/albums', router);

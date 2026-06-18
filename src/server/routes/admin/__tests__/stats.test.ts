@@ -1,15 +1,11 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import Database from 'better-sqlite3';
+import * as networkUtils from '../../../../utils/networkUtils.js';
+import { createStatsRoutes } from '../stats.js';
 
-// Mock networkUtils for ESM
-jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
-    isSafeUrl: jest.fn()
-}));
-
-const { isSafeUrl } = await import('../../../../utils/networkUtils.js');
-const { createStatsRoutes } = await import('../stats.js');
+const isSafeUrlSpy = jest.spyOn(networkUtils, 'isSafeUrl' as any);
 
 describe('Stats Routes', () => {
     let app: express.Express;
@@ -34,7 +30,6 @@ describe('Stats Routes', () => {
                 if (key === 'siteDescription') return 'Local desc';
                 return null;
             }),
-            // Local stats counters (Phase 0: replaces Zen stats)
             getReleaseDownloadCount: jest.fn().mockReturnValue(0),
             incrementReleaseDownloadCount: jest.fn().mockReturnValue(1),
             getTrackDownloadCount: jest.fn().mockReturnValue(0),
@@ -65,14 +60,16 @@ describe('Stats Routes', () => {
 
         consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-        // Mock global fetch
         originalFetch = global.fetch;
         mockFetch = jest.fn();
         global.fetch = mockFetch as any;
+
+        jest.clearAllMocks();
+        isSafeUrlSpy.mockResolvedValue(false as any);
     });
 
     afterEach(() => {
-        consoleErrorSpy.mockRestore();
+        consoleErrorSpy?.mockRestore();
         global.fetch = originalFetch;
     });
 
@@ -165,14 +162,13 @@ describe('Stats Routes', () => {
             mockDbService.getFollowedActors.mockReturnValue([
                 { uri: 'https://siteb.com/actor', name: 'Actor B', username: 'site', summary: 'Summary B', last_seen: 'yesterday' }
             ]);
-            // The followed AP site-actor is health-checked via /api/catalog.
-            (isSafeUrl as any).mockResolvedValue(true);
+            isSafeUrlSpy.mockResolvedValue(true as any);
             mockFetch.mockResolvedValue({ ok: true, json: async () => ({ releases: [] }) });
 
             const res = await request(app).get('/api/stats/network/sites');
 
             expect(res.status).toBe(200);
-            expect(res.body).toHaveLength(3); // local + federated + ap
+            expect(res.body).toHaveLength(3);
             expect(res.body[0].federation).toBe('local');
             expect(res.body[1].federation).toBe('federated');
             expect(res.body[2].federation).toBe('activitypub');
@@ -204,14 +200,13 @@ describe('Stats Routes', () => {
             mockDbService.getFollowedActors.mockReturnValue([
                 { uri: 'https://dead-ap.com/actor', name: 'Dead', username: 'site', summary: '', last_seen: 'long ago' }
             ]);
-            // Domain answers HTTP but is not a live TuneCamp (no catalog shape).
-            (isSafeUrl as any).mockResolvedValue(true);
+            isSafeUrlSpy.mockResolvedValue(true as any);
             mockFetch.mockResolvedValue({ ok: true, json: async () => ({ message: 'hello from nginx' }) });
 
             const res = await request(app).get('/api/stats/network/sites');
 
             expect(res.status).toBe(200);
-            expect(res.body).toHaveLength(1); // local only
+            expect(res.body).toHaveLength(1);
             expect(res.body.some((s: any) => s.federation === 'activitypub')).toBe(false);
         });
     });
@@ -221,7 +216,7 @@ describe('Stats Routes', () => {
             mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([
                 { url: 'https://remotesite.com', name: 'Remote' }
             ]);
-            (isSafeUrl as any).mockResolvedValue(true);
+            isSafeUrlSpy.mockResolvedValue(true as any);
 
             mockFetch.mockResolvedValue({
                 ok: true,
@@ -253,7 +248,7 @@ describe('Stats Routes', () => {
             const res = await request(app).get('/api/stats/network/tracks');
 
             expect(res.status).toBe(200);
-            expect(res.body.length).toBeGreaterThanOrEqual(4); // HTTP + AP track + Local release + Local post
+            expect(res.body.length).toBeGreaterThanOrEqual(4);
             expect(res.body.some((item: any) => item.federation === 'http')).toBe(true);
             expect(res.body.some((item: any) => item.federation === 'activitypub')).toBe(true);
             expect(res.body.some((item: any) => item.federation === 'local' && item.type === 'release')).toBe(true);
@@ -271,8 +266,8 @@ describe('Stats Routes', () => {
             const res = await request(app).get('/api/stats/network/status');
 
             expect(res.status).toBe(200);
-            expect(res.body.sites).toBe(4); // 2 federated + 1 ap + 1 local
-            expect(res.body.tracks).toBe(3); // 2 ap + 1 local
+            expect(res.body.sites).toBe(4);
+            expect(res.body.tracks).toBe(3);
             expect(res.body.activitypub.enabled).toBe(true);
         });
     });

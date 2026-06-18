@@ -1,4 +1,4 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 
@@ -57,11 +57,19 @@ jest.unstable_mockModule('../../../modules/catalog/price.js', () => ({
     getEthUsdRate: jest.fn()
 }));
 
-const { default: Stripe } = await import('stripe');
-const { ethers } = await import('ethers');
-const { default: fs } = await import('fs-extra');
-const { getEthUsdRate } = await import('../../../modules/catalog/price.js');
-const { createPaymentsRoutes } = await import('../payments.js');
+let Stripe: any;
+let ethers: any;
+let fs: any;
+let getEthUsdRate: any;
+let createPaymentsRoutes: any;
+
+beforeAll(async () => {
+    ({ default: Stripe } = await import('stripe'));
+    ({ ethers } = await import('ethers'));
+    ({ default: fs } = await import('fs-extra'));
+    ({ getEthUsdRate } = await import('../../../modules/catalog/price.js'));
+    ({ createPaymentsRoutes } = await import('../payments.js'));
+});
 
 describe('Payments Routes', () => {
     let app: express.Express;

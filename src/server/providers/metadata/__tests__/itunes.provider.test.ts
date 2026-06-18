@@ -1,14 +1,20 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
 // Mock node-fetch for ESM (see price.test.ts for the same pattern)
 jest.unstable_mockModule('node-fetch', () => ({
     default: jest.fn()
 }));
 
-const { default: fetch } = await import('node-fetch');
-const { ITunesProvider } = await import('../itunes.provider.js');
+let fetch: any;
+let ITunesProvider: any;
+let provider: any;
 
-const provider = new ITunesProvider();
+beforeAll(async () => {
+    ({ default: fetch } = await import('node-fetch'));
+    ({ ITunesProvider } = await import('../itunes.provider.js'));
+    provider = new ITunesProvider();
+});
+
 
 beforeEach(() => {
     jest.clearAllMocks();

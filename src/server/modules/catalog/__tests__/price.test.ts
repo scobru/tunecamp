@@ -1,12 +1,18 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 
 // Mock node-fetch for ESM
 jest.unstable_mockModule('node-fetch', () => ({
     default: jest.fn()
 }));
 
-const { default: fetch } = await import('node-fetch');
-const { getEthUsdRate, clearCache } = await import('../price.js');
+let fetch: any;
+let getEthUsdRate: any;
+let clearCache: any;
+
+beforeAll(async () => {
+    ({ default: fetch } = await import('node-fetch'));
+    ({ getEthUsdRate, clearCache } = await import('../price.js'));
+});
 
 describe('Price Module - getEthUsdRate', () => {
     let mockNow = 1000000;

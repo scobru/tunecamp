@@ -1,53 +1,23 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { mockFfmpegInstance } from '../../../../__mocks__/fluent-ffmpeg.js';
+import mockFfmpeg from '../../../../__mocks__/fluent-ffmpeg.js';
+import fsExtra from 'fs-extra';
+import { writeMetadata, transcode } from './ffmpeg.js';
 
-// Mock fluent-ffmpeg
-const mockFfmpegInstance: any = {
-    outputOptions: jest.fn().mockReturnThis(),
-    seekInput: jest.fn().mockReturnThis(),
-    toFormat: jest.fn().mockReturnThis(),
-    audioCodec: jest.fn().mockReturnThis(),
-    audioBitrate: jest.fn().mockReturnThis(),
-    save: jest.fn().mockReturnThis(),
-    on: jest.fn().mockImplementation(((event: any, callback: any) => {
-        if (event === 'end') {
-            setTimeout(callback, 10);
-        }
-        return mockFfmpegInstance;
-    }) as any),
-};
-
-const mockFfmpeg = jest.fn(() => mockFfmpegInstance);
-// @ts-ignore
-mockFfmpeg.setFfmpegPath = jest.fn();
-// @ts-ignore
-mockFfmpeg.setFfprobePath = jest.fn();
-// @ts-ignore
-mockFfmpeg.ffprobe = jest.fn();
-
-jest.unstable_mockModule('fluent-ffmpeg', () => ({
-    __esModule: true,
-    default: mockFfmpeg,
-}));
-
-// Mock fs-extra
-const mockFs = {
-    move: jest.fn(),
-    remove: jest.fn().mockImplementation(() => Promise.resolve()),
-    existsSync: jest.fn(),
-    statSync: jest.fn().mockReturnValue({ size: 1000 }),
-};
-
-jest.unstable_mockModule('fs-extra', () => ({
-    __esModule: true,
-    default: mockFs
-}));
-
-// @ts-ignore
-const { writeMetadata, transcode } = await import('./ffmpeg.js');
+jest.spyOn(fsExtra, 'move' as any).mockResolvedValue(undefined as any);
+jest.spyOn(fsExtra, 'remove' as any).mockResolvedValue(undefined as any);
+jest.spyOn(fsExtra, 'existsSync' as any).mockReturnValue(true as any);
+jest.spyOn(fsExtra, 'statSync' as any).mockReturnValue({ size: 1000 } as any);
 
 describe('ffmpeg.ts', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        mockFfmpegInstance.on.mockImplementation(function(event: any, callback: any) {
+            if (event === 'end') {
+                setTimeout(callback, 10);
+            }
+            return mockFfmpegInstance;
+        });
     });
 
     describe('writeMetadata', () => {
@@ -63,14 +33,12 @@ describe('ffmpeg.ts', () => {
             await writeMetadata(filePath, metadata);
 
             expect(mockFfmpeg).toHaveBeenCalledWith(filePath);
-
             expect(mockFfmpegInstance.outputOptions).toHaveBeenCalledWith('-c', 'copy');
             expect(mockFfmpegInstance.outputOptions).toHaveBeenCalledWith('-map_metadata', '0');
             expect(mockFfmpegInstance.outputOptions).toHaveBeenCalledWith('-metadata', 'title=Test Title');
             expect(mockFfmpegInstance.outputOptions).toHaveBeenCalledWith('-metadata', 'artist=Test Artist');
             expect(mockFfmpegInstance.outputOptions).toHaveBeenCalledWith('-metadata', 'album=Test Album');
             expect(mockFfmpegInstance.outputOptions).toHaveBeenCalledWith('-metadata', 'track=1');
-
             expect(mockFfmpegInstance.save).toHaveBeenCalled();
         });
 

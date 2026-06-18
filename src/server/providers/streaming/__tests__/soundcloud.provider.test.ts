@@ -1,17 +1,14 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import * as soundcloudUtils from '../../../utils/soundcloud.js';
+import nodeFetch from 'node-fetch';
+import { SoundCloudStreamingProvider } from '../soundcloud.provider.js';
 
-jest.unstable_mockModule('../../../utils/soundcloud.js', () => ({
-    scApiRequest: jest.fn(),
-    resolveArtworkUrl: jest.fn(() => 'https://art.test/cover.jpg'),
-    getClientId: jest.fn(),
-    clearSoundCloudClientId: jest.fn(),
-    USER_AGENT: 'test-agent',
-}));
-jest.unstable_mockModule('node-fetch', () => ({ default: jest.fn() }));
+const fetch = nodeFetch as any;
 
-const { scApiRequest, getClientId, clearSoundCloudClientId } = await import('../../../utils/soundcloud.js');
-const { default: fetch } = await import('node-fetch');
-const { SoundCloudStreamingProvider } = await import('../soundcloud.provider.js');
+const scApiRequestSpy = jest.spyOn(soundcloudUtils, 'scApiRequest' as any);
+const getClientIdSpy = jest.spyOn(soundcloudUtils, 'getClientId' as any);
+const clearSoundCloudClientIdSpy = jest.spyOn(soundcloudUtils, 'clearSoundCloudClientId' as any);
+jest.spyOn(soundcloudUtils, 'resolveArtworkUrl' as any).mockReturnValue('https://art.test/cover.jpg');
 
 const provider = new SoundCloudStreamingProvider();
 
@@ -30,7 +27,7 @@ const progressiveTrack = (id = 1) => ({
 
 beforeEach(() => {
     jest.clearAllMocks();
-    (getClientId as any).mockResolvedValue('client-123');
+    getClientIdSpy.mockResolvedValue('client-123' as any);
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -48,41 +45,41 @@ describe('SoundCloudStreamingProvider', () => {
             expect(await provider.isAvailable()).toBe(true);
         });
         test('false when client id retrieval fails', async () => {
-            (getClientId as any).mockRejectedValueOnce(new Error('no bundle'));
+            getClientIdSpy.mockRejectedValueOnce(new Error('no bundle'));
             expect(await provider.isAvailable()).toBe(false);
         });
     });
 
     test('onDisable clears the cached client id', async () => {
         await provider.onDisable();
-        expect(clearSoundCloudClientId).toHaveBeenCalled();
+        expect(clearSoundCloudClientIdSpy).toHaveBeenCalled();
     });
 
     describe('search', () => {
         test('maps tracks into stream candidates', async () => {
-            (scApiRequest as any).mockResolvedValueOnce({ collection: [progressiveTrack(7)] });
+            scApiRequestSpy.mockResolvedValueOnce({ collection: [progressiveTrack(7)] } as any);
             const [c] = await provider.search('song');
-            expect(scApiRequest).toHaveBeenCalledWith('search/tracks', { q: 'song', limit: '10' });
+            expect(scApiRequestSpy).toHaveBeenCalledWith('search/tracks', { q: 'song', limit: '10' });
             expect(c).toMatchObject({
                 id: '7',
                 title: 'Song',
                 artist: 'DJ',
                 provider: 'soundcloud',
                 thumbnail: 'https://art.test/cover.jpg',
-                duration: 200, // floor(200000 / 1000)
+                duration: 200,
             });
         });
 
         test('returns [] on error', async () => {
-            (scApiRequest as any).mockRejectedValueOnce(new Error('boom'));
+            scApiRequestSpy.mockRejectedValueOnce(new Error('boom'));
             expect(await provider.search('q')).toEqual([]);
         });
     });
 
     describe('getStreamUrl', () => {
         test('resolves a progressive MP3 stream url', async () => {
-            (scApiRequest as any).mockResolvedValueOnce({ collection: [progressiveTrack()] });
-            (fetch as any).mockResolvedValueOnce({
+            scApiRequestSpy.mockResolvedValueOnce({ collection: [progressiveTrack()] } as any);
+            fetch.mockResolvedValueOnce({
                 status: 200,
                 ok: true,
                 json: async () => ({ url: 'https://cf-media.sndcdn.com/final.mp3' }),
@@ -91,7 +88,6 @@ describe('SoundCloudStreamingProvider', () => {
             const url = await provider.getStreamUrl('Song', 'DJ');
 
             expect(url).toBe('https://cf-media.sndcdn.com/final.mp3');
-            // The transcoding URL is fetched with the client_id appended.
             expect(fetch).toHaveBeenCalledWith(
                 expect.stringContaining('client_id=client-123'),
                 expect.anything(),
@@ -99,18 +95,18 @@ describe('SoundCloudStreamingProvider', () => {
         });
 
         test('returns null when the search has no results', async () => {
-            (scApiRequest as any).mockResolvedValueOnce({ collection: [] });
+            scApiRequestSpy.mockResolvedValueOnce({ collection: [] } as any);
             expect(await provider.getStreamUrl('Song', 'DJ')).toBeNull();
             expect(fetch).not.toHaveBeenCalled();
         });
 
         test('returns null when a track has no transcodings', async () => {
-            (scApiRequest as any).mockResolvedValueOnce({ collection: [{ id: 1, title: 'X', media: { transcodings: [] } }] });
+            scApiRequestSpy.mockResolvedValueOnce({ collection: [{ id: 1, title: 'X', media: { transcodings: [] } }] } as any);
             expect(await provider.getStreamUrl('Song', 'DJ')).toBeNull();
         });
 
         test('returns null when the API request throws', async () => {
-            (scApiRequest as any).mockRejectedValueOnce(new Error('boom'));
+            scApiRequestSpy.mockRejectedValueOnce(new Error('boom'));
             expect(await provider.getStreamUrl('Song', 'DJ')).toBeNull();
         });
     });
@@ -118,24 +114,24 @@ describe('SoundCloudStreamingProvider', () => {
     describe('getStreamById', () => {
         test('returns null for a non-numeric id without a request', async () => {
             expect(await provider.getStreamById('abc')).toBeNull();
-            expect(scApiRequest).not.toHaveBeenCalled();
+            expect(scApiRequestSpy).not.toHaveBeenCalled();
         });
 
         test('looks up the track and resolves its stream', async () => {
-            (scApiRequest as any).mockResolvedValueOnce(progressiveTrack(42));
-            (fetch as any).mockResolvedValueOnce({
+            scApiRequestSpy.mockResolvedValueOnce(progressiveTrack(42) as any);
+            fetch.mockResolvedValueOnce({
                 status: 200,
                 ok: true,
                 json: async () => ({ url: 'https://cf-media.sndcdn.com/by-id.mp3' }),
             });
 
             const url = await provider.getStreamById('42');
-            expect(scApiRequest).toHaveBeenCalledWith('tracks/42');
+            expect(scApiRequestSpy).toHaveBeenCalledWith('tracks/42');
             expect(url).toBe('https://cf-media.sndcdn.com/by-id.mp3');
         });
 
         test('returns null when the lookup throws', async () => {
-            (scApiRequest as any).mockRejectedValueOnce(new Error('boom'));
+            scApiRequestSpy.mockRejectedValueOnce(new Error('boom'));
             expect(await provider.getStreamById('42')).toBeNull();
         });
     });

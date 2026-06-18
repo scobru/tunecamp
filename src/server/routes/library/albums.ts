@@ -9,7 +9,7 @@ import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../common/errors.js";
 import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
-import { metadataService } from "../../modules/catalog/metadata.service.js";
+import { metadataService as metadataServiceModule } from "../../modules/catalog/metadata.service.js";
 import { VisibilityProfile, VisibilityGuardian, Capability } from "../../common/visibility.js";
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -23,6 +23,7 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
     const library: ServiceContainer['library'] = (container as any).library || (container as any);
     const social: ServiceContainer['social'] = (container as any).social || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const metadataService = (container as any).metadataService || metadataServiceModule;
     const router = Router();
     router.use(express.json());
     router.use(invalidateListCacheOnMutation);

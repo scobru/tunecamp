@@ -1,19 +1,9 @@
-import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { metadataService } from '../metadata.service.js';
+import { AutoTaggerService } from '../autotagger.service.js';
 
-// We must use unstable_mockModule before any other imports in ESM
-jest.unstable_mockModule('../metadata.service.js', () => {
-    return {
-        metadataService: {
-            searchRecording: jest.fn()
-        }
-    };
-});
+const searchRecordingSpy = jest.spyOn(metadataService, 'searchRecording' as any);
 
-// Dynamic imports for mocked modules
-let AutoTaggerService: any;
-let metadataService: any;
-
-// Mock other dependencies
 const mockDb = {
     getTracks: jest.fn(),
 };
@@ -28,13 +18,6 @@ const mockOpenRouter = {
 
 describe('AutoTaggerService', () => {
     let autoTagger: any;
-
-    beforeAll(async () => {
-        const autotaggerModule = await import('../autotagger.service.js');
-        const metadataModule = await import('../metadata.service.js');
-        AutoTaggerService = autotaggerModule.AutoTaggerService;
-        metadataService = metadataModule.metadataService;
-    });
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -62,7 +45,7 @@ describe('AutoTaggerService', () => {
 
     test('auditTrack should return no_match when no metadata found', async () => {
         const track = { id: 1, title: 'Unknown Song', artist_name: 'Unknown Artist' } as any;
-        (metadataService.searchRecording as any).mockResolvedValue([]);
+        searchRecordingSpy.mockResolvedValue([] as any);
         const result = await autoTagger.auditTrack(track, { useAI: false });
 
         expect(result.status).toBe('no_match');
@@ -72,15 +55,15 @@ describe('AutoTaggerService', () => {
     test('auditTrack should repair track when high confidence match found', async () => {
         const track = { id: 1, title: 'Imagine', artist_name: 'John Lennon', genre: 'Library' } as any;
         const matches = [
-            { 
-                id: '123', 
-                title: 'Imagine', 
-                artist: 'John Lennon', 
-                genre: 'Rock', 
-                year: 1971 
+            {
+                id: '123',
+                title: 'Imagine',
+                artist: 'John Lennon',
+                genre: 'Rock',
+                year: 1971
             }
         ];
-        (metadataService.searchRecording as any).mockResolvedValue(matches);
+        searchRecordingSpy.mockResolvedValue(matches as any);
         (mockCatalogService.updateTrack as any).mockResolvedValue(undefined);
 
         const result = await autoTagger.auditTrack(track, { forceRepair: true });
@@ -96,7 +79,7 @@ describe('AutoTaggerService', () => {
 
     test('auditTrack should use AI when no provider match and useAI is true', async () => {
         const track = { id: 1, title: 'Obscure Song', artist_name: 'Obscure Artist' } as any;
-        (metadataService.searchRecording as any).mockResolvedValue([]);
+        searchRecordingSpy.mockResolvedValue([] as any);
         (mockOpenRouter.enrichMetadata as any).mockResolvedValue({
             genre: 'Electronic',
             year: 2024
@@ -119,8 +102,8 @@ describe('AutoTaggerService', () => {
         // @ts-ignore
         expect(autoTagger.isBetter('Unknown Artist', 'Pink Floyd')).toBe(true);
         // @ts-ignore
-        expect(autoTagger.isBetter('Electronic', 'Techno')).toBe(false); // Same length, not necessarily better
+        expect(autoTagger.isBetter('Electronic', 'Techno')).toBe(false);
         // @ts-ignore
-        expect(autoTagger.isBetter('Pop', 'Synthpop')).toBe(true); // Longer is considered better
+        expect(autoTagger.isBetter('Pop', 'Synthpop')).toBe(true);
     });
 });

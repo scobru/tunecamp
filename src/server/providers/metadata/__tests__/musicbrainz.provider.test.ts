@@ -1,13 +1,19 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
 jest.unstable_mockModule('node-fetch', () => ({
     default: jest.fn()
 }));
 
-const { default: fetch } = await import('node-fetch');
-const { MusicBrainzProvider } = await import('../musicbrainz.provider.js');
+let fetch: any;
+let MusicBrainzProvider: any;
+let provider: any;
 
-const provider = new MusicBrainzProvider();
+beforeAll(async () => {
+    ({ default: fetch } = await import('node-fetch'));
+    ({ MusicBrainzProvider } = await import('../musicbrainz.provider.js'));
+    provider = new MusicBrainzProvider();
+});
+
 
 beforeEach(() => {
     jest.clearAllMocks();

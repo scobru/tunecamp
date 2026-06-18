@@ -1,21 +1,9 @@
-import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globals';
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import { metadataService } from '../metadata.service.js';
+import { MaintenanceService } from '../maintenance.service.js';
 
-// We must use unstable_mockModule before any other imports in ESM
-jest.unstable_mockModule('../metadata.service.js', () => {
-    return {
-        metadataService: {
-            searchRecording: jest.fn(),
-            searchRelease: jest.fn(),
-            searchArtist: jest.fn(),
-        }
-    };
-});
+const searchRecordingSpy = jest.spyOn(metadataService, 'searchRecording' as any);
 
-// Dynamic imports are required for mocked modules in ESM
-let MaintenanceService: any;
-let metadataService: any;
-
-// Mock dependencies
 const mockDb = {
     getTracksByIds: jest.fn(),
     getTracksMissingMetadata: jest.fn(),
@@ -47,13 +35,6 @@ const mockAutotagger = {
 describe('MaintenanceService', () => {
     let maintenanceService: any;
 
-    beforeAll(async () => {
-        const maintenanceModule = await import('../maintenance.service.js');
-        const metadataModule = await import('../metadata.service.js');
-        MaintenanceService = maintenanceModule.MaintenanceService;
-        metadataService = metadataModule.metadataService;
-    });
-
     beforeEach(() => {
         jest.clearAllMocks();
         maintenanceService = new MaintenanceService(
@@ -77,7 +58,7 @@ describe('MaintenanceService', () => {
             albumTitle: 'New Album'
         };
         const track = { id: 1, artist_id: 10, owner_id: 100 };
-        
+
         (mockDb.getTrack as any).mockReturnValue(track);
         (mockDb.getAlbumByTitle as any).mockReturnValue(null);
         (mockDb.createAlbum as any).mockReturnValue(50);
@@ -96,7 +77,7 @@ describe('MaintenanceService', () => {
         const trackIds = [1];
         const tracks = [{ id: 1, title: 'Song', artist_name: 'Artist' }];
         (mockDb.getTracksByIds as any).mockReturnValue(tracks);
-        (metadataService.searchRecording as any).mockResolvedValue([]);
+        searchRecordingSpy.mockResolvedValue([] as any);
 
         const result = await maintenanceService.autofillMetadata(trackIds, { fields: ['genre'] });
 

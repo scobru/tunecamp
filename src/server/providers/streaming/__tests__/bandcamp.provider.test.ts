@@ -1,15 +1,10 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import * as bandcampUtils from '../../../utils/bandcamp.js';
+import { BANDCAMP_IMAGE_BASE } from '../../../utils/bandcamp.js';
+import { BandcampProvider } from '../bandcamp.provider.js';
 
-const IMG_BASE = 'https://img.bcbits.test';
-
-jest.unstable_mockModule('../../../utils/bandcamp.js', () => ({
-    searchBandcamp: jest.fn(),
-    extractBandcampMetadata: jest.fn(),
-    BANDCAMP_IMAGE_BASE: IMG_BASE,
-}));
-
-const { searchBandcamp, extractBandcampMetadata } = await import('../../../utils/bandcamp.js');
-const { BandcampProvider } = await import('../bandcamp.provider.js');
+const searchBandcampSpy = jest.spyOn(bandcampUtils, 'searchBandcamp' as any);
+const extractBandcampMetadataSpy = jest.spyOn(bandcampUtils, 'extractBandcampMetadata' as any);
 
 const provider = new BandcampProvider();
 
@@ -26,71 +21,71 @@ describe('BandcampProvider (streaming)', () => {
 
     describe('search', () => {
         test('maps track results into stream candidates', async () => {
-            (searchBandcamp as any).mockResolvedValueOnce([
+            searchBandcampSpy.mockResolvedValueOnce([
                 { url: 'https://a.bandcamp.com/track/x', name: 'X', band_name: 'Band', art_id: 9 },
-            ]);
+            ] as any);
             const [c] = await provider.search('x');
-            expect(searchBandcamp).toHaveBeenCalledWith('x', 't', 10);
-            expect(c).toEqual({
+            expect(searchBandcampSpy).toHaveBeenCalledWith('x', 't', 10);
+            expect(c).toMatchObject({
                 id: 'https://a.bandcamp.com/track/x',
                 title: 'X',
                 artist: 'Band',
                 provider: 'bandcamp',
-                thumbnail: `${IMG_BASE}/a0000000009_2.jpg`,
+                thumbnail: `${BANDCAMP_IMAGE_BASE}/a0000000009_2.jpg`,
                 meta: { url: 'https://a.bandcamp.com/track/x' },
             });
         });
 
         test('returns [] on error', async () => {
-            (searchBandcamp as any).mockRejectedValueOnce(new Error('down'));
+            searchBandcampSpy.mockRejectedValueOnce(new Error('down'));
             expect(await provider.search('q')).toEqual([]);
         });
     });
 
     describe('getStreamById', () => {
         test('returns the first track stream url from scraped metadata', async () => {
-            (extractBandcampMetadata as any).mockResolvedValueOnce({ tracks: [{ streamUrl: 'https://stream/1.mp3' }] });
+            extractBandcampMetadataSpy.mockResolvedValueOnce({ tracks: [{ streamUrl: 'https://stream/1.mp3' }] } as any);
             expect(await provider.getStreamById('https://a.bandcamp.com/track/x')).toBe('https://stream/1.mp3');
         });
 
         test('returns null when there are no tracks', async () => {
-            (extractBandcampMetadata as any).mockResolvedValueOnce({ tracks: [] });
+            extractBandcampMetadataSpy.mockResolvedValueOnce({ tracks: [] } as any);
             expect(await provider.getStreamById('url')).toBeNull();
         });
 
         test('returns null on error', async () => {
-            (extractBandcampMetadata as any).mockRejectedValueOnce(new Error('boom'));
+            extractBandcampMetadataSpy.mockRejectedValueOnce(new Error('boom'));
             expect(await provider.getStreamById('url')).toBeNull();
         });
     });
 
     describe('getStreamUrl', () => {
         test('prefers an exact title+artist match, then resolves its stream', async () => {
-            (searchBandcamp as any).mockResolvedValueOnce([
+            searchBandcampSpy.mockResolvedValueOnce([
                 { url: 'other', name: 'Other', band_name: 'Band' },
                 { url: 'exact', name: 'Song', band_name: 'Artist' },
-            ]);
-            (extractBandcampMetadata as any).mockResolvedValueOnce({ tracks: [{ streamUrl: 'https://stream/exact.mp3' }] });
+            ] as any);
+            extractBandcampMetadataSpy.mockResolvedValueOnce({ tracks: [{ streamUrl: 'https://stream/exact.mp3' }] } as any);
 
             const url = await provider.getStreamUrl('Song', 'Artist');
 
             expect(url).toBe('https://stream/exact.mp3');
-            expect(extractBandcampMetadata).toHaveBeenCalledWith('exact');
+            expect(extractBandcampMetadataSpy).toHaveBeenCalledWith('exact');
         });
 
         test('falls back to the first candidate when there is no exact match', async () => {
-            (searchBandcamp as any).mockResolvedValueOnce([
+            searchBandcampSpy.mockResolvedValueOnce([
                 { url: 'first', name: 'Different', band_name: 'Band' },
-            ]);
-            (extractBandcampMetadata as any).mockResolvedValueOnce({ tracks: [{ streamUrl: 'https://stream/first.mp3' }] });
+            ] as any);
+            extractBandcampMetadataSpy.mockResolvedValueOnce({ tracks: [{ streamUrl: 'https://stream/first.mp3' }] } as any);
 
             const url = await provider.getStreamUrl('Song', 'Artist');
             expect(url).toBe('https://stream/first.mp3');
-            expect(extractBandcampMetadata).toHaveBeenCalledWith('first');
+            expect(extractBandcampMetadataSpy).toHaveBeenCalledWith('first');
         });
 
         test('returns null when the search yields nothing', async () => {
-            (searchBandcamp as any).mockResolvedValueOnce([]);
+            searchBandcampSpy.mockResolvedValueOnce([] as any);
             expect(await provider.getStreamUrl('Song', 'Artist')).toBeNull();
         });
     });

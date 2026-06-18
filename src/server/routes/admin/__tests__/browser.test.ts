@@ -1,56 +1,44 @@
 import request from "supertest";
 import express from "express";
-import { jest } from '@jest/globals';
+import { jest, describe, test, expect, beforeAll, beforeEach } from '@jest/globals';
 import path from "path";
+import fsExtra from "fs-extra";
+import { createBrowserRoutes } from "../browser.js";
 
-// Mock fs-extra before importing the router
-jest.unstable_mockModule("fs-extra", () => ({
-    default: {
-        pathExists: jest.fn(),
-        stat: jest.fn(),
-        readdir: jest.fn(),
-        remove: jest.fn(),
-        move: jest.fn(),
-        createReadStream: jest.fn(),
-    }
-}));
-
-const fs = (await import("fs-extra")).default;
-const { createBrowserRoutes } = await import("../browser.js");
+const pathExistsSpy = jest.spyOn(fsExtra, 'pathExists' as any).mockResolvedValue(true as any);
+const statSpy = jest.spyOn(fsExtra, 'stat' as any).mockResolvedValue({ isDirectory: () => true, isFile: () => false, mtime: new Date(), size: 100 } as any);
+const readdirSpy = jest.spyOn(fsExtra, 'readdir' as any).mockResolvedValue([] as any);
+const removeSpy = jest.spyOn(fsExtra, 'remove' as any).mockResolvedValue(undefined as any);
+const moveSpy = jest.spyOn(fsExtra, 'move' as any).mockResolvedValue(undefined as any);
 
 describe("Browser Routes Security", () => {
     let app: any;
-    const musicDir = "/music"; // Simulate music directory
+    const musicDir = "/music";
 
     beforeEach(() => {
         app = express();
         app.use(express.json());
-        
+
         const mockDatabase = {
             updateTrackPathsPrefix: jest.fn()
         } as any;
-        
+
         app.use("/", createBrowserRoutes({
             musicDir,
             database: mockDatabase
         } as any));
         jest.clearAllMocks();
 
-        // Default mocks
-        (fs.pathExists as any).mockResolvedValue(true);
-        (fs.stat as any).mockResolvedValue({
-            isDirectory: () => true,
-            isFile: () => false,
-            mtime: new Date(),
-            size: 100
-        });
-        (fs.readdir as any).mockResolvedValue([]);
+        pathExistsSpy.mockResolvedValue(true as any);
+        statSpy.mockResolvedValue({ isDirectory: () => true, isFile: () => false, mtime: new Date(), size: 100 } as any);
+        readdirSpy.mockResolvedValue([] as any);
+        moveSpy.mockResolvedValue(undefined as any);
     });
 
     test("should allow valid relative path", async () => {
         const res = await request(app).get("/?path=subdir");
         expect(res.status).toBe(200);
-        expect(fs.pathExists).toHaveBeenCalledWith(path.resolve(musicDir, "subdir"));
+        expect(pathExistsSpy).toHaveBeenCalledWith(path.resolve(musicDir, "subdir"));
     });
 
     test("should reject path traversal using ..", async () => {
@@ -67,15 +55,14 @@ describe("Browser Routes Security", () => {
 
     test("should allow filenames containing .. if they resolve inside musicDir", async () => {
         const res = await request(app).get("/?path=My..Folder");
-        // Should succeed (200) with robust check
         expect(res.status).toBe(200);
-        expect(fs.pathExists).toHaveBeenCalledWith(path.resolve(musicDir, "My..Folder"));
+        expect(pathExistsSpy).toHaveBeenCalledWith(path.resolve(musicDir, "My..Folder"));
     });
 
     test("should allow renaming a file", async () => {
-        (fs.pathExists as any).mockImplementation((p: string) => {
-            if (p.endsWith("old.mp3")) return Promise.resolve(true); // Source exists
-            if (p.endsWith("new.mp3")) return Promise.resolve(false); // Dest doesn't exist
+        pathExistsSpy.mockImplementation((p) => {
+            if (String(p).endsWith("old.mp3")) return Promise.resolve(true);
+            if (String(p).endsWith("new.mp3")) return Promise.resolve(false);
             return Promise.resolve(false);
         });
 
@@ -84,20 +71,20 @@ describe("Browser Routes Security", () => {
             .send({ oldPath: "old.mp3", newPath: "new.mp3" });
 
         expect(res.status).toBe(200);
-        expect(fs.move).toHaveBeenCalledWith(
+        expect(moveSpy).toHaveBeenCalledWith(
             path.resolve(musicDir, "old.mp3"),
             path.resolve(musicDir, "new.mp3")
         );
     });
 
     test("should prevent renaming to existing file", async () => {
-        (fs.pathExists as any).mockResolvedValue(true); // Both exist
+        pathExistsSpy.mockResolvedValue(true as any);
 
         const res = await request(app)
             .put("/")
             .send({ oldPath: "old.mp3", newPath: "exists.mp3" });
 
         expect(res.status).toBe(409);
-        expect(fs.move).not.toHaveBeenCalled();
+        expect(moveSpy).not.toHaveBeenCalled();
     });
 });

@@ -1,13 +1,11 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import * as deezerUtils from '../../../utils/deezer.js';
+import { DeezerProvider } from '../deezer.playlist.js';
 
-jest.unstable_mockModule('../../../utils/deezer.js', () => ({
-    deezerClient: { getPlaylist: jest.fn(), searchTracks: jest.fn() },
-    isDeezerPlaylistUrl: jest.fn(),
-    extractDeezerPlaylistId: jest.fn(),
-}));
-
-const { deezerClient, isDeezerPlaylistUrl, extractDeezerPlaylistId } = await import('../../../utils/deezer.js');
-const { DeezerProvider } = await import('../deezer.playlist.js');
+const isDeezerPlaylistUrlSpy = jest.spyOn(deezerUtils, 'isDeezerPlaylistUrl' as any);
+const extractDeezerPlaylistIdSpy = jest.spyOn(deezerUtils, 'extractDeezerPlaylistId' as any);
+const getPlaylistSpy = jest.spyOn(deezerUtils.deezerClient, 'getPlaylist' as any);
+const searchTracksSpy = jest.spyOn(deezerUtils.deezerClient, 'searchTracks' as any);
 
 const provider = new DeezerProvider();
 
@@ -23,15 +21,15 @@ describe('DeezerProvider', () => {
     });
 
     test('canHandlePlaylist delegates to isDeezerPlaylistUrl', () => {
-        (isDeezerPlaylistUrl as any).mockReturnValueOnce(true);
+        isDeezerPlaylistUrlSpy.mockReturnValueOnce(true as any);
         expect(provider.canHandlePlaylist('https://deezer.com/playlist/1')).toBe(true);
-        expect(isDeezerPlaylistUrl).toHaveBeenCalledWith('https://deezer.com/playlist/1');
+        expect(isDeezerPlaylistUrlSpy).toHaveBeenCalledWith('https://deezer.com/playlist/1');
     });
 
     describe('fetchPlaylistByUrl', () => {
         test('resolves the id and maps the playlist tracks', async () => {
-            (extractDeezerPlaylistId as any).mockReturnValueOnce('908622995');
-            (deezerClient.getPlaylist as any).mockResolvedValueOnce({
+            extractDeezerPlaylistIdSpy.mockReturnValueOnce('908622995' as any);
+            getPlaylistSpy.mockResolvedValueOnce({
                 id: 908622995,
                 title: 'Hits',
                 description: 'Top hits',
@@ -46,11 +44,11 @@ describe('DeezerProvider', () => {
                         duration: 180,
                     }],
                 },
-            });
+            } as any);
 
             const playlist = await provider.fetchPlaylistByUrl('https://deezer.com/playlist/908622995');
 
-            expect(deezerClient.getPlaylist).toHaveBeenCalledWith('908622995');
+            expect(getPlaylistSpy).toHaveBeenCalledWith('908622995');
             expect(playlist).toEqual({
                 id: '908622995',
                 title: 'Hits',
@@ -68,8 +66,8 @@ describe('DeezerProvider', () => {
         });
 
         test('throws when the Deezer API returns an error', async () => {
-            (extractDeezerPlaylistId as any).mockReturnValueOnce('x');
-            (deezerClient.getPlaylist as any).mockResolvedValueOnce({ error: { message: 'Quota limit exceeded' } });
+            extractDeezerPlaylistIdSpy.mockReturnValueOnce('x' as any);
+            getPlaylistSpy.mockResolvedValueOnce({ error: { message: 'Quota limit exceeded' } } as any);
             await expect(provider.fetchPlaylistByUrl('https://deezer.com/playlist/x'))
                 .rejects.toThrow('Deezer: Quota limit exceeded');
         });
@@ -77,20 +75,20 @@ describe('DeezerProvider', () => {
 
     describe('searchRecording', () => {
         test('maps track search results', async () => {
-            (deezerClient.searchTracks as any).mockResolvedValueOnce({
+            searchTracksSpy.mockResolvedValueOnce({
                 data: [{ id: 9, title: 'T', artist: { name: 'A' }, album: { title: 'Al', cover_medium: 'https://img/c.jpg' } }],
-            });
+            } as any);
             const [r] = await provider.searchRecording('t');
             expect(r).toEqual({ id: '9', title: 'T', artist: 'A', album: 'Al', date: '', source: 'deezer', thumbnail: 'https://img/c.jpg' });
         });
 
         test('returns [] when there is no data array', async () => {
-            (deezerClient.searchTracks as any).mockResolvedValueOnce({});
+            searchTracksSpy.mockResolvedValueOnce({} as any);
             expect(await provider.searchRecording('t')).toEqual([]);
         });
 
         test('returns [] on error', async () => {
-            (deezerClient.searchTracks as any).mockRejectedValueOnce(new Error('boom'));
+            searchTracksSpy.mockRejectedValueOnce(new Error('boom'));
             expect(await provider.searchRecording('t')).toEqual([]);
         });
     });

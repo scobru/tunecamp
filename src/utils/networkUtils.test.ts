@@ -1,94 +1,79 @@
-import { jest, describe, test, expect, beforeAll } from '@jest/globals';
+import { jest, describe, test, expect, beforeAll, beforeEach } from '@jest/globals';
+import dns from 'dns';
+import * as networkUtils from './networkUtils.js';
 
-// Use unstable_mockModule for ESM
-jest.unstable_mockModule('dns', () => ({
-    default: {
-        lookup: jest.fn()
-    },
-    lookup: jest.fn() // For named import if used
-}));
+// Spy on dns.lookup so the real Node dns module is intercepted at the CJS layer.
+// jest.unstable_mockModule doesn't intercept Node built-ins compiled via ts-jest.
+const lookupSpy = jest.spyOn(dns, 'lookup') as jest.SpiedFunction<any>;
 
-// Dynamic import after mock
-const { isSafeUrl } = await import('./networkUtils.js');
-const dns = await import('dns');
+const setupLookup = () => {
+    lookupSpy.mockImplementation((hostname: string, options: any, callback: any) => {
+        const cb = typeof callback === 'function' ? callback : options;
+        if (hostname === 'public.com') {
+            cb(null, [{ address: '8.8.8.8', family: 4 }]);
+        } else if (hostname === 'private.com') {
+            cb(null, [{ address: '192.168.1.1', family: 4 }]);
+        } else if (hostname === 'mixed.com') {
+            cb(null, [{ address: '8.8.8.8', family: 4 }, { address: '10.0.0.1', family: 4 }]);
+        } else {
+            cb(new Error('Not found'));
+        }
+    });
+};
 
 describe('isSafeUrl', () => {
-    beforeAll(() => {
-        // Mock dns.lookup
-        // Depending on how it's imported (default vs named), we mock both in factory
-        // Here we access it via the imported module.
-        // Since we import * as dns or default, we need to check how it's structured.
-        // In networkUtils.ts: import dns from 'dns'; -> usage dns.lookup
-
-        const mockLookup = dns.default.lookup as unknown as any;
-
-        mockLookup.mockImplementation((hostname: string, options: any, callback: any) => {
-             // Handle both signature styles if needed, but we know we call with options
-             const cb = callback || options;
-
-             if (hostname === 'public.com') {
-                 cb(null, [{ address: '8.8.8.8', family: 4 }]);
-             } else if (hostname === 'private.com') {
-                 cb(null, [{ address: '192.168.1.1', family: 4 }]);
-             } else if (hostname === 'mixed.com') {
-                 cb(null, [{ address: '8.8.8.8', family: 4 }, { address: '10.0.0.1', family: 4 }]);
-             } else {
-                 cb(new Error('Not found'));
-             }
-        });
+    beforeEach(() => {
+        setupLookup();
     });
 
     test('allows public domains', async () => {
-        expect(await isSafeUrl('http://public.com')).toBe(true);
-        expect(await isSafeUrl('https://public.com/foo')).toBe(true);
+        expect(await networkUtils.isSafeUrl('http://public.com')).toBe(true);
+        expect(await networkUtils.isSafeUrl('https://public.com/foo')).toBe(true);
     });
 
     test('blocks private domains', async () => {
-        expect(await isSafeUrl('http://private.com')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://private.com')).toBe(false);
     });
 
     test('blocks mixed public/private domains', async () => {
-        expect(await isSafeUrl('http://mixed.com')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://mixed.com')).toBe(false);
     });
 
     test('blocks localhost', async () => {
-        expect(await isSafeUrl('http://localhost')).toBe(false);
-        expect(await isSafeUrl('http://localhost:3000')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://localhost')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://localhost:3000')).toBe(false);
     });
 
     test('blocks private IPs directly', async () => {
-        expect(await isSafeUrl('http://127.0.0.1')).toBe(false);
-        expect(await isSafeUrl('http://10.0.0.1')).toBe(false);
-        expect(await isSafeUrl('http://192.168.1.1')).toBe(false);
-        expect(await isSafeUrl('http://172.16.0.1')).toBe(false); // Lower bound
-        expect(await isSafeUrl('http://172.31.255.255')).toBe(false); // Upper bound
-        expect(await isSafeUrl('http://169.254.1.1')).toBe(false);
-        expect(await isSafeUrl('http://0.0.0.0')).toBe(false);
-
-        expect(await isSafeUrl('http://[::1]')).toBe(false);
-        expect(await isSafeUrl('http://[fe80::1]')).toBe(false);
-        expect(await isSafeUrl('http://[fc00::1]')).toBe(false);
-        expect(await isSafeUrl('http://[fd00::1]')).toBe(false); // Unique local
-
-        expect(await isSafeUrl('http://[::ffff:192.168.1.1]')).toBe(false);
-        expect(await isSafeUrl('http://[::ffff:127.0.0.1]')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://127.0.0.1')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://10.0.0.1')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://192.168.1.1')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://172.16.0.1')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://172.31.255.255')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://169.254.1.1')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://0.0.0.0')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://[::1]')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://[fe80::1]')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://[fc00::1]')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://[fd00::1]')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://[::ffff:192.168.1.1]')).toBe(false);
+        expect(await networkUtils.isSafeUrl('http://[::ffff:127.0.0.1]')).toBe(false);
     });
 
     test('allows public IPs directly', async () => {
-        expect(await isSafeUrl('http://8.8.8.8')).toBe(true);
-        expect(await isSafeUrl('http://1.1.1.1')).toBe(true);
-        expect(await isSafeUrl('http://172.15.255.255')).toBe(true); // Below range
-        expect(await isSafeUrl('http://172.32.0.0')).toBe(true); // Above range
+        expect(await networkUtils.isSafeUrl('http://8.8.8.8')).toBe(true);
+        expect(await networkUtils.isSafeUrl('http://1.1.1.1')).toBe(true);
+        expect(await networkUtils.isSafeUrl('http://172.15.255.255')).toBe(true);
+        expect(await networkUtils.isSafeUrl('http://172.32.0.0')).toBe(true);
     });
 
-
     test('blocks non-http schemes', async () => {
-        expect(await isSafeUrl('file:///etc/passwd')).toBe(false);
-        expect(await isSafeUrl('ftp://public.com')).toBe(false);
-        expect(await isSafeUrl('javascript:alert(1)')).toBe(false);
+        expect(await networkUtils.isSafeUrl('file:///etc/passwd')).toBe(false);
+        expect(await networkUtils.isSafeUrl('ftp://public.com')).toBe(false);
+        expect(await networkUtils.isSafeUrl('javascript:alert(1)')).toBe(false);
     });
 
     test('handles invalid URLs', async () => {
-        expect(await isSafeUrl('not-a-url')).toBe(false);
+        expect(await networkUtils.isSafeUrl('not-a-url')).toBe(false);
     });
 });

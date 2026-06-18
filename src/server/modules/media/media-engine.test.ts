@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, beforeAll } from '@jest/globals';
 import path from 'path';
 
 /**
@@ -46,7 +46,11 @@ const mockFs = {
 };
 jest.unstable_mockModule('fs-extra', () => ({ __esModule: true, default: mockFs }));
 
-const { MediaEngine } = await import('./media-engine.js');
+let MediaEngine: any;
+
+beforeAll(async () => {
+  ({ MediaEngine } = await import('./media-engine.js'));
+});
 
 const MUSIC_DIR = path.join('/srv', 'music');
 

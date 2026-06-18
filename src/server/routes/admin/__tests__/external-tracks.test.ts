@@ -1,24 +1,30 @@
-import { jest } from '@jest/globals';
+import { jest, beforeAll } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { UserRole, VisibilityProfile } from '../../../common/visibility.js';
 
-// Mock node-fetch
-const mockFetch = jest.fn() as any;
-jest.unstable_mockModule('node-fetch', () => ({
-    default: mockFetch
-}));
+// Mock node-fetch (global mock from __mocks__/node-fetch.ts is used automatically)
+// We need a reference to the mock fn for per-test setup
+import fetchMock from 'node-fetch';
+const mockFetch = fetchMock as any;
 
 // Mock isSafeUrl to avoid DNS query dependency
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
     isSafeUrl: jest.fn(async () => true)
 }));
 
-// Dynamically import code under test
-const { createAdminRoutes } = await import('../admin.js');
-const { createProxyRoutes } = await import('../../network/proxy.js');
-const { createDatabase } = await import('../../../core/database.js');
-const { createChatRoutes } = await import('../../api/chat.js');
+// Dynamically import after mocks are registered (jest.unstable_mockModule must precede import)
+let createAdminRoutes: any;
+let createProxyRoutes: any;
+let createDatabase: any;
+let createChatRoutes: any;
+
+beforeAll(async () => {
+    ({ createAdminRoutes } = await import('../admin.js'));
+    ({ createProxyRoutes } = await import('../../network/proxy.js'));
+    ({ createDatabase } = await import('../../../core/database.js'));
+    ({ createChatRoutes } = await import('../../api/chat.js'));
+});
 
 describe('External Tracks & Self-Healing Integration Test', () => {
     let app: express.Express;

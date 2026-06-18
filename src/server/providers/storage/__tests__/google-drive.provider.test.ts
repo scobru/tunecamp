@@ -1,14 +1,9 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import fsExtra from 'fs-extra';
+import { GoogleDriveStorageProvider } from '../google-drive.provider.js';
 
-// fs-extra is used for readFile/ensureDir; stub it so no real disk access happens.
-jest.unstable_mockModule('fs-extra', () => ({
-    default: {
-        readFile: jest.fn(async () => Buffer.from('audio-bytes')),
-        ensureDir: jest.fn(async () => {})
-    }
-}));
-
-const { GoogleDriveStorageProvider } = await import('../google-drive.provider.js');
+jest.spyOn(fsExtra, 'readFile' as any).mockResolvedValue(Buffer.from('audio-bytes') as any);
+jest.spyOn(fsExtra, 'ensureDir' as any).mockResolvedValue(undefined as any);
 
 const ADMIN_ID = 1;
 
@@ -23,6 +18,8 @@ function makeService(overrides: Record<string, any> = {}) {
 
 beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(fsExtra, 'readFile' as any).mockResolvedValue(Buffer.from('audio-bytes') as any);
+    jest.spyOn(fsExtra, 'ensureDir' as any).mockResolvedValue(undefined as any);
 });
 
 describe('GoogleDriveStorageProvider', () => {

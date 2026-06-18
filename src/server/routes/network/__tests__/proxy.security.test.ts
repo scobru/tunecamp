@@ -1,32 +1,16 @@
 import express from 'express';
 import request from 'supertest';
-import { jest } from '@jest/globals';
+import { jest, describe, it, expect, beforeAll } from '@jest/globals';
+import * as networkUtils from '../../../../utils/networkUtils.js';
+import { createProxyRoutes } from '../proxy.js';
 
-// Mock isSafeUrl to avoid real DNS queries which hang the tests
-jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
-    isSafeUrl: jest.fn<any>().mockImplementation(async (urlStr: string) => {
-        const url = new URL(urlStr);
-        if (['127.0.0.1', 'localhost', '10.0.0.5', '192.168.1.100', '[::1]'].includes(url.hostname)) return false;
-        if (!['http:', 'https:'].includes(url.protocol)) return false;
-        return true;
-    })
-}));
-
-// Mock node-fetch so we don't actually hit the network
-jest.unstable_mockModule('node-fetch', () => ({
-    default: jest.fn<any>().mockResolvedValue({
-        ok: true,
-        headers: {
-            get: jest.fn()
-        },
-        body: {
-            pipe: jest.fn((res: any) => res.end()),
-            on: jest.fn()
-        }
-    })
-}));
-
-const { createProxyRoutes } = await import('../proxy.js');
+jest.spyOn(networkUtils, 'isSafeUrl' as any).mockImplementation(async (urlStr) => {
+    let url;
+    try { url = new URL(urlStr); } catch { return false; }
+    if (['127.0.0.1', 'localhost', '10.0.0.5', '192.168.1.100', '[::1]'].includes(url.hostname)) return false;
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+    return true;
+});
 
 const app = express();
 app.use('/api/proxy', createProxyRoutes({} as any));

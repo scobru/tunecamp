@@ -1,11 +1,16 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
 jest.unstable_mockModule('node-fetch', () => ({
     default: jest.fn()
 }));
 
-const { default: fetch } = await import('node-fetch');
-const { ListenBrainzProvider } = await import('../listenbrainz.provider.js');
+let fetch: any;
+let ListenBrainzProvider: any;
+
+beforeAll(async () => {
+    ({ default: fetch } = await import('node-fetch'));
+    ({ ListenBrainzProvider } = await import('../listenbrainz.provider.js'));
+});
 
 function fakeDb(token: string | null) {
     return {

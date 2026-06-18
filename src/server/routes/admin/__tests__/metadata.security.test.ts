@@ -1,15 +1,10 @@
 import express from 'express';
 import request from 'supertest';
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import * as networkUtils from '../../../../utils/networkUtils.js';
+import { createMetadataRoutes } from '../metadata.js';
 
-// Mock isSafeUrl BEFORE importing the routes
-jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
-    isSafeUrl: jest.fn()
-}));
-
-// Dynamic imports
-const { createMetadataRoutes } = await import('../metadata.js');
-const { isSafeUrl } = await import('../../../../utils/networkUtils.js');
+const isSafeUrlSpy = jest.spyOn(networkUtils, 'isSafeUrl' as any);
 
 const mockDb = {
     getAlbum: jest.fn(),
@@ -35,7 +30,6 @@ describe('Metadata Security', () => {
         jest.clearAllMocks();
         app = express();
         app.use(express.json());
-        // Mock AuthenticatedRequest middleware
         app.use((req: any, res, next) => {
             req.isAdmin = true;
             next();
@@ -51,7 +45,7 @@ describe('Metadata Security', () => {
     });
 
     test('POST /api/metadata/apply should block unsafe coverUrl', async () => {
-        (isSafeUrl as jest.Mock<typeof isSafeUrl>).mockResolvedValue(false);
+        isSafeUrlSpy.mockResolvedValue(false as any);
         (mockDb.getAlbum as jest.Mock).mockReturnValue({ id: 1, title: 'Test Album' });
 
         const response = await request(app)
@@ -66,12 +60,9 @@ describe('Metadata Security', () => {
     });
 
     test('POST /api/metadata/apply should allow safe coverUrl', async () => {
-        (isSafeUrl as jest.Mock<typeof isSafeUrl>).mockResolvedValue(true);
+        isSafeUrlSpy.mockResolvedValue(true as any);
         (mockDb.getAlbum as jest.Mock).mockReturnValue({ id: 1, title: 'Test Album', cover_path: '/tmp/music/album/cover.jpg' });
         (mockDb.getTracks as jest.Mock).mockReturnValue([]);
-
-        // Mock fetch indirectly by making the directory non-existent or similar if we just want to test the guard
-        // In metadata.ts, if dir is not found, it proceeds without erroring on fetch.
 
         const response = await request(app)
             .post('/api/metadata/apply')
@@ -81,6 +72,6 @@ describe('Metadata Security', () => {
             });
 
         expect(response.status).toBe(200);
-        expect(isSafeUrl).toHaveBeenCalledWith('https://legit.com/cover.jpg');
+        expect(isSafeUrlSpy).toHaveBeenCalledWith('https://legit.com/cover.jpg');
     });
 });

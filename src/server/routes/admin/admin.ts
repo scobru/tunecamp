@@ -56,15 +56,22 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     router.use((req: AuthenticatedRequest, res, next) => {
         if (req.method !== 'GET') {
             const canManage = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
-            
+
             // Allow uploads for users with manage capability
             if (req.path.startsWith('/upload') && canManage) {
                 return next();
             }
-            
+
             // Allow integrations config for admins
             if (req.path.startsWith('/integrations') && canManage) {
                 return next();
+            }
+
+            // Allow artists to manage their own Stripe Connect account
+            const stripeOwnMatch = req.path.match(/^\/artists\/(\d+)\/stripe-connect/);
+            if (stripeOwnMatch && req.artistId) {
+                const pathArtistId = parseInt(stripeOwnMatch[1], 10);
+                if (req.artistId === pathArtistId) return next();
             }
 
             if (!canManage) {
@@ -1455,8 +1462,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
         return sKey ? new Stripe(sKey) : null;
     };
-    const canManageConnect = (req: AuthenticatedRequest): boolean =>
-        !!req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY);
+    const canManageConnect = (req: AuthenticatedRequest, artistId?: number): boolean => {
+        if (!req.context) return false;
+        if (VisibilityGuardian.can(req.context, Capability.MANAGE_PRIVATE_LIBRARY)) return true;
+        // Artists may manage their own Stripe connect account
+        return !!(artistId && req.artistId && req.artistId === artistId);
+    };
 
     /**
      * POST /api/admin/artists/:id/stripe-connect/onboard
@@ -1466,12 +1477,11 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      */
     router.post("/artists/:id/stripe-connect/onboard", async (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!canManageConnect(req)) return res.status(403).json({ error: "Access denied." });
-            const stripe = getStripe();
-            if (!stripe) return res.status(501).json({ error: "Stripe not configured on this server." });
-
             const artistId = parseInt(req.params.id, 10);
             if (!artistId || artistId < 0) return res.status(400).json({ error: "Invalid artist id." });
+            if (!canManageConnect(req, artistId)) return res.status(403).json({ error: "Access denied." });
+            const stripe = getStripe();
+            if (!stripe) return res.status(501).json({ error: "Stripe not configured on this server." });
             const artist: any = library.getArtistSimple(artistId);
             if (!artist) return res.status(404).json({ error: "Artist not found." });
 
@@ -1515,8 +1525,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      */
     router.get("/artists/:id/stripe-connect/status", async (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!canManageConnect(req)) return res.status(403).json({ error: "Access denied." });
             const artistId = parseInt(req.params.id, 10);
+            if (!canManageConnect(req, artistId)) return res.status(403).json({ error: "Access denied." });
             const artist: any = artistId ? library.getArtistSimple(artistId) : null;
             if (!artist) return res.status(404).json({ error: "Artist not found." });
             const accountId: string | null = artist.stripe_account_id || null;
@@ -1546,8 +1556,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      */
     router.delete("/artists/:id/stripe-connect", (req: AuthenticatedRequest, res: any) => {
         try {
-            if (!canManageConnect(req)) return res.status(403).json({ error: "Access denied." });
             const artistId = parseInt(req.params.id, 10);
+            if (!canManageConnect(req, artistId)) return res.status(403).json({ error: "Access denied." });
             const artist: any = artistId ? library.getArtistSimple(artistId) : null;
             if (!artist) return res.status(404).json({ error: "Artist not found." });
             library.setArtistStripeAccountId(artistId, null);

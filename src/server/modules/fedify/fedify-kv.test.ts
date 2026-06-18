@@ -1,41 +1,25 @@
-import { jest, describe, it, expect, beforeEach, beforeAll, afterEach } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import type { KvKey } from '@fedify/fedify';
+import { BetterSqliteKvStore } from './fedify-kv.js';
 
-// Mock better-sqlite3
-const mockExec = jest.fn();
-const mockPrepare = jest.fn();
-const mockGet = jest.fn();
-const mockRun = jest.fn();
+// better-sqlite3 is imported as `import type` only in fedify-kv.ts,
+// so no runtime dependency — we pass a plain mock object directly.
 
-const mockStmt = {
-    get: mockGet,
-    run: mockRun,
-};
-
-mockPrepare.mockReturnValue(mockStmt);
-
-jest.unstable_mockModule('better-sqlite3', () => {
-    return {
-        default: jest.fn().mockImplementation(() => ({
-            exec: mockExec,
-            prepare: mockPrepare,
-        })),
-    };
-});
+const k = (arr: string[]): KvKey => arr as unknown as KvKey;
 
 describe('BetterSqliteKvStore', () => {
-    let BetterSqliteKvStore: any;
-    let mockDb: any;
-    let store: any;
+    let mockExec: jest.Mock;
+    let mockGet: jest.Mock;
+    let mockRun: jest.Mock;
+    let mockPrepare: jest.Mock;
+    let store: BetterSqliteKvStore;
 
-    beforeAll(async () => {
-        const module = await import('./fedify-kv.js');
-        BetterSqliteKvStore = module.BetterSqliteKvStore;
-    });
-
-    beforeEach(async () => {
-        jest.clearAllMocks();
-        const BetterSqlite = (await import('better-sqlite3')).default;
-        mockDb = new BetterSqlite();
+    beforeEach(() => {
+        mockGet = jest.fn();
+        mockRun = jest.fn();
+        mockPrepare = jest.fn().mockReturnValue({ get: mockGet, run: mockRun });
+        mockExec = jest.fn();
+        const mockDb: any = { exec: mockExec, prepare: mockPrepare };
         store = new BetterSqliteKvStore(mockDb, 'test_kv');
     });
 
@@ -49,7 +33,7 @@ describe('BetterSqliteKvStore', () => {
 
     describe('set', () => {
         it('should store a value without TTL', async () => {
-            const key = ['user', 1];
+            const key = k(['user', '1']);
             const value = { name: 'Alice' };
 
             await store.set(key, value);
@@ -63,7 +47,7 @@ describe('BetterSqliteKvStore', () => {
         });
 
         it('should store a value with TTL', async () => {
-            const key = ['session', 'abc'];
+            const key = k(['session', 'abc']);
             const value = 'data';
             const ttl = {
                 total: jest.fn().mockReturnValue(3600000)
@@ -86,13 +70,13 @@ describe('BetterSqliteKvStore', () => {
         it('should return undefined for non-existent key', async () => {
             mockGet.mockReturnValue(undefined);
 
-            const result = await store.get(['missing']);
+            const result = await store.get(k(['missing']));
 
             expect(result).toBeUndefined();
         });
 
         it('should return stored value if not expired', async () => {
-            const key = ['test'];
+            const key = k(['test']);
             const value = { foo: 'bar' };
             mockGet.mockReturnValue({
                 value: JSON.stringify(value),
@@ -105,7 +89,7 @@ describe('BetterSqliteKvStore', () => {
         });
 
         it('should return undefined and delete if expired', async () => {
-            const key = ['expired'];
+            const key = k(['expired']);
             const now = 2000000;
             jest.spyOn(Date, 'now').mockReturnValue(now);
 
@@ -127,7 +111,7 @@ describe('BetterSqliteKvStore', () => {
                 expires_at: null
             });
 
-            const result = await store.get(['bad-json']);
+            const result = await store.get(k(['bad-json']));
 
             expect(result).toBeUndefined();
         });
@@ -135,7 +119,7 @@ describe('BetterSqliteKvStore', () => {
 
     describe('delete', () => {
         it('should delete a key', async () => {
-            const key = ['to-delete'];
+            const key = k(['to-delete']);
 
             await store.delete(key);
 

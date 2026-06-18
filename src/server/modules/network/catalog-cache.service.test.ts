@@ -1,11 +1,15 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import Database from 'better-sqlite3';
 
 jest.unstable_mockModule('../../../utils/networkUtils.js', () => ({
     isSafeUrl: jest.fn<any>().mockResolvedValue(true)
 }));
 
-const { createCatalogCacheService } = await import('./catalog-cache.service.js');
+let createCatalogCacheService: any;
+
+beforeAll(async () => {
+    ({ createCatalogCacheService } = await import('./catalog-cache.service.js'));
+});
 
 const SITE = { url: 'https://peer.example.com', name: 'Peer' };
 

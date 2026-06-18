@@ -40,7 +40,11 @@ jest.unstable_mockModule("node-fetch", () => ({
   }),
 }));
 
-const { createImportRoutes } = await import("../import.js");
+let createImportRoutes: any;
+
+beforeAll(async () => {
+    ({ createImportRoutes } = await import("../import.js"));
+});
 
 describe("Import Routes Security", () => {
   let app: express.Express;

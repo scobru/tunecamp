@@ -11,8 +11,8 @@ import { createRequire } from "module";
 import { isNonFatalError } from "./common/errors.js";
 import type { ServiceContainer } from "./core/container.js";
 
-const require = createRequire(import.meta.url);
-const pkg = require("../../package.json");
+const _require = createRequire(import.meta.url);
+const pkg = _require("../../package.json");
 
 // Global crash protection for async modules
 process.on('uncaughtException', (err: any) => {
@@ -110,8 +110,8 @@ import { createRssService } from "./modules/network/rss.service.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
 
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const _serverFilename = fileURLToPath(import.meta.url);
+const _serverDirname = path.dirname(_serverFilename);
 
 export async function startServer(config: ServerConfig): Promise<void> {
     const app = express();
@@ -362,7 +362,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     });
     app.use("/api/payments", createPaymentsRoutes(container));
 
-    const webappPath = path.join(__dirname, "..", "..", "webapp");
+    const webappPath = path.join(_serverDirname, "..", "..", "webapp");
     const webappDistPath = path.join(webappPath, "dist");
     const webappPublicPath = path.join(webappPath, "public");
 

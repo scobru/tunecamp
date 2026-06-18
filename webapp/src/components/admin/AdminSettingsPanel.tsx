@@ -14,6 +14,7 @@ export const AdminSettingsPanel = () => {
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [imageCacheBust, setImageCacheBust] = useState(() => Date.now());
   const { signer, isConnected } = useWalletStore();
   const activeSigner = signer;
   const isReady = isConnected;
@@ -191,6 +192,7 @@ export const AdminSettingsPanel = () => {
       setBgFile(null);
       setCoverFile(null);
       setLogoFile(null);
+      setImageCacheBust(Date.now());
       // Refresh settings to get new bg url if needed
       API.getAdminSettings().then(setSettings);
     } catch (e: any) {
@@ -688,13 +690,19 @@ export const AdminSettingsPanel = () => {
               <div className="flex flex-wrap gap-4 mt-2">
                 {settings.backgroundImage && (
                   <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
-                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.backgroundImage})` }}></div>
+                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.backgroundImage}?t=${imageCacheBust})` }}></div>
                     <span className="truncate">Background: {settings.backgroundImage}</span>
+                  </div>
+                )}
+                {settings.coverImage && (
+                  <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
+                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.coverImage}?t=${imageCacheBust})` }}></div>
+                    <span className="truncate">Node Cover: {settings.coverImage}</span>
                   </div>
                 )}
                 {settings.siteLogo && (
                   <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
-                    <div className="w-8 h-8 rounded bg-contain bg-center bg-no-repeat shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.siteLogo})` }}></div>
+                    <div className="w-8 h-8 rounded bg-contain bg-center bg-no-repeat shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.siteLogo}?t=${imageCacheBust})` }}></div>
                     <span className="truncate">Site Logo: {settings.siteLogo}</span>
                   </div>
                 )}

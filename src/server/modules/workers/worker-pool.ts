@@ -8,11 +8,11 @@ import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const _workerFilename = fileURLToPath(import.meta.url);
+const _workerDirname = path.dirname(_workerFilename);
 
 // Resolve the compiled worker path (dist output)
-const WORKER_PATH = path.join(__dirname, 'heavy-task.worker.js');
+const WORKER_PATH = path.join(_workerDirname, 'heavy-task.worker.js');
 
 interface QueuedTask {
     workerData: any;

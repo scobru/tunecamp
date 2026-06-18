@@ -1,14 +1,19 @@
 import { Router, Request, Response } from "express";
 import path from "path";
 import fs from "fs-extra";
-import { createRequire } from "module";
+import { readFileSync } from "fs";
 import type { ServiceContainer } from "../../core/container.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
 import { create } from "xmlbuilder2";
 import { getSiteHandle } from "../../core/site-actor.js";
 
-const require = createRequire(import.meta.url);
-const pkg = require("../../../../package.json");
+// Read package.json using process.cwd() so this works in both ESM and CJS (Jest)
+let pkg: { version: string } = { version: '0.0.0' };
+try {
+    pkg = JSON.parse(readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+} catch {
+    // fallback: version stays '0.0.0'
+}
 
 export function createMiscRoutes(container: ServiceContainer): Router {
     const router = Router();

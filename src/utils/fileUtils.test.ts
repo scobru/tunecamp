@@ -1,34 +1,27 @@
-import { jest, describe, test, expect } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import path from 'path';
+import fsExtra from 'fs-extra';
+import * as fileUtils from './fileUtils.js';
 
-// Use unstable_mockModule for ESM
-jest.unstable_mockModule('fs-extra', () => ({
-    default: {
-        access: jest.fn(),
-    }
-}));
-
-let fileUtils: any;
-let fs: any;
-
-beforeAll(async () => {
-    fileUtils = await import('./fileUtils.js');
-    fs = (await import('fs-extra')).default;
-});
+const accessSpy = jest.spyOn(fsExtra, 'access' as any);
 
 describe('fileExists', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     test('should return true if file exists', async () => {
-        (fs.access as any).mockResolvedValue(undefined);
+        accessSpy.mockResolvedValue(undefined as any);
         const exists = await fileUtils.fileExists('path/to/existing/file.txt');
         expect(exists).toBe(true);
-        expect(fs.access).toHaveBeenCalledWith('path/to/existing/file.txt');
+        expect(accessSpy).toHaveBeenCalledWith('path/to/existing/file.txt');
     });
 
     test('should return false if file does not exist', async () => {
-        (fs.access as any).mockRejectedValue(new Error('File not found'));
+        accessSpy.mockRejectedValue(new Error('File not found') as any);
         const exists = await fileUtils.fileExists('path/to/non-existing/file.txt');
         expect(exists).toBe(false);
-        expect(fs.access).toHaveBeenCalledWith('path/to/non-existing/file.txt');
+        expect(accessSpy).toHaveBeenCalledWith('path/to/non-existing/file.txt');
     });
 });
 
@@ -67,12 +60,10 @@ describe('createSlug', () => {
         expect(fileUtils.createSlug('!hello!')).toBe('hello');
         expect(fileUtils.createSlug('_leading_and_trailing_')).toBe('leading-and-trailing');
     });
-
 });
 
 describe('getRelativePath', () => {
     test('should return relative path and normalize backslashes', () => {
-        // We use path.relative which is platform dependent, but the code replaces backslashes
         const result = fileUtils.getRelativePath('/app/src', '/app/src/utils/file.ts');
         expect(result).toBe('utils/file.ts');
     });
@@ -93,21 +84,16 @@ describe('getRelativePath', () => {
     });
 
     test('should normalize paths containing existing backslashes', () => {
-        // Simulating a Windows-style path input or intermediate state
         const result = fileUtils.getRelativePath('/app/src', '/app/src/utils\\file.ts');
         expect(result).toBe('utils/file.ts');
     });
-
 });
-
 
 describe('resolveSafePath', () => {
     const rootDir = '/app/music';
 
     test('should resolve a valid relative path', () => {
         const result = fileUtils.resolveSafePath(rootDir, 'artist/album/song.mp3');
-        // path.resolve is platform specific, but we test absolute resolution
-        // The resolved path should end with the relative path
         expect(result?.endsWith(path.normalize('artist/album/song.mp3'))).toBe(true);
         expect(result?.includes(path.resolve(rootDir))).toBe(true);
     });
@@ -139,13 +125,6 @@ describe('resolveSafePath', () => {
     });
 
     test('should return null for absolute paths attempting to escape', () => {
-        // Even if we strip leading slashes, path.resolve might treat a path differently if it's constructed weirdly.
-        // But let's test absolute paths directly escaping root via `..`
-        const result = fileUtils.resolveSafePath(rootDir, '/etc/passwd');
-        // Because of the stripping logic: `relativePath` becomes `etc/passwd`,
-        // which resolves to `/app/music/etc/passwd`, which is safe.
-        // Wait, is it safe? Yes, because it's forced into the root dir.
-        // Let's test actual traversal.
         expect(fileUtils.resolveSafePath(rootDir, '../../etc/passwd')).toBeNull();
     });
 

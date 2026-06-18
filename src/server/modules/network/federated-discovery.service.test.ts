@@ -1,11 +1,15 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
 import Database from 'better-sqlite3';
 
 jest.unstable_mockModule('../../../utils/networkUtils.js', () => ({
     isSafeUrl: jest.fn<any>().mockResolvedValue(true)
 }));
 
-const { createFederatedDiscoveryService } = await import('./federated-discovery.service.js');
+let createFederatedDiscoveryService: any;
+
+beforeAll(async () => {
+    ({ createFederatedDiscoveryService } = await import('./federated-discovery.service.js'));
+});
 
 interface PeerCfg { software: string; name: string; peers?: string[]; }
 
