@@ -57,6 +57,18 @@ function canPublish(req: any): boolean {
 }
 
 /**
+ * Per-item ownership gate for a release. Centralizes the owner/artist check so
+ * a Listener promoted to Artist can manage releases linked to their artist
+ * profile even when an admin/import created them without an explicit owner.
+ */
+function canManageRelease(req: any, release: { owner_id?: number | null; artist_id?: number | null }): boolean {
+    return VisibilityGuardian.canManageItem(
+        { userId: req.userId, artistId: req.artistId, role: req.role },
+        release
+    );
+}
+
+/**
  * The release category lives on the `type` column (album | single | ep | liveset | podcast).
  * `product_type` (music | podcast) is kept as a derived field for backward compatibility
  * with the podcast RSS feeds and the Subsonic podcast channel. This keeps both in sync
@@ -341,7 +353,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
         const release = library.getRelease(id);
         if (!release) throw new NotFoundError("Release not found");
 
-        if (!req.isAdmin && release.owner_id !== req.userId) throw new ForbiddenError("Access denied");
+        if (!canManageRelease(req, release)) throw new ForbiddenError("Access denied");
 
         const body = req.body;
 
@@ -374,7 +386,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
         const release = library.getRelease(id);
         if (!release) throw new NotFoundError("Release not found");
 
-        if (!req.isAdmin && release.owner_id !== req.userId) throw new ForbiddenError("Access denied");
+        if (!canManageRelease(req, release)) throw new ForbiddenError("Access denied");
 
         try {
             if (release.published_to_ap) {

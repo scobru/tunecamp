@@ -120,6 +120,44 @@ export class VisibilityGuardian {
   }
 
   /**
+   * Broad gate for catalog write routes: "may this viewer create or manage
+   * catalog content at all?". This is the single source of truth for the
+   * coarse endpoint guards (POST/PUT/DELETE on tracks, albums, releases).
+   *
+   * It unions two paths so the role↔artist overload no longer leaks bugs:
+   *  - Curators/Managers/Admins (MANAGE_PRIVATE_LIBRARY) can always write,
+   *    even without a personal artist profile.
+   *  - Anyone with a linked artist profile (incl. a Listener promoted to
+   *    Artist while keeping the `user` role) can publish their own content.
+   */
+  static canWriteContent(context: ViewerContext): boolean {
+    return this.can(context, Capability.MANAGE_PRIVATE_LIBRARY) ||
+      this.canPublishContent(context);
+  }
+
+  /**
+   * Per-item ownership gate: "may this viewer manage THIS specific catalog
+   * item (track / album / release)?". Centralizes the owner/artist checks
+   * that were previously duplicated (and occasionally wrong) across routes.
+   *
+   *  - Managers/Root Admins (MANAGE_ALL_CONTENT) manage everything.
+   *  - The direct owner (item.owner_id === userId) manages their content.
+   *  - A linked Artist manages content carrying their artist_id when it has
+   *    no explicit owner (legacy/imported content), so a Listener promoted to
+   *    Artist isn't locked out of releases linked to them by an admin/import.
+   */
+  static canManageItem(
+    context: ViewerContext,
+    item: { owner_id?: number | null; artist_id?: number | null }
+  ): boolean {
+    if (this.can(context, Capability.MANAGE_ALL_CONTENT)) return true;
+    if (context.userId != null && item.owner_id === context.userId) return true;
+    if (context.artistId != null && item.owner_id == null &&
+        item.artist_id === context.artistId) return true;
+    return false;
+  }
+
+  /**
    * Checks if a viewer has a specific capability.
    */
   static can(context: ViewerContext, capability: Capability): boolean {

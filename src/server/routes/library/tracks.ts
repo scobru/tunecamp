@@ -77,7 +77,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * Get pricing data for all tracks owned by the current user
      */
     router.get("/pricing/batch", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.isSuperUser && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
 
         const isRoot = req.isRootAdmin || req.isSuperUser;
         let tracksToSync: any[] = [];
@@ -116,7 +116,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * Create a new track (usually for external links)
      */
     router.post("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
 
         const { title, albumId, artistId: bodyArtistId, trackNum, url, service, externalArtwork, duration, lyrics, currency, priceUsdc } = req.body;
@@ -158,7 +158,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * GET /api/tracks/search-metadata
      */
     router.get("/search-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         const query = req.query.q as string;
         if (!query) throw new BadRequestError("Query required");
         res.json(await metadataService.searchRecording(query));
@@ -168,7 +168,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * PUT /api/tracks/batch
      */
     router.put("/batch", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         const { trackIds, data } = req.body;
         if (!Array.isArray(trackIds) || trackIds.length === 0) throw new BadRequestError("trackIds required");
         
@@ -186,7 +186,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * DELETE /api/tracks/batch
      */
     router.delete("/batch", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         const { trackIds, deleteFiles } = req.body;
         if (!Array.isArray(trackIds) || trackIds.length === 0) throw new BadRequestError("trackIds required");
         
@@ -388,7 +388,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * GET /api/tracks/:id/metadata
      */
     router.get("/:id(*)/metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         const idParam = req.params.id as string;
         let track;
         if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
@@ -423,7 +423,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * POST /api/tracks/:id/match-metadata
      */
     router.post("/:id(*)/match-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         const idParam = req.params.id as string;
         let track;
         if (idParam.startsWith("ext:")) track = library.getTrackByExternalId(idParam);
@@ -433,8 +433,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         }
 
         if (!track) throw new NotFoundError("Track not found");
-        const isRoot = req.isRootAdmin;
-        if (!isRoot && !req.isAdmin && track.owner_id !== req.artistId) throw new ForbiddenError("Access denied");
+        if (!req.context || !VisibilityGuardian.canManageItem(req.context, track)) throw new ForbiddenError("Access denied");
 
         const { title, artist, albumTitle, coverUrl, genre, year } = req.body;
         try {
@@ -589,7 +588,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * PUT /api/tracks/:id
      */
     router.put("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
         const idParam = req.params.id as string;
         let track;
@@ -599,9 +598,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             if (!isNaN(id)) track = library.getTrack(id);
         }
         if (!track) throw new NotFoundError("Track not found");
-        const isRoot = req.isRootAdmin;
-        const isOwner = isRoot || req.isAdmin || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
-        if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
+        if (!VisibilityGuardian.canManageItem(req.context, track)) throw new ForbiddenError("Access denied");
 
         if (!req.body || typeof req.body !== "object") throw new BadRequestError("Request body is required");
 
@@ -613,7 +610,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      * DELETE /api/tracks/:id
      */
     router.delete("/:id(*)", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         if (!req.isAdmin && !req.isActive) throw new ForbiddenError("Account not active");
         const idParam = req.params.id as string;
         let track;
@@ -623,9 +620,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             if (!isNaN(id)) track = library.getTrack(id);
         }
         if (!track) throw new NotFoundError("Track not found");
-        const isRoot = req.isRootAdmin;
-        const isOwner = isRoot || req.isAdmin || track.owner_id === req.userId || (track.owner_id === null && track.artist_id === req.artistId);
-        if (!isRoot && !isOwner) throw new ForbiddenError("Access denied");
+        if (!VisibilityGuardian.canManageItem(req.context, track)) throw new ForbiddenError("Access denied");
 
         const deleteFile = req.query.deleteFile === "true";
         await catalogService.deleteTrack(track.id, deleteFile);

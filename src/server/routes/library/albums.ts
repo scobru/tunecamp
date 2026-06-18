@@ -158,13 +158,13 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
      * Manually promote a library album to a formal release
      */
     router.post("/:id/promote", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.isSuperUser && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
 
         const id = parseInt(req.params.id as string, 10);
         const album = library.getAlbum(id);
         if (!album) throw new NotFoundError("Album not found");
 
-        if (!req.isAdmin && album.owner_id !== req.userId) throw new ForbiddenError("Access denied");
+        if (!VisibilityGuardian.canManageItem(req.context, album)) throw new ForbiddenError("Access denied");
 
         await catalogService.promoteToRelease(id);
         res.json({ success: true, message: "Album promoted to release" });
@@ -190,7 +190,7 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
      * GET /api/albums/search-metadata
      */
     router.get("/search-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
         const query = req.query.q as string;
         if (!query) throw new BadRequestError("Query required");
         res.json(await metadataService.searchRelease(query));
@@ -200,7 +200,7 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
      * POST /api/albums/:id/match-metadata
      */
     router.post("/:id/match-metadata", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        if (!req.isAdmin && !req.artistId && req.userId === undefined) throw new ForbiddenError("Unauthorized");
+        if (!req.context || !VisibilityGuardian.canWriteContent(req.context)) throw new ForbiddenError("Unauthorized");
 
         const idParam = req.params.id as string;
         const albumId = parseInt(idParam, 10);
@@ -209,7 +209,7 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
         const album = library.getAlbum(albumId) || library.getRelease(albumId);
         if (!album) throw new NotFoundError("Album not found");
 
-        if (!req.isAdmin && album.owner_id !== req.userId) {
+        if (!VisibilityGuardian.canManageItem(req.context, album)) {
             throw new ForbiddenError("Access denied");
         }
 
