@@ -101,6 +101,21 @@ While plugins are designed to be decoupled, you can occasionally access internal
 import { database } from '../dist/server/core/database.js'; // Use with caution
 ```
 
+## Lifecycle Hooks
+
+A provider may optionally implement `onEnable()` and `onDisable()`:
+
+```javascript
+async onEnable()  { /* open connections, warm caches, etc. */ }
+async onDisable() { /* clean up */ }
+```
+
+These run when the plugin is enabled/disabled — at load time (honoring the
+last persisted state) and whenever an admin flips the toggle in the Admin Panel.
+A plugin disabled by an admin stays disabled across restarts.
+
 ## Admin Panel
 
-You can see all active providers and their versions in the **Admin Panel > Plugins** section of the TuneCamp web interface.
+You can see all loaded providers, their versions and enabled status — and toggle
+them on/off — in the **Admin Panel → Integrations** section of the TuneCamp web
+interface (root admin only).

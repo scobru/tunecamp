@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import API from '../services/api';
 import { Link } from 'react-router-dom';
 import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucide-react';
 import type { Artist, User as AppUser } from '../types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useConfigStore } from '../stores/useConfigStore';
+import { useArtists, queryKeys } from '../hooks/queries';
 import { notify } from '../utils/notify';
 import clsx from 'clsx';
 
 const Artists = () => {
     const { cacheBuster } = useConfigStore();
-    const [artists, setArtists] = useState<Artist[]>([]);
+    const queryClient = useQueryClient();
+    const { data: artists = [], isLoading: loading } = useArtists();
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-    const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -20,11 +22,6 @@ const Artists = () => {
         API.getCurrentUser()
             .then(setCurrentUser)
             .catch(console.error);
-
-        API.getArtists()
-            .then(setArtists)
-            .catch(console.error)
-            .finally(() => setLoading(false));
     }, []);
 
     const handleEdit = (e: React.MouseEvent, artist: Artist) => {
@@ -40,7 +37,7 @@ const Artists = () => {
         
         try {
             await API.deleteArtist(artist.id.toString());
-            setArtists(prev => prev.filter(a => a.id !== artist.id));
+            queryClient.setQueryData<Artist[]>(queryKeys.artists, prev => (prev ?? []).filter(a => a.id !== artist.id));
         } catch (error: any) {
             notify.error(error, 'Failed to delete artist. They might still have releases, albums, or tracks attached.');
         }
@@ -57,7 +54,7 @@ const Artists = () => {
             } else {
                 await API.unstarArtist(artist.id);
             }
-            setArtists(prev => prev.map(a => 
+            queryClient.setQueryData<Artist[]>(queryKeys.artists, prev => (prev ?? []).map(a =>
                 a.id === artist.id ? { ...a, starred: newStatus } : a
             ));
         } catch (error) {

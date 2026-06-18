@@ -8,6 +8,7 @@ import type { Album, Release, Track, TrackDTO, AlbumDTO } from "../../core/datab
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
+import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 
 // Set ffmpeg path
 if (ffmpegPath) {
@@ -38,6 +39,7 @@ export function createTracksRoutes(container: ServiceContainer): Router {
 
     const router = Router();
     router.use(express.json());
+    router.use(invalidateListCacheOnMutation);
 
     /**
      * GET /api/tracks
@@ -45,17 +47,18 @@ export function createTracksRoutes(container: ServiceContainer): Router {
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
         const showMine = req.query.mine === 'true';
-        const tracks = await discoveryService.getTracksForUser(
-            { 
-                userId: req.userId, 
+        // Visibility depends on the full caller context; mineOnly forks the list.
+        const scopeKey = `tracks:r${req.role ?? "-"}:u${req.userId ?? "-"}:a${req.artistId ?? "-"}:act${req.isActive ? 1 : 0}:n${req.username ?? "anon"}:mine${showMine ? 1 : 0}`;
+        await serveCachedList(req, res, scopeKey, () => discoveryService.getTracksForUser(
+            {
+                userId: req.userId,
                 artistId: req.artistId,
-                role: req.role, 
+                role: req.role,
                 isActive: req.isActive,
-                username: req.username 
+                username: req.username
             },
             { mineOnly: showMine }
-        );
-        res.json(tracks);
+        ));
     }));
 
     /**

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { formatDuration } from "../utils/format";
 import type { Track, Album, Artist, Release } from "../types";
+import { useTracks, useAlbums, useReleases, useArtists, queryKeys } from "../hooks/queries";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -21,51 +23,54 @@ import clsx from "clsx";
 const Favorites = () => {
   const { isAuthenticated, isInitializing } = useAuthStore();
   const { playTrack } = usePlayerStore();
+  const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<"tracks" | "albums" | "artists">(
     "tracks"
   );
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [albums, setAlbums] = useState<(Album | Release)[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    refreshData();
-  }, [isAuthenticated]);
+  // Reuse the shared catalog caches; favorites are just the starred subset.
+  const tracksQuery = useTracks({ enabled: isAuthenticated });
+  const albumsQuery = useAlbums({ enabled: isAuthenticated });
+  const releasesQuery = useReleases({ enabled: isAuthenticated });
+  const artistsQuery = useArtists({ enabled: isAuthenticated });
 
-  const refreshData = () => {
-    if (isAuthenticated) {
-      setLoading(true);
-      Promise.all([
-        API.getTracks().catch(() => []),
-        API.getAlbums().catch(() => []),
-        API.getReleases().catch(() => []),
-        API.getArtists().catch(() => []),
-      ])
-        .then(([allTracks, allAlbums, allReleases, allArtists]) => {
-          setTracks(allTracks.filter((t) => t.starred));
-          // Merge regular albums and formal releases
-          const mergedAlbums = [...allAlbums, ...allReleases];
-          const uniqueAlbums = Array.from(new Map(mergedAlbums.map(a => [String(a.id), a])).values());
-          setAlbums(uniqueAlbums.filter((a) => a.starred) as (Album | Release)[]);
-          setArtists(allArtists.filter((a) => a.starred) as Artist[]);
-        })
-        .finally(() => setLoading(false));
-    }
-  };
+  const loading =
+    isAuthenticated &&
+    (tracksQuery.isLoading || albumsQuery.isLoading || releasesQuery.isLoading || artistsQuery.isLoading);
+
+  const tracks = useMemo(
+    () => (tracksQuery.data ?? []).filter((t) => t.starred),
+    [tracksQuery.data]
+  );
+  const albums = useMemo(() => {
+    // Merge regular albums and formal releases, dedupe, then keep starred.
+    const merged = [...(albumsQuery.data ?? []), ...(releasesQuery.data ?? [])];
+    const unique = Array.from(new Map(merged.map(a => [String(a.id), a])).values());
+    return unique.filter((a) => a.starred) as (Album | Release)[];
+  }, [albumsQuery.data, releasesQuery.data]);
+  const artists = useMemo(
+    () => (artistsQuery.data ?? []).filter((a) => a.starred),
+    [artistsQuery.data]
+  );
 
   const handleUnstar = async (type: 'track' | 'album' | 'artist', id: string | number) => {
     try {
+      // Clear the starred flag in the source cache; the memoized lists above
+      // drop the item automatically and other pages stay in sync.
+      const clearStar = <T extends { id: string | number; starred?: boolean }>(key: readonly unknown[]) =>
+        queryClient.setQueryData<T[]>(key, prev => (prev ?? []).map(it => it.id === id ? { ...it, starred: false } : it));
+
       if (type === 'track') {
         await API.unstarTrack(id);
-        setTracks(prev => prev.filter(t => t.id !== id));
+        clearStar<Track>(queryKeys.tracks(false));
       } else if (type === 'album') {
         await API.unstarAlbum(id);
-        setAlbums(prev => prev.filter(a => a.id !== id));
+        clearStar<Album>(queryKeys.albums);
+        clearStar<Release>(queryKeys.releases);
       } else if (type === 'artist') {
         await API.unstarArtist(id);
-        setArtists(prev => prev.filter(a => a.id !== id));
+        clearStar<Artist>(queryKeys.artists);
       }
     } catch (err) {
       console.error("Failed to unstar:", err);

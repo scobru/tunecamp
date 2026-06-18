@@ -6,6 +6,7 @@ import type { AuthService } from "../../modules/auth/auth.service.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
+import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import path from "path";
 import fs from "fs-extra";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
@@ -89,6 +90,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(json());
+    router.use(invalidateListCacheOnMutation);
 
     /** Artists with can_sell disabled publish free releases only: price fields
      *  are stripped here so the catalog never advertises a Buy button that
@@ -110,30 +112,34 @@ export function createReleaseRouter(container: ServiceContainer): Router {
      */
     router.get("/", wrapAsync(async (req: any, res: any) => {
         try {
-            let releases = [];
             const isAdmin = req.isAdmin || req.isSuperUser;
-            if (isAdmin) {
-                // For Admins and Super Users, return ALL formal releases (including drafts/private)
-                releases = library.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
-            } else if (req.userId) {
-                // For logged-in users, merge their owned releases with public ones
-                const ownedFormalReleases = library.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
-                const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
-                
-                const seenIds = new Set(ownedFormalReleases.map(r => r.id));
-                releases = [...ownedFormalReleases];
-                for (const r of publicReleases) {
-                    if (!seenIds.has(r.id)) {
-                        releases.push(r);
-                        seenIds.add(r.id);
-                    }
-                }
-            } else {
-                // For anonymous users, only show public formal releases
-                releases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
-            }
+            // Admins see all; logged-in users see public + their own; anon sees public.
+            const scopeKey = `releases:${isAdmin ? "admin" : "user"}:u${req.userId ?? "anon"}`;
 
-            res.json(releases);
+            await serveCachedList(req, res, scopeKey, () => {
+                let releases = [];
+                if (isAdmin) {
+                    // For Admins and Super Users, return ALL formal releases (including drafts/private)
+                    releases = library.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                } else if (req.userId) {
+                    // For logged-in users, merge their owned releases with public ones
+                    const ownedFormalReleases = library.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                    const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
+
+                    const seenIds = new Set(ownedFormalReleases.map(r => r.id));
+                    releases = [...ownedFormalReleases];
+                    for (const r of publicReleases) {
+                        if (!seenIds.has(r.id)) {
+                            releases.push(r);
+                            seenIds.add(r.id);
+                        }
+                    }
+                } else {
+                    // For anonymous users, only show public formal releases
+                    releases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
+                }
+                return releases;
+            });
         } catch (error) {
             console.error("Error getting releases:", error);
             res.status(500).json({ error: "Failed to fetch releases" });

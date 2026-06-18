@@ -785,6 +785,11 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding artist_requested_at column...");
                 db.exec("ALTER TABLE admin ADD COLUMN artist_requested_at TEXT DEFAULT NULL");
             }
+            // Opt-in "now listening" presence (off by default for privacy).
+            if (!cols.some(col => col.name === 'now_playing_enabled')) {
+                console.log("📦 [Database] Migrating admin table: adding now_playing_enabled column...");
+                db.exec("ALTER TABLE admin ADD COLUMN now_playing_enabled INTEGER DEFAULT 0");
+            }
             // Repair stale artist links: artist_id pointing to a deleted artist.
             const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
             if (artistsTableExists) {

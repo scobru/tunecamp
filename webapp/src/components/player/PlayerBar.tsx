@@ -30,6 +30,7 @@ import { PlayerCanvas } from "./PlayerCanvas";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { formatDuration } from "../../utils/format";
 import { notify } from "../../utils/notify";
+import { useNowPlayingHeartbeat } from "../../hooks/useNowPlayingHeartbeat";
 
 // Robust interop for color-thief-react which has inconsistent exports across versions/builds
 const ColorThiefReact: any = ColorThiefReactModule;
@@ -62,6 +63,7 @@ const PlayerBackground = ({ coverUrl }: { coverUrl: string }) => {
 
 export const PlayerBar = () => {
   const { cacheBuster } = useConfigStore();
+  useNowPlayingHeartbeat();
   const {
     currentTime,
     progress,

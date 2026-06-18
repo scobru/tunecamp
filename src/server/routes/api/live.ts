@@ -1,17 +1,78 @@
 import { Router, json, raw, Request, Response } from 'express';
 import fs from 'fs-extra';
+import path from 'path';
 import type { ServiceContainer } from '../../core/container.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { wrapAsync } from '../../middleware/error-handling.js';
 import { HlsLiveService } from '../../modules/live/hls.service.js';
+import type { LiveSession } from '../../modules/live/live.service.js';
 import { VisibilityGuardian } from '../../common/visibility.js';
+import { sanitizeFilename } from '../../../utils/audioUtils.js';
 
 export function createLiveRoutes(container: ServiceContainer): Router {
     const liveService = container.liveService;
     const authMiddleware = container.authMiddleware;
     const config = container.config;
+    const scanner = container.scannerService;
+    const musicDir = container.musicDir;
+    const storage = container.storage;
+    const authService = container.authService;
     const hls = new HlsLiveService();
     const router = Router();
+
+    /**
+     * Ingests a finished live recording as a (private) track for the
+     * broadcasting artist, reusing the normal upload/scan pipeline. Runs in the
+     * background after /stop responds; best-effort, so a failure just logs and
+     * drops the temp file rather than surfacing to the broadcaster.
+     */
+    async function finalizeRecording(recordingPath: string, session: LiveSession) {
+        try {
+            if (!(await fs.pathExists(recordingPath))) return;
+            // A near-empty file means nothing was actually streamed.
+            const { size } = await fs.stat(recordingPath);
+            if (size < 4096) {
+                await hls.discardRecording(recordingPath);
+                return;
+            }
+
+            // Attribute to the broadcaster (not whoever stopped the session).
+            const ownerId = authService?.getUserByUsername(session.username)?.id ?? undefined;
+            const artistId = session.artistId != null ? Number(session.artistId) : undefined;
+            const dateStr = session.startedAt.slice(0, 10);
+            const trackTitle = `${(session.title || 'Live session').trim()} (Live ${dateStr})`;
+
+            // Move the recording into the catalog's tracks dir, then scan it.
+            const destDir = path.join(musicDir, 'tracks');
+            await storage.ensureDir(destDir);
+            let destPath = path.join(destDir, sanitizeFilename(`${trackTitle}.m4a`));
+            const ext = path.extname(destPath);
+            const base = destPath.slice(0, -ext.length);
+            let counter = 1;
+            while (await storage.pathExists(destPath)) {
+                destPath = `${base}_${counter}${ext}`;
+                counter++;
+            }
+            await storage.move(recordingPath, destPath, { overwrite: false });
+
+            const result = await scanner.processAudioFile(
+                destPath, musicDir,
+                Number.isFinite(artistId) ? artistId : undefined,
+                ownerId,
+                undefined, undefined,
+                { title: trackTitle }
+            );
+
+            if (result?.success && result.trackId) {
+                console.log(`🎙️ [Live] Recording saved as track ${result.trackId} for ${session.username}`);
+            } else {
+                console.warn(`🎙️ [Live] Recording for ${session.username} processed but produced no track`);
+            }
+        } catch (e) {
+            console.error('🎙️ [Live] Failed to finalize recording:', e);
+            await hls.discardRecording(recordingPath).catch(() => {});
+        }
+    }
 
     // Same gate as publishing: managers/root always, curators only when linked
     // to an artist profile. Listeners can never go live, even with a stale artistId.
@@ -51,7 +112,7 @@ export function createLiveRoutes(container: ServiceContainer): Router {
             return res.status(403).json({ error: 'Only artists and admins can go live' });
         }
 
-        const { title } = req.body;
+        const { title, record } = req.body;
         if (!title || typeof title !== 'string' || !title.trim()) {
             return res.status(400).json({ error: 'Title is required' });
         }
@@ -65,12 +126,13 @@ export function createLiveRoutes(container: ServiceContainer): Router {
 
         const session = liveService.start(req.username!, title.trim(), req.artistId ?? undefined);
         try {
-            await hls.start(session.roomId);
+            // Only broadcasters (already gated above) may record their session.
+            await hls.start(session.roomId, { record: record === true });
         } catch (e: any) {
             liveService.stop(session.roomId);
             return res.status(500).json({ error: e?.message || 'Failed to start the live pipeline' });
         }
-        res.json(session);
+        res.json({ ...session, recording: record === true });
     }));
 
     /**
@@ -127,20 +189,28 @@ export function createLiveRoutes(container: ServiceContainer): Router {
     router.post('/stop', json(), authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
         const { roomId } = req.body;
 
+        // Resolve the session being stopped: the caller's own, or — for admins —
+        // any session by roomId. Grab it before stopping so we keep its metadata.
         const own = liveService.getByUsername(req.username!);
-        if (own && (!roomId || roomId === own.roomId)) {
-            liveService.stop(own.roomId);
-            await hls.stop(own.roomId);
-            return res.json({ success: true });
+        let session: LiveSession | undefined =
+            own && (!roomId || roomId === own.roomId) ? own : undefined;
+        if (!session && roomId && req.isAdmin) {
+            session = liveService.list().find(s => s.roomId === roomId);
         }
 
-        if (roomId && req.isAdmin) {
-            const stopped = liveService.stop(roomId);
-            await hls.stop(roomId);
-            return res.json({ success: stopped });
+        if (!session) {
+            return res.status(404).json({ error: 'No active session found' });
         }
 
-        res.status(404).json({ error: 'No active session found' });
+        liveService.stop(session.roomId);
+        const recordingPath = await hls.stop(session.roomId);
+        res.json({ success: true, recording: !!recordingPath });
+
+        // Ingest the recording in the background so /stop stays responsive. It is
+        // attributed to the broadcaster's user (owner) for quota/ownership.
+        if (recordingPath) {
+            void finalizeRecording(recordingPath, session);
+        }
     }));
 
     return router;

@@ -16,6 +16,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { usePurchases } from "../hooks/usePurchases";
 import { useWalletStore } from "../stores/useWalletStore";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
+import { useTracks } from "../hooks/queries";
 
 import { formatDuration } from "../utils/format";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -24,8 +25,7 @@ import type { Track } from "../types";
 import clsx from "clsx";
 
 const Tracks = () => {
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: tracks = [], isLoading: loading } = useTracks();
   const [filter, setFilter] = useState("");
   const { playTrack } = usePlayerStore();
   const { isAuthenticated, isAdminAuthenticated, user } = useAuthStore();
@@ -35,21 +35,15 @@ const Tracks = () => {
   const { ownedNFTs } = useOwnedNFTs(activeAddress);
   const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
 
+  // Seed liked state from the backend starred flags whenever the list loads.
   useEffect(() => {
-    setLoading(true);
-    API.getTracks()
-      .then((data) => {
-        setTracks(data);
-        // Initialize likedTrackIds from backend starred status
-        const backendLiked = data.filter(t => t && t.starred).map(t => String(t.id));
-        setLikedTrackIds(prev => new Set([...Array.from(prev), ...backendLiked]));
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error(error);
-        setLoading(false);
-      });
+    const backendLiked = tracks.filter(t => t && t.starred).map(t => String(t.id));
+    if (backendLiked.length) {
+      setLikedTrackIds(prev => new Set([...Array.from(prev), ...backendLiked]));
+    }
+  }, [tracks]);
 
+  useEffect(() => {
     if (!isAuthenticated && !isAdminAuthenticated) {
       setLikedTrackIds(new Set());
     }

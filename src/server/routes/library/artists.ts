@@ -9,6 +9,7 @@ import type { MetadataService } from "../../modules/catalog/metadata.service.js"
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";
 import type { DiscoveryService } from "../../modules/catalog/discovery.service.js";
 import { BadRequestError, NotFoundError } from "../../common/errors.js";
+import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 /**
@@ -26,60 +27,69 @@ export function createArtistsRoutes(container: ServiceContainer): Router {
     const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService;
     const router = Router();
     router.use(json());
+    router.use(invalidateListCacheOnMutation);
 
     /**
      * GET /api/artists
      * List all artists (for admin) or only those with public releases (for non-admin)
      */
-    router.get("/", (req: AuthenticatedRequest, res) => {
+    router.get("/", async (req: AuthenticatedRequest, res) => {
         try {
             const isAdmin = req.isAdmin || req.isSuperUser;
-            
-            // Fetch all artists so that we can check if they have public content
-            // even if their default visibility in the artists table is 'private' (default from scanner)
-            const allArtists = library.getArtists(VisibilityProfile.ALL_ACCESS);
             const username = req.username;
 
-            // 1. Determine which artists have PUBLIC formal releases
-            const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE);
-            const formalReleaseArtistIds = new Set(
-                publicReleases.map(r => r.artist_id).filter(id => id !== null)
-            );
+            // The response varies by access scope: admins see every artist;
+            // everyone else sees public + their own + their starred, and the
+            // payload also carries per-user starred/rating flags. The cache key
+            // must encode all of that so users never see each other's view.
+            const scopeKey = `artists:${isAdmin ? "admin" : "user"}:a${req.artistId ?? "-"}:u${username ?? "anon"}`;
 
-            // 2. Determine which artists have PUBLIC library albums
-            const publicAlbums = library.getAlbums(VisibilityProfile.PUBLIC_STAGE);
-            const publicAlbumArtistIds = new Set(
-                publicAlbums.map(a => a.artist_id).filter(id => id !== null)
-            );
+            await serveCachedList(req, res, scopeKey, () => {
+                // Fetch all artists so that we can check if they have public content
+                // even if their default visibility in the artists table is 'private' (default from scanner)
+                const allArtists = library.getArtists(VisibilityProfile.ALL_ACCESS);
 
-            // 3. Determine which artists have PUBLIC tracks
-            const publicTracks = library.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
-            const publicTrackArtistIds = new Set(
-                publicTracks.map(t => t.artist_id).filter(id => id !== null)
-            );
+                // 1. Determine which artists have PUBLIC formal releases
+                const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE);
+                const formalReleaseArtistIds = new Set(
+                    publicReleases.map(r => r.artist_id).filter(id => id !== null)
+                );
 
-            // 4. Determine which artists are STARRED by the user
-            const starredItems = username ? social.getStarredItems(username, 'artist') : [];
-            const starredArtistIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
+                // 2. Determine which artists have PUBLIC library albums
+                const publicAlbums = library.getAlbums(VisibilityProfile.PUBLIC_STAGE);
+                const publicAlbumArtistIds = new Set(
+                    publicAlbums.map(a => a.artist_id).filter(id => id !== null)
+                );
 
-            const filtered = allArtists.filter(artist => {
-                if (isAdmin) return true;
-                if (req.artistId && artist.id === req.artistId) return true;
-                if (artist.visibility === 'public' || artist.visibility === 'unlisted') return true;
-                if (formalReleaseArtistIds.has(artist.id)) return true;
-                if (publicAlbumArtistIds.has(artist.id)) return true;
-                if (publicTrackArtistIds.has(artist.id)) return true;
-                if (starredArtistIds.has(artist.id)) return true;
-                return false;
+                // 3. Determine which artists have PUBLIC tracks
+                const publicTracks = library.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
+                const publicTrackArtistIds = new Set(
+                    publicTracks.map(t => t.artist_id).filter(id => id !== null)
+                );
+
+                // 4. Determine which artists are STARRED by the user
+                const starredItems = username ? social.getStarredItems(username, 'artist') : [];
+                const starredArtistIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
+
+                const filtered = allArtists.filter(artist => {
+                    if (isAdmin) return true;
+                    if (req.artistId && artist.id === req.artistId) return true;
+                    if (artist.visibility === 'public' || artist.visibility === 'unlisted') return true;
+                    if (formalReleaseArtistIds.has(artist.id)) return true;
+                    if (publicAlbumArtistIds.has(artist.id)) return true;
+                    if (publicTrackArtistIds.has(artist.id)) return true;
+                    if (starredArtistIds.has(artist.id)) return true;
+                    return false;
+                });
+
+                return filtered.map(a => ({
+                    ...a,
+                    coverImage: `/api/artists/${a.id}/cover`,
+                    bannerImage: a.banner_path ? `/api/artists/${a.id}/banner` : null,
+                    starred: username ? social.isStarred(username, 'artist', String(a.id)) : false,
+                    rating: username ? social.getItemRating(username, 'artist', String(a.id)) : 0
+                }));
             });
-
-            res.json(filtered.map(a => ({
-                ...a,
-                coverImage: `/api/artists/${a.id}/cover`,
-                bannerImage: a.banner_path ? `/api/artists/${a.id}/banner` : null,
-                starred: username ? social.isStarred(username, 'artist', String(a.id)) : false,
-                rating: username ? social.getItemRating(username, 'artist', String(a.id)) : 0
-            })));
         } catch (error) {
             console.error("Error getting artists:", error);
             res.status(500).json({ error: "Failed to fetch artists" });

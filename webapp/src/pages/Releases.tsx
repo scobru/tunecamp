@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react';
-import API from '../services/api';
+import { useState } from 'react';
 import { Disc, LayoutGrid, List, AlignJustify } from 'lucide-react';
 import { ReleaseCard } from '../components/ui/ReleaseCard';
-import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
+import { useReleases } from '../hooks/queries';
 import clsx from 'clsx';
 
 const Releases = () => {
-    const { isAuthenticated } = useAuthStore();
-    const [releases, setReleases] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: releases = [], isLoading: loading } = useReleases();
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [category, setCategory] = useState<'all' | 'album' | 'single' | 'liveset' | 'podcast'>('all');
@@ -25,24 +22,6 @@ const Releases = () => {
     // Resolve a release's category from `type`, falling back to the legacy product_type for podcasts.
     const releaseCategory = (r: any): string =>
         (r.product_type === 'podcast' || r.productType === 'podcast') ? 'podcast' : (r.type || 'album');
-
-    useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
-            try {
-                const data = await API.getReleases().catch(err => {
-                    console.error("Failed to load releases:", err);
-                    return [];
-                });
-                setReleases(data);
-            } catch (e) {
-                console.error("Error loading releases:", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadData();
-    }, [isAuthenticated]);
 
     const filteredReleases = releases.filter(release => {
         const matchesSearch =

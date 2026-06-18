@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import API from '../services/api';
 import type { User } from '../types';
 import { useWalletStore } from './useWalletStore';
+import { useNowPlayingStore } from './useNowPlayingStore';
+import { queryClient } from '../lib/queryClient';
 
 type UserRole = 'admin' | 'user' | 'super_user' | 'root_admin' | null;
 
@@ -122,6 +124,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const result = await API.login(username, password);
             API.setToken(result.token);
             await get().checkAuth();
+            // Cached lists were fetched as the previous identity (often anon) and
+            // are filtered by permissions — drop them so they refetch as this user.
+            queryClient.invalidateQueries();
         } catch (e: any) {
             set({ error: e.message, isLoading: false, isAuthenticating: false });
             throw e;
@@ -153,6 +158,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const result = await API.registerUser(username, password);
             API.setToken(result.token);
             await get().checkAuth();
+            queryClient.invalidateQueries();
             set({ isLoading: false, isAuthenticating: false });
         } catch (e: any) {
             set({ error: e.message, isLoading: false, isAuthenticating: false });
@@ -164,7 +170,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     logout: () => {
         useWalletStore.getState().clearWallet();
+        useNowPlayingStore.getState().reset();
         API.setToken(null);
+        // Wipe cached per-user lists so a logged-out browser doesn't keep them.
+        queryClient.clear();
         set({
             user: null,
             isAuthenticated: false,
