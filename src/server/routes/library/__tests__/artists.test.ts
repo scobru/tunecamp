@@ -217,7 +217,7 @@ describe('Artists Routes', () => {
                 .send({ name: 'Updated Artist', bio: 'Updated Bio' });
 
             expect(response.status).toBe(200);
-            expect(mockDatabase.updateArtist).toHaveBeenCalledWith(1, 'Updated Artist', 'Updated Bio', undefined, undefined, undefined, undefined, undefined);
+            expect(mockDatabase.updateArtist).toHaveBeenCalledWith(1, 'Updated Artist', 'Updated Bio', undefined, undefined, undefined, undefined, undefined, undefined);
         });
 
         test('allows self (artist editing own profile) to update artist', async () => {
@@ -231,7 +231,7 @@ describe('Artists Routes', () => {
                 .send({ name: 'Updated Artist 2', bio: 'Updated Bio 2' });
 
             expect(response.status).toBe(200);
-            expect(mockDatabase.updateArtist).toHaveBeenCalledWith(2, 'Updated Artist 2', 'Updated Bio 2', undefined, undefined, undefined, undefined, undefined);
+            expect(mockDatabase.updateArtist).toHaveBeenCalledWith(2, 'Updated Artist 2', 'Updated Bio 2', undefined, undefined, undefined, undefined, undefined, undefined);
         });
 
         test('denies non-admin, non-self from updating artist', async () => {
