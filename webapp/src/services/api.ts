@@ -663,7 +663,25 @@ const API = {
         handleResponse(api.post<{ success: boolean }>(`live/${roomId}/ingest`, chunk, {
             headers: { 'Content-Type': 'application/octet-stream' }
         })),
-    getLiveStreamUrl: (roomId: string) => `${API_URL}/live/${roomId}/hls/live.m3u8`
+    getLiveStreamUrl: (roomId: string) => `${API_URL}/live/${roomId}/hls/live.m3u8`,
+
+    // --- Now listening (opt-in presence) ---
+    getNowListening: () => handleResponse(api.get<{ listeners: NowListeningEntry[] }>('now-playing')),
+    getNowPlayingPref: () => handleResponse(api.get<{ enabled: boolean }>('now-playing/preference')),
+    setNowPlayingPref: (enabled: boolean) => handleResponse(api.put<{ enabled: boolean }>('now-playing/preference', { enabled })),
+    pingNowPlaying: (data: { trackId?: number | string | null; title: string; artist?: string }) =>
+        handleResponse(api.post<{ recorded: boolean }>('now-playing', data)),
+    clearNowPlaying: () => handleResponse(api.post<{ recorded: boolean }>('now-playing', { title: '' })),
 };
+
+export interface NowListeningEntry {
+    username: string;
+    alias: string | null;
+    avatar: string | null;
+    trackId: number | string | null;
+    title: string;
+    artist: string;
+    updatedAt: number;
+}
 
 export default API;

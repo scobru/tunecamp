@@ -25,6 +25,7 @@ import {
   ShoppingBag,
   Shovel,
   Radio,
+  Headphones,
   Rss,
   BookOpen,
   ChevronLeft,
@@ -224,6 +225,7 @@ export const Sidebar = () => {
             <NavItem to="/search" icon={Search} label="Search" />
             {!hideNetwork && <NavItem to="/network" icon={Globe} label="Network" />}
             {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
+            {isAuthenticated && <NavItem to="/now-listening" icon={Headphones} label="Now Listening" />}
             {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
             <NavItem to="/board" icon={MessageSquare} label="Board" />
           </ul>

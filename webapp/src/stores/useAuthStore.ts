@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import API from '../services/api';
 import type { User } from '../types';
 import { useWalletStore } from './useWalletStore';
+import { useNowPlayingStore } from './useNowPlayingStore';
 import { queryClient } from '../lib/queryClient';
 
 type UserRole = 'admin' | 'user' | 'super_user' | 'root_admin' | null;
@@ -169,6 +170,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     logout: () => {
         useWalletStore.getState().clearWallet();
+        useNowPlayingStore.getState().reset();
         API.setToken(null);
         // Wipe cached per-user lists so a logged-out browser doesn't keep them.
         queryClient.clear();

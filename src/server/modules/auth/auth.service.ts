@@ -91,6 +91,10 @@ export interface AuthService {
     getUserProfile(username: string): { alias: string | null; avatar: string | null } | null;
     /** Updates alias and/or avatar in the admin table. */
     updateUserProfile(username: string, data: { alias?: string; avatar?: string }): void;
+    /** Whether the user opted into sharing their "now listening" presence. */
+    getNowPlayingEnabled(userId: number): boolean;
+    /** Sets the user's "now listening" opt-in flag. */
+    setNowPlayingEnabled(userId: number, enabled: boolean): void;
 }
 
 export function createAuthService(
@@ -532,6 +536,15 @@ export function createAuthService(
             if (parts.length === 0) return;
             params.push(username);
             db.prepare(`UPDATE admin SET ${parts.join(", ")} WHERE username = ? COLLATE NOCASE`).run(...params);
+        },
+
+        getNowPlayingEnabled(userId: number): boolean {
+            const row = db.prepare("SELECT now_playing_enabled FROM admin WHERE id = ?").get(userId) as { now_playing_enabled: number } | undefined;
+            return !!row?.now_playing_enabled;
+        },
+
+        setNowPlayingEnabled(userId: number, enabled: boolean): void {
+            db.prepare("UPDATE admin SET now_playing_enabled = ? WHERE id = ?").run(enabled ? 1 : 0, userId);
         },
 
         listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean }[] {

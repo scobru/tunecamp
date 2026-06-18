@@ -91,6 +91,7 @@ import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
 import { ChatService } from "./modules/chat/chat.service.js";
 import { createChatRoutes } from "./routes/api/chat.js";
 import { createLiveRoutes } from "./routes/api/live.js";
+import { createNowPlayingRoutes } from "./routes/api/now-playing.js";
 import { LiveService } from "./modules/live/live.service.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
@@ -425,6 +426,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/comments", createCommentsRoutes(container));
     app.use("/api/chat", authMiddleware.optionalAuth, requireModuleEnabled(container, "chatEnabled", { invert: true, allowAdmin: true }), createChatRoutes(container));
     app.use("/api/live", createLiveRoutes(container));
+    app.use("/api/now-playing", createNowPlayingRoutes(container));
     app.use("/api/unlock", createUnlockRoutes(container));
 
     // Public assets store
