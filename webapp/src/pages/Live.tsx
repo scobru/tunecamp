@@ -43,6 +43,12 @@ const Live = () => {
     const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
     const [selectedDeviceId, setSelectedDeviceId] = useState("");
 
+    // Opt-in recording: when on, the server saves the whole session as a
+    // private track in the broadcaster's library. isRecording reflects what the
+    // server confirmed for the session currently on air.
+    const [record, setRecord] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+
     // Listening state
     const [listeningTo, setListeningTo] = useState<LiveSession | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
@@ -110,6 +116,7 @@ const Live = () => {
         micStreamRef.current = null;
         sessionRef.current = null;
         setListenerCount(0);
+        setIsRecording(false);
     }, []);
 
     const teardownPlayback = useCallback(() => {
@@ -139,8 +146,9 @@ const Live = () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
             // Permission is now granted, so labels are available — refresh the list
             refreshInputDevices();
-            const session = await API.startLive(title.trim() || "Live session");
+            const session = await API.startLive(title.trim() || "Live session", record);
             sessionRef.current = session;
+            setIsRecording(!!session.recording);
 
             const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
                 ? "audio/webm;codecs=opus"
@@ -289,6 +297,12 @@ const Live = () => {
                                     <Users size={16} />
                                     <span>{listenerCount} listener{listenerCount === 1 ? "" : "s"} connected</span>
                                 </div>
+                                {isRecording && (
+                                    <div className="flex items-center gap-2 text-sm text-error">
+                                        <span className="w-2 h-2 rounded-full bg-error animate-pulse" />
+                                        <span>Recording — will be saved to your library when you stop</span>
+                                    </div>
+                                )}
                                 <button className="btn btn-error gap-2" onClick={handleStopLive}>
                                     <StopCircle size={18} /> End broadcast
                                 </button>
@@ -327,6 +341,18 @@ const Live = () => {
                                     maxLength={120}
                                     onChange={e => setTitle(e.target.value)}
                                 />
+                                <label className="label cursor-pointer justify-start gap-3 py-0">
+                                    <input
+                                        type="checkbox"
+                                        className="checkbox checkbox-sm"
+                                        checked={record}
+                                        onChange={e => setRecord(e.target.checked)}
+                                    />
+                                    <span className="label-text text-sm">
+                                        Record this session
+                                        <span className="opacity-50"> — saved as a private track in your library</span>
+                                    </span>
+                                </label>
                                 <button
                                     className="btn btn-primary gap-2"
                                     onClick={handleGoLive}
