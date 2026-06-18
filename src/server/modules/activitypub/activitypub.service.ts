@@ -1484,7 +1484,8 @@ export class ActivityPubService {
         let noteCount = 0;
 
         // Fetch all releases upfront to avoid N+1 queries during the loop
-        const releases = this.db.getReleases();
+        // Pass true to bypass visibility filters so private releases are also processed (as Deletes)
+        const releases = this.db.getReleases(true);
 
         // Group releases by artist ID
         const releasesByArtist: Record<number, any[]> = {};

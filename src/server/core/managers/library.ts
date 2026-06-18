@@ -38,7 +38,7 @@ export function createLibraryManager(
         isArtistLinkedToUserBySlug: (s: string) => artistRepository.isLinkedToUserBySlug(s),
 
         // Releases
-        getReleases: (p?: VisibilityProfile | ViewerContext) => albumRepository.getReleases(p),
+        getReleases: (pOrAllAccess?: VisibilityProfile | ViewerContext | boolean) => albumRepository.getReleases(pOrAllAccess === true ? VisibilityProfile.ALL_ACCESS : (pOrAllAccess as VisibilityProfile | ViewerContext | undefined)),
         getRelease: (id: number) => albumRepository.getById(id) as any,
         getReleaseBySlug: (s: string) => albumRepository.getBySlug(s) as any,
         getRecentReleaseByMetadata: (t: string, aid: number | null, seconds: number) => db.prepare("SELECT * FROM releases WHERE title = ? AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL)) AND created_at >= datetime('now', ?) ORDER BY created_at DESC LIMIT 1").get(t, aid, aid, `-${seconds} seconds`) as any,

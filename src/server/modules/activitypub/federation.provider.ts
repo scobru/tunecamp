@@ -29,7 +29,7 @@ export interface FederationProvider {
   getAlbum(id: number): Album | undefined;
 
   // Local Content
-  getReleases(): Release[];
+  getReleases(allAccess?: boolean): Release[];
   getReleasesByArtist(artistId: number): Release[];
   getTracksByReleaseId(releaseId: number): Track[];
   getPostsByArtist(artistId: number): Post[];

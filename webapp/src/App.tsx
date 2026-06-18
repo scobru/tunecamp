@@ -99,13 +99,14 @@ function ManagerOrRootGuard({ children }: { children: React.ReactNode }) {
 }
 
 function EditorGuard({ children }: { children: React.ReactNode }) {
-  const { role, isAuthenticated, isLoading } = useAuthStore();
+  const { role, isAuthenticated, isLoading, user } = useAuthStore();
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated || (role !== 'admin' && role !== 'super_user' && role !== 'root_admin')) {
+  const isEditor = role === 'admin' || role === 'super_user' || role === 'root_admin' || !!user?.artistId;
+  if (!isAuthenticated || !isEditor) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

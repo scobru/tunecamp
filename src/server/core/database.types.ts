@@ -476,7 +476,7 @@ export interface LibraryManager {
     isArtistLinkedToUserBySlug(slug: string): boolean;
 
     // Releases
-    getReleases(profile?: VisibilityProfile | ViewerContext): Release[];
+    getReleases(profile?: VisibilityProfile | ViewerContext | boolean): Release[];
     getRelease(id: number): Release | undefined;
     getReleaseBySlug(slug: string): Release | undefined;
     getRecentReleaseByMetadata(title: string, artistId: number | null, seconds: number): Release | undefined;
