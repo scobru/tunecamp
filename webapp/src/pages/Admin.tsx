@@ -197,7 +197,7 @@ const Admin = () => {
         </a>
       </div>
 
-      <div className="bg-base-100 p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect">
+      <div className="bg-base-100 p-4 sm:p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect overflow-x-hidden">
         {activeTab === "releases" && (
            <div className="space-y-4">
            <div className="flex justify-between items-center">

@@ -232,14 +232,14 @@ export const AdminSettingsPanel = () => {
 
   return (
     <form onSubmit={handleSave} className="space-y-6 w-full">
-      <div className="flex items-center justify-between border-b border-base-content/10 pb-4 mb-6">
-        <div className="flex items-center gap-3">
-          <Cog className="text-primary" size={24} />
-          <h3 className="font-bold text-2xl">Site Settings</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-content/10 pb-4 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <Cog className="text-primary shrink-0" size={24} />
+          <h3 className="font-bold text-xl sm:text-2xl truncate">Site Settings</h3>
         </div>
         <button
           type="submit"
-          className="btn btn-primary gap-2"
+          className="btn btn-primary gap-2 w-full sm:w-auto shrink-0"
           disabled={loading}
         >
           <Save size={18} /> Save Changes
@@ -278,7 +278,7 @@ export const AdminSettingsPanel = () => {
         </div>
 
         {/* Focus Form Panel */}
-        <div className="flex-1 w-full bg-base-200/40 p-6 md:p-8 rounded-2xl border border-base-content/5 min-h-[480px]">
+        <div className="flex-1 w-full min-w-0 bg-base-200/40 p-4 sm:p-6 md:p-8 rounded-2xl border border-base-content/5 min-h-[480px]">
           {/* General Configuration */}
           {subTab === "general" && (
             <div className="space-y-6 animate-fade-in">
@@ -718,10 +718,10 @@ export const AdminSettingsPanel = () => {
                 <h4 className="font-bold text-base tracking-normal">Payments &amp; Web3</h4>
               </div>
 
-              <label className="label cursor-pointer justify-between items-start gap-4 bg-base-300/40 p-4 rounded-xl border border-base-content/5">
-                <div className="flex-1">
-                  <span className="label-text font-bold">Enable Web3 (NFT store &amp; crypto payments)</span>
-                  <p className="text-[11px] opacity-50 mt-1 leading-relaxed">
+              <label className="label flex w-full whitespace-normal cursor-pointer justify-between items-start gap-4 bg-base-300/40 p-4 rounded-xl border border-base-content/5">
+                <div className="flex-1 min-w-0">
+                  <span className="label-text font-bold block break-words">Enable Web3 (NFT store &amp; crypto payments)</span>
+                  <p className="text-[11px] opacity-50 mt-1 leading-relaxed break-words">
                     Off: artists sell via Stripe / direct payments only — the cleanest setup.
                     On: unlock the on-chain NFT store, the smart-contract release mode and treasury sync below.
                     Configure Stripe keys in the <span className="font-semibold">Integrations</span> tab.
