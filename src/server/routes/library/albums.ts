@@ -8,6 +8,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 import { NotFoundError, ForbiddenError, BadRequestError } from "../../common/errors.js";
+import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { VisibilityProfile, VisibilityGuardian, Capability } from "../../common/visibility.js";
 import type { ServiceContainer } from "../../core/container.js";
@@ -24,54 +25,60 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
     const router = Router();
     router.use(express.json());
+    router.use(invalidateListCacheOnMutation);
 
     /**
      * GET /
      */
     router.get("/", wrapAsync(async (req: AuthenticatedRequest, res: any) => {
-        let albums: Album[] = [];
         const username = req.username;
-
         const isAdmin = req.isAdmin || req.isSuperUser;
-        if (isAdmin) {
-            albums = library.getAlbums(VisibilityProfile.ALL_ACCESS);
-        } else {
-            // Artists and users see their own albums + public ones + starred ones
-            const owned = req.userId ? library.getAlbumsByOwner(req.userId!, VisibilityProfile.ALL_ACCESS) : [];
-            const publicAlbums = library.getAlbums(VisibilityProfile.PUBLIC_STAGE);
-            
-            const starredItems = username ? social.getStarredItems(username, 'album') : [];
-            const starredIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
-            
-            // Deduplicate
-            const seenIds = new Set(owned.map(a => a.id));
-            albums = [...owned];
-            
-            for (const a of publicAlbums) {
-                if (!seenIds.has(a.id)) {
-                    albums.push(a);
-                    seenIds.add(a.id);
-                }
-            }
-            
-            // Add starred albums that might not be owned or public
-            if (starredIds.size > 0) {
-                const starredAlbums = library.getAlbumsByIds(Array.from(starredIds));
-                for (const a of starredAlbums) {
+        // Varies by access scope + owner + per-user starred/rating in the payload.
+        const scopeKey = `albums:${isAdmin ? "admin" : "user"}:u${req.userId ?? "-"}:n${username ?? "anon"}`;
+
+        await serveCachedList(req, res, scopeKey, () => {
+            let albums: Album[] = [];
+
+            if (isAdmin) {
+                albums = library.getAlbums(VisibilityProfile.ALL_ACCESS);
+            } else {
+                // Artists and users see their own albums + public ones + starred ones
+                const owned = req.userId ? library.getAlbumsByOwner(req.userId!, VisibilityProfile.ALL_ACCESS) : [];
+                const publicAlbums = library.getAlbums(VisibilityProfile.PUBLIC_STAGE);
+
+                const starredItems = username ? social.getStarredItems(username, 'album') : [];
+                const starredIds = new Set(starredItems.map((i: any) => parseInt(i.item_id, 10)).filter(id => !isNaN(id)));
+
+                // Deduplicate
+                const seenIds = new Set(owned.map(a => a.id));
+                albums = [...owned];
+
+                for (const a of publicAlbums) {
                     if (!seenIds.has(a.id)) {
                         albums.push(a);
                         seenIds.add(a.id);
                     }
                 }
-            }
-        }
 
-        res.json(albums.map((a: Album) => ({
-            ...a,
-            coverImage: a.cover_path,
-            starred: username ? social.isStarred(username, 'album', String(a.id)) : false,
-            rating: username ? social.getItemRating(username, 'album', String(a.id)) : 0
-        })));
+                // Add starred albums that might not be owned or public
+                if (starredIds.size > 0) {
+                    const starredAlbums = library.getAlbumsByIds(Array.from(starredIds));
+                    for (const a of starredAlbums) {
+                        if (!seenIds.has(a.id)) {
+                            albums.push(a);
+                            seenIds.add(a.id);
+                        }
+                    }
+                }
+            }
+
+            return albums.map((a: Album) => ({
+                ...a,
+                coverImage: a.cover_path,
+                starred: username ? social.isStarred(username, 'album', String(a.id)) : false,
+                rating: username ? social.getItemRating(username, 'album', String(a.id)) : 0
+            }));
+        });
     }));
 
     /**
