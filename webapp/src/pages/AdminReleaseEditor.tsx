@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
 import { useWalletStore } from "../stores/useWalletStore";
 import { notify } from "../utils/notify";
+import { canPublish } from "../utils/permissions";
 import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
 import { TrackPickerModal } from "../components/modals/TrackPickerModal";
@@ -94,6 +95,10 @@ export default function AdminReleaseEditor() {
   const isNew = !id;
   const isAdmin = role === 'admin' || role === 'root_admin';
   const isSuperUser = role === 'super_user';
+  // Mirrors the backend VisibilityGuardian.canPublishContent gate: a listener in
+  // self-publish mode (role "user" + artistId) may edit/publish their own content,
+  // not just admins/super_users. Keep edit-affordances in sync with this.
+  const canEdit = canPublish(user, role);
 
 
   const [loading, setLoading] = useState(false);
@@ -674,7 +679,7 @@ export default function AdminReleaseEditor() {
               Delete
             </button>
           )}
-          {(isAdmin || isSuperUser) && (
+          {canEdit && (
             <>
               <button
                 className="btn btn-ghost btn-sm"
@@ -709,10 +714,10 @@ export default function AdminReleaseEditor() {
               {/* Cover Art */}
               <div className="card bg-base-100 shadow-level-1 overflow-hidden border border-base-content/5">
                 <div
-                  className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${(isAdmin || isSuperUser) ? 'cursor-pointer' : ''}`}
+                  className={`aspect-square bg-base-200 flex flex-col items-center justify-center relative group ${canEdit ? 'cursor-pointer' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={(isAdmin || isSuperUser) ? handleDropCover : undefined}
-                  onClick={() => (isAdmin || isSuperUser) && document.getElementById("cover-upload-large")?.click()}
+                  onDrop={canEdit ? handleDropCover : undefined}
+                  onClick={() => canEdit && document.getElementById("cover-upload-large")?.click()}
                 >
                   {coverPreview ? (
                     <img
@@ -726,7 +731,7 @@ export default function AdminReleaseEditor() {
                       <span className="text-sm font-bold tracking-normal">Select Cover</span>
                     </div>
                   )}
-                  {(isAdmin || (isSuperUser && user?.artistId)) && (
+                  {canEdit && (
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white p-4 text-center">
                       <Download className="w-8 h-8 mb-2" />
                       <span className="font-bold tracking-normal text-sm">Change Cover Image</span>
@@ -758,7 +763,7 @@ export default function AdminReleaseEditor() {
                     value={metadata.title}
                     onChange={(e) => setMetadata((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="Release Title"
-                    disabled={!isAdmin && !isSuperUser}
+                    disabled={!canEdit}
                   />
                 </div>
 
