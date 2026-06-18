@@ -26,14 +26,20 @@ interface HlsStream {
     process: ChildProcess;
     /** clientKey -> last playlist request timestamp */
     listeners: Map<string, number>;
+    /** Persistent recording file, when the session opted into recording. */
+    recordingPath?: string;
 }
 
 export class HlsLiveService {
     private streams = new Map<string, HlsStream>();
     private baseDir: string;
+    private recBaseDir: string;
 
     constructor(baseDir?: string) {
         this.baseDir = baseDir || path.join(os.tmpdir(), "tunecamp-live");
+        // Recordings live outside the per-room HLS dir so they survive the
+        // dir cleanup on stop() and can be ingested afterwards.
+        this.recBaseDir = path.join(os.tmpdir(), "tunecamp-live-rec");
     }
 
     isActive(roomId: string): boolean {
@@ -43,8 +49,12 @@ export class HlsLiveService {
     /**
      * Spawns the ffmpeg HLS pipeline for a room. Idempotent per room:
      * a second start tears down the previous process first.
+     *
+     * With `record: true`, ffmpeg gets a second output that writes the full
+     * session to a persistent MP4/AAC file (returned by stop()), so it can be
+     * ingested as a track afterwards.
      */
-    async start(roomId: string): Promise<void> {
+    async start(roomId: string, opts: { record?: boolean } = {}): Promise<void> {
         await this.stop(roomId);
 
         const ffmpegBin = process.env.FFMPEG_PATH;
@@ -55,16 +65,31 @@ export class HlsLiveService {
         const dir = path.join(this.baseDir, roomId);
         await fs.ensureDir(dir);
 
-        const proc = spawn(ffmpegBin, [
+        const args = [
             "-hide_banner", "-loglevel", "error",
             "-f", "webm", "-i", "pipe:0",
+            // Live HLS output (rolling window)
             "-c:a", "aac", "-b:a", "128k", "-ac", "2",
             "-f", "hls",
             "-hls_time", String(SEGMENT_SECONDS),
             "-hls_list_size", String(PLAYLIST_SIZE),
             "-hls_flags", "delete_segments+omit_endlist",
-            path.join(dir, "live.m3u8")
-        ], { stdio: ["pipe", "ignore", "pipe"] });
+            path.join(dir, "live.m3u8"),
+        ];
+
+        let recordingPath: string | undefined;
+        if (opts.record) {
+            await fs.ensureDir(this.recBaseDir);
+            recordingPath = path.join(this.recBaseDir, `${roomId}.m4a`);
+            // Second output: the complete session as a standalone file.
+            args.push(
+                "-c:a", "aac", "-b:a", "192k", "-ac", "2",
+                "-f", "mp4",
+                recordingPath,
+            );
+        }
+
+        const proc = spawn(ffmpegBin, args, { stdio: ["pipe", "ignore", "pipe"] });
 
         proc.stderr?.on("data", (d: Buffer) => {
             console.error(`❌ [HLS ${roomId}] ffmpeg: ${d.toString().trim()}`);
@@ -77,8 +102,8 @@ export class HlsLiveService {
         // Broadcaster may disconnect abruptly; EPIPE on stdin is expected then
         proc.stdin?.on("error", () => {});
 
-        this.streams.set(roomId, { roomId, dir, process: proc, listeners: new Map() });
-        console.log(`📡 [HLS ${roomId}] Live pipeline started (${dir})`);
+        this.streams.set(roomId, { roomId, dir, process: proc, listeners: new Map(), recordingPath });
+        console.log(`📡 [HLS ${roomId}] Live pipeline started (${dir})${recordingPath ? " [recording]" : ""}`);
     }
 
     /**
@@ -128,20 +153,32 @@ export class HlsLiveService {
         return stream.listeners.size;
     }
 
-    /** Tears down the ffmpeg process and removes the room's segments. */
-    async stop(roomId: string): Promise<void> {
+    /**
+     * Tears down the ffmpeg process and removes the room's HLS segments.
+     * Returns the recording file path if the session was being recorded (the
+     * file lives outside the room dir, so it survives this cleanup), otherwise
+     * null. The promise resolves only once ffmpeg has exited, so a returned
+     * recording is fully flushed and safe to ingest.
+     */
+    async stop(roomId: string): Promise<string | null> {
         const stream = this.streams.get(roomId);
-        if (!stream) return;
+        if (!stream) return null;
         this.streams.delete(roomId);
+        const recordingPath = stream.recordingPath ?? null;
 
-        try {
-            stream.process.stdin?.end();
-        } catch {}
-        // Give ffmpeg a moment to flush the last segment, then force-kill
-        const killTimer = setTimeout(() => {
-            try { stream.process.kill("SIGKILL"); } catch {}
-        }, 3000);
-        stream.process.once("exit", () => clearTimeout(killTimer));
+        // Signal end-of-input and wait for ffmpeg to flush/finalize its outputs
+        // (the recording's MP4 container is finalized on a clean exit). Force-kill
+        // only if it overstays; recordings get a longer grace to finish writing.
+        await new Promise<void>((resolve) => {
+            let settled = false;
+            const finish = () => { if (!settled) { settled = true; resolve(); } };
+            const killTimer = setTimeout(() => {
+                try { stream.process.kill("SIGKILL"); } catch {}
+                finish();
+            }, recordingPath ? 9000 : 3000);
+            stream.process.once("exit", () => { clearTimeout(killTimer); finish(); });
+            try { stream.process.stdin?.end(); } catch { finish(); }
+        });
 
         try {
             await fs.remove(stream.dir);
@@ -149,6 +186,12 @@ export class HlsLiveService {
             console.error(`❌ [HLS ${roomId}] Cleanup failed:`, e);
         }
         console.log(`📡 [HLS ${roomId}] Live pipeline stopped`);
+        return recordingPath;
+    }
+
+    /** Removes a finished recording file (e.g. after it has been ingested). */
+    async discardRecording(recordingPath: string): Promise<void> {
+        try { await fs.remove(recordingPath); } catch { /* best effort */ }
     }
 
     /** Stops every active pipeline (server shutdown). */

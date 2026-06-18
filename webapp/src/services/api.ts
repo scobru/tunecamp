@@ -657,7 +657,7 @@ const API = {
 
     // --- Live (P2P audio streaming) ---
     getLiveSessions: () => handleResponse(api.get<{ enabled: boolean, sessions: LiveSession[] }>('live/sessions')),
-    startLive: (title: string) => handleResponse(api.post<LiveSession>('live/start', { title })),
+    startLive: (title: string, record = false) => handleResponse(api.post<LiveSession & { recording?: boolean }>('live/start', { title, record })),
     stopLive: (roomId?: string) => handleResponse(api.post<{ success: boolean }>('live/stop', { roomId })),
     ingestLive: (roomId: string, chunk: Blob) =>
         handleResponse(api.post<{ success: boolean }>(`live/${roomId}/ingest`, chunk, {
