@@ -3,34 +3,20 @@ import { useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
 import { Library } from "lucide-react";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
+import { useCatalog } from "../hooks/queries";
 import clsx from "clsx";
 
 const Home = () => {
   const navigate = useNavigate();
-  const [recentAlbums, setRecentAlbums] = useState<any[]>([]);
-  const [libraryAlbums, setLibraryAlbums] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({});
+  const { data: catalog, isLoading: loading } = useCatalog();
   const [siteSettings, setSiteSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+
+  const recentAlbums: any[] = catalog?.recentReleases || []; // Show actual releases in main section
+  const libraryAlbums: any[] = catalog?.recentAlbums || [];
+  const stats: any = catalog?.stats || {};
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [catalog, settings] = await Promise.all([
-          API.getCatalog(),
-          API.getSiteSettings(),
-        ]);
-        setRecentAlbums(catalog.recentReleases || []); // Show actual releases in main section
-        setLibraryAlbums(catalog.recentAlbums || []);
-        setStats(catalog.stats || {});
-        setSiteSettings(settings);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    API.getSiteSettings().then(setSiteSettings).catch(console.error);
   }, []);
 
   if (loading) {

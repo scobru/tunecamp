@@ -1,43 +1,18 @@
-import { useState, useEffect } from 'react';
-import API from '../services/api';
+import { useState } from 'react';
 import { Library as LibraryIcon, LayoutGrid, List, AlignJustify } from 'lucide-react';
 import { ReleaseCard } from '../components/ui/ReleaseCard';
-import type { Album } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
+import { useAlbums } from '../hooks/queries';
 import clsx from 'clsx';
 
 const Library = () => {
     const { isAuthenticated, role, user } = useAuthStore();
     const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
     const isArtist = !!user?.artistId;
-    const [albums, setAlbums] = useState<Album[]>([]);
-    const [loading, setLoading] = useState(true);
+    const canView = isAuthenticated && (isAdmin || isArtist);
+    const { data: albums = [], isLoading: loading } = useAlbums({ enabled: canView });
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
-
-    useEffect(() => {
-        const loadData = async () => {
-            if (!isAuthenticated || (!isAdmin && !isArtist)) {
-                setLoading(false);
-                return;
-            }
-            
-            setLoading(true);
-            try {
-                const data = await API.getAlbums().catch(err => {
-                    console.error("Failed to load library:", err);
-                    return [];
-                });
-                setAlbums(data);
-            } catch (e) {
-                console.error("Error loading library data:", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadData();
-    }, [isAuthenticated, isAdmin, isArtist]);
 
     if (loading) return <div className="p-12 text-center opacity-50">Loading library...</div>;
 

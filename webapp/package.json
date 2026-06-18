@@ -13,6 +13,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.0",
     "axios": "^1.15.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
