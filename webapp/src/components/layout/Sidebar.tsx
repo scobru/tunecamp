@@ -279,6 +279,9 @@ export const Sidebar = () => {
 
       <div className="mt-auto space-y-4">
         <ul className="menu menu-sm p-0">
+          {(isRoot || isAdmin || isSuperUser) && (
+            <NavItem to="/admin" icon={Settings} label="Settings" />
+          )}
           <NavItem to="/guide" icon={BookOpen} label="Guide" />
           <NavItem to="/support" icon={LifeBuoy} label="Support" />
           <NavItem to="/tools" icon={Wrench} label="Tools" />
@@ -330,14 +333,6 @@ export const Sidebar = () => {
 
               {!sidebarCollapsed && (
                 <div className="flex gap-1">
-                  {(isRoot || isAdmin || isSuperUser) && (
-                    <Link
-                      to="/admin"
-                      className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100"
-                    >
-                      <Settings size={14} />
-                    </Link>
-                  )}
                   <button
                     className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100 hover:text-error"
                     onClick={handleLogout}
@@ -349,11 +344,6 @@ export const Sidebar = () => {
 
               {sidebarCollapsed && (
                 <div className="flex flex-col gap-1 items-center">
-                  {(isRoot || isAdmin || isSuperUser) && (
-                    <Link to="/admin" title="Admin" className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100">
-                      <Settings size={14} />
-                    </Link>
-                  )}
                   <button
                     title="Logout"
                     className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100 hover:text-error"
