@@ -511,7 +511,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
             setTimeout(async () => { await publishingService.syncCommunityFollows().catch(() => {}); }, 90000);
         }
 
-        loadPlugins().catch(() => {});
+        loadPlugins(undefined, database).catch(() => {});
     });
 
     const gracefulShutdown = async (signal: string) => {

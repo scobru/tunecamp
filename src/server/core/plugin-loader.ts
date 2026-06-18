@@ -8,9 +8,14 @@ import { getDownloadService } from "../modules/catalog/download.service.js";
 import { storageService } from "../modules/storage/storage.service.js";
 import { aiService } from "../modules/ai/ai.service.js";
 
-import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider } from "./provider.js";
+import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider, ProviderRegistry, TuneCampProvider } from "./provider.js";
 
 const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
+
+/** Minimal slice of the database needed to restore plugin enabled/disabled state. */
+interface PluginStateStore {
+    getPluginState(id: string): { enabled: boolean } | undefined;
+}
 
 /**
  * Dynamically loads TuneCamp plugins from a directory.
@@ -35,7 +40,7 @@ const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
  * }
  * ```
  */
-export async function loadPlugins(pluginsDir?: string): Promise<void> {
+export async function loadPlugins(pluginsDir?: string, db?: PluginStateStore): Promise<void> {
     const dir = pluginsDir || PLUGIN_DIR_ENV || path.join(process.cwd(), "plugins");
 
     if (!(await fs.pathExists(dir))) {
@@ -71,53 +76,71 @@ export async function loadPlugins(pluginsDir?: string): Promise<void> {
                 continue;
             }
 
-            let registered = false;
+            // Plugins are registered DISABLED, then reconciled below against the
+            // persisted state. Going through registry.enable()/disable() (rather
+            // than registering enabled outright) is what fires the plugin's
+            // onEnable()/onDisable() lifecycle hooks at load time.
+            const targets: ProviderRegistry<TuneCampProvider>[] = [];
 
             // Detect which interface(s) the plugin implements and register accordingly
             if (typeof instance.searchRelease === "function") {
-                metadataService.getRegistry().register(instance as MetadataProvider);
+                metadataService.getRegistry().register(instance as MetadataProvider, false);
+                targets.push(metadataService.getRegistry() as ProviderRegistry<TuneCampProvider>);
                 console.log(`[PluginLoader] ✅ Registered as MetadataProvider: ${instance.name}`);
-                registered = true;
             }
 
             if (typeof instance.getStreamUrl === "function") {
-                streamingService.getRegistry().register(instance as StreamingProvider);
+                streamingService.getRegistry().register(instance as StreamingProvider, false);
+                targets.push(streamingService.getRegistry() as ProviderRegistry<TuneCampProvider>);
                 console.log(`[PluginLoader] ✅ Registered as StreamingProvider: ${instance.name}`);
-                registered = true;
             }
 
             if (typeof instance.search === "function" && typeof instance.download === "function" && typeof instance.isAvailable === "function") {
                 const ds = getDownloadService();
                 if (ds) {
-                    ds.getRegistry().register(instance as DownloadProvider);
+                    ds.getRegistry().register(instance as DownloadProvider, false);
+                    targets.push(ds.getRegistry() as ProviderRegistry<TuneCampProvider>);
                     console.log(`[PluginLoader] ✅ Registered as DownloadProvider: ${instance.name}`);
-                    registered = true;
                 }
             }
 
             if (typeof instance.scan === "function") {
                 const ss = getScannerService();
                 if (ss) {
-                    ss.getRegistry().register(instance as ScannerProvider);
+                    ss.getRegistry().register(instance as ScannerProvider, false);
+                    targets.push(ss.getRegistry() as ProviderRegistry<TuneCampProvider>);
                     console.log(`[PluginLoader] ✅ Registered as ScannerProvider: ${instance.name}`);
-                    registered = true;
                 }
             }
 
             if (typeof instance.upload === "function" && typeof instance.getUrl === "function") {
-                storageService.getRegistry().register(instance as StorageProvider);
+                storageService.getRegistry().register(instance as StorageProvider, false);
+                targets.push(storageService.getRegistry() as ProviderRegistry<TuneCampProvider>);
                 console.log(`[PluginLoader] ✅ Registered as StorageProvider: ${instance.name}`);
-                registered = true;
             }
 
             if (typeof instance.enrichMetadata === "function" && typeof instance.complete === "function") {
-                aiService.getRegistry().register(instance as AIProvider);
+                aiService.getRegistry().register(instance as AIProvider, false);
+                targets.push(aiService.getRegistry() as ProviderRegistry<TuneCampProvider>);
                 console.log(`[PluginLoader] ✅ Registered as AIProvider: ${instance.name}`);
-                registered = true;
             }
 
-            if (!registered) {
+            if (targets.length === 0) {
                 console.warn(`[PluginLoader] ⚠️ ${file}: Plugin loaded but matched no known interface. Check your implementation.`);
+                continue;
+            }
+
+            // Restore persisted enabled/disabled state. No saved row → enabled by
+            // default. enable() runs the plugin's onEnable() hook; a disabled
+            // plugin is simply left in its registered-disabled state.
+            const persisted = db?.getPluginState(instance.id);
+            const shouldEnable = persisted ? persisted.enabled : true;
+            if (shouldEnable) {
+                for (const registry of targets) {
+                    await registry.enable(instance.id);
+                }
+            } else {
+                console.log(`[PluginLoader] ⏸️ ${instance.name} kept disabled (persisted state)`);
             }
 
         } catch (error) {
