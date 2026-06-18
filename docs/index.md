@@ -31,6 +31,7 @@ Welcome to the **TuneCamp** technical documentation. This index serves as the ma
 
 - [Payments & Monetization](./payments.md): Stripe Checkout, Onramp, and on-chain verification.
 - [AI Integrations](./ai-integrations.md): Metadata automation and recommendations via OpenRouter.
+- [Auto Mix / DJ Mode](./auto-mix-dj.md): Design proposal for Spotify "Mix"-style beat-matched playlist transitions.
 - [Google Drive Integration](./google-drive.md): Cloud storage streaming and import.
 - [Torrent System](./torrents.md): WebTorrent integration for downloading music.
 - [Soulseek Integration](./soulseek.md): P2P search and download.
