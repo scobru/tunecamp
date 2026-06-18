@@ -1,15 +1,23 @@
-import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import fsExtra from 'fs-extra';
 import Stripe, { mockStripeInstance } from 'stripe';
 import { ethers, mockProviderInstance, mockInterfaceInstance } from 'ethers';
-import * as priceUtils from '../../../modules/catalog/price.js';
-import { createPaymentsRoutes } from '../payments.js';
+
+// Under ts-jest's ESM preset the live binding exported by price.js is read-only,
+// so jest.spyOn on the namespace throws. Mock the module instead and pull the
+// route factory in via a dynamic import so it resolves against the mock.
+jest.unstable_mockModule('../../../modules/catalog/price.js', () => ({
+    getEthUsdRate: jest.fn(),
+}));
 
 const pathExistsSpy = jest.spyOn(fsExtra, 'pathExists' as any).mockResolvedValue(false as any);
 const createReadStreamSpy = jest.spyOn(fsExtra, 'createReadStream' as any);
-const getEthUsdRateSpy = jest.spyOn(priceUtils, 'getEthUsdRate' as any);
+
+// Assigned in beforeAll once the mocked modules are dynamically imported.
+let createPaymentsRoutes: typeof import('../payments.js')['createPaymentsRoutes'];
+let getEthUsdRateSpy: jest.Mock<() => Promise<number>>;
 
 describe('Payments Routes', () => {
     let app: express.Express;
@@ -20,6 +28,12 @@ describe('Payments Routes', () => {
     let mockInterface: any;
     let consoleErrorSpy: any;
     let consoleWarnSpy: any;
+
+    beforeAll(async () => {
+        const priceModule = await import('../../../modules/catalog/price.js');
+        getEthUsdRateSpy = priceModule.getEthUsdRate as unknown as jest.Mock<() => Promise<number>>;
+        ({ createPaymentsRoutes } = await import('../payments.js'));
+    });
 
     beforeEach(() => {
         jest.clearAllMocks();
