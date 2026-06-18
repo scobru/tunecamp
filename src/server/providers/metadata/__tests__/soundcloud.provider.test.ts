@@ -1,15 +1,26 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import * as soundcloudUtils from '../../../utils/soundcloud.js';
-import { SoundCloudMetadataProvider } from '../soundcloud.metadata.js';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
-const scApiRequestSpy = jest.spyOn(soundcloudUtils, 'scApiRequest' as any);
-const resolveArtworkUrlSpy = jest.spyOn(soundcloudUtils, 'resolveArtworkUrl' as any);
+// ESM module namespaces are read-only, so spying on the bindings directly fails.
+// Mock the utils module and import the SUT dynamically so it picks up the mock.
+const scApiRequestSpy: any = jest.fn();
+const resolveArtworkUrlSpy: any = jest.fn();
 
-const provider = new SoundCloudMetadataProvider();
+jest.unstable_mockModule('../../../utils/soundcloud.js', () => ({
+    scApiRequest: scApiRequestSpy,
+    resolveArtworkUrl: resolveArtworkUrlSpy,
+}));
+
+let SoundCloudMetadataProvider: any;
+let provider: any;
+
+beforeAll(async () => {
+    ({ SoundCloudMetadataProvider } = await import('../soundcloud.metadata.js'));
+    provider = new SoundCloudMetadataProvider();
+});
 
 beforeEach(() => {
     jest.clearAllMocks();
-    resolveArtworkUrlSpy.mockReturnValue('https://art.test/cover.jpg' as any);
+    resolveArtworkUrlSpy.mockReturnValue('https://art.test/cover.jpg');
     jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 

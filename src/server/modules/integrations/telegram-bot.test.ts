@@ -1,6 +1,19 @@
-import { jest } from '@jest/globals';
-import { TelegramBotService } from './telegram-bot.js';
+import { jest, beforeAll } from '@jest/globals';
 import path from 'path';
+
+// telegraf is a CJS module that `require()`s node-fetch; under the ESM test setup
+// node-fetch is mapped to an ESM mock that CJS cannot require, which crashes the
+// import. We don't exercise the bot transport here (only auth + caption parsing),
+// so stub telegraf out entirely and import the SUT dynamically afterwards.
+jest.unstable_mockModule('telegraf', () => ({
+    Telegraf: class { constructor() {} },
+}));
+
+let TelegramBotService: any;
+
+beforeAll(async () => {
+    ({ TelegramBotService } = await import('./telegram-bot.js'));
+});
 
 describe('TelegramBotService', () => {
     let botService: TelegramBotService;

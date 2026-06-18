@@ -1,17 +1,11 @@
 import express from 'express';
 import request from 'supertest';
-import { jest, describe, it, expect, beforeAll } from '@jest/globals';
-import * as networkUtils from '../../../../utils/networkUtils.js';
+import { describe, it, expect } from '@jest/globals';
 import { createProxyRoutes } from '../proxy.js';
 
-jest.spyOn(networkUtils, 'isSafeUrl' as any).mockImplementation(async (urlStr) => {
-    let url;
-    try { url = new URL(urlStr); } catch { return false; }
-    if (['127.0.0.1', 'localhost', '10.0.0.5', '192.168.1.100', '[::1]'].includes(url.hostname)) return false;
-    if (!['http:', 'https:'].includes(url.protocol)) return false;
-    return true;
-});
-
+// These tests exercise the real isSafeUrl SSRF guard. We use IP *literals* so the
+// check is fully deterministic and never performs a DNS lookup: a public IP is
+// always allowed, while private/loopback IPs and non-HTTP protocols are blocked.
 const app = express();
 app.use('/api/proxy', createProxyRoutes({} as any));
 
@@ -23,7 +17,10 @@ describe('Proxy Security (SSRF Protection)', () => {
     });
 
     it('should allow valid, external HTTP/HTTPS URLs', async () => {
-        const res = await request(app).get('/api/proxy/stream?url=https://example.com/stream');
+        // 93.184.216.34 is a public IP literal (example.com) — passes the SSRF guard
+        // without a DNS lookup. The downstream fetch is not mocked, so any status
+        // other than 403 confirms the request was allowed through the guard.
+        const res = await request(app).get('/api/proxy/stream?url=https://93.184.216.34/stream');
         expect(res.status).not.toBe(403);
     });
 

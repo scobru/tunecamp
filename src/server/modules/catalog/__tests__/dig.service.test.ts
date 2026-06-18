@@ -1,10 +1,24 @@
 import { describe, test, expect, beforeAll, beforeEach, jest } from '@jest/globals';
-import * as bandcampUtils from '../../../utils/bandcamp.js';
-import { DigService } from '../dig.service.js';
 
-const extractBandcampMetadataSpy = jest.spyOn(bandcampUtils, 'extractBandcampMetadata' as any);
-const getTralbumCollectorsSpy = jest.spyOn(bandcampUtils, 'getTralbumCollectors' as any);
-const getFanCollectionSpy = jest.spyOn(bandcampUtils, 'getFanCollection' as any);
+// ESM module namespaces are read-only, so spying on the bindings directly fails.
+// Mock the utils module and import the SUT dynamically so it picks up the mock.
+const extractBandcampMetadataSpy: any = jest.fn();
+const getTralbumCollectorsSpy: any = jest.fn();
+const getFanCollectionSpy: any = jest.fn();
+
+jest.unstable_mockModule('../../../utils/bandcamp.js', () => ({
+    searchBandcamp: jest.fn(),
+    extractBandcampMetadata: extractBandcampMetadataSpy,
+    getTralbumCollectors: getTralbumCollectorsSpy,
+    getFanCollection: getFanCollectionSpy,
+    BANDCAMP_IMAGE_BASE: 'https://f4.bcbits.com/img',
+}));
+
+let DigService: any;
+
+beforeAll(async () => {
+    ({ DigService } = await import('../dig.service.js'));
+});
 
 /** Minimal in-memory stand-in for database.db (cache always misses, writes are no-ops). */
 const mockDb = {

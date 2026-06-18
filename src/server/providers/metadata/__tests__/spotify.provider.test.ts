@@ -1,20 +1,18 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import * as spotifyUtils from '../../../utils/spotify.js';
 import { SpotifyProvider } from '../spotify.provider.js';
 
+// The SpotifyMetadataClient hits the network, so we override the provider's client
+// field with stubs. isSpotifyPlaylistUrl / extractSpotifyPlaylistId are pure URL
+// helpers used with real Spotify URLs, so the real implementations run unmocked.
 const searchTracks: any = jest.fn();
 const getPlaylist: any = jest.fn();
 
-const SpotifyMetadataClientSpy = jest.spyOn(spotifyUtils, 'SpotifyMetadataClient' as any)
-    .mockImplementation(() => ({ searchTracks, getPlaylist }) as any);
-const isSpotifyPlaylistUrlSpy = jest.spyOn(spotifyUtils, 'isSpotifyPlaylistUrl' as any);
-const extractSpotifyPlaylistIdSpy = jest.spyOn(spotifyUtils, 'extractSpotifyPlaylistId' as any);
-
 const provider = new SpotifyProvider();
+(provider as any).client = { searchTracks, getPlaylist };
 
 beforeEach(() => {
     jest.clearAllMocks();
-    SpotifyMetadataClientSpy.mockImplementation(() => ({ searchTracks, getPlaylist }) as any);
+    (provider as any).client = { searchTracks, getPlaylist };
     jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -60,16 +58,14 @@ describe('SpotifyProvider', () => {
     });
 
     describe('canHandlePlaylist', () => {
-        test('delegates to isSpotifyPlaylistUrl', () => {
-            isSpotifyPlaylistUrlSpy.mockReturnValueOnce(true as any);
+        test('recognizes a Spotify playlist URL', () => {
             expect(provider.canHandlePlaylist('https://open.spotify.com/playlist/abc')).toBe(true);
-            expect(isSpotifyPlaylistUrlSpy).toHaveBeenCalledWith('https://open.spotify.com/playlist/abc');
+            expect(provider.canHandlePlaylist('https://example.com/not-spotify')).toBe(false);
         });
     });
 
     describe('fetchPlaylistByUrl', () => {
         test('resolves the id, fetches the playlist, and maps tracks', async () => {
-            extractSpotifyPlaylistIdSpy.mockReturnValueOnce('pl1' as any);
             getPlaylist.mockResolvedValueOnce({
                 id: 'pl1',
                 name: 'My Playlist',
@@ -92,7 +88,6 @@ describe('SpotifyProvider', () => {
 
             const playlist = await provider.fetchPlaylistByUrl('https://open.spotify.com/playlist/pl1');
 
-            expect(extractSpotifyPlaylistIdSpy).toHaveBeenCalledWith('https://open.spotify.com/playlist/pl1');
             expect(getPlaylist).toHaveBeenCalledWith('pl1');
             expect(playlist).toEqual({
                 id: 'pl1',

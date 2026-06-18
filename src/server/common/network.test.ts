@@ -1,30 +1,26 @@
 import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
-import nodeFetch from 'node-fetch';
-import * as networkUtils from '../../utils/networkUtils.js';
-import * as network from './network.js';
 
-// Spy on the real imports so the SUT (network.ts) and this test share
-// the same function references — no unstable_mockModule needed.
-const fetchSpy = jest.spyOn(nodeFetch as any, 'default' in nodeFetch ? 'default' : 'call') as any;
-// Simpler: jest.fn replacement via the module reference network.ts actually uses
-// requires wrapping. Instead spy on the exported module binding.
+// ESM module namespaces are read-only, so spying on the binding directly fails.
+// Mock the module instead and import the SUT dynamically so it picks up the mock.
+const isSafeUrl = jest.fn<(urlStr: string) => Promise<boolean>>();
+jest.unstable_mockModule('../../utils/networkUtils.js', () => ({ isSafeUrl }));
 
-// Use a closure flag for isSafeUrl
-let safeUrlResult = true;
-const isSafeUrlSpy = jest.spyOn(networkUtils, 'isSafeUrl').mockImplementation(async () => safeUrlResult);
+let network: typeof import('./network.js');
+
+beforeAll(async () => {
+    network = await import('./network.js');
+});
 
 describe('Network Utilities', () => {
     let consoleWarnSpy: any;
 
     beforeEach(() => {
-        safeUrlResult = true;
-        isSafeUrlSpy.mockImplementation(async () => safeUrlResult);
+        isSafeUrl.mockResolvedValue(true);
         consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
     afterEach(() => {
         jest.clearAllMocks();
-        isSafeUrlSpy.mockImplementation(async () => safeUrlResult);
         consoleWarnSpy.mockRestore();
     });
 
@@ -60,7 +56,7 @@ describe('Network Utilities', () => {
 
     describe('fetchSafe', () => {
         test('throws SSRF error and warns if URL is unsafe', async () => {
-            safeUrlResult = false;
+            isSafeUrl.mockResolvedValue(false);
             await expect(network.fetchSafe('http://192.168.1.1/api')).rejects.toThrow('SSRF Blocked');
             expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Blocked potential SSRF'));
         });
@@ -68,7 +64,7 @@ describe('Network Utilities', () => {
 
     describe('fetchJsonSafe', () => {
         test('returns null and warns if URL is unsafe', async () => {
-            safeUrlResult = false;
+            isSafeUrl.mockResolvedValue(false);
             const res = await network.fetchJsonSafe('http://localhost:3000');
             expect(res).toBeNull();
             expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Blocked potential SSRF'));

@@ -1,10 +1,11 @@
+import { jest, describe, test, expect, beforeEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import * as networkUtils from '../../../../utils/networkUtils.js';
 import { createMetadataRoutes } from '../metadata.js';
 
-const isSafeUrlSpy = jest.spyOn(networkUtils, 'isSafeUrl' as any);
+// These tests exercise the real isSafeUrl SSRF guard via IP *literals* so the check
+// is deterministic and never hits DNS: a private/loopback IP is blocked, a public IP
+// is allowed.
 
 const mockDb = {
     getAlbum: jest.fn(),
@@ -45,7 +46,6 @@ describe('Metadata Security', () => {
     });
 
     test('POST /api/metadata/apply should block unsafe coverUrl', async () => {
-        isSafeUrlSpy.mockResolvedValue(false as any);
         (mockDb.getAlbum as jest.Mock).mockReturnValue({ id: 1, title: 'Test Album' });
 
         const response = await request(app)
@@ -60,18 +60,17 @@ describe('Metadata Security', () => {
     });
 
     test('POST /api/metadata/apply should allow safe coverUrl', async () => {
-        isSafeUrlSpy.mockResolvedValue(true as any);
         (mockDb.getAlbum as jest.Mock).mockReturnValue({ id: 1, title: 'Test Album', cover_path: '/tmp/music/album/cover.jpg' });
         (mockDb.getTracks as jest.Mock).mockReturnValue([]);
 
         const response = await request(app)
             .post('/api/metadata/apply')
+            // 93.184.216.34 is a public IP literal — passes the SSRF guard without DNS.
             .send({
                 albumId: 1,
-                coverUrl: 'https://legit.com/cover.jpg'
+                coverUrl: 'https://93.184.216.34/cover.jpg'
             });
 
         expect(response.status).toBe(200);
-        expect(isSafeUrlSpy).toHaveBeenCalledWith('https://legit.com/cover.jpg');
     });
 });
