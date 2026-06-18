@@ -37,6 +37,12 @@ const Live = () => {
     const [isStarting, setIsStarting] = useState(false);
     const [listenerCount, setListenerCount] = useState(0);
 
+    // Audio input selection. Browsers expose input *devices* (a USB interface,
+    // a line-in, the built-in mic all appear here) rather than abstract input
+    // "types"; "" means "let the browser pick its default".
+    const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
+    const [selectedDeviceId, setSelectedDeviceId] = useState("");
+
     // Listening state
     const [listeningTo, setListeningTo] = useState<LiveSession | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
@@ -69,6 +75,32 @@ const Live = () => {
         return () => clearInterval(interval);
     }, [refreshSessions]);
 
+    // Enumerate audio inputs for the device picker. Device *labels* are only
+    // exposed once the user has granted mic permission at least once, so the
+    // list may show generic names until the first Go Live unlocks them.
+    const refreshInputDevices = useCallback(async () => {
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const inputs = devices.filter(d => d.kind === "audioinput");
+            setInputDevices(inputs);
+            // Drop the selection if that device was unplugged
+            setSelectedDeviceId(prev =>
+                prev && inputs.some(d => d.deviceId === prev) ? prev : ""
+            );
+        } catch (e) {
+            console.error("Failed to enumerate audio inputs:", e);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!canBroadcast) return;
+        refreshInputDevices();
+        const md = navigator.mediaDevices;
+        md?.addEventListener?.("devicechange", refreshInputDevices);
+        return () => md?.removeEventListener?.("devicechange", refreshInputDevices);
+    }, [canBroadcast, refreshInputDevices]);
+
     const teardownBroadcast = useCallback(() => {
         if (recorderRef.current && recorderRef.current.state !== "inactive") {
             recorderRef.current.stop();
@@ -100,7 +132,13 @@ const Live = () => {
         setError("");
         setIsStarting(true);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_CONSTRAINTS });
+            const audioConstraints: MediaTrackConstraints = { ...AUDIO_CONSTRAINTS };
+            if (selectedDeviceId) {
+                audioConstraints.deviceId = { exact: selectedDeviceId };
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+            // Permission is now granted, so labels are available — refresh the list
+            refreshInputDevices();
             const session = await API.startLive(title.trim() || "Live session");
             sessionRef.current = session;
 
@@ -262,6 +300,25 @@ const Live = () => {
                                     this server and streamed to listeners over HLS. One upload from
                                     you, unlimited listeners.
                                 </p>
+                                {inputDevices.length > 0 && (
+                                    <label className="form-control w-full">
+                                        <span className="label-text text-xs opacity-60 flex items-center gap-1.5 mb-1">
+                                            <Mic size={12} /> Audio input
+                                        </span>
+                                        <select
+                                            className="select select-bordered w-full"
+                                            value={selectedDeviceId}
+                                            onChange={e => setSelectedDeviceId(e.target.value)}
+                                        >
+                                            <option value="">System default</option>
+                                            {inputDevices.map((d, i) => (
+                                                <option key={d.deviceId || i} value={d.deviceId}>
+                                                    {d.label || `Audio input ${i + 1}`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                )}
                                 <input
                                     type="text"
                                     className="input input-bordered w-full"
