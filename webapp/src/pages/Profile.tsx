@@ -31,6 +31,7 @@ import type { Track } from "../types";
 import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
 import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
+import { LinksEditor } from "../components/ui/LinksEditor";
 
 const Profile = () => {
   const { user, isAuthenticated, role, isInitializing, checkAuth } = useAuthStore();
@@ -1187,31 +1188,11 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
             <h3 className="text-xl font-bold flex items-center gap-2">
               <Globe size={20} className="text-sky-400" /> Web Links
             </h3>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text opacity-60">Social Links (comma separated)</span>
-              </label>
-              <input
-                type="text"
-                className="input input-bordered"
-                value={socialLinks.map((l) => l.url).join(", ")}
-                onChange={(e) => {
-                  const urls = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
-                  setSocialLinks(
-                    urls.map((url) => {
-                      let platform = "Social";
-                      if (url.includes("twitter")) platform = "Twitter";
-                      if (url.includes("x.com")) platform = "X";
-                      if (url.includes("instagram")) platform = "Instagram";
-                      if (url.includes("facebook")) platform = "Facebook";
-                      if (url.includes("youtube")) platform = "YouTube";
-                      return { platform, url };
-                    })
-                  );
-                }}
-                placeholder="twitter.com/..., instagram.com/..."
-              />
-            </div>
+            <LinksEditor
+              label="Social Links"
+              links={socialLinks}
+              onChange={setSocialLinks}
+            />
           </div>
         </div>
 
