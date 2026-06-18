@@ -877,6 +877,12 @@ export class ActivityPubService {
         // Store follow request as pending
         this.db.addFollower(artist.id, actorUri, inboxUri, undefined, activity.id);
 
+        // If artist requires manual approval, leave as pending and don't send Accept
+        if ((artist as any).manually_approves_followers) {
+            console.log(`⏳ Follow request from ${actorUri} for ${artist.name} left pending (manual approval required)`);
+            return;
+        }
+
         // Immediately accept it and notify the actor
         this.db.acceptFollower(artist.id, actorUri);
         console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);

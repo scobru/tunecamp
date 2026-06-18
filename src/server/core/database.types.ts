@@ -60,6 +60,7 @@ export interface Artist {
     /** 0 = sales disabled (unverified artist), 1 = sales enabled. Enforced server-side at checkout. */
     can_sell?: number;
     banner_path?: string | null;
+    manually_approves_followers?: number;
     created_at?: string;
     // Computed fields
     isLibraryArtist?: boolean;
@@ -462,7 +463,7 @@ export interface LibraryManager {
     getArtistByName(name: string): Artist | undefined;
     getArtistsByIds(ids: number[]): Artist[];
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
-    updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void;
+    updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', manuallyApprovesFollowers?: boolean): void;
     updateArtistBanner(id: number, bannerPath: string | null): void;
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     setArtistCanSell(id: number, canSell: boolean): void;

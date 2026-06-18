@@ -173,20 +173,22 @@ export class ArtistRepository extends BaseRepository {
         throw new Error("Could not create unique slug for artist");
     }
 
-    update(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted'): void {
+    update(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', manuallyApprovesFollowers?: boolean): void {
         const linksJson = links ? JSON.stringify(links) : undefined;
         const postParamsJson = postParams ? JSON.stringify(postParams) : undefined;
+        const maf = manuallyApprovesFollowers !== undefined ? (manuallyApprovesFollowers ? 1 : 0) : undefined;
         this.db.prepare(`
-            UPDATE artists SET 
+            UPDATE artists SET
                 name = COALESCE(?, name),
                 bio = COALESCE(?, bio),
                 photo_path = COALESCE(?, photo_path),
                 links = COALESCE(?, links),
                 post_params = COALESCE(?, post_params),
                 wallet_address = COALESCE(?, wallet_address),
-                visibility = COALESCE(?, visibility)
+                visibility = COALESCE(?, visibility),
+                manually_approves_followers = COALESCE(?, manually_approves_followers)
             WHERE id = ?
-        `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, visibility ?? null, id);
+        `).run(name ?? null, bio ?? null, photoPath ?? null, linksJson ?? null, postParamsJson ?? null, walletAddress ?? null, visibility ?? null, maf ?? null, id);
     }
 
     updateBanner(id: number, bannerPath: string | null): void {

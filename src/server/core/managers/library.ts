@@ -25,7 +25,7 @@ export function createLibraryManager(
         getArtistByName: (n: string) => artistRepository.getByName(n),
         getArtistsByIds: (ids: number[]) => artistRepository.getByIds(ids),
         createArtist: (n: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v: any = 'private', e?: string) => artistRepository.create(n, b, p, l, pp, w, v, e),
-        updateArtist: (id: number, n?: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v?: any) => artistRepository.update(id, n, b, p, l, pp, w, v),
+        updateArtist: (id: number, n?: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v?: any, maf?: boolean) => artistRepository.update(id, n, b, p, l, pp, w, v, maf),
         updateArtistBanner: (id: number, bannerPath: string | null) => artistRepository.updateBanner(id, bannerPath),
         updateArtistKeys: (id: number, publicKey: string, privateKey: string) => artistRepository.updateKeys(id, publicKey, privateKey),
         setArtistCanSell: (id: number, canSell: boolean) => artistRepository.setCanSell(id, canSell),

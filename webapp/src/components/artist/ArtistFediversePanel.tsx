@@ -77,6 +77,15 @@ export const ArtistFediversePanel = () => {
     const [composerTab, setComposerTab] = useState<'write' | 'preview'>('write');
     const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Timeline filter
+    const [timelineFilter, setTimelineFilter] = useState<'all' | 'mine' | 'following'>('mine');
+    const [followingItems, setFollowingItems] = useState<any[]>([]);
+    const [followingLoading, setFollowingLoading] = useState(false);
+
+    // Follow new actor
+    const [followActorInput, setFollowActorInput] = useState('');
+    const [followActorLoading, setFollowActorLoading] = useState(false);
+
     // Micro-interactions States
     const [copied, setCopied] = useState(false);
     // Follow-back (real Follow activity) — keyed by follower actor uri
@@ -342,6 +351,39 @@ export const ArtistFediversePanel = () => {
             notify.error(e, "Failed to delete reply");
         } finally {
             setDeletingReply(prev => ({ ...prev, [replyUri]: false }));
+        }
+    };
+
+    const loadFollowingFeed = async (id: string) => {
+        setFollowingLoading(true);
+        try {
+            const data = await API.getArtistTimeline(id, 'following');
+            setFollowingItems(data);
+        } catch (e) {
+            console.error("Failed to load following feed", e);
+        } finally {
+            setFollowingLoading(false);
+        }
+    };
+
+    const handleTimelineFilterChange = (f: 'all' | 'mine' | 'following') => {
+        setTimelineFilter(f);
+        if ((f === 'following' || f === 'all') && effectiveArtistId) {
+            loadFollowingFeed(effectiveArtistId);
+        }
+    };
+
+    const handleFollowNewActor = async () => {
+        if (!effectiveArtistId || !followActorInput.trim() || followActorLoading) return;
+        setFollowActorLoading(true);
+        try {
+            await API.followBackActor(effectiveArtistId, followActorInput.trim());
+            setFollowActorInput('');
+            notify.success('Follow request sent!');
+        } catch (e: any) {
+            notify.error(e, 'Failed to send follow request');
+        } finally {
+            setFollowActorLoading(false);
         }
     };
 
@@ -677,6 +719,32 @@ export const ArtistFediversePanel = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Follow New Account Card */}
+                    <div className="card-m3 bg-base-200/40 border border-base-content/5 rounded-2xl shadow-md p-6">
+                        <h3 className="font-bold text-lg flex items-center gap-2 mb-3">
+                            <Globe size={18} className="text-primary"/> Follow Account
+                        </h3>
+                        <p className="text-xs opacity-60 mb-3">Follow a Mastodon/Fediverse account as your artist identity.</p>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                className="input input-bordered input-sm flex-1 rounded-xl text-xs"
+                                placeholder="https://mastodon.social/users/alice"
+                                value={followActorInput}
+                                onChange={(e) => setFollowActorInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleFollowNewActor()}
+                            />
+                            <button
+                                className="btn btn-sm btn-primary rounded-xl gap-1"
+                                onClick={handleFollowNewActor}
+                                disabled={followActorLoading || !followActorInput.trim()}
+                            >
+                                {followActorLoading ? <span className="loading loading-spinner loading-xs" /> : <Send size={14} />}
+                                Follow
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right/Main - Composer & Timeline (lg:col-span-8) */}
@@ -862,17 +930,81 @@ export const ArtistFediversePanel = () => {
 
                     {/* Timeline Feed Container */}
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center px-1">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 px-1">
                             <h3 className="font-bold text-lg flex items-center gap-2">
-                                <MessageSquare size={18} className="text-secondary"/> Federated Feed Timeline
+                                <MessageSquare size={18} className="text-secondary"/> Timeline
                             </h3>
-                            <div className="text-xs opacity-50 font-medium font-mono">
-                                Realtime Outbox Activities
+                            <div className="flex bg-base-300/60 p-0.5 rounded-xl text-xs">
+                                {(['mine', 'following', 'all'] as const).map(f => (
+                                    <button
+                                        key={f}
+                                        type="button"
+                                        className={`px-3 py-1.5 rounded-lg font-bold capitalize transition-all ${timelineFilter === f ? 'bg-primary text-primary-content shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                                        onClick={() => handleTimelineFilterChange(f)}
+                                    >
+                                        {f === 'mine' ? 'My Posts' : f === 'following' ? 'Following' : 'All'}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Notes Skeletons or Empty / Content Render */}
-                        {loading && notes.length === 0 ? (
+                        {/* Following feed */}
+                        {timelineFilter !== 'mine' && (
+                            <div className="space-y-3">
+                                {followingLoading ? (
+                                    <div className="flex justify-center py-8">
+                                        <span className="loading loading-spinner loading-md opacity-40" />
+                                    </div>
+                                ) : followingItems.length === 0 ? (
+                                    <div className="text-center py-10 opacity-50 border-2 border-dashed border-base-content/5 rounded-2xl bg-base-200/10 text-sm">
+                                        <Globe className="mx-auto mb-2 opacity-40" size={28} />
+                                        <p>No posts from followed accounts yet.</p>
+                                        <p className="text-xs mt-1 opacity-70">Follow Fediverse accounts using the sidebar widget.</p>
+                                    </div>
+                                ) : followingItems.map((item, i) => (
+                                    <div key={`${item.source}-${i}`} className="card-m3 bg-base-200/20 hover:bg-base-200/40 border border-base-content/5 rounded-2xl p-4 transition-all duration-medium-2">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="avatar flex-shrink-0">
+                                                <div className="w-9 h-9 rounded-full bg-neutral overflow-hidden">
+                                                    {item.actor?.icon_url ? (
+                                                        <img src={item.actor.icon_url} alt={item.actor.name} onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                                    ) : (
+                                                        <span className="text-sm font-semibold flex items-center justify-center h-full">{(item.actor?.name || item.artist_name || '?')[0]?.toUpperCase()}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-bold text-sm truncate">{item.actor?.name || item.artist_name || 'Unknown'}</div>
+                                                <div className="text-xs opacity-50 flex items-center gap-1">
+                                                    {item.actor?.username && <span className="font-mono">@{item.actor.username}</span>}
+                                                    <span>·</span>
+                                                    <span>{getRelativeTime(item.published_at)}</span>
+                                                </div>
+                                            </div>
+                                            {item.url && (
+                                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-xs btn-ghost btn-circle opacity-50 hover:opacity-100 flex-shrink-0">
+                                                    <ExternalLink size={13} />
+                                                </a>
+                                            )}
+                                        </div>
+                                        {item.title && <div className="font-semibold text-sm mb-1">{item.title}</div>}
+                                        {item.content && (
+                                            <div className="text-sm opacity-80 line-clamp-3" dangerouslySetInnerHTML={{ __html: item.content }} />
+                                        )}
+                                        {item.cover_url && (
+                                            <img src={item.cover_url} alt={item.title || ''} className="mt-2 rounded-xl w-full max-h-48 object-cover" onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                        )}
+                                        <div className="mt-2">
+                                            <span className="badge badge-xs badge-ghost">{item.type === 'release' ? 'Release' : 'Post'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* My Posts Skeletons or Empty / Content Render */}
+                        {timelineFilter !== 'following' && (
+                        loading && notes.length === 0 ? (
                             <div className="space-y-4">
                                 {[1, 2].map(n => (
                                     <div key={n} className="card-m3 border border-base-content/5 rounded-2xl bg-base-200/20 p-6 animate-pulse space-y-4">
@@ -1135,10 +1267,27 @@ export const ArtistFediversePanel = () => {
                                                             <span>{likesCount}</span>
                                                         </button>
 
-                                                        {/* Broadcast indicator */}
-                                                        <div className="text-xs font-semibold opacity-40 px-2 py-0.5 rounded-full bg-base-300">
-                                                            ActivityPub Note
-                                                        </div>
+                                                        {/* Share to Mastodon (only for releases when cross-posting is configured) */}
+                                                        {note.note_type === 'release' && artist?.postParams?.instance ? (
+                                                            <button
+                                                                className="btn btn-xs btn-outline btn-primary rounded-full gap-1 font-semibold"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await API.shareReleaseToMastodon(note.content_id);
+                                                                        notify.success('Shared to Mastodon!');
+                                                                    } catch (e: any) {
+                                                                        notify.error(e, 'Failed to share');
+                                                                    }
+                                                                }}
+                                                                title="Share this release to your connected Mastodon account"
+                                                            >
+                                                                <Repeat size={11} /> Share
+                                                            </button>
+                                                        ) : (
+                                                            <div className="text-xs font-semibold opacity-40 px-2 py-0.5 rounded-full bg-base-300">
+                                                                ActivityPub Note
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     {/* Federated replies thread */}
@@ -1230,6 +1379,7 @@ export const ArtistFediversePanel = () => {
                                     );
                                 })}
                             </div>
+                        )
                         )}
                     </div>
                 </div>
