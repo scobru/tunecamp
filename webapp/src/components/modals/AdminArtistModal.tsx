@@ -3,6 +3,7 @@ import API from '../../services/api';
 import { User, Image as ImageIcon, Globe, AlertTriangle, Search } from 'lucide-react';
 import type { User as DbUser, ArtistLink } from '../../types';
 import { ArtistStripeConnectCard } from '../artist/ArtistStripeConnectCard';
+import { LinksEditor } from '../ui/LinksEditor';
 
 interface AdminArtistModalProps {
     onArtistUpdated: () => void;
@@ -371,29 +372,11 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                         placeholder="https://ko-fi.com/..."
                                     />
                                 </div>
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text">Social Links (comma separated URLs)</span>
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        className="input input-bordered w-full" 
-                                        value={socialLinks.map(l => l.url).join(', ')}
-                                        onChange={e => {
-                                            const urls = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                            setSocialLinks(urls.map(url => {
-                                                let platform = 'Social';
-                                                if (url.includes('twitter')) platform = 'Twitter';
-                                                if (url.includes('x.com')) platform = 'X';
-                                                if (url.includes('instagram')) platform = 'Instagram';
-                                                if (url.includes('facebook')) platform = 'Facebook';
-                                                if (url.includes('youtube')) platform = 'YouTube';
-                                                return { platform, url };
-                                            }));
-                                        }}
-                                        placeholder="twitter.com/..., instagram.com/..."
-                                    />
-                                </div>
+                                <LinksEditor
+                                    label="Social Links"
+                                    links={socialLinks}
+                                    onChange={setSocialLinks}
+                                />
                             </div>
                             
                             <div className="form-control">
