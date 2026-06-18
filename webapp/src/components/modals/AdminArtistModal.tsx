@@ -401,7 +401,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 </label>
                             </div>
 
-                            {isEditing && isAdminUser && editId && (
+                            {isEditing && (isAdminUser || isSelf) && editId && (
                                 <ArtistStripeConnectCard artistId={editId} />
                             )}
 

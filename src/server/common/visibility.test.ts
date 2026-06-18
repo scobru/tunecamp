@@ -53,6 +53,55 @@ describe("VisibilityGuardian", () => {
     });
   });
 
+  describe("canWriteContent", () => {
+    const listenerArtist: ViewerContext = { userId: 7, artistId: 10, role: UserRole.NORMAL_USER };
+
+    test("Managers and Curators can write even without an artist link", () => {
+      expect(VisibilityGuardian.canWriteContent(rootAdmin)).toBe(true);
+      expect(VisibilityGuardian.canWriteContent(superUser)).toBe(true);
+      expect(VisibilityGuardian.canWriteContent({ userId: 6, role: UserRole.ADMIN })).toBe(true);
+    });
+
+    test("A Listener promoted to Artist (user + artistId) can write", () => {
+      expect(VisibilityGuardian.canWriteContent(listenerArtist)).toBe(true);
+    });
+
+    test("A plain Listener and guests cannot write", () => {
+      expect(VisibilityGuardian.canWriteContent(normalUser)).toBe(false);
+      expect(VisibilityGuardian.canWriteContent(guest)).toBe(false);
+    });
+  });
+
+  describe("canManageItem", () => {
+    const listenerArtist: ViewerContext = { userId: 7, artistId: 10, role: UserRole.NORMAL_USER };
+
+    test("Managers/Root Admins manage any item", () => {
+      expect(VisibilityGuardian.canManageItem(rootAdmin, { owner_id: 999, artist_id: 1 })).toBe(true);
+      expect(VisibilityGuardian.canManageItem({ userId: 6, role: UserRole.ADMIN }, { owner_id: 999 })).toBe(true);
+    });
+
+    test("Curators do NOT implicitly own other users' items", () => {
+      expect(VisibilityGuardian.canManageItem(superUser, { owner_id: 999, artist_id: 1 })).toBe(false);
+    });
+
+    test("The direct owner manages their item", () => {
+      expect(VisibilityGuardian.canManageItem(listenerArtist, { owner_id: 7, artist_id: 10 })).toBe(true);
+    });
+
+    test("A linked Artist manages unowned content carrying their artist_id", () => {
+      expect(VisibilityGuardian.canManageItem(listenerArtist, { owner_id: null, artist_id: 10 })).toBe(true);
+    });
+
+    test("A linked Artist cannot manage another user's owned content even on the same artist", () => {
+      expect(VisibilityGuardian.canManageItem(listenerArtist, { owner_id: 999, artist_id: 10 })).toBe(false);
+    });
+
+    test("An unrelated artist/listener cannot manage the item", () => {
+      expect(VisibilityGuardian.canManageItem(listenerArtist, { owner_id: 999, artist_id: 55 })).toBe(false);
+      expect(VisibilityGuardian.canManageItem(normalUser, { owner_id: 999, artist_id: 55 })).toBe(false);
+    });
+  });
+
   describe("Context Derivation", () => {
     test("should derive correct context from user object", () => {
       const user = { userId: 5, role: 'super_user', isActive: true };

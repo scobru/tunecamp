@@ -101,13 +101,16 @@ describe('Tracks Routes', () => {
         jest.clearAllMocks();
         app = express();
         app.use(express.json());
-        // Mock auth middleware
+        // Mock auth middleware (mirrors the real middleware: it always sets req.role
+        // and req.context, which the route guards rely on).
         app.use((req: any, res, next) => {
             req.isAdmin = (app as any).testAuth?.isAdmin ?? true;
             req.artistId = (app as any).testAuth?.artistId ?? null;
             req.userId = (app as any).testAuth?.userId ?? ((app as any).testAuth?.artistId ?? undefined);
             req.isActive = (app as any).testAuth?.isActive ?? true;
             req.username = (app as any).testAuth?.username ?? 'testuser';
+            req.role = (app as any).testAuth?.role ?? (req.isAdmin ? 'admin' : 'user');
+            req.context = { userId: req.userId ?? null, artistId: req.artistId ?? null, role: req.role };
             next();
         });
 
