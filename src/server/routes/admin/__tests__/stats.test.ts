@@ -1,11 +1,13 @@
-import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import Database from 'better-sqlite3';
-import * as networkUtils from '../../../../utils/networkUtils.js';
 import { createStatsRoutes } from '../stats.js';
 
-const isSafeUrlSpy = jest.spyOn(networkUtils, 'isSafeUrl' as any);
+// The network endpoints run the real isSafeUrl SSRF guard. Remote peers in these
+// tests use public IP *literals* (TEST-NET ranges 93.x / 198.51.100.x / 203.0.113.x)
+// so the guard resolves deterministically to "safe" without any DNS lookup, while
+// the actual HTTP fetch is stubbed via a mocked global.fetch.
 
 describe('Stats Routes', () => {
     let app: express.Express;
@@ -65,7 +67,6 @@ describe('Stats Routes', () => {
         global.fetch = mockFetch as any;
 
         jest.clearAllMocks();
-        isSafeUrlSpy.mockResolvedValue(false as any);
     });
 
     afterEach(() => {
@@ -160,9 +161,8 @@ describe('Stats Routes', () => {
                 { url: 'https://sitea.com', name: 'Site A', description: 'Desc A', version: '2.0', lastSeen: 'today' }
             ]);
             mockDbService.getFollowedActors.mockReturnValue([
-                { uri: 'https://siteb.com/actor', name: 'Actor B', username: 'site', summary: 'Summary B', last_seen: 'yesterday' }
+                { uri: 'https://93.184.216.34/actor', name: 'Actor B', username: 'site', summary: 'Summary B', last_seen: 'yesterday' }
             ]);
-            isSafeUrlSpy.mockResolvedValue(true as any);
             mockFetch.mockResolvedValue({ ok: true, json: async () => ({ releases: [] }) });
 
             const res = await request(app).get('/api/stats/network/sites');
@@ -198,9 +198,8 @@ describe('Stats Routes', () => {
         test('a dead followed AP instance is dropped from the directory', async () => {
             mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([]);
             mockDbService.getFollowedActors.mockReturnValue([
-                { uri: 'https://dead-ap.com/actor', name: 'Dead', username: 'site', summary: '', last_seen: 'long ago' }
+                { uri: 'https://198.51.100.7/actor', name: 'Dead', username: 'site', summary: '', last_seen: 'long ago' }
             ]);
-            isSafeUrlSpy.mockResolvedValue(true as any);
             mockFetch.mockResolvedValue({ ok: true, json: async () => ({ message: 'hello from nginx' }) });
 
             const res = await request(app).get('/api/stats/network/sites');
@@ -214,9 +213,8 @@ describe('Stats Routes', () => {
     describe('GET /api/stats/network/tracks', () => {
         test('returns local and federated tracks and posts', async () => {
             mockFederatedDiscoveryService.getCommunitySites.mockReturnValue([
-                { url: 'https://remotesite.com', name: 'Remote' }
+                { url: 'https://203.0.113.5', name: 'Remote' }
             ]);
-            isSafeUrlSpy.mockResolvedValue(true as any);
 
             mockFetch.mockResolvedValue({
                 ok: true,

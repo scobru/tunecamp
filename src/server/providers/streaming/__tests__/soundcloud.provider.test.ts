@@ -1,16 +1,30 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import * as soundcloudUtils from '../../../utils/soundcloud.js';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 import nodeFetch from 'node-fetch';
-import { SoundCloudStreamingProvider } from '../soundcloud.provider.js';
 
 const fetch = nodeFetch as any;
 
-const scApiRequestSpy = jest.spyOn(soundcloudUtils, 'scApiRequest' as any);
-const getClientIdSpy = jest.spyOn(soundcloudUtils, 'getClientId' as any);
-const clearSoundCloudClientIdSpy = jest.spyOn(soundcloudUtils, 'clearSoundCloudClientId' as any);
-jest.spyOn(soundcloudUtils, 'resolveArtworkUrl' as any).mockReturnValue('https://art.test/cover.jpg');
+// ESM module namespaces are read-only, so spying on the bindings directly fails.
+// Mock the utils module and import the SUT dynamically so it picks up the mock.
+const scApiRequestSpy: any = jest.fn();
+const getClientIdSpy: any = jest.fn();
+const clearSoundCloudClientIdSpy: any = jest.fn();
+const resolveArtworkUrlSpy: any = jest.fn(() => 'https://art.test/cover.jpg');
 
-const provider = new SoundCloudStreamingProvider();
+jest.unstable_mockModule('../../../utils/soundcloud.js', () => ({
+    scApiRequest: scApiRequestSpy,
+    getClientId: getClientIdSpy,
+    clearSoundCloudClientId: clearSoundCloudClientIdSpy,
+    resolveArtworkUrl: resolveArtworkUrlSpy,
+    USER_AGENT: 'test-user-agent',
+}));
+
+let SoundCloudStreamingProvider: any;
+let provider: any;
+
+beforeAll(async () => {
+    ({ SoundCloudStreamingProvider } = await import('../soundcloud.provider.js'));
+    provider = new SoundCloudStreamingProvider();
+});
 
 const progressiveTrack = (id = 1) => ({
     id,
@@ -27,7 +41,8 @@ const progressiveTrack = (id = 1) => ({
 
 beforeEach(() => {
     jest.clearAllMocks();
-    getClientIdSpy.mockResolvedValue('client-123' as any);
+    getClientIdSpy.mockResolvedValue('client-123');
+    resolveArtworkUrlSpy.mockReturnValue('https://art.test/cover.jpg');
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});

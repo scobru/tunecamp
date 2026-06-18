@@ -1,12 +1,24 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import * as bandcampUtils from '../../../utils/bandcamp.js';
-import { BANDCAMP_IMAGE_BASE } from '../../../utils/bandcamp.js';
-import { BandcampProvider } from '../bandcamp.provider.js';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
-const searchBandcampSpy = jest.spyOn(bandcampUtils, 'searchBandcamp' as any);
-const extractBandcampMetadataSpy = jest.spyOn(bandcampUtils, 'extractBandcampMetadata' as any);
+// ESM module namespaces are read-only, so spying on the bindings directly fails.
+// Mock the utils module and import the SUT dynamically so it picks up the mock.
+const BANDCAMP_IMAGE_BASE = 'https://f4.bcbits.com/img';
+const searchBandcampSpy: any = jest.fn();
+const extractBandcampMetadataSpy: any = jest.fn();
 
-const provider = new BandcampProvider();
+jest.unstable_mockModule('../../../utils/bandcamp.js', () => ({
+    searchBandcamp: searchBandcampSpy,
+    extractBandcampMetadata: extractBandcampMetadataSpy,
+    BANDCAMP_IMAGE_BASE,
+}));
+
+let BandcampProvider: any;
+let provider: any;
+
+beforeAll(async () => {
+    ({ BandcampProvider } = await import('../bandcamp.provider.js'));
+    provider = new BandcampProvider();
+});
 
 beforeEach(() => {
     jest.clearAllMocks();

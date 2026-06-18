@@ -1,13 +1,26 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import * as deezerUtils from '../../../utils/deezer.js';
-import { DeezerProvider } from '../deezer.playlist.js';
+import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
-const isDeezerPlaylistUrlSpy = jest.spyOn(deezerUtils, 'isDeezerPlaylistUrl' as any);
-const extractDeezerPlaylistIdSpy = jest.spyOn(deezerUtils, 'extractDeezerPlaylistId' as any);
-const getPlaylistSpy = jest.spyOn(deezerUtils.deezerClient, 'getPlaylist' as any);
-const searchTracksSpy = jest.spyOn(deezerUtils.deezerClient, 'searchTracks' as any);
+// ESM module namespaces are read-only, so spying on the bindings directly fails.
+// Mock the utils module and import the SUT dynamically so it picks up the mock.
+const isDeezerPlaylistUrlSpy: any = jest.fn();
+const extractDeezerPlaylistIdSpy: any = jest.fn();
+const getPlaylistSpy: any = jest.fn();
+const searchTracksSpy: any = jest.fn();
+const deezerClient = { getPlaylist: getPlaylistSpy, searchTracks: searchTracksSpy };
 
-const provider = new DeezerProvider();
+jest.unstable_mockModule('../../../utils/deezer.js', () => ({
+    deezerClient,
+    isDeezerPlaylistUrl: isDeezerPlaylistUrlSpy,
+    extractDeezerPlaylistId: extractDeezerPlaylistIdSpy,
+}));
+
+let DeezerProvider: any;
+let provider: any;
+
+beforeAll(async () => {
+    ({ DeezerProvider } = await import('../deezer.playlist.js'));
+    provider = new DeezerProvider();
+});
 
 beforeEach(() => {
     jest.clearAllMocks();

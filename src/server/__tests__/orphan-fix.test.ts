@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { createDatabase } from '../core/database.js';
 import { Scanner } from '../modules/catalog/scanner.js';
 import { runStartupMaintenance } from '../modules/catalog/maintenance.startup.js';
