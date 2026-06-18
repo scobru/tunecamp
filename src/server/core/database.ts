@@ -611,6 +611,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating artists table: adding banner_path column...");
                 db.exec("ALTER TABLE artists ADD COLUMN banner_path TEXT");
             }
+            if (!cols.some(col => col.name === 'manually_approves_followers')) {
+                console.log("📦 [Database] Migrating artists table: adding manually_approves_followers column...");
+                db.exec("ALTER TABLE artists ADD COLUMN manually_approves_followers INTEGER DEFAULT 0");
+            }
             
             // Migrate unlock_codes: add asset_id column if missing
             const ucCols = db.prepare("PRAGMA table_info(unlock_codes)").all() as any[];

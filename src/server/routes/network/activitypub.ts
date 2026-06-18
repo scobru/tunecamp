@@ -918,6 +918,170 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         }
     });
 
+    // Timeline: my posts + following
+    router.get("/timeline/:artistId", authMiddleware.requireUser, async (req: any, res) => {
+        const { artistId } = req.params;
+        const request = req as AuthenticatedRequest;
+        const filter = (req.query.filter as string) || 'all';
+
+        const parsedArtistId = Number(artistId);
+        if (isNaN(parsedArtistId)) return res.status(400).json({ error: "Invalid artist ID" });
+        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const items: any[] = [];
+
+        if (filter === 'mine' || filter === 'all') {
+            const myNotes = db.getApNotes(parsedArtistId);
+            for (const note of myNotes) {
+                if (!note.deleted_at) {
+                    items.push({
+                        source: 'mine',
+                        type: note.note_type,
+                        title: note.content_title,
+                        slug: note.content_slug,
+                        published_at: note.published_at,
+                        note_id: note.note_id,
+                        content_id: note.content_id,
+                        likes_count: note.likes_count || 0,
+                        announces_count: note.announces_count || 0,
+                        replies_count: note.replies_count || 0,
+                    });
+                }
+            }
+        }
+
+        if (filter === 'following' || filter === 'all') {
+            try {
+                const rawDb = (db as any).db;
+                if (rawDb) {
+                    const remoteContent = rawDb.prepare(`
+                        SELECT rc.*, ra.name as actor_name, ra.username as actor_username, ra.icon_url as actor_icon_url, ra.uri as actor_uri_col
+                        FROM remote_content rc
+                        LEFT JOIN remote_actors ra ON rc.actor_uri = ra.uri
+                        WHERE rc.actor_uri IN (SELECT actor_uri FROM ap_following WHERE artist_id = ?)
+                        ORDER BY rc.published_at DESC
+                        LIMIT 100
+                    `).all(parsedArtistId);
+
+                    for (const rc of remoteContent as any[]) {
+                        items.push({
+                            source: 'following',
+                            type: rc.type,
+                            title: rc.title,
+                            content: rc.content,
+                            url: rc.url,
+                            cover_url: rc.cover_url,
+                            artist_name: rc.artist_name,
+                            published_at: rc.published_at,
+                            actor: {
+                                name: rc.actor_name,
+                                username: rc.actor_username,
+                                icon_url: rc.actor_icon_url,
+                                uri: rc.actor_uri,
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("Timeline following query failed:", e);
+            }
+        }
+
+        items.sort((a, b) => new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime());
+        res.json(items);
+    });
+
+    // Link preview
+    router.get("/link-preview", authMiddleware.requireUser, async (req: any, res) => {
+        const url = req.query.url as string;
+        if (!url) return res.status(400).json({ error: "Missing url" });
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            const response = await fetch(url, {
+                signal: controller.signal as any,
+                headers: { 'User-Agent': 'TuneCamp/1.0 (link preview)' }
+            });
+            clearTimeout(timeout);
+            if (!response.ok) return res.status(400).json({ error: "Failed to fetch URL" });
+            const html = await response.text();
+            const getTag = (name: string): string | null => {
+                const m = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]+content=["']([^"']+)["']`, 'i'))
+                    || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${name}["']`, 'i'));
+                return m ? m[1] : null;
+            };
+            const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+            res.json({
+                url,
+                title: getTag('og:title') || titleMatch?.[1] || null,
+                description: getTag('og:description') || getTag('description') || null,
+                image: getTag('og:image') || null,
+                siteName: getTag('og:site_name') || null,
+            });
+        } catch (e: any) {
+            if (e.name === 'AbortError') return res.status(408).json({ error: "Request timed out" });
+            res.status(500).json({ error: "Failed to fetch link preview" });
+        }
+    });
+
+    // Share release to Mastodon manually
+    router.post("/mastodon/share-release/:releaseId", authMiddleware.requireUser, async (req: any, res) => {
+        const request = req as AuthenticatedRequest;
+        const releaseId = Number(req.params.releaseId);
+        if (isNaN(releaseId)) return res.status(400).json({ error: "Invalid release ID" });
+
+        const release = db.getRelease ? db.getRelease(releaseId) : (db as any).getAlbum?.(releaseId);
+        if (!release) return res.status(404).json({ error: "Release not found" });
+        if (!request.isRootAdmin && request.artistId !== release.artist_id) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const artist = db.getArtist(release.artist_id!);
+        if (!artist) return res.status(404).json({ error: "Artist not found" });
+
+        let postParams = artist.post_params;
+        if (typeof postParams === 'string') {
+            try { postParams = JSON.parse(postParams); } catch { postParams = null; }
+        }
+        if (!postParams?.instance || !postParams?.token) {
+            return res.status(400).json({ error: "Mastodon cross-posting not configured for this artist" });
+        }
+
+        const publicUrl = (db.getSetting("publicUrl") || "").replace(/\/$/, "");
+        let statusText = `🎵 "${release.title}" by ${artist.name}`;
+        if (release.description) {
+            const cleanDesc = release.description.replace(/<[^>]*>?/gm, "").trim();
+            statusText += `\n\n${cleanDesc}`;
+        }
+        if (publicUrl) {
+            const releaseUrl = `${publicUrl}/releases/${release.slug}`;
+            const suffix = `\n\nListen: ${releaseUrl}`;
+            const limit = 500 - suffix.length;
+            statusText = statusText.length > limit ? statusText.substring(0, limit - 3) + "..." + suffix : statusText + suffix;
+        }
+
+        let instanceUrl = postParams.instance.trim();
+        if (!instanceUrl.startsWith("http")) instanceUrl = "https://" + instanceUrl;
+        instanceUrl = instanceUrl.replace(/\/$/, "");
+
+        try {
+            const response = await fetch(`${instanceUrl}/api/v1/statuses`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${postParams.token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ status: statusText })
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                return res.status(400).json({ error: `Mastodon API error: ${response.status} - ${text}` });
+            }
+            res.json({ success: true, message: "Shared to Mastodon!" });
+        } catch (e: any) {
+            res.status(500).json({ error: e.message || "Failed to share" });
+        }
+    });
+
     router.post("/sync", authMiddleware.requireAdmin, async (req, res) => {
         try {
             const result = await apService.syncAllContent();

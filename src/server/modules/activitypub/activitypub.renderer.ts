@@ -43,7 +43,8 @@ export class ActivityPubRenderer {
                 url: `${this.baseUrl}/api/artists/${artist.slug}/cover`
             },
             alsoKnownAs: also_known_as && also_known_as.length > 0 ? also_known_as : undefined,
-            movedTo: moved_to || undefined
+            movedTo: moved_to || undefined,
+            manuallyApprovesFollowers: !!(artist as any).manually_approves_followers,
         };
     }
 

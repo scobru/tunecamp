@@ -162,6 +162,17 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             const targetFilename = options.type + (IMAGE_EXTENSIONS.includes(ext) ? ext : ".png");
             const targetPath = path.join(assetsDir, targetFilename);
 
+            // Delete any existing files with the same type prefix but a different extension
+            // to ensure the new file is always served (avoids stale extension mismatch)
+            try {
+                const existingFiles = await storage.readdir(assetsDir);
+                for (const f of existingFiles) {
+                    if (f.startsWith(options.type + ".") && f !== targetFilename) {
+                        await storage.remove(path.join(assetsDir, f)).catch(() => {});
+                    }
+                }
+            } catch { /* assets dir may not exist yet */ }
+
             await storage.move(file.path, targetPath, { overwrite: true });
 
             identity.setSetting(options.settingKey, options.apiUrl);

@@ -131,6 +131,9 @@ export interface Artist {
     /** 0 = sales disabled (unverified artist). Admin-only on update (sent as canSell). */
     can_sell?: number;
     canSell?: boolean;
+    /** 1 = manual follower approval required (AP Follow requests left pending) */
+    manually_approves_followers?: number;
+    manuallyApprovesFollowers?: boolean;
 }
 
 export interface ArtistLink {

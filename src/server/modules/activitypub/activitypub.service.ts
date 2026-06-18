@@ -877,6 +877,12 @@ export class ActivityPubService {
         // Store follow request as pending
         this.db.addFollower(artist.id, actorUri, inboxUri, undefined, activity.id);
 
+        // If artist requires manual approval, leave as pending and don't send Accept
+        if ((artist as any).manually_approves_followers) {
+            console.log(`⏳ Follow request from ${actorUri} for ${artist.name} left pending (manual approval required)`);
+            return;
+        }
+
         // Immediately accept it and notify the actor
         this.db.acceptFollower(artist.id, actorUri);
         console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);
@@ -1478,7 +1484,8 @@ export class ActivityPubService {
         let noteCount = 0;
 
         // Fetch all releases upfront to avoid N+1 queries during the loop
-        const releases = this.db.getReleases();
+        // Pass true to bypass visibility filters so private releases are also processed (as Deletes)
+        const releases = this.db.getReleases(true);
 
         // Group releases by artist ID
         const releasesByArtist: Record<number, any[]> = {};

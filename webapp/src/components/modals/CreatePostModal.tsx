@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import API from '../../services/api';
-import { PenTool, Globe, Eye, Lock, Send } from 'lucide-react';
+import { PenTool, Globe, Eye, Lock, Send, X } from 'lucide-react';
 import type { Artist } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { renderMarkdown } from '../../utils/markdown';
@@ -18,6 +18,9 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const [error, setError] = useState('');
     const [tab, setTab] = useState<'write' | 'preview'>('write');
     const [editingPostId, setEditingPostId] = useState<number | null>(null);
+    const [linkPreview, setLinkPreview] = useState<{url: string; title: string | null; description: string | null; image: string | null; siteName: string | null} | null>(null);
+    const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const handleOpen = (e: Event) => {
@@ -49,6 +52,30 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
         document.addEventListener('open-create-post-modal', handleOpen);
         return () => document.removeEventListener('open-create-post-modal', handleOpen);
     }, [user]);
+
+    // Detect URLs and fetch link preview
+    useEffect(() => {
+        const urlMatch = content.match(/https?:\/\/[^\s<>"']+/);
+        const firstUrl = urlMatch?.[0];
+        if (!firstUrl) {
+            setLinkPreview(null);
+            return;
+        }
+        if (linkPreview?.url === firstUrl) return;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            setLinkPreviewLoading(true);
+            try {
+                const preview = await API.getLinkPreview(firstUrl);
+                setLinkPreview(preview);
+            } catch {
+                setLinkPreview(null);
+            } finally {
+                setLinkPreviewLoading(false);
+            }
+        }, 800);
+        return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    }, [content]);
 
     const isRootAdminNoArtist = !!(user?.isRootAdmin && (!user.artistId || user.artistId === '0' || user.artistId === 'null' || user.artistId === 'undefined'));
 
@@ -220,6 +247,42 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                             )}
                         </div>
                     </div>
+
+                    {/* Link preview card */}
+                    {(linkPreviewLoading || linkPreview) && (
+                        <div className="rounded-xl border border-base-content/10 overflow-hidden bg-base-200/40">
+                            {linkPreviewLoading ? (
+                                <div className="p-3 flex items-center gap-2 text-xs opacity-50">
+                                    <span className="loading loading-spinner loading-xs" />
+                                    Fetching link preview…
+                                </div>
+                            ) : linkPreview && (
+                                <div className="flex gap-3 p-3">
+                                    {linkPreview.image && (
+                                        <img
+                                            src={linkPreview.image}
+                                            alt=""
+                                            className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        {linkPreview.siteName && <div className="text-xs opacity-50 font-bold uppercase tracking-wider truncate">{linkPreview.siteName}</div>}
+                                        {linkPreview.title && <div className="text-sm font-bold truncate mt-0.5">{linkPreview.title}</div>}
+                                        {linkPreview.description && <div className="text-xs opacity-70 line-clamp-2 mt-0.5">{linkPreview.description}</div>}
+                                        <div className="text-xs opacity-40 truncate mt-1">{linkPreview.url}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="btn btn-xs btn-ghost btn-circle flex-shrink-0 self-start"
+                                        onClick={() => setLinkPreview(null)}
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Bottom controls panel inside modal */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-base-content/5">

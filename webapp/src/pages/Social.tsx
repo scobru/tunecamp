@@ -9,6 +9,7 @@ import {
   MessageSquare,
   PenTool,
   Calendar,
+  Users,
 } from "lucide-react";
 import { IdentityPanel } from "../components/admin/IdentityPanel";
 import { ArtistFediversePanel } from "../components/artist/ArtistFediversePanel";
@@ -27,6 +28,7 @@ const Social = () => {
   const [artistData, setArtistData] = useState<any>(null);
   const [mastodonInstance, setMastodonInstance] = useState("");
   const [mastodonToken, setMastodonToken] = useState("");
+  const [manuallyApprovesFollowers, setManuallyApprovesFollowers] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [enabled, setEnabled] = useState(true);
@@ -67,6 +69,7 @@ const Social = () => {
             setMastodonInstance(data.postParams.instance || "");
             setMastodonToken(data.postParams.token || "");
           }
+          setManuallyApprovesFollowers(!!data?.manually_approves_followers);
         })
         .catch(console.error);
     }
@@ -81,7 +84,7 @@ const Social = () => {
         mastodonInstance || mastodonToken
           ? { instance: mastodonInstance, token: mastodonToken }
           : null;
-      await API.updateArtist(artistData.id, { postParams });
+      await API.updateArtist(artistData.id, { postParams, manuallyApprovesFollowers });
       setArtistData({ ...artistData, postParams });
       setMessage("Automation settings saved!");
     } catch (err: any) {
@@ -215,6 +218,34 @@ const Social = () => {
               <p className="opacity-70 text-sm mt-1 font-medium">
                 Cross-post activities to external Mastodon instances.
               </p>
+            </div>
+
+            {/* Follower approval toggle */}
+            <div className="card card-m3 overflow-hidden">
+              <div className="bg-base-200/40 p-6 border-b border-base-content/5">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Users size={20} className="text-primary" />
+                  Follower Approval
+                </h3>
+                <p className="text-xs opacity-50 mt-1">
+                  Choose how new Fediverse follower requests are handled.
+                </p>
+              </div>
+              <div className="p-6 flex items-center justify-between gap-4">
+                <div>
+                  <div className="font-semibold text-sm">Manual Approval</div>
+                  <div className="text-xs opacity-60 mt-0.5">
+                    When enabled, follow requests must be approved manually before followers receive your content.
+                    When disabled (default), followers are accepted automatically.
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={manuallyApprovesFollowers}
+                  onChange={(e) => setManuallyApprovesFollowers(e.target.checked)}
+                />
+              </div>
             </div>
 
             <div className="card card-m3 overflow-hidden">
