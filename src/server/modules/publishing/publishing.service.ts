@@ -235,10 +235,17 @@ export class PublishingService {
                 }
             }
 
-            // Add external links
+            // Add external links. The repository's mapAlbum already parses this
+            // column into an object/array (see Release.external_links: "Parsed
+            // JSON"), so only parse here when it is still a raw string. Parsing an
+            // already-parsed value coerces it to "[object Object]" and throws,
+            // which previously logged a spurious "Malformed external_links" warning
+            // for every release that had any links set.
             if (release.external_links) {
                 try {
-                    config.links = JSON.parse(release.external_links);
+                    config.links = typeof release.external_links === 'string'
+                        ? JSON.parse(release.external_links)
+                        : release.external_links;
                 } catch (e) { console.warn(`[Publishing] Malformed external_links JSON for release ${release.id}`); }
             }
 
