@@ -74,6 +74,13 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 if (req.artistId === pathArtistId) return next();
             }
 
+            // Allow artists to refresh their own federated identity
+            const identityRefreshMatch = req.path.match(/^\/artists\/(\d+)\/refresh-identity$/);
+            if (identityRefreshMatch && req.artistId) {
+                const pathArtistId = parseInt(identityRefreshMatch[1], 10);
+                if (req.artistId === pathArtistId) return next();
+            }
+
             // Allow content authors (artists with a linked profile) to edit or
             // delete a single release they own. The per-item handlers below
             // (`PUT`/`DELETE /releases/:id`) enforce the granular ownership
