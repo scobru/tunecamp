@@ -169,6 +169,113 @@ describe('Artist release permission gates', () => {
     });
 });
 
+describe('Curator (super_user) and Manager (admin) permission boundaries', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    // Curator: super_user role. Has MANAGE_PRIVATE_LIBRARY but NOT MANAGE_ALL_CONTENT.
+    // They can only manage content they own (owner_id / artist_id match).
+    const curatorWithArtist = { role: 'super_user', userId: 10, artistId: 3 };
+    const curatorNoArtist   = { role: 'super_user', userId: 11, artistId: undefined };
+
+    // Manager: admin role. Has MANAGE_ALL_CONTENT — can manage any release.
+    const manager = { role: 'admin', userId: 20, artistId: undefined };
+
+    // ── Middleware gate ──────────────────────────────────────────────────────────
+
+    test('Curator passes the admin restriction middleware for release routes', async () => {
+        const app = buildApp(curatorWithArtist);
+        // The admin router has no POST /releases handler — falls through to releaseRouter.
+        // We just need to confirm the middleware does NOT return 403.
+        const res = await request(app).post('/admin/releases').send({ title: 'Test' });
+        expect(res.status).not.toBe(403);
+    });
+
+    test('Manager passes the admin restriction middleware for all non-GET routes', async () => {
+        const app = buildApp(manager);
+        const res = await request(app).post('/admin/releases').send({ title: 'Test' });
+        expect(res.status).not.toBe(403);
+    });
+
+    // ── Curator visibility-toggle: middleware passes; handler enforces ownership ─
+
+    test('Curator can toggle visibility of a release they own (owner_id matches)', async () => {
+        (mockDatabase as any).getRelease = jest.fn().mockReturnValue({
+            id: 10, owner_id: 10, artist_id: 3, visibility: 'private', is_release: 1,
+        });
+        (mockDatabase as any).updateAlbum = jest.fn().mockReturnValue(true);
+        (mockDatabase as any).updateRelease = jest.fn().mockReturnValue(true);
+        const app = buildApp(curatorWithArtist);
+        const res = await request(app).put('/admin/releases/10/visibility').send({ isPublic: true });
+        expect(res.status).not.toBe(403);
+    });
+
+    test('Curator is blocked from toggling visibility of a release owned by someone else', async () => {
+        (mockDatabase as any).getRelease = jest.fn().mockReturnValue({
+            id: 20, owner_id: 999, artist_id: 999, visibility: 'private', is_release: 1,
+        });
+        (mockDatabase as any).getAlbum = jest.fn().mockReturnValue(null);
+        (mockDatabase as any).updateAlbum = jest.fn();
+        (mockDatabase as any).updateRelease = jest.fn();
+        const app = buildApp(curatorWithArtist);
+        const res = await request(app).put('/admin/releases/20/visibility').send({ isPublic: true });
+        // Handler enforces MANAGE_ALL_CONTENT for cross-owner edits; Curator has only
+        // MANAGE_PRIVATE_LIBRARY so it gets 403.
+        expect(res.status).toBe(403);
+    });
+
+    test('Manager can toggle visibility of a release owned by someone else', async () => {
+        (mockDatabase as any).getRelease = jest.fn().mockReturnValue({
+            id: 20, owner_id: 999, artist_id: 999, visibility: 'private', is_release: 1,
+        });
+        (mockDatabase as any).getAlbum = jest.fn().mockReturnValue(null);
+        (mockDatabase as any).updateAlbum = jest.fn().mockReturnValue(true);
+        (mockDatabase as any).updateRelease = jest.fn().mockReturnValue(true);
+        (mockPublishingService.syncRelease as jest.Mock).mockResolvedValue(undefined);
+        const app = buildApp(manager);
+        const res = await request(app).put('/admin/releases/20/visibility').send({ isPublic: true });
+        // Manager has MANAGE_ALL_CONTENT → bypasses ownership check
+        expect(res.status).not.toBe(403);
+    });
+
+    // ── canPublishContent gate (inside releaseRouter POST handler) ────────────────
+    // The admin restriction middleware lets Curator through, but canPublishContent
+    // inside the releaseRouter handler still blocks Curators without an artistId.
+    // These tests document that contract via the middleware layer only
+    // (the releaseRouter is not mounted in this test app, so we can only confirm
+    // the middleware passes — the handler-level check is tested in releases.test.ts).
+
+    test('Curator without artistId: middleware does not block (handler enforces canPublish)', async () => {
+        const app = buildApp(curatorNoArtist);
+        const res = await request(app).post('/admin/releases').send({ title: 'Test' });
+        // 404 = no matching route in admin router; 403 would mean middleware blocked it
+        expect(res.status).not.toBe(403);
+    });
+
+    // ── System-level routes stay out of reach for Curator ───────────────────────
+
+    test('Curator cannot create system users (route-level admin check)', async () => {
+        const app = buildApp(curatorWithArtist);
+        const res = await request(app)
+            .post('/admin/system/users')
+            .send({ username: 'hacker', password: 'pw' });
+        expect(res.status).toBe(403);
+    });
+
+    test('Curator cannot change global settings (route-level root-admin check)', async () => {
+        (mockDatabase.setSetting as jest.Mock).mockImplementation(() => {});
+        const app = buildApp(curatorWithArtist);
+        const res = await request(app).put('/admin/settings').send({ siteName: 'Hacked' });
+        expect(res.status).toBe(403);
+    });
+
+    test('Manager cannot change root-admin-only settings', async () => {
+        (mockDatabase.setSetting as jest.Mock).mockImplementation(() => {});
+        const app = buildApp(manager);
+        const res = await request(app).put('/admin/settings').send({ siteName: 'Hacked' });
+        expect(res.status).toBe(403);
+    });
+});
+
 describe('Admin Routes Vulnerability Check', () => {
     let app: express.Express;
 
