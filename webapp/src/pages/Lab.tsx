@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlaskConical, Disc3, Play, Pause, SkipForward, SkipBack, Square, Music, Volume2, Shuffle, ListMusic } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlaskConical, Disc3, Play, Pause, SkipForward, SkipBack, Square, Music, Volume2, Shuffle, ListMusic, Activity } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import API from '../services/api';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { DjEngine, type DjEngineState, type DjTrack, type DjPreset } from '../lib/dj/DjEngine';
 import type { Playlist, Track } from '../types';
 import { formatDuration } from '../utils/format';
+import { detectBpmFromUrl } from '../utils/bpm';
 import { notify } from '../utils/notify';
 
 /**
@@ -79,6 +80,44 @@ const PRESETS: { id: DjPreset; label: string; description: string }[] = [
   },
 ];
 
+/** Small BPM badge: shows the detected tempo, a spinner while detecting, or a
+ *  click-to-analyse button when the BPM is still unknown. */
+const BpmChip = ({
+  value,
+  onAnalyze,
+}: {
+  value: number | 'loading' | undefined;
+  onAnalyze?: () => void;
+}) => {
+  if (value === 'loading') {
+    return <span className="loading loading-spinner loading-xs opacity-50 shrink-0" />;
+  }
+  if (typeof value === 'number' && value > 0) {
+    return (
+      <span className="badge badge-ghost badge-sm gap-1 tabular-nums shrink-0">
+        <Activity size={10} /> {value}
+      </span>
+    );
+  }
+  if (value === 0) {
+    return <span className="text-[10px] opacity-30 w-6 text-center shrink-0">—</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAnalyze?.();
+      }}
+      className="btn btn-ghost btn-xs px-1.5 opacity-50 hover:opacity-100 shrink-0"
+      title="Detect BPM"
+      aria-label="Detect BPM"
+    >
+      <Activity size={13} />
+    </button>
+  );
+};
+
 const DjMixExperiment = () => {
   const engineRef = useRef<DjEngine | null>(null);
   const [state, setState] = useState<DjEngineState>(DEFAULT_STATE);
@@ -88,6 +127,9 @@ const DjMixExperiment = () => {
   const [loading, setLoading] = useState(false);
   const [trackCount, setTrackCount] = useState(0);
   const [djTracks, setDjTracks] = useState<DjTrack[]>([]);
+  // Client-side BPM per track id: number = detected, 0 = unknown/failed, 'loading' = in flight.
+  const [bpms, setBpms] = useState<Record<string, number | 'loading'>>({});
+  const bpmRef = useRef<Record<string, number | 'loading'>>({});
 
   // Lazily create the engine and subscribe to its state.
   useEffect(() => {
@@ -105,6 +147,25 @@ const DjMixExperiment = () => {
   useEffect(() => {
     engineRef.current?.setCrossfade(crossfade);
   }, [crossfade]);
+
+  // Lazily detect BPM for a track, fully client-side (Web Audio). Cached by id.
+  const analyzeBpm = useCallback(async (track: DjTrack | null) => {
+    if (!track) return;
+    const key = String(track.id);
+    if (bpmRef.current[key] !== undefined) return; // already known or in flight
+    bpmRef.current[key] = 'loading';
+    setBpms({ ...bpmRef.current });
+    const bpm = await detectBpmFromUrl(track.src);
+    bpmRef.current[key] = bpm ?? 0;
+    setBpms({ ...bpmRef.current });
+  }, []);
+
+  // Auto-analyse the current and upcoming track — the pair that matters for the
+  // next transition. Other tracks are analysed on demand from the queue.
+  useEffect(() => {
+    void analyzeBpm(state.currentTrack);
+    void analyzeBpm(state.nextTrack);
+  }, [state.currentTrack?.id, state.nextTrack?.id, analyzeBpm]);
 
   useEffect(() => {
     API.getPlaylists()
@@ -127,6 +188,8 @@ const DjMixExperiment = () => {
       usePlayerStore.getState().setIsPlaying(false);
 
       const mapped = tracks.map(toDjTrack);
+      bpmRef.current = {};
+      setBpms({});
       setTrackCount(mapped.length);
       setDjTracks(mapped);
       engine.setCrossfade(crossfade);
@@ -289,6 +352,10 @@ const DjMixExperiment = () => {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold truncate">{state.currentTrack.title}</p>
+                  <BpmChip
+                    value={bpms[String(state.currentTrack.id)]}
+                    onAnalyze={() => void analyzeBpm(state.currentTrack)}
+                  />
                   {state.isCrossfading && (
                     <span className="badge badge-xs badge-primary animate-pulse">
                       {currentPreset.label}…
@@ -432,11 +499,18 @@ const DjMixExperiment = () => {
                 const isCurrent = i === state.currentIndex;
                 const isPast = i < state.currentIndex;
                 return (
-                  <button
+                  <div
                     key={`${t.id}-${i}`}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => engineRef.current?.jumpTo(i)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        engineRef.current?.jumpTo(i);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-left cursor-pointer transition-colors ${
                       isCurrent
                         ? 'bg-primary/10'
                         : 'hover:bg-base-content/5'
@@ -460,12 +534,13 @@ const DjMixExperiment = () => {
                         {t.artistName || 'Unknown artist'}
                       </p>
                     </div>
+                    <BpmChip value={bpms[String(t.id)]} onAnalyze={() => void analyzeBpm(t)} />
                     {typeof t.duration === 'number' && t.duration > 0 && (
-                      <span className="text-[11px] opacity-40 tabular-nums shrink-0">
+                      <span className="text-[11px] opacity-40 tabular-nums shrink-0 w-10 text-right">
                         {formatDuration(t.duration)}
                       </span>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
