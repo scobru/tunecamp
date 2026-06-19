@@ -284,6 +284,7 @@ export interface SiteSettings {
     hideSocial?: boolean | string;
     hideNetwork?: boolean | string;
     hideDig?: boolean | string;
+    membershipMonthlyPrice?: number | string;
 }
 
 export interface LiveSession {

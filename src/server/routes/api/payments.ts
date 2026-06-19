@@ -483,16 +483,19 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             }
 
             const stripe = new Stripe(sKey);
+            const rawPrice = identity.getSetting("membershipMonthlyPrice");
+            const unitAmount = rawPrice ? Math.round(parseFloat(rawPrice) * 100) : 1000;
+            const siteName = identity.getSetting("siteName") || "TuneCamp";
             const session = await stripe.checkout.sessions.create({
                 payment_method_types: ['card'],
                 line_items: [{
                     price_data: {
                         currency: 'usd',
                         product_data: {
-                            name: 'TuneCamp Monthly Subscription',
+                            name: `${siteName} Monthly Subscription`,
                             description: 'Gain full access to all albums, tracks, and non-audio assets on this instance.'
                         },
-                        unit_amount: 1000, // $10.00
+                        unit_amount: unitAmount,
                     },
                     quantity: 1,
                 }],

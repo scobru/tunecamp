@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlaskConical, Disc3, Play, Pause, SkipForward, Square, Music } from 'lucide-react';
+import { FlaskConical, Disc3, Play, Pause, SkipForward, Square, Music, Volume2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import API from '../services/api';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import { DjEngine, type DjEngineState, type DjTrack } from '../lib/dj/DjEngine';
+import { DjEngine, type DjEngineState, type DjTrack, type DjPreset } from '../lib/dj/DjEngine';
 import type { Playlist, Track } from '../types';
 import { formatDuration } from '../utils/format';
 import { notify } from '../utils/notify';
@@ -57,7 +57,27 @@ const DEFAULT_STATE: DjEngineState = {
   duration: 0,
   isCrossfading: false,
   ended: false,
+  preset: 'fade',
+  volume: 1,
 };
+
+const PRESETS: { id: DjPreset; label: string; description: string }[] = [
+  {
+    id: 'fade',
+    label: 'Fade',
+    description: 'Equal-power crossfade with bass-swap — outgoing lows fade out as incoming lows rise in.',
+  },
+  {
+    id: 'rise',
+    label: 'Rise',
+    description: 'Incoming track sweeps up from high frequencies down — materialises from the top of the spectrum.',
+  },
+  {
+    id: 'cut',
+    label: 'Cut',
+    description: 'Hard cut on the beat with minimal overlap (~0.3 s). Best for tracks at similar energy.',
+  },
+];
 
 const DjMixExperiment = () => {
   const engineRef = useRef<DjEngine | null>(null);
@@ -126,6 +146,8 @@ const DjMixExperiment = () => {
     [playlists, selectedId],
   );
 
+  const currentPreset = PRESETS.find((p) => p.id === state.preset) ?? PRESETS[0];
+
   return (
     <div className="card bg-base-200 border border-base-content/5">
       <div className="card-body p-6 lg:p-8 space-y-6">
@@ -142,9 +164,8 @@ const DjMixExperiment = () => {
               <span className="badge badge-sm badge-primary badge-outline font-bold">beta</span>
             </h3>
             <p className="text-sm opacity-60 mt-1">
-              Turn a playlist into a continuous, gapless DJ set with equal-power
-              crossfades between tracks. Spotify "Mix"-style — beat matching and the
-              per-transition editor are coming later.{' '}
+              Turn a playlist into a continuous, gapless DJ set with crossfades
+              between tracks.{' '}
               <span className="opacity-80">Local-library playlists work best.</span>
             </p>
           </div>
@@ -171,7 +192,7 @@ const DjMixExperiment = () => {
 
           <label className="form-control">
             <span className="label-text text-xs font-bold opacity-60 mb-1">
-              Crossfade: {crossfade}s
+              Crossfade: {state.preset === 'cut' ? '0.3s (auto)' : `${crossfade}s`}
             </span>
             <input
               type="range"
@@ -181,9 +202,56 @@ const DjMixExperiment = () => {
               value={crossfade}
               onChange={(e) => setCrossfade(parseInt(e.target.value, 10))}
               className="range range-primary range-sm mt-2"
+              disabled={state.preset === 'cut'}
             />
           </label>
         </div>
+
+        {/* Preset selector */}
+        <div className="space-y-2">
+          <span className="label-text text-xs font-bold opacity-60">Transition preset</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {PRESETS.map((p) => {
+              const active = state.preset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => engineRef.current?.setPreset(p.id)}
+                  className={`text-left p-3 rounded-xl border transition-all ${
+                    active
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-base-content/10 bg-base-300/30 hover:border-base-content/30'
+                  }`}
+                >
+                  <span className={`text-sm font-bold block ${active ? 'text-primary' : ''}`}>
+                    {p.label}
+                  </span>
+                  <span className="text-[11px] opacity-60 mt-0.5 block leading-tight">
+                    {p.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Volume */}
+        <label className="form-control">
+          <span className="label-text text-xs font-bold opacity-60 mb-1 flex items-center gap-1">
+            <Volume2 size={12} />
+            Volume: {Math.round(state.volume * 100)}%
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={state.volume}
+            onChange={(e) => engineRef.current?.setVolume(parseFloat(e.target.value))}
+            className="range range-primary range-xs"
+          />
+        </label>
 
         {/* Now playing */}
         {hasMix && state.currentTrack && (
@@ -201,10 +269,12 @@ const DjMixExperiment = () => {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold truncate">{state.currentTrack.title}</p>
                   {state.isCrossfading && (
-                    <span className="badge badge-xs badge-primary animate-pulse">mixing…</span>
+                    <span className="badge badge-xs badge-primary animate-pulse">
+                      {currentPreset.label}…
+                    </span>
                   )}
                 </div>
                 <p className="text-sm opacity-60 truncate">
