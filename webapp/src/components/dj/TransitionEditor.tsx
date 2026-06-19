@@ -619,16 +619,15 @@ export function TransitionEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-50 bg-black/70 flex items-stretch justify-center sm:p-4"
       onClick={handleBackdropClick}
     >
       <div
-        className="w-full sm:max-w-md bg-base-100 sm:rounded-2xl overflow-hidden shadow-2xl"
-        style={{ maxHeight: '96vh', overflowY: 'auto' }}
+        className="w-full h-full sm:h-auto sm:max-h-[96vh] sm:max-w-6xl bg-base-100 sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-base-content/10 sticky top-0 bg-base-100 z-10">
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-base-content/10 bg-base-100 z-10">
           <button
             type="button"
             onClick={onClose}
@@ -651,159 +650,164 @@ export function TransitionEditor({
           </button>
         </div>
 
-        {/* Track A (outgoing) */}
-        <TrackRow
-          track={fromTrack}
-          bpm={fromBpm}
-          side="from"
-          timeLabel={`Mix-out: ${formatTime(outPoint)}`}
-        />
-
-        {/* Dual waveform */}
-        <div className="relative group bg-black mx-0" style={{ height: 160 }}>
-          <canvas
-            ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            onWheel={handleWheel}
-            className="absolute inset-0 w-full h-full cursor-ew-resize"
-            style={{ display: 'block' }}
+        {/* Waveform workspace — grows to fill all available height */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          {/* Track A (outgoing) */}
+          <TrackRow
+            track={fromTrack}
+            bpm={fromBpm}
+            side="from"
+            timeLabel={`Mix-out: ${formatTime(outPoint)}`}
           />
-          <div className="absolute top-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
-            Outgoing Track
+
+          {/* Dual waveform — fills remaining vertical space */}
+          <div className="relative group bg-black flex-1 min-h-[220px]">
+            <canvas
+              ref={canvasRef}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              onWheel={handleWheel}
+              className="absolute inset-0 w-full h-full cursor-ew-resize"
+              style={{ display: 'block' }}
+            />
+            <div className="absolute top-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
+              Outgoing Track
+            </div>
+            <div className="absolute bottom-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
+              Incoming Track
+            </div>
+            <div className="absolute top-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
+              {fromBpm ? `${fromBpm} BPM` : 'No grid'}
+            </div>
+            <div className="absolute bottom-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
+              {toBpm ? `${toBpm} BPM` : 'No grid'}
+            </div>
+            {/* Zoom controls — always visible so they're discoverable */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-10">
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={visibleSec === 5}
+                className="btn btn-circle btn-sm bg-black/60 hover:bg-black/80 text-white border-white/10 disabled:opacity-30 disabled:pointer-events-none"
+                title="Zoom In"
+              >
+                <ZoomIn size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={visibleSec === 60}
+                className="btn btn-circle btn-sm bg-black/60 hover:bg-black/80 text-white border-white/10 disabled:opacity-30 disabled:pointer-events-none"
+                title="Zoom Out"
+              >
+                <ZoomOut size={14} />
+              </button>
+            </div>
+            {/* Zoom scale label indicator */}
+            <div className="absolute right-14 top-1/2 -translate-y-1/2 pointer-events-none bg-black/70 text-white/80 px-2 py-0.5 rounded text-[9px] font-mono border border-white/5">
+              {visibleSec}s view
+            </div>
+            {/* Instructions hint */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-none">
+              <span className="text-[10px] text-white/50 bg-black/60 px-2.5 py-1 rounded-lg border border-white/5 text-center whitespace-nowrap">
+                Drag to align beats · Scroll / ± to Zoom · Hold Shift to bypass snapping
+              </span>
+            </div>
           </div>
-          <div className="absolute bottom-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
-            Incoming Track
-          </div>
-          <div className="absolute top-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
-            {fromBpm ? `${fromBpm} BPM` : 'No grid'}
-          </div>
-          <div className="absolute bottom-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
-            {toBpm ? `${toBpm} BPM` : 'No grid'}
-          </div>
-          {/* Zoom controls */}
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              type="button"
-              onClick={handleZoomIn}
-              disabled={visibleSec === 5}
-              className="btn btn-circle btn-xs bg-black/60 hover:bg-black/80 text-white border-white/10 disabled:opacity-30 disabled:pointer-events-none"
-              title="Zoom In"
-            >
-              <ZoomIn size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={handleZoomOut}
-              disabled={visibleSec === 60}
-              className="btn btn-circle btn-xs bg-black/60 hover:bg-black/80 text-white border-white/10 disabled:opacity-30 disabled:pointer-events-none"
-              title="Zoom Out"
-            >
-              <ZoomOut size={12} />
-            </button>
-          </div>
-          {/* Zoom scale label indicator */}
-          <div className="absolute right-12 top-1/2 -translate-y-1/2 pointer-events-none bg-black/70 text-white/80 px-2 py-0.5 rounded text-[9px] font-mono border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {visibleSec}s view
-          </div>
-          {/* Instructions overlay */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors">
-            <span className="text-[10px] text-white/60 bg-black/70 px-2.5 py-1.5 rounded-lg border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity text-center">
-              Drag to align beats · Scroll / ± to Zoom<br />
-              <span className="text-[9px] opacity-70">Hold Shift to bypass snapping</span>
-            </span>
-          </div>
+
+          {/* Track B (incoming) */}
+          <TrackRow
+            track={toTrack}
+            bpm={toBpm}
+            side="to"
+            timeLabel={`Mix-in: ${formatTime(inPoint)}`}
+          />
         </div>
 
-        {/* Track B (incoming) */}
-        <TrackRow
-          track={toTrack}
-          bpm={toBpm}
-          side="to"
-          timeLabel={`Mix-in: ${formatTime(inPoint)}`}
-        />
+        {/* Controls — horizontal toolbar so they don't steal height from the waveform */}
+        <div className="shrink-0 border-t border-base-content/10 bg-base-100 px-4 py-3 flex flex-col lg:flex-row lg:items-start gap-4 overflow-y-auto">
+          {/* Transition length */}
+          <div className="lg:flex-1 lg:min-w-[220px] space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold opacity-40 uppercase tracking-wider">
+                Transition length
+              </p>
+              {(hasManuallyDraggedOut || hasManuallyDraggedIn) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOutPoint(defaultOutPoint);
+                    setInPoint(defaultInPoint);
+                    setHasManuallyDraggedOut(false);
+                    setHasManuallyDraggedIn(false);
+                  }}
+                  className="text-[10px] text-primary hover:underline font-bold"
+                >
+                  Reset alignment
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {BARS_OPTIONS.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => patch({ bars: b })}
+                  className={`flex-1 py-1.5 rounded-xl text-sm font-semibold transition-colors border ${
+                    config.bars === b
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-base-content/10 hover:border-base-content/30'
+                  }`}
+                >
+                  {b} {b === 1 ? 'bar' : 'bars'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* Bar count selector */}
-        <div className="px-4 py-3 border-t border-base-content/10">
-          <div className="flex items-center justify-between mb-2">
+          {/* Volume / EQ / Effects */}
+          <div className="grid grid-cols-3 gap-3 lg:flex-[2]">
+            <OptionGroup
+              label="Volume"
+              options={VOLUME_OPTIONS}
+              value={config.volume}
+              onChange={(v) => patch({ volume: v })}
+            />
+            <OptionGroup
+              label="EQ"
+              options={EQ_OPTIONS}
+              value={config.eq}
+              onChange={(v) => patch({ eq: v })}
+            />
+            <OptionGroup
+              label="Effects"
+              options={EFFECTS_OPTIONS}
+              value={config.effects}
+              onChange={(v) => patch({ effects: v })}
+            />
+          </div>
+
+          {/* Preset type */}
+          <div className="lg:flex-1 lg:min-w-[220px] space-y-2 pb-safe">
             <p className="text-[10px] font-bold opacity-40 uppercase tracking-wider">
-              Transition length
+              Type
             </p>
-            {(hasManuallyDraggedOut || hasManuallyDraggedIn) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setOutPoint(defaultOutPoint);
-                  setInPoint(defaultInPoint);
-                  setHasManuallyDraggedOut(false);
-                  setHasManuallyDraggedIn(false);
-                }}
-                className="text-[10px] text-primary hover:underline font-bold"
-              >
-                Reset alignment
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {BARS_OPTIONS.map((b) => (
-              <button
-                key={b}
-                type="button"
-                onClick={() => patch({ bars: b })}
-                className={`flex-1 py-1.5 rounded-xl text-sm font-semibold transition-colors border ${
-                  config.bars === b
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-base-content/10 hover:border-base-content/30'
-                }`}
-              >
-                {b} {b === 1 ? 'bar' : 'bars'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Volume / EQ / Effects */}
-        <div className="px-4 py-3 border-t border-base-content/10 grid grid-cols-3 gap-3">
-          <OptionGroup
-            label="Volume"
-            options={VOLUME_OPTIONS}
-            value={config.volume}
-            onChange={(v) => patch({ volume: v })}
-          />
-          <OptionGroup
-            label="EQ"
-            options={EQ_OPTIONS}
-            value={config.eq}
-            onChange={(v) => patch({ eq: v })}
-          />
-          <OptionGroup
-            label="Effects"
-            options={EFFECTS_OPTIONS}
-            value={config.effects}
-            onChange={(v) => patch({ effects: v })}
-          />
-        </div>
-
-        {/* Preset type */}
-        <div className="px-4 py-3 border-t border-base-content/10 pb-safe">
-          <p className="text-[10px] font-bold opacity-40 uppercase tracking-wider mb-2">
-            Type
-            </p>
-          <div className="flex gap-2">
-            {PRESETS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => patch({ preset: p.id })}
-                className={`flex-1 py-1.5 rounded-xl text-sm font-semibold transition-colors border ${
-                  config.preset === p.id
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-base-content/10 hover:border-base-content/30'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+            <div className="flex gap-2">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => patch({ preset: p.id })}
+                  className={`flex-1 py-1.5 rounded-xl text-sm font-semibold transition-colors border ${
+                    config.preset === p.id
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-base-content/10 hover:border-base-content/30'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
