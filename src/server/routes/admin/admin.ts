@@ -81,14 +81,19 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 if (req.artistId === pathArtistId) return next();
             }
 
-            // Allow content authors (artists with a linked profile) to edit,
-            // delete, or toggle visibility of a single release they own.
+            // Allow content authors (artists with a linked profile) to create,
+            // edit, delete, or manage sub-resources of a single release they own.
             // The per-item handlers enforce granular ownership, so this coarse
             // gate only needs to confirm the caller may write catalog content.
             // Batch routes (`/releases/batch/...`) stay gated to MANAGE_PRIVATE_LIBRARY.
-            const singleReleaseMatch = req.path.match(/^\/releases\/(\d+)(\/visibility)?$/);
             const canWrite = req.context && VisibilityGuardian.canWriteContent(req.context);
-            if (singleReleaseMatch && (req.method === 'PUT' || req.method === 'DELETE') && canWrite) {
+            // POST /releases — create a new release
+            const isReleaseCreate = req.method === 'POST' && req.path === '/releases';
+            // PUT/DELETE/POST on /releases/:id or any of its sub-paths (/visibility, /tracks/add, etc.)
+            const singleReleaseMatch = req.path.match(/^\/releases\/(\d+)(\/.*)?$/);
+            const isSingleReleaseMutate = !!singleReleaseMatch &&
+                (req.method === 'PUT' || req.method === 'DELETE' || req.method === 'POST');
+            if (canWrite && (isReleaseCreate || isSingleReleaseMutate)) {
                 return next();
             }
 
