@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { X, Save, ZoomIn, ZoomOut } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { X, Save, ZoomIn, ZoomOut, Play, Square } from 'lucide-react';
+import { DjEngine } from '../../lib/dj/DjEngine';
 import type {
   DjTrack,
   TransitionConfig,
@@ -68,6 +69,13 @@ function getOrCreateWaveform(track: DjTrack): number[] {
   const parsed = parseWaveform(track.waveform);
   if (parsed && parsed.length > 0) return parsed;
   return makeWaveform(track.id, PROCEDURAL_SAMPLES);
+}
+
+/** True when the track carries real peak data; false when we synthesise a
+ *  placeholder waveform (in which case only the beat grid is meaningful). */
+function hasRealWaveform(track: DjTrack): boolean {
+  const parsed = parseWaveform(track.waveform);
+  return !!parsed && parsed.length > 0;
 }
 
 function getWaveformBar(waveform: number[], t: number, duration: number): number {
@@ -269,17 +277,17 @@ const PRESETS: { id: DjPreset | 'auto'; label: string }[] = [
 ];
 
 const VOLUME_OPTIONS: { id: VolumeMode; label: string }[] = [
-  { id: 'smooth', label: 'Smooth cross...' },
+  { id: 'smooth', label: 'Smooth' },
   { id: 'overlap', label: 'Overlap' },
 ];
 
 const EQ_OPTIONS: { id: EqMode; label: string }[] = [
-  { id: 'center-bass', label: 'Center bass s...' },
+  { id: 'center-bass', label: 'Bass swap' },
   { id: 'none', label: 'None' },
 ];
 
 const EFFECTS_OPTIONS: { id: EffectsMode; label: string }[] = [
-  { id: 'lowpass', label: 'Low pass filte...' },
+  { id: 'lowpass', label: 'Low-pass' },
   { id: 'none', label: 'None' },
 ];
 
@@ -347,7 +355,7 @@ function OptionGroup<T extends string>({
             key={opt.id}
             type="button"
             onClick={() => onChange(opt.id)}
-            className={`text-left text-xs px-2 py-1.5 rounded-lg transition-colors truncate ${
+            className={`text-left text-xs px-2 py-1.5 rounded-lg transition-colors ${
               value === opt.id
                 ? 'bg-primary text-primary-content font-semibold'
                 : 'bg-base-content/5 hover:bg-base-content/10'
@@ -604,7 +612,81 @@ export function TransitionEditor({
   const patch = (partial: Partial<TransitionConfig>) =>
     setConfig((c) => ({ ...c, ...partial }));
 
+  // ── Audible preview ────────────────────────────────────────────────────────
+  // Reuses the real DjEngine on a throwaway two-track set so what you hear is
+  // exactly what the live mix will do at this transition — including beat
+  // alignment, fade length and the preset's EQ moves.
+  const previewEngineRef = useRef<DjEngine | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const PREVIEW_LEAD_SEC = 4; // how much of the outgoing track to hear before the blend
+
+  const stopPreview = useCallback(() => {
+    previewEngineRef.current?.destroy();
+    previewEngineRef.current = null;
+    setPreviewing(false);
+  }, []);
+
+  // Build (or rebuild) the preview engine for the current settings. Kept free
+  // of `previewing` state changes so it is safe to call from an effect.
+  const buildPreview = useCallback(() => {
+    previewEngineRef.current?.destroy();
+    const engine = new DjEngine();
+    previewEngineRef.current = engine;
+
+    const effectivePreset: DjPreset = config.preset === 'auto' ? 'fade' : config.preset;
+    engine.setPreset(effectivePreset);
+    engine.setBeatSync(true);
+    engine.setCrossfade(fadeWindow);
+    if (fromBpm && fromBpm > 0) engine.setBeatInfo(fromTrack.id, fromBpm, fromBeatOffsetMs || 0);
+    if (toBpm && toBpm > 0) engine.setBeatInfo(toTrack.id, toBpm, toBeatOffsetMs || 0);
+    engine.setTransition(0, { ...config, outPoint, inPoint });
+    engine.load([fromTrack, toTrack], 0);
+
+    let stopTimer: number | undefined;
+    const unsub = engine.subscribe((s) => {
+      // Once the crossfade has handed over to the incoming track, let a few
+      // seconds play so the landing is audible, then tear the preview down.
+      if (s.currentIndex >= 1 && stopTimer === undefined) {
+        stopTimer = window.setTimeout(() => {
+          unsub();
+          stopPreview();
+        }, 3000);
+      }
+      if (s.ended) {
+        unsub();
+        stopPreview();
+      }
+    });
+
+    void engine.play().then(() => {
+      // Jump to just before the mix-out point so the blend happens quickly.
+      const lead = Math.max(0, outPoint - PREVIEW_LEAD_SEC);
+      if (durationA > 0) engine.seek(lead / durationA);
+    });
+  }, [
+    config, fadeWindow, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs,
+    fromTrack, toTrack, outPoint, inPoint, durationA, stopPreview,
+  ]);
+
+  const startPreview = useCallback(() => {
+    setPreviewing(true);
+    buildPreview();
+  }, [buildPreview]);
+
+  const togglePreview = () => (previewing ? stopPreview() : startPreview());
+
+  // Restart the preview if it's running and the config/points change, so the
+  // user always hears the current settings.
+  useEffect(() => {
+    if (previewing) buildPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.preset, config.volume, config.eq, config.effects, config.bars, outPoint, inPoint]);
+
+  // Tear the preview down when the editor unmounts.
+  useEffect(() => stopPreview, [stopPreview]);
+
   const handleSave = () => {
+    stopPreview();
     onSave(fromIndex, {
       ...config,
       outPoint,
@@ -612,6 +694,9 @@ export function TransitionEditor({
     });
     onClose();
   };
+
+  const fromApprox = !hasRealWaveform(fromTrack);
+  const toApprox = !hasRealWaveform(toTrack);
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
@@ -640,14 +725,25 @@ export function TransitionEditor({
             <span className="text-sm font-bold">Edit transition</span>
             <span className="badge badge-xs badge-primary badge-outline ml-1.5">beta</span>
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="btn btn-primary btn-sm gap-1"
-          >
-            <Save size={14} />
-            Save
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={togglePreview}
+              className={`btn btn-sm gap-1 ${previewing ? 'btn-error btn-outline' : 'btn-ghost'}`}
+              title="Hear this transition"
+            >
+              {previewing ? <Square size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
+              {previewing ? 'Stop' : 'Preview'}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="btn btn-primary btn-sm gap-1"
+            >
+              <Save size={14} />
+              Save
+            </button>
+          </div>
         </div>
 
         {/* Waveform workspace — grows to fill all available height */}
@@ -676,11 +772,13 @@ export function TransitionEditor({
             <div className="absolute bottom-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
               Incoming Track
             </div>
-            <div className="absolute top-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
+            <div className="absolute top-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono text-right">
               {fromBpm ? `${fromBpm} BPM` : 'No grid'}
+              {fromApprox && <span className="block text-amber-300/50">≈ approx waveform</span>}
             </div>
-            <div className="absolute bottom-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
+            <div className="absolute bottom-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono text-right">
               {toBpm ? `${toBpm} BPM` : 'No grid'}
+              {toApprox && <span className="block text-amber-300/50">≈ approx waveform</span>}
             </div>
             {/* Zoom controls — always visible so they're discoverable */}
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-10">
@@ -710,7 +808,7 @@ export function TransitionEditor({
             {/* Instructions hint */}
             <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-none">
               <span className="text-[10px] text-white/50 bg-black/60 px-2.5 py-1 rounded-lg border border-white/5 text-center whitespace-nowrap">
-                Drag to align beats · Scroll / ± to Zoom · Hold Shift to bypass snapping
+                Drag to align to the beat grid · Scroll to zoom · Shift bypasses snap · Press Preview to hear it
               </span>
             </div>
           </div>

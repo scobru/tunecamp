@@ -162,6 +162,12 @@ const DjMixExperiment = () => {
     engineRef.current?.setCrossfade(crossfade);
   }, [crossfade]);
 
+  // Pause the live mix while the full-screen transition editor is open, so its
+  // audible preview doesn't play on top of the running set.
+  useEffect(() => {
+    if (editingTransition !== null) engineRef.current?.pause();
+  }, [editingTransition]);
+
   // Lazily detect BPM for a track, fully client-side (Web Audio). Cached by id.
   const analyzeBpm = useCallback(async (track: DjTrack | null) => {
     if (!track) return;
@@ -279,9 +285,11 @@ const DjMixExperiment = () => {
               <span className="badge badge-sm badge-primary badge-outline font-bold">beta</span>
             </h3>
             <p className="text-sm opacity-60 mt-1">
-              Turn a playlist into a continuous, gapless DJ set with crossfades
-              between tracks.{' '}
-              <span className="opacity-80">Local-library playlists work best.</span>
+              Pick a playlist and press play — transitions are automatic and
+              beat-matched, no setup needed.{' '}
+              <span className="opacity-80">
+                Fine-tune any single transition later with Customize (optional).
+              </span>
             </p>
           </div>
         </div>
@@ -612,7 +620,7 @@ const DjMixExperiment = () => {
                               {txConfig!.effects === 'lowpass' ? 'Low pass' : 'No effects'}
                             </span>
                           ) : (
-                            <span>Auto transition</span>
+                            <span>Auto · beat-matched</span>
                           )}
                         </div>
                         <button
@@ -623,10 +631,10 @@ const DjMixExperiment = () => {
                           }}
                           className="btn btn-ghost btn-xs gap-1 opacity-60 hover:opacity-100"
                           disabled={isPast}
-                          title="Edit this transition"
+                          title="Customize this transition (optional)"
                         >
                           <Settings2 size={11} />
-                          Edit
+                          Customize
                         </button>
                       </div>
                     )}
