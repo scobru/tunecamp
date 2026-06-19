@@ -811,6 +811,27 @@ export const AdminSettingsPanel = () => {
                   <h4 className="font-bold text-xs tracking-normal uppercase">Revenue & Fees (Label Admin)</h4>
                 </div>
 
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text font-medium text-sm">Monthly Subscription Price (USD)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base-content/50 font-bold">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="input input-bordered bg-base-300/50 w-40"
+                      value={settings.membershipMonthlyPrice ?? 10}
+                      onChange={(e) => setSettings({ ...settings, membershipMonthlyPrice: e.target.value })}
+                      placeholder="10.00"
+                    />
+                  </div>
+                  <label className="label">
+                    <span className="label-text-alt opacity-40 text-[11px]">Price charged for a monthly membership via Stripe Checkout. Applies to the "Subscribe" flow in the Store.</span>
+                  </label>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="form-control">
                     <label className="label">

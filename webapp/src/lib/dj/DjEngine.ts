@@ -3,14 +3,18 @@
  *
  * Plays a list of tracks back-to-back with gapless, equal-power crossfades —
  * the foundation of the "Auto Mix / DJ Mode" design proposal
- * (see docs/auto-mix-dj.md). This is Phase 1 of that doc: a two-deck Web Audio
- * engine that overlaps the outgoing and incoming track. Beat alignment and the
- * per-transition editor are intentionally out of scope here.
+ * (see docs/auto-mix-dj.md). This is Phase 1+2 of that doc.
+ *
+ * Phase 1: two-deck Web Audio engine with equal-power crossfades.
+ * Phase 2: preset system (Fade, Rise, Cut) with per-deck EQ filter nodes for
+ *          bass-swap and high-pass sweep effects.
  *
  * It is deliberately self-contained and does NOT touch the main <audio>-based
  * player (PlayerBar / usePlayerStore), so normal playback carries zero
  * regression risk. The LAB page drives it directly.
  */
+
+export type DjPreset = 'fade' | 'rise' | 'cut';
 
 export interface DjTrack {
   id: string | number;
@@ -30,6 +34,8 @@ export interface DjEngineState {
   duration: number; // seconds of the current track
   isCrossfading: boolean;
   ended: boolean;
+  preset: DjPreset;
+  volume: number;
 }
 
 type Listener = (state: DjEngineState) => void;
@@ -37,10 +43,15 @@ type Listener = (state: DjEngineState) => void;
 interface Deck {
   audio: HTMLAudioElement;
   source: MediaElementAudioSourceNode;
+  lowShelf: BiquadFilterNode;  // for bass-swap (fade preset)
+  highPass: BiquadFilterNode;  // for sweep (rise preset)
   gain: GainNode;
 }
 
 const CURVE_STEPS = 64;
+
+// CUT preset: very short overlap in seconds
+const CUT_WINDOW_SEC = 0.3;
 
 export class DjEngine {
   private ctx: AudioContext | null = null;
@@ -52,6 +63,7 @@ export class DjEngine {
   private index = -1;
   private crossfadeSec = 8;
   private volume = 1;
+  private preset: DjPreset = 'fade';
 
   private playing = false;
   private crossfading = false;
@@ -78,9 +90,15 @@ export class DjEngine {
     this.crossfadeSec = Math.max(0, Math.min(seconds, 30));
   }
 
+  setPreset(preset: DjPreset): void {
+    this.preset = preset;
+    this.emit();
+  }
+
   setVolume(v: number): void {
     this.volume = Math.max(0, Math.min(v, 1));
     if (this.master) this.master.gain.value = this.volume;
+    this.emit();
   }
 
   async play(): Promise<void> {
@@ -136,12 +154,14 @@ export class DjEngine {
     this.loadDeck(active, this.tracks[this.index]);
     active.gain.gain.cancelScheduledValues(this.ctx!.currentTime);
     active.gain.gain.value = 1;
+    this.resetDeckEq(active);
     // Make sure the idle deck is silenced.
     const idle = this.decks[1 - this.activeDeck];
     if (idle) {
       idle.audio.pause();
       idle.gain.gain.cancelScheduledValues(this.ctx!.currentTime);
       idle.gain.gain.value = 0;
+      this.resetDeckEq(idle);
     }
     if (this.playing) void active.audio.play().catch(() => {});
     this.emit();
@@ -156,6 +176,7 @@ export class DjEngine {
         d.audio.pause();
         d.audio.removeAttribute('src');
         d.audio.load();
+        this.resetDeckEq(d);
       }
     });
     this.index = this.tracks.length ? 0 : -1;
@@ -168,6 +189,8 @@ export class DjEngine {
     this.listeners.clear();
     this.decks.forEach((d) => {
       d?.source.disconnect();
+      d?.lowShelf.disconnect();
+      d?.highPass.disconnect();
       d?.gain.disconnect();
     });
     this.decks = [null, null];
@@ -199,12 +222,37 @@ export class DjEngine {
     audio.crossOrigin = 'anonymous';
     audio.preload = 'auto';
     const source = this.ctx!.createMediaElementSource(audio);
+
+    // EQ nodes: source → highPass → lowShelf → gain → master
+    const highPass = this.ctx!.createBiquadFilter();
+    highPass.type = 'highpass';
+    highPass.frequency.value = 20;   // effectively off by default
+
+    const lowShelf = this.ctx!.createBiquadFilter();
+    lowShelf.type = 'lowshelf';
+    lowShelf.frequency.value = 200;  // 200 Hz crossover for bass
+    lowShelf.gain.value = 0;         // 0 dB = no change
+
     const gain = this.ctx!.createGain();
     gain.gain.value = 0;
-    source.connect(gain);
+
+    source.connect(highPass);
+    highPass.connect(lowShelf);
+    lowShelf.connect(gain);
     gain.connect(this.master!);
+
     audio.addEventListener('ended', () => this.onDeckEnded(audio));
-    return { audio, source, gain };
+    return { audio, source, lowShelf, highPass, gain };
+  }
+
+  /** Reset EQ nodes to pass-through state. */
+  private resetDeckEq(deck: Deck): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    deck.highPass.frequency.cancelScheduledValues(now);
+    deck.highPass.frequency.value = 20;
+    deck.lowShelf.gain.cancelScheduledValues(now);
+    deck.lowShelf.gain.value = 0;
   }
 
   private loadDeck(deck: Deck, track: DjTrack): void {
@@ -243,16 +291,19 @@ export class DjEngine {
   }
 
   private maybeCrossfade(): void {
-    if (!this.playing || this.crossfading || this.crossfadeSec <= 0) return;
+    if (!this.playing || this.crossfading) return;
     if (this.index >= this.tracks.length - 1) return;
+
+    // 'cut' ignores the user crossfade setting
+    const effectiveFade = this.preset === 'cut' ? CUT_WINDOW_SEC : this.crossfadeSec;
+    if (effectiveFade <= 0) return;
 
     const active = this.decks[this.activeDeck]!;
     const dur = active.audio.duration;
     if (!Number.isFinite(dur) || dur <= 0) return;
     const remaining = dur - active.audio.currentTime;
 
-    // Don't try to crossfade a track shorter than the window.
-    const fadeWindow = Math.min(this.crossfadeSec, dur / 2);
+    const fadeWindow = Math.min(effectiveFade, dur / 2);
     if (remaining > fadeWindow) return;
 
     this.beginCrossfade(fadeWindow);
@@ -268,21 +319,47 @@ export class DjEngine {
 
     this.crossfading = true;
     this.loadDeck(toDeck, nextTrack);
+    this.resetDeckEq(toDeck);
 
     const now = ctx.currentTime;
+
+    // Volume curves — equal-power for fade and rise, linear for cut.
     const outCurve = new Float32Array(CURVE_STEPS);
     const inCurve = new Float32Array(CURVE_STEPS);
     for (let i = 0; i < CURVE_STEPS; i++) {
-      const t = i / (CURVE_STEPS - 1); // 0..1
-      // Equal-power crossfade.
-      outCurve[i] = Math.cos((t * Math.PI) / 2);
-      inCurve[i] = Math.cos(((1 - t) * Math.PI) / 2);
+      const t = i / (CURVE_STEPS - 1);
+      if (this.preset === 'cut') {
+        outCurve[i] = t < 0.5 ? 1 : 0;
+        inCurve[i] = t < 0.5 ? 0 : 1;
+      } else {
+        // equal-power
+        outCurve[i] = Math.cos((t * Math.PI) / 2);
+        inCurve[i] = Math.cos(((1 - t) * Math.PI) / 2);
+      }
     }
 
     fromDeck.gain.gain.cancelScheduledValues(now);
     toDeck.gain.gain.cancelScheduledValues(now);
     fromDeck.gain.gain.setValueCurveAtTime(outCurve, now, fadeWindow);
     toDeck.gain.gain.setValueCurveAtTime(inCurve, now, fadeWindow);
+
+    // Preset-specific EQ automation
+    if (this.preset === 'rise') {
+      // Incoming high-pass filter sweeps from 2000 Hz down to 20 Hz — the
+      // track appears to "materialise" from the top of the frequency range.
+      toDeck.highPass.frequency.cancelScheduledValues(now);
+      toDeck.highPass.frequency.setValueAtTime(2000, now);
+      toDeck.highPass.frequency.exponentialRampToValueAtTime(20, now + fadeWindow);
+    } else if (this.preset === 'fade') {
+      // Bass-swap: fade outgoing lows out, incoming lows in.
+      fromDeck.lowShelf.gain.cancelScheduledValues(now);
+      fromDeck.lowShelf.gain.setValueAtTime(0, now);
+      fromDeck.lowShelf.gain.linearRampToValueAtTime(-24, now + fadeWindow * 0.7);
+
+      toDeck.lowShelf.gain.cancelScheduledValues(now);
+      toDeck.lowShelf.gain.setValueAtTime(-24, now);
+      toDeck.lowShelf.gain.linearRampToValueAtTime(0, now + fadeWindow * 0.7);
+    }
 
     void toDeck.audio.play().catch((e) => console.warn('[DjEngine] next deck play failed', e));
 
@@ -291,6 +368,8 @@ export class DjEngine {
       fromDeck.audio.pause();
       fromDeck.gain.gain.value = 0;
       toDeck.gain.gain.value = 1;
+      this.resetDeckEq(fromDeck);
+      this.resetDeckEq(toDeck);
       this.activeDeck = toDeckIdx;
       this.index += 1;
       this.crossfading = false;
@@ -304,7 +383,12 @@ export class DjEngine {
       return;
     }
     const now = this.ctx.currentTime;
-    this.decks.forEach((d) => d?.gain.gain.cancelScheduledValues(now));
+    this.decks.forEach((d) => {
+      if (!d) return;
+      d.gain.gain.cancelScheduledValues(now);
+      d.lowShelf.gain.cancelScheduledValues(now);
+      d.highPass.frequency.cancelScheduledValues(now);
+    });
     this.crossfading = false;
   }
 
@@ -331,6 +415,8 @@ export class DjEngine {
           : this.tracks[this.index]?.duration ?? 0,
       isCrossfading: this.crossfading,
       ended: this.ended,
+      preset: this.preset,
+      volume: this.volume,
     };
   }
 

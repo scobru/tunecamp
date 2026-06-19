@@ -347,7 +347,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideStore,
                 hideSocial,
                 hideNetwork,
-                hideDig
+                hideDig,
+                membershipMonthlyPrice
             } = req.body;
             let settingsChanged = false;
             const isTrue = (val: any) => val === true || val === "true";
@@ -456,6 +457,13 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (adminTreasuryAddress !== undefined) {
                 identity.setSetting("adminTreasuryAddress", adminTreasuryAddress);
+            }
+            if (membershipMonthlyPrice !== undefined) {
+                const price = parseFloat(membershipMonthlyPrice);
+                if (!Number.isFinite(price) || price < 0) {
+                    return res.status(400).json({ error: "membershipMonthlyPrice must be a non-negative number" });
+                }
+                identity.setSetting("membershipMonthlyPrice", price.toFixed(2));
             }
             if (soulseek_username !== undefined) {
                 identity.setSetting("soulseek_username", soulseek_username);
