@@ -79,9 +79,15 @@ function hasRealWaveform(track: DjTrack): boolean {
 }
 
 function getWaveformBar(waveform: number[], t: number, duration: number): number {
-  if (t < 0 || t >= duration) return 0;
-  const idx = Math.floor((t / duration) * waveform.length);
-  return waveform[idx] ?? 0;
+  if (t < 0 || t >= duration || waveform.length === 0) return 0;
+  // Linear interpolation between samples — stored waveforms are coarse, so
+  // nearest-neighbour sampling produced ugly rectangular plateaus when zoomed.
+  const f = (t / duration) * (waveform.length - 1);
+  const i = Math.floor(f);
+  const frac = f - i;
+  const a = waveform[i] ?? 0;
+  const b = waveform[i + 1] ?? a;
+  return a + (b - a) * frac;
 }
 
 function formatTime(sec: number): string {
@@ -704,7 +710,7 @@ export function TransitionEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 flex items-stretch justify-center sm:p-4"
+      className="fixed inset-0 z-[70] bg-black/70 flex items-stretch justify-center sm:p-4"
       onClick={handleBackdropClick}
     >
       <div
