@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlaskConical, Disc3, Play, Pause, SkipForward, Square, Music, Volume2 } from 'lucide-react';
+import { FlaskConical, Disc3, Play, Pause, SkipForward, SkipBack, Square, Music, Volume2, Shuffle, ListMusic } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import API from '../services/api';
 import { usePlayerStore } from '../stores/usePlayerStore';
@@ -87,6 +87,7 @@ const DjMixExperiment = () => {
   const [crossfade, setCrossfade] = useState(8);
   const [loading, setLoading] = useState(false);
   const [trackCount, setTrackCount] = useState(0);
+  const [djTracks, setDjTracks] = useState<DjTrack[]>([]);
 
   // Lazily create the engine and subscribe to its state.
   useEffect(() => {
@@ -125,9 +126,11 @@ const DjMixExperiment = () => {
       // DJ mode owns the audio output — stop the main player to avoid double audio.
       usePlayerStore.getState().setIsPlaying(false);
 
-      setTrackCount(tracks.length);
+      const mapped = tracks.map(toDjTrack);
+      setTrackCount(mapped.length);
+      setDjTracks(mapped);
       engine.setCrossfade(crossfade);
-      engine.load(tracks.map(toDjTrack), 0);
+      engine.load(mapped, 0);
       await engine.play();
     } catch (e) {
       console.error('[LAB] failed to start DJ mix', e);
@@ -147,6 +150,21 @@ const DjMixExperiment = () => {
   );
 
   const currentPreset = PRESETS.find((p) => p.id === state.preset) ?? PRESETS[0];
+
+  // Shuffle only the upcoming tracks — the current track keeps playing.
+  const shuffleUpcoming = () => {
+    const engine = engineRef.current;
+    if (!engine || state.currentIndex < 0) return;
+    const head = djTracks.slice(0, state.currentIndex + 1);
+    const tail = djTracks.slice(state.currentIndex + 1);
+    for (let i = tail.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tail[i], tail[j]] = [tail[j], tail[i]];
+    }
+    const reordered = [...head, ...tail];
+    setDjTracks(reordered);
+    engine.setTracks(reordered, state.currentIndex);
+  };
 
   return (
     <div className="card bg-base-200 border border-base-content/5">
@@ -339,6 +357,13 @@ const DjMixExperiment = () => {
           ) : (
             <>
               <button
+                className="btn btn-ghost btn-circle"
+                onClick={() => engineRef.current?.skipPrev()}
+                aria-label="Previous track"
+              >
+                <SkipBack size={18} fill="currentColor" />
+              </button>
+              <button
                 className="btn btn-primary btn-circle"
                 onClick={() => engineRef.current?.toggle()}
                 aria-label={state.isPlaying ? 'Pause' : 'Play'}
@@ -358,10 +383,19 @@ const DjMixExperiment = () => {
                 <SkipForward size={18} fill="currentColor" />
               </button>
               <button
+                className="btn btn-outline btn-sm gap-1"
+                onClick={() => engineRef.current?.mixNow()}
+                aria-label="Mix into next track now"
+                disabled={!state.nextTrack || state.isCrossfading}
+              >
+                <Disc3 size={14} /> Mix now
+              </button>
+              <button
                 className="btn btn-ghost btn-circle text-error"
                 onClick={() => {
                   engineRef.current?.stop();
                   setTrackCount(0);
+                  setDjTracks([]);
                 }}
                 aria-label="Stop"
               >
@@ -375,6 +409,68 @@ const DjMixExperiment = () => {
             </>
           )}
         </div>
+
+        {/* Mix queue */}
+        {hasMix && djTracks.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="label-text text-xs font-bold opacity-60 flex items-center gap-1">
+                <ListMusic size={12} /> Queue ({djTracks.length})
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs gap-1"
+                onClick={shuffleUpcoming}
+                disabled={state.currentIndex >= djTracks.length - 1}
+                title="Shuffle upcoming tracks"
+              >
+                <Shuffle size={12} /> Shuffle next
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-base-content/5 divide-y divide-base-content/5">
+              {djTracks.map((t, i) => {
+                const isCurrent = i === state.currentIndex;
+                const isPast = i < state.currentIndex;
+                return (
+                  <button
+                    key={`${t.id}-${i}`}
+                    type="button"
+                    onClick={() => engineRef.current?.jumpTo(i)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                      isCurrent
+                        ? 'bg-primary/10'
+                        : 'hover:bg-base-content/5'
+                    } ${isPast ? 'opacity-40' : ''}`}
+                  >
+                    <span className="text-[11px] tabular-nums w-6 shrink-0 opacity-50 text-right">
+                      {isCurrent ? (
+                        <Disc3
+                          size={13}
+                          className={`text-primary ${state.isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`}
+                        />
+                      ) : (
+                        i + 1
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm truncate ${isCurrent ? 'font-bold text-primary' : ''}`}>
+                        {t.title}
+                      </p>
+                      <p className="text-[11px] opacity-50 truncate">
+                        {t.artistName || 'Unknown artist'}
+                      </p>
+                    </div>
+                    {typeof t.duration === 'number' && t.duration > 0 && (
+                      <span className="text-[11px] opacity-40 tabular-nums shrink-0">
+                        {formatDuration(t.duration)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
