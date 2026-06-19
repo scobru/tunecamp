@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlaskConical, Disc3, Play, Pause, SkipForward, Square, Music, Volume2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlaskConical, Disc3, Play, Pause, SkipForward, SkipBack, Square, Music, Volume2, Shuffle, ListMusic, Activity } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import API from '../services/api';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { DjEngine, type DjEngineState, type DjTrack, type DjPreset } from '../lib/dj/DjEngine';
 import type { Playlist, Track } from '../types';
 import { formatDuration } from '../utils/format';
+import { detectBpmFromUrl } from '../utils/bpm';
 import { notify } from '../utils/notify';
 
 /**
@@ -79,6 +80,44 @@ const PRESETS: { id: DjPreset; label: string; description: string }[] = [
   },
 ];
 
+/** Small BPM badge: shows the detected tempo, a spinner while detecting, or a
+ *  click-to-analyse button when the BPM is still unknown. */
+const BpmChip = ({
+  value,
+  onAnalyze,
+}: {
+  value: number | 'loading' | undefined;
+  onAnalyze?: () => void;
+}) => {
+  if (value === 'loading') {
+    return <span className="loading loading-spinner loading-xs opacity-50 shrink-0" />;
+  }
+  if (typeof value === 'number' && value > 0) {
+    return (
+      <span className="badge badge-ghost badge-sm gap-1 tabular-nums shrink-0">
+        <Activity size={10} /> {value}
+      </span>
+    );
+  }
+  if (value === 0) {
+    return <span className="text-[10px] opacity-30 w-6 text-center shrink-0">—</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAnalyze?.();
+      }}
+      className="btn btn-ghost btn-xs px-1.5 opacity-50 hover:opacity-100 shrink-0"
+      title="Detect BPM"
+      aria-label="Detect BPM"
+    >
+      <Activity size={13} />
+    </button>
+  );
+};
+
 const DjMixExperiment = () => {
   const engineRef = useRef<DjEngine | null>(null);
   const [state, setState] = useState<DjEngineState>(DEFAULT_STATE);
@@ -87,6 +126,10 @@ const DjMixExperiment = () => {
   const [crossfade, setCrossfade] = useState(8);
   const [loading, setLoading] = useState(false);
   const [trackCount, setTrackCount] = useState(0);
+  const [djTracks, setDjTracks] = useState<DjTrack[]>([]);
+  // Client-side BPM per track id: number = detected, 0 = unknown/failed, 'loading' = in flight.
+  const [bpms, setBpms] = useState<Record<string, number | 'loading'>>({});
+  const bpmRef = useRef<Record<string, number | 'loading'>>({});
 
   // Lazily create the engine and subscribe to its state.
   useEffect(() => {
@@ -104,6 +147,25 @@ const DjMixExperiment = () => {
   useEffect(() => {
     engineRef.current?.setCrossfade(crossfade);
   }, [crossfade]);
+
+  // Lazily detect BPM for a track, fully client-side (Web Audio). Cached by id.
+  const analyzeBpm = useCallback(async (track: DjTrack | null) => {
+    if (!track) return;
+    const key = String(track.id);
+    if (bpmRef.current[key] !== undefined) return; // already known or in flight
+    bpmRef.current[key] = 'loading';
+    setBpms({ ...bpmRef.current });
+    const bpm = await detectBpmFromUrl(track.src);
+    bpmRef.current[key] = bpm ?? 0;
+    setBpms({ ...bpmRef.current });
+  }, []);
+
+  // Auto-analyse the current and upcoming track — the pair that matters for the
+  // next transition. Other tracks are analysed on demand from the queue.
+  useEffect(() => {
+    void analyzeBpm(state.currentTrack);
+    void analyzeBpm(state.nextTrack);
+  }, [state.currentTrack?.id, state.nextTrack?.id, analyzeBpm]);
 
   useEffect(() => {
     API.getPlaylists()
@@ -125,9 +187,13 @@ const DjMixExperiment = () => {
       // DJ mode owns the audio output — stop the main player to avoid double audio.
       usePlayerStore.getState().setIsPlaying(false);
 
-      setTrackCount(tracks.length);
+      const mapped = tracks.map(toDjTrack);
+      bpmRef.current = {};
+      setBpms({});
+      setTrackCount(mapped.length);
+      setDjTracks(mapped);
       engine.setCrossfade(crossfade);
-      engine.load(tracks.map(toDjTrack), 0);
+      engine.load(mapped, 0);
       await engine.play();
     } catch (e) {
       console.error('[LAB] failed to start DJ mix', e);
@@ -147,6 +213,21 @@ const DjMixExperiment = () => {
   );
 
   const currentPreset = PRESETS.find((p) => p.id === state.preset) ?? PRESETS[0];
+
+  // Shuffle only the upcoming tracks — the current track keeps playing.
+  const shuffleUpcoming = () => {
+    const engine = engineRef.current;
+    if (!engine || state.currentIndex < 0) return;
+    const head = djTracks.slice(0, state.currentIndex + 1);
+    const tail = djTracks.slice(state.currentIndex + 1);
+    for (let i = tail.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [tail[i], tail[j]] = [tail[j], tail[i]];
+    }
+    const reordered = [...head, ...tail];
+    setDjTracks(reordered);
+    engine.setTracks(reordered, state.currentIndex);
+  };
 
   return (
     <div className="card bg-base-200 border border-base-content/5">
@@ -271,6 +352,10 @@ const DjMixExperiment = () => {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold truncate">{state.currentTrack.title}</p>
+                  <BpmChip
+                    value={bpms[String(state.currentTrack.id)]}
+                    onAnalyze={() => void analyzeBpm(state.currentTrack)}
+                  />
                   {state.isCrossfading && (
                     <span className="badge badge-xs badge-primary animate-pulse">
                       {currentPreset.label}…
@@ -286,10 +371,22 @@ const DjMixExperiment = () => {
               </span>
             </div>
 
-            <div className="w-full h-1.5 bg-base-content/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary/60 rounded-full transition-[width] duration-200"
-                style={{ width: `${progressPct}%` }}
+            <div className="relative w-full h-4 flex items-center cursor-pointer">
+              <div className="w-full h-1.5 bg-base-content/10 rounded-full overflow-hidden pointer-events-none">
+                <div
+                  className="h-full bg-primary/60 rounded-full transition-[width] duration-200"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={0.1}
+                value={progressPct}
+                onChange={(e) => engineRef.current?.seek(parseFloat(e.target.value) / 100)}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                aria-label="Seek"
               />
             </div>
             <div className="flex justify-between text-[11px] opacity-50 tabular-nums">
@@ -327,6 +424,13 @@ const DjMixExperiment = () => {
           ) : (
             <>
               <button
+                className="btn btn-ghost btn-circle"
+                onClick={() => engineRef.current?.skipPrev()}
+                aria-label="Previous track"
+              >
+                <SkipBack size={18} fill="currentColor" />
+              </button>
+              <button
                 className="btn btn-primary btn-circle"
                 onClick={() => engineRef.current?.toggle()}
                 aria-label={state.isPlaying ? 'Pause' : 'Play'}
@@ -346,10 +450,19 @@ const DjMixExperiment = () => {
                 <SkipForward size={18} fill="currentColor" />
               </button>
               <button
+                className="btn btn-outline btn-sm gap-1"
+                onClick={() => engineRef.current?.mixNow()}
+                aria-label="Mix into next track now"
+                disabled={!state.nextTrack || state.isCrossfading}
+              >
+                <Disc3 size={14} /> Mix now
+              </button>
+              <button
                 className="btn btn-ghost btn-circle text-error"
                 onClick={() => {
                   engineRef.current?.stop();
                   setTrackCount(0);
+                  setDjTracks([]);
                 }}
                 aria-label="Stop"
               >
@@ -363,6 +476,76 @@ const DjMixExperiment = () => {
             </>
           )}
         </div>
+
+        {/* Mix queue */}
+        {hasMix && djTracks.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="label-text text-xs font-bold opacity-60 flex items-center gap-1">
+                <ListMusic size={12} /> Queue ({djTracks.length})
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs gap-1"
+                onClick={shuffleUpcoming}
+                disabled={state.currentIndex >= djTracks.length - 1}
+                title="Shuffle upcoming tracks"
+              >
+                <Shuffle size={12} /> Shuffle next
+              </button>
+            </div>
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-base-content/5 divide-y divide-base-content/5">
+              {djTracks.map((t, i) => {
+                const isCurrent = i === state.currentIndex;
+                const isPast = i < state.currentIndex;
+                return (
+                  <div
+                    key={`${t.id}-${i}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => engineRef.current?.jumpTo(i)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        engineRef.current?.jumpTo(i);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-left cursor-pointer transition-colors ${
+                      isCurrent
+                        ? 'bg-primary/10'
+                        : 'hover:bg-base-content/5'
+                    } ${isPast ? 'opacity-40' : ''}`}
+                  >
+                    <span className="text-[11px] tabular-nums w-6 shrink-0 opacity-50 text-right">
+                      {isCurrent ? (
+                        <Disc3
+                          size={13}
+                          className={`text-primary ${state.isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`}
+                        />
+                      ) : (
+                        i + 1
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm truncate ${isCurrent ? 'font-bold text-primary' : ''}`}>
+                        {t.title}
+                      </p>
+                      <p className="text-[11px] opacity-50 truncate">
+                        {t.artistName || 'Unknown artist'}
+                      </p>
+                    </div>
+                    <BpmChip value={bpms[String(t.id)]} onAnalyze={() => void analyzeBpm(t)} />
+                    {typeof t.duration === 'number' && t.duration > 0 && (
+                      <span className="text-[11px] opacity-40 tabular-nums shrink-0 w-10 text-right">
+                        {formatDuration(t.duration)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

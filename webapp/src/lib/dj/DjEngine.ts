@@ -86,6 +86,19 @@ export class DjEngine {
     this.ended = false;
   }
 
+  /**
+   * Replace the track set in place, keeping `currentIndex` as the active track.
+   * Used to reorder/shuffle the *upcoming* tracks without disturbing the one
+   * currently playing on the active deck.
+   */
+  setTracks(tracks: DjTrack[], currentIndex: number): void {
+    this.tracks = tracks;
+    this.index = tracks.length
+      ? Math.min(Math.max(currentIndex, 0), tracks.length - 1)
+      : -1;
+    this.emit();
+  }
+
   setCrossfade(seconds: number): void {
     this.crossfadeSec = Math.max(0, Math.min(seconds, 30));
   }
@@ -98,6 +111,16 @@ export class DjEngine {
   setVolume(v: number): void {
     this.volume = Math.max(0, Math.min(v, 1));
     if (this.master) this.master.gain.value = this.volume;
+    this.emit();
+  }
+
+  seek(percent: number): void {
+    const active = this.decks[this.activeDeck];
+    if (!active) return;
+    const dur = active.audio.duration;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    if (this.crossfading) this.cancelCrossfade();
+    active.audio.currentTime = Math.max(0, Math.min(percent, 1)) * dur;
     this.emit();
   }
 
@@ -148,18 +171,76 @@ export class DjEngine {
       this.finish();
       return;
     }
+    this.ensureContext();
+    this.hardSwitchTo(this.index + 1);
+  }
+
+  /**
+   * Hard-skip to the previous track (no crossfade). If we're more than 3s into
+   * the current track (or already on the first track), restart it instead —
+   * the familiar "previous" behaviour from media players.
+   */
+  skipPrev(): void {
+    this.ensureContext();
+    const active = this.decks[this.activeDeck];
+    if ((active && active.audio.currentTime > 3) || this.index <= 0) {
+      this.seek(0);
+      if (!this.playing) void this.play();
+      return;
+    }
+    this.hardSwitchTo(this.index - 1);
+  }
+
+  /** Hard-jump to an arbitrary track in the set and start playing it. */
+  jumpTo(index: number): void {
+    if (index < 0 || index >= this.tracks.length) return;
+    this.ensureContext();
+    this.hardSwitchTo(index);
+    if (!this.playing) void this.play();
+  }
+
+  /**
+   * Manually trigger the crossfade into the next track now, using the
+   * configured crossfade window (clamped to the remaining time). Lets the user
+   * "mix early" instead of waiting for the automatic fade window.
+   */
+  mixNow(): void {
+    if (this.crossfading || this.index >= this.tracks.length - 1) return;
+    this.ensureContext();
+    const active = this.decks[this.activeDeck];
+    if (!active) return;
+    const dur = active.audio.duration;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    const remaining = dur - active.audio.currentTime;
+    const effectiveFade = this.preset === 'cut' ? CUT_WINDOW_SEC : this.crossfadeSec;
+    const fadeWindow = Math.min(effectiveFade > 0 ? effectiveFade : 4, remaining, dur / 2);
+    if (fadeWindow <= 0) {
+      this.skipNext();
+      return;
+    }
+    if (!this.playing) void this.play();
+    this.beginCrossfade(fadeWindow);
+  }
+
+  /**
+   * Shared hard-switch: load `index` onto the active deck at full gain, silence
+   * the idle deck, and (if playing) start it. Cancels any running crossfade.
+   */
+  private hardSwitchTo(index: number): void {
     this.cancelCrossfade();
-    this.index += 1;
+    this.ended = false;
+    this.index = index;
+    const now = this.ctx!.currentTime;
     const active = this.decks[this.activeDeck]!;
     this.loadDeck(active, this.tracks[this.index]);
-    active.gain.gain.cancelScheduledValues(this.ctx!.currentTime);
+    active.gain.gain.cancelScheduledValues(now);
     active.gain.gain.value = 1;
     this.resetDeckEq(active);
     // Make sure the idle deck is silenced.
     const idle = this.decks[1 - this.activeDeck];
     if (idle) {
       idle.audio.pause();
-      idle.gain.gain.cancelScheduledValues(this.ctx!.currentTime);
+      idle.gain.gain.cancelScheduledValues(now);
       idle.gain.gain.value = 0;
       this.resetDeckEq(idle);
     }
