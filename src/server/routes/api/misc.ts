@@ -38,20 +38,11 @@ export function createMiscRoutes(container: ServiceContainer): Router {
                 const track = library.getTrack(trackId);
                 if (track && track.file_path) {
                     const filePath = path.join(config.musicDir, track.file_path);
-                    // JSON peaks for visual editors (DJ transition editor).
-                    if (req.query.format === "json") {
-                        const peaks = await waveformService.getWaveformPeaks(trackId, filePath);
-                        res.setHeader("Cache-Control", "public, max-age=31536000");
-                        return res.json({ peaks });
-                    }
                     const svg = await waveformService.getWaveformSVG(trackId, filePath);
                     res.setHeader("Content-Type", "image/svg+xml");
                     res.setHeader("Cache-Control", "public, max-age=31536000");
                     return res.send(svg);
                 }
-            }
-            if (req.query.format === "json") {
-                return res.json({ peaks: [] });
             }
             res.setHeader("Content-Type", "image/svg+xml");
             res.setHeader("Cache-Control", "public, max-age=31536000");

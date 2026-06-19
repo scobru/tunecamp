@@ -229,7 +229,6 @@ export const AdminSettingsPanel = () => {
   const isSocialEnabled = settings.hideSocial !== true && settings.hideSocial !== "true";
   const isNetworkEnabled = settings.hideNetwork !== true && settings.hideNetwork !== "true";
   const isDigEnabled = settings.hideDig !== true && settings.hideDig !== "true";
-  const isDjEnabled = settings.hideDj !== true && settings.hideDj !== "true";
 
   return (
     <form onSubmit={handleSave} className="space-y-6 w-full">
@@ -502,20 +501,6 @@ export const AdminSettingsPanel = () => {
                 </label>
               </div>
 
-              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
-                <label className="label cursor-pointer justify-between">
-                  <div>
-                    <span className="label-text font-bold">Show DJ Mix (Lab)</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Enable the experimental Web Audio DJ mixer and transition editor.</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
-                    checked={isDjEnabled}
-                    onChange={(e) => setSettings({ ...settings, hideDj: !e.target.checked })}
-                  />
-                </label>
-              </div>
 
               <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
                 <label className="label cursor-pointer justify-between">
