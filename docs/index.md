@@ -31,7 +31,6 @@ Welcome to the **TuneCamp** technical documentation. This index serves as the ma
 
 - [Payments & Monetization](./payments.md): Stripe Checkout, Onramp, and on-chain verification.
 - [AI Integrations](./ai-integrations.md): Metadata automation and recommendations via OpenRouter.
-- [Auto Mix / DJ Mode](./auto-mix-dj.md): Design proposal for Spotify "Mix"-style beat-matched playlist transitions.
 - [Google Drive Integration](./google-drive.md): Cloud storage streaming and import.
 - [Torrent System](./torrents.md): WebTorrent integration for downloading music.
 - [Soulseek Integration](./soulseek.md): P2P search and download.
@@ -53,4 +52,14 @@ Welcome to the **TuneCamp** technical documentation. This index serves as the ma
 
 ---
 
-*Last updated: June 14, 2026*
+### 🧪 LAB — Experimental & Proposals
+
+> Forward-looking features that are **not yet implemented** (or behind a flag).
+> These are design proposals and early experiments — APIs, data models, and UX
+> here may change or be dropped before they reach a stable release.
+
+- [Auto Mix / DJ Mode](./auto-mix-dj.md): Design proposal for a Spotify "Mix"-style DJ mode — beat-matched, gapless transitions between the tracks of a playlist, with an Auto mode and a per-transition editor (BPM/Camelot key, crossfade/EQ presets, Smart Reorder).
+
+---
+
+*Last updated: June 19, 2026*

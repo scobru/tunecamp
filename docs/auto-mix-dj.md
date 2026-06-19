@@ -1,5 +1,8 @@
 # Auto Mix / DJ Mode (Design Document)
 
+> 🧪 **LAB feature** — part of the experimental [LAB](./index.md#-lab--experimental--proposals)
+> track. Forward-looking; not part of a stable release.
+>
 > Status: **Proposal / Design** — not yet implemented.
 > Target: clone the core of **Spotify "Mix"** (Aug 2025) — beat‑matched, DJ‑style
 > transitions between the tracks of a playlist, with an automatic mode and a
