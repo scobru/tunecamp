@@ -356,8 +356,16 @@ export class AlbumRepository extends BaseRepository {
             if (current && !current.is_release && album.is_release !== true) {
                 console.warn(`⚠️ [AlbumRepository] Attempted to set public visibility on a non-release album (ID: ${id}). Reverting to private.`);
                 album.visibility = 'private';
-                album.is_public = false;
             }
+        }
+
+        // Domain Invariant: `is_public` is a derived mirror of `visibility`, not an
+        // independent flag. The ActivityPub outbox and object endpoints read from
+        // `is_public`, so any time `visibility` changes we MUST realign `is_public`.
+        // Otherwise a release flipped to 'private' kept `is_public = 1` and remote
+        // instances pulled it back from the outbox on every sync (privacy leak).
+        if (album.visibility !== undefined) {
+            album.is_public = album.visibility === 'public' || album.visibility === 'unlisted';
         }
 
         for (const [key, value] of Object.entries(album)) {

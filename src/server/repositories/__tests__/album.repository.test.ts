@@ -131,6 +131,33 @@ describe('AlbumRepository', () => {
             expect(a?.visibility).toBe('private');
             expect(a?.is_public).toBe(false);
         });
+
+        test('clears is_public when a public release is flipped to private (federation leak)', () => {
+            const artistId = artists.create('Sealer');
+            const id = repo.createRelease(albumInput({
+                title: 'WasPublic', artist_id: artistId, is_release: true,
+                visibility: 'public', status: 'released'
+            }));
+            // Simulate a release already broadcast to the public outbox.
+            repo.update(id, { is_public: true });
+            expect(repo.getById(id)?.is_public).toBe(true);
+
+            // Mirrors what updateAlbumVisibility does: only the visibility column is sent.
+            repo.update(id, { visibility: 'private' });
+            const a = repo.getById(id);
+            expect(a?.visibility).toBe('private');
+            expect(a?.is_public).toBe(false);
+        });
+
+        test('sets is_public when a release is flipped to public/unlisted', () => {
+            const artistId = artists.create('Opener');
+            const id = repo.createRelease(albumInput({
+                title: 'WasPrivate', artist_id: artistId, is_release: true,
+                visibility: 'private', is_public: false, status: 'released'
+            }));
+            repo.update(id, { visibility: 'unlisted' });
+            expect(repo.getById(id)?.is_public).toBe(true);
+        });
     });
 
     describe('delete', () => {
