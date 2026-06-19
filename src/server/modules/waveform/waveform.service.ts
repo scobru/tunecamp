@@ -34,4 +34,41 @@ export class WaveformService {
             throw error;
         }
     }
+
+    /**
+     * Returns the track's waveform as a flat array of normalized peaks (0..1),
+     * one per pixel-column, cached as JSON. This is what visual editors (e.g.
+     * the DJ transition editor) need: the SVG endpoint only yields a vector
+     * shape, not the underlying amplitudes.
+     */
+    async getWaveformPeaks(trackId: number, filePath: string): Promise<number[]> {
+        const cacheFile = path.join(this.cacheDir, `${trackId}.peaks.json`);
+
+        if (await fs.pathExists(cacheFile)) {
+            try {
+                const cached = JSON.parse(await fs.readFile(cacheFile, 'utf8'));
+                if (Array.isArray(cached) && cached.length > 0) return cached;
+            } catch {
+                /* corrupt cache — regenerate below */
+            }
+        }
+
+        // The generator emits waveform-data JSON with interleaved [min, max]
+        // int8 pairs (-127..127). We keep the absolute peak per column.
+        const wf = await this.generator.json(filePath);
+        const length: number = wf.length || 0;
+        const data: number[] = Array.isArray(wf.data) ? wf.data : [];
+        const peaks = new Array<number>(length);
+        for (let i = 0; i < length; i++) {
+            const maxVal = data[i * 2 + 1] ?? 0;
+            peaks[i] = Math.min(1, Math.abs(maxVal) / 127);
+        }
+
+        try {
+            await fs.writeFile(cacheFile, JSON.stringify(peaks));
+        } catch (e) {
+            console.error(`Failed to cache waveform peaks for ${trackId}:`, e);
+        }
+        return peaks;
+    }
 }
