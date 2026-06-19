@@ -101,6 +101,16 @@ export class DjEngine {
     this.emit();
   }
 
+  seek(percent: number): void {
+    const active = this.decks[this.activeDeck];
+    if (!active) return;
+    const dur = active.audio.duration;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    if (this.crossfading) this.cancelCrossfade();
+    active.audio.currentTime = Math.max(0, Math.min(percent, 1)) * dur;
+    this.emit();
+  }
+
   async play(): Promise<void> {
     if (this.index < 0 || !this.tracks.length) return;
     this.ensureContext();

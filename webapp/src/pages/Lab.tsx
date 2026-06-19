@@ -286,10 +286,22 @@ const DjMixExperiment = () => {
               </span>
             </div>
 
-            <div className="w-full h-1.5 bg-base-content/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary/60 rounded-full transition-[width] duration-200"
-                style={{ width: `${progressPct}%` }}
+            <div className="relative w-full h-4 flex items-center cursor-pointer">
+              <div className="w-full h-1.5 bg-base-content/10 rounded-full overflow-hidden pointer-events-none">
+                <div
+                  className="h-full bg-primary/60 rounded-full transition-[width] duration-200"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={0.1}
+                value={progressPct}
+                onChange={(e) => engineRef.current?.seek(parseFloat(e.target.value) / 100)}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                aria-label="Seek"
               />
             </div>
             <div className="flex justify-between text-[11px] opacity-50 tabular-nums">
