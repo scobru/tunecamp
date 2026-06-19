@@ -49,6 +49,21 @@ ActivityPub allows Tunecamp to communicate with other platforms like Mastodon, P
 - `TUNECAMP_PUBLIC_URL`: Required for Federation.
 - **ActivityPub relay** (optional): To broadcast beyond direct followers, set the relay URL at runtime in the admin panel (stored as the `relayUrl` setting). This is **not** an environment variable.
 
+### Troubleshooting: "Public key not found" on delivery
+
+Remote servers (e.g. Mastodon) cache an actor's public key the first time they
+see it and keep verifying signatures against that cached copy. If an actor's key
+later changes — or if the same `/users/{handle}` URL previously served a
+*different* identity (for example a **listener user actor before the account
+became an artist**) — the remote keeps the stale key and rejects every activity
+with `401 {"error":"Public key not found for key .../users/{handle}#main-key"}`.
+
+Fix it from **Admin → Identity → the artist card → "Refresh federation"**
+(`POST /api/admin/artists/:id/refresh-identity`). This ensures the artist has a
+valid RSA key pair and broadcasts a signed `Update(Person)` to followers and the
+relay, forcing remotes to re-fetch the actor document and replace the cached key.
+The action is idempotent and safe to re-run.
+
 ---
 
 ## RSS / Atom Feeds

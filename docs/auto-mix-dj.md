@@ -1,6 +1,20 @@
 # Auto Mix / DJ Mode (Design Document)
 
-> Status: **Proposal / Design** — not yet implemented.
+> 🧪 **LAB feature** — part of the experimental [LAB](./index.md#-lab--experimental--proposals)
+> track. Forward-looking; not part of a stable release.
+>
+> Status: **Phase 1 shipped in LAB** — a first, self-contained increment is live
+> under **LAB → DJ Mix** in the webapp (`/lab`). It turns a playlist into a
+> continuous, gapless set using a two-deck **Web Audio** engine with equal-power
+> crossfades. The remaining phases (beat alignment, presets, the per-transition
+> editor, Smart Reorder) are still **Proposal / Design**.
+>
+> **What's implemented (Phase 1):**
+> - `webapp/src/lib/dj/DjEngine.ts` — two-deck Web Audio engine, equal-power
+>   crossfade scheduling, isolated from the main `<audio>` player (zero
+>   regression risk to normal playback).
+> - `webapp/src/pages/Lab.tsx` — the LAB section UI: pick a playlist, set the
+>   crossfade length, play/skip/stop, now-playing + up-next.
 > Target: clone the core of **Spotify "Mix"** (Aug 2025) — beat‑matched, DJ‑style
 > transitions between the tracks of a playlist, with an automatic mode and a
 > manual per‑transition editor.
@@ -338,7 +352,7 @@ energetic"), reusing the recommendation pattern already in
 | Phase | Deliverable | Notes |
 |---|---|---|
 | **0 — Analysis** | `audio_features` table + analysis service + `GET /tracks/:id/features`; BPM/key chips shown in playlist UI | No mixing yet; pure metadata. Low risk. |
-| **1 — Auto crossfade** | `DjEngine` with 2 decks + equal‑power crossfade; **Mix → Auto** plays a playlist gaplessly | The big Web Audio lift. Beatmatch optional here. |
+| **1 — Auto crossfade** ✅ | `DjEngine` with 2 decks + equal‑power crossfade; **LAB → DJ Mix** plays a playlist gaplessly | **Shipped in LAB.** The big Web Audio lift. Beatmatch optional here. |
 | **2 — Beat alignment + presets** | Downbeat‑snapped transitions, Fade/Rise/Cut/Echo presets, EQ bass‑swap | Feels "DJ", not just crossfade. |
 | **3 — Manual editor** | `MixEditor` + `TransitionEditor`, persist `mixes`/`mix_transitions`, Preview | Full Spotify‑parity customization. |
 | **4 — Smart Reorder** | `POST /api/mixes/reorder` + UI banner | Camelot/BPM optimisation. |

@@ -30,6 +30,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  FlaskConical,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -248,6 +249,15 @@ export const Sidebar = () => {
               <NavItem to="/favorites" icon={Heart} label="Favorites" />
               <NavItem to="/stats" icon={BarChart2} label="Stats" />
               {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
+            </ul>
+          </div>
+        )}
+
+        {isAuthenticated && (
+          <div>
+            <SectionHeader label="Lab" />
+            <ul className="menu menu-sm p-0 gap-1">
+              <NavItem to="/lab" icon={FlaskConical} label="DJ Mix" />
             </ul>
           </div>
         )}

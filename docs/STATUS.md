@@ -17,6 +17,7 @@ An honest snapshot of how production-ready each part of TuneCamp is. Updated 202
 | Telegram bot, Google Drive storage | **Beta** | Functional, less test coverage. |
 | Soulseek / BitTorrent / SC-BC stream scraping | **Opt-in, unsupported** | Disabled by default for legal reasons; enable at your own risk. |
 | Backup & restore | **Stable** | UI + CLI tools; see [backup-migration.md](backup-migration.md). Consider Litestream for continuous replication ([scaling.md](scaling.md)). |
+| Auto Mix / DJ Mode | **🧪 LAB / Phase 1** | Gapless crossfade engine live under **LAB → DJ Mix** (`/lab`); beat-matching, presets and the transition editor still proposed. See [auto-mix-dj.md](auto-mix-dj.md). |
 
 ## Known limits
 
