@@ -65,6 +65,110 @@ const mockMaintenanceService = {
 } as any;
 
 
+/**
+ * Builds a test Express app with a simulated viewer context.
+ * role/userId/artistId map directly to VisibilityGuardian inputs.
+ */
+function buildApp(viewer: { role: string; userId?: number; artistId?: number }) {
+    const app = express();
+    app.use(express.json());
+    app.use((req: any, _res, next) => {
+        req.username = 'testuser';
+        req.isRootAdmin = viewer.role === 'root_admin';
+        req.role = viewer.role;
+        req.userId = viewer.userId ?? null;
+        req.artistId = viewer.artistId ?? null;
+        req.context = { role: viewer.role as any, userId: viewer.userId ?? null, artistId: viewer.artistId ?? null };
+        next();
+    });
+    const router = createAdminRoutes({
+        database: mockDatabase,
+        library: mockDatabase,
+        identity: mockDatabase,
+        social: mockDatabase,
+        integration: mockDatabase,
+        scannerService: mockScanner,
+        musicDir: '/tmp/music',
+        config: mockConfig,
+        authService: mockAuthService,
+        publishingService: mockPublishingService,
+        apService: {} as any,
+        telegramBotService: {} as any,
+        soulseekService: {} as any,
+        metadataService: {} as any,
+        streamingService: {} as any,
+        gdriveService: undefined,
+        playlistService: undefined,
+        scrobbleService: undefined,
+        maintenanceService: mockMaintenanceService,
+    } as any);
+    app.use('/admin', router);
+    return app;
+}
+
+describe('Artist release permission gates', () => {
+    beforeEach(() => jest.clearAllMocks());
+
+    // An artist is a regular user (role='user') with an artistId linked to their account.
+    const artist = { role: 'user', userId: 42, artistId: 7 };
+    // A listener has no artistId — they may not create or manage releases.
+    const listener = { role: 'user', userId: 99, artistId: undefined };
+
+    test('Artist: POST /releases is not blocked by the restriction middleware (passes through to releaseRouter)', async () => {
+        const app = buildApp(artist);
+        const res = await request(app).post('/admin/releases').send({ title: 'My Track' });
+        // The admin router has no POST /releases handler — it falls through to the next middleware.
+        // We just need to confirm the middleware did NOT return 403.
+        expect(res.status).not.toBe(403);
+    });
+
+    test('Listener: POST /releases is blocked with 403', async () => {
+        const app = buildApp(listener);
+        const res = await request(app).post('/admin/releases').send({ title: 'Sneaky' });
+        expect(res.status).toBe(403);
+    });
+
+    test('Artist: PUT /releases/:id/visibility is not blocked', async () => {
+        (mockDatabase as any).getRelease = jest.fn().mockReturnValue({ id: 10, owner_id: 42, artist_id: 7, visibility: 'private' });
+        (mockDatabase as any).updateAlbum = jest.fn().mockReturnValue(true);
+        (mockDatabase as any).updateRelease = jest.fn().mockReturnValue(true);
+        const app = buildApp(artist);
+        const res = await request(app).put('/admin/releases/10/visibility').send({ isPublic: true });
+        expect(res.status).not.toBe(403);
+    });
+
+    test('Listener: PUT /releases/:id/visibility is blocked with 403', async () => {
+        const app = buildApp(listener);
+        const res = await request(app).put('/admin/releases/10/visibility').send({ isPublic: true });
+        expect(res.status).toBe(403);
+    });
+
+    test('Artist: POST /releases/:id/tracks/add sub-path is not blocked', async () => {
+        const app = buildApp(artist);
+        const res = await request(app).post('/admin/releases/10/tracks/add').send({ trackId: 5 });
+        // No handler exists for this route in the admin router → 404, not 403
+        expect(res.status).not.toBe(403);
+    });
+
+    test('Listener: POST /releases/:id/tracks/add is blocked with 403', async () => {
+        const app = buildApp(listener);
+        const res = await request(app).post('/admin/releases/10/tracks/add').send({ trackId: 5 });
+        expect(res.status).toBe(403);
+    });
+
+    test('Artist: PUT /releases/batch/visibility is blocked (batch stays admin-only)', async () => {
+        const app = buildApp(artist);
+        const res = await request(app).put('/admin/releases/batch/visibility').send({ ids: [1, 2], visibility: 'public' });
+        expect(res.status).toBe(403);
+    });
+
+    test('Artist: admin-only settings route is blocked with 403', async () => {
+        const app = buildApp(artist);
+        const res = await request(app).put('/admin/settings').send({ siteName: 'Hacked' });
+        expect(res.status).toBe(403);
+    });
+});
+
 describe('Admin Routes Vulnerability Check', () => {
     let app: express.Express;
 
