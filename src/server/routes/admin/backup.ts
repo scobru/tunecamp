@@ -7,6 +7,7 @@ import multer from "multer";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
+import { VisibilityProfile } from "../../common/visibility.js";
 
 // Ensure uploads directory exists
 fs.ensureDirSync("uploads");
@@ -244,7 +245,7 @@ function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbB
     // 5. Keys (Artists and System)
     try {
         // Artists Keys
-        const artists = database.library.getArtists();
+        const artists = database.library.getArtists(VisibilityProfile.ALL_ACCESS);
         const artistsKeys: any = {};
         artists.forEach((a: any) => {
             if (a.public_key && a.private_key) {

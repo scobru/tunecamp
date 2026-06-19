@@ -8,6 +8,7 @@ import { Follow, Announce } from "@fedify/fedify";
 import type { DatabaseService, Artist, Album, Track, Post } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import type { FederationProvider } from "./federation.provider.js";
+import { VisibilityProfile } from "../../common/visibility.js";
 
 import { ActivityPubRenderer } from "./activitypub.renderer.js";
 import { ActivityPubTransport } from "./activitypub.transport.js";
@@ -117,7 +118,7 @@ export class ActivityPubService {
     }
 
     public async generateKeysForAllArtists(): Promise<void> {
-        const artists = this.db.getArtists();
+        const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
 
         // Generate keys for all artists concurrently
         await Promise.all(artists.map(artist => this.ensureArtistKeys(artist.id)));
@@ -1540,7 +1541,7 @@ export class ActivityPubService {
     }
 
     public async syncAllContent(): Promise<{ artists: number; notes: number }> {
-        const artists = this.db.getArtists();
+        const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
         let artistCount = artists.length;
         let noteCount = 0;
 

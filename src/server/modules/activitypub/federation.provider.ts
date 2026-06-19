@@ -18,7 +18,7 @@ export interface FederationProvider {
   // Local Artists
   getArtist(id: number): Artist | undefined;
   getArtistBySlug(slug: string): Artist | undefined;
-  getArtists(): Artist[];
+  getArtists(profile?: any): Artist[];
   isArtistLinkedToUser(id: number): boolean;
   updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
   updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;

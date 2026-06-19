@@ -97,7 +97,7 @@ export class SubsonicService {
   // --- Logic Methods ---
 
   getIndexes(username: string) {
-    const artists = this.db.getArtists();
+    const artists = this.db.getArtists(VisibilityProfile.ALL_ACCESS);
     const indexes: Record<string, any[]> = {};
     const albumCounts = this.db.getArtistAlbumCounts();
     const countMap = new Map<number, number>();
