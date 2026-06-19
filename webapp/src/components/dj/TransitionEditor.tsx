@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Save, ZoomIn, ZoomOut, Play, Square } from 'lucide-react';
 import { DjEngine } from '../../lib/dj/DjEngine';
 import type {
@@ -71,11 +72,24 @@ function getOrCreateWaveform(track: DjTrack): number[] {
   return makeWaveform(track.id, PROCEDURAL_SAMPLES);
 }
 
-/** True when the track carries real peak data; false when we synthesise a
- *  placeholder waveform (in which case only the beat grid is meaningful). */
-function hasRealWaveform(track: DjTrack): boolean {
-  const parsed = parseWaveform(track.waveform);
-  return !!parsed && parsed.length > 0;
+/**
+ * Resolve a track's real peak data (0..1 per column). Prefers inline numeric
+ * data, otherwise fetches the server's JSON peaks endpoint. Returns null when
+ * no real data is available so callers can fall back to a placeholder.
+ */
+async function resolvePeaks(track: DjTrack): Promise<number[] | null> {
+  const inline = parseWaveform(track.waveform);
+  if (inline && inline.length > 0) return inline;
+  if (track.id === undefined || track.id === null) return null;
+  try {
+    const res = await fetch(`/api/waveform/${encodeURIComponent(String(track.id))}?format=json`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (Array.isArray(json?.peaks) && json.peaks.length > 0) return json.peaks as number[];
+  } catch {
+    /* network/parse error — caller falls back to a placeholder */
+  }
+  return null;
 }
 
 function getWaveformBar(waveform: number[], t: number, duration: number): number {
@@ -119,6 +133,8 @@ function drawWaveform(
   fromBeatOffsetMs?: number,
   toBpm?: number,
   toBeatOffsetMs?: number,
+  outWaveformOverride?: number[],
+  inWaveformOverride?: number[],
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -137,8 +153,8 @@ function drawWaveform(
   const GAP = 1;
   const count = Math.floor(W / (BAR_W + GAP));
   
-  const outWaveform = getOrCreateWaveform(fromTrack);
-  const inWaveform = getOrCreateWaveform(toTrack);
+  const outWaveform = outWaveformOverride ?? getOrCreateWaveform(fromTrack);
+  const inWaveform = inWaveformOverride ?? getOrCreateWaveform(toTrack);
 
   const durationA = fromTrack.duration || 180;
   const durationB = toTrack.duration || 180;
@@ -392,6 +408,35 @@ export function TransitionEditor({
   const [config, setConfig] = useState<TransitionConfig>(initialConfig);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Real peak data for each track (0..1 per column), fetched lazily. Until it
+  // arrives we render a placeholder so the canvas isn't empty.
+  const [peaksFrom, setPeaksFrom] = useState<number[] | null>(null);
+  const [peaksTo, setPeaksTo] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolvePeaks(fromTrack).then((p) => {
+      if (!cancelled) setPeaksFrom(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fromTrack]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolvePeaks(toTrack).then((p) => {
+      if (!cancelled) setPeaksTo(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [toTrack]);
+
+  // Resolved waveform arrays: real peaks when available, placeholder otherwise.
+  const fromWave = useMemo(() => peaksFrom ?? getOrCreateWaveform(fromTrack), [peaksFrom, fromTrack]);
+  const toWave = useMemo(() => peaksTo ?? getOrCreateWaveform(toTrack), [peaksTo, toTrack]);
+
   // Approximate overlap fraction: bars × barDuration / totalVisible
   const avgBpm = (fromBpm && fromBpm > 0 ? fromBpm : toBpm && toBpm > 0 ? toBpm : 120);
   const barSec = 60 / avgBpm * 4; // seconds per bar
@@ -587,10 +632,12 @@ export function TransitionEditor({
         fromBeatOffsetMs,
         toBpm,
         toBeatOffsetMs,
+        fromWave,
+        toWave,
       );
     });
     return () => cancelAnimationFrame(raf);
-  }, [fromTrack, toTrack, outPoint, inPoint, fadeWindow, visibleSec, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs]);
+  }, [fromTrack, toTrack, outPoint, inPoint, fadeWindow, visibleSec, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs, fromWave, toWave]);
 
   // Redraw on resize
   useEffect(() => {
@@ -609,11 +656,13 @@ export function TransitionEditor({
         fromBeatOffsetMs,
         toBpm,
         toBeatOffsetMs,
+        fromWave,
+        toWave,
       );
     });
     obs.observe(canvas);
     return () => obs.disconnect();
-  }, [fromTrack, toTrack, outPoint, inPoint, fadeWindow, visibleSec, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs]);
+  }, [fromTrack, toTrack, outPoint, inPoint, fadeWindow, visibleSec, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs, fromWave, toWave]);
 
   const patch = (partial: Partial<TransitionConfig>) =>
     setConfig((c) => ({ ...c, ...partial }));
@@ -701,14 +750,18 @@ export function TransitionEditor({
     onClose();
   };
 
-  const fromApprox = !hasRealWaveform(fromTrack);
-  const toApprox = !hasRealWaveform(toTrack);
+  // We're showing a placeholder only when no real peaks resolved (inline or fetched).
+  const fromApprox = !peaksFrom;
+  const toApprox = !peaksTo;
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   };
 
-  return (
+  // Render through a portal on <body> so the overlay escapes any ancestor
+  // stacking context (the Lab page sits inside transformed/positioned layout
+  // wrappers, which previously trapped the modal *below* the fixed player bar).
+  return createPortal(
     <div
       className="fixed inset-0 z-[70] bg-black/70 flex items-stretch justify-center sm:p-4"
       onClick={handleBackdropClick}
@@ -915,6 +968,7 @@ export function TransitionEditor({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
