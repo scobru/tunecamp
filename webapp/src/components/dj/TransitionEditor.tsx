@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, ZoomIn, ZoomOut } from 'lucide-react';
 import type {
   DjTrack,
   TransitionConfig,
@@ -382,7 +382,31 @@ export function TransitionEditor({
   const avgBpm = (fromBpm && fromBpm > 0 ? fromBpm : toBpm && toBpm > 0 ? toBpm : 120);
   const barSec = 60 / avgBpm * 4; // seconds per bar
   const fadeWindow = config.bars * barSec;
-  const visibleSec = 30; // we show ~30s of waveform context
+  
+  const ZOOM_LEVELS = [5, 10, 15, 30, 60];
+  const [visibleSec, setVisibleSec] = useState<number>(30); // we show 5s to 60s of context
+
+  const handleZoomIn = () => {
+    setVisibleSec((prev) => {
+      const idx = ZOOM_LEVELS.indexOf(prev);
+      return idx > 0 ? ZOOM_LEVELS[idx - 1] : prev;
+    });
+  };
+
+  const handleZoomOut = () => {
+    setVisibleSec((prev) => {
+      const idx = ZOOM_LEVELS.indexOf(prev);
+      return idx < ZOOM_LEVELS.length - 1 ? ZOOM_LEVELS[idx + 1] : prev;
+    });
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (e.deltaY < 0) {
+      handleZoomIn();
+    } else if (e.deltaY > 0) {
+      handleZoomOut();
+    }
+  };
 
   const durationA = fromTrack.duration || 180;
   const durationB = toTrack.duration || 180;
@@ -519,6 +543,19 @@ export function TransitionEditor({
     };
   }, [dragState, visibleSec, durationA, durationB, fadeWindow, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs]);
 
+  // Prevent default scroll on wheel over canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const preventDefaultWheel = (e: WheelEvent) => {
+      e.preventDefault();
+    };
+    canvas.addEventListener('wheel', preventDefaultWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener('wheel', preventDefaultWheel);
+    };
+  }, []);
+
   // Redraw canvas whenever points or properties change
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -628,6 +665,7 @@ export function TransitionEditor({
             ref={canvasRef}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
+            onWheel={handleWheel}
             className="absolute inset-0 w-full h-full cursor-ew-resize"
             style={{ display: 'block' }}
           />
@@ -643,10 +681,36 @@ export function TransitionEditor({
           <div className="absolute bottom-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
             {toBpm ? `${toBpm} BPM` : 'No grid'}
           </div>
+          {/* Zoom controls */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              disabled={visibleSec === 5}
+              className="btn btn-circle btn-xs bg-black/60 hover:bg-black/80 text-white border-white/10 disabled:opacity-30 disabled:pointer-events-none"
+              title="Zoom In"
+            >
+              <ZoomIn size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              disabled={visibleSec === 60}
+              className="btn btn-circle btn-xs bg-black/60 hover:bg-black/80 text-white border-white/10 disabled:opacity-30 disabled:pointer-events-none"
+              title="Zoom Out"
+            >
+              <ZoomOut size={12} />
+            </button>
+          </div>
+          {/* Zoom scale label indicator */}
+          <div className="absolute right-12 top-1/2 -translate-y-1/2 pointer-events-none bg-black/70 text-white/80 px-2 py-0.5 rounded text-[9px] font-mono border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {visibleSec}s view
+          </div>
           {/* Instructions overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors">
-            <span className="text-[10px] text-white/60 bg-black/70 px-2.5 py-1 rounded-lg border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
-              Drag to align beats · Hold Shift to unlock grid
+            <span className="text-[10px] text-white/60 bg-black/70 px-2.5 py-1.5 rounded-lg border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity text-center">
+              Drag to align beats · Scroll / ± to Zoom<br />
+              <span className="text-[9px] opacity-70">Hold Shift to bypass snapping</span>
             </span>
           </div>
         </div>

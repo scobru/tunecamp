@@ -407,11 +407,12 @@ describe('Admin Routes Vulnerability Check', () => {
         const response = await request(app)
             .put('/admin/settings')
             .set('x-username', 'root')
-            .send({ mode: 'personal', siteName: 'My Library' });
+            .send({ mode: 'personal', siteName: 'My Library', hideDj: true });
 
         expect(response.status).toBe(200);
         expect(mockDatabase.setSetting).toHaveBeenCalledWith('mode', 'personal');
         expect(mockDatabase.setSetting).toHaveBeenCalledWith('siteName', 'My Library');
+        expect(mockDatabase.setSetting).toHaveBeenCalledWith('hideDj', 'true');
     });
 
     describe('Super User Restriction', () => {
