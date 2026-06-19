@@ -108,6 +108,23 @@ export async function runStartupMaintenance(database: DatabaseService, config: S
                     console.log(`✅ [Maintenance] Restored ${fixOrphanedAlbums.changes} orphaned albums to library (were stuck in release limbo).`);
                 }
 
+                // 0.4.1 Realign is_public with visibility. `is_public` is a derived
+                // mirror of `visibility`, but legacy updates that changed only
+                // `visibility` left it stale — so private releases kept is_public = 1
+                // and were still served by the ActivityPub outbox to remote instances.
+                const fixPublicLeak = database.db.prepare(
+                    `UPDATE albums SET is_public = 0 WHERE is_public = 1 AND visibility NOT IN ('public', 'unlisted')`
+                ).run();
+                const fixPublicMissing = database.db.prepare(
+                    `UPDATE albums SET is_public = 1 WHERE is_public = 0 AND visibility IN ('public', 'unlisted')`
+                ).run();
+                if (fixPublicLeak.changes > 0) {
+                    console.log(`✅ [Maintenance] Sealed ${fixPublicLeak.changes} private/draft releases that were still flagged public (federation leak fix).`);
+                }
+                if (fixPublicMissing.changes > 0) {
+                    console.log(`✅ [Maintenance] Re-flagged ${fixPublicMissing.changes} public releases that had a stale private is_public flag.`);
+                }
+
                 // 0.5 Fix missing artist_id on albums based on track associations
                 let fixedArtistsCount = 0;
                 const orphanAlbums = database.db.prepare(`SELECT DISTINCT album_id FROM tracks WHERE album_id IS NOT NULL AND artist_id IS NOT NULL`).all() as any[];
