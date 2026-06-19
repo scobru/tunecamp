@@ -210,9 +210,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             // Permission Check
             const ownerId = release ? release.owner_id : album?.owner_id;
             const isAssociatedArtist = req.artistId !== undefined && req.artistId !== null && item.artist_id !== undefined && item.artist_id !== null && Number(item.artist_id) === Number(req.artistId);
-            const canSeeAll = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
-            
-            if (req.userId !== undefined && !canSeeAll && ownerId !== req.userId && !isAssociatedArtist) {
+            const canManageAll = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT);
+
+            if (req.userId !== undefined && !canManageAll && ownerId !== req.userId && !isAssociatedArtist) {
                 return res.status(403).json({ error: "Access denied: You can only manage your own content" });
             }
 
