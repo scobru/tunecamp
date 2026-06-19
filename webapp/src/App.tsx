@@ -43,6 +43,7 @@ const Dig = lazy(() => import("./pages/Dig"));
 const Live = lazy(() => import("./pages/Live"));
 const NowListening = lazy(() => import("./pages/NowListening"));
 const Board = lazy(() => import("./pages/Board"));
+const Lab = lazy(() => import("./pages/Lab"));
 
 
 const LoadingSpinner = () => (
@@ -234,6 +235,9 @@ function App() {
             {/* Store */}
             <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />
             <Route path="/dig" element={<ModuleGuard flag="hideDig"><Dig /></ModuleGuard>} />
+
+            {/* LAB — experimental features */}
+            <Route path="/lab" element={<Lab />} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

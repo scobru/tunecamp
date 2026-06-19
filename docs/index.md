@@ -58,7 +58,7 @@ Welcome to the **TuneCamp** technical documentation. This index serves as the ma
 > These are design proposals and early experiments — APIs, data models, and UX
 > here may change or be dropped before they reach a stable release.
 
-- [Auto Mix / DJ Mode](./auto-mix-dj.md): Design proposal for a Spotify "Mix"-style DJ mode — beat-matched, gapless transitions between the tracks of a playlist, with an Auto mode and a per-transition editor (BPM/Camelot key, crossfade/EQ presets, Smart Reorder).
+- [Auto Mix / DJ Mode](./auto-mix-dj.md): Spotify "Mix"-style DJ mode. **Phase 1 is live** in the webapp under **LAB → DJ Mix** (`/lab`) — gapless, equal-power crossfades that turn a playlist into a continuous set. Beat-matching, crossfade/EQ presets, the per-transition editor and Smart Reorder are still proposed.
 
 ---
 
