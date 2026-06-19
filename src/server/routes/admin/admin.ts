@@ -74,6 +74,19 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 if (req.artistId === pathArtistId) return next();
             }
 
+            // Allow content authors (artists with a linked profile) to edit or
+            // delete a single release they own. The per-item handlers below
+            // (`PUT`/`DELETE /releases/:id`) enforce the granular ownership
+            // check, so this coarse gate only needs to confirm the viewer may
+            // write catalog content at all. Batch routes (`/releases/batch/...`)
+            // and the admin-only `/releases/:id/visibility` override stay gated
+            // to MANAGE_PRIVATE_LIBRARY.
+            const singleReleaseMatch = req.path.match(/^\/releases\/(\d+)$/);
+            const canWrite = req.context && VisibilityGuardian.canWriteContent(req.context);
+            if (singleReleaseMatch && (req.method === 'PUT' || req.method === 'DELETE') && canWrite) {
+                return next();
+            }
+
             if (!canManage) {
                 return res.status(403).json({ error: "Access denied: You do not have permission to modify administrative settings" });
             }
