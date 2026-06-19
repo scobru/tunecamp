@@ -49,6 +49,7 @@ export const Sidebar = () => {
   const [hideSocial, setHideSocial] = useState(false);
   const [hideNetwork, setHideNetwork] = useState(false);
   const [hideDig, setHideDig] = useState(false);
+  const [hideDj, setHideDj] = useState(false);
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -90,6 +91,7 @@ export const Sidebar = () => {
         setHideSocial(s.hideSocial === true || s.hideSocial === "true");
         setHideNetwork(s.hideNetwork === true || s.hideNetwork === "true");
         setHideDig(s.hideDig === true || s.hideDig === "true");
+        setHideDj(s.hideDj === true || s.hideDj === "true");
       })
       .catch(console.error);
   }, []);
@@ -248,16 +250,16 @@ export const Sidebar = () => {
               <NavItem to="/playlists" icon={ListMusic} label="Playlists" />
               <NavItem to="/favorites" icon={Heart} label="Favorites" />
               <NavItem to="/stats" icon={BarChart2} label="Stats" />
-              {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
             </ul>
           </div>
         )}
 
-        {isAuthenticated && (
+        {isAuthenticated && (!hideDj || !hideDig) && (
           <div>
             <SectionHeader label="Lab" />
             <ul className="menu menu-sm p-0 gap-1">
-              <NavItem to="/lab" icon={FlaskConical} label="DJ Mix" />
+              {!hideDj && <NavItem to="/lab" icon={FlaskConical} label="DJ Mix" />}
+              {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
             </ul>
           </div>
         )}

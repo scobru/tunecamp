@@ -400,7 +400,7 @@ export class CatalogService {
             "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage",
             "siteLogo", "mode", "siteId", "web3_checkout_address", "web3_nft_address",
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "siteHandle",
-            "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig"
+            "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj"
         ];
         const res: any = {};
         settings.forEach(k => {

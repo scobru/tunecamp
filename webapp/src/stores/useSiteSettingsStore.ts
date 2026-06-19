@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import API from '../services/api';
 
-export type ModuleFlag = 'hideLive' | 'hideStore' | 'hideSocial' | 'hideNetwork' | 'hideDig';
+export type ModuleFlag = 'hideLive' | 'hideStore' | 'hideSocial' | 'hideNetwork' | 'hideDig' | 'hideDj';
 
 interface SiteSettingsStore {
   /** null until the first fetch resolves; route guards show a spinner meanwhile. */
@@ -33,6 +33,7 @@ export const useSiteSettingsStore = create<SiteSettingsStore>((set, get) => ({
           hideSocial: truthy(s.hideSocial),
           hideNetwork: truthy(s.hideNetwork),
           hideDig: truthy(s.hideDig),
+          hideDj: truthy(s.hideDj),
         },
       });
     } catch (e) {

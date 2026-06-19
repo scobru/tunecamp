@@ -237,7 +237,7 @@ function App() {
             <Route path="/dig" element={<ModuleGuard flag="hideDig"><Dig /></ModuleGuard>} />
 
             {/* LAB — experimental features */}
-            <Route path="/lab" element={<Lab />} />
+            <Route path="/lab" element={<ModuleGuard flag="hideDj"><Lab /></ModuleGuard>} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

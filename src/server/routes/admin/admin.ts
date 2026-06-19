@@ -358,6 +358,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideSocial,
                 hideNetwork,
                 hideDig,
+                hideDj,
                 membershipMonthlyPrice
             } = req.body;
             let settingsChanged = false;
@@ -381,6 +382,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             if (hideDig !== undefined) {
                 identity.setSetting("hideDig", isTrue(hideDig) ? "true" : "false");
+            }
+
+            if (hideDj !== undefined) {
+                identity.setSetting("hideDj", isTrue(hideDj) ? "true" : "false");
             }
 
             if (web3Enabled !== undefined) {
