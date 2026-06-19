@@ -28,6 +28,8 @@ export interface TransitionConfig {
   volume: VolumeMode;
   eq: EqMode;
   effects: EffectsMode;
+  outPoint?: number;
+  inPoint?: number;
 }
 
 export interface DjTrack {
@@ -37,6 +39,7 @@ export interface DjTrack {
   src: string;
   coverUrl?: string;
   duration?: number;
+  waveform?: number[] | string;
 }
 
 export interface DjEngineState {
@@ -537,6 +540,13 @@ export class DjEngine {
         // Bring the next track in on its own beat so the grids line up.
         incomingStartSec = gridB.offsetSec;
       }
+    }
+
+    if (config?.outPoint !== undefined) {
+      startAt = config.outPoint;
+    }
+    if (config?.inPoint !== undefined) {
+      incomingStartSec = config.inPoint;
     }
 
     if (active.audio.currentTime < startAt) return;

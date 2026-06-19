@@ -15,12 +15,14 @@ interface Props {
   fromIndex: number;
   fromBpm?: number;
   toBpm?: number;
+  fromBeatOffsetMs?: number;
+  toBeatOffsetMs?: number;
   initialConfig: TransitionConfig;
   onSave: (fromIndex: number, config: TransitionConfig) => void;
   onClose: () => void;
 }
 
-// ─── Procedural waveform ──────────────────────────────────────────────────────
+// ─── Waveform helpers ─────────────────────────────────────────────────────────
 
 function seededRng(seed: string | number) {
   let s =
@@ -44,11 +46,65 @@ function makeWaveform(id: string | number, count: number): number[] {
   });
 }
 
+function parseWaveform(data: any): number[] | null {
+  if (!data) return null;
+  try {
+    if (typeof data === 'string') {
+      if (data.includes('<svg') || data.startsWith('/') || data.startsWith('http')) {
+        return null;
+      }
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    if (Array.isArray(data)) return data;
+  } catch (e) {
+    console.error('Failed to parse waveform data', e);
+  }
+  return null;
+}
+
+const PROCEDURAL_SAMPLES = 400;
+function getOrCreateWaveform(track: DjTrack): number[] {
+  const parsed = parseWaveform(track.waveform);
+  if (parsed && parsed.length > 0) return parsed;
+  return makeWaveform(track.id, PROCEDURAL_SAMPLES);
+}
+
+function getWaveformBar(waveform: number[], t: number, duration: number): number {
+  if (t < 0 || t >= duration) return 0;
+  const idx = Math.floor((t / duration) * waveform.length);
+  return waveform[idx] ?? 0;
+}
+
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  const ms = Math.floor((sec % 1) * 100);
+  return `${m}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+}
+
+function snapToBeat(t: number, bpm: number, offsetMs: number): number {
+  if (!bpm || bpm <= 0) return t;
+  const beatSec = 60 / bpm;
+  const offsetSec = offsetMs / 1000;
+  const k = Math.round((t - offsetSec) / beatSec);
+  return offsetSec + k * beatSec;
+}
+
+// ─── Drawing ─────────────────────────────────────────────────────────────────
+
 function drawWaveform(
   canvas: HTMLCanvasElement,
-  outId: string | number,
-  inId: string | number,
-  overlapFrac: number,
+  fromTrack: DjTrack,
+  toTrack: DjTrack,
+  outPoint: number,
+  inPoint: number,
+  fadeWindow: number,
+  visibleSec: number,
+  fromBpm?: number,
+  fromBeatOffsetMs?: number,
+  toBpm?: number,
+  toBeatOffsetMs?: number,
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -66,24 +122,78 @@ function drawWaveform(
   const BAR_W = 2;
   const GAP = 1;
   const count = Math.floor(W / (BAR_W + GAP));
-  const outBars = makeWaveform(outId, count);
-  const inBars = makeWaveform(inId, count);
+  
+  const outWaveform = getOrCreateWaveform(fromTrack);
+  const inWaveform = getOrCreateWaveform(toTrack);
 
-  // overlap zone: last overlapFrac of outgoing, first overlapFrac of incoming
+  const durationA = fromTrack.duration || 180;
+  const durationB = toTrack.duration || 180;
+
+  const overlapFrac = fadeWindow / visibleSec;
   const overlapX = (1 - overlapFrac) * W;
 
   // Dark background
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(0, 0, W, H);
 
+  // Draw beat grid lines for outgoing track (top half)
+  if (fromBpm && fromBpm > 0) {
+    const beatSec = 60 / fromBpm;
+    const offsetSec = (fromBeatOffsetMs ?? 0) / 1000;
+    const t_start = outPoint - (1 - overlapFrac) * visibleSec;
+    const t_end = outPoint + overlapFrac * visibleSec;
+    
+    const firstK = Math.ceil((t_start - offsetSec) / beatSec);
+    const lastK = Math.floor((t_end - offsetSec) / beatSec);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    for (let k = firstK; k <= lastK; k++) {
+      const t_beat = offsetSec + k * beatSec;
+      const pos = (t_beat - t_start) / visibleSec;
+      const x = pos * W;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, midY);
+      ctx.stroke();
+    }
+  }
+
+  // Draw beat grid lines for incoming track (bottom half)
+  if (toBpm && toBpm > 0) {
+    const beatSec = 60 / toBpm;
+    const offsetSec = (toBeatOffsetMs ?? 0) / 1000;
+    const t_start = inPoint - (1 - overlapFrac) * visibleSec;
+    const t_end = inPoint + overlapFrac * visibleSec;
+    
+    const firstK = Math.ceil((t_start - offsetSec) / beatSec);
+    const lastK = Math.floor((t_end - offsetSec) / beatSec);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    for (let k = firstK; k <= lastK; k++) {
+      const t_beat = offsetSec + k * beatSec;
+      const pos = (t_beat - t_start) / visibleSec;
+      const x = pos * W;
+      ctx.beginPath();
+      ctx.moveTo(x, midY);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+  }
+
   // Draw outgoing track (top half — bars grow upward from center)
   for (let i = 0; i < count; i++) {
     const x = i * (BAR_W + GAP);
     const pos = i / count;
-    const barH = Math.max(2, outBars[i] * (midY - 4) * 0.9);
+    const t_A = outPoint + (pos - (1 - overlapFrac)) * visibleSec;
+    
+    const peakA = getWaveformBar(outWaveform, t_A, durationA);
+    const barH = Math.max(2, peakA * (midY - 4) * 0.9);
     const y = midY - barH;
+    
     const inOverlap = pos >= 1 - overlapFrac;
-    ctx.fillStyle = inOverlap ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.3)';
+    ctx.fillStyle = inOverlap ? 'rgba(99,202,183,0.95)' : 'rgba(255,255,255,0.3)';
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
       ctx.roundRect(x, y, BAR_W, barH, 1);
@@ -97,10 +207,14 @@ function drawWaveform(
   for (let i = 0; i < count; i++) {
     const x = i * (BAR_W + GAP);
     const pos = i / count;
-    const barH = Math.max(2, inBars[i] * (midY - 4) * 0.9);
+    const t_B = inPoint + (pos - (1 - overlapFrac)) * visibleSec;
+    
+    const peakB = getWaveformBar(inWaveform, t_B, durationB);
+    const barH = Math.max(2, peakB * (midY - 4) * 0.9);
     const y = midY;
-    const inOverlap = pos < overlapFrac;
-    ctx.fillStyle = inOverlap ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.3)';
+    
+    const inOverlap = pos >= 1 - overlapFrac;
+    ctx.fillStyle = inOverlap ? 'rgba(74,222,128,0.95)' : 'rgba(255,255,255,0.3)';
     ctx.beginPath();
     if (typeof ctx.roundRect === 'function') {
       ctx.roundRect(x, y, BAR_W, barH, 1);
@@ -112,21 +226,21 @@ function drawWaveform(
 
   // Overlap zone highlight
   const grad = ctx.createLinearGradient(overlapX, 0, W, 0);
-  grad.addColorStop(0, 'rgba(99,202,183,0.04)');
-  grad.addColorStop(0.5, 'rgba(99,202,183,0.12)');
-  grad.addColorStop(1, 'rgba(99,202,183,0.04)');
+  grad.addColorStop(0, 'rgba(99,202,183,0.03)');
+  grad.addColorStop(0.5, 'rgba(99,202,183,0.08)');
+  grad.addColorStop(1, 'rgba(99,202,183,0.03)');
   ctx.fillStyle = grad;
   ctx.fillRect(overlapX, 0, W - overlapX, H);
 
   // Left edge of overlap zone
-  ctx.strokeStyle = 'rgba(99,202,183,0.5)';
+  ctx.strokeStyle = 'rgba(99,202,183,0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(overlapX, 0);
   ctx.lineTo(overlapX, H);
   ctx.stroke();
 
-  // Green vertical "mix point" line (at end of outgoing track)
+  // Green vertical "mix point" line (at end of transition)
   ctx.strokeStyle = 'rgba(74,222,128,0.9)';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -135,27 +249,11 @@ function drawWaveform(
   ctx.stroke();
 
   // Center divider line
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(0, midY);
   ctx.lineTo(W, midY);
-  ctx.stroke();
-
-  // Drag handle (black square at center of overlap zone)
-  const handleX = overlapX + (W - overlapX) / 2;
-  const hw = 18;
-  const hh = 14;
-  ctx.fillStyle = 'rgba(20,20,20,0.9)';
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  if (typeof ctx.roundRect === 'function') {
-    ctx.roundRect(handleX - hw / 2, midY - hh / 2, hw, hh, 3);
-  } else {
-    ctx.rect(handleX - hw / 2, midY - hh / 2, hw, hh);
-  }
-  ctx.fill();
   ctx.stroke();
 }
 
@@ -189,10 +287,12 @@ function TrackRow({
   track,
   bpm,
   side,
+  timeLabel,
 }: {
   track: DjTrack;
   bpm?: number;
   side: 'from' | 'to';
+  timeLabel?: string;
 }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${side === 'to' ? 'flex-row-reverse text-right' : ''}`}>
@@ -207,7 +307,16 @@ function TrackRow({
       )}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold truncate">{track.title}</p>
-        <p className="text-xs opacity-50 truncate">{track.artistName || 'Unknown artist'}</p>
+        <div className={`flex items-center gap-2 text-xs opacity-50 ${side === 'to' ? 'flex-row-reverse' : ''}`}>
+          <span className="truncate">{track.artistName || 'Unknown artist'}</span>
+          {timeLabel && (
+            <span className={`badge badge-sm font-mono font-semibold text-[9px] uppercase tracking-wider ${
+              side === 'from' ? 'badge-primary badge-outline text-primary/80' : 'badge-success badge-outline text-success/80'
+            }`}>
+              {timeLabel}
+            </span>
+          )}
+        </div>
       </div>
       {typeof bpm === 'number' && bpm > 0 && (
         <span className="text-xs tabular-nums font-mono opacity-60 shrink-0">
@@ -260,6 +369,8 @@ export function TransitionEditor({
   fromIndex,
   fromBpm,
   toBpm,
+  fromBeatOffsetMs,
+  toBeatOffsetMs,
   initialConfig,
   onSave,
   onClose,
@@ -270,40 +381,201 @@ export function TransitionEditor({
   // Approximate overlap fraction: bars × barDuration / totalVisible
   const avgBpm = (fromBpm && fromBpm > 0 ? fromBpm : toBpm && toBpm > 0 ? toBpm : 120);
   const barSec = 60 / avgBpm * 4; // seconds per bar
+  const fadeWindow = config.bars * barSec;
   const visibleSec = 30; // we show ~30s of waveform context
-  const overlapFrac = Math.min(0.7, (config.bars * barSec) / visibleSec);
 
-  // Redraw whenever bars or tracks change
+  const durationA = fromTrack.duration || 180;
+  const durationB = toTrack.duration || 180;
+
+  const defaultOutPoint = durationA - fadeWindow;
+  const defaultInPoint = (toBeatOffsetMs !== undefined) ? (toBeatOffsetMs / 1000) : 0;
+
+  const [outPoint, setOutPoint] = useState<number>(() => {
+    return initialConfig.outPoint !== undefined ? initialConfig.outPoint : defaultOutPoint;
+  });
+  const [inPoint, setInPoint] = useState<number>(() => {
+    return initialConfig.inPoint !== undefined ? initialConfig.inPoint : defaultInPoint;
+  });
+
+  const [hasManuallyDraggedOut, setHasManuallyDraggedOut] = useState(initialConfig.outPoint !== undefined);
+  const [hasManuallyDraggedIn, setHasManuallyDraggedIn] = useState(initialConfig.inPoint !== undefined);
+
+  // Update outPoint when bars/fadeWindow changes, but only if the user hasn't manually dragged it.
+  useEffect(() => {
+    if (!hasManuallyDraggedOut) {
+      setOutPoint(durationA - fadeWindow);
+    }
+  }, [fadeWindow, durationA, hasManuallyDraggedOut]);
+
+  // Drag-and-drop state
+  const [dragState, setDragState] = useState<{
+    active: 'from' | 'to' | null;
+    startX: number;
+    initialVal: number;
+  }>({ active: null, startX: 0, initialVal: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const isTopHalf = y < rect.height / 2;
+
+    setDragState({
+      active: isTopHalf ? 'from' : 'to',
+      startX: e.clientX,
+      initialVal: isTopHalf ? outPoint : inPoint,
+    });
+    
+    if (isTopHalf) {
+      setHasManuallyDraggedOut(true);
+    } else {
+      setHasManuallyDraggedIn(true);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    if (!touch) return;
+    const y = touch.clientY - rect.top;
+    const isTopHalf = y < rect.height / 2;
+
+    setDragState({
+      active: isTopHalf ? 'from' : 'to',
+      startX: touch.clientX,
+      initialVal: isTopHalf ? outPoint : inPoint,
+    });
+    
+    if (isTopHalf) {
+      setHasManuallyDraggedOut(true);
+    } else {
+      setHasManuallyDraggedIn(true);
+    }
+  };
+
+  // Global mousemove/mouseup and touchmove/touchend listeners
+  useEffect(() => {
+    if (!dragState.active) return;
+
+    const handleMove = (clientX: number, shiftKey: boolean) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const W = canvas.offsetWidth;
+      const deltaX = clientX - dragState.startX;
+      const deltaSec = (deltaX / W) * visibleSec;
+      
+      const shouldSnap = !shiftKey; // Hold Shift key to bypass snapping
+      
+      if (dragState.active === 'from') {
+        let newVal = dragState.initialVal - deltaSec;
+        newVal = Math.max(0, Math.min(newVal, durationA - fadeWindow));
+        
+        if (shouldSnap && fromBpm && fromBpm > 0) {
+          newVal = snapToBeat(newVal, fromBpm, fromBeatOffsetMs || 0);
+        }
+        
+        setOutPoint(newVal);
+      } else {
+        let newVal = dragState.initialVal - deltaSec;
+        newVal = Math.max(0, Math.min(newVal, durationB - fadeWindow));
+        
+        if (shouldSnap && toBpm && toBpm > 0) {
+          newVal = snapToBeat(newVal, toBpm, toBeatOffsetMs || 0);
+        }
+        
+        setInPoint(newVal);
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX, e.shiftKey);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) {
+        handleMove(touch.clientX, false); // No shift-key on touch
+      }
+    };
+
+    const handleEnd = () => {
+      setDragState({ active: null, startX: 0, initialVal: 0 });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleEnd);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [dragState, visibleSec, durationA, durationB, fadeWindow, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs]);
+
+  // Redraw canvas whenever points or properties change
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Small delay so the canvas has been laid out
     const raf = requestAnimationFrame(() => {
-      drawWaveform(canvas, fromTrack.id, toTrack.id, overlapFrac);
+      drawWaveform(
+        canvas,
+        fromTrack,
+        toTrack,
+        outPoint,
+        inPoint,
+        fadeWindow,
+        visibleSec,
+        fromBpm,
+        fromBeatOffsetMs,
+        toBpm,
+        toBeatOffsetMs,
+      );
     });
     return () => cancelAnimationFrame(raf);
-  }, [fromTrack.id, toTrack.id, overlapFrac]);
+  }, [fromTrack, toTrack, outPoint, inPoint, fadeWindow, visibleSec, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs]);
 
   // Redraw on resize
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const obs = new ResizeObserver(() => {
-      drawWaveform(canvas, fromTrack.id, toTrack.id, overlapFrac);
+      drawWaveform(
+        canvas,
+        fromTrack,
+        toTrack,
+        outPoint,
+        inPoint,
+        fadeWindow,
+        visibleSec,
+        fromBpm,
+        fromBeatOffsetMs,
+        toBpm,
+        toBeatOffsetMs,
+      );
     });
     obs.observe(canvas);
     return () => obs.disconnect();
-  }, [fromTrack.id, toTrack.id, overlapFrac]);
+  }, [fromTrack, toTrack, outPoint, inPoint, fadeWindow, visibleSec, fromBpm, fromBeatOffsetMs, toBpm, toBeatOffsetMs]);
 
   const patch = (partial: Partial<TransitionConfig>) =>
     setConfig((c) => ({ ...c, ...partial }));
 
   const handleSave = () => {
-    onSave(fromIndex, config);
+    onSave(fromIndex, {
+      ...config,
+      outPoint,
+      inPoint,
+    });
     onClose();
   };
 
-  // Close on backdrop click
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   };
@@ -343,25 +615,71 @@ export function TransitionEditor({
         </div>
 
         {/* Track A (outgoing) */}
-        <TrackRow track={fromTrack} bpm={fromBpm} side="from" />
+        <TrackRow
+          track={fromTrack}
+          bpm={fromBpm}
+          side="from"
+          timeLabel={`Mix-out: ${formatTime(outPoint)}`}
+        />
 
         {/* Dual waveform */}
-        <div className="relative bg-black mx-0" style={{ height: 160 }}>
+        <div className="relative group bg-black mx-0" style={{ height: 160 }}>
           <canvas
             ref={canvasRef}
-            className="absolute inset-0 w-full h-full"
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            className="absolute inset-0 w-full h-full cursor-ew-resize"
             style={{ display: 'block' }}
           />
+          <div className="absolute top-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
+            Outgoing Track
+          </div>
+          <div className="absolute bottom-2 left-3 text-[10px] text-white/40 pointer-events-none uppercase tracking-wider font-bold">
+            Incoming Track
+          </div>
+          <div className="absolute top-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
+            {fromBpm ? `${fromBpm} BPM` : 'No grid'}
+          </div>
+          <div className="absolute bottom-2 right-3 text-[9px] text-white/30 pointer-events-none font-mono">
+            {toBpm ? `${toBpm} BPM` : 'No grid'}
+          </div>
+          {/* Instructions overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/0 group-hover:bg-black/10 transition-colors">
+            <span className="text-[10px] text-white/60 bg-black/70 px-2.5 py-1 rounded-lg border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+              Drag to align beats · Hold Shift to unlock grid
+            </span>
+          </div>
         </div>
 
         {/* Track B (incoming) */}
-        <TrackRow track={toTrack} bpm={toBpm} side="to" />
+        <TrackRow
+          track={toTrack}
+          bpm={toBpm}
+          side="to"
+          timeLabel={`Mix-in: ${formatTime(inPoint)}`}
+        />
 
         {/* Bar count selector */}
         <div className="px-4 py-3 border-t border-base-content/10">
-          <p className="text-[10px] font-bold opacity-40 uppercase tracking-wider mb-2">
-            Transition length
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-bold opacity-40 uppercase tracking-wider">
+              Transition length
+            </p>
+            {(hasManuallyDraggedOut || hasManuallyDraggedIn) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOutPoint(defaultOutPoint);
+                  setInPoint(defaultInPoint);
+                  setHasManuallyDraggedOut(false);
+                  setHasManuallyDraggedIn(false);
+                }}
+                className="text-[10px] text-primary hover:underline font-bold"
+              >
+                Reset alignment
+              </button>
+            )}
+          </div>
           <div className="flex gap-2">
             {BARS_OPTIONS.map((b) => (
               <button
@@ -406,7 +724,7 @@ export function TransitionEditor({
         <div className="px-4 py-3 border-t border-base-content/10 pb-safe">
           <p className="text-[10px] font-bold opacity-40 uppercase tracking-wider mb-2">
             Type
-          </p>
+            </p>
           <div className="flex gap-2">
             {PRESETS.map((p) => (
               <button

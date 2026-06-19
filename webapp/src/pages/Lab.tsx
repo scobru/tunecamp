@@ -7,7 +7,7 @@ import { DjEngine, type DjEngineState, type DjTrack, type DjPreset, type Transit
 import { TransitionEditor } from '../components/dj/TransitionEditor';
 import type { Playlist, Track } from '../types';
 import { formatDuration } from '../utils/format';
-import { detectBeatInfoFromUrl } from '../utils/bpm';
+import { detectBeatInfoFromUrl, type BeatInfo } from '../utils/bpm';
 import { notify } from '../utils/notify';
 
 /**
@@ -47,6 +47,7 @@ function toDjTrack(track: Track): DjTrack {
       (track.albumId ? API.getAlbumCoverUrl(track.albumId) : '') ||
       (track.id ? API.getTrackCoverUrl(track.id) : ''),
     duration: track.duration,
+    waveform: track.waveform,
   };
 }
 
@@ -136,6 +137,9 @@ const DjMixExperiment = () => {
   // Client-side BPM per track id: number = detected, 0 = unknown/failed, 'loading' = in flight.
   const [bpms, setBpms] = useState<Record<string, number | 'loading'>>({});
   const bpmRef = useRef<Record<string, number | 'loading'>>({});
+  // Client-side BeatInfo per track id: BeatInfo = detected, 'loading' = in flight.
+  const [beatInfos, setBeatInfos] = useState<Record<string, BeatInfo | 'loading'>>({});
+  const beatInfoRef = useRef<Record<string, BeatInfo | 'loading'>>({});
   // Per-transition configs: keyed by outgoing track index.
   const [transitionConfigs, setTransitionConfigs] = useState<Record<number, TransitionConfig>>({});
   // Which transition is being edited (outgoing track index), or null.
@@ -163,14 +167,25 @@ const DjMixExperiment = () => {
     if (!track) return;
     const key = String(track.id);
     if (bpmRef.current[key] !== undefined) return; // already known or in flight
+    
     bpmRef.current[key] = 'loading';
     setBpms({ ...bpmRef.current });
+    beatInfoRef.current[key] = 'loading';
+    setBeatInfos({ ...beatInfoRef.current });
+    
     const info = await detectBeatInfoFromUrl(track.src);
+    
     bpmRef.current[key] = info?.bpm ?? 0;
     setBpms({ ...bpmRef.current });
-    // Feed tempo + beat phase to the engine so it can beat-align transitions.
-    if (info?.bpm) {
+    
+    if (info) {
+      beatInfoRef.current[key] = info;
+      setBeatInfos({ ...beatInfoRef.current });
+      // Feed tempo + beat phase to the engine so it can beat-align transitions.
       engineRef.current?.setBeatInfo(track.id, info.bpm, info.beatOffsetMs);
+    } else {
+      beatInfoRef.current[key] = { bpm: 0, beatOffsetMs: 0 };
+      setBeatInfos({ ...beatInfoRef.current });
     }
   }, []);
 
@@ -638,6 +653,18 @@ const DjMixExperiment = () => {
             typeof bpms[String(djTracks[editingTransition + 1].id)] === 'number'
               ? (bpms[String(djTracks[editingTransition + 1].id)] as number)
               : undefined
+          }
+          fromBeatOffsetMs={
+            (() => {
+              const info = beatInfos[String(djTracks[editingTransition].id)];
+              return info && info !== 'loading' ? info.beatOffsetMs : undefined;
+            })()
+          }
+          toBeatOffsetMs={
+            (() => {
+              const info = beatInfos[String(djTracks[editingTransition + 1].id)];
+              return info && info !== 'loading' ? info.beatOffsetMs : undefined;
+            })()
           }
           initialConfig={transitionConfigs[editingTransition] ?? defaultTransitionConfig()}
           onSave={handleSaveTransition}
