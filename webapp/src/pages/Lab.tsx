@@ -6,7 +6,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { DjEngine, type DjEngineState, type DjTrack, type DjPreset } from '../lib/dj/DjEngine';
 import type { Playlist, Track } from '../types';
 import { formatDuration } from '../utils/format';
-import { detectBpmFromUrl } from '../utils/bpm';
+import { detectBeatInfoFromUrl } from '../utils/bpm';
 import { notify } from '../utils/notify';
 
 /**
@@ -60,6 +60,7 @@ const DEFAULT_STATE: DjEngineState = {
   ended: false,
   preset: 'fade',
   volume: 1,
+  beatSync: true,
 };
 
 const PRESETS: { id: DjPreset; label: string; description: string }[] = [
@@ -155,9 +156,13 @@ const DjMixExperiment = () => {
     if (bpmRef.current[key] !== undefined) return; // already known or in flight
     bpmRef.current[key] = 'loading';
     setBpms({ ...bpmRef.current });
-    const bpm = await detectBpmFromUrl(track.src);
-    bpmRef.current[key] = bpm ?? 0;
+    const info = await detectBeatInfoFromUrl(track.src);
+    bpmRef.current[key] = info?.bpm ?? 0;
     setBpms({ ...bpmRef.current });
+    // Feed tempo + beat phase to the engine so it can beat-align transitions.
+    if (info?.bpm) {
+      engineRef.current?.setBeatInfo(track.id, info.bpm, info.beatOffsetMs);
+    }
   }, []);
 
   // Auto-analyse the current and upcoming track — the pair that matters for the
@@ -316,6 +321,23 @@ const DjMixExperiment = () => {
             })}
           </div>
         </div>
+
+        {/* Beat sync */}
+        <label className="flex items-center justify-between gap-3 cursor-pointer">
+          <span className="label-text text-xs font-bold opacity-60 flex items-center gap-1.5">
+            <Activity size={12} />
+            Beat sync
+            <span className="font-normal opacity-70">
+              — snap transitions to detected BPM &amp; beat grid
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="toggle toggle-primary toggle-sm shrink-0"
+            checked={state.beatSync}
+            onChange={(e) => engineRef.current?.setBeatSync(e.target.checked)}
+          />
+        </label>
 
         {/* Volume */}
         <label className="form-control">

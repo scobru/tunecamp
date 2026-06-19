@@ -3,18 +3,24 @@
 > 🧪 **LAB feature** — part of the experimental [LAB](./index.md#-lab--experimental--proposals)
 > track. Forward-looking; not part of a stable release.
 >
-> Status: **Phase 1 shipped in LAB** — a first, self-contained increment is live
-> under **LAB → DJ Mix** in the webapp (`/lab`). It turns a playlist into a
+> Status: **Phases 1–2 shipped in LAB** — a self-contained, growing increment is
+> live under **LAB → DJ Mix** in the webapp (`/lab`). It turns a playlist into a
 > continuous, gapless set using a two-deck **Web Audio** engine with equal-power
-> crossfades. The remaining phases (beat alignment, presets, the per-transition
-> editor, Smart Reorder) are still **Proposal / Design**.
+> crossfades, transition **presets** (Fade / Rise / Cut) with per-deck EQ, and
+> **beat-aligned transitions** from fully client-side BPM/beat-grid detection.
+> The remaining phases (the per-transition editor, Smart Reorder) plus the *Echo*
+> preset and true tempo-warp are still **Proposal / Design**.
 >
-> **What's implemented (Phase 1):**
-> - `webapp/src/lib/dj/DjEngine.ts` — two-deck Web Audio engine, equal-power
->   crossfade scheduling, isolated from the main `<audio>` player (zero
->   regression risk to normal playback).
-> - `webapp/src/pages/Lab.tsx` — the LAB section UI: pick a playlist, set the
->   crossfade length, play/skip/stop, now-playing + up-next.
+> **What's implemented (Phases 1–2):**
+> - `webapp/src/lib/dj/DjEngine.ts` — two-deck Web Audio engine: equal-power
+>   crossfade scheduling, Fade/Rise/Cut presets with low-shelf bass-swap and
+>   high-pass sweep, a lookahead preloader, and bar-quantised, beat-snapped
+>   transitions. Isolated from the main `<audio>` player (zero regression risk).
+> - `webapp/src/utils/bpm.ts` — client-side tempo **and beat-grid phase**
+>   detection (Web Audio autocorrelation), shared with Dig.
+> - `webapp/src/pages/Lab.tsx` — the LAB UI: pick a playlist, choose a preset,
+>   set crossfade length, a Beat-sync toggle, BPM chips, a shuffleable queue and
+>   transport (play / skip / prev / mix-now / seek), now-playing + up-next.
 > Target: clone the core of **Spotify "Mix"** (Aug 2025) — beat‑matched, DJ‑style
 > transitions between the tracks of a playlist, with an automatic mode and a
 > manual per‑transition editor.
@@ -353,7 +359,7 @@ energetic"), reusing the recommendation pattern already in
 |---|---|---|
 | **0 — Analysis** | `audio_features` table + analysis service + `GET /tracks/:id/features`; BPM/key chips shown in playlist UI | No mixing yet; pure metadata. Low risk. |
 | **1 — Auto crossfade** ✅ | `DjEngine` with 2 decks + equal‑power crossfade; **LAB → DJ Mix** plays a playlist gaplessly | **Shipped in LAB.** The big Web Audio lift. Beatmatch optional here. |
-| **2 — Beat alignment + presets** | Downbeat‑snapped transitions, Fade/Rise/Cut/Echo presets, EQ bass‑swap | Feels "DJ", not just crossfade. |
+| **2 — Beat alignment + presets** ✅ | Bar‑quantised, beat‑snapped transitions (client‑side BPM + beat‑grid), Fade/Rise/Cut presets, EQ bass‑swap + high‑pass sweep, lookahead preload | **Shipped in LAB** (client‑side). *Echo* preset and true tempo‑warp still pending. |
 | **3 — Manual editor** | `MixEditor` + `TransitionEditor`, persist `mixes`/`mix_transitions`, Preview | Full Spotify‑parity customization. |
 | **4 — Smart Reorder** | `POST /api/mixes/reorder` + UI banner | Camelot/BPM optimisation. |
 | **5 — Polish** | Shuffle‑aware auto‑mix, AI creative set‑builder, mobile/Subsonic considerations | Stretch. |

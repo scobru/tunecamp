@@ -7,7 +7,9 @@
  *
  * Phase 1: two-deck Web Audio engine with equal-power crossfades.
  * Phase 2: preset system (Fade, Rise, Cut) with per-deck EQ filter nodes for
- *          bass-swap and high-pass sweep effects.
+ *          bass-swap and high-pass sweep effects, plus beat-aligned transitions
+ *          driven by client-side BPM/beat-grid detection — a lookahead preload
+ *          feeds bar-quantised, beat-snapped crossfades.
  *
  * It is deliberately self-contained and does NOT touch the main <audio>-based
  * player (PlayerBar / usePlayerStore), so normal playback carries zero
@@ -36,6 +38,7 @@ export interface DjEngineState {
   ended: boolean;
   preset: DjPreset;
   volume: number;
+  beatSync: boolean;
 }
 
 type Listener = (state: DjEngineState) => void;
@@ -48,10 +51,27 @@ interface Deck {
   gain: GainNode;
 }
 
+/** A planned crossfade: how long to blend and where the incoming track enters. */
+interface CrossfadePlan {
+  fadeWindow: number;       // crossfade length in seconds
+  incomingStartSec: number; // where to start the next track (its beat, for sync)
+}
+
+/** Beat grid derived from a track's detected tempo + phase. */
+interface BeatGrid {
+  beatSec: number;   // seconds per beat
+  barSec: number;    // seconds per bar (assumes 4/4)
+  offsetSec: number; // phase of the beat within [0, beatSec)
+}
+
 const CURVE_STEPS = 64;
 
 // CUT preset: very short overlap in seconds
 const CUT_WINDOW_SEC = 0.3;
+
+// Lookahead: how early (seconds before the active track ends) to preload the
+// next track onto the idle deck, so beat-aligned seeking is reliable.
+const PRELOAD_LEAD_SEC = 15;
 
 export class DjEngine {
   private ctx: AudioContext | null = null;
@@ -64,6 +84,11 @@ export class DjEngine {
   private crossfadeSec = 8;
   private volume = 1;
   private preset: DjPreset = 'fade';
+  private beatSync = true;
+  /** Detected tempo + beat-grid phase per track id, for beat-aligned mixing. */
+  private beatInfo = new Map<string, { bpm: number; beatOffsetMs: number }>();
+  /** Track index currently preloaded onto the idle deck (-1 = none). */
+  private preloadedIndex = -1;
 
   private playing = false;
   private crossfading = false;
@@ -96,6 +121,7 @@ export class DjEngine {
     this.index = tracks.length
       ? Math.min(Math.max(currentIndex, 0), tracks.length - 1)
       : -1;
+    this.preloadedIndex = -1; // upcoming order may have changed
     this.emit();
   }
 
@@ -106,6 +132,21 @@ export class DjEngine {
   setPreset(preset: DjPreset): void {
     this.preset = preset;
     this.emit();
+  }
+
+  setBeatSync(on: boolean): void {
+    this.beatSync = on;
+    this.emit();
+  }
+
+  /**
+   * Provide a track's detected tempo and beat-grid phase so upcoming
+   * transitions can be aligned to the beat. Keyed by track id; safe to call
+   * repeatedly as detection completes.
+   */
+  setBeatInfo(id: string | number, bpm: number, beatOffsetMs: number): void {
+    if (!bpm || bpm <= 0) return;
+    this.beatInfo.set(String(id), { bpm, beatOffsetMs });
   }
 
   setVolume(v: number): void {
@@ -219,7 +260,11 @@ export class DjEngine {
       return;
     }
     if (!this.playing) void this.play();
-    this.beginCrossfade(fadeWindow);
+    const gridB = this.gridFor(this.tracks[this.index + 1]);
+    this.beginCrossfade({
+      fadeWindow,
+      incomingStartSec: this.beatSync && gridB ? gridB.offsetSec : 0,
+    });
   }
 
   /**
@@ -228,6 +273,7 @@ export class DjEngine {
    */
   private hardSwitchTo(index: number): void {
     this.cancelCrossfade();
+    this.preloadedIndex = -1;
     this.ended = false;
     this.index = index;
     const now = this.ctx!.currentTime;
@@ -250,6 +296,7 @@ export class DjEngine {
 
   stop(): void {
     this.cancelCrossfade();
+    this.preloadedIndex = -1;
     this.playing = false;
     this.stopTick();
     this.decks.forEach((d) => {
@@ -341,6 +388,41 @@ export class DjEngine {
     deck.audio.currentTime = 0;
   }
 
+  /** Beat grid for a track from its detected tempo/phase, or null if unknown. */
+  private gridFor(track: DjTrack | null | undefined): BeatGrid | null {
+    if (!track) return null;
+    const info = this.beatInfo.get(String(track.id));
+    if (!info || !info.bpm) return null;
+    const beatSec = 60 / info.bpm;
+    return {
+      beatSec,
+      barSec: beatSec * 4, // assume 4/4
+      offsetSec: (((info.beatOffsetMs / 1000) % beatSec) + beatSec) % beatSec,
+    };
+  }
+
+  /**
+   * Lookahead preload: once the active track is within PRELOAD_LEAD_SEC of the
+   * end, load the next track onto the idle deck (silent) so its metadata is
+   * ready and beat-aligned seeking at crossfade time is reliable.
+   */
+  private preloadNext(): void {
+    if (this.crossfading) return;
+    const nextIdx = this.index + 1;
+    if (nextIdx >= this.tracks.length) return;
+    if (this.preloadedIndex === nextIdx) return;
+    const active = this.decks[this.activeDeck];
+    const idle = this.decks[1 - this.activeDeck];
+    if (!active || !idle) return;
+    const dur = active.audio.duration;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    if (dur - active.audio.currentTime > PRELOAD_LEAD_SEC) return;
+    this.loadDeck(idle, this.tracks[nextIdx]);
+    idle.gain.gain.value = 0;
+    this.resetDeckEq(idle);
+    this.preloadedIndex = nextIdx;
+  }
+
   private onDeckEnded(audio: HTMLAudioElement): void {
     // Only react to the *active* deck ending without a crossfade having taken
     // over (e.g. crossfade disabled, or track shorter than the window).
@@ -357,6 +439,7 @@ export class DjEngine {
   private startTick(): void {
     if (this.tickHandle != null) return;
     const tick = () => {
+      this.preloadNext();
       this.maybeCrossfade();
       this.emit();
       this.tickHandle = window.setTimeout(tick, 250);
@@ -382,16 +465,43 @@ export class DjEngine {
     const active = this.decks[this.activeDeck]!;
     const dur = active.audio.duration;
     if (!Number.isFinite(dur) || dur <= 0) return;
-    const remaining = dur - active.audio.currentTime;
 
-    const fadeWindow = Math.min(effectiveFade, dur / 2);
-    if (remaining > fadeWindow) return;
+    let fadeWindow = Math.min(effectiveFade, dur / 2);
+    let incomingStartSec = 0;
+    // Default: start the blend so it ends exactly as the track does.
+    let startAt = dur - fadeWindow;
 
-    this.beginCrossfade(fadeWindow);
+    if (this.beatSync) {
+      const gridA = this.gridFor(this.tracks[this.index]);
+      const gridB = this.gridFor(this.tracks[this.index + 1]);
+      if (gridA) {
+        // Quantise the blend to whole bars of the outgoing track (but not for
+        // 'cut', which is meant to be a fast hit on the beat).
+        if (this.preset !== 'cut') {
+          const bars = Math.max(1, Math.round(fadeWindow / gridA.barSec));
+          const quantised = bars * gridA.barSec;
+          if (quantised > 0 && quantised <= dur / 2) fadeWindow = quantised;
+        }
+        // Begin on the outgoing track's beat: the latest beat boundary that
+        // still lets the blend finish by the end of the track.
+        const latest = dur - fadeWindow;
+        const beatsIn = Math.floor((latest - gridA.offsetSec) / gridA.beatSec);
+        const aligned = gridA.offsetSec + beatsIn * gridA.beatSec;
+        startAt = aligned > 0 && aligned <= latest ? aligned : latest;
+      }
+      if (gridB) {
+        // Bring the next track in on its own beat so the grids line up.
+        incomingStartSec = gridB.offsetSec;
+      }
+    }
+
+    if (active.audio.currentTime < startAt) return;
+    this.beginCrossfade({ fadeWindow, incomingStartSec });
   }
 
-  private beginCrossfade(fadeWindow: number): void {
+  private beginCrossfade(plan: CrossfadePlan): void {
     const ctx = this.ctx!;
+    const { fadeWindow, incomingStartSec } = plan;
     const fromDeck = this.decks[this.activeDeck]!;
     const toDeckIdx = 1 - this.activeDeck;
     const toDeck = this.decks[toDeckIdx]!;
@@ -399,8 +509,21 @@ export class DjEngine {
     if (!nextTrack) return;
 
     this.crossfading = true;
-    this.loadDeck(toDeck, nextTrack);
+    // Reuse the preloaded deck if it already holds the next track; otherwise
+    // load it now (a seek may not take until metadata is ready).
+    if (this.preloadedIndex !== this.index + 1) {
+      this.loadDeck(toDeck, nextTrack);
+    }
+    this.preloadedIndex = -1;
     this.resetDeckEq(toDeck);
+    if (incomingStartSec > 0) {
+      // Enter the incoming track on its beat so the two grids line up.
+      try {
+        toDeck.audio.currentTime = incomingStartSec;
+      } catch {
+        /* not seekable yet — fall back to a natural start */
+      }
+    }
 
     const now = ctx.currentTime;
 
@@ -498,6 +621,7 @@ export class DjEngine {
       ended: this.ended,
       preset: this.preset,
       volume: this.volume,
+      beatSync: this.beatSync,
     };
   }
 
