@@ -1261,6 +1261,48 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/admin/artists/:id/refresh-identity
+     *
+     * Re-asserts an artist's federated identity: ensures it has a valid RSA key
+     * pair and broadcasts a signed Update(Person) so remote servers re-fetch the
+     * actor document and replace any stale cached public key. Use this when
+     * followers report rejected activities ("Public key not found"), typically
+     * after keys changed or after a listener account became an artist on the
+     * same handle.
+     */
+    router.post("/artists/:id/refresh-identity", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            const artistId = parseInt(req.params.id);
+            if (isNaN(artistId)) {
+                return res.status(400).json({ error: "Invalid artist ID" });
+            }
+
+            // Same permission model as GET identity: only the artist themselves or root admin.
+            const isSystemAdmin = req.context && VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM);
+            if (!isSystemAdmin && (!req.artistId || req.artistId !== artistId)) {
+                return res.status(403).json({ error: "Access denied: Only the artist or root admin can refresh this identity" });
+            }
+
+            const artist = library.getArtist(artistId);
+            if (!artist) {
+                return res.status(404).json({ error: "Artist not found" });
+            }
+
+            const { inboxes } = await apService.broadcastActorUpdate(artistId);
+            res.json({
+                success: true,
+                inboxes,
+                message: inboxes > 0
+                    ? `Identity refresh sent to ${inboxes} follower inbox(es).`
+                    : "Keys ensured and announced to relay (no direct followers).",
+            });
+        } catch (error) {
+            console.error("Error refreshing artist identity:", error);
+            res.status(500).json({ error: "Failed to refresh artist identity" });
+        }
+    });
+
+    /**
      * DELETE /api/admin/artists/batch
      * Delete multiple artists
      */

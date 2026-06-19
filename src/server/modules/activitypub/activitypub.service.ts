@@ -1438,6 +1438,67 @@ export class ActivityPubService {
         this.db.markApNoteDeleted(noteId);
     }
 
+    /**
+     * Broadcast an Update(Person) activity for an artist actor.
+     *
+     * Remote servers (e.g. Mastodon) cache an actor's public key the first time
+     * they see it. If the key later changes — or if the same `/users/{handle}`
+     * URL previously served a *different* identity (e.g. a listener user actor
+     * before the account became an artist) — remotes keep verifying signatures
+     * against the stale cached key and reject everything with
+     * "Public key not found". Sending a signed Update(Person) is the standard
+     * fediverse remedy: it forces remotes to re-fetch the actor document and
+     * pick up the current public key.
+     *
+     * Idempotent and safe to call repeatedly. Returns how many follower inboxes
+     * it attempted to refresh.
+     */
+    public async broadcastActorUpdate(artistId: number): Promise<{ inboxes: number }> {
+        await this.ensureArtistKeys(artistId);
+
+        const artist = this.db.getArtist(artistId);
+        if (!artist) return { inboxes: 0 };
+        if (!artist.public_key) {
+            console.log(`ℹ️ [AP] Cannot broadcast actor Update for "${artist.name}" — no public key (artist not linked to a user?)`);
+            return { inboxes: 0 };
+        }
+
+        const baseUrl = this.getBaseUrl();
+        const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
+        const actorObject = this.generateActor(artist);
+
+        const activity = {
+            "@context": [
+                "https://www.w3.org/ns/activitystreams",
+                "https://w3id.org/security/v1"
+            ],
+            id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+            type: "Update",
+            actor: artistActorUrl,
+            object: actorObject,
+            to: ["https://www.w3.org/ns/activitystreams#Public"],
+            cc: [`${artistActorUrl}/followers`]
+        };
+
+        const followers = this.db.getFollowers(artist.id);
+        const inboxes = [...new Set(followers.map(f => f.inbox_uri).filter(Boolean))];
+
+        if (inboxes.length > 0) {
+            console.log(`🔄 [AP] Broadcasting actor Update for "${artist.name}" to ${inboxes.length} inbox(es) to refresh cached keys`);
+            await Promise.all(inboxes.map(inbox =>
+                this.sendActivity(artist, inbox, activity)
+                    .catch(e => console.error(`[AP] Actor Update delivery failed → ${inbox}:`, e))
+            ));
+        } else {
+            console.log(`ℹ️ [AP] No followers for "${artist.name}", actor Update only announced to relay.`);
+        }
+
+        // Relays also cache actors — let them refresh too.
+        await this.announceToRelay(activity);
+
+        return { inboxes: inboxes.length };
+    }
+
     public async broadcastPostDelete(post: Post, manualNoteId?: string): Promise<void> {
         const artist = this.db.getArtist(post.artist_id);
         if (!artist) return;

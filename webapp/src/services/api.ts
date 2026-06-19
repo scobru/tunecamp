@@ -596,6 +596,8 @@ const API = {
     // --- Admin: Artist identity (ActivityPub keys per artist) ---
     getArtistIdentity: (artistId: string) =>
         handleResponse(api.get<{ publicKey: string, privateKey: string }>(`admin/artists/${artistId}/identity`)),
+    refreshArtistIdentity: (artistId: string) =>
+        handleResponse(api.post<{ success: boolean, inboxes: number, message: string }>(`admin/artists/${artistId}/refresh-identity`)),
 
     // --- Content Search ---
     searchSoulseek: (query: string) => handleResponse(api.get<any[]>(`search/content/soulseek?q=${encodeURIComponent(query)}`)),

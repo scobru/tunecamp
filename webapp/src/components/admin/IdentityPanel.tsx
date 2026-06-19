@@ -5,9 +5,11 @@ import {
   Eye,
   EyeOff,
   Music,
+  RefreshCw,
 } from "lucide-react";
 import type { Artist } from "../../types";
 import { useAuthStore } from "../../stores/useAuthStore";
+import { notify } from "../../utils/notify";
 
 interface IdentityPanelProps {
   isRootAdmin?: boolean;
@@ -99,6 +101,20 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
       ...prev,
       [id]: !prev[id],
     }));
+  };
+
+  const [refreshing, setRefreshing] = useState<{ [key: string]: boolean }>({});
+
+  const handleRefreshIdentity = async (artistId: string) => {
+    setRefreshing((prev) => ({ ...prev, [artistId]: true }));
+    try {
+      const res = await API.refreshArtistIdentity(artistId);
+      notify.success(res?.message || "Federation identity refreshed.");
+    } catch (e) {
+      notify.error(e, "Failed to refresh federation identity");
+    } finally {
+      setRefreshing((prev) => ({ ...prev, [artistId]: false }));
+    }
   };
 
   return (
@@ -218,8 +234,22 @@ export const IdentityPanel = ({ isRootAdmin = false }: IdentityPanelProps) => {
                         </p>
                       </div>
                     </div>
-                    <div className="badge badge-secondary badge-outline badge-sm font-bold tracking-normal py-2">
-                      ARTIST
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="btn btn-xs btn-ghost gap-1.5 tooltip tooltip-left"
+                        data-tip="Re-send this actor's public key to followers (fixes 'Public key not found' federation errors)"
+                        onClick={() => handleRefreshIdentity(artist.id.toString())}
+                        disabled={!!refreshing[artist.id] || !!error}
+                      >
+                        <RefreshCw
+                          size={13}
+                          className={refreshing[artist.id] ? "animate-spin" : ""}
+                        />
+                        Refresh federation
+                      </button>
+                      <div className="badge badge-secondary badge-outline badge-sm font-bold tracking-normal py-2">
+                        ARTIST
+                      </div>
                     </div>
                   </div>
 
