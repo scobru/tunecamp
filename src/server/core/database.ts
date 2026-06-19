@@ -987,7 +987,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             ar.wallet_address as artist_wallet_address
         FROM albums a
         LEFT JOIN artists ar ON a.artist_id = ar.id
-        WHERE a.status = 'released';
+        WHERE a.is_release = 1;
 
         CREATE VIEW v_tracks AS
         SELECT

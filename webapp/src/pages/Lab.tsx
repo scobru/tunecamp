@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlaskConical, Disc3, Play, Pause, SkipForward, SkipBack, Square, Music, Volume2, Shuffle, ListMusic, Activity } from 'lucide-react';
+import { FlaskConical, Disc3, Play, Pause, SkipForward, SkipBack, Square, Music, Volume2, Shuffle, ListMusic, Activity, Settings2 } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import API from '../services/api';
 import { usePlayerStore } from '../stores/usePlayerStore';
-import { DjEngine, type DjEngineState, type DjTrack, type DjPreset } from '../lib/dj/DjEngine';
+import { DjEngine, type DjEngineState, type DjTrack, type DjPreset, type TransitionConfig } from '../lib/dj/DjEngine';
+import { TransitionEditor } from '../components/dj/TransitionEditor';
 import type { Playlist, Track } from '../types';
 import { formatDuration } from '../utils/format';
 import { detectBeatInfoFromUrl } from '../utils/bpm';
@@ -47,6 +48,10 @@ function toDjTrack(track: Track): DjTrack {
       (track.id ? API.getTrackCoverUrl(track.id) : ''),
     duration: track.duration,
   };
+}
+
+function defaultTransitionConfig(): TransitionConfig {
+  return { preset: 'auto', bars: 4, volume: 'smooth', eq: 'center-bass', effects: 'none' };
 }
 
 const DEFAULT_STATE: DjEngineState = {
@@ -131,6 +136,10 @@ const DjMixExperiment = () => {
   // Client-side BPM per track id: number = detected, 0 = unknown/failed, 'loading' = in flight.
   const [bpms, setBpms] = useState<Record<string, number | 'loading'>>({});
   const bpmRef = useRef<Record<string, number | 'loading'>>({});
+  // Per-transition configs: keyed by outgoing track index.
+  const [transitionConfigs, setTransitionConfigs] = useState<Record<number, TransitionConfig>>({});
+  // Which transition is being edited (outgoing track index), or null.
+  const [editingTransition, setEditingTransition] = useState<number | null>(null);
 
   // Lazily create the engine and subscribe to its state.
   useEffect(() => {
@@ -218,6 +227,11 @@ const DjMixExperiment = () => {
   );
 
   const currentPreset = PRESETS.find((p) => p.id === state.preset) ?? PRESETS[0];
+
+  const handleSaveTransition = (fromIndex: number, config: TransitionConfig) => {
+    setTransitionConfigs((prev) => ({ ...prev, [fromIndex]: config }));
+    engineRef.current?.setTransition(fromIndex, config);
+  };
 
   // Shuffle only the upcoming tracks — the current track keeps playing.
   const shuffleUpcoming = () => {
@@ -516,51 +530,90 @@ const DjMixExperiment = () => {
                 <Shuffle size={12} /> Shuffle next
               </button>
             </div>
-            <div className="max-h-64 overflow-y-auto rounded-xl border border-base-content/5 divide-y divide-base-content/5">
+            <div className="rounded-xl border border-base-content/5 overflow-hidden">
               {djTracks.map((t, i) => {
                 const isCurrent = i === state.currentIndex;
                 const isPast = i < state.currentIndex;
+                const hasNext = i < djTracks.length - 1;
+                const txConfig = transitionConfigs[i];
+                const txLabel =
+                  txConfig && txConfig.preset !== 'auto'
+                    ? txConfig.preset === 'cut'
+                      ? 'Blend'
+                      : txConfig.preset.charAt(0).toUpperCase() + txConfig.preset.slice(1)
+                    : null;
+
                 return (
-                  <div
-                    key={`${t.id}-${i}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => engineRef.current?.jumpTo(i)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        engineRef.current?.jumpTo(i);
-                      }
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-left cursor-pointer transition-colors ${
-                      isCurrent
-                        ? 'bg-primary/10'
-                        : 'hover:bg-base-content/5'
-                    } ${isPast ? 'opacity-40' : ''}`}
-                  >
-                    <span className="text-[11px] tabular-nums w-6 shrink-0 opacity-50 text-right">
-                      {isCurrent ? (
-                        <Disc3
-                          size={13}
-                          className={`text-primary ${state.isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`}
-                        />
-                      ) : (
-                        i + 1
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm truncate ${isCurrent ? 'font-bold text-primary' : ''}`}>
-                        {t.title}
-                      </p>
-                      <p className="text-[11px] opacity-50 truncate">
-                        {t.artistName || 'Unknown artist'}
-                      </p>
-                    </div>
-                    <BpmChip value={bpms[String(t.id)]} onAnalyze={() => void analyzeBpm(t)} />
-                    {typeof t.duration === 'number' && t.duration > 0 && (
-                      <span className="text-[11px] opacity-40 tabular-nums shrink-0 w-10 text-right">
-                        {formatDuration(t.duration)}
+                  <div key={`${t.id}-${i}`}>
+                    {/* Track row */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => engineRef.current?.jumpTo(i)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          engineRef.current?.jumpTo(i);
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 text-left cursor-pointer transition-colors border-b border-base-content/5 ${
+                        isCurrent ? 'bg-primary/10' : 'hover:bg-base-content/5'
+                      } ${isPast ? 'opacity-40' : ''}`}
+                    >
+                      <span className="text-[11px] tabular-nums w-6 shrink-0 opacity-50 text-right">
+                        {isCurrent ? (
+                          <Disc3
+                            size={13}
+                            className={`text-primary ${state.isPlaying ? 'animate-[spin_3s_linear_infinite]' : ''}`}
+                          />
+                        ) : (
+                          i + 1
+                        )}
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm truncate ${isCurrent ? 'font-bold text-primary' : ''}`}>
+                          {t.title}
+                        </p>
+                        <p className="text-[11px] opacity-50 truncate">
+                          {t.artistName || 'Unknown artist'}
+                        </p>
+                      </div>
+                      <BpmChip value={bpms[String(t.id)]} onAnalyze={() => void analyzeBpm(t)} />
+                      {typeof t.duration === 'number' && t.duration > 0 && (
+                        <span className="text-[11px] opacity-40 tabular-nums shrink-0 w-10 text-right">
+                          {formatDuration(t.duration)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Transition marker between tracks */}
+                    {hasNext && (
+                      <div className="flex items-center gap-2 px-3 py-1 bg-base-300/40 border-b border-base-content/5">
+                        <div className="flex-1 flex items-center gap-1.5 text-[10px] opacity-40">
+                          <Settings2 size={10} />
+                          {txLabel ? (
+                            <span>
+                              {txLabel} · {txConfig!.bars} {txConfig!.bars === 1 ? 'bar' : 'bars'} ·{' '}
+                              {txConfig!.effects === 'lowpass' ? 'Low pass' : 'No effects'}
+                            </span>
+                          ) : (
+                            <span>Auto transition</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTransition(i);
+                          }}
+                          className="btn btn-ghost btn-xs gap-1 opacity-60 hover:opacity-100"
+                          disabled={isPast}
+                          title="Edit this transition"
+                        >
+                          <Settings2 size={11} />
+                          Edit
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -569,6 +622,28 @@ const DjMixExperiment = () => {
           </div>
         )}
       </div>
+
+      {/* Transition editor modal */}
+      {editingTransition !== null && djTracks[editingTransition] && djTracks[editingTransition + 1] && (
+        <TransitionEditor
+          fromTrack={djTracks[editingTransition]}
+          toTrack={djTracks[editingTransition + 1]}
+          fromIndex={editingTransition}
+          fromBpm={
+            typeof bpms[String(djTracks[editingTransition].id)] === 'number'
+              ? (bpms[String(djTracks[editingTransition].id)] as number)
+              : undefined
+          }
+          toBpm={
+            typeof bpms[String(djTracks[editingTransition + 1].id)] === 'number'
+              ? (bpms[String(djTracks[editingTransition + 1].id)] as number)
+              : undefined
+          }
+          initialConfig={transitionConfigs[editingTransition] ?? defaultTransitionConfig()}
+          onSave={handleSaveTransition}
+          onClose={() => setEditingTransition(null)}
+        />
+      )}
     </div>
   );
 };
