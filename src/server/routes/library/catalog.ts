@@ -30,6 +30,23 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * GET /api/catalog/full
+     * Complete public catalog (all visible releases with tracks) for
+     * instance-to-instance federation. Peers fetch this so their Network page
+     * mirrors the full catalog instead of just the truncated overview.
+     */
+    router.get("/full", async (req: any, res) => {
+        try {
+            const isAdmin = req.isAdmin || req.isSuperUser;
+            const catalog = discoveryService.getFederationCatalog(isAdmin, req.username);
+            res.json(catalog);
+        } catch (error) {
+            console.error("Error getting full catalog:", error);
+            res.status(500).json({ error: "Failed to get full catalog" });
+        }
+    });
+
+    /**
      * GET /api/catalog/settings
      * Returns public site settings
      */

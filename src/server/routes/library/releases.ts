@@ -134,12 +134,27 @@ export function createReleaseRouter(container: ServiceContainer): Router {
                     // For Admins and Super Users, return ALL formal releases (including drafts/private)
                     releases = library.getReleases(VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
                 } else if (req.userId) {
-                    // For logged-in users, merge their owned releases with public ones
+                    // For logged-in users, merge their own releases with public ones.
+                    // "Own" means either owned (owner_id) or linked to their artist
+                    // profile (artist_id) — a release created by an admin/import for
+                    // an artist may carry artist_id without an explicit owner_id, so
+                    // both lookups are needed to mirror the "My Music" view (admin.ts).
                     const ownedFormalReleases = library.getReleasesByOwner(req.userId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
-                    const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
 
                     const seenIds = new Set(ownedFormalReleases.map(r => r.id));
                     releases = [...ownedFormalReleases];
+
+                    if (req.artistId) {
+                        const artistReleases = library.getReleasesByArtist(req.artistId, VisibilityProfile.ALL_ACCESS).map(r => ({ ...r, is_formal_release: true }));
+                        for (const r of artistReleases) {
+                            if (!seenIds.has(r.id)) {
+                                releases.push(r);
+                                seenIds.add(r.id);
+                            }
+                        }
+                    }
+
+                    const publicReleases = library.getReleases(VisibilityProfile.PUBLIC_STAGE).map(r => ({ ...r, is_formal_release: true }));
                     for (const r of publicReleases) {
                         if (!seenIds.has(r.id)) {
                             releases.push(r);

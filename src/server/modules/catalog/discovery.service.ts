@@ -48,6 +48,29 @@ export class DiscoveryService {
         return safeRecommendedTracks.map(t => mapTrackDTO(t, this.database));
     }
 
+    /** Maps a release row to a DTO with its authoritative release_tracks attached. */
+    private mapReleaseWithTracks(r: Release, username?: string) {
+        const mapped = mapAlbumDTO(r, this.database, username);
+        (mapped as any).tracks = this.database.getReleaseTracks(r.id).map(rt => rt);
+        return mapped;
+    }
+
+    /**
+     * Full public catalog for instance-to-instance federation.
+     *
+     * Unlike getOverview (which truncates to a handful of "recent" items for the
+     * homepage), this returns EVERY visible release with its tracks so a peer's
+     * Network page mirrors this instance's catalog exactly. Serving the truncated
+     * overview here caused remote instances to only ever see the 10 newest
+     * releases, producing a track discrepancy between instances.
+     */
+    getFederationCatalog(isAdmin: boolean, username?: string) {
+        const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
+        const allReleases = this.database.getReleases(profile);
+        const releases = allReleases.map(r => this.mapReleaseWithTracks(r, username));
+        return { releases };
+    }
+
     async getOverview(isAdmin: boolean, username?: string) {
         const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
         const stats = await this.database.getStats();
@@ -59,11 +82,7 @@ export class DiscoveryService {
             (mapped as any).tracks = this.database.getTracksByAlbum(a.id, profile).map(t => mapTrackDTO(t, this.database, username));
             return mapped;
         });
-        const recentReleases = allReleases.slice(0, 10).map(r => {
-            const mapped = mapAlbumDTO(r, this.database, username);
-            (mapped as any).tracks = this.database.getReleaseTracks(r.id).map(rt => rt);
-            return mapped;
-        });
+        const recentReleases = allReleases.slice(0, 10).map(r => this.mapReleaseWithTracks(r, username));
 
         let publicStats = { ...stats };
         if (!isAdmin) {
