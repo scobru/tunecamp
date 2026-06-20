@@ -93,8 +93,20 @@ export class LibrarySync {
     // 3. Handle Existing Track by Path or Metadata
     let existing = this.database.getTrackByPath(normalizedPath);
     if (!existing) {
+        const hadTag = !!(metadataHints?.title || common.title);
         const title = metadataHints?.title || common.title || path.basename(filePath, ext);
         existing = this.database.getTrackByMetadata(title, artistId, albumId);
+        // When no usable tag exists the title falls back to the raw filename,
+        // which often carries extension/track-number/artist-prefix noise
+        // (e.g. "Homologo_-_Ordine_Ovviamente"). That mismatch lets a lossless
+        // drop-in slip past dedup and spawn a duplicate of its already-imported
+        // transcode. Retry the lookup with a normalized title before creating.
+        if (!existing && !hadTag) {
+            const normTitle = this.normalizeFilenameTitle(path.basename(filePath, ext));
+            if (normTitle && normTitle !== title) {
+                existing = this.database.getTrackByMetadata(normTitle, artistId, albumId);
+            }
+        }
     }
 
     if (existing) {
@@ -103,6 +115,25 @@ export class LibrarySync {
 
     // 4. Create New Track
     return this.createNewTrack({ filePath, normalizedPath, hash, artistId, albumId, ownerId, metadata, metadataHints, musicDir, duration });
+  }
+
+  /**
+   * Best-effort cleanup of a title derived from a raw filename so it can be
+   * compared against tagged tracks during deduplication. Used for read-only
+   * lookups only (never for persisted titles), so heuristics are acceptable:
+   * a false match is bounded by the same artistId + albumId requirement.
+   */
+  private normalizeFilenameTitle(raw: string): string {
+    let s = raw.replace(/_/g, " ").replace(/\s+/g, " ").trim();
+    // Drop trailing audio-extension tokens left over from messy conversions
+    // (e.g. "...Ovviamente mp3", "...Ovviamente wav wav").
+    s = s.replace(/(\s+(wav|mp3|flac|m4a|aac|ogg|opus))+$/i, "").trim();
+    // Strip a leading track number ("01 - ", "1. ").
+    s = s.replace(/^\d+\s*[-.]\s*/, "").trim();
+    // Strip a leading "Artist - " filename prefix.
+    const dash = s.indexOf(" - ");
+    if (dash > 0) s = s.slice(dash + 3).trim();
+    return s;
   }
 
   private handleHashMatch(existing: Track, normalizedPath: string, ownerId?: number): SyncResult {
