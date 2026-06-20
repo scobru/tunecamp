@@ -20,7 +20,8 @@ import {
   Maximize2,
   MoreVertical,
   User,
-  Disc
+  Disc,
+  AudioLines
 } from "lucide-react";
 import clsx from "clsx";
 import * as ColorThiefReactModule from "color-thief-react";
@@ -84,6 +85,8 @@ export const PlayerBar = () => {
     setIsPlaying,
     setProgress,
     setVolume,
+    crossfadeSec,
+    setCrossfade,
     isShuffled,
     repeatMode,
     isRadioMode,
@@ -103,6 +106,8 @@ export const PlayerBar = () => {
     setIsPlaying: state.setIsPlaying,
     setProgress: state.setProgress,
     setVolume: state.setVolume,
+    crossfadeSec: state.crossfadeSec,
+    setCrossfade: state.setCrossfade,
     isShuffled: state.isShuffled,
     repeatMode: state.repeatMode,
     isRadioMode: state.isRadioMode,
@@ -115,6 +120,11 @@ export const PlayerBar = () => {
   })));
 
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Disposable second deck: plays the tail of the OUTGOING track while the main
+  // deck advances to the next one, so a crossfade can overlap them. Only used
+  // when crossfade is enabled; otherwise it stays idle and playback is unchanged.
+  const fadeDeckRef = useRef<HTMLAudioElement>(null);
+  const crossfadingRef = useRef(false);
   
   // Track seek/scrub state
   const [isSeeking, setIsSeeking] = useState(false);
@@ -309,8 +319,75 @@ export const PlayerBar = () => {
 
   // Sync volume
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
+    // Don't fight the crossfade ramp, which drives volume directly.
+    if (audioRef.current && !crossfadingRef.current) audioRef.current.volume = volume;
   }, [volume]);
+
+  // ─── Crossfade between consecutive tracks ───────────────────────────────
+  // Near the end of the current track, hand its tail to the disposable deck
+  // (kept audible) and advance the main deck early, fading the incoming track
+  // in. With crossfadeSec === 0 this effect is inert and playback is unchanged.
+  useEffect(() => {
+    const audio = audioRef.current;
+    const deckB = fadeDeckRef.current;
+    if (!audio || !deckB || !crossfadeSec || crossfadeSec <= 0) return;
+
+    const onTime = () => {
+      if (crossfadingRef.current) return;
+      const st = usePlayerStore.getState();
+      if (!st.isPlaying || st.repeatMode === 'one') return;
+      // Only crossfade into a real next track already in the queue.
+      if (st.queueIndex < 0 || st.queueIndex >= st.queue.length - 1) return;
+      const dur = audio.duration;
+      if (!Number.isFinite(dur) || dur <= 0) return;
+      const remaining = dur - audio.currentTime;
+      if (remaining > crossfadeSec) return;
+
+      const targetVol = st.volume;
+      const fadeDur = Math.max(0.5, Math.min(crossfadeSec, dur / 2, remaining));
+      crossfadingRef.current = true;
+
+      // 1. Continue the outgoing track on the disposable deck.
+      try {
+        deckB.src = audio.src;
+        deckB.currentTime = audio.currentTime;
+        deckB.volume = audio.volume;
+        void deckB.play().catch(() => {});
+      } catch { /* ignore */ }
+
+      // 2. Mute the main deck (deckB covers the tail) and advance early.
+      audio.volume = 0;
+      st.next();
+
+      // 3. Equal-time ramp: outgoing (deckB) down, incoming (main) up.
+      const start = performance.now();
+      const step = () => {
+        if (!crossfadingRef.current) return;
+        const t = Math.min(1, (performance.now() - start) / (fadeDur * 1000));
+        try { deckB.volume = Math.max(0, targetVol * (1 - t)); } catch { /* ignore */ }
+        if (audioRef.current) audioRef.current.volume = Math.min(targetVol, targetVol * t);
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          try { deckB.pause(); deckB.removeAttribute('src'); deckB.load(); } catch { /* ignore */ }
+          if (audioRef.current) audioRef.current.volume = targetVol;
+          crossfadingRef.current = false;
+        }
+      };
+      requestAnimationFrame(step);
+    };
+
+    audio.addEventListener('timeupdate', onTime);
+    return () => audio.removeEventListener('timeupdate', onTime);
+  }, [crossfadeSec]);
+
+  // Keep the disposable deck in step with pause: never leave a tail playing
+  // after the user pauses the main deck.
+  useEffect(() => {
+    if (!isPlaying && fadeDeckRef.current) {
+      try { fadeDeckRef.current.pause(); } catch { /* ignore */ }
+    }
+  }, [isPlaying]);
 
   // Handle manual seek from waveform/progress bar
   const handleSeek = useCallback(
@@ -404,6 +481,8 @@ export const PlayerBar = () => {
             console.error("[Player] Audio Element Error:", e.currentTarget.error);
           }}
         />
+        {/* Disposable deck for crossfades (outgoing-track tail). */}
+        <audio ref={fadeDeckRef} className="hidden" />
 
         {/* Track Info */}
         <div className="flex items-center gap-4 w-1/2 lg:w-1/4 min-w-0">
@@ -569,6 +648,27 @@ export const PlayerBar = () => {
                 <li><a onClick={toggleRepeat}><Repeat size={16} className={clsx(repeatMode !== 'none' && "text-primary")}/> Repeat: {repeatMode}</a></li>
                 <li><a onClick={toggleRadio}><Radio size={16} className={clsx(isRadioMode && "text-primary")}/> Radio Mode</a></li>
                 <div className="divider my-1 opacity-10"></div>
+                <li className="menu-title flex-row items-center gap-2 px-2 py-1 text-[11px]">
+                  <AudioLines size={14} className={clsx(crossfadeSec > 0 && "text-primary")} /> Crossfade
+                </li>
+                <li>
+                  <div className="flex gap-1 px-1">
+                    {[0, 4, 8, 12].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setCrossfade(s)}
+                        className={clsx(
+                          "btn btn-xs flex-1",
+                          crossfadeSec === s ? "btn-primary" : "btn-ghost"
+                        )}
+                      >
+                        {s === 0 ? "Off" : `${s}s`}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+                <div className="divider my-1 opacity-10"></div>
                 <li><a onClick={handleStarArtist}><User size={16}/> Favorite Artist</a></li>
                 <li><a onClick={handleStarAlbum}><Disc size={16}/> Favorite Album</a></li>
                 {isAdminOrOwner && (
@@ -595,6 +695,34 @@ export const PlayerBar = () => {
                 >
                     <Disc size={18} />
                 </button>
+            </div>
+
+            <div className="dropdown dropdown-top dropdown-end hidden sm:block">
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="Crossfade"
+                className={clsx(
+                  "btn btn-ghost btn-sm btn-square tooltip tooltip-top",
+                  crossfadeSec > 0 ? "text-primary" : "opacity-40 hover:opacity-100"
+                )}
+                data-tip={crossfadeSec > 0 ? `Crossfade: ${crossfadeSec}s` : "Crossfade"}
+              >
+                <AudioLines size={18} />
+              </div>
+              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-44 border border-base-content/10 mb-4">
+                <li className="menu-title text-[11px]">Crossfade between tracks</li>
+                {[0, 4, 8, 12].map((s) => (
+                  <li key={s}>
+                    <a
+                      className={clsx(crossfadeSec === s && "active text-primary font-semibold")}
+                      onClick={() => setCrossfade(s)}
+                    >
+                      {s === 0 ? "Off" : `${s} seconds`}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <button

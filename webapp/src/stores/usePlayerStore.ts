@@ -12,6 +12,8 @@ export interface PlayerState {
     progress: number; // 0-100
     duration: number;
     currentTime: number;
+    /** Crossfade length in seconds between consecutive tracks; 0 = disabled. */
+    crossfadeSec: number;
 
     // Modes
     isShuffled: boolean;
@@ -32,6 +34,7 @@ export interface PlayerState {
     next: () => void;
     prev: () => void;
     setVolume: (vol: number) => void;
+    setCrossfade: (sec: number) => void;
     setProgress: (time: number, duration: number) => void;
     addToQueue: (track: Track) => void;
     removeFromQueue: (index: number) => void;
@@ -54,6 +57,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     progress: 0,
     duration: 0,
     currentTime: 0,
+    crossfadeSec: parseFloat(localStorage.getItem('tunecamp_crossfade') || '0') || 0,
     isShuffled: false,
     repeatMode: 'none',
     isRadioMode: false,
@@ -156,6 +160,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     setVolume: (volume) => {
         localStorage.setItem('tunecamp_volume', volume.toString());
         set({ volume });
+    },
+
+    setCrossfade: (crossfadeSec) => {
+        localStorage.setItem('tunecamp_crossfade', String(crossfadeSec));
+        set({ crossfadeSec });
     },
 
     setProgress: (currentTime, duration) => set({

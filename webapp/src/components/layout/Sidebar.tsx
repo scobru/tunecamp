@@ -30,7 +30,6 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  FlaskConical,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -49,7 +48,6 @@ export const Sidebar = () => {
   const [hideSocial, setHideSocial] = useState(false);
   const [hideNetwork, setHideNetwork] = useState(false);
   const [hideDig, setHideDig] = useState(false);
-  const [hideDj, setHideDj] = useState(false);
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -91,7 +89,6 @@ export const Sidebar = () => {
         setHideSocial(s.hideSocial === true || s.hideSocial === "true");
         setHideNetwork(s.hideNetwork === true || s.hideNetwork === "true");
         setHideDig(s.hideDig === true || s.hideDig === "true");
-        setHideDj(s.hideDj === true || s.hideDj === "true");
       })
       .catch(console.error);
   }, []);
@@ -254,11 +251,10 @@ export const Sidebar = () => {
           </div>
         )}
 
-        {isAuthenticated && (!hideDj || !hideDig) && (
+        {isAuthenticated && !hideDig && (
           <div>
             <SectionHeader label="Lab" />
             <ul className="menu menu-sm p-0 gap-1">
-              {!hideDj && <NavItem to="/lab" icon={FlaskConical} label="DJ Mix" />}
               {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
             </ul>
           </div>
