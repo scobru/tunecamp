@@ -23,6 +23,17 @@ interface PeerSite {
     name?: string;
 }
 
+/** Drains a fetch Response body to avoid memory leaks in Node's fetch. */
+async function drainBody(response: Response): Promise<void> {
+    try {
+        if (response.body && typeof (response.body as any).cancel === 'function') {
+            await (response.body as any).cancel();
+        } else {
+            await response.text();
+        }
+    } catch { /* ignore */ }
+}
+
 export interface CatalogCacheService {
     /** Returns tracks for all sites, serving cache and revalidating stale entries in background. */
     getTracks(sites: PeerSite[]): Promise<any[]>;
@@ -86,24 +97,28 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
 
                 const controller = new AbortController();
                 timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+                const headers = {
+                    'Accept': 'application/json',
+                    'User-Agent': 'TuneCamp-Federation/2.0'
+                };
 
-                const response = await fetch(`${siteUrl}/api/catalog`, {
+                // Prefer the complete federation catalog; fall back to the legacy
+                // /api/catalog overview for peers running older versions that don't
+                // expose /full (the overview is truncated, but better than nothing).
+                let response = await fetch(`${siteUrl}/api/catalog/full`, {
                     signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'TuneCamp-Federation/2.0'
-                    }
+                    headers
                 });
+                if (response.status === 404) {
+                    await drainBody(response);
+                    response = await fetch(`${siteUrl}/api/catalog`, {
+                        signal: controller.signal,
+                        headers
+                    });
+                }
 
                 if (!response.ok) {
-                    // Drain the body safely to avoid memory leaks in Node fetch
-                    try {
-                        if (response.body && typeof (response.body as any).cancel === 'function') {
-                            await (response.body as any).cancel();
-                        } else {
-                            await response.text();
-                        }
-                    } catch (e) {}
+                    await drainBody(response);
                     return null;
                 }
 

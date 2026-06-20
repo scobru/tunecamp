@@ -116,6 +116,43 @@ describe('Release Routes - Creation and Publishing', () => {
         expect(mockPublishingService.syncRelease).toHaveBeenCalledWith(newReleaseId);
     });
 
+    test('GET /releases includes releases linked to the user\'s artist profile (not just owner_id)', async () => {
+        // A release linked to the user's artist profile but with no owner_id —
+        // e.g. created by an admin/import for that artist. It is private, so it
+        // would not appear via the public list, only via the artist lookup.
+        const artistRelease = { id: 789, title: 'Linked Release', visibility: 'private', artist_id: 1 };
+        (mockDatabase.getReleasesByOwner as jest.Mock).mockReturnValue([]);
+        (mockDatabase.getReleasesByArtist as jest.Mock).mockReturnValue([artistRelease]);
+        (mockDatabase.getReleases as jest.Mock).mockReturnValue([]);
+
+        // Non-admin logged-in user owning artist profile #1
+        const userApp = express();
+        userApp.use(express.json());
+        userApp.use((req: any, _res, next) => {
+            req.isAdmin = false;
+            req.isSuperUser = false;
+            req.isActive = true;
+            req.role = 'user';
+            req.userId = 5;
+            req.artistId = 1;
+            next();
+        });
+        userApp.use('/releases', createReleaseRouter({
+            database: mockDatabase,
+            library: mockDatabase,
+            scannerService: mockScanner,
+            publishingService: mockPublishingService,
+            authService: mockAuthService,
+            musicDir
+        } as any));
+
+        const response = await request(userApp).get('/releases');
+
+        expect(response.status).toBe(200);
+        expect(mockDatabase.getReleasesByArtist).toHaveBeenCalledWith(1, expect.anything());
+        expect(response.body.map((r: any) => r.id)).toContain(789);
+    });
+
     test('POST /releases should prevent rapid double-submission duplicate creation', async () => {
         // Setup a duplicate release created 2 seconds ago
         const duplicateRelease = {
