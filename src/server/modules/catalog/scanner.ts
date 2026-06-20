@@ -674,6 +674,10 @@ export class Scanner implements ScannerService {
         const walkDir = async (currentDir: string) => {
             const entries = await this.storage.readdir(currentDir, { withFileTypes: true });
             for (const entry of entries) {
+                // Skip hidden directories (e.g. ".wav", ".git", ".trash"): files
+                // dropped there are not part of the curated library and scanning
+                // them creates orphan/duplicate tracks the dedup chain can't catch.
+                if (entry.isDirectory() && entry.name.startsWith(".")) continue;
                 const full = path.join(currentDir, entry.name);
                 if (entry.isDirectory()) await walkDir(full);
                 else if (entry.isFile()) {
