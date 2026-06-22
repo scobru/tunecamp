@@ -49,6 +49,23 @@ describe("AuthService", () => {
         expect(isDefault).toBe(false);
     });
 
+    test("isDefaultPassword returns true for built-in default password 'admin'", async () => {
+        const adminDb = new Database(":memory:");
+        adminDb.exec(`
+            CREATE TABLE IF NOT EXISTS gun_users (
+                pub TEXT PRIMARY KEY,
+                epub TEXT NOT NULL,
+                alias TEXT UNIQUE NOT NULL
+            );
+        `);
+        const svc = createAuthService(adminDb, "secret", "admin", "admin");
+        await svc.init();
+        expect(await svc.isDefaultPassword("admin")).toBe(true);
+        await svc.changePassword("admin", "a-strong-passphrase");
+        expect(await svc.isDefaultPassword("admin")).toBe(false);
+        adminDb.close();
+    });
+
     describe("Token Management", () => {
         const payload = { isAdmin: true, username: "admin", artistId: 1, role: "admin" as const, isActive: true, userId: 1, tokenVersion: 0 };
         const secret = "secret";

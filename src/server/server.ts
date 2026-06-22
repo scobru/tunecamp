@@ -144,6 +144,29 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const authService = createAuthService(database.db, config.jwtSecret, config.adminUser, config.adminPass);
     await authService.init();
     const authMiddleware = createAuthMiddleware(authService);
+
+    // Production safety: surface insecure defaults loudly at startup so they
+    // aren't silently shipped when the instance is exposed publicly.
+    try {
+        const warnings: string[] = [];
+        const adminUser = config.adminUser || "admin";
+        if (await authService.isDefaultPassword(adminUser)) {
+            warnings.push(`Admin account '${adminUser}' is still using a default/weak password. Change it now (or set TUNECAMP_ADMIN_PASS).`);
+        }
+        if (!config.corsOrigins || config.corsOrigins.length === 0) {
+            warnings.push(`CORS is open to all origins. Set TUNECAMP_CORS_ORIGINS to your domain(s) before exposing this instance publicly.`);
+        }
+        if (!process.env.TUNECAMP_JWT_SECRET) {
+            warnings.push(`No TUNECAMP_JWT_SECRET set — using an auto-generated secret file. Set an explicit secret for stable sessions across deployments.`);
+        }
+        if (warnings.length > 0) {
+            console.warn("\n⚠️  SECURITY: insecure configuration detected — review before going public:");
+            for (const w of warnings) console.warn(`   • ${w}`);
+            console.warn("");
+        }
+    } catch (e) {
+        console.warn("⚠️  Could not run startup security checks:", e);
+    }
     
     const { initMetadataService } = await import("./modules/catalog/metadata.service.js");
     const metadataService = await initMetadataService(database);
