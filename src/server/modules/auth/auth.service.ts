@@ -250,7 +250,14 @@ export function createAuthService(
         async isDefaultPassword(username: string): Promise<boolean> {
             const user = db.prepare("SELECT password_hash FROM admin WHERE username = ?").get(username) as { password_hash: string } | undefined;
             if (!user) return false;
-            return this.verifyPassword("tunecamp", user.password_hash);
+            // Known weak/built-in defaults that MUST be changed before the instance is exposed:
+            // - "tunecamp": sentinel set after an admin resets a user's password
+            // - "admin": the built-in initial admin password (TUNECAMP_ADMIN_PASS default)
+            // Matching either forces the "change your password" setup wizard on login.
+            for (const weak of ["tunecamp", "admin"]) {
+                if (await this.verifyPassword(weak, user.password_hash)) return true;
+            }
+            return false;
         },
 
         async hashPassword(password: string): Promise<string> {

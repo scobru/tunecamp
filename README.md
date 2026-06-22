@@ -31,7 +31,7 @@ docker-compose up -d --build
 
 > **First Run**: Tunecamp creates a default admin account (`admin`/`admin`, configurable via `TUNECAMP_ADMIN_USER` / `TUNECAMP_ADMIN_PASS`). Change the password right after logging in, from the admin settings.
 >
-> The forced "change your password" setup wizard triggers for any account whose password is the temporary sentinel `tunecamp` — for example after an admin resets a user's password (see [docs/ROLES.md](docs/ROLES.md)).
+> The forced "change your password" setup wizard triggers for any account still using a built-in default password — the temporary sentinel `tunecamp` (set after an admin resets a user's password, see [docs/ROLES.md](docs/ROLES.md)) or the initial `admin` password. The server also logs a security warning at startup while the admin account, open CORS, or an auto-generated JWT secret are left at their defaults.
 
 ## Features
 
