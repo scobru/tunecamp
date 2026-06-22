@@ -216,6 +216,10 @@ export const AdminSettingsPanel = () => {
   const nftAddress = settings.web3_nft_address || "";
   const web3Enabled = settings.web3Enabled === true || (settings.web3Enabled as unknown) === "true";
 
+  // Append a cache-bust param, picking the right separator since the stored
+  // site-image URLs are now versioned (already contain "?v=...").
+  const bust = (url: string) => `${url}${url.includes("?") ? "&" : "?"}t=${imageCacheBust}`;
+
   const categories = [
     { id: "general", label: "General Config", icon: Layout },
     { id: "features", label: "Customize Modules", icon: Cog },
@@ -706,19 +710,19 @@ export const AdminSettingsPanel = () => {
               <div className="flex flex-wrap gap-4 mt-2">
                 {settings.backgroundImage && (
                   <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
-                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.backgroundImage}?t=${imageCacheBust})` }}></div>
+                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${bust(settings.backgroundImage)})` }}></div>
                     <span className="truncate">Background: {settings.backgroundImage}</span>
                   </div>
                 )}
                 {settings.coverImage && (
                   <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
-                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.coverImage}?t=${imageCacheBust})` }}></div>
+                    <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${bust(settings.coverImage)})` }}></div>
                     <span className="truncate">Node Cover: {settings.coverImage}</span>
                   </div>
                 )}
                 {settings.siteLogo && (
                   <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
-                    <div className="w-8 h-8 rounded bg-contain bg-center bg-no-repeat shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${settings.siteLogo}?t=${imageCacheBust})` }}></div>
+                    <div className="w-8 h-8 rounded bg-contain bg-center bg-no-repeat shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${bust(settings.siteLogo)})` }}></div>
                     <span className="truncate">Site Logo: {settings.siteLogo}</span>
                   </div>
                 )}

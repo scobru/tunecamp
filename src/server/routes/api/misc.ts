@@ -194,35 +194,24 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         });
     });
 
-    router.get("/api/settings/background", async (req, res) => {
+    // Serve a site asset (background / logo / cover) found by filename prefix.
+    // These live at constant URLs, so we force revalidation: combined with the
+    // versioned URL stored in settings on upload, a replaced image is always
+    // picked up instead of being served stale from the browser cache.
+    async function serveSiteAsset(res: any, prefix: string) {
         try {
             const assetsDir = path.join(config.musicDir, "assets");
             const files = await fs.readdir(assetsDir);
-            const bgFile = files.find((f) => f.startsWith("background."));
-            if (!bgFile) return res.status(404).json({ error: "Not found" });
-            res.sendFile(path.resolve(path.join(assetsDir, bgFile)));
+            const match = files.find((f) => f.startsWith(prefix));
+            if (!match) return res.status(404).json({ error: "Not found" });
+            res.setHeader("Cache-Control", "no-cache");
+            res.sendFile(path.resolve(path.join(assetsDir, match)));
         } catch { res.status(404).json({ error: "Not found" }); }
-    });
+    }
 
-    router.get("/api/settings/logo", async (req, res) => {
-        try {
-            const assetsDir = path.join(config.musicDir, "assets");
-            const files = await fs.readdir(assetsDir);
-            const logoFile = files.find((f) => f.startsWith("site-logo."));
-            if (!logoFile) return res.status(404).json({ error: "Not found" });
-            res.sendFile(path.resolve(path.join(assetsDir, logoFile)));
-        } catch { res.status(404).json({ error: "Not found" }); }
-    });
-
-    router.get("/api/settings/cover", async (req, res) => {
-        try {
-            const assetsDir = path.join(config.musicDir, "assets");
-            const files = await fs.readdir(assetsDir);
-            const coverFile = files.find((f) => f.startsWith("site-cover."));
-            if (!coverFile) return res.status(404).json({ error: "Not found" });
-            res.sendFile(path.resolve(path.join(assetsDir, coverFile)));
-        } catch { res.status(404).json({ error: "Not found" }); }
-    });
+    router.get("/api/settings/background", (_req, res) => serveSiteAsset(res, "background."));
+    router.get("/api/settings/logo", (_req, res) => serveSiteAsset(res, "site-logo."));
+    router.get("/api/settings/cover", (_req, res) => serveSiteAsset(res, "site-cover."));
 
     // Helper function to build RSS 2.0 feed
     function buildRssFeed(
