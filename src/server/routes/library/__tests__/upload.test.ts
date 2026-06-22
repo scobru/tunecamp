@@ -179,5 +179,39 @@ describe('Upload Routes - Authorization', () => {
 
         expect(response.status).toBe(200);
     }, 30000);
+
+    test('POST /upload/site-cover stores a versioned URL so the new image is not served stale', async () => {
+        Object.assign(currentTestUser, { userId: 1, isRootAdmin: true, isAdmin: true, isActive: true });
+
+        const imagePath = path.join(tempMusicDir, 'node-cover.jpg');
+        await fs.writeFile(imagePath, 'fake image');
+
+        const response = await request(app)
+            .post('/upload/site-cover')
+            .attach('file', imagePath);
+
+        expect(response.status).toBe(200);
+        // The stored setting (and returned url) must carry a version token so every
+        // consumer of the constant /api/settings/cover URL re-fetches the new file.
+        expect(response.body.url).toMatch(/^\/api\/settings\/cover\?v=\d+$/);
+        expect(mockDatabase.setSetting).toHaveBeenCalledWith(
+            'coverImage',
+            expect.stringMatching(/^\/api\/settings\/cover\?v=\d+$/)
+        );
+    }, 30000);
+
+    test('POST /upload/site-cover is denied for non-root-admin', async () => {
+        Object.assign(currentTestUser, { userId: 2, isRootAdmin: false, isAdmin: true, isActive: true });
+
+        const imagePath = path.join(tempMusicDir, 'node-cover.jpg');
+        await fs.writeFile(imagePath, 'fake image');
+
+        const response = await request(app)
+            .post('/upload/site-cover')
+            .attach('file', imagePath);
+
+        expect(response.status).toBe(403);
+        expect(mockDatabase.setSetting).not.toHaveBeenCalled();
+    }, 30000);
 });
 

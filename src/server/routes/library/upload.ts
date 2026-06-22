@@ -175,10 +175,16 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
             await storage.move(file.path, targetPath, { overwrite: true });
 
-            identity.setSetting(options.settingKey, options.apiUrl);
+            // Site images are served from a constant URL (e.g. /api/settings/cover),
+            // so replacing the file leaves every consumer (home hero, sidebar logo,
+            // instance cards) showing the browser-cached old image. Store a versioned
+            // URL so the value in settings changes on each upload and all consumers
+            // re-fetch automatically. The serving endpoint ignores the query string.
+            const versionedUrl = `${options.apiUrl}?v=${Date.now()}`;
+            identity.setSetting(options.settingKey, versionedUrl);
             res.json({
                 message: `${options.errorLabel.charAt(0).toUpperCase() + options.errorLabel.slice(1)} uploaded`,
-                url: options.apiUrl,
+                url: versionedUrl,
                 file: { name: targetFilename, size: file.size },
             });
         } catch (error) {
