@@ -48,10 +48,19 @@ export class DiscoveryService {
         return safeRecommendedTracks.map(t => mapTrackDTO(t, this.database));
     }
 
-    /** Maps a release row to a DTO with its authoritative release_tracks attached. */
-    private mapReleaseWithTracks(r: Release, username?: string) {
+    /** Maps a release row to a DTO with its tracks attached. */
+    private mapReleaseWithTracks(r: Release, profile: VisibilityProfile, username?: string) {
         const mapped = mapAlbumDTO(r, this.database, username);
-        (mapped as any).tracks = this.database.getReleaseTracks(r.id).map(rt => rt);
+        let tracks: any[] = this.database.getReleaseTracks(r.id);
+        // Some releases keep their audio linked only by album_id, with no rows in
+        // release_tracks (e.g. promoted library albums). The release detail page
+        // (getAlbumForUser) falls back to the album's tracks in that case; mirror
+        // that here so federation/overview expose the SAME tracks the release shows
+        // locally, instead of federating an empty (and therefore invisible) release.
+        if (!tracks || tracks.length === 0) {
+            tracks = this.database.getTracksByAlbum(r.id, profile).map(t => mapTrackDTO(t, this.database, username));
+        }
+        (mapped as any).tracks = tracks;
         return mapped;
     }
 
@@ -67,7 +76,7 @@ export class DiscoveryService {
     getFederationCatalog(isAdmin: boolean, username?: string) {
         const profile = isAdmin ? VisibilityProfile.ALL_ACCESS : VisibilityProfile.PUBLIC_STAGE;
         const allReleases = this.database.getReleases(profile);
-        const releases = allReleases.map(r => this.mapReleaseWithTracks(r, username));
+        const releases = allReleases.map(r => this.mapReleaseWithTracks(r, profile, username));
         return { releases };
     }
 
@@ -82,7 +91,7 @@ export class DiscoveryService {
             (mapped as any).tracks = this.database.getTracksByAlbum(a.id, profile).map(t => mapTrackDTO(t, this.database, username));
             return mapped;
         });
-        const recentReleases = allReleases.slice(0, 10).map(r => this.mapReleaseWithTracks(r, username));
+        const recentReleases = allReleases.slice(0, 10).map(r => this.mapReleaseWithTracks(r, profile, username));
 
         let publicStats = { ...stats };
         if (!isAdmin) {
