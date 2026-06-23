@@ -384,7 +384,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
         next();
     });
-    app.use("/api/payments", createPaymentsRoutes(container));
+    app.use("/api/payments", authMiddleware.optionalAuth, createPaymentsRoutes(container));
 
     const webappPath = path.join(_serverDirname, "..", "..", "webapp");
     const webappDistPath = path.join(webappPath, "dist");

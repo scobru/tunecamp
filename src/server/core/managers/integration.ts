@@ -50,10 +50,11 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
         deleteTorrent: (h: string) => { db.prepare("DELETE FROM torrents WHERE info_hash = ? COLLATE NOCASE").run(h.toLowerCase()); },
 
         // Unlock Codes
-        createUnlockCode: (c: string, rid?: number, tid?: number, tx?: string, aid?: number) => { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id, tx_hash, asset_id) VALUES (?, ?, ?, ?, ?)").run(c, rid || null, tid || null, tx || null, aid || null); },
+        createUnlockCode: (c: string, rid?: number, tid?: number, tx?: string, aid?: number, uid?: number) => { db.prepare("INSERT INTO unlock_codes (code, release_id, track_id, tx_hash, asset_id, user_id) VALUES (?, ?, ?, ?, ?, ?)").run(c, rid || null, tid || null, tx || null, aid || null, uid || null); },
         validateUnlockCode: (c: string) => { const r = db.prepare("SELECT * FROM unlock_codes WHERE code = ?").get(c) as any; return r ? { valid: true, releaseId: r.release_id, trackId: r.track_id, assetId: r.asset_id, isUsed: !!r.is_used } : { valid: false, isUsed: false }; },
         redeemUnlockCode: (c: string) => { db.prepare("UPDATE unlock_codes SET is_used = 1, redeemed_at = CURRENT_TIMESTAMP WHERE code = ?").run(c); },
         listUnlockCodes: (rid?: number) => rid ? db.prepare("SELECT * FROM unlock_codes WHERE release_id = ?").all(rid) : db.prepare("SELECT * FROM unlock_codes").all(),
+        getPurchasesByUser: (uid: number) => db.prepare(`SELECT uc.code, uc.created_at, uc.release_id, uc.track_id, uc.asset_id, al.title as release_title, al.cover_path, ar.name as artist_name, t.title as track_title, t.file_path FROM unlock_codes uc LEFT JOIN albums al ON uc.release_id = al.id LEFT JOIN artists ar ON al.artist_id = ar.id LEFT JOIN tracks t ON uc.track_id = t.id WHERE uc.user_id = ? ORDER BY uc.created_at DESC`).all(uid) as any[],
         getUnlockCodeByTxHash: (tx: string) => db.prepare("SELECT * FROM unlock_codes WHERE tx_hash = ?").get(tx),
 
         // Assets

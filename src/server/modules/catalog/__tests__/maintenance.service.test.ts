@@ -4,6 +4,8 @@ import { MaintenanceService } from '../maintenance.service.js';
 
 const searchRecordingSpy = jest.spyOn(metadataService, 'searchRecording' as any);
 
+const mockRepo = {};
+
 const mockDb = {
     getTracksByIds: jest.fn(),
     getTracksMissingMetadata: jest.fn(),
@@ -38,10 +40,12 @@ describe('MaintenanceService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         maintenanceService = new MaintenanceService(
+            mockRepo as any,
             mockDb as any,
             mockCatalogService as any,
             mockOpenRouter as any,
-            mockAutotagger as any
+            mockAutotagger as any,
+            '/tmp'
         );
     });
 

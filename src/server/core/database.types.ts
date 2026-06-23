@@ -741,11 +741,12 @@ export interface IntegrationManager {
     deleteTorrent(hash: string): void;
 
     // Unlock Codes
-    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string, assetId?: number): void;
+    createUnlockCode(code: string, releaseId?: number, trackId?: number, txHash?: string, assetId?: number, userId?: number): void;
     validateUnlockCode(code: string): { valid: boolean; releaseId?: number; trackId?: number; assetId?: number; isUsed: boolean };
     redeemUnlockCode(code: string): void;
     listUnlockCodes(releaseId?: number): any[];
     getUnlockCodeByTxHash(txHash: string): any | undefined;
+    getPurchasesByUser(userId: number): any[];
 
     // Assets
     getPublicAssets(): any[];
