@@ -58,6 +58,95 @@ export function createRadioRoutes(container: ServiceContainer): Router {
     }));
 
     /**
+     * GET /api/radio/stream.m3u
+     * M3U playlist — opens directly in VLC, foobar2000, mpv, etc.
+     */
+    router.get("/stream.m3u", wrapAsync(async (req: Request, res: Response) => {
+        const status = radioService?.getStatus();
+        if (!status?.active) {
+            return res.status(404).send("# Radio is not active\n");
+        }
+        const base = `${req.protocol}://${req.get("host")}`;
+        const streamUrl = `${base}${status.hlsUrl}`;
+        const track = status.currentTrack;
+        const title = track
+            ? `${track.artist_name ? track.artist_name + " - " : ""}${track.title}`
+            : status.name;
+
+        const m3u = [
+            "#EXTM3U",
+            `#EXTINF:-1 tvg-name="${status.name}",${title}`,
+            streamUrl,
+            "",
+        ].join("\n");
+
+        res.setHeader("Content-Type", "audio/x-mpegurl");
+        res.setHeader("Content-Disposition", `inline; filename="radio.m3u"`);
+        res.setHeader("Cache-Control", "no-store");
+        res.send(m3u);
+    }));
+
+    /**
+     * GET /api/radio/feed.rss
+     * RSS/podcast feed with HLS enclosure — compatible with podcast clients
+     * that support live streams (Pocket Casts, AntennaPod, etc.)
+     */
+    router.get("/feed.rss", wrapAsync(async (req: Request, res: Response) => {
+        const status = radioService?.getStatus();
+        const base = `${req.protocol}://${req.get("host")}`;
+        const pageUrl = `${base}/radio`;
+
+        if (!status?.active) {
+            const empty = [
+                `<?xml version="1.0" encoding="UTF-8"?>`,
+                `<rss version="2.0">`,
+                `  <channel>`,
+                `    <title>Radio</title>`,
+                `    <link>${pageUrl}</link>`,
+                `    <description>Radio is currently offline.</description>`,
+                `  </channel>`,
+                `</rss>`,
+            ].join("\n");
+            res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+            return res.send(empty);
+        }
+
+        const streamUrl = `${base}${status.hlsUrl}`;
+        const track = status.currentTrack;
+        const nowPlaying = track
+            ? `${track.artist_name ? track.artist_name + " — " : ""}${track.title}`
+            : "Live stream";
+        const coverUrl = track?.id ? `${base}/api/tracks/${track.id}/cover` : "";
+        const pubDate = status.startedAt ? new Date(status.startedAt).toUTCString() : new Date().toUTCString();
+
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+        const feed = [
+            `<?xml version="1.0" encoding="UTF-8"?>`,
+            `<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">`,
+            `  <channel>`,
+            `    <title>${esc(status.name)}</title>`,
+            `    <link>${esc(pageUrl)}</link>`,
+            `    <description>${esc(status.name)} — live radio stream</description>`,
+            `    <language>en</language>`,
+            coverUrl ? `    <itunes:image href="${esc(coverUrl)}"/>` : "",
+            `    <item>`,
+            `      <title>${esc(nowPlaying)}</title>`,
+            `      <guid isPermaLink="false">${esc(streamUrl)}</guid>`,
+            `      <pubDate>${pubDate}</pubDate>`,
+            `      <enclosure url="${esc(streamUrl)}" length="0" type="application/vnd.apple.mpegurl"/>`,
+            `      <itunes:duration>0</itunes:duration>`,
+            `    </item>`,
+            `  </channel>`,
+            `</rss>`,
+        ].filter(Boolean).join("\n");
+
+        res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+        res.setHeader("Cache-Control", "no-store");
+        res.send(feed);
+    }));
+
+    /**
      * GET /api/radio/hls/:file
      * Serve HLS playlist + segments (public)
      */

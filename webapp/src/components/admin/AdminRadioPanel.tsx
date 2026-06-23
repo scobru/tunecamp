@@ -122,8 +122,10 @@ export function AdminRadioPanel() {
                             On air since {new Date(status.startedAt).toLocaleTimeString()}
                         </div>
                     )}
-                    <div className="text-xs opacity-50 font-mono break-all">
-                        Stream: {window.location.origin}{status.hlsUrl}
+                    <div className="space-y-1 text-xs opacity-50">
+                        <div className="font-mono break-all">HLS: {window.location.origin}{status.hlsUrl}</div>
+                        <div className="font-mono">M3U: <a href="/api/radio/stream.m3u" className="link" target="_blank">/api/radio/stream.m3u</a></div>
+                        <div className="font-mono">RSS: <a href="/api/radio/feed.rss" className="link" target="_blank">/api/radio/feed.rss</a></div>
                     </div>
                 </div>
             )}

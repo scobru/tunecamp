@@ -207,6 +207,13 @@ export default function RadioPage() {
                 </div>
             )}
 
+            {status?.active && (
+                <div className="text-center text-xs opacity-40 space-y-1">
+                    <p>Also available via:</p>
+                    <p><a href="/api/radio/stream.m3u" className="link" download="radio.m3u">M3U playlist</a> · <a href="/api/radio/feed.rss" className="link" target="_blank">RSS feed</a></p>
+                </div>
+            )}
+
             <audio ref={audioRef} className="hidden" />
         </div>
     );
