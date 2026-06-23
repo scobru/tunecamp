@@ -37,7 +37,6 @@ The project is organized as a monorepo with the following main directories:
 - `src/server/`: Core backend logic, database, routes, and protocols.
 - `webapp/`: React frontend application.
 - `contracts/`: Smart contracts for web3 functionality.
-- `website/`: Static presentation website.
 - `docs/`: Technical project documentation.
 
 ## Related Documentation

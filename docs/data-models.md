@@ -14,7 +14,7 @@ TuneCamp uses **SQLite** as its relational database engine for managing music me
 ### Users & Social
 
 - **`admin`**: Table of all local accounts (all roles, not just admin: the name is historical). Includes `role`, `password_hash`, `artist_id`, storage quotas.
-- **`gun_users`** / **`gun_cache`**: Legacy mapping/cache for server-side Zen public keys.
+- **`gun_users`** / **`gun_cache`**: Legacy tables from the removed Zen identity layer — retained for schema compatibility but no longer written to. See [FEDERATION.md](FEDERATION.md) for history.
 - **`followers`**: Follow relations between local and remote users.
 - **`posts`** / **`ap_notes`**: Messages and activities in the Fediverse.
 - **`starred_items`** / **`item_ratings`**: User favorites and ratings.
