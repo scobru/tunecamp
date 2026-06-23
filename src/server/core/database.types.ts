@@ -445,6 +445,7 @@ export interface LibraryManager {
     updateArtistKeys(id: number, publicKey: string, privateKey: string): void;
     setArtistCanSell(id: number, canSell: boolean): void;
     setArtistStripeAccountId(id: number, stripeAccountId: string | null): void;
+    getArtistByStripeAccountId(stripeAccountId: string): Artist | undefined;
     updateArtistMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void;
     deleteArtist(id: number): void;
     deleteArtistsBatch(ids: number[]): void;

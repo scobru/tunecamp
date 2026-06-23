@@ -216,6 +216,28 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
         // connected accounts" on this webhook endpoint in the Stripe dashboard.
         // Unlock-code generation below keys off session.metadata, which is
         // identical for platform and connected sessions — no branching needed.
+        // Stripe Connect account lifecycle events: auto-sync can_sell with charges_enabled.
+        // Fires when an artist completes onboarding or Stripe changes their account status.
+        if (event.type.startsWith('v2.core.account')) {
+            const connectedAccountId: string | undefined = (event as any).account;
+            if (connectedAccountId) {
+                const artist = database.getArtistByStripeAccountId(connectedAccountId);
+                if (artist) {
+                    try {
+                        const acct = await stripe.accounts.retrieve(connectedAccountId);
+                        const canSell = !!(acct as any).charges_enabled;
+                        database.setArtistCanSell(artist.id, canSell);
+                        console.log(`[Stripe Connect] ${event.type} → artist ${artist.id} can_sell=${canSell} (charges_enabled=${canSell})`);
+                    } catch (e: any) {
+                        console.error(`[Stripe Connect] Failed to retrieve account ${connectedAccountId}:`, e.message);
+                    }
+                } else {
+                    console.log(`[Stripe Connect] ${event.type} for unknown account ${connectedAccountId} — ignored`);
+                }
+            }
+            return res.json({ received: true });
+        }
+
         if (event.type === 'checkout.session.completed') {
             const session = event.data.object as any;
             const metadata = session.metadata;
