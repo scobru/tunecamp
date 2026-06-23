@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { FlaskConical, Github, ExternalLink, Mic, Music2, Piano, Waveform, Zap } from 'lucide-react';
+import { FlaskConical, Github, ExternalLink, Mic, Music2, Piano, AudioWaveform, Zap } from 'lucide-react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { LAB_APPS, CATEGORY_LABELS, CATEGORY_COLORS, type LabApp } from '../data/labApps';
 
 const CATEGORY_ICONS: Record<LabApp['category'], React.ComponentType<{ size?: number; className?: string }>> = {
   recording: Mic,
-  synthesis: Waveform,
+  synthesis: AudioWaveform,
   composition: Piano,
   effects: Zap,
   other: Music2,
