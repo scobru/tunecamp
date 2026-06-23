@@ -507,6 +507,23 @@ export const PlayerBar = () => {
     }
   };
 
+  const handleAddToPlaylist = () => {
+    if (!useAuthStore.getState().isAuthenticated) {
+      document.dispatchEvent(new CustomEvent("open-auth-modal"));
+      return;
+    }
+    document.dispatchEvent(
+      new CustomEvent("open-playlist-modal", { detail: { trackId: currentTrack.id } }),
+    );
+  };
+
+  // The album page is the closest "track detail" surface: link there and let it
+  // scroll to / highlight this track via ?track=. Falls back to plain text when
+  // the playing item has no album (e.g. some external/network tracks).
+  const albumDetailTarget = currentTrack.albumId
+    ? `/albums/${(currentTrack as any).albumSlug || (currentTrack as any).album_slug || currentTrack.albumId}?track=${currentTrack.id}`
+    : null;
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 h-24 backdrop-blur-3xl bg-base-100/60 border-t border-base-content/5 shadow-level-3 px-4 lg:px-8 flex items-center justify-between gap-4 z-50">
@@ -539,7 +556,16 @@ export const PlayerBar = () => {
           </div>
 
           <div className="min-w-0">
-            <h3 className="font-black text-title-small lg:text-title-medium truncate tracking-tight">{currentTrack.title}</h3>
+            {albumDetailTarget ? (
+              <Link
+                to={albumDetailTarget}
+                className="font-black text-title-small lg:text-title-medium truncate tracking-tight hover:text-primary hover:underline block"
+              >
+                {currentTrack.title}
+              </Link>
+            ) : (
+              <h3 className="font-black text-title-small lg:text-title-medium truncate tracking-tight">{currentTrack.title}</h3>
+            )}
             {currentTrack.artistId ? (
               <Link
                 to={`/artists/${(currentTrack as any).artistSlug || (currentTrack as any).artist_slug || currentTrack.artistId}`}
@@ -707,6 +733,7 @@ export const PlayerBar = () => {
                   </div>
                 </li>
                 <div className="divider my-1 opacity-10"></div>
+                <li><a onClick={handleAddToPlaylist}><ListMusic size={16}/> Add to Playlist</a></li>
                 <li><a onClick={handleStarArtist}><User size={16}/> Favorite Artist</a></li>
                 <li><a onClick={handleStarAlbum}><Disc size={16}/> Favorite Album</a></li>
                 {isAdminOrOwner && (
@@ -718,21 +745,29 @@ export const PlayerBar = () => {
               </ul>
             </div>
 
-            <div className="hidden lg:flex gap-1">
-                <button 
-                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top"
-                    onClick={handleStarArtist}
-                    data-tip="Favorite Artist"
-                >
-                    <User size={18} />
-                </button>
-                <button 
-                    className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top"
-                    onClick={handleStarAlbum}
-                    data-tip="Favorite Album"
-                >
-                    <Disc size={18} />
-                </button>
+            {/* Secondary track actions consolidated into one overflow menu to
+                keep the always-visible controls minimal. */}
+            <div className="dropdown dropdown-top dropdown-end hidden lg:block">
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="More actions"
+                className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top"
+                data-tip="More"
+              >
+                <MoreVertical size={18} />
+              </div>
+              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-56 border border-base-content/10 mb-4">
+                <li><a onClick={handleAddToPlaylist}><ListMusic size={16}/> Add to Playlist</a></li>
+                <li><a onClick={handleStarArtist}><User size={16}/> Favorite Artist</a></li>
+                <li><a onClick={handleStarAlbum}><Disc size={16}/> Favorite Album</a></li>
+                {isAdminOrOwner && (
+                  <>
+                    <div className="divider my-1 opacity-10"></div>
+                    <li><a href={API.getTrackDownloadUrl(currentTrack.id)} target="_blank"><Download size={16}/> Download</a></li>
+                  </>
+                )}
+              </ul>
             </div>
 
             <div className="dropdown dropdown-top dropdown-end hidden sm:block">

@@ -9,6 +9,7 @@ import {
   Share2,
   ListMusic,
   Music,
+  MoreVertical,
 } from "lucide-react";
 
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -170,15 +171,17 @@ const Tracks = () => {
                 </div>
 
                 <div className="list-col-wrap flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
+                  {/* Primary actions stay inline; everything else moves into the
+                      overflow menu to keep the row uncluttered. */}
+                  <button
                     onClick={() => playTrack(track, filteredTracks)}
                     className="btn btn-ghost btn-sm btn-circle text-primary tooltip tooltip-top"
                     data-tip="Play Track"
                   >
                     <Play size={16} fill="currentColor" />
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => handleLike(track)}
                     className={clsx("btn btn-ghost btn-sm btn-circle tooltip tooltip-top", isLiked && "text-primary")}
                     data-tip={isLiked ? "Unlike Track" : "Like Track"}
@@ -186,46 +189,48 @@ const Tracks = () => {
                     <Heart size={16} fill={isLiked ? "currentColor" : "none"} />
                   </button>
 
-                  {purchased && (
-                    <button 
-                      onClick={() => window.open(API.getTrackDownloadUrl(track.id), "_blank")}
-                      className="btn btn-ghost btn-sm btn-circle text-success tooltip tooltip-top"
-                      data-tip="Download Track"
+                  <div className="dropdown dropdown-end">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="More actions"
+                      className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content tooltip tooltip-left"
+                      data-tip="More"
                     >
-                      <CheckCircle2 size={16} />
-                    </button>
-                  )}
-
-                  {!purchased && track.albumDownload === "free" && (
-                    <a 
-                      href={`/api/albums/${String(track.albumId)}/download`} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="btn btn-ghost btn-sm btn-circle text-success flex items-center justify-center tooltip tooltip-top"
-                      data-tip="Free Download"
-                    >
-                      <Download size={16} />
-                    </a>
-                  )}
-
-                  <button 
-                    onClick={() => handleShare(track)}
-                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content tooltip tooltip-top"
-                    data-tip="Share Track"
-                  >
-                    <Share2 size={16} />
-                  </button>
-
-                  <button 
-                    onClick={() => {
-                      if (!isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
-                      document.dispatchEvent(new CustomEvent("open-playlist-modal", { detail: { trackId: track.id } }));
-                    }}
-                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content tooltip tooltip-left"
-                    data-tip="Add to Playlist"
-                  >
-                    <ListMusic size={16} />
-                  </button>
+                      <MoreVertical size={16} />
+                    </div>
+                    <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-52 border border-base-content/10">
+                      <li>
+                        <a
+                          onClick={() => {
+                            if (!isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
+                            document.dispatchEvent(new CustomEvent("open-playlist-modal", { detail: { trackId: track.id } }));
+                          }}
+                        >
+                          <ListMusic size={16} /> Add to Playlist
+                        </a>
+                      </li>
+                      <li>
+                        <a onClick={() => handleShare(track)}>
+                          <Share2 size={16} /> Share
+                        </a>
+                      </li>
+                      {purchased && (
+                        <li>
+                          <a onClick={() => window.open(API.getTrackDownloadUrl(track.id), "_blank")} className="text-success">
+                            <CheckCircle2 size={16} /> Download
+                          </a>
+                        </li>
+                      )}
+                      {!purchased && track.albumDownload === "free" && (
+                        <li>
+                          <a href={`/api/albums/${String(track.albumId)}/download`} target="_blank" rel="noreferrer" className="text-success">
+                            <Download size={16} /> Free Download
+                          </a>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
                 </div>
               </div>
             );

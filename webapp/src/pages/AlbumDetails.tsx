@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import API from "../services/api";
 import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus } from "lucide-react";
 
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useConfigStore } from "../stores/useConfigStore";
@@ -22,9 +22,11 @@ import { GenreTags } from "../components/GenreTags";
 
 const AlbumDetails = () => {
   const { idOrSlug } = useParams();
+  const [searchParams] = useSearchParams();
   const isRelease = window.location.pathname.startsWith('/releases');
   const [album, setAlbum] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [highlightTrackId, setHighlightTrackId] = useState<string | null>(null);
   const { playTrack, addToQueue } = usePlayerStore();
   const { cacheBuster } = useConfigStore();
   const { isAdminAuthenticated: isAdmin, isAuthenticated, user } = useAuthStore();
@@ -81,6 +83,18 @@ const AlbumDetails = () => {
       }
     }
   }, [isAuthenticated]);
+
+  // When arriving with ?track=ID (e.g. from the player title), scroll to and
+  // briefly highlight that track once the album's tracks have rendered.
+  useEffect(() => {
+    const tid = searchParams.get("track");
+    if (!tid || !album?.tracks?.length) return;
+    setHighlightTrackId(tid);
+    const el = document.getElementById(`track-${tid}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = setTimeout(() => setHighlightTrackId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [searchParams, album]);
 
   const handleLikeTrack = async (track: Track) => {
     if (!isAuthenticated && !isAdmin) {
@@ -477,7 +491,11 @@ const AlbumDetails = () => {
             return (
               <div
                 key={track.id}
-                className="list-row items-center hover:bg-base-content/5 transition-colors px-6 py-4 group border-b border-base-content/5 last:border-0"
+                id={`track-${track.id}`}
+                className={clsx(
+                  "list-row items-center hover:bg-base-content/5 transition-colors px-6 py-4 group border-b border-base-content/5 last:border-0 scroll-mt-24",
+                  highlightTrackId === String(track.id) && "bg-primary/10 ring-1 ring-primary/30 rounded-xl"
+                )}
               >
                 <div className="text-xs font-black opacity-40 w-8 group-hover:opacity-0 transition-opacity">
                    {String(i + 1).padStart(2, '0')}
