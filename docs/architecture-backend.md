@@ -38,7 +38,7 @@ Responsible for scanning and organizing local music.
 ### 5. Security & Authentication (`modules/auth/auth.service.ts`, `middleware/auth.ts`)
 - Manages local users with bcrypt passwords.
 - Authentication via JWT (secret from env, `.jwt-secret` file, or generated at first startup).
-- Role-Based Access Control (RBAC): Root Admin, Admin, Artist/User (see [ROLES.md](./ROLES.md)).
+- Role-Based Access Control (RBAC): Instance Owner, Manager, Curator, Listener (see [ROLES.md](./ROLES.md)).
 
 ### 6. Community: Chat & Live (`modules/chat/`, `modules/live/`)
 - **Chat**: Standalone instance chat with persistent history in SQLite.

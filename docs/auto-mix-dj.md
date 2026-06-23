@@ -384,16 +384,6 @@ An MVP that already "feels like Spotify Mix" is **Phases 0–2**.
 - **Mobile/Subsonic clients** ([SUBSONIC.md](./SUBSONIC.md)) can't run our Web
   Audio engine; DJ mode is a web‑app feature for now.
 
-## 12. Open decisions for the team
-
-1. v1 scope: **local‑library only** mixing — yes/no?
-2. BPM/key source: **DSP**, **provider metadata via OpenRouter**, or both with
-   DSP as fallback?
-3. Do we persist mixes server‑side (sharable) or keep them client‑local first?
-4. Is DJ mode **Premium/role‑gated** (mirroring Spotify) or available to all
-   listeners on a TuneCamp instance?
-
 ---
 
-*Design doc — author to fill in owner & target milestone. See
-[STATUS.md](./STATUS.md) once implementation begins.*
+*Design doc for Phases 3–5 (manual editor, Smart Reorder, polish). Phases 1–2 shipped. See [STATUS.md](./STATUS.md) for current status.*

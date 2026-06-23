@@ -33,7 +33,6 @@ tunecamp/
 │       ├── pages/      # Page Components (Route entry points)
 │       ├── services/   # Client API and webapp services
 │       └── stores/     # State management (Zustand)
-├── website/            # Static presentation website
 └── docker-compose.yml  # Configuration for containerized deployment
 ```
 
