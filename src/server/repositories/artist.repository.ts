@@ -207,6 +207,11 @@ export class ArtistRepository extends BaseRepository {
         this.db.prepare("UPDATE artists SET stripe_account_id = ? WHERE id = ?").run(stripeAccountId, id);
     }
 
+    getByStripeAccountId(stripeAccountId: string): Artist | undefined {
+        const row = this.db.prepare("SELECT a.*, a.wallet_address as walletAddress FROM artists a WHERE a.stripe_account_id = ?").get(stripeAccountId);
+        return this.mapArtist(row);
+    }
+
     updateMigrationStatus(id: number, alsoKnownAs: string[] | null, movedTo: string | null): void {
         const akaJson = alsoKnownAs ? JSON.stringify(alsoKnownAs) : null;
         this.db.prepare("UPDATE artists SET also_known_as = ?, moved_to = ? WHERE id = ?").run(akaJson, movedTo, id);
