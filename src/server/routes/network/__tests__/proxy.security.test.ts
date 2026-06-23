@@ -1,7 +1,13 @@
 import express from 'express';
 import request from 'supertest';
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import { createProxyRoutes } from '../proxy.js';
+
+// Stub global fetch so the "allowed URL" case never makes a real network call;
+// the SSRF guard runs before fetch, so blocked cases never reach this anyway.
+(globalThis as any).fetch = jest.fn(async () => ({
+    ok: false, status: 502, statusText: 'Bad Gateway', headers: new Map()
+}));
 
 // These tests exercise the real isSafeUrl SSRF guard. We use IP *literals* so the
 // check is fully deterministic and never performs a DNS lookup: a public IP is

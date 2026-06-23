@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { promisify } from "util";
-import fetch from "node-fetch";
 import { drainResponse, fetchJsonSafe } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import type { Federation } from "@fedify/fedify";

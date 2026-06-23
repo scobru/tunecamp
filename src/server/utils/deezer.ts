@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 
 const DEEZER_API_BASE = 'https://api.deezer.com';
 

@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { load } from "cheerio";
 
 export const BANDCAMP_IMAGE_BASE = "https://f4.bcbits.com/img";

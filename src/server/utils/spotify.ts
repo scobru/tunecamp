@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { webcrypto as crypto } from "node:crypto";
 
 // ─── Constants (Decoded from Nuclear plugin) ─────────────────────────────────

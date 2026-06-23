@@ -1,14 +1,11 @@
 import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
 
-jest.unstable_mockModule('node-fetch', () => ({
-    default: jest.fn()
-}));
-
 let fetch: any;
 let ListenBrainzProvider: any;
 
 beforeAll(async () => {
-    ({ default: fetch } = await import('node-fetch'));
+    fetch = jest.fn();
+    (globalThis as any).fetch = fetch;
     ({ ListenBrainzProvider } = await import('../listenbrainz.provider.js'));
 });
 

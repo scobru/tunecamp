@@ -1,7 +1,6 @@
 import { Router, json } from "express";
 import fs from "fs-extra";
 import path from "path";
-import fetch from "node-fetch";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import { drainResponse } from "../../common/network.js";
 import { metadataService } from "../../modules/catalog/metadata.service.js";
@@ -276,8 +275,7 @@ export function createMetadataRoutes(container: ServiceContainer): Router {
 
         for (let i = 0; i <= 3; i++) {
             response = await fetch(currentUrl, {
-                redirect: 'manual',
-                size: 10 * 1024 * 1024 // 10MB limit
+                redirect: 'manual'
             });
 
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
@@ -292,7 +290,13 @@ export function createMetadataRoutes(container: ServiceContainer): Router {
         }
 
         if (response && response.ok) {
-            const buffer = await response.buffer();
+            // ponytail: header-trust 10MB cap (global fetch has no node-fetch `size`);
+            // isSafeUrl above is the real boundary.
+            if (Number(response.headers.get('content-length') || 0) > 10 * 1024 * 1024) {
+                await drainResponse(response);
+                return false;
+            }
+            const buffer = Buffer.from(await response.arrayBuffer());
             await fs.writeFile(dest, buffer);
             return true;
         } else if (response) {

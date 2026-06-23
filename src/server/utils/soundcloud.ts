@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 
 // ─── Config (from nuclear-plugin-soundcloud) ──────────────────────────────────
 const SOUNDCLOUD_URL = "https://soundcloud.com";

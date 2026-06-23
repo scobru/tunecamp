@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import type { DatabaseService, Track } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 
