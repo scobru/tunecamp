@@ -1539,8 +1539,36 @@ export class ActivityPubService {
                 object: { id: noteId, type: "Note", atomUri: noteId },
                 to: ["https://www.w3.org/ns/activitystreams#Public"]
             };
+
             await Promise.all(followers.map(follower => this.sendActivity(artist, follower.inbox_uri, activity)));
         }
+
+        this.db.markApNoteDeleted(noteId);
+    }
+
+    public async broadcastGenericDelete(artistId: number, noteId: string): Promise<void> {
+        const artist = this.db.getArtist(artistId);
+        if (!artist) return;
+
+        const baseUrl = this.getBaseUrl();
+        const note = this.db.getApNote(noteId);
+        if (!note || note.deleted_at) return;
+
+        const followers = this.db.getFollowers(artist.id);
+        if (followers.length > 0) {
+            console.log(`📢 Broadcasting delete for generic note ${noteId} to ${followers.length} followers`);
+            const activity = {
+                "@context": "https://www.w3.org/ns/activitystreams",
+                id: `${baseUrl}/activity/${crypto.randomUUID()}`,
+                type: "Delete",
+                actor: `${baseUrl}/users/${artist.slug}`,
+                object: { id: noteId, type: "Note", atomUri: noteId },
+                to: ["https://www.w3.org/ns/activitystreams#Public"]
+            };
+
+            await Promise.all(followers.map(follower => this.sendActivity(artist, follower.inbox_uri, activity)));
+        }
+
         this.db.markApNoteDeleted(noteId);
     }
 

@@ -738,6 +738,8 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
                     // Post gone, just mark note as deleted
                     db.markApNoteDeleted(noteId);
                 }
+            } else if (note.note_type === 'board') {
+                await apService.broadcastGenericDelete(note.artist_id, note.note_id);
             }
             res.send("Deleted");
         } catch (e) {
