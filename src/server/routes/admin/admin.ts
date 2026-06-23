@@ -1210,16 +1210,12 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Release not found" });
             }
 
-            // Permission Check
-            // Permission Check: 
-            // - Formal releases can ONLY be deleted by Root Admin
-            // - Library albums can be deleted by Root Admin or the owner
-            if (release && !req.isRootAdmin) {
-                return res.status(403).json({ error: "Only Root Admin can delete formal releases" });
-            }
-
-            const ownerId = release ? release.owner_id : album?.owner_id;
-            if (req.userId !== undefined && !req.isRootAdmin && ownerId !== req.userId) {
+            // Permission Check: Managers/Root Admins manage everything, while the
+            // release/album owner — or the artist whose profile the item is linked
+            // to — can delete their own content. Centralized in canManageItem so
+            // the rule stays in sync with editing (PUT) and the release router.
+            const item = (release ?? album) as { owner_id?: number | null; artist_id?: number | null };
+            if (!req.context || !VisibilityGuardian.canManageItem(req.context, item)) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
