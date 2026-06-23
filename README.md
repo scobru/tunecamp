@@ -8,7 +8,7 @@
 
 ## Why This Exists
 
-Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model—Zen for instance discovery (signaling), direct HTTP for content sharing—giving artists ownership of their distribution without sacrificing reach.
+Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model — federated HTTP for instance discovery (NodeInfo + peers gossip), direct HTTP for content sharing — giving artists ownership of their distribution without sacrificing reach.
 
 ## Quick Start
 
@@ -47,7 +47,7 @@ docker-compose up -d --build
 ### Decentralization & Federation
 - 🔐 **Instance Identity**: Each server holds a cryptographic keypair used to sign its entry in the community registry.
 - 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma). Artists are ActivityPub actors with followers, posts, and release broadcasts.
-- 🌐 **Community Network**: Discover other Tunecamp instances via Zen signaling, then fetch catalogs directly via HTTP REST for always-fresh content.
+- 🌐 **Community Network**: Discover other Tunecamp instances via federated NodeInfo/peers gossip, then fetch catalogs directly via HTTP REST for always-fresh content.
 - 🔗 **HTTP Federation**: Instances expose a public `/api/catalog` endpoint, enabling direct instance-to-instance content discovery without intermediary replication.
 
 ### Streaming & Clients
@@ -170,13 +170,6 @@ Configuration is managed via environment variables (or an `.env` file).
 | `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads | `./music/downloads` (local) / `/data/downloads` (Docker) |
 | `TUNECAMP_PLUGINS_DIR` | Directory to load provider plugins from | `./plugins` |
 
-**Federation & Network**
-
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `TUNECAMP_ZEN_PEERS` | Comma/space-separated Zen relay peer URLs | — |
-| `TUNECAMP_ZEN_MEMORY_LIMIT` | Memory limit (MB) for the Zen network worker | — |
-
 > ActivityPub relay broadcasting is configured at runtime via the admin panel (`relayUrl` setting), not an environment variable.
 
 **Integrations**
@@ -240,11 +233,11 @@ Tunecamp uses a **hybrid federation model**:
 
 | Layer | Protocol | Purpose |
 |:------|:---------|:--------|
-| **Discovery** | Zen | Instance URL signaling — announces presence to the network |
+| **Discovery** | NodeInfo + HTTP peers gossip | Instance URL discovery — crawls outward from known peers via `/nodeinfo` and `/api/network/peers` |
 | **Content** | HTTP REST | Direct catalog fetching between instances (`/api/catalog`) |
 | **Social** | ActivityPub | Artist federation, followers, release broadcasts, posts |
 
-Instances register their URL on the Zen network. The Network page then fetches catalogs directly from each discovered instance via HTTP, ensuring content is always fresh and eliminating stale CRDT data. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale.
+The Network page discovers instances by crawling outward from known peers (NodeInfo/peers gossip), then fetches catalogs directly via HTTP — content is always fresh from the source. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale.
 
 See the [Federation Guide →](./docs/FEDERATION.md)
 
