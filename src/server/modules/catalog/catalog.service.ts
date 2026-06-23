@@ -400,7 +400,8 @@ export class CatalogService {
             "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage",
             "siteLogo", "mode", "siteId", "web3_checkout_address", "web3_nft_address",
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "siteHandle",
-            "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj"
+            "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj",
+            "membershipMonthlyPrice"
         ];
         const res: any = {};
         settings.forEach(k => {
@@ -416,6 +417,7 @@ export class CatalogService {
                     else if (k === 'themeFont') res[k] = 'Outfit';
                     else if (k === 'themeBlur') res[k] = '10px';
                     else if (k === 'themeOverlayOpacity') res[k] = '0.85';
+                    else if (k === 'membershipMonthlyPrice') res[k] = '10';
                     else res[k] = '';
                 }
             }

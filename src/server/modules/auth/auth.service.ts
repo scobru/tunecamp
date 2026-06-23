@@ -67,14 +67,6 @@ export interface AuthService {
     /** Updates or sets the ZEN pair for a user. */
     updateZenPair(username: string, pair: any): void;
 
-    // Mastodon
-    registerMastodonApp(instanceUrl: string, redirectUri: string): Promise<{ clientId: string; clientSecret: string; redirectUri: string }>;
-    getMastodonAuthUrl(instanceUrl: string, clientId: string, redirectUri: string): string;
-    exchangeMastodonCode(instanceUrl: string, clientId: string, clientSecret: string, redirectUri: string, code: string): Promise<{ accessToken: string; user: { acct: string; display_name: string; url: string } }>;
-
-    // Low-Level Mastodon Login (Sotto Banco)
-    loginWithMastodon(instanceUrl: string, redirectUri: string, code: string): Promise<{ pair: any; alias: string }>;
-
     // ZEN Key Management
     encryptZenPriv(priv: any): string;
     decryptZenPriv(encrypted: string): any;
@@ -672,121 +664,6 @@ export function createAuthService(
             
             // Also ensure it's in gun_users for profile lookups
             db.prepare(`INSERT OR IGNORE INTO gun_users (pub, epub, alias) VALUES (?, ?, ?)`).run(pair.pub, pair.epub, username);
-        },
-
-        // Mastodon
-        async registerMastodonApp(instanceUrl: string, redirectUri: string): Promise<{ clientId: string; clientSecret: string; redirectUri: string }> {
-            // Cleanup URL
-            const url = new URL(instanceUrl.startsWith("http") ? instanceUrl : `https://${instanceUrl}`);
-            const baseUrl = url.origin;
-
-            // Validate SSRF
-            if (!(await isSafeUrl(baseUrl))) {
-                throw new Error("Invalid or unsafe instance URL");
-            }
-
-            // 1. Check DB for existing client
-            const existing = db.prepare("SELECT * FROM oauth_clients WHERE instance_url = ?").get(baseUrl) as { client_id: string; client_secret: string; redirect_uri: string } | undefined;
-
-            if (existing) {
-                return {
-                    clientId: existing.client_id,
-                    clientSecret: existing.client_secret,
-                    redirectUri: existing.redirect_uri
-                };
-            }
-
-            // 2. Register if not found
-            const response = await fetch(`${baseUrl}/api/v1/apps`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    client_name: "TuneCamp",
-                    redirect_uris: redirectUri,
-                    scopes: "read",
-                    website: "https://github.com/scobru/tunecamp"
-                })
-            });
-
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`Failed to register app on ${baseUrl}: ${text}`);
-            }
-
-            const data = await response.json() as any;
-
-            // 3. Save to DB
-            db.prepare("INSERT INTO oauth_clients (instance_url, client_id, client_secret, redirect_uri) VALUES (?, ?, ?, ?)").run(baseUrl, data.client_id, data.client_secret, redirectUri);
-
-            return {
-                clientId: data.client_id,
-                clientSecret: data.client_secret,
-                redirectUri: redirectUri
-            };
-        },
-
-        getMastodonAuthUrl(instanceUrl: string, clientId: string, redirectUri: string): string {
-            const url = new URL(instanceUrl.startsWith("http") ? instanceUrl : `https://${instanceUrl}`);
-            return `${url.origin}/oauth/authorize?client_id=${clientId}&scope=read&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
-        },
-
-        async exchangeMastodonCode(instanceUrl: string, clientId: string, clientSecret: string, redirectUri: string, code: string): Promise<{ accessToken: string; user: { acct: string; display_name: string; url: string } }> {
-            const url = new URL(instanceUrl.startsWith("http") ? instanceUrl : `https://${instanceUrl}`);
-
-            // Validate SSRF
-            if (!(await isSafeUrl(url.origin))) {
-                throw new Error("Invalid or unsafe instance URL");
-            }
-
-            // 1. Get Token
-            const tokenResp = await fetch(`${url.origin}/oauth/token`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    client_id: clientId,
-                    client_secret: clientSecret,
-                    redirect_uri: redirectUri,
-                    grant_type: "authorization_code",
-                    code: code
-                })
-            });
-
-            if (!tokenResp.ok) {
-                throw new Error(`Failed to exchange code: ${await tokenResp.text()}`);
-            }
-
-            const tokenData = await tokenResp.json() as any;
-            const accessToken = tokenData.access_token;
-
-            // 2. Verify Credentials (get user profile)
-            const verifyResp = await fetch(`${url.origin}/api/v1/accounts/verify_credentials`, {
-                headers: { "Authorization": `Bearer ${accessToken}` }
-            });
-
-            if (!verifyResp.ok) {
-                throw new Error(`Failed to verify credentials: ${await verifyResp.text()}`);
-            }
-
-            const userData = await verifyResp.json() as any;
-
-            // Normalize acct (some instances don't include domain for local users)
-            let acct = userData.acct;
-            if (!acct.includes("@")) {
-                acct = `${acct}@${url.hostname}`;
-            }
-
-            return {
-                accessToken,
-                user: {
-                    acct,
-                    display_name: userData.display_name,
-                    url: userData.url
-                }
-            };
-        },
-
-        async loginWithMastodon(instanceUrl: string, redirectUri: string, code: string): Promise<{ pair: any; alias: string }> {
-            throw new Error("Mastodon login is not supported in Phase B");
         },
 
 

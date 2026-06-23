@@ -28,12 +28,6 @@ updateSubscription(userId: number, status: string, expiresAt: string): void {
             };
         },
 
-        // Auth
-        createOAuthClient(c: any): void { db.prepare("INSERT INTO oauth_clients (instance_url, client_id, client_secret, redirect_uri) VALUES (?, ?, ?, ?)").run(c.instance_url, c.client_id, c.client_secret, c.redirect_uri); },
-        getOAuthClient: (url: string) => db.prepare("SELECT * FROM oauth_clients WHERE instance_url = ?").get(url) as any,
-        saveOAuthLink(p: string, s: string, pub: string, priv: string): void { db.prepare("INSERT OR REPLACE INTO oauth_links (provider, subject, gun_pub, gun_priv) VALUES (?, ?, ?, ?)").run(p, s, pub, priv); },
-        getOAuthLink: (p: string, s: string) => db.prepare("SELECT * FROM oauth_links WHERE provider = ? AND subject = ?").get(p, s) as any,
-
         // Settings
         getSetting: (k: string) => (db.prepare("SELECT value FROM settings WHERE key = ?").get(k) as any)?.value,
         setSetting: (k: string, v: string) => { db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(k, v); },

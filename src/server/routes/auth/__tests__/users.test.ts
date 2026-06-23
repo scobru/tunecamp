@@ -115,46 +115,6 @@ describe('Users Routes', () => {
         });
     });
 
-    describe('GET /api/users/:pubKey', () => {
-        test('returns 404 if user profile not found', async () => {
-
-
-            const res = await request(app).get('/api/users/pub-key-not-found');
-
-            expect(res.status).toBe(404);
-            expect(res.body.error).toBe('User not found');
-        });
-
-        test('always returns 404 (deprecated endpoint)', async () => {
-            const res = await request(app).get('/api/users/pub-key');
-
-            expect(res.status).toBe(404);
-            expect(res.body.error).toBe('User not found');
-        });
-    });
-
-    describe('POST /api/users/sync', () => {
-        test('is a no-op (deprecated endpoint) and returns success', async () => {
-            const res = await request(app)
-                .post('/api/users/sync')
-                .send({ pub: 'pub-1', epub: 'epub-1' });
-
-            expect(res.status).toBe(200);
-            expect(res.body.success).toBe(true);
-        });
-    });
-
-    describe('POST /api/users/sync-pair', () => {
-        test('is a no-op (deprecated endpoint) and returns success', async () => {
-            const res = await request(app)
-                .post('/api/users/sync-pair')
-                .send({ pair: { pub: 'pub', priv: 'priv', epub: 'epub', epriv: 'epriv' } });
-
-            expect(res.status).toBe(200);
-            expect(res.body.success).toBe(true);
-        });
-    });
-
     describe('GET /api/users/me/storage', () => {
         test('returns user storage info when authenticated', async () => {
             const authApp = express();

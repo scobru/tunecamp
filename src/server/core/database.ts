@@ -332,23 +332,6 @@ export function createDatabase(dbPath: string): DatabaseService {
             expires_at TEXT DEFAULT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS oauth_clients (
-            instance_url TEXT PRIMARY KEY,
-            client_id TEXT NOT NULL,
-            client_secret TEXT NOT NULL,
-            redirect_uri TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS oauth_links (
-            provider TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            gun_pub TEXT NOT NULL,
-            gun_priv TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (provider, subject)
-        );
-
         CREATE TABLE IF NOT EXISTS gun_users (
             pub TEXT PRIMARY KEY,
             epub TEXT,
