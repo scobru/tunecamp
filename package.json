@@ -17,6 +17,9 @@
     "migrate:visibility": "node dist/tools/migrate-visibility.js",
     "build:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css",
     "watch:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css --watch",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "postinstall": "node -e \"const fs = require('fs'); for (const s of ['./scripts/patch-ffmpeg.js', './scripts/patch-slsk.js']) { if (fs.existsSync(s)) { require('child_process').fork(s); } else { console.warn('⚠️ ' + s + ' not found, skipping patch.'); } }\""
   },
   "keywords": [
@@ -99,6 +102,7 @@
     "tailwindcss": "^4.1.18",
     "ts-jest": "^29.4.6",
     "tsx": "^4.22.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitepress": "^1.6.3"
   }
 }
