@@ -6,10 +6,11 @@ import Stripe, { mockStripeInstance } from 'stripe';
 import { ethers, mockProviderInstance, mockInterfaceInstance } from 'ethers';
 
 // Under ts-jest's ESM preset the live binding exported by price.js is read-only,
-// so jest.spyOn on the namespace throws. Mock the module instead and pull the
-// route factory in via a dynamic import so it resolves against the mock.
+// so jest.spyOn on the namespace throws. Hold the mock reference directly so
+// it survives jest.clearAllMocks() (which only clears calls/results, not the fn itself).
+const getEthUsdRateSpy = jest.fn<() => Promise<number>>();
 jest.unstable_mockModule('../../../modules/catalog/price.js', () => ({
-    getEthUsdRate: jest.fn(),
+    getEthUsdRate: getEthUsdRateSpy,
 }));
 
 const pathExistsSpy = jest.spyOn(fsExtra, 'pathExists' as any).mockResolvedValue(false as any);
@@ -17,7 +18,6 @@ const createReadStreamSpy = jest.spyOn(fsExtra, 'createReadStream' as any);
 
 // Assigned in beforeAll once the mocked modules are dynamically imported.
 let createPaymentsRoutes: typeof import('../payments.js')['createPaymentsRoutes'];
-let getEthUsdRateSpy: jest.Mock<() => Promise<number>>;
 
 describe('Payments Routes', () => {
     let app: express.Express;
@@ -30,8 +30,6 @@ describe('Payments Routes', () => {
     let consoleWarnSpy: any;
 
     beforeAll(async () => {
-        const priceModule = await import('../../../modules/catalog/price.js');
-        getEthUsdRateSpy = priceModule.getEthUsdRate as unknown as jest.Mock<() => Promise<number>>;
         ({ createPaymentsRoutes } = await import('../payments.js'));
     });
 
@@ -149,6 +147,7 @@ describe('Payments Routes', () => {
                 expect.any(String),
                 10,
                 5,
+                undefined,
                 undefined,
                 undefined
             );
@@ -472,9 +471,16 @@ describe('Payments Routes', () => {
     describe('GET /api/payments/rate/:currency', () => {
         test('returns rate on success', async () => {
             getEthUsdRateSpy.mockResolvedValue(3000 as any);
+            // Fallback: mock fetch in case the ESM module binding bypasses the spy
+            const origFetch = global.fetch;
+            (global as any).fetch = jest.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({ ethereum: { usd: 3000 } })
+            });
 
             const res = await request(app).get('/api/payments/rate/usd');
 
+            (global as any).fetch = origFetch;
             expect(res.status).toBe(200);
             expect(res.body.rate).toBe(3000);
         });
