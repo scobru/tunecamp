@@ -28,10 +28,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
 
       - name: Install vitepress
-        run: npm install --no-workspaces vitepress
+        run: npm install --no-package-lock --no-save vitepress
 
       - name: Build docs
         run: npm run docs:build
