@@ -34,83 +34,90 @@ features:
     details: Role-based access control with Instance Owner, Manager, Curator, and Listener tiers.
 ---
 
-## Documentation Index
+## Documentation
 
-### Project
+### Getting Started
 
-| Doc | Description |
-|-----|-------------|
-| [Project Overview](./project-overview.md) | Goals, tech stack, and general structure |
-| [Status & Maturity](./STATUS.md) | Honest maturity level of each area and known limitations |
-| [Source Tree](./source-tree-analysis.md) | Detailed description of directories and entry points |
-| [vs Funkwhale](./comparison-funkwhale.md) | Differences in models and features |
-
-### Architecture
+Everything you need to go from zero to a running instance.
 
 | Doc | Description |
 |-----|-------------|
-| [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, federated discovery |
-| [Webapp Architecture](./architecture-webapp.md) | React, state management, instance discovery |
+| [Development Guide](./development-guide.md) | Prerequisites, installation, local dev workflow, and CLI tools |
+| [API & Services Setup](./api-setup-guide.md) | Step-by-step configuration for Stripe, Google Drive, AI, and other integrations |
+| [Nginx Configuration](./NGINX.md) | Reverse proxy setup for SSL, WebSocket, and HLS |
+| [Backup & Migration](./backup-migration.md) | Database backup, restore, and moving your instance |
+
+---
+
+### User Guide
+
+For listeners and artists using a TuneCamp instance.
+
+| Doc | Description |
+|-----|-------------|
+| [Roles & Permissions](./ROLES.md) | What each role (Owner, Manager, Curator, Listener) can do |
+| [Subsonic Protocol](./SUBSONIC.md) | Connecting external clients (DSub, Symfonium, Tempo, Substreamer) |
+| [Social & Community Features](./social-features.md) | Posts, comments, and fan interactions |
+| [Becoming an Artist & Selling](./community-mode.md) | Artist request flow and the `can_sell` sales gate |
+| [Payments & Monetization](./payments.md) | Stripe checkout, crypto on-ramp, and on-chain purchases |
+
+---
+
+### Administrator Guide
+
+For people running a TuneCamp instance.
+
+| Doc | Description |
+|-----|-------------|
+| [Federation](./FEDERATION.md) | ActivityPub and HTTP gossip discovery — how instances find each other |
+| [Plugins](./PLUGINS.md) | Loading custom streaming, metadata, and storage providers |
+| [Monitoring](./monitoring.md) | `/health` endpoint, Sentry crash reporting, and uptime checks |
+| [Scaling](./scaling.md) | SQLite / single-process limits and mitigations |
+| [MCP Setup](./mcp-setup-guide.md) | Exposing the TuneCamp catalog to AI clients via MCP |
+
+---
+
+### Developer Guide
+
+For contributors and people building on TuneCamp.
+
+| Doc | Description |
+|-----|-------------|
+| [Contributing](./CONTRIBUTING.md) | Code contribution guidelines and pull request process |
+| [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, and federated discovery |
+| [Webapp Architecture](./architecture-webapp.md) | React, Vite, Zustand, and instance discovery in the frontend |
 | [Data Models](./data-models.md) | Database schema and entity relationships |
+| [API Contracts](./api-contracts.md) | REST endpoints, authentication, and supported protocols |
+| [Source Tree](./source-tree-analysis.md) | Directory layout and entry points |
+| [Lab Apps](./LAB.md) | Creating and submitting experimental audio tools |
 
-### API & Developer Guide
-
-| Doc | Description |
-|-----|-------------|
-| [API Contracts](./api-contracts.md) | REST endpoints, authentication, supported protocols |
-| [API Configuration](./api-setup-guide.md) | Step-by-step: Stripe, Google Drive, AI, and more |
-| [Development Guide](./development-guide.md) | Prerequisites, installation, execution, testing |
-| [Contributing](./CONTRIBUTING.md) | Code contribution guidelines |
+---
 
 ### Integrations
 
-| Doc | Description |
-|-----|-------------|
-| [Payments & Monetization](./payments.md) | Stripe Checkout, Onramp, on-chain verification |
-| [AI Integrations](./ai-integrations.md) | Metadata automation and recommendations |
-| [Google Drive](./google-drive.md) | Cloud storage streaming and import |
-| [Soulseek](./soulseek.md) | P2P search and download |
-| [Torrents](./torrents.md) | WebTorrent integration |
-| [Telegram Bot](./telegram.md) | Rapid ingestion and remote management |
-| [Smart Contracts](./smart-contracts.md) | Solidity contracts on Base |
-
-### Features & Operations
+Optional third-party services you can connect to your instance.
 
 | Doc | Description |
 |-----|-------------|
-| [Federation](./FEDERATION.md) | ActivityPub protocol details |
-| [Subsonic Protocol](./SUBSONIC.md) | External client support |
-| [Plugins](./PLUGINS.md) | Custom providers from a plugins directory |
-| [Roles & Permissions](./ROLES.md) | RBAC — Owner, Manager, Curator, Listener |
-| [Social & Community](./social-features.md) | Posts, comments, fan interactions |
-| [Artist & Sales](./community-mode.md) | Artist request flow and `can_sell` gate |
-| [Nginx](./NGINX.md) | Reverse proxy configuration examples |
-| [Monitoring](./monitoring.md) | Health endpoint, Sentry, uptime checks |
-| [Scaling](./scaling.md) | SQLite/single-process limits and mitigations |
-| [Backup & Migration](./backup-migration.md) | Safeguarding and moving your instance |
+| [AI Integrations](./ai-integrations.md) | Metadata automation and recommendations via OpenRouter |
+| [Smart Contracts](./smart-contracts.md) | Solidity contracts (Factory, NFT, Checkout) on Base |
+| [Google Drive](./google-drive.md) | Cloud storage backend for media files |
+| [Soulseek](./soulseek.md) | P2P search and one-click import |
+| [Torrents](./torrents.md) | WebTorrent integration for catalog ingestion |
+| [Telegram Bot](./telegram.md) | Rapid file ingestion and remote management |
 
-### Additional Documentation (Specifics)
+---
 
-- [Payments & Monetization](./payments.md): Stripe Checkout, Onramp, and on-chain verification.
-- [AI Integrations](./ai-integrations.md): Metadata automation and recommendations via OpenRouter.
-- [Google Drive Integration](./google-drive.md): Cloud storage streaming and import.
-- [Torrent System](./torrents.md): WebTorrent integration for downloading music.
-- [Soulseek Integration](./soulseek.md): P2P search and download.
-- [Social & Community](./social-features.md): Posts, comments, and fan interactions.
-- [Smart Contracts](./smart-contracts.md): Technical guide to Solidity contracts on Base.
-- [Backup & Migration](./backup-migration.md): How to safeguard and move your instance.
-- [Scaling & Concurrency Limits](./scaling.md): Practical limits of SQLite/single-process and how to mitigate them.
-- [Payments Security Review](./security-review-payments.md): Findings and review of the payments flow.
-- [Federation](./FEDERATION.md): Details on the ActivityPub protocol in TuneCamp.
-- [Subsonic](./SUBSONIC.md): Support for the Subsonic protocol for external clients.
-- [Nginx](./NGINX.md): Configuration examples for reverse proxy.
-- [Audio Fingerprinting](./audio-fingerprinting.md): Internal audio fingerprint used for library deduplication.
-- [Monitoring & Alerting](./monitoring.md): Health endpoint, Sentry crash reporting, and external uptime checks.
-- [Telegram Bot](./telegram.md): Rapid ingestion of music files and remote management.
-- [Plugins](./PLUGINS.md): Custom providers (streaming, metadata, storage) from a plugins directory.
-- [Lab Apps](./LAB.md): Experimental audio tools embedded in the Lab section — how to create and submit a Lab app.
-- [Roles & Permissions](./ROLES.md): RBAC — Instance Owner, Manager, Curator, Listener.
-- [Becoming an Artist & Sales](./community-mode.md): Artist request flow and the `can_sell` sales gate.
-- [Comparison with Funkwhale](./comparison-funkwhale.md): Differences in models and features.
+### Reference
+
+| Doc | Description |
+|-----|-------------|
+| [Project Overview](./project-overview.md) | Goals, tech stack, and repository structure |
+| [Status & Maturity](./STATUS.md) | Honest maturity level of each area and known limitations |
+| [Comparison with Funkwhale](./comparison-funkwhale.md) | Differences in models and features |
+| [Audio Fingerprinting](./audio-fingerprinting.md) | How TuneCamp deduplicates tracks in the library |
+| [Payments Security Review](./security-review-payments.md) | Internal security review findings for the payments flow |
+
+---
 
 *Last updated: June 23, 2026*
