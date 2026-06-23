@@ -9,12 +9,26 @@ Questa guida spiega passo-passo come ottenere e configurare le chiavi API necess
 ### Stripe (Fiat & Onramp)
 1. Vai sulla [Dashboard di Stripe](https://dashboard.stripe.com/).
 2. **Secret Key**: Vai in *Developers > API Keys* e copia la `Secret key` (`sk_test_...` o `sk_live_...`).
-3. **Webhook Secret**: 
+3. **Webhook Secret**:
    - Vai in *Developers > Webhooks*.
    - Aggiungi un endpoint: `https://tuo-dominio.com/api/payments/stripe/webhook`.
    - Seleziona l'evento: `checkout.session.completed`.
+   - **Importante (istanze multi-artista)**: Abilita l'opzione **"Listen to events on connected accounts"** sull'endpoint. Senza questa spunta, i pagamenti effettuati su account Stripe Connect degli artisti non attiveranno il webhook e nessun codice di sblocco verrà generato.
    - Copia il "Signing secret" (`whsec_...`).
 4. **Crypto Onramp**: Richiedi l'accesso a "Crypto Onramp" nelle impostazioni di Stripe e copia la relativa chiave.
+
+### Stripe Connect (onboarding artisti — solo istanze multi-artista)
+
+Stripe Connect permette di instradare i pagamenti fiat direttamente sul conto Stripe di ogni artista, con la commissione dell'istanza trattenuta automaticamente come `application_fee`. **Non è necessario per istanze single-artist.**
+
+1. Assicurati di avere un account Stripe con le funzionalità **Connect** abilitate (*Settings > Connect settings* nella dashboard).
+2. Dal pannello Admin di TuneCamp → artista → usa i seguenti endpoint (gestiti via Admin UI):
+   - `POST /api/admin/artists/:id/stripe-connect/onboard` — crea o riusa un account Express Stripe per l'artista e restituisce il link di onboarding KYC da inviare all'artista.
+   - `GET /api/admin/artists/:id/stripe-connect/status` — verifica `chargesEnabled`, `payoutsEnabled`, `detailsSubmitted`.
+   - `DELETE /api/admin/artists/:id/stripe-connect` — scollega l'account (non lo elimina su Stripe).
+3. L'artista completa il KYC direttamente sulla pagina ospitata da Stripe.
+4. Fino a quando `chargesEnabled = false`, i checkout dell'artista usano il fallback sull'account dell'istanza.
+5. **Nessuna nuova variabile d'ambiente richiesta**: l'onboarding riusa `STRIPE_SECRET_KEY` già configurata.
 
 ### MoonPay (Onramp alternativo)
 1. Registrati su [MoonPay Dashboard](https://dashboard.moonpay.com/).

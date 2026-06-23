@@ -86,3 +86,9 @@ Required Environment Variables:
 - `TUNECAMP_RPC_URL`: RPC endpoint for Base Network (e.g., Alchemy or Base public RPC).
 - `TUNECAMP_OWNER_ADDRESS`: Default address for platform fees.
 - `MOONPAY_API_KEY`: API Key for MoonPay Onramp integration.
+
+### Stripe webhook — "Listen to events on connected accounts"
+
+When at least one artist has a connected Stripe account, checkout sessions are created as **direct charges** on that account. Stripe dispatches the resulting `checkout.session.completed` event as a **connected-account event** (`event.account` is set). Your webhook endpoint must have **"Listen to events on connected accounts"** enabled in the Stripe Dashboard (*Developers → Webhooks → your endpoint → Edit*); otherwise these events are silently dropped and no unlock codes are generated for payments made on connected accounts.
+
+The same `STRIPE_WEBHOOK_SECRET` covers both platform and connected-account events — no second secret is needed.
