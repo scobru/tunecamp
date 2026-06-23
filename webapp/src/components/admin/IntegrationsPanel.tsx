@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { 
-  Activity, 
-  CheckCircle2, 
+import {
+  Activity,
+  CheckCircle2,
   AlertCircle,
   RefreshCw,
   Globe,
@@ -13,7 +13,8 @@ import {
   Loader2,
   Youtube,
   Settings,
-  Save
+  Save,
+  Puzzle
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
@@ -431,7 +432,7 @@ export const IntegrationsPanel = () => {
         {services.map((service) => {
           const plugin = plugins.find(p => p.id === service.pluginId);
           const isEnabled = plugin ? plugin.enabled : true;
-          
+
           return (
             <div key={service.id} className={clsx(
                 "card card-m3 border transition-all duration-300",
@@ -449,9 +450,9 @@ export const IntegrationsPanel = () => {
                                 {isProcessing === plugin.id ? (
                                     <Loader2 className="animate-spin opacity-50" size={18} />
                                 ) : (
-                                    <input 
-                                        type="checkbox" 
-                                        className="toggle toggle-primary toggle-sm" 
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary toggle-sm"
                                         checked={isEnabled}
                                         onChange={() => handleToggle(plugin.id, isEnabled)}
                                     />
@@ -473,7 +474,7 @@ export const IntegrationsPanel = () => {
                           {plugin && <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>}
                         </span>
                         {service.hasConfig && isRootAdmin && (
-                          <button 
+                          <button
                             className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
                             onClick={() => setExpandedConfig(expandedConfig === service.id ? null : service.id)}
                             data-tip="Configure APIs"
@@ -483,9 +484,9 @@ export const IntegrationsPanel = () => {
                         )}
                     </h4>
                     <p className="text-xs opacity-60 leading-relaxed h-8 line-clamp-2">{service.description}</p>
-                    
+
                     {(service as any).onAuth && isRootAdmin && (
-                        <button 
+                        <button
                             className="btn btn-xs btn-outline btn-primary mt-3 gap-2"
                             onClick={(service as any).onAuth}
                             disabled={isProcessing === service.id}
@@ -504,8 +505,8 @@ export const IntegrationsPanel = () => {
 
                 <div className={clsx(
                     "mt-4 text-[10px] font-mono p-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors",
-                    service.status === 'online' 
-                        ? "bg-success/5 border-success/10 text-success" 
+                    service.status === 'online'
+                        ? "bg-success/5 border-success/10 text-success"
                         : "bg-error/5 border-error/10 text-error/80"
                 )}>
                   <div className="flex items-center gap-2 overflow-hidden">
@@ -518,6 +519,69 @@ export const IntegrationsPanel = () => {
           );
         })}
       </div>
+
+      {/* External plugins loaded from the plugins/ directory */}
+      {(() => {
+        const knownIds = new Set(services.map(s => s.pluginId).filter(Boolean));
+        const external = plugins.filter(p => !knownIds.has(p.id));
+        if (external.length === 0) return null;
+        return (
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm opacity-50 uppercase tracking-widest flex items-center gap-2">
+              <Puzzle size={14} /> External Plugins
+            </h4>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {external.map(plugin => (
+                <div key={plugin.id} className={clsx(
+                  "card card-m3 border transition-all duration-300",
+                  plugin.enabled ? "bg-base-200/50 border-base-content/5" : "bg-base-300/30 border-base-content/10 grayscale opacity-60"
+                )}>
+                  <div className="card-body p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="p-3 bg-base-100 rounded-xl shadow-sm">
+                        <Puzzle className="text-accent" size={20} />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="form-control">
+                          <label className="label cursor-pointer p-0 gap-2">
+                            {isProcessing === plugin.id ? (
+                              <Loader2 className="animate-spin opacity-50" size={18} />
+                            ) : (
+                              <input
+                                type="checkbox"
+                                className="toggle toggle-primary toggle-sm"
+                                checked={plugin.enabled}
+                                onChange={() => handleToggle(plugin.id, plugin.enabled)}
+                              />
+                            )}
+                          </label>
+                        </div>
+                        <div className={clsx(
+                          "w-2.5 h-2.5 rounded-full",
+                          plugin.enabled ? "bg-success" : "bg-base-content/20"
+                        )} />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-bold text-lg flex items-center gap-2">
+                        {plugin.name}
+                        <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>
+                      </h4>
+                      <p className="text-xs opacity-60 leading-relaxed line-clamp-2">
+                        {plugin.description || `External ${plugin.type} provider`}
+                      </p>
+                    </div>
+                    <div className="mt-4 text-[10px] font-mono p-2.5 rounded-lg border bg-base-content/5 border-base-content/10 text-base-content/50 flex items-center gap-2">
+                      <span className="opacity-60">type:</span> {plugin.type}
+                      <span className="ml-auto opacity-40">{plugin.id}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
