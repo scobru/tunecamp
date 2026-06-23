@@ -685,7 +685,7 @@ export default function AdminReleaseEditor() {
             // The release owner or the linked artist may delete their own
             // release — mirrors the backend VisibilityGuardian.canManageItem gate.
             (user?.userId != null && metadata.owner_id === user.userId) ||
-            (user?.artistId != null && metadata.artist_id === user.artistId)
+            (user?.artistId != null && metadata.artist_id === Number(user.artistId))
           ) && (
             <button
               className="btn btn-ghost btn-sm text-error hidden sm:flex"
