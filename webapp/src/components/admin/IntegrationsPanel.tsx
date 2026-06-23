@@ -30,7 +30,8 @@ interface PluginInfo {
     description: string;
     enabled: boolean;
     service: string;
-    type: string;
+    types: string[];
+    isExternal: boolean;
 }
 
 export const IntegrationsPanel = () => {
@@ -523,8 +524,7 @@ export const IntegrationsPanel = () => {
 
       {/* External plugins loaded from the plugins/ directory */}
       {(() => {
-        const knownIds = new Set(services.map(s => s.pluginId).filter(Boolean));
-        const external = plugins.filter(p => !knownIds.has(p.id));
+        const external = plugins.filter(p => p.isExternal);
         if (external.length === 0) return null;
         return (
           <div className="space-y-4">
@@ -569,11 +569,11 @@ export const IntegrationsPanel = () => {
                         <span className="text-xs opacity-30 font-mono">v{plugin.version}</span>
                       </h4>
                       <p className="text-xs opacity-60 leading-relaxed line-clamp-2">
-                        {plugin.description || `External ${plugin.type} provider`}
+                        {plugin.description || `External ${plugin.types.join('+')} provider`}
                       </p>
                     </div>
                     <div className="mt-4 text-[10px] font-mono p-2.5 rounded-lg border bg-base-content/5 border-base-content/10 text-base-content/50 flex items-center gap-2">
-                      <span className="opacity-60">type:</span> {plugin.type}
+                      <span className="opacity-60">type:</span> {plugin.types.join(' · ')}
                       <span className="ml-auto opacity-40">{plugin.id}</span>
                     </div>
                   </div>
