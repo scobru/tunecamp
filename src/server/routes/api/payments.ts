@@ -228,6 +228,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 } else if (metadata.itemId && metadata.type) {
                     const itemId = parseInt(metadata.itemId, 10);
                     const itemType = metadata.type; // 'track', 'album', or 'asset'
+                    const buyerUserId = metadata.userId ? parseInt(metadata.userId, 10) : undefined;
 
                     const code = generateUnlockCode();
                     let releaseId: number | undefined;
@@ -249,8 +250,8 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     }
 
                     if (releaseId || trackId || assetId) {
-                        integration.createUnlockCode(code, releaseId, trackId, undefined, assetId);
-                        console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}`);
+                        integration.createUnlockCode(code, releaseId, trackId, undefined, assetId, buyerUserId);
+                        console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}${buyerUserId ? ` (user ${buyerUserId})` : ''}`);
                     }
                 }
             }
@@ -267,6 +268,17 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
     // so they can't be used to exhaust the instance's RPC quota.
     const verifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, message: "Too many verification attempts, try again later." });
     router.use(["/verify", "/subscription/verify"], verifyLimiter);
+
+    /**
+     * GET /api/payments/purchases
+     * Returns purchased items for the authenticated user.
+     */
+    router.get("/purchases", (req, res) => {
+        const userId = (req as any).userId;
+        if (!userId) return res.status(401).json({ error: "Authentication required" });
+        const purchases = integration.getPurchasesByUser(userId);
+        res.json({ purchases });
+    });
 
     /**
      * GET /api/payments/onramp-config
@@ -406,7 +418,8 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 metadata: {
                     itemId: itemId.toString(),
                     type: type,
-                    albumId: albumId ? albumId.toString() : ""
+                    albumId: albumId ? albumId.toString() : "",
+                    userId: (req as any).userId ? (req as any).userId.toString() : ""
                 }
             };
 
