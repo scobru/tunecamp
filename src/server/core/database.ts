@@ -606,7 +606,7 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE unlock_codes ADD COLUMN asset_id INTEGER REFERENCES assets(id)");
             }
             if (!ucCols.some(col => col.name === 'user_id')) {
-                db.exec("ALTER TABLE unlock_codes ADD COLUMN user_id INTEGER REFERENCES users(id)");
+                db.exec("ALTER TABLE unlock_codes ADD COLUMN user_id INTEGER REFERENCES admin(id)");
             }
 
             // Site Actor Initialization (id = -1). The public handle defaults to
