@@ -18,6 +18,7 @@ import clsx from "clsx";
 
 import { Comments } from "../components/Comments";
 import { RelatedTracks } from "../components/RelatedTracks";
+import { GenreTags } from "../components/GenreTags";
 
 const AlbumDetails = () => {
   const { idOrSlug } = useParams();
@@ -35,6 +36,8 @@ const AlbumDetails = () => {
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
   const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+
+  const canEditGenre = isAdmin || Boolean(user?.artistId && String(album?.artistId) === String(user?.artistId));
 
   const isTrackUnlocked = (track: any) => {
     return isAdmin || isPurchased(track.id) || 
@@ -328,6 +331,14 @@ const AlbumDetails = () => {
                   {album.tracks?.length} tracks
                 </span>
               </div>
+              <GenreTags
+                genres={album.genre}
+                canEdit={canEditGenre}
+                onSave={async (genre) => {
+                  await API.matchAlbumMetadata(album.id, { title: album.title, artist: album.album_artist || album.albumArtist || album.artistName || album.artist_name || "", genre });
+                  setAlbum((prev: any) => prev ? { ...prev, genre } : prev);
+                }}
+              />
             </div>
 
             {seedingMagnet && (
@@ -500,9 +511,25 @@ const AlbumDetails = () => {
                           )}
                         </div>
                       )}
-                     {(track.artist_name || track.artistName) && 
+                     {(track.artist_name || track.artistName) &&
                       (track.artist_name || track.artistName) !== (album.album_artist || album.albumArtist || album.artistName || album.artist_name) && (
                        <span className="text-xs opacity-50 truncate -mt-1 font-medium">{track.artist_name || track.artistName}</span>
+                     )}
+                     {track.genre && track.genre !== album.genre && (
+                       <div className="mt-1">
+                         <GenreTags
+                           genres={track.genre}
+                           canEdit={canEditGenre}
+                           size="sm"
+                           onSave={async (genre) => {
+                             await API.updateTrack(track.id, { genre } as any);
+                             setAlbum((prev: any) => prev ? {
+                               ...prev,
+                               tracks: prev.tracks.map((t: any) => t.id === track.id ? { ...t, genre } : t)
+                             } : prev);
+                           }}
+                         />
+                       </div>
                      )}
                       {(album.product_type === 'podcast' || album.productType === 'podcast') && track.description && (
                         <p className="text-xs opacity-75 mt-1.5 line-clamp-2 text-left leading-relaxed max-w-3xl font-medium">
