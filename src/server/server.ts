@@ -49,6 +49,7 @@ import { createReleaseRouter } from "./routes/library/releases.js";
 import { createImportRoutes } from "./routes/library/import.js";
 import { createStatsRoutes } from "./routes/admin/stats.js";
 import { createUsersRoutes } from "./routes/auth/users.js";
+import { createMcpRoutes } from "./routes/api/mcp.js";
 import { createCommentsRoutes } from "./routes/network/comments.js";
 import { Scanner } from "./modules/catalog/scanner.js";
 import { initScannerService } from "./modules/catalog/scanner.service.js";
@@ -447,6 +448,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/browser", authMiddleware.requireRootAdmin, createBrowserRoutes(container));
     app.use("/api/metadata", authMiddleware.requireRootAdmin, createMetadataRoutes(container));
     app.use("/api/users", createUsersRoutes(container));
+    app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
     app.use("/api/chat", authMiddleware.optionalAuth, requireModuleEnabled(container, "chatEnabled", { invert: true, allowAdmin: true }), createChatRoutes(container));
     app.use("/api/live", createLiveRoutes(container));
