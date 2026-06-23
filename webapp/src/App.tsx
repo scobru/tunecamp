@@ -41,6 +41,7 @@ const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Dig = lazy(() => import("./pages/Dig"));
 const Live = lazy(() => import("./pages/Live"));
+const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
 const Board = lazy(() => import("./pages/Board"));
 
@@ -209,6 +210,7 @@ function App() {
             <Route path="/post/:slug" element={<Post />} />
             <Route path="/network" element={<ModuleGuard flag="hideNetwork"><Network /></ModuleGuard>} />
             <Route path="/live" element={<ModuleGuard flag="hideLive"><Live /></ModuleGuard>} />
+            <Route path="/radio" element={<RadioPage />} />
             <Route path="/now-listening" element={<NowListening />} />
             <Route path="/stats" element={<Stats />} />
             <Route path="/wallet" element={<Wallet />} />

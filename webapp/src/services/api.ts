@@ -671,6 +671,12 @@ const API = {
         })),
     getLiveStreamUrl: (roomId: string) => `${API_URL}/live/${roomId}/hls/live.m3u8`,
 
+    // --- Radio ---
+    getRadioStatus: () => handleResponse(api.get<any>('radio')),
+    startRadio: (config: { name: string; playlistId?: number; trackIds?: number[]; shuffle?: boolean }) =>
+        handleResponse(api.post<any>('radio/start', config)),
+    stopRadio: () => handleResponse(api.post<any>('radio/stop', {})),
+
     // --- Now listening (opt-in presence) ---
     getNowListening: () => handleResponse(api.get<{ listeners: NowListeningEntry[] }>('now-playing')),
     getNowPlayingPref: () => handleResponse(api.get<{ enabled: boolean }>('now-playing/preference')),
