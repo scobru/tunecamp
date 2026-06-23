@@ -108,6 +108,8 @@ import { SubsonicService } from "./modules/subsonic/subsonic.service.js";
 import { taskManager } from "./modules/workers/task-manager.js";
 import { createRssService } from "./modules/network/rss.service.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
+import { RadioService } from "./modules/radio/radio.service.js";
+import { createRadioRoutes } from "./routes/api/radio.js";
 
 
 const _serverFilename = fileURLToPath(import.meta.url);
@@ -316,6 +318,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const chatService = new ChatService(database);
     const liveService = new LiveService();
+    const radioService = new RadioService(database);
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
 
     const container: ServiceContainer = {
@@ -350,6 +353,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         telegramBotService,
         chatService,
         liveService,
+        radioService,
         soulseekService,
         torrentService: torrentService as any,
         gdriveService,
@@ -450,6 +454,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/comments", createCommentsRoutes(container));
     app.use("/api/chat", authMiddleware.optionalAuth, requireModuleEnabled(container, "chatEnabled", { invert: true, allowAdmin: true }), createChatRoutes(container));
     app.use("/api/live", createLiveRoutes(container));
+    app.use("/api/radio", createRadioRoutes(container));
     app.use("/api/now-playing", createNowPlayingRoutes(container));
     app.use("/api/unlock", createUnlockRoutes(container));
 
@@ -527,6 +532,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         }
         
         telegramBotService.start().catch((err: any) => console.error("Telegram Bot failed to start:", err));
+        radioService.resumeIfActive().catch((err: any) => console.error("Radio resume failed:", err));
 
         const dbPublicUrl = database.getSetting("publicUrl");
         const publicUrl = (dbPublicUrl || config.publicUrl || "").trim().replace(/\/$/, "");

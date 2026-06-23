@@ -36,6 +36,7 @@ import type { Scanner } from "../modules/catalog/scanner.js";
 
 import type { ChatService } from "../modules/chat/chat.service.js";
 import type { LiveService } from "../modules/live/live.service.js";
+import type { RadioService } from "../modules/radio/radio.service.js";
 
 export interface ServiceContainer {
     // Core
@@ -83,6 +84,7 @@ export interface ServiceContainer {
     gdriveService?: GoogleDriveService;
     chatService: ChatService;
     liveService: LiveService;
+    radioService: RadioService;
 
     // AI
     openRouterService: OpenRouterService;
