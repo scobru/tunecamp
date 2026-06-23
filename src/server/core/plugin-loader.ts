@@ -7,8 +7,10 @@ import { getScannerService } from "../modules/catalog/scanner.service.js";
 import { getDownloadService } from "../modules/catalog/download.service.js";
 import { storageService } from "../modules/storage/storage.service.js";
 import { aiService } from "../modules/ai/ai.service.js";
+import { getScrobbleService } from "../modules/scrobble/scrobble.service.js";
+import { getPlaylistService } from "../modules/catalog/playlist.service.js";
 
-import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider, ProviderRegistry, TuneCampProvider } from "./provider.js";
+import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProvider, StorageProvider, AIProvider, PlaylistProvider, ScrobbleProvider, ProviderRegistry, TuneCampProvider } from "./provider.js";
 
 const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
 
@@ -123,6 +125,24 @@ export async function loadPlugins(pluginsDir?: string, db?: PluginStateStore): P
                 aiService.getRegistry().register(instance as AIProvider, false);
                 targets.push(aiService.getRegistry() as ProviderRegistry<TuneCampProvider>);
                 console.log(`[PluginLoader] ✅ Registered as AIProvider: ${instance.name}`);
+            }
+
+            if (typeof instance.canHandlePlaylist === "function" && typeof instance.fetchPlaylistByUrl === "function") {
+                const ps = getPlaylistService();
+                if (ps) {
+                    ps.getRegistry().register(instance as PlaylistProvider, false);
+                    targets.push(ps.getRegistry() as ProviderRegistry<TuneCampProvider>);
+                    console.log(`[PluginLoader] ✅ Registered as PlaylistProvider: ${instance.name}`);
+                }
+            }
+
+            if (typeof instance.scrobble === "function" && typeof instance.isConfigured === "function") {
+                const ss = getScrobbleService();
+                if (ss) {
+                    ss.getRegistry().register(instance as ScrobbleProvider, false);
+                    targets.push(ss.getRegistry() as ProviderRegistry<TuneCampProvider>);
+                    console.log(`[PluginLoader] ✅ Registered as ScrobbleProvider: ${instance.name}`);
+                }
             }
 
             if (targets.length === 0) {
