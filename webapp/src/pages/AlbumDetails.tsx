@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus } from "lucide-react";
 
 import { useParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -24,7 +24,7 @@ const AlbumDetails = () => {
   const isRelease = window.location.pathname.startsWith('/releases');
   const [album, setAlbum] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const { playTrack } = usePlayerStore();
+  const { playTrack, addToQueue } = usePlayerStore();
   const { cacheBuster } = useConfigStore();
   const { isAdminAuthenticated: isAdmin, isAuthenticated, user } = useAuthStore();
   const { isPurchased, verifyAndGetCode } = usePurchases();
@@ -524,6 +524,15 @@ const AlbumDetails = () => {
                     title="Play Track"
                   >
                     <Play size={18} fill="currentColor" aria-hidden="true" />
+                  </button>
+                  
+                  <button
+                    onClick={() => { addToQueue(track); notify.success(`"${track.title}" added to queue`); }}
+                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-primary"
+                    aria-label={`Add ${track.title} to queue`}
+                    title="Add to Queue"
+                  >
+                    <ListPlus size={18} aria-hidden="true" />
                   </button>
                   
                   <button 

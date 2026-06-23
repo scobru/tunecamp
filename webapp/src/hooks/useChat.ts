@@ -8,6 +8,7 @@ export interface ChatMessage {
     message: string;
     source: 'webapp' | 'telegram';
     telegram_message_id: number | null;
+    avatar: string | null;
     created_at: string;
     deleted?: boolean;
 }

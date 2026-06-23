@@ -8,6 +8,7 @@ export interface ChatMessage {
     message: string;
     source: 'webapp' | 'telegram';
     telegram_message_id: number | null;
+    avatar: string | null;
     deleted?: boolean;
     created_at: string;
 }
@@ -19,9 +20,13 @@ export class ChatService {
 
     getHistory(limit = 100): ChatMessage[] {
         try {
-            const messages = this.database.db.prepare(
-                "SELECT * FROM chat_messages ORDER BY id DESC LIMIT ?"
-            ).all(limit) as ChatMessage[];
+            const messages = this.database.db.prepare(`
+                SELECT cm.*, COALESCE(a.avatar, gu.avatar) AS avatar
+                FROM chat_messages cm
+                LEFT JOIN admin a ON cm.username = a.username COLLATE NOCASE
+                LEFT JOIN gun_users gu ON a.gun_pub = gu.pub
+                ORDER BY cm.id DESC LIMIT ?
+            `).all(limit) as ChatMessage[];
             return messages.reverse();
         } catch (err) {
             console.error('[ChatService] Failed to fetch chat history:', err);
@@ -52,6 +57,18 @@ export class ChatService {
                 "INSERT INTO chat_messages (username, role, message, source, telegram_message_id) VALUES (?, ?, ?, ?, ?)"
             ).run(username, role, message, source, telegramMessageId || null);
 
+            // Fetch the user's avatar for the SSE broadcast
+            let avatar: string | null = null;
+            try {
+                const row = this.database.db.prepare(`
+                    SELECT COALESCE(a.avatar, gu.avatar) AS avatar
+                    FROM admin a
+                    LEFT JOIN gun_users gu ON a.gun_pub = gu.pub
+                    WHERE a.username = ? COLLATE NOCASE
+                `).get(username) as { avatar: string | null } | undefined;
+                avatar = row?.avatar ?? null;
+            } catch { /* avatar lookup is best-effort */ }
+
             const insertedMsg: ChatMessage = {
                 id: Number(result.lastInsertRowid),
                 username,
@@ -59,6 +76,7 @@ export class ChatService {
                 message,
                 source,
                 telegram_message_id: telegramMessageId || null,
+                avatar,
                 created_at: new Date().toISOString()
             };
 

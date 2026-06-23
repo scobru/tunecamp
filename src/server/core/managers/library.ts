@@ -374,7 +374,7 @@ export function createLibraryManager(
         search: (q: string, p?: VisibilityProfile | ViewerContext) => ({ 
             artists: artistRepository.getAll(p).filter(a => a.name.toLowerCase().includes(q.toLowerCase())), 
             albums: albumRepository.search(q, 10, p), 
-            tracks: trackRepository.getAll(p).filter(t => t.title.toLowerCase().includes(q.toLowerCase())) 
+            tracks: trackRepository.getAll(p).filter(t => t.title.toLowerCase().includes(q.toLowerCase()) && (!t.mime_type || t.mime_type.startsWith('audio/'))) 
         }),
 
         // Stats
@@ -474,7 +474,7 @@ export function createLibraryManager(
             const context = getContextFromProfile(p);
             const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
             
-            let sql = `SELECT DISTINCT genre FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${filter.sql})`;
+            let sql = `SELECT DISTINCT genre FROM v_tracks WHERE (mime_type LIKE 'audio/%' OR mime_type IS NULL) AND genre IS NOT NULL AND genre != '' AND (${filter.sql})`;
             const params = [...filter.params];
 
             if (artistId !== undefined || ownerId !== undefined) {
@@ -534,7 +534,7 @@ export function createLibraryManager(
                     OR LOWER(genre) LIKE ? 
                     OR LOWER(genre) LIKE ? 
                     OR LOWER(genre) LIKE ?
-                ) AND (${filter.sql}) 
+                ) AND (mime_type LIKE 'audio/%' OR mime_type IS NULL) AND (${filter.sql}) 
                 ORDER BY artist_name, album_title, track_num
             `).all(lowerG, `${lowerG},%`, `%, ${lowerG},%`, `%, ${lowerG}`, ...filter.params);
             return rows.map(r => (trackRepository as any).mapTrack(r));
@@ -542,7 +542,7 @@ export function createLibraryManager(
         getGenreTrackCounts(p?: VisibilityProfile | ViewerContext): Map<string, number> {
             const context = getContextFromProfile(p);
             const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
-            const rows = db.prepare(`SELECT genre, COUNT(*) as count FROM v_tracks WHERE genre IS NOT NULL AND genre != '' AND (${filter.sql}) GROUP BY genre`).all(...filter.params) as any[];
+            const rows = db.prepare(`SELECT genre, COUNT(*) as count FROM v_tracks WHERE (mime_type LIKE 'audio/%' OR mime_type IS NULL) AND genre IS NOT NULL AND genre != '' AND (${filter.sql}) GROUP BY genre`).all(...filter.params) as any[];
             const counts = new Map<string, number>();
             rows.forEach(r => {
                 r.genre.split(',').forEach((g: string) => {

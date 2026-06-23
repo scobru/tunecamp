@@ -1,8 +1,8 @@
 import { usePlayerStore } from '../../stores/usePlayerStore';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, ListX } from 'lucide-react';
 
 export const QueuePanel = () => {
-    const { queue, queueIndex, playQueue, removeFromQueue, toggleQueue, isQueueOpen } = usePlayerStore();
+    const { queue, queueIndex, playQueue, removeFromQueue, clearQueue, toggleQueue, isQueueOpen } = usePlayerStore();
 
     if (!isQueueOpen) return null;
 
@@ -10,7 +10,18 @@ export const QueuePanel = () => {
         <div className="fixed right-0 bottom-24 w-80 max-w-[90vw] h-96 bg-base-200/95 backdrop-blur-xl border border-base-content/10 shadow-level-1 rounded-tl-2xl rounded-bl-2xl p-4 flex flex-col z-40 transition-all">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-base-content/5">
                 <h3 className="font-bold text-lg">Queue ({queue.length})</h3>
-                <button onClick={toggleQueue} aria-label="Close queue" className="btn btn-ghost btn-circle btn-sm"><X size={16}/></button>
+                <div className="flex items-center gap-1">
+                    {queue.length > 1 && (
+                        <button
+                            onClick={clearQueue}
+                            aria-label="Clear queue"
+                            className="btn btn-ghost btn-sm gap-1 text-xs opacity-60 hover:opacity-100 hover:text-error transition-all"
+                        >
+                            <ListX size={14} /> Clear
+                        </button>
+                    )}
+                    <button onClick={toggleQueue} aria-label="Close queue" className="btn btn-ghost btn-circle btn-sm"><X size={16}/></button>
+                </div>
             </div>
             
             <div className="flex-1 overflow-y-auto scrollbar-thin">
@@ -47,12 +58,10 @@ export const QueuePanel = () => {
                                     </button>
                                 )}
                             </div>
-                        )})
-                    }
+                        )})}
                     </div>
                 )}
             </div>
         </div>
     );
 };
-

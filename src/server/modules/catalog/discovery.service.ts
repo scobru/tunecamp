@@ -243,9 +243,10 @@ export class DiscoveryService {
             tracks = this.database.getTracksByAlbum(album.id, profile);
         }
 
+        const audioTracks = tracks.filter(t => !t.mime_type || t.mime_type.startsWith('audio/'));
         return {
             ...mapAlbumDTO(album, this.database, username),
-            tracks: tracks.map(t => mapTrackDTO(t, this.database, username))
+            tracks: audioTracks.map(t => mapTrackDTO(t, this.database, username))
         };
     }
 }

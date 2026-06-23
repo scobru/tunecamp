@@ -149,7 +149,7 @@ export class TrackRepository extends BaseRepository {
     }
 
     getRandom(limit: number): Track[] {
-        const rows = this.db.prepare(`SELECT * FROM v_tracks ORDER BY RANDOM() LIMIT ?`).all(limit);
+        const rows = this.db.prepare(`SELECT * FROM v_tracks WHERE mime_type LIKE 'audio/%' OR mime_type IS NULL ORDER BY RANDOM() LIMIT ?`).all(limit);
         return rows.map(row => this.mapTrack(row));
     }
 

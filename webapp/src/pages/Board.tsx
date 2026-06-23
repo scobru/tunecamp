@@ -458,14 +458,34 @@ const Board = () => {
                     key={msg.id || index}
                     className="card card-m3 bg-base-200/20 border border-base-content/5 p-5 rounded-3xl flex flex-row gap-4 hover:bg-base-200/40 transition-colors duration-medium-1"
                   >
-                    {/* User Avatar Placeholder */}
+                    {/* User Avatar */}
                     <div className="flex-shrink-0">
-                      <div className={clsx(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border shadow-sm select-none",
-                        avatarColor
-                      )}>
-                        {msg.username.charAt(0).toUpperCase()}
-                      </div>
+                      {msg.avatar ? (
+                        <img
+                          src={msg.avatar}
+                          alt={msg.username}
+                          className="w-12 h-12 rounded-2xl object-cover border border-base-content/10 shadow-sm"
+                          onError={(e) => {
+                            // Fallback to initial if image fails to load
+                            const target = e.currentTarget;
+                            const parent = target.parentElement;
+                            if (parent) {
+                              target.style.display = 'none';
+                              const fallback = document.createElement('div');
+                              fallback.className = `w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border shadow-sm select-none ${avatarColor}`;
+                              fallback.textContent = msg.username.charAt(0).toUpperCase();
+                              parent.appendChild(fallback);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className={clsx(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border shadow-sm select-none",
+                          avatarColor
+                        )}>
+                          {msg.username.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
 
                     {/* Message Details */}

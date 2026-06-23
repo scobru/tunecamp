@@ -325,8 +325,10 @@ export const PlayerBar = () => {
 
   // ─── Crossfade between consecutive tracks ───────────────────────────────
   // Near the end of the current track, hand its tail to the disposable deck
-  // (kept audible) and advance the main deck early, fading the incoming track
-  // in. With crossfadeSec === 0 this effect is inert and playback is unchanged.
+  // (kept audible) and start loading the next track on the main deck.  The
+  // fade ramp only begins once the incoming track fires 'canplay', ensuring
+  // a true overlap instead of a gap.  With crossfadeSec === 0 the effect is
+  // inert and playback proceeds normally.
   useEffect(() => {
     const audio = audioRef.current;
     const deckB = fadeDeckRef.current;
@@ -355,26 +357,62 @@ export const PlayerBar = () => {
         void deckB.play().catch(() => {});
       } catch { /* ignore */ }
 
-      // 2. Mute the main deck (deckB covers the tail) and advance early.
+      // 2. Pre-build the incoming track URL and load it on the main deck.
+      const nextIndex = st.queueIndex + 1;
+      const nextTrack = st.queue[nextIndex];
+
+      const isLosslessFormat = nextTrack.format && ['wav', 'lossless'].includes(nextTrack.format.toLowerCase());
+      const isLosslessExt = nextTrack.filename && nextTrack.filename.toLowerCase().endsWith('.wav');
+      const forceMp3 = !nextTrack.streamUrl && (isLosslessFormat || isLosslessExt);
+      let nextSrc = API.getStreamUrl(nextTrack.streamUrl || nextTrack.id, forceMp3 ? 'mp3' : undefined);
+      if (nextSrc.startsWith('http')) {
+        try {
+          const u = new URL(nextSrc);
+          if (u.origin !== window.location.origin) {
+            nextSrc = `/api/proxy/stream?url=${encodeURIComponent(nextSrc)}`;
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Set source directly on the audio element — the React effect will see
+      // the same src and skip re-assigning it.
       audio.volume = 0;
+      audio.src = nextSrc;
+
+      // Advance the store so the UI (title/cover) updates immediately.
       st.next();
 
-      // 3. Equal-time ramp: outgoing (deckB) down, incoming (main) up.
-      const start = performance.now();
-      const step = () => {
-        if (!crossfadingRef.current) return;
-        const t = Math.min(1, (performance.now() - start) / (fadeDur * 1000));
-        try { deckB.volume = Math.max(0, targetVol * (1 - t)); } catch { /* ignore */ }
-        if (audioRef.current) audioRef.current.volume = Math.min(targetVol, targetVol * t);
-        if (t < 1) {
-          requestAnimationFrame(step);
-        } else {
-          try { deckB.pause(); deckB.removeAttribute('src'); deckB.load(); } catch { /* ignore */ }
-          if (audioRef.current) audioRef.current.volume = targetVol;
-          crossfadingRef.current = false;
-        }
+      // 3. Wait for the incoming track to be ready, then ramp.
+      const startRamp = () => {
+        void audio.play().catch(() => {});
+        const start = performance.now();
+        const step = () => {
+          if (!crossfadingRef.current) return;
+          const t = Math.min(1, (performance.now() - start) / (fadeDur * 1000));
+          try { deckB.volume = Math.max(0, targetVol * (1 - t)); } catch { /* ignore */ }
+          if (audioRef.current) audioRef.current.volume = Math.min(targetVol, targetVol * t);
+          if (t < 1) {
+            requestAnimationFrame(step);
+          } else {
+            try { deckB.pause(); deckB.removeAttribute('src'); deckB.load(); } catch { /* ignore */ }
+            if (audioRef.current) audioRef.current.volume = targetVol;
+            crossfadingRef.current = false;
+          }
+        };
+        requestAnimationFrame(step);
       };
-      requestAnimationFrame(step);
+
+      // If the browser already has enough data (e.g. cached), start immediately.
+      if (audio.readyState >= 3) {
+        startRamp();
+      } else {
+        audio.addEventListener('canplay', startRamp, { once: true });
+        // Safety timeout: if the buffer takes too long, start anyway after 2s.
+        setTimeout(() => {
+          audio.removeEventListener('canplay', startRamp);
+          if (crossfadingRef.current) startRamp();
+        }, 2000);
+      }
     };
 
     audio.addEventListener('timeupdate', onTime);

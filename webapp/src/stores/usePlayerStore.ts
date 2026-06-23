@@ -38,6 +38,7 @@ export interface PlayerState {
     setProgress: (time: number, duration: number) => void;
     addToQueue: (track: Track) => void;
     removeFromQueue: (index: number) => void;
+    clearQueue: () => void;
     toggleShuffle: () => void;
     toggleRepeat: () => void;
     toggleRadio: () => void;
@@ -197,6 +198,28 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             originalQueue: state.isShuffled
                 ? state.originalQueue.filter(t => t && state.queue[index] && t.id !== state.queue[index].id)
                 : newQueue
+        };
+    }),
+
+    clearQueue: () => set((state) => {
+        // Keep only the currently playing track (if any)
+        const current = state.currentTrack;
+        if (current && state.queueIndex >= 0 && state.queueIndex < state.queue.length) {
+            return {
+                queue: [current],
+                originalQueue: [current],
+                queueIndex: 0,
+                isShuffled: false,
+            };
+        }
+        // Nothing playing — wipe everything
+        return {
+            queue: [],
+            originalQueue: [],
+            queueIndex: -1,
+            currentTrack: null,
+            isPlaying: false,
+            isShuffled: false,
         };
     }),
 

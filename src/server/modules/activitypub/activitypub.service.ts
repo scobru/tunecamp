@@ -1177,9 +1177,14 @@ export class ActivityPubService {
         const artistActorUrl = `${baseUrl}/users/${artist.slug}`;
         const noteId = `${baseUrl}/api/ap/notes/board-${artist.slug}-${Date.now()}`;
 
-        // Escape HTML to prevent injection, then wrap as paragraph(s)
+        // Escape HTML to prevent injection, then linkify URLs and wrap as paragraph(s)
         const safeText = this.escapeHtml(messageText);
-        const contentHtml = `<p>${safeText.replace(/\r?\n/g, "<br />")}</p>`;
+        // Linkify URLs so remote servers render them as clickable links and fetch OG preview cards
+        const linkedText = safeText.replace(
+            /(https?:\/\/[^\s<]+)/g,
+            '<a href="$1" rel="nofollow noopener noreferrer" target="_blank">$1</a>'
+        );
+        const contentHtml = `<p>${linkedText.replace(/\r?\n/g, "<br />")}</p>`;
 
         const published = new Date().toISOString();
 
