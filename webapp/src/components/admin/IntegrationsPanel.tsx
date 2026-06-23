@@ -30,6 +30,7 @@ interface PluginInfo {
     description: string;
     enabled: boolean;
     service: string;
+    type: string;
 }
 
 export const IntegrationsPanel = () => {
