@@ -580,7 +580,8 @@ const API = {
     createApiToken: (name: string) => handleResponse(api.post<{ token: string }>('users/me/api-tokens', { name })),
     deleteApiToken: (id: number) => handleResponse(api.delete(`users/me/api-tokens/${id}`)),
 
-    // --- Unlock Codes ---
+    // --- Unlock Codes / Purchases ---
+    getPurchases: () => handleResponse(api.get<{ purchases: any[] }>('payments/purchases')),
     validateUnlockCode: (code: string) => handleResponse(api.post('unlock/validate', { code })),
     redeemUnlockCode: (code: string) => handleResponse(api.post('unlock/redeem', { code })),
     createUnlockCodes: (releaseId: string, count: number) => handleResponse(api.post<UnlockCode[]>('unlock/admin/create', { releaseId, count })),

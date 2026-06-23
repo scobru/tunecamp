@@ -22,6 +22,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Key,
+  Unlock,
 } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
@@ -798,7 +799,15 @@ const Profile = () => {
 
 
         {activeTab === "collection" && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 space-y-4">
+            <div className="flex justify-end">
+              <button
+                className="btn btn-outline btn-sm gap-2"
+                onClick={() => document.dispatchEvent(new CustomEvent('open-unlock-modal'))}
+              >
+                <Unlock size={15} /> Redeem Code
+              </button>
+            </div>
             {purchasesLoading || loadingTracks ? (
               <div className="p-12 text-center opacity-50">
                 Loading collection...
@@ -807,6 +816,7 @@ const Profile = () => {
               <div className="p-20 text-center opacity-40 bg-base-200/50 rounded-3xl border border-dashed border-base-content/20">
                 <Download size={48} className="mx-auto mb-4" />
                 <p>Your collection is empty.</p>
+                <p className="text-sm mt-2">Purchase tracks or redeem an unlock code to build your collection.</p>
               </div>
             ) : (
               <TrackList
