@@ -174,8 +174,7 @@ Configuration is managed via environment variables (or an `.env` file).
 
 | Variable | Description | Default |
 |:---------|:------------|:--------|
-| `TUNECAMP_ZEN_PEERS` | Comma/space-separated Zen relay peer URLs | — |
-| `TUNECAMP_ZEN_MEMORY_LIMIT` | Memory limit (MB) for the Zen network worker | — |
+| `TUNECAMP_FEDERATION_SEEDS` | Comma/space-separated seed instance URLs to bootstrap HTTP gossip discovery | — |
 
 > ActivityPub relay broadcasting is configured at runtime via the admin panel (`relayUrl` setting), not an environment variable.
 

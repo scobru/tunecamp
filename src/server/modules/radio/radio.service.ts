@@ -43,11 +43,23 @@ export class RadioService {
     private listeners = new Map<string, number>();
     private restartTimer: ReturnType<typeof setTimeout> | null = null;
     private database: DatabaseService;
+    private musicDir: string;
     private stopping = false;
 
-    constructor(database: DatabaseService) {
+    constructor(database: DatabaseService, musicDir: string) {
         this.database = database;
+        this.musicDir = musicDir;
         this.hlsDir = path.join(os.tmpdir(), "tunecamp-radio");
+    }
+
+    /**
+     * Track file paths are stored relative to the music directory (the same
+     * convention the streaming routes use, e.g. path.join(musicDir, file_path)).
+     * Resolve them to an absolute path so FFmpeg and existence checks work
+     * regardless of the process working directory.
+     */
+    private _resolvePath(filePath: string): string {
+        return path.isAbsolute(filePath) ? filePath : path.join(this.musicDir, filePath);
     }
 
     isActive(): boolean {
@@ -61,7 +73,7 @@ export class RadioService {
         this.tracks = this._loadTracks(config);
 
         if (this.tracks.length === 0) {
-            throw new Error("No playable tracks found for the radio");
+            throw new Error("No playable tracks found — the radio can only broadcast tracks with a local audio file on the server. Cloud, external, and network tracks (no local file) can't be streamed to the radio.");
         }
 
         if (this.config.shuffle) {
@@ -247,9 +259,11 @@ export class RadioService {
             rows.sort((a: any, b: any) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
         }
 
-        return rows.filter((r: any) => {
-            try { return fs.existsSync(r.file_path); } catch { return false; }
-        }) as RadioTrack[];
+        return rows
+            .map((r: any) => ({ ...r, file_path: this._resolvePath(r.file_path) }))
+            .filter((r: RadioTrack) => {
+                try { return fs.existsSync(r.file_path); } catch { return false; }
+            }) as RadioTrack[];
     }
 
     private _shuffle(arr: RadioTrack[]): void {

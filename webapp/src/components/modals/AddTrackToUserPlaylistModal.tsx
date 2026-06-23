@@ -1,8 +1,23 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
-import { Plus, Search, Music, Check } from "lucide-react";
+import { Plus, Search, Music, Check, Globe } from "lucide-react";
+import { notify } from "../../utils/notify";
 import type { Track, NetworkTrack } from "../../types";
+
+/** Derive a short, human label for a federated site from its URL. */
+const siteLabel = (url?: string) => {
+  if (!url) return "Network";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "Network";
+  }
+};
+
+/** Stable id for a network track across the modal's session state. */
+const networkTrackId = (nt: NetworkTrack) =>
+  nt.slug || `${nt.siteUrl}::${nt.title}`;
 
 export const AddTrackToUserPlaylistModal = ({
   playlistId,
@@ -101,25 +116,50 @@ export const AddTrackToUserPlaylistModal = ({
     }
   };
 
+  // The /api/stats/network/tracks endpoint returns flat items
+  // ({ title, artistName, audioUrl, coverUrl, siteUrl, type, ... }), not a
+  // nested { track } shape. Keep only streamable releases (skip posts).
   const filteredNetworkTracks = networkTracks
     .filter((nt) => {
-      if (!nt || !nt.track) return false;
-      const uniqueId = `${nt.siteUrl}::${nt.track.id}`;
+      if (!nt || nt.type === "post" || !nt.audioUrl) return false;
+      const uniqueId = networkTrackId(nt);
       if (existingTrackIds.includes(uniqueId) || sessionAddedIds.includes(uniqueId)) return false;
 
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
-      const title = nt.track.title || "";
-      const artist = nt.track.artistName || "";
-      const site = nt.siteName || "";
-      
       return (
-        title.toLowerCase().includes(q) ||
-        artist.toLowerCase().includes(q) ||
-        site.toLowerCase().includes(q)
+        (nt.title || "").toLowerCase().includes(q) ||
+        (nt.artistName || "").toLowerCase().includes(q) ||
+        siteLabel(nt.siteUrl).toLowerCase().includes(q)
       );
     })
     .slice(0, 30);
+
+  const handleAddNetworkTrack = async (nt: NetworkTrack) => {
+    const uniqueId = networkTrackId(nt);
+    setAddingId(uniqueId);
+    setSuccessId(null);
+    try {
+      // The backend creates a local reference track for external http URLs
+      // (see POST /api/playlists/:id/tracks), so we pass the stream URL as the
+      // trackId together with the metadata needed to display it.
+      await API.addTrackToPlaylist(playlistId, nt.audioUrl as string, {
+        title: nt.title,
+        artist: nt.artistName,
+        coverUrl: nt.coverUrl,
+        duration: nt.duration,
+      });
+      setSuccessId(uniqueId);
+      setSessionAddedIds((prev) => [...prev, uniqueId]);
+      onAdded?.();
+      setTimeout(() => setSuccessId(null), 2000);
+    } catch (e: any) {
+      console.error("Failed to add network track:", e);
+      notify.error(e, "Failed to add network track");
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   const handleAddTrack = async (
     track: Track,
@@ -307,18 +347,12 @@ export const AddTrackToUserPlaylistModal = ({
             </div>
           ) : (
             filteredNetworkTracks.map((nt, i) => {
-              const track = nt.track;
-              const uniqueId = `${nt.siteUrl}::${track.id}`;
-              const baseUrl = nt.siteUrl.replace(/\/$/, "");
-              const coverUrl =
-                track.coverImage ||
-                (track.albumId
-                  ? `${baseUrl}/api/albums/${track.albumId}/cover`
-                  : undefined);
+              const uniqueId = networkTrackId(nt);
+              const coverUrl = nt.coverUrl || undefined;
 
               return (
                 <div
-                  key={i}
+                  key={uniqueId || i}
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-base-300 transition-colors group"
                 >
                   <div className="w-10 h-10 rounded bg-base-300 flex-shrink-0 overflow-hidden text-center flex items-center justify-center">
@@ -335,12 +369,14 @@ export const AddTrackToUserPlaylistModal = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm truncate">
-                      {track.title}
+                      {nt.title}
                     </div>
                     <div className="text-xs opacity-50 truncate flex items-center gap-1">
-                      <span>{track.artistName}</span>
+                      <span>{nt.artistName}</span>
                       <span className="opacity-30">•</span>
-                      <span className="text-primary/70">{nt.siteName}</span>
+                      <span className="text-primary/70 flex items-center gap-1">
+                        <Globe size={10} /> {siteLabel(nt.siteUrl)}
+                      </span>
                     </div>
                   </div>
                   <button
@@ -349,13 +385,7 @@ export const AddTrackToUserPlaylistModal = ({
                         ? "btn-success"
                         : "btn-ghost opacity-0 group-hover:opacity-100"
                     }`}
-                    onClick={() =>
-                      handleAddTrack(track, {
-                        source: "network",
-                        siteUrl: nt.siteUrl,
-                        siteName: nt.siteName,
-                      })
-                    }
+                    onClick={() => handleAddNetworkTrack(nt)}
                     disabled={addingId === uniqueId}
                   >
                     {addingId === uniqueId ? (

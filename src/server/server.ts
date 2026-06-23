@@ -319,7 +319,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const chatService = new ChatService(database);
     const liveService = new LiveService();
-    const radioService = new RadioService(database);
+    const radioService = new RadioService(database, config.musicDir);
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
 
     const container: ServiceContainer = {

@@ -1,84 +1,123 @@
-# Contratti API
+# API Contracts
 
-TuneCamp espone un'API RESTful per la comunicazione tra la webapp e il backend, oltre a endpoint specifici per ActivityPub e il protocollo Subsonic. La specifica OpenAPI completa è disponibile nel file [openapi.yml](./openapi.yml).
+TuneCamp exposes a RESTful API for webapp–backend communication, plus dedicated endpoints for ActivityPub and the Subsonic protocol. The full OpenAPI specification is in [openapi.yml](./openapi.yml).
 
-## Autenticazione
+## Authentication
 
-La maggior parte degli endpoint richiede l'autenticazione tramite **JWT (JSON Web Token)** nell'header `Authorization`:
-`Authorization: Bearer <token>`
+Most endpoints require a **JWT (JSON Web Token)** in the `Authorization` header:
 
----
+```
+Authorization: Bearer <token>
+```
 
-## Endpoint Principali
-
-### Autenticazione (`/api/auth`)
-- `POST /api/auth/register`: Registra un nuovo utente.
-- `POST /api/auth/login`: Autentica un utente e restituisce il token JWT.
-- `GET /api/auth/me`: Restituisce le informazioni dell'utente corrente.
-
-### Catalogo Musicale (`/api/catalog`, `/api/tracks`, `/api/albums`)
-- `GET /api/albums`: Elenco di tutti gli album locali. Restituisce campi come `status` (`draft` | `published`) e `is_release` (boolean) per distinguere tra contenuti della libreria e release ufficiali.
-- `GET /api/albums/:id`: Dettagli di un album specifico, inclusa la lista tracce.
-- `GET /api/artists`: Elenco di tutti gli artisti.
-- `GET /api/tracks/:id`: Metadati di una traccia specifica.
-- `GET /api/tracks/:id/stream`: Stream binario del file audio (supporta Range per cloud tracks).
-- `GET /api/tracks/:id/waveform`: Dati per la visualizzazione della forma d'onda.
-
-### Pagamenti e Monetizzazione (`/api/payments`)
-- `POST /api/payments/stripe/create-session`: Crea una sessione Stripe Checkout per acquisti Fiat.
-- `POST /api/payments/onramp-session`: Crea una sessione Stripe Crypto Onramp.
-- `POST /api/payments/verify`: Verifica una transazione on-chain (ETH/USDC) su rete Base.
-- `GET /api/payments/download/:trackId?code=...`: Scarica un brano acquistato tramite codice di sblocco.
-- `GET /api/payments/rate/USD`: Ottiene il tasso di cambio ETH/USD corrente.
-
-### Storage e Cloud (`/api/storage`)
-- `GET /api/storage/gdrive/auth`: Inizia il flusso OAuth2 per Google Drive.
-- `GET /api/storage/gdrive/files`: Lista file e cartelle su Google Drive.
-- `POST /api/storage/gdrive/import`: Importa un file da Drive come riferimento `gdrive://`.
-- `POST /api/storage/gdrive/localize/:id`: Scarica permanentemente un file cloud sul server locale.
-
-### Metadati e Ricerca Esterna (`/api/metadata`)
-- `GET /api/metadata/search?q=...`: Ricerca metadati album su provider esterni (MusicBrainz, Discogs, iTunes, TheAudioDB).
-- `GET /api/metadata/lyrics?artist=...&title=...`: Recupera il testo di una canzone (via Lyrics.ovh).
-- `POST /api/metadata/maintenance/apply-track`: Applica metadati selezionati a una traccia locale.
-
-### Social, Commenti e Post (`/api/social`, `/api/comments`, `/api/activitypub`)
-- `GET /api/posts`: Elenco dei post pubblici degli artisti.
-- `POST /api/posts`: Crea un nuovo post (Admin).
-- `GET /api/comments/:trackId`: Elenco commenti per un brano specifico.
-- `POST /api/comments`: Aggiunge un commento (richiede autenticazione).
-- `GET /api/social/feed`: Post recenti dagli attori seguiti.
-- `GET /api/activitypub/actor/:username`: Profilo ActivityPub di un utente locale.
-- `POST /api/activitypub/inbox`: Endpoint per la ricezione di messaggi remoti.
-
-### Amministrazione (`/api/admin`)
-- `GET /api/admin/users`: Lista degli utenti (solo admin).
-- `POST /api/admin/scan`: Avvia una scansione della libreria.
-- `POST /api/admin/rescan`: Forza una scansione profonda (full rescan) della libreria.
-- `GET /api/admin/stats`: Statistiche sull'utilizzo del server e del database.
-- `GET /api/admin/torrents`: Lista dei torrent attivi e passati.
-- `POST /api/admin/torrents/add`: Aggiunge un magnet link alla coda di download.
-- `DELETE /api/admin/torrents/:infoHash`: Rimuove un torrent e opzionalmente i dati scaricati.
+Obtain a token by posting credentials to `POST /api/auth/login`.
 
 ---
 
-## Protocolli di Terze Parti
+## Core Endpoints
+
+### Authentication (`/api/auth`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/auth/login` | Authenticate and receive a JWT |
+| `GET` | `/api/auth/me` | Return the current user's profile |
+
+### Music Catalog (`/api/catalog`, `/api/tracks`, `/api/albums`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/albums` | List all local albums. Returns `status` (`draft` \| `published`) and `is_release` (boolean) to distinguish library content from official releases |
+| `GET` | `/api/albums/:id` | Album details including the track list |
+| `GET` | `/api/artists` | List all artists |
+| `GET` | `/api/tracks/:id` | Track metadata |
+| `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
+| `GET` | `/api/tracks/:id/waveform` | Waveform data for visualisation |
+
+### Payments & Monetisation (`/api/payments`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/payments/stripe/create-session` | Create a Stripe Checkout session for fiat purchases |
+| `POST` | `/api/payments/onramp-session` | Create a Stripe Crypto Onramp session |
+| `POST` | `/api/payments/verify` | Verify an on-chain transaction (ETH/USDC) on Base |
+| `GET` | `/api/payments/download/:trackId?code=...` | Download a purchased track via unlock code |
+| `GET` | `/api/payments/rate/USD` | Current ETH/USD exchange rate |
+
+### Storage & Cloud (`/api/storage`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/storage/gdrive/auth` | Start the Google Drive OAuth2 flow |
+| `GET` | `/api/storage/gdrive/files` | List files and folders on Google Drive |
+| `POST` | `/api/storage/gdrive/import` | Import a Drive file as a `gdrive://` reference |
+| `POST` | `/api/storage/gdrive/localize/:id` | Permanently download a cloud file to the local server |
+
+### Metadata & External Search (`/api/metadata`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/metadata/search?q=...` | Search album metadata across external providers (MusicBrainz, Discogs, iTunes, TheAudioDB) |
+| `GET` | `/api/metadata/lyrics?artist=...&title=...` | Fetch song lyrics via Lyrics.ovh |
+| `POST` | `/api/metadata/maintenance/apply-track` | Apply selected metadata to a local track |
+
+### Social, Comments & Posts (`/api/social`, `/api/comments`, `/api/activitypub`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/posts` | List public artist posts |
+| `POST` | `/api/posts` | Create a new post (admin only) |
+| `GET` | `/api/comments/:trackId` | List comments for a specific track |
+| `POST` | `/api/comments` | Add a comment (requires authentication) |
+| `GET` | `/api/social/feed` | Recent posts from followed actors |
+| `GET` | `/api/activitypub/actor/:username` | ActivityPub profile for a local user |
+| `POST` | `/api/activitypub/inbox` | Receive incoming remote ActivityPub messages |
+
+### Administration (`/api/admin`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/admin/users` | List registered users (admin only) |
+| `POST` | `/api/admin/scan` | Trigger a library scan |
+| `POST` | `/api/admin/rescan` | Force a full deep rescan |
+| `GET` | `/api/admin/stats` | Server and database usage statistics |
+| `GET` | `/api/admin/torrents` | List active and completed torrents |
+| `POST` | `/api/admin/torrents/add` | Add a magnet link to the download queue |
+| `DELETE` | `/api/admin/torrents/:infoHash` | Remove a torrent and optionally its downloaded data |
+
+---
+
+## Third-Party Protocols
 
 ### Subsonic API (`/rest`)
-TuneCamp implementa una parte del protocollo Subsonic per garantire la compatibilità con app mobili esistenti (es. DSub, Play:Sub).
-- Endpoint base: `/rest/*.view`
-- Supporta: `getAlbumList`, `getMusicDirectory`, `stream`, etc.
+
+TuneCamp implements the Subsonic protocol (v1.16.1) for compatibility with existing mobile clients such as DSub, Symfonium, Tempo, and Substreamer.
+
+- Base path: `/rest/*.view`
+- Supported methods include: `getAlbumList`, `getMusicDirectory`, `stream`, and more.
+
+See [SUBSONIC.md](./SUBSONIC.md) for the full compatibility table.
 
 ### Model Context Protocol (`/api/mcp`)
-TuneCamp implementa il protocollo MCP per consentire a client AI esterni di interrogare il catalogo e le statistiche del server.
-- `GET /api/mcp/sse`: Stabilisce il canale di streaming asincrono (Server-Sent Events). Richiede autenticazione Bearer (`tc_...`).
-- `POST /api/mcp/message`: Riceve i messaggi e le richieste JSON-RPC client-to-server.
 
-## Formati di Risposta
+TuneCamp implements MCP so that external AI clients can query the catalog and server statistics.
 
-Tutte le risposte API (tranne lo streaming audio) sono in formato **JSON**. In caso di errore, il server restituisce un codice di stato HTTP appropriato e un oggetto errore:
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/mcp/sse` | Open the async SSE channel. Requires `Bearer tc_...` authentication |
+| `POST` | `/api/mcp/message` | Send a JSON-RPC request from client to server |
+
+See [mcp-setup-guide.md](./mcp-setup-guide.md) for client configuration.
+
+---
+
+## Response Format
+
+All API responses (except audio streams) are **JSON**. On error, the server returns an appropriate HTTP status code and an error object:
+
 ```json
 {
-  "error": "Messaggio di errore descrittivo"
+  "error": "Descriptive error message"
 }
 ```
