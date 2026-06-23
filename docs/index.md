@@ -46,6 +46,7 @@ Welcome to the **TuneCamp** technical documentation. This index serves as the ma
 - [Monitoring & Alerting](./monitoring.md): Health endpoint, Sentry crash reporting, and external uptime checks.
 - [Telegram Bot](./telegram.md): Rapid ingestion of music files and remote management.
 - [Plugins](./PLUGINS.md): Custom providers (streaming, metadata, storage) from a plugins directory.
+- [Lab Apps](./LAB.md): Experimental audio tools embedded in the Lab section — how to create and submit a Lab app.
 - [Roles & Permissions](./ROLES.md): RBAC — Instance Owner, Manager, Curator, Listener.
 - [Becoming an Artist & Sales](./community-mode.md): Artist request flow and the `can_sell` sales gate.
 - [Comparison with Funkwhale](./comparison-funkwhale.md): Differences in models and features.
