@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import * as Sentry from "@sentry/node";
 import express from "express";
 import cors from "cors";
