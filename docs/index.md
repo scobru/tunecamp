@@ -102,7 +102,7 @@ features:
 - [Scaling & Concurrency Limits](./scaling.md): Practical limits of SQLite/single-process and how to mitigate them.
 - [Payments Security Review](./security-review-payments.md): Findings and review of the payments flow.
 - [Federation](./FEDERATION.md): Details on the ActivityPub protocol in TuneCamp.
-- [Subsonic](./subsonic.md): Support for the Subsonic protocol for external clients.
+- [Subsonic](./SUBSONIC.md): Support for the Subsonic protocol for external clients.
 - [Nginx](./NGINX.md): Configuration examples for reverse proxy.
 - [Audio Fingerprinting](./audio-fingerprinting.md): Internal audio fingerprint used for library deduplication.
 - [Monitoring & Alerting](./monitoring.md): Health endpoint, Sentry crash reporting, and external uptime checks.
