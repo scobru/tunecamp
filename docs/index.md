@@ -89,4 +89,28 @@ features:
 | [Scaling](./scaling.md) | SQLite/single-process limits and mitigations |
 | [Backup & Migration](./backup-migration.md) | Safeguarding and moving your instance |
 
+### Additional Documentation (Specifics)
+
+- [Payments & Monetization](./payments.md): Stripe Checkout, Onramp, and on-chain verification.
+- [AI Integrations](./ai-integrations.md): Metadata automation and recommendations via OpenRouter.
+- [Google Drive Integration](./google-drive.md): Cloud storage streaming and import.
+- [Torrent System](./torrents.md): WebTorrent integration for downloading music.
+- [Soulseek Integration](./soulseek.md): P2P search and download.
+- [Social & Community](./social-features.md): Posts, comments, and fan interactions.
+- [Smart Contracts](./smart-contracts.md): Technical guide to Solidity contracts on Base.
+- [Backup & Migration](./backup-migration.md): How to safeguard and move your instance.
+- [Scaling & Concurrency Limits](./scaling.md): Practical limits of SQLite/single-process and how to mitigate them.
+- [Payments Security Review](./security-review-payments.md): Findings and review of the payments flow.
+- [Federation](./FEDERATION.md): Details on the ActivityPub protocol in TuneCamp.
+- [Subsonic](./subsonic.md): Support for the Subsonic protocol for external clients.
+- [Nginx](./NGINX.md): Configuration examples for reverse proxy.
+- [Audio Fingerprinting](./audio-fingerprinting.md): Internal audio fingerprint used for library deduplication.
+- [Monitoring & Alerting](./monitoring.md): Health endpoint, Sentry crash reporting, and external uptime checks.
+- [Telegram Bot](./telegram.md): Rapid ingestion of music files and remote management.
+- [Plugins](./PLUGINS.md): Custom providers (streaming, metadata, storage) from a plugins directory.
+- [Lab Apps](./LAB.md): Experimental audio tools embedded in the Lab section — how to create and submit a Lab app.
+- [Roles & Permissions](./ROLES.md): RBAC — Instance Owner, Manager, Curator, Listener.
+- [Becoming an Artist & Sales](./community-mode.md): Artist request flow and the `can_sell` sales gate.
+- [Comparison with Funkwhale](./comparison-funkwhale.md): Differences in models and features.
+
 *Last updated: June 23, 2026*

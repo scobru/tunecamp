@@ -69,6 +69,11 @@ TuneCamp implementa una parte del protocollo Subsonic per garantire la compatibi
 - Endpoint base: `/rest/*.view`
 - Supporta: `getAlbumList`, `getMusicDirectory`, `stream`, etc.
 
+### Model Context Protocol (`/api/mcp`)
+TuneCamp implementa il protocollo MCP per consentire a client AI esterni di interrogare il catalogo e le statistiche del server.
+- `GET /api/mcp/sse`: Stabilisce il canale di streaming asincrono (Server-Sent Events). Richiede autenticazione Bearer (`tc_...`).
+- `POST /api/mcp/message`: Riceve i messaggi e le richieste JSON-RPC client-to-server.
+
 ## Formati di Risposta
 
 Tutte le risposte API (tranne lo streaming audio) sono in formato **JSON**. In caso di errore, il server restituisce un codice di stato HTTP appropriato e un oggetto errore:

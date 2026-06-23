@@ -101,5 +101,12 @@ Molte di queste chiavi possono essere inserite direttamente nell'interfaccia Adm
 
 ---
 
+## 7. Model Context Protocol (MCP)
+
+Se desideri connettere un chatbot AI esterno (es. Claude Desktop) a TuneCamp, puoi usare il server MCP integrato. I client si autenticano tramite i token personali utente (Bearer `tc_...`) generabili dal proprio Profilo nel pannello webapp.
+Per la guida alla configurazione e l'uso dello script di bridge, vedi [mcp-setup-guide.md](./mcp-setup-guide.md).
+
+---
+
 ## Verifica
 Dopo aver inserito le chiavi, riavvia il server TuneCamp. Controlla i log di avvio per assicurarti che i servizi (Telegram, GDrive) siano inizializzati correttamente senza errori di autenticazione.

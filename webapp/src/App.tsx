@@ -40,6 +40,8 @@ const Favorites = lazy(() => import("./pages/Favorites"));
 const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Dig = lazy(() => import("./pages/Dig"));
+const Lab = lazy(() => import("./pages/Lab"));
+const LabApp = lazy(() => import("./pages/LabApp"));
 const Live = lazy(() => import("./pages/Live"));
 const RadioPage = lazy(() => import("./pages/Radio"));
 const NowListening = lazy(() => import("./pages/NowListening"));
@@ -237,6 +239,10 @@ function App() {
             <Route path="/store" element={<ModuleGuard flag="hideStore"><Store /></ModuleGuard>} />
             <Route path="/dig" element={<ModuleGuard flag="hideDig"><Dig /></ModuleGuard>} />
 
+
+            {/* Lab */}
+            <Route path="/lab" element={<Lab />} />
+            <Route path="/lab/:appId" element={<LabApp />} />
 
             {/* Other */}
             <Route path="/support" element={<Support />} />

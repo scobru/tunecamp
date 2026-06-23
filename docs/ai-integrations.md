@@ -46,3 +46,8 @@ To keep costs low (or zero):
 1. **Free Models**: TuneCamp is optimized to work with OpenRouter's free tier models.
 2. **Aggressive Caching**: AI results are cached in the SQLite database. The system never asks the same question twice for the same track/artist.
 3. **Selective Triggers**: AI enrichment is typically triggered by admin actions or during initial ingestion, not on every user request.
+
+## 5. Model Context Protocol (MCP)
+
+TuneCamp can act as an MCP server, allowing external AI clients (such as Claude Desktop or custom agents) to query and control your TuneCamp instance. 
+For detailed instructions on generating API keys and configuring your AI client, see the [mcp-setup-guide.md](./mcp-setup-guide.md).

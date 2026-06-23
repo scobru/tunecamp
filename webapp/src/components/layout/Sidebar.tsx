@@ -30,6 +30,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  FlaskConical,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -252,14 +253,15 @@ export const Sidebar = () => {
           </div>
         )}
 
-        {isAuthenticated && !hideDig && (
-          <div>
-            <SectionHeader label="Lab" />
-            <ul className="menu menu-sm p-0 gap-1">
-              {!hideDig && <NavItem to="/dig" icon={Shovel} label="Dig" />}
-            </ul>
-          </div>
-        )}
+        <div>
+          <SectionHeader label="Lab" />
+          <ul className="menu menu-sm p-0 gap-1">
+            <NavItem to="/lab" icon={FlaskConical} label="Lab" />
+            {isAuthenticated && !hideDig && (
+              <NavItem to="/dig" icon={Shovel} label="Dig" />
+            )}
+          </ul>
+        </div>
 
         {isAuthenticated && canPub && (
           <div>
