@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /development-guide
+      link: /getting-started
     - theme: alt
       text: View on GitHub
       link: https://github.com/scobru/tunecamp
@@ -36,13 +36,15 @@ features:
 
 ## Documentation
 
-### Getting Started
+### 🚀 Getting Started
 
-Everything you need to go from zero to a running instance.
+**New here? Start with the [Getting Started guide](./getting-started.md).** It walks you from an empty machine to a running instance with music in it — install, first login, adding your library, and listening — in about 10 minutes.
+
+Once you're up and running, the guides below go deeper.
 
 | Doc | Description |
 |-----|-------------|
-| [Development Guide](./development-guide.md) | Prerequisites, installation, local dev workflow, and CLI tools |
+| [Getting Started](./getting-started.md) | **Install → first login → add music → listen** (start here) |
 | [API & Services Setup](./api-setup-guide.md) | Step-by-step configuration for Stripe, Google Drive, AI, and other integrations |
 | [Nginx Configuration](./NGINX.md) | Reverse proxy setup for SSL, WebSocket, and HLS |
 | [Backup & Migration](./backup-migration.md) | Database backup, restore, and moving your instance |
