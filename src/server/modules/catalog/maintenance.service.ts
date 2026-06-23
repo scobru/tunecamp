@@ -1,15 +1,39 @@
+import fs from 'fs-extra';
+import path from 'path';
+import crypto from 'crypto';
+import * as mm from 'music-metadata';
+import { glob } from 'glob';
 import type { DatabaseService, Track } from "../../core/database.js";
 import { metadataService } from "./metadata.service.js";
 import type { CatalogService } from "./catalog.service.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { AutoTaggerService, AutoTaggerStatus } from "./autotagger.service.js";
+import type { MaintenanceRepository } from "../../repositories/maintenance.repository.js";
+import { StringUtils } from "../../../utils/stringUtils.js";
+
+async function getFastFileHash(filePath: string): Promise<string> {
+    try {
+        const stats = await fs.stat(filePath);
+        const size = stats.size;
+        const buffer = Buffer.alloc(16384);
+        const fd = await fs.open(filePath, 'r');
+        await fs.read(fd, buffer, 0, 8192, 0);
+        await fs.read(fd, buffer, 8192, 8192, Math.max(0, size - 8192));
+        await fs.close(fd);
+        return crypto.createHash('md5').update(buffer).digest('hex');
+    } catch (e) {
+        return "";
+    }
+}
 
 export class MaintenanceService {
     constructor(
+        private repo: MaintenanceRepository,
         private db: DatabaseService,
         private catalogService: CatalogService,
         private openRouter: OpenRouterService,
-        private autotagger: AutoTaggerService
+        private autotagger: AutoTaggerService,
+        private musicDir: string
     ) {}
 
     /**
@@ -536,5 +560,232 @@ export class MaintenanceService {
         }
 
         return { success, failed };
+    }
+
+    async runStartupRepairs(): Promise<void> {
+        console.log(`\n📦 [Maintenance] Starting startup maintenance phase...`);
+        const startTime = Date.now();
+
+        try {
+            // Remove polluted image files
+            const deletedImages = this.repo.removePollutedImageTracks();
+            if (deletedImages > 0) {
+                console.log(`✅ [Maintenance] Removed ${deletedImages} polluted image track records.`);
+            }
+
+            const primaryAdminId = this.repo.getPrimaryAdminId();
+            if (primaryAdminId) {
+                const ownershipRepairs = this.repo.repairOwnershipGaps(primaryAdminId);
+                const totalChanges = Object.values(ownershipRepairs).reduce((a, b) => a + (b as number), 0);
+                if (totalChanges > 0) {
+                    console.log(`✅ [Maintenance] Ownership repair complete.`);
+                }
+
+                const orphanedAlbums = this.repo.fixOrphanedAlbums();
+                if (orphanedAlbums > 0) console.log(`✅ [Maintenance] Restored ${orphanedAlbums} orphaned albums.`);
+
+                const publicLeakFixes = this.repo.fixPublicLeak();
+                if (publicLeakFixes.sealed > 0) console.log(`✅ [Maintenance] Sealed ${publicLeakFixes.sealed} private releases.`);
+                if (publicLeakFixes.unsealed > 0) console.log(`✅ [Maintenance] Re-flagged ${publicLeakFixes.unsealed} public releases.`);
+
+                let fixedArtistsCount = 0;
+                const orphanAlbumsWithTracks = this.repo.getOrphanAlbumsWithTracks();
+                for (const { album_id } of orphanAlbumsWithTracks) {
+                    const tracks = this.repo.getTrackArtistsForAlbum(album_id);
+                    if (tracks.length === 1) {
+                        const artistId = tracks[0].artist_id;
+                        const albumArtistId = this.repo.getAlbumArtistId(album_id);
+                        if (albumArtistId !== artistId) {
+                            this.repo.setAlbumArtist(album_id, artistId);
+                            fixedArtistsCount++;
+                        }
+                    }
+                }
+                if (fixedArtistsCount > 0) console.log(`✅ [Maintenance] Auto-assigned ${fixedArtistsCount} albums to their track artists.`);
+
+                const adminsWithoutArtist = this.repo.getAdminsWithoutArtist();
+                for (const adm of adminsWithoutArtist) {
+                    const artistName = adm.username;
+                    let existingArtist = this.db.getArtistByName(artistName);
+                    if (!existingArtist) {
+                        const slug = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
+                        try {
+                            const artistId = this.db.createArtist(artistName);
+                            existingArtist = { id: artistId, name: artistName, slug } as any;
+                        } catch (e) {
+                            console.warn("Could not create artist for admin", adm.username);
+                        }
+                    }
+                    if (existingArtist) {
+                        this.repo.linkAdminToArtist(adm.id, existingArtist.id);
+                    }
+                }
+            }
+
+            console.log(`📦 [Maintenance] Repairing corrupted paths in database...`);
+            const tracks = this.db.getAllTracks();
+            const pathRepairs: any[] = [];
+            for (const track of tracks) {
+                const newPath = StringUtils.cleanPath(track.file_path);
+                const newLossless = StringUtils.cleanPath(track.lossless_path);
+                if (newPath !== track.file_path || newLossless !== track.lossless_path) {
+                    pathRepairs.push({ id: track.id, path: newPath, lossless: newLossless });
+                }
+            }
+            if (pathRepairs.length > 0) {
+                const count = this.repo.updateTrackPaths(pathRepairs);
+                console.log(`✅ [Maintenance] Repaired ${count} track paths.`);
+            }
+
+            const encodedRepairs: any[] = [];
+            for (const track of tracks) {
+                if (track.file_path && track.file_path.includes('%')) {
+                    try {
+                        const decoded = decodeURIComponent(track.file_path);
+                        if (decoded !== track.file_path && await fs.pathExists(path.join(this.musicDir, decoded))) {
+                            let decodedLossless = track.lossless_path;
+                            if (track.lossless_path && track.lossless_path.includes('%')) {
+                                const dl = decodeURIComponent(track.lossless_path);
+                                if (await fs.pathExists(path.join(this.musicDir, dl))) decodedLossless = dl;
+                            }
+                            encodedRepairs.push({ id: track.id, path: decoded, lossless: decodedLossless });
+                        }
+                    } catch (e) {}
+                }
+            }
+            if (encodedRepairs.length > 0) {
+                this.repo.updateTrackPaths(encodedRepairs);
+                console.log(`✅ [Maintenance] Repaired ${encodedRepairs.length} URL-encoded track paths.`);
+            }
+
+            const duplicates = this.repo.getDuplicatePaths();
+            let mergedCount = 0;
+            for (const dup of duplicates) {
+                const dupTracks = this.repo.getTracksByPath(dup.file_path);
+                dupTracks.sort((a, b) => {
+                    const score = (t: any) => (t.album_id ? 8 : 0) + (t.duration ? 4 : 0) + (t.fingerprint ? 2 : 0) + (t.external_id ? 1 : 0) + (t.lyrics ? 1 : 0) + (t.lossless_path ? 1 : 0);
+                    const diff = score(b) - score(a);
+                    if (diff !== 0) return diff;
+                    return a.id - b.id;
+                });
+                const keepId = dupTracks[0].id;
+                for (const t of dupTracks.slice(1)) {
+                    try {
+                        this.db.mergeTracks(t.id, keepId);
+                        mergedCount++;
+                    } catch (err) {}
+                }
+            }
+            if (mergedCount > 0) console.log(`✅ [Maintenance] Merged ${mergedCount} duplicate track records.`);
+
+            const bareTracks = this.repo.getBareTracks();
+            let mergedBareCount = 0;
+            for (const bare of bareTracks) {
+                const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
+                if (richMatch) {
+                    try {
+                        this.db.mergeTracks(bare.id, richMatch.id);
+                        mergedBareCount++;
+                    } catch (err) {}
+                }
+            }
+            if (mergedBareCount > 0) console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records.`);
+
+            const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: this.musicDir, posix: true });
+            const dbPathsSet = new Set<string>();
+            const allPaths = this.repo.getAllTrackPaths();
+            for (const t of allPaths) {
+                if (t.file_path) dbPathsSet.add(t.file_path.replace(/\\/g, '/').toLowerCase());
+                if (t.lossless_path) dbPathsSet.add(t.lossless_path.replace(/\\/g, '/').toLowerCase());
+            }
+
+            const orphans = files.filter(f => !dbPathsSet.has(f.replace(/\\/g, '/').toLowerCase()));
+            if (orphans.length > 0) {
+                const genuineOrphans: string[] = [];
+                const DUPE_PATTERN = /^(.+?)\s*\(\d+\)(\.[^.]+)$/;
+                for (const file of orphans) {
+                    const basename = path.basename(file);
+                    const dir = path.dirname(file);
+                    const match = basename.match(DUPE_PATTERN);
+                    if (match) {
+                        const originalBasename = match[1].trimEnd() + match[2];
+                        const originalPath = dir && dir !== '.' ? `${dir}/${originalBasename}` : originalBasename;
+                        if (dbPathsSet.has(originalPath.toLowerCase())) {
+                            await fs.unlink(path.join(this.musicDir, file)).catch(() => {});
+                            continue;
+                        }
+                    }
+                    genuineOrphans.push(file);
+                }
+
+                if (genuineOrphans.length > 0) {
+                    const artists = this.repo.getAllArtists();
+                    const artistMap = new Map(artists.map(a => [a.name.toLowerCase(), a.id]));
+                    for (const file of genuineOrphans) {
+                        try {
+                            const fullPath = path.join(this.musicDir, file);
+                            const metadata = await mm.parseFile(fullPath);
+                            const artistName = metadata.common.artist || "Unknown Artist";
+                            let artistId = artistMap.get(artistName.toLowerCase());
+                            if (!artistId) {
+                                artistId = this.db.createArtist(artistName);
+                                artistMap.set(artistName.toLowerCase(), artistId);
+                            }
+                            const hash = await getFastFileHash(fullPath);
+                            this.db.createTrack({
+                                title: metadata.common.title || path.basename(file, path.extname(file)),
+                                album_id: null,
+                                artist_id: artistId,
+                                owner_id: primaryAdminId || null,
+                                track_num: metadata.common.track?.no || null,
+                                duration: metadata.format.duration || 0,
+                                file_path: file.replace(/\\/g, '/'),
+                                format: metadata.format.codec || path.extname(file).substring(1),
+                                bitrate: metadata.format.bitrate ? Math.round(metadata.format.bitrate / 1000) : null,
+                                sample_rate: metadata.format.sampleRate || null,
+                                lossless_path: ['.wav', '.flac'].includes(path.extname(file).toLowerCase()) ? file.replace(/\\/g, '/') : null,
+                                waveform: null,
+                                url: null,
+                                service: null,
+                                external_artwork: null,
+                                hash: hash,
+                                price: 0,
+                                price_usdc: 0,
+                                currency: 'ETH'
+                            });
+                        } catch (e) {}
+                    }
+                }
+            }
+
+            this.repo.repairArtistAssociations();
+            
+            const allArtistsForDedupe = this.repo.getAllArtists();
+            const artistDupeMap = new Map<string, number[]>();
+            for (const a of allArtistsForDedupe) {
+                const key = a.name.toLowerCase().trim();
+                if (!artistDupeMap.has(key)) artistDupeMap.set(key, []);
+                artistDupeMap.get(key)!.push(a.id);
+            }
+            const tablesWithArtistId = this.repo.getTablesWithArtistId();
+            let mergeArtistCount = 0;
+            for (const [, ids] of artistDupeMap.entries()) {
+                if (ids.length > 1) {
+                    const keepId = Math.min(...ids);
+                    const mergeIds = ids.filter(id => id !== keepId);
+                    for (const fromId of mergeIds) {
+                        this.repo.mergeArtists(fromId, keepId, tablesWithArtistId);
+                        mergeArtistCount++;
+                    }
+                }
+            }
+            if (mergeArtistCount > 0) console.log(`✅ [Maintenance] Deduplicated ${mergeArtistCount} artists.`);
+
+        } catch (error: any) {
+            console.error(`❌ [Maintenance] Error during startup maintenance:`, error.stack || error);
+        }
+
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`📦 [Maintenance] Phase complete (${duration}s).\n`);
     }
 }

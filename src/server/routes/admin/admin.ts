@@ -685,12 +685,14 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Only admin can trigger rescan" });
             }
 
+            if (!maintenance) {
+                return res.status(500).json({ error: "Maintenance service not available" });
+            }
             console.log(`🔍 [Admin] Manual library maintenance and scan triggered by ${req.username}`);
-            const { runStartupMaintenance } = await import("../../modules/catalog/maintenance.startup.js");
 
             // Run maintenance and full scan in background with dedup protection
             const started = taskManager.run('library-rescan', async () => {
-                await runStartupMaintenance(database, config);
+                await maintenance.runStartupRepairs();
                 console.log(`🔍 [Admin] Starting manual library scan: ${musicDir}`);
                 const result = await scanner.scanDirectory(musicDir, (processed, total) => {
                     taskManager.updateProgress('library-rescan', processed, total, `Scanning library: ${processed}/${total} files`);

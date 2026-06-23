@@ -1,7 +1,8 @@
 import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { createDatabase } from '../core/database.js';
 import { Scanner } from '../modules/catalog/scanner.js';
-import { runStartupMaintenance } from '../modules/catalog/maintenance.startup.js';
+import { MaintenanceService } from '../modules/catalog/maintenance.service.js';
+import { MaintenanceRepository } from '../repositories/maintenance.repository.js';
 import path from 'path';
 import fs from 'fs-extra';
 
@@ -80,7 +81,9 @@ describe('Orphan Release Fix Verification', () => {
 
         db.db.prepare("INSERT OR IGNORE INTO admin (username, password_hash, role) VALUES (?, ?, ?)").run("admin", "admin", "admin");
 
-        await runStartupMaintenance(db, { musicDir: TEST_MUSIC_DIR } as any);
+        const repo = new MaintenanceRepository(db.db);
+        const maintenance = new MaintenanceService(repo, db, {} as any, {} as any, {} as any, TEST_MUSIC_DIR);
+        await maintenance.runStartupRepairs();
 
         album = db.getAlbum(albumId);
         expect(album.artist_id).toBe(artistId);

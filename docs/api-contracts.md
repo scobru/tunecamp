@@ -1,6 +1,6 @@
 # Contratti API
 
-TuneCamp espone un'API RESTful per la comunicazione tra la webapp e il backend, oltre a endpoint specifici per ActivityPub e il protocollo Subsonic.
+TuneCamp espone un'API RESTful per la comunicazione tra la webapp e il backend, oltre a endpoint specifici per ActivityPub e il protocollo Subsonic. La specifica OpenAPI completa è disponibile nel file [openapi.yml](./openapi.yml).
 
 ## Autenticazione
 

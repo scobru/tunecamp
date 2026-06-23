@@ -93,6 +93,7 @@ import { createLiveRoutes } from "./routes/api/live.js";
 import { createNowPlayingRoutes } from "./routes/api/now-playing.js";
 import { LiveService } from "./modules/live/live.service.js";
 import { MaintenanceService } from "./modules/catalog/maintenance.service.js";
+import { MaintenanceRepository } from "./repositories/maintenance.repository.js";
 import { OpenRouterService } from "./modules/ai/openrouter.service.js";
 import { AutoTaggerService } from "./modules/catalog/autotagger.service.js";
 import { createSearchRoutes } from "./routes/network/search.js";
@@ -292,7 +293,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     }
 
     const autotaggerService = new AutoTaggerService(database, catalogService, openRouterService);
-    const maintenanceService = new MaintenanceService(database, catalogService, openRouterService, autotaggerService);
+    const maintenanceRepo = new MaintenanceRepository(database.db);
+    const maintenanceService = new MaintenanceService(maintenanceRepo, database, catalogService, openRouterService, autotaggerService, config.musicDir);
     
     const mediaEngine = new MediaEngine(database, config.musicDir, gdriveService, streamingService, {
         transcodeCacheDir: config.transcodeCacheDir,
