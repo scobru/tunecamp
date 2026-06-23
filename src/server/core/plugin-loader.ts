@@ -14,6 +14,12 @@ import type { MetadataProvider, StreamingProvider, DownloadProvider, ScannerProv
 
 const PLUGIN_DIR_ENV = process.env.TUNECAMP_PLUGINS_DIR;
 
+const externalProviderIds = new Set<string>();
+
+export function getExternalProviderIds(): ReadonlySet<string> {
+    return externalProviderIds;
+}
+
 /** Minimal slice of the database needed to restore plugin enabled/disabled state. */
 interface PluginStateStore {
     getPluginState(id: string): { enabled: boolean } | undefined;
@@ -149,6 +155,8 @@ export async function loadPlugins(pluginsDir?: string, db?: PluginStateStore): P
                 console.warn(`[PluginLoader] ⚠️ ${file}: Plugin loaded but matched no known interface. Check your implementation.`);
                 continue;
             }
+
+            externalProviderIds.add(instance.id);
 
             // Restore persisted enabled/disabled state. No saved row → enabled by
             // default. enable() runs the plugin's onEnable() hook; a disabled

@@ -11,6 +11,7 @@ import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../
 import multer from "multer";
 
 import { getDownloadService } from "../../modules/catalog/download.service.js";
+import { getExternalProviderIds } from "../../core/plugin-loader.js";
 import { isDownloadProviderEnabled } from "../../middleware/provider-gate.js";
 import { aiService } from "../../modules/ai/ai.service.js";
 import { taskManager } from "../../modules/workers/task-manager.js";
@@ -2365,7 +2366,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             return res.status(403).json({ error: "Super Root access required" });
         }
 
-        const plugins = [
+        const externalIds = getExternalProviderIds();
+        const flat = [
             ...scanner.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'scanner' })),
             ...metadataService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'metadata' })),
             ...streamingService.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'streaming' })),
@@ -2375,7 +2377,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             ...aiService?.getRegistry().getRegistryInfo().map((p: any) => ({ ...p, type: 'ai' })) || []
         ];
 
-        res.json(plugins);
+        const byId = new Map<string, any>();
+        for (const p of flat) {
+            if (byId.has(p.id)) {
+                byId.get(p.id).types.push(p.type);
+            } else {
+                byId.set(p.id, { ...p, types: [p.type], isExternal: externalIds.has(p.id) });
+            }
+        }
+
+        res.json([...byId.values()]);
     });
 
     /**
