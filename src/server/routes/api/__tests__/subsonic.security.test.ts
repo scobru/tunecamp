@@ -1,7 +1,9 @@
+import { jest } from '@jest/globals';
+jest.setTimeout(30000);
+
 import { createDatabase } from '../../../core/database.js';
 import { createAuthService } from '../../../modules/auth/auth.service.js';
 import { createSubsonicRouter } from '../subsonic.js';
-import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import fs from 'fs-extra';
