@@ -119,3 +119,57 @@ A plugin disabled by an admin stays disabled across restarts.
 You can see all loaded providers, their versions and enabled status — and toggle
 them on/off — in the **Admin Panel → Integrations** section of the TuneCamp web
 interface (root admin only).
+
+---
+
+## Docker / Production deployment
+
+### How plugins are included in the image
+
+The `plugins/` directory is copied into the production Docker image at `/app/plugins`. The env variable `TUNECAMP_PLUGINS_DIR=/app/plugins` is set automatically.
+
+Built-in plugins (e.g. `demo-provider.js`) are always present. Custom plugins survive image rebuilds via a named Docker volume.
+
+### Adding a custom plugin with docker-compose
+
+The default `docker-compose.yml` mounts a named volume at `/app/plugins`:
+
+```yaml
+volumes:
+  - tunecamp_plugins:/app/plugins
+```
+
+On first run, Docker copies the image's `plugins/` content into the volume. After that, add your plugin:
+
+```bash
+# Copy your plugin file into the running container
+docker cp my-plugin.js tunecamp:/app/plugins/
+
+# Restart to load it
+docker compose restart tunecamp
+```
+
+### Using a local folder instead
+
+To manage plugins as files on the host (easier for development):
+
+```yaml
+# docker-compose.yml
+volumes:
+  - /path/to/your/music:/music
+  - tunecamp_data:/data
+  - ./plugins:/app/plugins   # ← bind mount to host folder
+```
+
+Place your `.js` files in `./plugins/` and restart the container.
+
+### Verifying plugins are loaded
+
+```bash
+docker compose logs tunecamp | grep -i plugin
+```
+
+You should see lines like:
+```
+[PluginLoader] Loaded plugin: My Custom Source v1.0.0
+```
