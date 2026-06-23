@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import type { ScrobbleProvider } from "../../core/provider.js";
 import type { DatabaseService } from "../../core/database.js";
 

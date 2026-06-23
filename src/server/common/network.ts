@@ -1,8 +1,8 @@
-import fetch, { Response, RequestInit } from 'node-fetch';
 import { isSafeUrl } from '../../utils/networkUtils.js';
 
 /**
- * Ensures the response body is always consumed to prevent memory leaks in node-fetch.
+ * Ensures the response body is always consumed to prevent leaking the
+ * underlying socket when the caller doesn't read the body.
  */
 export async function drainResponse(res: Response): Promise<void> {
     if (!res) return;
@@ -47,9 +47,8 @@ export async function isLiveTuneCamp(url: string, timeoutMs = 5000): Promise<boo
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
         if (!(await isSafeUrl(base))) return false;
-        // Use the global fetch (same as the peer catalog cache) — NOT the
-        // node-fetch import above — so liveness and catalog retrieval behave
-        // identically and stay mockable in tests.
+        // Use the global fetch (same as the peer catalog cache) so liveness and
+        // catalog retrieval behave identically and stay mockable in tests.
         const res: any = await (globalThis as any).fetch(`${base}/api/catalog`, {
             signal: controller.signal,
             headers: { 'Accept': 'application/json', 'User-Agent': 'TuneCamp-HealthCheck/2.0' }

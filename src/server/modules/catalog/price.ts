@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import { drainResponse } from '../../common/network.js';
 
 interface PriceCache {

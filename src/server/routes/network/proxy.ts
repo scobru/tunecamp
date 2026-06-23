@@ -1,5 +1,5 @@
 import { Router } from "express";
-import fetch from "node-fetch";
+import { Readable } from "node:stream";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 
 import type { ServiceContainer } from "../../core/container.js";
@@ -66,9 +66,12 @@ export function createProxyRoutes(container: ServiceContainer): Router {
             // Handle range requests if needed (basic pass-through for now)
             // For now, just pipe the stream
             if (response.body) {
-                response.body.pipe(res);
-                
-                response.body.on('error', (err) => {
+                // Global fetch yields a web ReadableStream; adapt to a Node
+                // stream so it can be piped to the Express response.
+                const nodeStream = Readable.fromWeb(response.body as any);
+                nodeStream.pipe(res);
+
+                nodeStream.on('error', (err) => {
                     console.error('❌ Proxy stream error:', err);
                     res.end();
                 });

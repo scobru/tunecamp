@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import path from "path";
 import NodeID3 from "node-id3";
 import { drainResponse } from "../../common/network.js";

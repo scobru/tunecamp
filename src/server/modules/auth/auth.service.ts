@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import type { Database } from "better-sqlite3";
-import fetch from "node-fetch";
 import crypto from "crypto";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
 import { UserRole, VisibilityGuardian } from "../../common/visibility.js";

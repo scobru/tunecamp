@@ -1,7 +1,7 @@
 import { jest, describe, test, expect, beforeEach, beforeAll } from '@jest/globals';
-import nodeFetch from 'node-fetch';
 
-const fetch = nodeFetch as any;
+const fetch = jest.fn() as any;
+(globalThis as any).fetch = fetch;
 
 // ESM module namespaces are read-only, so spying on the bindings directly fails.
 // Mock the utils module and import the SUT dynamically so it picks up the mock.

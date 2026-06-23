@@ -1,5 +1,4 @@
 import express, { Router } from "express";
-import fetch from "node-fetch";
 import type { TorrentService } from "../../modules/integrations/torrent.service.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";

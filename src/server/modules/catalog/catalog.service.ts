@@ -6,6 +6,7 @@ import type { StorageEngine } from "../storage/storage.engine.js";
 import type { ActivityPubService } from "../activitypub/activitypub.service.js";
 import { VisibilityGuardian, Capability, VisibilityProfile, UserRole } from "../../common/visibility.js";
 import path from "path";
+import { Readable } from "node:stream";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
 import { fetchSafe, drainResponse } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
@@ -448,8 +449,14 @@ export class CatalogService {
             const fullDir = path.join(this.musicDir, relativeDir);
             await this.storage.ensureDir(fullDir);
 
-            const res = await fetchSafe(url, { size: 10 * 1024 * 1024 }); // 10MB limit
+            const res = await fetchSafe(url);
             if (!res.ok) {
+                await drainResponse(res);
+                return null;
+            }
+            // ponytail: header-trust 10MB cap (global fetch has no node-fetch `size`);
+            // the isSafeUrl/SSRF guard above is the real boundary.
+            if (Number(res.headers.get('content-length') || 0) > 10 * 1024 * 1024) {
                 await drainResponse(res);
                 return null;
             }
@@ -459,7 +466,8 @@ export class CatalogService {
             const filename = `${filenamePrefix}-${Date.now()}${ext}`;
             const fullPath = path.join(fullDir, filename);
 
-            await this.storage.writeFileStream(fullPath, res.body);
+            // Global fetch yields a web ReadableStream; writeFileStream needs a Node stream.
+            await this.storage.writeFileStream(fullPath, Readable.fromWeb(res.body as any));
             return path.posix.join(relativeDir, filename);
         } catch (err: any) {
             console.error(`[CatalogService] Failed to download remote image from ${url}:`, err.message);

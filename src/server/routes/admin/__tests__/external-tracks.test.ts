@@ -3,10 +3,9 @@ import express from 'express';
 import request from 'supertest';
 import { UserRole, VisibilityProfile } from '../../../common/visibility.js';
 
-// Mock node-fetch (global mock from __mocks__/node-fetch.ts is used automatically)
-// We need a reference to the mock fn for per-test setup
-import fetchMock from 'node-fetch';
-const mockFetch = fetchMock as any;
+// Stub the global fetch the proxy route uses; keep a reference for per-test setup.
+const mockFetch = jest.fn() as any;
+(globalThis as any).fetch = mockFetch;
 
 // Mock isSafeUrl to avoid DNS query dependency
 jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({

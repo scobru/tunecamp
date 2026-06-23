@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import type { StreamingProvider, StreamCandidate } from "../../core/provider.js";
 import { 
     scApiRequest, 

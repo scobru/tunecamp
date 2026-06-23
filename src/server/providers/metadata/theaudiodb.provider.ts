@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { TuneCampProvider, MetadataProvider, MetadataMatch, USER_AGENT, ArtistMetadata } from "../../core/provider.js";
 
 import { drainResponse } from "../../common/network.js";
