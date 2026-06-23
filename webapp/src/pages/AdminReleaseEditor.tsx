@@ -63,6 +63,7 @@ interface LocalRelease {
   id: number;
   title: string;
   artist_id: number;
+  owner_id?: number | null;
   type: "album" | "single" | "liveset" | "podcast";
   year: number;
   cover_path?: string;
@@ -99,6 +100,10 @@ export default function AdminReleaseEditor() {
   // self-publish mode (role "user" + artistId) may edit/publish their own content,
   // not just admins/super_users. Keep edit-affordances in sync with this.
   const canEdit = canPublish(user, role);
+  // After the first save of a brand-new release we hold its id here so that any
+  // subsequent save/publish in the same session updates it instead of creating a
+  // second copy (the URL still says /new, so `isNew` stays true). See handleSave.
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
 
   const [loading, setLoading] = useState(false);
@@ -224,6 +229,7 @@ export default function AdminReleaseEditor() {
         id: parseInt(data.id),
         title: data.title,
         artist_id: parseInt(data.artist_id || data.artistId),
+        owner_id: data.owner_id ?? null,
         type: data.type,
         year: data.year,
         slug: data.slug,
@@ -338,15 +344,20 @@ export default function AdminReleaseEditor() {
         externalLinks: metadata.externalLinks,
       } as any;
 
-      let releaseId = id ? parseInt(id) : null;
+      // Prefer the URL id, then any id we created earlier in this session.
+      // Without `createdId`, a "Save" followed by "Publish" on a brand-new
+      // release would create the release twice (the URL still reads /new, so
+      // `isNew` never flips), which is the duplicate-release bug.
+      let releaseId = id ? parseInt(id) : createdId;
       let currentSlug = metadata.slug;
 
       // 1. Create or Update Release
-      if (isNew) {
+      if (!releaseId) {
         const created: any = await API.createRelease(dataToSave);
         releaseId = parseInt(created.id);
         currentSlug = created.slug;
-      } else if (releaseId) {
+        setCreatedId(releaseId);
+      } else {
         await API.updateRelease(String(releaseId), dataToSave);
         // Fetch fresh slug if needed
         if (!currentSlug) {
@@ -668,7 +679,14 @@ export default function AdminReleaseEditor() {
           </h1>
         </div>
         <div className="flex-none gap-2">
-          {!isNew && (isAdmin || (isSuperUser && user?.artistId)) && (
+          {!isNew && (
+            isAdmin ||
+            (isSuperUser && user?.artistId) ||
+            // The release owner or the linked artist may delete their own
+            // release — mirrors the backend VisibilityGuardian.canManageItem gate.
+            (user?.userId != null && metadata.owner_id === user.userId) ||
+            (user?.artistId != null && metadata.artist_id === Number(user.artistId))
+          ) && (
             <button
               className="btn btn-ghost btn-sm text-error hidden sm:flex"
               id="delete-release-btn"
