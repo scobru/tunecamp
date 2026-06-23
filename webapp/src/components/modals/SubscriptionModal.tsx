@@ -11,7 +11,6 @@ const ERC20_ABI = [
     'function decimals() view returns (uint8)',
     'function balanceOf(address owner) view returns (uint256)',
 ];
-const SUBSCRIPTION_PRICE_USDC = 10; // $10/month
 
 export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void }) => {
     const dialogRef = useRef<HTMLDialogElement>(null);
@@ -26,6 +25,7 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
     const [hasStripe, setHasStripe] = useState(false);
     const [treasuryAddress, setTreasuryAddress] = useState<string | null>(null);
     const [usdRate, setUsdRate] = useState<number | null>(null);
+    const [priceUsd, setPriceUsd] = useState(10);
 
     const activeAddress = address;
 
@@ -46,6 +46,8 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
         API.getSiteSettings?.().then((s: any) => {
             if (s?.adminTreasuryAddress) setTreasuryAddress(s.adminTreasuryAddress);
             else if (s?.walletAddress) setTreasuryAddress(s.walletAddress);
+            const p = parseFloat(s?.membershipMonthlyPrice);
+            if (!isNaN(p) && p > 0) setPriceUsd(p);
         }).catch(() => {});
 
         fetch('/api/payments/rate/USD').then(r => r.json()).then(d => setUsdRate(d.rate || null)).catch(() => {});
@@ -62,14 +64,14 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
             if (paymentMethod === 'USDC') {
                 const usdc = new ethers.Contract(BASE_USDC_ADDRESS, ERC20_ABI, signer);
                 const decimals = await usdc.decimals();
-                const amount = ethers.parseUnits(String(SUBSCRIPTION_PRICE_USDC), decimals);
+                const amount = ethers.parseUnits(String(priceUsd), decimals);
                 const tx = await usdc.transfer(treasuryAddress, amount);
                 hash = tx.hash;
                 setTxHash(hash);
                 await tx.wait();
             } else {
                 if (!usdRate) throw new Error('ETH rate unavailable');
-                const ethAmount = SUBSCRIPTION_PRICE_USDC / usdRate;
+                const ethAmount = priceUsd / usdRate;
                 const tx = await signer.sendTransaction({
                     to: treasuryAddress,
                     value: ethers.parseEther(ethAmount.toFixed(8)),
@@ -123,7 +125,7 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
                     </div>
                     <h3 className="font-bold text-xl tracking-tight">Monthly Subscription</h3>
                     <p className="text-sm opacity-60 mt-1">Full access to all content & digital assets</p>
-                    <div className="text-3xl font-black text-primary mt-3">$10<span className="text-base font-normal opacity-60">/month</span></div>
+                    <div className="text-3xl font-black text-primary mt-3">${priceUsd}<span className="text-base font-normal opacity-60">/month</span></div>
                 </div>
 
                 {txHash ? (
@@ -156,7 +158,7 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
                                             className={`btn btn-sm flex-1 rounded-full ${paymentMethod === m ? 'btn-primary' : 'btn-ghost border border-base-content/20'}`}
                                             onClick={() => setPaymentMethod(m)}
                                         >
-                                            {m === 'USDC' ? `10 USDC` : usdRate ? `~${(SUBSCRIPTION_PRICE_USDC / usdRate).toFixed(5)} ETH` : 'ETH'}
+                                            {m === 'USDC' ? `${priceUsd} USDC` : usdRate ? `~${(priceUsd / usdRate).toFixed(5)} ETH` : 'ETH'}
                                         </button>
                                     ))}
                                 </div>

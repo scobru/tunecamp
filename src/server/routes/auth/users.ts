@@ -185,30 +185,6 @@ export function createUsersRoutes(container: ServiceContainer): Router {
     });
 
     /**
-     * GET /api/users/:pubKey
-     * @deprecated Zen user profiles removed (Phase 0). Endpoint kept for compatibility.
-     */
-    router.get("/:pubKey", (_req, res) => {
-        res.status(404).json({ error: "User not found" });
-    });
-
-    /**
-     * POST /api/users/sync
-     * @deprecated Zen user sync removed (Phase 0). No-op for backward compatibility.
-     */
-    router.post("/sync", (_req, res) => {
-        res.json({ success: true });
-    });
-
-    /**
-     * POST /api/users/sync-pair
-     * @deprecated ZenAuth removed (Phase 1). No-op for backward compatibility.
-     */
-    router.post("/sync-pair", (_req, res) => {
-        res.json({ success: true });
-    });
-
-    /**
      * GET /api/users/me/storage
      * Get current user's storage usage (requires auth)
      */

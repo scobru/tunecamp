@@ -5,23 +5,6 @@
 import type { Database as DatabaseType } from "better-sqlite3";
 import { VisibilityProfile, ViewerContext } from "../common/visibility.js";
 
-interface OAuthClient {
-    id?: number;
-    instance_url: string;
-    client_id: string;
-    client_secret: string;
-    redirect_uri: string;
-    created_at?: string;
-}
-
-interface OAuthLink {
-    provider: string;
-    subject: string;
-    gun_pub: string;
-    gun_priv: string;
-    created_at: string;
-}
-
 export interface User {
     id: number;
     username: string;
@@ -431,12 +414,6 @@ export interface IdentityManager {
     getAdmins(): User[];
 updateSubscription(userId: number, status: string, expiresAt: string): void;
     getUserSubscription(userId: number): { status: string, expiresAt: string | null };
-
-    // Auth / OAuth
-    createOAuthClient(client: Omit<OAuthClient, "created_at">): void;
-    getOAuthClient(instanceUrl: string): OAuthClient | undefined;
-    saveOAuthLink(provider: string, subject: string, gunPub: string, gunPriv: string): void;
-    getOAuthLink(provider: string, subject: string): OAuthLink | undefined;
 
     // Settings
     getSetting(key: string): string | undefined;

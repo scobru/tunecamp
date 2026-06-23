@@ -194,6 +194,7 @@ const Store = () => {
     const [subscribed, setSubscribed] = useState(false);
     const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
     const [enabled, setEnabled] = useState(true);
+    const [priceUsd, setPriceUsd] = useState(10);
     const hasSubscription = subscribed || !!(user as any)?.subscriptionStatus === true;
 
     useEffect(() => {
@@ -206,6 +207,8 @@ const Store = () => {
                 if (s.hideStore === true || s.hideStore === "true") {
                     setEnabled(false);
                 }
+                const p = parseFloat(s.membershipMonthlyPrice as any);
+                if (!isNaN(p) && p > 0) setPriceUsd(p);
                 setAssets(data);
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
@@ -280,11 +283,11 @@ const Store = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg">Monthly Subscription</h3>
-                                <p className="text-sm opacity-60">$10/month · Unlock all content & membership assets</p>
+                                <p className="text-sm opacity-60">${priceUsd}/month · Unlock all content & membership assets</p>
                             </div>
                         </div>
                         <button className="btn btn-primary rounded-full gap-2 shadow-md" onClick={openSubscription}>
-                            <Crown size={16} /> Subscribe — $10/mo
+                            <Crown size={16} /> Subscribe — ${priceUsd}/mo
                         </button>
                     </div>
                 </div>
