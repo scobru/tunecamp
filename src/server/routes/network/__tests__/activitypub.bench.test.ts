@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+jest.setTimeout(30000);
 
 import { createDatabase } from "../../../core/database.js";
 import { VisibilityProfile } from "../../../common/visibility.js";

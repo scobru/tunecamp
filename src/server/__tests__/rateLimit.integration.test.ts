@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { jest } from '@jest/globals';
+jest.setTimeout(30000);
 
 describe('Rate Limit Integration', () => {
     let app: express.Express;

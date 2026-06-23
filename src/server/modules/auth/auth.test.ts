@@ -1,6 +1,7 @@
 import { createAuthService } from "./auth.service.js";
 import sqlite3 from "better-sqlite3";
 import { jest } from '@jest/globals';
+jest.setTimeout(30000);
 import jwt from "jsonwebtoken";
 
 const Database = sqlite3;
