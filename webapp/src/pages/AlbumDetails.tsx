@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical } from "lucide-react";
 
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -562,7 +562,9 @@ const AlbumDetails = () => {
                 </div>
 
                 <div className="list-col-wrap flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
+                  {/* Primary actions stay inline; secondary actions move into the
+                      overflow menu to keep the row uncluttered. */}
+                  <button
                     onClick={() => playTrack(track, album.tracks!)}
                     className="btn btn-ghost btn-sm btn-circle text-primary"
                     aria-label={`Play ${track.title}`}
@@ -570,17 +572,8 @@ const AlbumDetails = () => {
                   >
                     <Play size={18} fill="currentColor" aria-hidden="true" />
                   </button>
-                  
+
                   <button
-                    onClick={() => { addToQueue(track); notify.success(`"${track.title}" added to queue`); }}
-                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-primary"
-                    aria-label={`Add ${track.title} to queue`}
-                    title="Add to Queue"
-                  >
-                    <ListPlus size={18} aria-hidden="true" />
-                  </button>
-                  
-                  <button 
                     onClick={() => handleLikeTrack(track)}
                     className={clsx("btn btn-ghost btn-sm btn-circle", likedTrackIds.has(String(track.id)) && "text-primary")}
                     aria-label={likedTrackIds.has(String(track.id)) ? `Unlike ${track.title}` : `Like ${track.title}`}
@@ -589,80 +582,97 @@ const AlbumDetails = () => {
                     <Heart size={18} fill={likedTrackIds.has(String(track.id)) ? "currentColor" : "none"} aria-hidden="true" />
                   </button>
 
-                  {isExternalShowcase && externalBuyUrl && (
-                    <a
-                      href={externalBuyUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-ghost btn-sm btn-circle text-secondary"
-                      aria-label={`${buyLabel} — ${track.title}`}
-                      title={buyLabel}
+                  <div className="dropdown dropdown-end">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`More actions for ${track.title}`}
+                      className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content"
+                      title="More"
                     >
-                      <ExternalLink size={18} aria-hidden="true" />
-                    </a>
-                  )}
+                      <MoreVertical size={18} aria-hidden="true" />
+                    </div>
+                    <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-52 border border-base-content/10">
+                      <li>
+                        <a onClick={() => { addToQueue(track); notify.success(`"${track.title}" added to queue`); }}>
+                          <ListPlus size={16} /> Add to Queue
+                        </a>
+                      </li>
+                      <li>
+                        <a
+                          onClick={() => {
+                            if (!isAdmin && !useAuthStore.getState().isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
+                            document.dispatchEvent(new CustomEvent("open-playlist-modal", { detail: { trackId: track.id } }));
+                          }}
+                        >
+                          <ListMusic size={16} /> Add to Playlist
+                        </a>
+                      </li>
 
-                  {!isExternalShowcase && unlocked && (
-                    <button
-                      onClick={async () => {
-                        if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
-                          window.open(API.getTrackDownloadUrl(track.id), "_blank");
-                          return;
-                        }
-                        const code = await verifyAndGetCode(track.id);
-                        if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
-                      }}
-                      className="btn btn-ghost btn-sm btn-circle text-success"
-                      aria-label={`Download ${track.title}`}
-                      title="Download Track"
-                    >
-                      <CheckCircle2 size={18} aria-hidden="true" />
-                    </button>
-                  )}
+                      {isExternalShowcase && externalBuyUrl && (
+                        <li>
+                          <a href={externalBuyUrl} target="_blank" rel="noopener noreferrer" className="text-secondary">
+                            <ExternalLink size={16} /> {buyLabel}
+                          </a>
+                        </li>
+                      )}
 
-                  {!isExternalShowcase && !unlocked && album.download === "free" && (
-                    <a 
-                      href={`/api/albums/${album.slug || album.id}/download?format=${downloadFormat}`} 
-                      target="_blank"
-                      className="btn btn-ghost btn-sm btn-circle text-success flex items-center justify-center"
-                      aria-label={`Free Download ${track.title}`}
-                      title="Free Download"
-                    >
-                      <Download size={18} aria-hidden="true" />
-                    </a>
-                  )}
+                      {!isExternalShowcase && unlocked && (
+                        <li>
+                          <a
+                            className="text-success"
+                            onClick={async () => {
+                              if (isAdmin || (user?.artistId && (String(track.artistId) === String(user.artistId) || String(album?.artistId) === String(user.artistId)))) {
+                                window.open(API.getTrackDownloadUrl(track.id), "_blank");
+                                return;
+                              }
+                              const code = await verifyAndGetCode(track.id);
+                              if (code) window.open(`/api/payments/download/${track.id}?code=${code}`, "_blank");
+                            }}
+                          >
+                            <CheckCircle2 size={16} /> Download
+                          </a>
+                        </li>
+                      )}
 
-                  {!unlocked && album.download !== "free" && album.download !== "external" && isRelease && (
-                    <button 
-                      onClick={() => {
-                        if (!isAdmin && !useAuthStore.getState().isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
-                        window.dispatchEvent(new CustomEvent("open-checkout-modal", { 
-                          detail: { 
-                            track: { 
-                              ...track, 
-                              id: String(track.id).replace("tr_", ""),
-                              albumId: album.id,
-                              artist: track.artistName || track.artist_name || album.artist_name || "Unknown Artist"
-                            } 
-                          } 
-                        }));
-                      }}
-                      className="btn btn-ghost btn-sm btn-circle text-secondary"
-                      aria-label={`Purchase ${track.title}`}
-                      title="Purchase Track"
-                    >
-                      <Wallet size={18} aria-hidden="true" />
-                    </button>
-                  )}
+                      {!isExternalShowcase && !unlocked && album.download === "free" && (
+                        <li>
+                          <a href={`/api/albums/${album.slug || album.id}/download?format=${downloadFormat}`} target="_blank" className="text-success">
+                            <Download size={16} /> Free Download
+                          </a>
+                        </li>
+                      )}
 
-                  <button 
-                    onClick={() => handleShareTrack(track)}
-                    className="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content"
-                    aria-label={`Share ${track.title}`}
-                    title="Share Track"
-                  >
-                    <Share2 size={18} aria-hidden="true" />
-                  </button>
+                      {!unlocked && album.download !== "free" && album.download !== "external" && isRelease && (
+                        <li>
+                          <a
+                            className="text-secondary"
+                            onClick={() => {
+                              if (!isAdmin && !useAuthStore.getState().isAuthenticated) return window.dispatchEvent(new CustomEvent("open-auth-modal"));
+                              window.dispatchEvent(new CustomEvent("open-checkout-modal", {
+                                detail: {
+                                  track: {
+                                    ...track,
+                                    id: String(track.id).replace("tr_", ""),
+                                    albumId: album.id,
+                                    artist: track.artistName || track.artist_name || album.artist_name || "Unknown Artist"
+                                  }
+                                }
+                              }));
+                            }}
+                          >
+                            <Wallet size={16} /> Purchase
+                          </a>
+                        </li>
+                      )}
+
+                      <li>
+                        <a onClick={() => handleShareTrack(track)}>
+                          <Share2 size={16} /> Share
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             );

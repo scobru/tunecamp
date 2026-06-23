@@ -61,7 +61,7 @@ export class RadioService {
         this.tracks = this._loadTracks(config);
 
         if (this.tracks.length === 0) {
-            throw new Error("No playable tracks found for the radio");
+            throw new Error("No playable tracks found — the radio can only broadcast tracks with a local audio file on the server. Cloud, external, and network tracks (no local file) can't be streamed to the radio.");
         }
 
         if (this.config.shuffle) {
