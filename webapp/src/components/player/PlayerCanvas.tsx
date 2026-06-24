@@ -79,52 +79,50 @@ export const PlayerCanvas = () => {
             </button>
 
             {/* Main Content */}
-            <div className="relative w-full max-w-4xl px-8 flex flex-col items-center gap-12 z-10 animate-fade-in">
-                {/* Large Cover Art */}
-                <div className="relative group">
-                    <div 
+            <div className="relative w-full max-w-4xl px-8 flex flex-col items-center gap-6 md:gap-8 z-10 animate-fade-in">
+                {/* Cover Art */}
+                <div className="relative group flex-shrink-0">
+                    <div
                         className="absolute -inset-4 bg-primary/20 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"
                         style={{ backgroundColor: dominantColor ? `${dominantColor}40` : undefined }}
                     />
-                    <div className="relative aspect-square w-64 md:w-80 lg:w-96 rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] ring-1 ring-white/20 transition-transform duration-700 group-hover:scale-[1.02]">
+                    <div className="relative aspect-square w-44 sm:w-52 md:w-60 lg:w-64 rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] ring-1 ring-white/20 transition-transform duration-700 group-hover:scale-[1.02]">
                         {coverUrl ? (
-                            <img 
-                                src={coverUrl} 
-                                alt={currentTrack.title} 
+                            <img
+                                src={coverUrl}
+                                alt={currentTrack.title}
                                 className="w-full h-full object-cover"
                             />
                         ) : (
                             <div className="w-full h-full bg-neutral flex items-center justify-center">
-                                <Disc size={128} className="text-white/10" />
+                                <Disc size={96} className="text-white/10" />
                             </div>
                         )}
                     </div>
                 </div>
 
                 {/* Track Info */}
-                <div className="text-center space-y-2">
-                    <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-white">
+                <div className="text-center space-y-1 flex-shrink-0">
+                    <h2 className="text-2xl md:text-4xl font-black tracking-tighter text-white leading-tight">
                         {currentTrack.title}
                     </h2>
-                    <p 
-                        className="text-lg md:text-2xl font-bold opacity-60 tracking-[0.2em]"
+                    <p
+                        className="text-base md:text-xl font-bold opacity-60 tracking-[0.2em]"
                         style={{ color: dominantColor || 'var(--p)' }}
                     >
                         {currentTrack.artistName}
                     </p>
                 </div>
 
-                {/* Large Waveform */}
+                {/* Waveform */}
                 <div
-                    className="w-full h-48 md:h-64 group cursor-pointer relative"
+                    className="w-full h-28 md:h-36 flex-shrink-0 cursor-pointer relative overflow-hidden"
                     role="slider"
                     aria-label="Seek"
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={Math.round(progress)}
                     onClick={(e) => {
-                        // The inner <canvas> uses pointer-events-none, so this click
-                        // fires on the full-width container and maps 1:1 to track position.
                         const rect = e.currentTarget.getBoundingClientRect();
                         if (rect.width <= 0) return;
                         const percent = (e.clientX - rect.left) / rect.width;
@@ -133,17 +131,17 @@ export const PlayerCanvas = () => {
                         );
                     }}
                 >
-                    <Waveform 
-                        data={currentTrack.waveform} 
+                    <Waveform
+                        data={currentTrack.waveform}
                         progress={progress / 100}
-                        height={240}
+                        height={144}
                         colorPlayed={dominantColor || '#1db954'}
                         colorRemaining="rgba(255, 255, 255, 0.05)"
                     />
                 </div>
 
-                {/* Simplified Controls */}
-                <div className="flex items-center gap-12">
+                {/* Controls */}
+                <div className="flex items-center gap-8 md:gap-12 flex-shrink-0">
                     <button 
                         onClick={prev}
                         className="btn btn-ghost btn-circle btn-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"

@@ -140,10 +140,9 @@ export const Waveform = ({
     }
 
     return (
-        <canvas 
+        <canvas
             ref={canvasRef}
-            className="w-full h-full pointer-events-none select-none"
-            style={{ height: `${height}px`, display: 'block' }}
+            className="block w-full h-full pointer-events-none select-none"
         />
     );
 };

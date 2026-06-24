@@ -42,33 +42,70 @@ The **Curator** is a specialized role focused on library quality and content org
 ---
 
 ## 4. Listener (Standard User)
-The **Listener** is the base role for users who consume music and interact with the platform. Listeners **cannot publish**: TuneCamp is designed for artists who receive payments themselves, or labels with a direct relationship to their artists — so uploading tracks, creating releases, selling store assets, and social posting are reserved to Curators and Managers, who have that direct line to the artist.
+The **Listener** is the base role for users who consume music and interact with the platform.
 
 ### Capabilities:
 - **Listening & Collection:** Stream music via the web player or Subsonic-compatible apps, purchase content, and manage favorites.
 - **Social Interaction:** Create playlists, comment, follow artists, and manage their own profile.
 
-### Becoming an Artist
-An artist account is a **Curator** (or higher) linked to an artist profile. There are two paths:
-1. The admin promotes a user to Curator and links an artist profile manually (Admin → Users → Edit).
-2. The listener requests one from **Profile → Settings → Become an Artist**; when the admin approves it from the Users panel, the account is **promoted to Curator** and a non-sellable artist profile is created and linked. The approval is the direct admin–artist contact that publishing requires.
+---
 
-Selling is controlled separately by the per-artist `can_sell` flag, which only Managers/Root Admin can enable ("Sales enabled" in the artist editor).
+## 5. Listener-Artist (Listener with an artist profile)
+A **Listener-Artist** is a standard `user`-role account that has been linked to an artist profile by an admin. The role stays `user` — **no promotion to Curator happens** — but the artist-profile link grants publishing rights via `canPublishContent`. This is the state a listener enters after their artist request is approved.
+
+### Additional capabilities over plain Listener:
+- **Upload tracks** and create albums/releases under their own artist profile.
+- **ActivityPub posts** (release announcements) under their artist identity.
+- **Storage quota** assigned at approval time (configurable via Admin → Settings → `listenerSelfPublishQuota`).
+
+### What they still cannot do:
+- Edit or manage other users' content (no library-wide write access).
+- Access the admin panel.
+- Sell content (blocked at checkout server-side) — see `can_sell` below.
+
+### Paths to become a Listener-Artist:
+1. **Admin-initiated:** Admin links an artist profile to an existing user manually (Admin → Users → Edit → Artist Profile).
+2. **Self-request:** The listener requests one from **Profile → Settings → Become an Artist**. The admin approves from the Users panel (`POST /api/admin/system/users/:id/approve-artist`): an artist profile is created under their username, `can_sell` is set to `false`, and the storage quota is applied. The role stays `user`.
+
+---
+
+## 6. The `can_sell` flag (per-artist sales gate)
+`can_sell` is a flag on the **artist profile** (not on the user account). It controls whether buyers can complete a purchase for that artist's content. It is independent of the user's role.
+
+| `can_sell` | Effect |
+| :--- | :--- |
+| `0` (default after approval) | Stripe checkout, crypto on-ramp, and NFT mint are **refused** server-side for this artist's items. The Buy button may be hidden client-side, but the server enforces the block regardless. |
+| `1` | Full sales enabled — Stripe (direct charge to artist's connected account if `stripe_account_id` is set, otherwise instance account), crypto, and NFT mint all work. |
+
+**How `can_sell` gets enabled:**
+- Manager or Root Admin toggles "Sales enabled" in the artist editor (Admin → Library → Artists → Edit).
+- **Automatic via Stripe Connect:** When an artist completes Stripe Connect onboarding and `charges_enabled` becomes `true` on their connected account, the `account.updated` webhook automatically sets `can_sell = 1`. If Stripe later disables charges, it reverts to `0`.
 
 ---
 
 ## Permission Matrix (Summary)
 
-| Capability | Instance Owner | Manager | Curator | Listener |
-| :--- | :---: | :---: | :---: | :---: |
-| Modify Site Settings | ✅ | ❌ | ❌ | ❌ |
-| Manage Users | ✅ | ✅ (view) | ❌ | ❌ |
-| Edit Others' Content | ✅ | ✅ | ✅ | ❌ |
-| Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ❌ |
-| Sell Music / Store Assets | ✅ | ✅ | ✅ (with artist link + `can_sell`) | ❌ |
-| Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ❌ |
-| Access Server Keys | ✅ | ❌ | ❌ | ❌ |
-| Manage Federation | ✅ | ✅ | ❌ | ❌ |
+| Capability | Root Admin | Manager | Curator | Listener-Artist | Listener |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Modify Site Settings | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Manage Users | ✅ | ✅ (view) | ❌ | ❌ | ❌ |
+| Edit Others' Content | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ✅ (own profile only) | ❌ |
+| Sell Music / Store Assets | ✅ | ✅ (with `can_sell`) | ✅ (with artist link + `can_sell`) | ✅ (with `can_sell`) | ❌ |
+| Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ✅ (own profile only) | ❌ |
+| Access Server Keys | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Manage Federation | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+### Internal role names (for debugging / DB queries)
+
+| UI name | DB `role` value | `UserRole` enum |
+| :--- | :--- | :--- |
+| Root Admin / Instance Owner | `root_admin` | `ROOT_ADMIN` |
+| Manager | `admin` | `ADMIN` |
+| Curator | `super_user` | `SUPER_USER` |
+| Listener-Artist | `user` + `artist_id IS NOT NULL` | `NORMAL_USER` |
+| Listener | `user` | `NORMAL_USER` |
+| Unauthenticated | — | `GUEST` |
 
 ---
 

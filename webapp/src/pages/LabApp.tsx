@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Github, Maximize2, AlertTriangle } from 'lucide-react';
 import type { LabAppRecord } from '../types';
+import { useAuthStore } from '../stores/useAuthStore';
 import API from '../services/api';
 
 const LabApp = () => {
@@ -9,6 +10,43 @@ const LabApp = () => {
   const navigate = useNavigate();
   const [app, setApp] = useState<LabAppRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Handle postMessage protocol from lab apps (getUser, exportAudio)
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type !== 'tunecamp:request') return;
+      const { action, payload } = event.data;
+      const source = event.source as Window | null;
+      if (!source) return;
+
+      const respond = (responsePayload: unknown) =>
+        source.postMessage({ type: 'tunecamp:response', action, payload: responsePayload }, event.origin || '*');
+
+      if (action === 'getUser') {
+        respond(user ? { username: user.username, artistId: user.artistId ?? null } : null);
+      } else if (action === 'exportAudio') {
+        try {
+          const blob: Blob = payload?.blob;
+          if (!(blob instanceof Blob)) throw new Error('No audio blob received');
+          const filename = payload?.filename || 'mix.wav';
+          const mimeType = payload?.mimeType || 'audio/wav';
+          const file = new File([blob], filename, { type: mimeType });
+          await API.uploadTracks([file], {
+            artist: user?.username,
+            ...(user?.artistId ? { artistId: user.artistId } : {}),
+          });
+          respond({ success: true });
+        } catch (err: any) {
+          respond({ success: false, error: err?.message || 'Upload failed' });
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [user]);
 
   useEffect(() => {
     API.getLabApps()
@@ -95,6 +133,7 @@ const LabApp = () => {
 
       {/* iFrame */}
       <iframe
+        ref={iframeRef}
         src={app.src}
         title={app.name}
         className="flex-1 w-full border-none bg-base-100"
