@@ -559,6 +559,22 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["microphone"]',
             1
         );
+
+        -- Seed the built-in Audiofabric visualiser if not already present
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
+        VALUES (
+            2,
+            'Audiofabric',
+            'Real-time 3D WebGL music visualiser powered by the Web Audio API. Renders a spring-physics frequency fabric that pulses with the music. Plays built-in demo tracks or streams directly from your TuneCamp library via the Subsonic API.',
+            '/lab/audiofabric/index.html',
+            'effects',
+            'scobru',
+            'https://github.com/scobru/tunecamp-audiofabric',
+            '["autoplay"]',
+            '["allow-scripts","allow-same-origin"]',
+            '["autoplay"]',
+            1
+        );
     `);
 
     // Runtime Migrations (robust column checks)

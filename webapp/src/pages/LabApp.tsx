@@ -184,29 +184,27 @@ const LabApp = () => {
           </a>
         )}
 
-        <a
-          href={(() => {
-            if (!app) return '#';
-            // For audiofabric, pass the session token so it can stream from
-            // the Subsonic API when opened fullscreen in a new tab.
+        <button
+          type="button"
+          onClick={() => {
+            if (!app) return;
             const token = localStorage.getItem('tunecamp_token');
+            let url = app.src;
             if (app.name.toLowerCase() === 'audiofabric' && token) {
               const params = new URLSearchParams({
                 tc: window.location.origin,
                 u: user?.username || '_',
                 p: token,
               });
-              return `${app.src}?${params.toString()}`;
+              url = `${app.src}?${params.toString()}`;
             }
-            return app.src;
-          })()}
-          target="_blank"
-          rel="noopener noreferrer"
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
           className="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100"
           title="Open in new tab"
         >
           <Maximize2 size={16} />
-        </a>
+        </button>
       </div>
 
       {/* iFrame */}
