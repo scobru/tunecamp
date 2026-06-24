@@ -190,7 +190,7 @@ const LabApp = () => {
             // For audiofabric, pass the session token so it can stream from
             // the Subsonic API when opened fullscreen in a new tab.
             const token = localStorage.getItem('tunecamp_token');
-            if (app.id === 'audiofabric' && token) {
+            if (app.name.toLowerCase() === 'audiofabric' && token) {
               const params = new URLSearchParams({
                 tc: window.location.origin,
                 u: user?.username || '_',
