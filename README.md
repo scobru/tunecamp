@@ -2,9 +2,11 @@
   <img src="./logo.svg" alt="Tunecamp Logo" width="150" height="150">
   <h1>Tunecamp</h1>
   <p><strong>A self-hosted, federated music platform for independent artists and labels.</strong></p>
+  <p><a href="https://scobru.github.io/tunecamp/">📖 Documentation</a></p>
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/Docs-GitHub%20Pages-blue)](https://scobru.github.io/tunecamp/)
 
 ## Why This Exists
 
