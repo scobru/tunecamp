@@ -114,6 +114,7 @@ import { createRadioRoutes } from "./routes/api/radio.js";
 import { createPeerService } from "./modules/peer/peer.service.js";
 import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
 import { createPeersRoutes } from "./routes/api/peers.js";
+import { createLabAppsRoutes } from "./routes/admin/lab-apps.js";
 
 
 const _serverFilename = fileURLToPath(import.meta.url);
@@ -476,6 +477,8 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
     app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
     app.use("/api/peers", createPeersRoutes(container));
+    app.use("/api/lab-apps", createLabAppsRoutes(container));
+    app.use("/api/admin/lab-apps", authMiddleware.requireUser, createLabAppsRoutes(container));
 
 
 

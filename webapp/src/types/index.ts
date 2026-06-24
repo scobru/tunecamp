@@ -575,3 +575,18 @@ export interface DigHistoryItem {
     source: string;
     created_at: string;
 }
+
+export interface LabAppRecord {
+    id: number;
+    name: string;
+    description: string | null;
+    src: string;
+    category: 'recording' | 'synthesis' | 'composition' | 'effects' | 'other';
+    author: string | null;
+    sourceUrl: string | null;
+    permissions: string[];
+    sandbox: string[];
+    allow: string[];
+    enabled: boolean;
+    created_at: string;
+}

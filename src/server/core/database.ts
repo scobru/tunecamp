@@ -526,6 +526,38 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_dig_cache_expires ON dig_cache(expires_at);
         CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id);
         CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist);
+
+        -- Lab apps: community audio tools embedded via iFrame
+        CREATE TABLE IF NOT EXISTS lab_apps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            src TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'other',
+            author TEXT,
+            source_url TEXT,
+            permissions TEXT NOT NULL DEFAULT '[]',
+            sandbox TEXT NOT NULL DEFAULT '["allow-scripts"]',
+            allow TEXT NOT NULL DEFAULT '[]',
+            enabled INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Seed the built-in 4-Track Recorder if not already present
+        INSERT OR IGNORE INTO lab_apps (id, name, description, src, category, author, source_url, permissions, sandbox, allow, enabled)
+        VALUES (
+            1,
+            '4-Track Recorder',
+            'Browser-based 4-track audio recorder with overdub support, latency compensation, and sample-accurate multi-track playback. Runs entirely in your browser — no server needed.',
+            'https://www.4track.cc',
+            'recording',
+            'andreboekhorst',
+            'https://github.com/andreboekhorst/4-track-recorder',
+            '["microphone"]',
+            '["allow-scripts","allow-same-origin","allow-downloads","allow-forms"]',
+            '["microphone"]',
+            1
+        );
     `);
 
     // Runtime Migrations (robust column checks)
