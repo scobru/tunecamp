@@ -304,11 +304,13 @@ export function createSearchRoutes(container: ServiceContainer): Router {
 
             // 4. Search Peer Tracks (if authenticated)
             let peerResults: any[] = [];
-            const peerEnabled = identity.getSetting("peerEnabled") === "true";
-            if (req.userId && peerEnabled) {
-                const peerService = (container as any).peerService;
-                if (peerService) {
-                    peerResults = peerService.searchTracks(query);
+            if (req.userId) {
+                const peerEnabled = typeof identity.getSetting === 'function' ? identity.getSetting("peerEnabled") === "true" : false;
+                if (peerEnabled) {
+                    const peerService = (container as any).peerService;
+                    if (peerService && typeof peerService.searchTracks === 'function') {
+                        peerResults = peerService.searchTracks(query);
+                    }
                 }
             }
 

@@ -9,7 +9,11 @@ function buildApp(services: any, reqPatch: (req: any) => void) {
     const app = express();
     app.use(express.json());
     app.use((req: any, _res, next) => { reqPatch(req); next(); });
-    app.use('/api/search', createSearchRoutes(services as any));
+    const mockIdentity = {
+        getSetting: jest.fn().mockReturnValue('false'),
+        getAllSettings: jest.fn().mockReturnValue({}),
+    };
+    app.use('/api/search', createSearchRoutes({ identity: mockIdentity, ...services } as any));
     return app;
 }
 
