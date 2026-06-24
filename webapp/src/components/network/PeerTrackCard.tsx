@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Play, Pause, Download, Music } from "lucide-react";
+import { Play, Pause, Download } from "lucide-react";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { formatDuration } from "../../utils/format";
 import API from "../../services/api";
