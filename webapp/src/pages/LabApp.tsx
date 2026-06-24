@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Github, Maximize2, AlertTriangle } from 'lucide-react';
 import type { LabAppRecord } from '../types';
 import { useAuthStore } from '../stores/useAuthStore';
+import { usePlayerStore } from '../stores/usePlayerStore';
 import API from '../services/api';
 
 const LabApp = () => {
@@ -10,7 +11,7 @@ const LabApp = () => {
   const navigate = useNavigate();
   const [app, setApp] = useState<LabAppRecord | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Handle postMessage protocol from lab apps (getUser, exportAudio)
@@ -25,7 +26,9 @@ const LabApp = () => {
         source.postMessage({ type: 'tunecamp:response', action, payload: responsePayload }, event.origin || '*');
 
       if (action === 'getUser') {
-        respond(user ? { username: user.username, artistId: user.artistId ?? null } : null);
+        respond(user
+          ? { id: user.id ?? user.artistId ?? null, username: user.username, role: role ?? null }
+          : null);
       } else if (action === 'getLibrary') {
         try {
           const limit = payload?.limit ?? 50;
@@ -46,7 +49,25 @@ const LabApp = () => {
           respond({ tracks: [] });
         }
       } else if (action === 'getNowPlaying') {
-        respond(null);
+        const { currentTrack, isPlaying, currentTime, duration } = usePlayerStore.getState();
+        if (!currentTrack) {
+          respond(null);
+        } else {
+          respond({
+            track: {
+              id: currentTrack.id,
+              title: currentTrack.title,
+              artist: currentTrack.artistName || currentTrack.artist_name || '',
+              album: currentTrack.albumName || currentTrack.album_title || '',
+              duration: currentTrack.duration,
+              streamUrl: API.getStreamUrl(currentTrack.id),
+              coverUrl: API.getTrackCoverUrl(currentTrack.id),
+            },
+            isPlaying,
+            currentTime,
+            duration,
+          });
+        }
       } else if (action === 'exportAudio') {
         try {
           const blob: Blob = payload?.blob;
@@ -67,7 +88,7 @@ const LabApp = () => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [user]);
+  }, [user, role]);
 
   useEffect(() => {
     API.getLabApps()
