@@ -4,7 +4,7 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput
+    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord
 } from '../types';
 
 const API_URL = '/api';
@@ -693,6 +693,13 @@ const API = {
     updateUserCanPeer: (userId: number, canPeer: boolean) => handleResponse(api.put(`peers/users/${userId}/can-peer`, { canPeer })),
     kickPeerSession: (sessionId: string) => handleResponse(api.delete(`peers/${sessionId}`)),
     getPeerStatus: () => handleResponse<{ enabled: boolean, allowDownloads: boolean }>(api.get('peers/status')),
+
+    // --- Lab Apps ---
+    getLabApps: () => handleResponse(api.get<LabAppRecord[]>('lab-apps')),
+    getAdminLabApps: () => handleResponse(api.get<LabAppRecord[]>('admin/lab-apps/all')),
+    createLabApp: (data: Partial<LabAppRecord>) => handleResponse(api.post<LabAppRecord>('admin/lab-apps', data)),
+    updateLabApp: (id: number, data: Partial<LabAppRecord>) => handleResponse(api.put<LabAppRecord>(`admin/lab-apps/${id}`, data)),
+    deleteLabApp: (id: number) => handleResponse(api.delete<{ success: boolean }>(`admin/lab-apps/${id}`)),
 };
 
 export interface NowListeningEntry {

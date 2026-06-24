@@ -1,12 +1,32 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Github, Maximize2, AlertTriangle } from 'lucide-react';
-import { LAB_APPS } from '../data/labApps';
+import type { LabAppRecord } from '../types';
+import API from '../services/api';
 
 const LabApp = () => {
   const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
+  const [app, setApp] = useState<LabAppRecord | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const app = LAB_APPS.find((a) => a.id === appId);
+  useEffect(() => {
+    API.getLabApps()
+      .then((apps) => {
+        const found = apps.find((a) => String(a.id) === appId);
+        setApp(found ?? null);
+      })
+      .catch(() => setApp(null))
+      .finally(() => setLoading(false));
+  }, [appId]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <span className="loading loading-spinner loading-md opacity-40" />
+      </div>
+    );
+  }
 
   if (!app) {
     return (
@@ -35,7 +55,9 @@ const LabApp = () => {
 
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-black truncate">{app.name}</h2>
-          <p className="text-xs opacity-40 hidden sm:block truncate">by {app.author}</p>
+          {app.author && (
+            <p className="text-xs opacity-40 hidden sm:block truncate">by {app.author}</p>
+          )}
         </div>
 
         {app.permissions.length > 0 && (
@@ -48,15 +70,17 @@ const LabApp = () => {
           </div>
         )}
 
-        <a
-          href={app.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100"
-          title="View source on GitHub"
-        >
-          <Github size={16} />
-        </a>
+        {app.sourceUrl && (
+          <a
+            href={app.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100"
+            title="View source on GitHub"
+          >
+            <Github size={16} />
+          </a>
+        )}
 
         <a
           href={app.src}
