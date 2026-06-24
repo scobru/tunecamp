@@ -82,9 +82,24 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `POST` | `/api/admin/scan` | Trigger a library scan |
 | `POST` | `/api/admin/rescan` | Force a full deep rescan |
 | `GET` | `/api/admin/stats` | Server and database usage statistics |
+| `GET` | `/api/admin/system/resources` | Live process/host resource snapshot — CPU, memory, host RAM, SQLite DB size, and running background tasks (root admin only) |
+| `GET` | `/api/admin/storage/overview` | Instance-wide disk usage and per-user breakdown (root admin only) |
 | `GET` | `/api/admin/torrents` | List active and completed torrents |
 | `POST` | `/api/admin/torrents/add` | Add a magnet link to the download queue |
 | `DELETE` | `/api/admin/torrents/:infoHash` | Remove a torrent and optionally its downloaded data |
+
+### Radio (`/api/radio`)
+
+A single always-on station that streams the instance's catalog. Start/stop is admin-only; the stream and feeds are public.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/radio` | Current station status (playing track, listener count) |
+| `POST` | `/api/radio/start` | Start the station (admin only) |
+| `POST` | `/api/radio/stop` | Stop the station (admin only) |
+| `GET` | `/api/radio/stream.m3u` | M3U playlist for external players |
+| `GET` | `/api/radio/feed.rss` | RSS feed of the station |
+| `GET` | `/api/radio/hls/:file` | HLS playlist/segments for in-browser playback |
 
 ---
 

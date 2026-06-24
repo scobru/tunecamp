@@ -8,7 +8,32 @@ export interface RadioConfig {
     name: string;
     playlistId?: number | null;
     trackIds?: number[];
+    /**
+     * Mix of sources to union into the queue. Each entry is either a numeric
+     * playlist id (as a string) or a dynamic genre playlist `genre:<name>`
+     * (same id format the /api/playlists endpoint emits). When set, this takes
+     * precedence over playlistId/trackIds.
+     */
+    sources?: string[];
     shuffle?: boolean;
+}
+
+/**
+ * Concatenate row groups preserving first-seen order, dropping duplicate ids.
+ * Pure + exported so the union/dedup logic is unit-testable without a DB.
+ */
+export function mergeUniqueById<T extends { id: number }>(groups: T[][]): T[] {
+    const seen = new Set<number>();
+    const out: T[] = [];
+    for (const group of groups) {
+        for (const row of group) {
+            if (!seen.has(row.id)) {
+                seen.add(row.id);
+                out.push(row);
+            }
+        }
+    }
+    return out;
 }
 
 export interface RadioTrack {
@@ -23,6 +48,7 @@ export interface RadioStatus {
     active: boolean;
     name: string;
     playlistId?: number | null;
+    sources?: string[];
     shuffle: boolean;
     startedAt?: string;
     currentTrack?: Omit<RadioTrack, "file_path"> | null;
@@ -126,6 +152,7 @@ export class RadioService {
             active: this.isActive(),
             name: this.config.name || "Radio",
             playlistId: this.config.playlistId ?? null,
+            sources: this.config.sources ?? undefined,
             shuffle: this.config.shuffle ?? false,
             startedAt: this.startedAt?.toISOString(),
             currentTrack: this.isActive() ? this._currentTrack() : null,
@@ -152,12 +179,14 @@ export class RadioService {
         const name = this.database.getSetting("radio_name") || "Radio";
         const playlistId = this.database.getSetting("radio_playlist_id");
         const trackIdsRaw = this.database.getSetting("radio_track_ids");
+        const sourcesRaw = this.database.getSetting("radio_sources");
         const shuffle = this.database.getSetting("radio_shuffle") === "true";
 
         const config: RadioConfig = {
             name,
             playlistId: playlistId ? Number(playlistId) : null,
             trackIds: trackIdsRaw ? JSON.parse(trackIdsRaw) : undefined,
+            sources: sourcesRaw ? JSON.parse(sourcesRaw) : undefined,
             shuffle,
         };
 
@@ -234,11 +263,43 @@ export class RadioService {
         }
     }
 
+    /**
+     * Resolve the union of selected sources (playlists + genre mixes) into
+     * track rows, deduped, preserving the order sources were listed in.
+     */
+    private _loadFromSources(sources: string[]): any[] {
+        const db = this.database.db;
+        const groups = sources.map((src) => {
+            if (src.startsWith("genre:")) {
+                const genre = src.slice("genre:".length);
+                return db.prepare(`
+                    SELECT id, title, artist_name, duration, file_path
+                    FROM tracks
+                    WHERE LOWER(genre) = LOWER(?)
+                      AND file_path IS NOT NULL AND file_path != ''
+                `).all(genre) as any[];
+            }
+            const pid = Number(src);
+            if (!Number.isFinite(pid)) return [];
+            return db.prepare(`
+                SELECT t.id, t.title, t.artist_name, t.duration, t.file_path
+                FROM tracks t
+                JOIN playlist_tracks pt ON pt.track_id = t.id
+                WHERE pt.playlist_id = ?
+                  AND t.file_path IS NOT NULL AND t.file_path != ''
+                ORDER BY pt.position ASC
+            `).all(pid) as any[];
+        });
+        return mergeUniqueById(groups);
+    }
+
     private _loadTracks(config: RadioConfig): RadioTrack[] {
         const db = this.database.db;
         let rows: any[] = [];
 
-        if (config.playlistId) {
+        if (config.sources && config.sources.length > 0) {
+            rows = this._loadFromSources(config.sources);
+        } else if (config.playlistId) {
             rows = db.prepare(`
                 SELECT t.id, t.title, t.artist_name, t.duration, t.file_path
                 FROM tracks t
@@ -304,6 +365,7 @@ export class RadioService {
                 this.database.setSetting("radio_name", this.config.name || "Radio");
                 this.database.setSetting("radio_playlist_id", this.config.playlistId ? String(this.config.playlistId) : "");
                 this.database.setSetting("radio_track_ids", this.config.trackIds ? JSON.stringify(this.config.trackIds) : "[]");
+                this.database.setSetting("radio_sources", this.config.sources ? JSON.stringify(this.config.sources) : "[]");
                 this.database.setSetting("radio_shuffle", this.config.shuffle ? "true" : "false");
             }
         } catch (e) {

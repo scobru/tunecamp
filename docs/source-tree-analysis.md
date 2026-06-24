@@ -16,10 +16,10 @@ tunecamp/
 │   │   ├── common/     # Shared utilities and errors
 │   │   ├── core/       # Config, DI container, database, plugin-loader
 │   │   ├── middleware/ # Express Middleware (Auth, Error handling, Rate limit)
-│   │   ├── modules/    # Domain-specific business logic (ActivityPub, Catalog, AI, Live, Storage, ...)
+│   │   ├── modules/    # Domain-specific business logic (ActivityPub, Catalog, AI, Live, Radio, Storage, Workers, ...)
 │   │   ├── providers/  # Plugin provider implementations (metadata, streaming, storage, ...)
 │   │   ├── repositories/ # Data access layer (Album, Artist, Track)
-│   │   ├── routes/     # REST API Endpoints (admin, api, auth, library, network)
+│   │   ├── routes/     # REST API Endpoints (admin, api [incl. radio, mcp], auth, library, network)
 │   │   ├── server.ts   # Express server bootstrap
 │   │   ├── types/      # Shared backend types
 │   │   └── utils/      # Server utility functions
@@ -29,8 +29,9 @@ tunecamp/
 │   ├── public/         # Static assets and WASM files
 │   └── src/            # React sources
 │       ├── components/ # UI Components organized by domain
+│       ├── data/       # Static client config (e.g. labApps.ts — Lab app registry)
 │       ├── hooks/      # Custom React Hooks
-│       ├── pages/      # Page Components (Route entry points)
+│       ├── pages/      # Page Components (Route entry points, incl. Radio, Lab)
 │       ├── services/   # Client API and webapp services
 │       └── stores/     # State management (Zustand)
 └── docker-compose.yml  # Configuration for containerized deployment

@@ -152,6 +152,64 @@ describe('RSS Feeds', () => {
         expect(artistXml).not.toContain('Private Track Title');
     });
 
+    it('should surface the live radio stream as the first item when a station is on air', async () => {
+        const radioApp = express();
+        radioApp.use(express.json());
+        const mockMiddleware = (req: any, res: any, next: any) => next();
+        const radioContainer = {
+            database,
+            identity: database.identity,
+            library: database.library,
+            social: database.social,
+            integration: database.integration,
+            authMiddleware: {
+                requireAdmin: mockMiddleware,
+                requireUser: mockMiddleware,
+                requireRootAdmin: mockMiddleware,
+                optionalAuth: mockMiddleware,
+            },
+            config: {
+                publicUrl: 'http://test-server',
+                siteName: 'Test Server Name',
+                siteDescription: 'Test Server Description',
+            },
+            musicDir: './music',
+            radioService: {
+                getStatus: () => ({
+                    active: true,
+                    name: 'Night Drive',
+                    hlsUrl: '/api/radio/hls/stream.m3u8',
+                    startedAt: new Date('2026-06-10T20:00:00.000Z').toISOString(),
+                    listenerCount: 3,
+                    shuffle: false,
+                    currentTrack: { id: 99, title: 'Midnight', artist_name: 'DJ Test' },
+                }),
+            },
+        } as any;
+        radioApp.use('/', createMiscRoutes(radioContainer));
+
+        const res = await request(radioApp).get('/feed.xml');
+        expect(res.status).toBe(200);
+        const xml = res.text;
+
+        // Live radio item is present, links to /radio and carries the HLS enclosure
+        expect(xml).toContain('<title>Night Drive (Live) — DJ Test — Midnight</title>');
+        expect(xml).toContain('<link>http://test-server/radio</link>');
+        expect(xml).toContain('<enclosure url="http://test-server/api/radio/hls/stream.m3u8" length="0" type="application/vnd.apple.mpegurl"/>');
+
+        // It must come before the catalog tracks (freshest entry first)
+        const radioIdx = xml.indexOf('Night Drive (Live)');
+        const trackIdx = xml.indexOf('Public Track Title');
+        expect(radioIdx).toBeGreaterThan(-1);
+        expect(trackIdx).toBeGreaterThan(-1);
+        expect(radioIdx).toBeLessThan(trackIdx);
+
+        // The radio is site-wide, so it must NOT leak into the per-artist feed
+        const artist = database.library.getArtistBySlug('rss-artist');
+        const artistRes = await request(radioApp).get(`/artists/${artist.slug}/feed.xml`);
+        expect(artistRes.text).not.toContain('Night Drive (Live)');
+    });
+
     it('should return 404 for unknown artist feed', async () => {
         const res = await request(app).get('/artists/unknown-artist/feed.xml');
         expect(res.status).toBe(404);

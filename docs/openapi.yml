@@ -5,7 +5,7 @@ info:
   description: |
     The Tunecamp API provides programmatic access to the platform's music library, artists, albums, tracks,
     releases, playlists, and administrative functions. It supports the decentralized music ecosystem via
-    Zen and ActivityPub integrations.
+    ActivityPub federation and HTTP gossip instance discovery.
 
     ## Authentication
     Public endpoints (catalog browsing, streaming) require no authentication.
@@ -579,6 +579,151 @@ paths:
       responses:
         '200':
           description: Backup created, returns download link.
+
+  /admin/system/resources:
+    get:
+      summary: System Resource Snapshot
+      tags: [Admin]
+      description: |
+        Live process/host metrics — CPU usage, memory (heap/RSS), host RAM,
+        SQLite DB file size, and currently running background tasks. Cheap
+        enough to poll every few seconds for memory-leak detection. Root admin only.
+      operationId: getSystemResources
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resource snapshot (process, system, db, tasks).
+        '403':
+          description: Root admin access required.
+
+  /admin/storage/overview:
+    get:
+      summary: Storage Overview
+      tags: [Admin]
+      description: Instance-wide disk usage, logical DB total, allocated quota, and per-user breakdown. Root admin only.
+      operationId: getStorageOverview
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Storage overview.
+        '403':
+          description: Root admin access required.
+
+  # ── Radio ───────────────────────────────────────────────────────────────────
+  /radio:
+    get:
+      summary: Radio Status
+      tags: [Radio]
+      description: Current station status — active flag, name, current track, listener count, and HLS URL. Public.
+      operationId: getRadioStatus
+      responses:
+        '200':
+          description: Radio status.
+
+  /radio/start:
+    post:
+      summary: Start Radio
+      tags: [Radio]
+      description: |
+        Start the station (admin only). Provide at least one source: `sources`
+        (an array mixing numeric playlist ids and `genre:<name>` ids), or the
+        legacy `playlistId` / `trackIds`.
+      operationId: startRadio
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                sources:
+                  type: array
+                  items: { type: string }
+                  description: 'Mix of playlist ids and genre ids, e.g. ["12", "genre:jazz"]'
+                playlistId:
+                  type: integer
+                trackIds:
+                  type: array
+                  items: { type: integer }
+                shuffle:
+                  type: boolean
+      responses:
+        '200':
+          description: Radio started; returns the new status.
+        '400':
+          description: Missing name or no source provided.
+        '403':
+          description: Admin access required.
+
+  /radio/stop:
+    post:
+      summary: Stop Radio
+      tags: [Radio]
+      description: Stop the station (admin only).
+      operationId: stopRadio
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Radio stopped.
+        '403':
+          description: Admin access required.
+
+  /radio/stream.m3u:
+    get:
+      summary: Radio M3U Playlist
+      tags: [Radio]
+      description: M3U playlist pointing at the live HLS stream — opens in VLC, foobar2000, mpv, etc. Public.
+      operationId: getRadioM3u
+      responses:
+        '200':
+          description: M3U playlist.
+          content:
+            audio/x-mpegurl:
+              schema:
+                type: string
+        '404':
+          description: Radio is not active.
+
+  /radio/feed.rss:
+    get:
+      summary: Radio RSS Feed
+      tags: [Radio]
+      description: Podcast-style RSS feed with an HLS enclosure, for clients like Pocket Casts and AntennaPod. Public.
+      operationId: getRadioFeed
+      responses:
+        '200':
+          description: RSS feed.
+          content:
+            application/rss+xml:
+              schema:
+                type: string
+
+  /radio/hls/{file}:
+    get:
+      summary: Radio HLS Segment
+      tags: [Radio]
+      description: Serve the HLS playlist (`stream.m3u8`) and its `.ts` segments. Public.
+      operationId: getRadioHls
+      parameters:
+        - name: file
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Playlist or segment filename (e.g. stream.m3u8, seg000001.ts).
+      responses:
+        '200':
+          description: HLS playlist or media segment.
+        '404':
+          description: Radio is not active or file not found.
 
   # ── ActivityPub ─────────────────────────────────────────────────────────────
   /ap/followers/{artistId}:

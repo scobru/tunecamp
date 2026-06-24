@@ -674,7 +674,7 @@ const API = {
 
     // --- Radio ---
     getRadioStatus: () => handleResponse(api.get<any>('radio')),
-    startRadio: (config: { name: string; playlistId?: number; trackIds?: number[]; shuffle?: boolean }) =>
+    startRadio: (config: { name: string; playlistId?: number; trackIds?: number[]; sources?: string[]; shuffle?: boolean }) =>
         handleResponse(api.post<any>('radio/start', config)),
     stopRadio: () => handleResponse(api.post<any>('radio/stop', {})),
 
