@@ -26,6 +26,22 @@ export const LAB_APPS: LabApp[] = [
     sandbox: ['allow-scripts', 'allow-same-origin', 'allow-downloads', 'allow-forms'],
     allow: ['microphone'],
   },
+  {
+    id: 'audiofabric',
+    name: 'Audiofabric',
+    description:
+      'Real-time 3D WebGL music visualiser powered by the Web Audio API. ' +
+      'Renders a spring-physics frequency fabric that pulses with the music. ' +
+      'Plays built-in demo tracks or streams directly from your TuneCamp library ' +
+      'via the Subsonic API (append ?tc=SERVER&u=USER&p=PASS to the URL).',
+    src: '/lab/audiofabric/index.html',
+    category: 'effects',
+    author: 'scobru',
+    sourceUrl: 'https://github.com/scobru/tunecamp-audiofabric',
+    permissions: ['autoplay'],
+    sandbox: ['allow-scripts', 'allow-same-origin'],
+    allow: ['autoplay'],
+  },
 ];
 
 export const CATEGORY_LABELS: Record<LabApp['category'], string> = {
