@@ -116,36 +116,178 @@ The app will be served by TuneCamp's own static file server. Good for offline / 
 
 Apps can optionally communicate with TuneCamp using `window.postMessage`. This lets a Lab app read the user's library, react to playback events, or save audio back to TuneCamp.
 
-### Sending a request from inside the iFrame
+All four actions are handled by TuneCamp out of the box — no changes to the host app are needed when adding a new Lab app.
+
+### Protocol
+
+Every request follows the same pattern:
 
 ```javascript
-// Inside your Lab app
+// 1. Send the request to TuneCamp
+window.parent.postMessage(
+  { type: 'tunecamp:request', action: '<action>', payload: { /* optional */ } },
+  '*'
+);
+
+// 2. Listen for the response
+window.addEventListener('message', (event) => {
+  if (event.data?.type !== 'tunecamp:response') return;
+  if (event.data?.action !== '<action>') return; // match by action name
+  console.log(event.data.payload);
+});
+```
+
+The response envelope is always `{ type: 'tunecamp:response', action, payload }`.
+
+---
+
+### Available actions
+
+#### `getUser`
+
+Returns the currently logged-in user, or `null` if not authenticated.
+
+```javascript
+window.parent.postMessage(
+  { type: 'tunecamp:request', action: 'getUser' },
+  '*'
+);
+
+// Response payload
+// { id: string, username: string, role: 'admin' | 'user' | 'super_user' | null }
+// or null
+```
+
+---
+
+#### `getLibrary`
+
+Returns a slice of the user's track library.
+
+```javascript
+window.parent.postMessage(
+  { type: 'tunecamp:request', action: 'getLibrary', payload: { limit: 50 } },
+  '*'
+);
+
+// Response payload
+// {
+//   tracks: [
+//     {
+//       id: string,
+//       title: string,
+//       artist: string,
+//       album: string,
+//       duration: number,       // seconds
+//       streamUrl: string,      // authenticated stream URL
+//       coverUrl: string,       // cover art URL
+//     },
+//     ...
+//   ]
+// }
+```
+
+`limit` defaults to 50 if omitted.
+
+---
+
+#### `getNowPlaying`
+
+Returns the track currently playing in TuneCamp, or `null` if nothing is playing.
+
+```javascript
 window.parent.postMessage(
   { type: 'tunecamp:request', action: 'getNowPlaying' },
   '*'
 );
+
+// Response payload (track playing)
+// {
+//   track: {
+//     id: string,
+//     title: string,
+//     artist: string,
+//     album: string,
+//     duration: number,
+//     streamUrl: string,
+//     coverUrl: string,
+//   },
+//   isPlaying: boolean,
+//   currentTime: number,   // seconds elapsed
+//   duration: number,      // total duration in seconds
+// }
+// or null
 ```
 
-### Listening for TuneCamp responses
+---
+
+#### `exportAudio`
+
+Saves an audio `Blob` directly into the user's TuneCamp library.
 
 ```javascript
-window.addEventListener('message', (event) => {
-  if (event.data?.type === 'tunecamp:response') {
-    console.log(event.data.payload); // { track: { title, artist, ... } }
-  }
-});
+const blob = await myApp.exportMix(); // your app produces a Blob
+
+window.parent.postMessage(
+  {
+    type: 'tunecamp:request',
+    action: 'exportAudio',
+    payload: {
+      blob,
+      filename: 'my-recording.wav',
+      mimeType: 'audio/wav',
+    },
+  },
+  '*'
+);
+
+// Response payload
+// { success: true }
+// or { success: false, error: string }
 ```
 
-### Available actions
+---
 
-| Action | Payload | Response |
-|---|---|---|
-| `getNowPlaying` | — | `{ track }` or `null` |
-| `getUser` | — | `{ id, username, role }` |
-| `getLibrary` | `{ page?, limit? }` | `{ tracks: [...] }` |
-| `exportAudio` | `{ blob, filename, mimeType }` | `{ success: true }` |
+### Complete helper (copy-paste)
 
-> **Note:** The PostMessage bridge is planned for a future release. Apps that don't need TuneCamp data work perfectly without it.
+Drop this into any Lab app to get a typed, promise-based SDK with no dependencies:
+
+```javascript
+function tunecampSDK() {
+  function request(action, payload) {
+    return new Promise((resolve) => {
+      function onMessage(event) {
+        if (event.data?.type !== 'tunecamp:response') return;
+        if (event.data?.action !== action) return;
+        window.removeEventListener('message', onMessage);
+        resolve(event.data.payload);
+      }
+      window.addEventListener('message', onMessage);
+      try {
+        window.parent.postMessage({ type: 'tunecamp:request', action, payload }, '*');
+      } catch {
+        // Not inside a TuneCamp iFrame
+        window.removeEventListener('message', onMessage);
+        resolve(null);
+      }
+    });
+  }
+
+  return {
+    getUser:       ()        => request('getUser'),
+    getNowPlaying: ()        => request('getNowPlaying'),
+    getLibrary:    (limit)   => request('getLibrary', { limit: limit ?? 50 }),
+    exportAudio:   (blob, filename, mimeType) =>
+      request('exportAudio', { blob, filename, mimeType }),
+  };
+}
+
+// Usage
+const tc = tunecampSDK();
+const user    = await tc.getUser();          // { id, username, role } | null
+const library = await tc.getLibrary(20);     // { tracks: [...] }
+const now     = await tc.getNowPlaying();    // { track, isPlaying, ... } | null
+```
 
 ---
 
