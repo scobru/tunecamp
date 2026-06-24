@@ -29,6 +29,7 @@ export function createMiscRoutes(container: ServiceContainer): Router {
     const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
     const social: ServiceContainer['social'] = (container as any).social || (container as any);
     const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const radioService = (container as any).radioService;
 
     router.get("/api/waveform/:id(*)", async (req, res) => {
         try {
@@ -218,7 +219,14 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         publicUrl: string,
         title: string,
         description: string,
-        tracks: any[]
+        tracks: any[],
+        radio?: {
+            active: boolean;
+            name: string;
+            hlsUrl: string;
+            startedAt?: string;
+            currentTrack?: { id: number; title: string; artist_name?: string } | null;
+        } | null
     ): string {
         const doc = create({ version: "1.0", encoding: "UTF-8" })
             .ele("rss", {
@@ -232,6 +240,36 @@ export function createMiscRoutes(container: ServiceContainer): Router {
                 .ele("link").txt(publicUrl).up()
                 .ele("generator").txt("TuneCamp").up()
                 .ele("language").txt("en").up();
+
+        // Live radio: when a station is on air, surface it as the first item so
+        // podcast/RSS clients can tune into the live HLS stream straight from the
+        // main feed. Mirrors the dedicated /api/radio/feed.rss feed.
+        if (radio?.active && radio.hlsUrl) {
+            const radioStreamUrl = radio.hlsUrl.startsWith("http")
+                ? radio.hlsUrl
+                : `${publicUrl}${radio.hlsUrl}`;
+            const nowPlaying = radio.currentTrack
+                ? `${radio.currentTrack.artist_name ? radio.currentTrack.artist_name + " — " : ""}${radio.currentTrack.title}`
+                : "Live stream";
+            const radioPubDate = radio.startedAt
+                ? new Date(radio.startedAt).toUTCString()
+                : new Date().toUTCString();
+
+            doc.ele("item")
+                .ele("title").txt(`${radio.name} (Live) — ${nowPlaying}`).up()
+                .ele("link").txt(`${publicUrl}/radio`).up()
+                .ele("description").txt(
+                    `Live radio stream${radio.currentTrack ? `\nNow playing: ${nowPlaying}` : ""}`
+                ).up()
+                .ele("pubDate").txt(radioPubDate).up()
+                .ele("guid", { isPermaLink: "false" }).txt(`${publicUrl}/radio#live`).up()
+                .ele("enclosure", {
+                    url: radioStreamUrl,
+                    length: "0",
+                    type: "application/vnd.apple.mpegurl"
+                }).up()
+                .up();
+        }
 
         // Sort tracks by created_at desc (latest first)
         const sortedTracks = [...tracks].sort((a, b) => {
@@ -296,8 +334,9 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             const description = identity.getSetting("siteDescription") || config.siteDescription || "TuneCamp self-hosted federated music platform";
             
             const tracks = library.getTracks(undefined, VisibilityProfile.PUBLIC_STAGE);
-            const xml = buildRssFeed(publicUrl, title, description, tracks);
-            
+            const radio = radioService?.getStatus?.() ?? null;
+            const xml = buildRssFeed(publicUrl, title, description, tracks, radio);
+
             res.setHeader("Content-Type", "text/xml");
             res.send(xml);
         } catch (error) {
