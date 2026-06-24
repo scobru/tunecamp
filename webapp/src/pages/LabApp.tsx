@@ -22,7 +22,7 @@ const LabApp = () => {
   }
 
   return (
-    <div className="flex flex-col animate-fade-in" style={{ height: 'calc(100vh - 4rem)' }}>
+    <div className="flex flex-col animate-fade-in" style={{ height: 'calc(100vh - 10rem)' }}>
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-base-content/10 bg-base-200 flex-shrink-0">
         <button
