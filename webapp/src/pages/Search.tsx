@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Music, Disc, User, Play, Heart, Plus } from 'lucide-react';
+import { Search as SearchIcon, Music, Disc, User, Play, Pause, Heart, Plus, Users } from 'lucide-react';
 import { usePlayerStore } from '../stores/usePlayerStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -14,9 +14,9 @@ const Search = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const query = searchParams.get('q') || '';
     const [inputValue, setInputValue] = useState(query);
-    const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[] } | null>(null);
+    const [results, setResults] = useState<{ tracks: Track[], albums: Album[], artists: Artist[], peers?: any[] } | null>(null);
     const [loading, setLoading] = useState(false);
-    const { playTrack } = usePlayerStore();
+    const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayerStore();
     const { user } = useAuthStore();
     const [starredTracks, setStarredTracks] = useState<Set<string>>(new Set());
     const [starredAlbums, setStarredAlbums] = useState<Set<string>>(new Set());
@@ -55,6 +55,7 @@ const Search = () => {
                 tracks: data.local.tracks || [],
                 albums: data.local.albums || [],
                 artists: data.local.artists || [],
+                peers: data.peers || [],
             });
         } catch (e) {
             console.error(e);
@@ -439,7 +440,90 @@ const Search = () => {
                         </section>
                     )}
 
-                    {!results.artists?.length && !results.albums?.length && !results.tracks?.length && (
+                    {/* Peer Tracks */}
+                    {results.peers && results.peers.length > 0 && (
+                        <section>
+                            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-accent">
+                                <Users size={20}/> Connected Peer Channels
+                            </h2>
+                            <div className="flex flex-col gap-2 bg-base-200/20 p-4 rounded-2xl border border-base-content/5">
+                                {results.peers.map((track) => {
+                                    const peerTrackId = `peer:${track.session_id}:${track.id}`;
+                                    const isCurrent = currentTrack?.id === peerTrackId;
+                                    const isCurrentlyPlaying = isCurrent && isPlaying;
+                                    const playerTrack = {
+                                        id: peerTrackId,
+                                        title: track.title,
+                                        artistName: track.artist || track.username || "Unknown Artist",
+                                        albumTitle: track.album || "Peer Share",
+                                        streamUrl: `/api/peers/${track.session_id}/tracks/${track.id}/stream?token=${API.getToken()}`,
+                                        coverUrl: "",
+                                        coverImage: "",
+                                        duration: track.duration || 0,
+                                        service: "peer",
+                                    };
+
+                                    const handlePlayClick = () => {
+                                        if (isCurrent) {
+                                            togglePlay();
+                                        } else {
+                                            const playerQueue = results.peers!.map((t) => ({
+                                                id: `peer:${t.session_id}:${t.id}`,
+                                                title: t.title,
+                                                artistName: t.artist || t.username || "Unknown Artist",
+                                                albumTitle: t.album || "Peer Share",
+                                                streamUrl: `/api/peers/${t.session_id}/tracks/${t.id}/stream?token=${API.getToken()}`,
+                                                coverUrl: "",
+                                                coverImage: "",
+                                                duration: t.duration || 0,
+                                                service: "peer",
+                                            }));
+                                            playTrack(playerTrack as any, playerQueue as any);
+                                        }
+                                    };
+
+                                    return (
+                                        <div key={peerTrackId} className={`flex items-center gap-4 p-2 hover:bg-base-content/5 rounded-lg group ${isCurrent ? "bg-primary/5" : ""}`}>
+                                            <button
+                                                onClick={handlePlayClick}
+                                                className="relative w-10 h-10 shrink-0 bg-base-300 rounded flex items-center justify-center"
+                                                aria-label={`Play ${track.title}`}
+                                            >
+                                                {isCurrentlyPlaying ? (
+                                                    <Pause size={16} fill="currentColor" />
+                                                ) : (
+                                                    <Play size={16} fill="currentColor" className="ml-0.5" />
+                                                )}
+                                            </button>
+                                            <div className="flex-1 min-w-0">
+                                                <div className={`font-bold truncate ${isCurrent ? "text-primary" : ""}`}>{track.title}</div>
+                                                <div className="text-xs opacity-60 truncate flex items-center gap-1.5 mt-0.5">
+                                                    <span>{track.artist || track.username || "Unknown Artist"}</span>
+                                                    {track.album && (
+                                                        <>
+                                                            <span className="opacity-45">•</span>
+                                                            <span className="italic">{track.album}</span>
+                                                        </>
+                                                    )}
+                                                    <span className="opacity-45">•</span>
+                                                    <span className="badge badge-xs badge-ghost text-[10px] px-1.5 py-0.5 font-bold">
+                                                        Shared by {track.username || "Unknown"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-xs font-mono opacity-50 mr-2">
+                                                    {formatDuration(track.duration || 0)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
+
+                    {!results.artists?.length && !results.albums?.length && !results.tracks?.length && !results.peers?.length && (
                         <div className="text-center opacity-50">No results found for "{query}"</div>
                     )}
                 </div>

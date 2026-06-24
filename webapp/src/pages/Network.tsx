@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { Globe, Server, Music, ExternalLink, Play, ChevronDown } from "lucide-react";
+import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users } from "lucide-react";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
+import { PeerSessionCard } from "../components/network/PeerSessionCard";
 import { StringUtils } from "../utils/stringUtils";
 import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
@@ -443,20 +444,23 @@ const Network = () => {
   const [tracks, setTracks] = useState<NetworkTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const { playTrack, currentTrack } = usePlayerStore();
-  const { isAdminAuthenticated } = useAuthStore();
+  const { isAdminAuthenticated, isAuthenticated } = useAuthStore();
   const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
   const [status, setStatus] = useState<NetworkStatus | null>(null);
   const [enabled, setEnabled] = useState(true);
+  const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
+  const [peerSessions, setPeerSessions] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [sitesData, tracksData, statusData, s] = await Promise.all([
+        const [sitesData, tracksData, statusData, s, pStatus] = await Promise.all([
           API.getNetworkSites(),
           API.getNetworkTracks(),
           API.getNetworkStatus().catch(() => null),
           API.getSiteSettings().catch(() => ({} as any)),
+          API.getPeerStatus().catch(() => null),
         ]);
         if (s && (s.hideNetwork === true || s.hideNetwork === "true")) {
           setEnabled(false);
@@ -503,6 +507,15 @@ const Network = () => {
         const finalTracks = Array.from(uniqueContent.values());
         setSites(sites);
         setTracks(finalTracks);
+        setPeerStatus(pStatus);
+        if (pStatus?.enabled && isAuthenticated) {
+          try {
+            const pSessions = await API.getPeerSessions();
+            setPeerSessions(pSessions);
+          } catch (err) {
+            console.error("Failed to load peer sessions:", err);
+          }
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -702,6 +715,35 @@ const Network = () => {
           </div>
         )}
       </PageHeader>
+
+      {/* Live Peer Channels */}
+      {peerStatus?.enabled && isAuthenticated && (
+        <section className="space-y-8">
+          <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
+            <Users size={24} className="text-primary" />
+            <div>
+              <h2 className="text-2xl font-bold">Live Peer Channels</h2>
+              <p className="text-sm opacity-50">Browse music shared directly by other listeners in real-time.</p>
+            </div>
+          </div>
+
+          {peerSessions.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {peerSessions.map((session) => (
+                <PeerSessionCard
+                  key={session.id}
+                  session={session}
+                  allowDownloadsGlobal={peerStatus.allowDownloads}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
+              No live peer channels currently online. Start a CLI daemon to share yours!
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Remote Network Content */}
       <section className="space-y-8">

@@ -20,6 +20,8 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [isActive, setIsActive] = useState(true);
     const [initialIsActive, setInitialIsActive] = useState(true);
     const [storageQuota, setStorageQuota] = useState<number>(0);
+    const [canPeer, setCanPeer] = useState(false);
+    const [initialCanPeer, setInitialCanPeer] = useState(false);
 
     // Publishing requires Curator+ with an artist link: listeners are
     // consumers, so changing the role to Listener clears the artist link.
@@ -67,6 +69,8 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setIsActive(userToEdit.is_active !== 0);
                 setInitialIsActive(userToEdit.is_active !== 0);
                 setStorageQuota(userToEdit.storage_quota !== undefined ? userToEdit.storage_quota : 0);
+                setCanPeer(userToEdit.can_peer === 1);
+                setInitialCanPeer(userToEdit.can_peer === 1);
                 
                 dialogRef.current.dataset.userId = userToEdit.id;
                 dialogRef.current.dataset.mode = 'edit';
@@ -79,6 +83,8 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setIsActive(true);
                 setInitialIsActive(true);
                 setStorageQuota(1024 * 1024 * 1024); // default 1GB for new users
+                setCanPeer(false);
+                setInitialCanPeer(false);
                 dialogRef.current.dataset.mode = 'create';
              }
              setError('');
@@ -110,8 +116,16 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 if (isRoot && isActive !== initialIsActive) {
                     await API.updateUserStatus(targetUserId, isActive);
                 }
+
+                // Update peer sharing permission if changed (only root admin can do this)
+                if (isRoot && canPeer !== initialCanPeer) {
+                    await API.updateUserCanPeer(Number(targetUserId), canPeer);
+                }
             } else {
-                await API.createUser({ ...payload, password }); // Password required for create
+                const res = await API.createUser({ ...payload, password }); // Password required for create
+                if (isRoot && canPeer && res?.id) {
+                    await API.updateUserCanPeer(Number(res.id), true);
+                }
             }
             
             onUserUpdated();
@@ -252,6 +266,21 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                                     checked={isActive}
                                     onChange={e => setIsActive(e.target.checked)}
                                     disabled={dialogRef.current?.dataset.userId === '1'} // Cannot disable root
+                                />
+                            </label>
+                        </div>
+                    )}
+
+                    {isRoot && (
+                         <div className="form-control">
+                            <label className="label cursor-pointer justify-start gap-4">
+                                <span className="label-text">Peer Sharing Allowed</span>
+                                <input 
+                                    type="checkbox" 
+                                    className="toggle toggle-primary"
+                                    checked={canPeer}
+                                    onChange={e => setCanPeer(e.target.checked)}
+                                    disabled={dialogRef.current?.dataset.userId === '1'} // Cannot change root admin
                                 />
                             </label>
                         </div>

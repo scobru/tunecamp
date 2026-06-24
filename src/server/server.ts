@@ -111,6 +111,9 @@ import { createRssService } from "./modules/network/rss.service.js";
 import { createTaskRoutes } from "./routes/admin/tasks.js";
 import { RadioService } from "./modules/radio/radio.service.js";
 import { createRadioRoutes } from "./routes/api/radio.js";
+import { createPeerService } from "./modules/peer/peer.service.js";
+import { createPeerWsHandler } from "./modules/peer/peer.ws.js";
+import { createPeersRoutes } from "./routes/api/peers.js";
 
 
 const _serverFilename = fileURLToPath(import.meta.url);
@@ -321,6 +324,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const liveService = new LiveService();
     const radioService = new RadioService(database, config.musicDir);
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
+    const peerService = createPeerService(database, apService);
 
     const container: ServiceContainer = {
         database,
@@ -355,12 +359,15 @@ export async function startServer(config: ServerConfig): Promise<void> {
         chatService,
         liveService,
         radioService,
+        peerService,
         soulseekService,
         torrentService: torrentService as any,
         gdriveService,
         openRouterService,
         storage
     };
+
+    createPeerWsHandler(server, container);
 
     app.use("/api/admin/upload", authMiddleware.requireUser, createUploadRoutes(container));
     app.use("/api/admin/backup", authMiddleware.requireAdmin, createBackupRoutes(container, () => {
@@ -468,6 +475,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/proxy", createProxyRoutes(container));
     app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
     app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
+    app.use("/api/peers", createPeersRoutes(container));
 
 
 
@@ -569,6 +577,9 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
         try { torrentService.shutdown(); console.log('  ✓ TorrentService shut down'); }
         catch (e) { console.warn('  ⚠ Torrent shutdown error:', e); }
+
+        try { peerService.stopHeartbeat(); console.log('  ✓ PeerService heartbeat stopped'); }
+        catch (e) { console.warn('  ⚠ PeerService stop error:', e); }
 
         try { database.db.close(); console.log('  ✓ Database closed'); }
         catch (e) { console.warn('  ⚠ Database close error:', e); }

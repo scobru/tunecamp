@@ -13,6 +13,7 @@ import { createIdentityManager } from "./managers/identity.js";
 import { createLibraryManager } from "./managers/library.js";
 import { createSocialManager } from "./managers/social.js";
 import { createIntegrationManager } from "./managers/integration.js";
+import { createPeerManager } from "./managers/peer.js";
 
 // Re-export all types so consumers can continue to import from here
 export type {
@@ -495,10 +496,36 @@ export function createDatabase(dbPath: string): DatabaseService {
             expires_at INTEGER NOT NULL
         );
 
+        -- Active peer sessions (transient)
+        CREATE TABLE IF NOT EXISTS peer_sessions (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            connected_at INTEGER NOT NULL,
+            last_seen INTEGER NOT NULL,
+            ip_address TEXT,
+            allow_downloads INTEGER NOT NULL DEFAULT 1
+        );
+
+        -- Transient shared catalog tracks
+        CREATE TABLE IF NOT EXISTS peer_tracks (
+            id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL REFERENCES peer_sessions(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            artist TEXT,
+            album TEXT,
+            duration REAL,
+            file_size INTEGER,
+            mime_type TEXT,
+            allow_download INTEGER NOT NULL DEFAULT 1,
+            created_at INTEGER NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_dig_sessions_user ON dig_sessions(user_id);
         CREATE INDEX IF NOT EXISTS idx_dig_crate_session ON dig_crate_items(session_id);
         CREATE INDEX IF NOT EXISTS idx_dig_history_user ON dig_history(user_id);
         CREATE INDEX IF NOT EXISTS idx_dig_cache_expires ON dig_cache(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id);
+        CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist);
     `);
 
     // Runtime Migrations (robust column checks)
@@ -784,6 +811,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'now_playing_enabled')) {
                 console.log("📦 [Database] Migrating admin table: adding now_playing_enabled column...");
                 db.exec("ALTER TABLE admin ADD COLUMN now_playing_enabled INTEGER DEFAULT 0");
+            }
+            if (!cols.some(col => col.name === 'can_peer')) {
+                console.log("📦 [Database] Migrating admin table: adding can_peer column...");
+                db.exec("ALTER TABLE admin ADD COLUMN can_peer INTEGER NOT NULL DEFAULT 0");
             }
             // Repair stale artist links: artist_id pointing to a deleted artist.
             const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
@@ -1143,6 +1174,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         remoteContentRepository
     );
     const integration = createIntegrationManager(db);
+    const peer = createPeerManager(db);
 
     const service: DatabaseService = {
         db,
@@ -1150,6 +1182,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         library,
         social,
         integration,
+        peer,
         transaction<T>(fn: () => T): T {
             return db.transaction(fn)();
         },
@@ -1157,6 +1190,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         ...library,
         ...social,
         ...integration,
+        ...peer,
     };
 
     return service;

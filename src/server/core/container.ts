@@ -37,6 +37,7 @@ import type { Scanner } from "../modules/catalog/scanner.js";
 import type { ChatService } from "../modules/chat/chat.service.js";
 import type { LiveService } from "../modules/live/live.service.js";
 import type { RadioService } from "../modules/radio/radio.service.js";
+import type { PeerService } from "../modules/peer/peer.service.js";
 
 export interface ServiceContainer {
     // Core
@@ -85,6 +86,7 @@ export interface ServiceContainer {
     chatService: ChatService;
     liveService: LiveService;
     radioService: RadioService;
+    peerService: PeerService;
 
     // AI
     openRouterService: OpenRouterService;
