@@ -39,6 +39,15 @@ const LabApp = () => {
           const limit = payload?.limit ?? 50;
           const tracks = await API.getTracks();
           const slice = tracks.slice(0, limit);
+          
+          const makeAbsolute = (url: string) => {
+            if (!url) return '';
+            if (url.startsWith('/') || !url.includes('://')) {
+              return new URL(url, window.location.origin).toString();
+            }
+            return url;
+          };
+
           respond({
             tracks: slice.map((t) => ({
               id: t.id,
@@ -46,8 +55,8 @@ const LabApp = () => {
               artist: t.artistName || t.artist_name || '',
               album: t.albumName || t.album_title || '',
               duration: t.duration,
-              streamUrl: API.getStreamUrl(t.id),
-              coverUrl: API.getTrackCoverUrl(t.id),
+              streamUrl: makeAbsolute(API.getStreamUrl(t.id)),
+              coverUrl: makeAbsolute(API.getTrackCoverUrl(t.id)),
             })),
           });
         } catch {
@@ -58,6 +67,14 @@ const LabApp = () => {
         if (!currentTrack) {
           respond(null);
         } else {
+          const makeAbsolute = (url: string) => {
+            if (!url) return '';
+            if (url.startsWith('/') || !url.includes('://')) {
+              return new URL(url, window.location.origin).toString();
+            }
+            return url;
+          };
+
           respond({
             track: {
               id: currentTrack.id,
@@ -65,8 +82,8 @@ const LabApp = () => {
               artist: currentTrack.artistName || currentTrack.artist_name || '',
               album: currentTrack.albumName || currentTrack.album_title || '',
               duration: currentTrack.duration,
-              streamUrl: API.getStreamUrl(currentTrack.id),
-              coverUrl: API.getTrackCoverUrl(currentTrack.id),
+              streamUrl: makeAbsolute(API.getStreamUrl(currentTrack.id)),
+              coverUrl: makeAbsolute(API.getTrackCoverUrl(currentTrack.id)),
             },
             isPlaying,
             currentTime,
