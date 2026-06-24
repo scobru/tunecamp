@@ -866,16 +866,19 @@ export class ActivityPubService {
     }
 
     public async acceptFollow(artist: Artist, activity: any): Promise<void> {
-        const actorUri = activity.actor;
-        const inboxUri = await this.getInboxFromActor(actorUri);
-
-        if (!inboxUri) {
-            console.error(`❌ Could not find inbox for actor: ${actorUri}`);
+        // Normalize: activity.actor can be a plain string URI or an object {id, type, ...}
+        const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
+        if (!actorUri) {
+            console.error(`❌ Cannot process follow: activity.actor is missing or not a valid URI`);
             return;
         }
 
-        // Store follow request as pending
-        this.db.addFollower(artist.id, actorUri, inboxUri, undefined, activity.id);
+        // Resolve inbox (needed to send the Accept activity back)
+        const inboxUri = await this.getInboxFromActor(actorUri);
+
+        // Always persist the follower regardless of inbox availability so we
+        // never silently lose a follow due to a transient network failure.
+        this.db.addFollower(artist.id, actorUri, inboxUri || '', undefined, activity.id);
 
         // If artist requires manual approval, leave as pending and don't send Accept
         if ((artist as any).manually_approves_followers) {
@@ -883,9 +886,14 @@ export class ActivityPubService {
             return;
         }
 
-        // Immediately accept it and notify the actor
+        // Auto-accept: mark as accepted in DB
         this.db.acceptFollower(artist.id, actorUri);
         console.log(`✅ Accepted follower ${actorUri} for ${artist.name}`);
+
+        if (!inboxUri) {
+            console.warn(`⚠️ Follower ${actorUri} accepted in DB but Accept activity not sent (inbox unavailable)`);
+            return;
+        }
 
         const acceptActivity = {
             "@context": "https://www.w3.org/ns/activitystreams",
@@ -962,12 +970,16 @@ export class ActivityPubService {
     }
 
     public async receiveFollowRequest(artist: Artist, activity: any): Promise<void> {
-        const actorUri = activity.actor;
+        const actorUri = typeof activity.actor === 'string' ? activity.actor : activity.actor?.id;
+        if (!actorUri) {
+            console.error(`❌ Cannot process follow request: activity.actor is missing or not a valid URI`);
+            return;
+        }
+
         const inboxUri = await this.getInboxFromActor(actorUri);
 
         if (!inboxUri) {
-            console.error(`❌ Could not find inbox for actor: ${actorUri}`);
-            return;
+            console.warn(`⚠️ Could not find inbox for actor: ${actorUri}. Saving follow request as pending anyway.`);
         }
 
         // Fetch remote actor details so we can render their profile nicely
@@ -990,8 +1002,8 @@ export class ActivityPubService {
             console.warn(`⚠️ Failed to pre-fetch remote actor metadata for: ${actorUri}`, e);
         }
 
-        // Store follow request as pending
-        this.db.addFollower(artist.id, actorUri, inboxUri, undefined, activity.id);
+        // Store follow request as pending (use empty string if inbox is unavailable)
+        this.db.addFollower(artist.id, actorUri, inboxUri || '', undefined, activity.id);
         console.log(`📥 Follow request from ${actorUri} is pending approval for artist: ${artist.name}`);
     }
 
@@ -1628,6 +1640,18 @@ export class ActivityPubService {
 
         let noteCount = 0;
         console.log(`🔄 Syncing ActivityPub content for artist: ${artist.name} (ID: ${artistId})`);
+
+        // Auto-accept any pending follow requests (they may be stuck due to past
+        // inbox resolution failures or actor normalization bugs)
+        if (!(artist as any).manually_approves_followers) {
+            const pending = this.db.getPendingFollowers ? this.db.getPendingFollowers(artistId) : [];
+            if (pending.length > 0) {
+                console.log(`  👥 Auto-accepting ${pending.length} pending follower(s)...`);
+                for (const follower of pending) {
+                    this.db.acceptFollower(artistId, follower.actor_uri);
+                }
+            }
+        }
 
         // Sync Releases
         const releases = this.db.getReleasesByArtist(artistId);
