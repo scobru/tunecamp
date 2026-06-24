@@ -49,31 +49,53 @@ Administrators can control peer sharing via the **Admin Panel**:
 
 ## Running the CLI Daemon
 
-The peer sharing client is a standalone Node.js script located in `scripts/peer-daemon.mjs`.
+The peer sharing client is a **standalone package** in its own repository: [`tunecamp-peer`](https://github.com/scobru/tunecamp-peer).
+
+### Installation
+
+```bash
+git clone https://github.com/scobru/tunecamp-peer.git
+cd tunecamp-peer
+npm install
+```
 
 ### Prerequisites
 
 - Node.js (v18+)
-- Read access to your music directory
+- A TuneCamp account with peer-sharing permissions enabled by the administrator
+
+### Configuration
+
+**Option A — `.env` file (recommended)**:
+
+```ini
+TUNECAMP_SERVER=https://your-tunecamp-domain.com
+TUNECAMP_TOKEN=YOUR_JWT_OR_DEVELOPER_TOKEN
+TUNECAMP_SHARE=/path/to/my/music,/another/path
+TUNECAMP_ALLOW_DOWNLOADS=true
+```
+
+**Option B — command-line arguments**:
+
+```bash
+node peer-daemon.js --server <url> --token <token> --share <folder1> <folder2>
+```
 
 ### Usage
 
-1. **Obtain an API/JWT Token**:
-   Log in to the web interface, open your developer settings, or copy the authentication token.
-   
-2. **Start the Connection**:
-   Run the CLI daemon with the connection parameters and your shared folder paths:
-   
-   ```bash
-   node scripts/peer-daemon.mjs connect \
-     --server http://your-tunecamp-domain.com \
-     --token YOUR_JWT_TOKEN \
-     --share "/path/to/music/folder1" "/path/to/music/folder2"
-   ```
+```bash
+# Scan and verify metadata without connecting
+npm run scan
+
+# Start sharing
+npm start
+```
 
 ### Command Line Options
 
-- `--server <url>`: The URL of the TuneCamp server (defaults to `http://localhost:1970`).
-- `--token <jwt>`: Your account authentication token.
-- `--share <paths...>`: One or more local directory paths to scan and share.
-- `--help`: Display usage help.
+- `-s, --server <url>`: URL of the target TuneCamp instance (defaults to `http://localhost:1970`).
+- `-t, --token <jwt>`: Your developer token or session JWT.
+- `-f, --folder, --share <paths...>`: One or more directories to scan and share.
+- `--no-allow-downloads`: Restrict to streaming only (disables downloads).
+- `--scan-only`: Scan and list local track metadata, then exit.
+- `-h, --help`: Display usage help.
