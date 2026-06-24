@@ -122,7 +122,11 @@ export const MainLayout = () => {
           tabIndex={-1}
           className="flex-1 relative flex flex-col h-full overflow-hidden focus:outline-none z-10"
         >
-          <div className="flex-1 overflow-y-auto pb-48 scrollbar-thin p-4 lg:p-8">
+          {/* mb-24 reserves the exact height of the fixed PlayerBar (h-24 / 96px)
+              so the scroll area ends at the bar's top edge. Without this the
+              content scrolls *behind* the bar and the bottom rows are covered
+              and unclickable; a plain pb-* only clears the very last item. */}
+          <div className="flex-1 overflow-y-auto mb-24 scrollbar-thin p-4 lg:p-8">
             <div className="max-w-7xl mx-auto w-full">
               <Outlet />
             </div>
