@@ -575,6 +575,8 @@ export function createDatabase(dbPath: string): DatabaseService {
             '["autoplay"]',
             1
         );
+        -- Migrate any existing row that still points to the old Vercel deployment
+        UPDATE lab_apps SET src = '/lab/audiofabric/index.html' WHERE id = 2 AND src != '/lab/audiofabric/index.html';
     `);
 
     // Runtime Migrations (robust column checks)

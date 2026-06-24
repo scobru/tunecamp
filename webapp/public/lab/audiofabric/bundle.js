@@ -20705,10 +20705,13 @@ const createRenderBlur = require('./render-blur')
 const createRenderGrid = require('./render-grid')
 
 // ─── TuneCamp Lab integration ─────────────────────────────────────────────────
-// Supports three sources (in priority order):
-//  1. Subsonic URL params: ?tc=https://my-tunecamp.com&u=user&p=pass
-//  2. TuneCamp Lab SDK PostMessage bridge (getLibrary action)
-//  3. Built-in royalty-free demo tracks (SoundHelix)
+// Supports these sources (in priority order):
+//  1.  URL params: ?tc=https://my-tunecamp.com&u=user&p=pass
+//  1b. Same-origin localStorage JWT (opened from TuneCamp Lab)
+//  1c. Saved cross-origin credentials in localStorage (standalone mode)
+//  2.  TuneCamp Lab SDK PostMessage bridge (inside iframe)
+//  3.  Interactive connect form (standalone, no credentials found)
+//  4.  Built-in royalty-free demo tracks (SoundHelix)
 
 var DEMO_TRACKS = [
   { title: 'SoundHelix Song 1', artist: 'SoundHelix', path: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
@@ -20717,6 +20720,95 @@ var DEMO_TRACKS = [
   { title: 'SoundHelix Song 4', artist: 'SoundHelix', path: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
   { title: 'SoundHelix Song 5', artist: 'SoundHelix', path: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' }
 ]
+
+var LS_SERVER = 'audiofabric_server'
+var LS_USER = 'audiofabric_user'
+var LS_PASS = 'audiofabric_pass'
+
+function subsonicTracks (base, user, pass) {
+  var cleanBase = base.replace(/\/$/, '')
+  var auth = 'u=' + encodeURIComponent(user) +
+    '&p=' + encodeURIComponent(pass) +
+    '&v=1.16.1&c=audiofabric&f=json'
+  return fetch(cleanBase + '/rest/getRandomSongs.view?' + auth + '&size=20')
+    .then(function (r) { return r.json() })
+    .then(function (data) {
+      var sub = data['subsonic-response']
+      if (sub && sub.status === 'ok' && sub.randomSongs && sub.randomSongs.song) {
+        return sub.randomSongs.song.map(function (s) {
+          return {
+            title: s.title || 'Unknown',
+            artist: s.artist || 'Unknown',
+            path: cleanBase + '/rest/stream.view?' + auth + '&id=' + s.id
+          }
+        })
+      }
+      return null
+    })
+}
+
+function showConnectForm (done, defaultServer, defaultUser) {
+  var overlay = document.createElement('div')
+  overlay.style.cssText = [
+    'position:fixed', 'top:0', 'left:0', 'width:100%', 'height:100%',
+    'background:rgba(25,25,25,0.97)', 'display:flex', 'align-items:center',
+    'justify-content:center', 'z-index:200', 'font-family:inherit'
+  ].join(';')
+
+  var inputStyle = [
+    'display:block', 'width:100%', 'box-sizing:border-box',
+    'background:rgba(40,40,40,0.8)', 'border:1px solid rgb(80,80,80)',
+    'color:#eee', 'padding:10px 14px', 'font-size:13px', 'letter-spacing:1px',
+    'font-family:inherit', 'outline:none', 'margin-bottom:10px'
+  ].join(';')
+
+  var btnStyle = [
+    'display:block', 'width:100%', 'padding:12px', 'margin-top:6px',
+    'cursor:pointer', 'font-size:13px', 'letter-spacing:2px', 'font-family:inherit',
+    'outline:none', 'border:1px solid rgb(80,80,80)'
+  ].join(';')
+
+  overlay.innerHTML = '<div style="width:340px;padding:40px 36px;background:rgba(45,45,45,0.98);border:1px solid rgb(70,70,70)">' +
+    '<div style="font-size:18px;font-weight:200;letter-spacing:6px;color:#eee;margin-bottom:6px">AUDIOFABRIC</div>' +
+    '<div style="font-size:11px;letter-spacing:2px;color:#888;margin-bottom:28px;text-transform:uppercase">Connect to TuneCamp</div>' +
+    '<input id="af-server" style="' + inputStyle + '" placeholder="https://your-tunecamp.com" value="' + (defaultServer || '') + '" />' +
+    '<input id="af-user" style="' + inputStyle + '" placeholder="Username" value="' + (defaultUser || '') + '" />' +
+    '<input id="af-pass" type="password" style="' + inputStyle + '" placeholder="Password or API token" />' +
+    '<div id="af-error" style="color:#f66;font-size:12px;margin-bottom:8px;display:none"></div>' +
+    '<button id="af-connect" style="' + btnStyle + 'background:rgba(60,60,60,0.95);color:#eee">CONNECT</button>' +
+    '<button id="af-demo" style="' + btnStyle + 'background:transparent;color:#666;margin-top:10px;border-color:transparent">use demo tracks</button>' +
+    '</div>'
+
+  document.body.appendChild(overlay)
+
+  function setError (msg) {
+    var el = document.getElementById('af-error')
+    el.textContent = msg
+    el.style.display = msg ? 'block' : 'none'
+  }
+
+  document.getElementById('af-connect').addEventListener('click', function () {
+    var server = document.getElementById('af-server').value.trim()
+    var user = document.getElementById('af-user').value.trim()
+    var pass = document.getElementById('af-pass').value.trim()
+    if (!server || !user || !pass) { setError('All fields required.'); return }
+    setError('')
+    document.getElementById('af-connect').textContent = 'CONNECTING...'
+    subsonicTracks(server, user, pass)
+      .then(function (tracks) {
+        if (!tracks) { setError('Wrong credentials or server unreachable.'); document.getElementById('af-connect').textContent = 'CONNECT'; return }
+        try { localStorage.setItem(LS_SERVER, server); localStorage.setItem(LS_USER, user); localStorage.setItem(LS_PASS, pass) } catch (e) {}
+        document.body.removeChild(overlay)
+        done(tracks)
+      })
+      .catch(function () { setError('Could not reach server. Check URL and CORS.'); document.getElementById('af-connect').textContent = 'CONNECT' })
+  })
+
+  document.getElementById('af-demo').addEventListener('click', function () {
+    document.body.removeChild(overlay)
+    done(DEMO_TRACKS)
+  })
+}
 
 // Resolve tracks from TuneCamp, calling `done(tracks)` when ready.
 function loadTracks (done) {
@@ -20727,65 +20819,46 @@ function loadTracks (done) {
   var tcPass = params.get('p')
 
   if (tcServer && tcUser && tcPass) {
-    var base = tcServer.replace(/\/$/, '')
-    var auth = 'u=' + encodeURIComponent(tcUser) +
-      '&p=' + encodeURIComponent(tcPass) +
-      '&v=1.16.1&c=audiofabric&f=json'
-    fetch(base + '/rest/getRandomSongs.view?' + auth + '&size=20')
-      .then(function (r) { return r.json() })
-      .then(function (data) {
-        var sub = data['subsonic-response']
-        if (sub && sub.status === 'ok' && sub.randomSongs && sub.randomSongs.song) {
-          done(sub.randomSongs.song.map(function (s) {
-            return {
-              title: s.title || 'Unknown',
-              artist: s.artist || 'Unknown',
-              path: base + '/rest/stream.view?' + auth + '&id=' + s.id
-            }
-          }))
-        } else {
-          done(DEMO_TRACKS)
-        }
-      })
+    subsonicTracks(tcServer, tcUser, tcPass)
+      .then(function (tracks) { done(tracks || DEMO_TRACKS) })
       .catch(function () { done(DEMO_TRACKS) })
     return
   }
 
   // 1b — Same-origin TuneCamp auto-detection via localStorage JWT
-  // When audiofabric is opened in a new tab from TuneCamp's Lab page
-  // (same origin), it can read the JWT session token from localStorage
-  // and stream directly via the Subsonic API.
   var localToken = null
-  try { localToken = window.localStorage.getItem('tunecamp_token') } catch (e) { /* sandboxed */ }
+  try { localToken = window.localStorage.getItem('tunecamp_token') } catch (e) {}
   if (localToken) {
-    var autoBase = window.location.origin
-    var autoAuth = 'u=_&p=' + encodeURIComponent(localToken) +
-      '&v=1.16.1&c=audiofabric&f=json'
-    fetch(autoBase + '/rest/getRandomSongs.view?' + autoAuth + '&size=20')
-      .then(function (r) { return r.json() })
-      .then(function (data) {
-        var sub = data['subsonic-response']
-        if (sub && sub.status === 'ok' && sub.randomSongs && sub.randomSongs.song) {
-          done(sub.randomSongs.song.map(function (s) {
-            return {
-              title: s.title || 'Unknown',
-              artist: s.artist || 'Unknown',
-              path: autoBase + '/rest/stream.view?' + autoAuth + '&id=' + s.id
-            }
-          }))
-        } else {
-          done(DEMO_TRACKS)
-        }
-      })
+    subsonicTracks(window.location.origin, '_', localToken)
+      .then(function (tracks) { done(tracks || DEMO_TRACKS) })
       .catch(function () { done(DEMO_TRACKS) })
     return
   }
 
-  // 2 — TuneCamp Lab SDK PostMessage bridge (getLibrary)
-  // Falls back to demo tracks after 2 s if TuneCamp doesn't respond.
+  // 1c — Saved cross-origin credentials (standalone mode, previously connected)
+  var savedServer, savedUser, savedPass
+  try { savedServer = localStorage.getItem(LS_SERVER); savedUser = localStorage.getItem(LS_USER); savedPass = localStorage.getItem(LS_PASS) } catch (e) {}
+  if (savedServer && savedUser && savedPass) {
+    subsonicTracks(savedServer, savedUser, savedPass)
+      .then(function (tracks) {
+        if (tracks) { done(tracks); return }
+        // Saved creds no longer valid — clear and show form
+        try { localStorage.removeItem(LS_SERVER); localStorage.removeItem(LS_USER); localStorage.removeItem(LS_PASS) } catch (e) {}
+        showConnectForm(done, savedServer, savedUser)
+      })
+      .catch(function () { showConnectForm(done, savedServer, savedUser) })
+    return
+  }
+
+  // 2 — TuneCamp Lab SDK PostMessage bridge (inside iframe)
+  var isStandalone = window.parent === window
   var fallbackTimer = setTimeout(function () {
     window.removeEventListener('message', onMessage)
-    done(DEMO_TRACKS)
+    if (isStandalone) {
+      showConnectForm(done, '', '')
+    } else {
+      done(DEMO_TRACKS)
+    }
   }, 2000)
 
   function onMessage (event) {
@@ -20811,10 +20884,9 @@ function loadTracks (done) {
       '*'
     )
   } catch (e) {
-    // Not inside an iFrame — skip to demo tracks immediately
     clearTimeout(fallbackTimer)
     window.removeEventListener('message', onMessage)
-    done(DEMO_TRACKS)
+    showConnectForm(done, '', '')
   }
 }
 
