@@ -10,6 +10,14 @@ TuneCamp is a federated, self-hosted music platform that combines a personal mus
 - **Artist Support**: Facilitate direct publishing, crowdfunding, and rights management via smart contracts and unlock systems.
 - **Metadata Enrichment**: Integration with multiple providers (MusicBrainz, Discogs, iTunes, TheAudioDB, Spotify, Bandcamp, SoundCloud) and Lyrics.ovh for high-resolution covers and lyrics.
 
+## Notable Features
+
+- **Radio**: an always-on HLS station broadcast from the instance's library — admins mix custom playlists and dynamic per-genre playlists. See [radio.md](./radio.md).
+- **AI access (MCP)**: a Model Context Protocol server lets AI clients (e.g. Claude Desktop) search the catalog and run actions over a token-gated channel. See [mcp-setup-guide.md](./mcp-setup-guide.md).
+- **Lab**: embed experimental browser-based audio tools in sandboxed iFrames without touching core. See [LAB.md](./LAB.md).
+- **Admin System panel**: live CPU/RAM/storage/background-task metrics for spotting memory leaks. See [monitoring.md](./monitoring.md).
+- **Extensibility**: backend providers (metadata, streaming, storage, …) via a plugin loader. See [PLUGINS.md](./PLUGINS.md).
+
 ## Tech Stack
 
 ### Backend
