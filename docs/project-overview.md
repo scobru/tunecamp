@@ -47,6 +47,15 @@ The project is organized as a monorepo with the following main directories:
 - `contracts/`: Smart contracts for web3 functionality.
 - `docs/`: Technical project documentation.
 
+## Related Repositories
+
+| Repo | Description |
+|------|-------------|
+| [tunecamp](https://github.com/scobru/tunecamp) | Main server + webapp |
+| [tunecamp-peer](https://github.com/scobru/tunecamp-peer) | Standalone CLI peer-sharing daemon |
+| [tunecamp-4-track-recorder](https://github.com/scobru/tunecamp-4-track-recorder) | Browser-based 4-track recorder (Svelte 5 component) |
+| [tunecamp-website](https://github.com/scobru/tunecamp-website) | Landing page and community directory |
+
 ## Related Documentation
 
 - [Source Tree Analysis](./source-tree-analysis.md)
