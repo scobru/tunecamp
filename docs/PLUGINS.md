@@ -40,16 +40,19 @@ export default class MyCustomMetadataProvider {
         return true; 
     }
 
-    async searchRecording(query) {
-        // Fetch from your API
-        // Return an array of MetadataMatch objects
+    // `searchRelease` is the method the loader duck-types on to register a
+    // MetadataProvider — it MUST exist or the plugin is ignored.
+    async searchRelease(query) {
+        // Return an array of MetadataResult objects (album/release level)
         return [
-            {
-                id: 'abc-123',
-                title: 'Song Title',
-                artist: 'Artist Name',
-                source: this.id
-            }
+            { id: 'rel-1', title: 'Album Title', artist: 'Artist Name', date: '2024-01-01', source: this.id }
+        ];
+    }
+
+    async searchRecording(query) {
+        // Return an array of MetadataResult objects (track level)
+        return [
+            { id: 'abc-123', title: 'Song Title', artist: 'Artist Name', date: '2024-01-01', source: this.id }
         ];
     }
 
@@ -80,6 +83,170 @@ export default class MyYouTubeProvider {
             return info.format.find(f => f.mimeType.includes('audio')).url;
         }
         return null;
+    }
+}
+```
+
+---
+
+## Provider Contracts
+
+The loader duck-types on the methods listed under **Detected by** above — a
+class is registered against *every* registry whose required methods it
+implements (so one plugin can be, say, both a `DownloadProvider` and a
+`StorageProvider`). Below are the full method contracts for each type. Plugins
+are plain JS; the signatures are shown in TypeScript for clarity, taken from
+[`src/server/core/provider.ts`](../src/server/core/provider.ts).
+
+Every provider also carries the base fields: `id`, `name`, `version`,
+`description?`, and optional `onEnable()` / `onDisable()` (see Lifecycle Hooks
+below).
+
+### 3. DownloadProvider
+
+**Detected by:** `isAvailable` + `search` + `download`.
+
+```typescript
+interface DownloadResult {
+    id: string;
+    title: string;
+    artist?: string;
+    filename: string;
+    sizeBytes: number;
+    bitrate?: number;
+    source: string;
+    meta?: any;        // provider-specific data, passed back to download()
+}
+
+isAvailable(): Promise<boolean>;            // is the source connected/reachable?
+search(query: string): Promise<DownloadResult[]>;   // e.g. "Artist - Title"
+download(result: DownloadResult): Promise<string>;  // returns the LOCAL file path
+```
+
+```javascript
+// plugins/my-download.js
+export default class MyDownloadProvider {
+    id = 'my-dl'; name = 'My Downloader'; version = '1.0.0';
+    async isAvailable() { return true; }
+    async search(query) {
+        return [{ id: 'x1', title: query, filename: 'x1.flac', sizeBytes: 0, source: this.id, meta: {} }];
+    }
+    async download(result) {
+        const dest = `/tmp/${result.filename}`;
+        // ...fetch bytes to `dest`...
+        return dest;
+    }
+}
+```
+
+### 4. ScannerProvider
+
+**Detected by:** `scan`.
+
+```typescript
+scan(): Promise<string[]>;                       // list of paths/identifiers in the source
+getMetadata(path: string): Promise<any>;         // tags for one entry
+getFileStream(path: string): Promise<NodeJS.ReadableStream>;  // readable for ingest
+```
+
+```javascript
+// plugins/s3-scanner.js
+export default class S3Scanner {
+    id = 's3'; name = 'S3 Scanner'; version = '1.0.0';
+    async scan() { return ['bucket/track1.flac', 'bucket/track2.flac']; }
+    async getMetadata(p) { return { title: p.split('/').pop() }; }
+    async getFileStream(p) { /* return a Readable */ }
+}
+```
+
+### 5. StorageProvider
+
+**Detected by:** `upload` + `getUrl`.
+
+```typescript
+upload(localPath: string, remotePath: string): Promise<string>;   // returns remote ref/key
+download(remotePath: string, localPath: string): Promise<void>;
+getUrl(remotePath: string): Promise<string | null>;               // public/signed URL
+exists(remotePath: string): Promise<boolean>;
+delete(remotePath: string): Promise<void>;
+```
+
+```javascript
+// plugins/dropbox-storage.js
+export default class DropboxStorage {
+    id = 'dropbox'; name = 'Dropbox'; version = '1.0.0';
+    async upload(localPath, remotePath) { /* upload */ return remotePath; }
+    async download(remotePath, localPath) { /* download */ }
+    async getUrl(remotePath) { return `https://dropbox.example/${remotePath}`; }
+    async exists(remotePath) { return true; }
+    async delete(remotePath) { /* delete */ }
+}
+```
+
+### 6. PlaylistProvider
+
+**Detected by:** `canHandlePlaylist` + `fetchPlaylistByUrl`.
+
+```typescript
+interface PlaylistTrack { title: string; artist: string; album?: string; duration?: number; sourceId: string; provider: string; }
+interface ExternalPlaylist { id: string; title: string; description?: string; thumbnail?: string; tracks: PlaylistTrack[]; }
+
+canHandlePlaylist(url: string): boolean;                  // can this provider parse the URL?
+fetchPlaylistByUrl(url: string): Promise<ExternalPlaylist>;
+```
+
+```javascript
+// plugins/deezer-playlist.js
+export default class DeezerPlaylist {
+    id = 'deezer-pl'; name = 'Deezer Playlists'; version = '1.0.0';
+    canHandlePlaylist(url) { return url.includes('deezer.com/playlist'); }
+    async fetchPlaylistByUrl(url) {
+        return { id: 'pl1', title: 'My Playlist', tracks: [
+            { title: 'Song', artist: 'Artist', sourceId: 's1', provider: this.id }
+        ]};
+    }
+}
+```
+
+### 7. ScrobbleProvider
+
+**Detected by:** `scrobble` + `isConfigured`.
+
+```typescript
+scrobble(track: { artist: string; title: string; album?: string; duration?: number }): Promise<void>;
+nowPlaying?(track: { artist: string; title: string; album?: string }): Promise<void>;
+isConfigured(): Promise<boolean>;        // credentials present and ready?
+```
+
+```javascript
+// plugins/maloja-scrobble.js
+export default class MalojaScrobble {
+    id = 'maloja'; name = 'Maloja'; version = '1.0.0';
+    async isConfigured() { return !!process.env.MALOJA_KEY; }
+    async scrobble(track) { /* POST to Maloja */ }
+    async nowPlaying(track) { /* optional */ }
+}
+```
+
+### 8. AIProvider
+
+**Detected by:** `enrichMetadata` + `complete`.
+
+```typescript
+enrichMetadata(context: { title: string; artist?: string; album?: string; genre?: string }):
+    Promise<Partial<{ description: string; genre: string; tags: string[]; mood: string }>>;
+complete(prompt: string): Promise<string | null>;
+isAvailable(): Promise<boolean>;
+```
+
+```javascript
+// plugins/ollama-ai.js
+export default class OllamaAI {
+    id = 'ollama'; name = 'Ollama (local)'; version = '1.0.0';
+    async isAvailable() { return true; }
+    async complete(prompt) { /* call local Ollama */ return 'response'; }
+    async enrichMetadata(ctx) {
+        return { description: `A track by ${ctx.artist}`, tags: ['demo'] };
     }
 }
 ```
