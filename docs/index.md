@@ -73,7 +73,7 @@ For people running a TuneCamp instance.
 |-----|-------------|
 | [Federation](./FEDERATION.md) | ActivityPub and HTTP gossip discovery — how instances find each other |
 | [Plugins](./PLUGINS.md) | Loading custom streaming, metadata, and storage providers |
-| [Monitoring](./monitoring.md) | `/health` endpoint, Sentry crash reporting, and uptime checks |
+| [Monitoring](./monitoring.md) | `/health` endpoint, the admin System Resources panel, Sentry crash reporting, and uptime checks |
 | [Scaling](./scaling.md) | SQLite / single-process limits and mitigations |
 | [MCP Setup](./mcp-setup-guide.md) | Exposing the TuneCamp catalog to AI clients via MCP |
 
@@ -86,8 +86,10 @@ For contributors and people building on TuneCamp.
 | Doc | Description |
 |-----|-------------|
 | [Contributing](./CONTRIBUTING.md) | Code contribution guidelines and pull request process |
+| [Development Guide](./development-guide.md) | Local dev environment setup, running, and testing |
 | [Backend Architecture](./architecture-backend.md) | Express server, SQLite, ActivityPub, and federated discovery |
 | [Webapp Architecture](./architecture-webapp.md) | React, Vite, Zustand, and instance discovery in the frontend |
+| [UI Component Inventory](./component-inventory.md) | Catalog of the webapp's React components by directory |
 | [Data Models](./data-models.md) | Database schema and entity relationships |
 | [API Contracts](./api-contracts.md) | REST endpoints, authentication, and supported protocols |
 | [Source Tree](./source-tree-analysis.md) | Directory layout and entry points |
@@ -122,4 +124,4 @@ Optional third-party services you can connect to your instance.
 
 ---
 
-*Last updated: June 23, 2026*
+*Last updated: June 24, 2026*
