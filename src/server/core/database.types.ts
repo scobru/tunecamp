@@ -796,6 +796,7 @@ export interface PeerManager {
     createPeerSession(id: string, userId: number, ipAddress: string | null, allowDownloads: boolean): void;
     updatePeerSessionHeartbeat(id: string): void;
     deletePeerSession(id: string): void;
+    deleteStaleSessionsForUser(userId: number): void;
     getPeerSession(id: string): PeerSession | undefined;
     getActivePeerSessions(): PeerSession[];
     replacePeerTracks(sessionId: string, tracks: Omit<PeerTrack, 'session_id' | 'created_at'>[]): void;

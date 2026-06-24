@@ -150,17 +150,34 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
         let artistId: number | null = null;
 
         if (p) {
-            let password = p;
-            if (p.startsWith('enc:')) {
-                const hex = p.substring(4);
-                password = Buffer.from(hex, 'hex').toString('utf8');
+            // Auth method 1: tc_ API tokens or JWT session tokens via p= parameter
+            // This enables lab apps (e.g. audiofabric) to stream via Subsonic API
+            // using the existing token system instead of plain passwords.
+            if (p.startsWith('tc_') || (p.includes('.') && p.split('.').length === 3)) {
+                const tokenPayload = await auth.verifyToken(p);
+                if (tokenPayload) {
+                    authorized = true;
+                    isAdmin = tokenPayload.isAdmin;
+                    artistId = tokenPayload.artistId;
+                    // Use the username from the token payload (overrides u= param)
+                    (req as any).user = { username: tokenPayload.username, isAdmin, artistId };
+                }
             }
 
-            const result = await auth.authenticateUser(u, password);
-            if (result && result.success) {
-                authorized = true;
-                isAdmin = result.isAdmin;
-                artistId = result.artistId;
+            // Auth method 2: Plain password or enc: encoded password
+            if (!authorized) {
+                let password = p;
+                if (p.startsWith('enc:')) {
+                    const hex = p.substring(4);
+                    password = Buffer.from(hex, 'hex').toString('utf8');
+                }
+
+                const result = await auth.authenticateUser(u, password);
+                if (result && result.success) {
+                    authorized = true;
+                    isAdmin = result.isAdmin;
+                    artistId = result.artistId;
+                }
             }
         }
 

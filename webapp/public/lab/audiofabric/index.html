@@ -139,6 +139,27 @@
       left: -1px;
       background-color: #eee;
     }
+    .search-container {
+      padding: 15px 25px 5px 25px;
+      position: relative;
+      z-index: 10;
+    }
+    .search-input {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(30, 30, 30, 0.6);
+      border: 1px solid rgb(80, 80, 80);
+      color: #eee;
+      padding: 8px 12px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 200ms linear;
+    }
+    .search-input:focus {
+      border-color: #bbb;
+    }
     .track-selector {
       margin: 0 0 20px 0;
       position: relative;
@@ -201,6 +222,9 @@
     </div>
     <div class="seeker">
       <div class="progress"></div>
+    </div>
+    <div class="search-container">
+      <input type="text" class="search-input" placeholder="SEARCH TRACK..." autocomplete="off" />
     </div>
     <ul class="track-selector"></ul>
     <div class="hint">DRAG AND SCROLL TO PAN AND ZOOM</div>

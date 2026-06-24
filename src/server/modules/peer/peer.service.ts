@@ -53,6 +53,28 @@ export class PeerService {
     }
 
     registerSession(ws: WebSocket, userId: number, username: string, ipAddress: string | null, allowDownloads: boolean): string {
+        // Clean up any existing sessions for this user to prevent duplicates
+        // when the same peer reconnects (e.g., after a network drop or restart).
+        for (const [existingId, existingSession] of this.activeSessions.entries()) {
+            if (existingSession.userId === userId) {
+                console.log(`🔌 [PeerService] Cleaning up stale session ${existingId} for user ${username} before re-register`);
+                try {
+                    if (existingSession.ws.readyState === 1) {
+                        existingSession.ws.close();
+                    }
+                } catch {}
+                // Cleanup pending requests
+                for (const [, res] of existingSession.pendingRequests.entries()) {
+                    try { res.status(503).json({ error: "Peer reconnected" }); } catch { try { res.end(); } catch {} }
+                }
+                existingSession.pendingRequests.clear();
+                this.activeSessions.delete(existingId);
+                this.database.peer.deletePeerSession(existingId);
+            }
+        }
+        // Also clean up any orphaned DB sessions for this user (e.g., from a server restart)
+        this.database.peer.deleteStaleSessionsForUser(userId);
+
         const sessionId = crypto.randomUUID();
         const session: ActivePeerSession = {
             id: sessionId,

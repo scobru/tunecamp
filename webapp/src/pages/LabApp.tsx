@@ -185,7 +185,21 @@ const LabApp = () => {
         )}
 
         <a
-          href={app.src}
+          href={(() => {
+            if (!app) return '#';
+            // For audiofabric, pass the session token so it can stream from
+            // the Subsonic API when opened fullscreen in a new tab.
+            const token = localStorage.getItem('tunecamp_token');
+            if (app.id === 'audiofabric' && token) {
+              const params = new URLSearchParams({
+                tc: window.location.origin,
+                u: user?.username || '_',
+                p: token,
+              });
+              return `${app.src}?${params.toString()}`;
+            }
+            return app.src;
+          })()}
           target="_blank"
           rel="noopener noreferrer"
           className="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100"

@@ -20561,8 +20561,24 @@ module.exports = function createAudioControls (audio, tracks) {
     audio.currentTime = t * audio.duration
   })
 
+  const searchInput = document.querySelector('.search-input')
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      const query = e.target.value.toLowerCase()
+      tracks.forEach(track => {
+        const titleMatch = track.title.toLowerCase().indexOf(query) !== -1
+        const artistMatch = track.artist.toLowerCase().indexOf(query) !== -1
+        if (titleMatch || artistMatch) {
+          track.el.style.display = ''
+        } else {
+          track.el.style.display = 'none'
+        }
+      })
+    })
+  }
+
   window.addEventListener('keypress', (e) => {
-    if (e.key === ' ') {
+    if (e.key === ' ' && document.activeElement.tagName !== 'INPUT') {
       togglePlay()
     }
   })
@@ -20667,6 +20683,7 @@ module.exports = function createRoamingCamera (canvas, center, eye) {
 }
 
 },{"3d-view-controls":1}],96:[function(require,module,exports){
+/* global URLSearchParams, fetch */
 const createRegl = require('regl')
 const glsl = require('glslify')
 const mat4 = require('gl-mat4')
@@ -20724,6 +20741,36 @@ function loadTracks (done) {
               title: s.title || 'Unknown',
               artist: s.artist || 'Unknown',
               path: base + '/rest/stream.view?' + auth + '&id=' + s.id
+            }
+          }))
+        } else {
+          done(DEMO_TRACKS)
+        }
+      })
+      .catch(function () { done(DEMO_TRACKS) })
+    return
+  }
+
+  // 1b — Same-origin TuneCamp auto-detection via localStorage JWT
+  // When audiofabric is opened in a new tab from TuneCamp's Lab page
+  // (same origin), it can read the JWT session token from localStorage
+  // and stream directly via the Subsonic API.
+  var localToken = null
+  try { localToken = window.localStorage.getItem('tunecamp_token') } catch (e) { /* sandboxed */ }
+  if (localToken) {
+    var autoBase = window.location.origin
+    var autoAuth = 'u=_&p=' + encodeURIComponent(localToken) +
+      '&v=1.16.1&c=audiofabric&f=json'
+    fetch(autoBase + '/rest/getRandomSongs.view?' + autoAuth + '&size=20')
+      .then(function (r) { return r.json() })
+      .then(function (data) {
+        var sub = data['subsonic-response']
+        if (sub && sub.status === 'ok' && sub.randomSongs && sub.randomSongs.song) {
+          done(sub.randomSongs.song.map(function (s) {
+            return {
+              title: s.title || 'Unknown',
+              artist: s.artist || 'Unknown',
+              path: autoBase + '/rest/stream.view?' + autoAuth + '&id=' + s.id
             }
           }))
         } else {
@@ -20848,7 +20895,7 @@ window.addEventListener('resize', () => {
 
 // ─── Boot: resolve tracks then start audio + visualisation ────────────────────
 loadTracks(function (tracks) {
-  const audio = createPlayer(tracks[0].path)
+  const audio = createPlayer(tracks[0].path, { crossOrigin: 'anonymous' })
   audio.on('load', function () {
     window.audio = audio
     analyser = createAnalyser(audio.node, audio.context, { audible: true, stereo: false })
