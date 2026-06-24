@@ -11,6 +11,32 @@ two questions that matter in production: *"is the instance up?"* and
 registered before the federation middleware, so a stuck integration cannot
 block it. The Docker image already uses it for its `HEALTHCHECK`.
 
+## System Resources panel (Admin → System)
+
+Root admins get a live resource dashboard at **Admin Panel → System**, backed
+by `GET /api/admin/system/resources`. It answers *"how much is my instance
+consuming right now, and is something leaking?"* without shelling into the
+container.
+
+It polls every 5s and shows:
+
+- **Process CPU %** — derived client-side from successive `process.cpuUsage()`
+  deltas, normalised across all cores. Plus system load average (Linux; `0` on
+  Windows) and core count.
+- **Heap used / total, RSS, external** — `process.memoryUsage()`.
+- **Heap & RSS trend sparklines** over the last ~5 min. A line that climbs and
+  never drops after GC is the classic memory-leak signature; RSS is what the
+  kernel watches before an OOM kill (exit 137).
+- **Host RAM** used vs total (`os.totalmem/freemem`).
+- **SQLite DB file size** — a cheap `stat`, so the endpoint stays light enough
+  to poll. (For the full on-disk music breakdown use the **Storage** tab — that
+  one walks the directory and is intentionally on-demand only.)
+- **Running background tasks** — live list from the `TaskManager` (scans,
+  audits, tag-sync, etc.) with progress.
+
+The endpoint is deliberately cheap (no disk walk) so polling it does not itself
+add load. It is gated to `MANAGE_SYSTEM` (root admin).
+
 ## Crash reporting (Sentry)
 
 Opt-in: set `SENTRY_DSN` and restart. When unset (the default) the SDK is

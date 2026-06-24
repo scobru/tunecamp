@@ -2,6 +2,7 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { Router, json } from "express";
 import Stripe from "stripe";
 import path from "path";
+import os from "os";
 import fs from "fs-extra";
 import type { ServiceContainer } from "../../core/container.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
@@ -301,6 +302,49 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             console.error("Error recomputing storage:", error);
             res.status(500).json({ error: "Failed to recompute storage" });
         }
+    });
+
+    /**
+     * GET /api/admin/system/resources
+     * Live process/host resource snapshot for the admin dashboard: memory, CPU,
+     * load, DB file size and currently-running background tasks. All metrics are
+     * cheap (no disk walk) so the client can poll it every few seconds to spot
+     * memory leaks via the heap/RSS trend. Root/system admins only.
+     */
+    router.get("/system/resources", (req: AuthenticatedRequest, res: any) => {
+        if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
+            return res.status(403).json({ error: "Super Root access required" });
+        }
+        // SQLite file size is a cheap stat; the music dir is intentionally NOT
+        // walked here (see Storage tab for the full on-disk breakdown).
+        let dbSize = 0;
+        let dbPath: string | null = null;
+        try {
+            dbPath = (database as any).db?.name ?? null;
+            if (dbPath) dbSize = fs.statSync(dbPath).size;
+        } catch { /* DB file vanished or in-memory; report 0 */ }
+
+        res.json({
+            timestamp: Date.now(),
+            process: {
+                pid: process.pid,
+                uptime: process.uptime(),
+                nodeVersion: process.version,
+                memory: process.memoryUsage(),
+                cpuUsage: process.cpuUsage(), // microseconds, cumulative — client derives % from deltas
+            },
+            system: {
+                platform: process.platform,
+                arch: process.arch,
+                cpus: os.cpus().length,
+                loadavg: os.loadavg(), // [1m, 5m, 15m]; 0s on Windows
+                totalmem: os.totalmem(),
+                freemem: os.freemem(),
+                uptime: os.uptime(),
+            },
+            db: { path: dbPath, size: dbSize },
+            tasks: taskManager.getRunningTasks(),
+        });
     });
 
     /**
