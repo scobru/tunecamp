@@ -35,30 +35,53 @@ jest.unstable_mockModule("node-fetch", () => ({
     },
     body: {
       pipe: jest.fn(),
+import express from "express";
+import request from "supertest";
+import { jest } from "@jest/globals";
+
+// Mock isSafeUrl to avoid real DNS queries which hang the tests
+jest.unstable_mockModule("../../../../utils/networkUtils.js", () => ({
+  isSafeUrl: jest.fn<any>().mockImplementation(async (urlStr: string) => {
+    try {
+      const url = new URL(urlStr);
+      if (
+        [
+          "127.0.0.1",
+          "localhost",
+          "10.0.0.5",
+          "192.168.1.100",
+          "[::1]",
+        ].includes(url.hostname)
+      )
+        return false;
+      if (!["http:", "https:"].includes(url.protocol)) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  }),
+}));
+
+// Mock node-fetch so we don't actually hit the network
+jest.unstable_mockModule("node-fetch", () => ({
+  default: jest.fn<any>().mockResolvedValue({
+    ok: true,
+    text: jest.fn<any>().mockResolvedValue("<html><body>No data</body></html>"),
+    headers: {
+      get: jest.fn(),
+    },
+    body: {
+      pipe: jest.fn(),
       on: jest.fn(),
     },
   }),
 }));
 
 let createImportRoutes: any;
+let originalFetch: typeof global.fetch;
 
 beforeAll(async () => {
     ({ createImportRoutes } = await import("../import.js"));
-});
-
-describe("Import Routes Security", () => {
-  let app: express.Express;
-
-  beforeEach(() => {
-    app = express();
-    app.use(express.json());
-    app.use("/api/import", createImportRoutes({} as any));
-  });
-
-  it("should reject malformed URLs", async () => {
-    const response = await request(app)
-      .post("/api/import/bandcamp")
-      .send({ url: "not-a-url" });
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("Invalid Bandcamp URL");
