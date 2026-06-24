@@ -404,10 +404,20 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideNetwork,
                 hideDig,
                 hideDj,
-                membershipMonthlyPrice
+                membershipMonthlyPrice,
+                peerEnabled,
+                peerAllowDownloads
             } = req.body;
             let settingsChanged = false;
             const isTrue = (val: any) => val === true || val === "true";
+
+            if (peerEnabled !== undefined) {
+                identity.setSetting("peerEnabled", isTrue(peerEnabled) ? "true" : "false");
+            }
+
+            if (peerAllowDownloads !== undefined) {
+                identity.setSetting("peerAllowDownloads", isTrue(peerAllowDownloads) ? "true" : "false");
+            }
 
             if (hideLive !== undefined) {
                 identity.setSetting("hideLive", isTrue(hideLive) ? "true" : "false");

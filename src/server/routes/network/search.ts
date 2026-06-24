@@ -302,10 +302,21 @@ export function createSearchRoutes(container: ServiceContainer): Router {
                 }
             }
 
+            // 4. Search Peer Tracks (if authenticated)
+            let peerResults: any[] = [];
+            const peerEnabled = identity.getSetting("peerEnabled") === "true";
+            if (req.userId && peerEnabled) {
+                const peerService = (container as any).peerService;
+                if (peerService) {
+                    peerResults = peerService.searchTracks(query);
+                }
+            }
+
             res.json({
                 local: localResults,
                 external: externalResults,
                 streaming: streamingResults,
+                peers: peerResults,
                 query
             });
         } catch (error) {

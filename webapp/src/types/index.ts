@@ -286,6 +286,8 @@ export interface SiteSettings {
     hideDig?: boolean | string;
     hideDj?: boolean | string;
     membershipMonthlyPrice?: number | string;
+    peerEnabled?: boolean | string;
+    peerAllowDownloads?: boolean | string;
 }
 
 export interface LiveSession {

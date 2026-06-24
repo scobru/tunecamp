@@ -20,6 +20,7 @@ export interface User {
     ap_public_key?: string | null;
     ap_private_key?: string | null;
     artist_unlinked?: number;
+    can_peer?: number;
 }
 
 export interface Artist {
@@ -765,13 +766,51 @@ export interface IntegrationManager {
     clearExpiredGunCache(): void;
 }
 
-export interface DatabaseService extends IdentityManager, LibraryManager, SocialManager, IntegrationManager {
+export interface PeerSession {
+    id: string;
+    user_id: number;
+    connected_at: number;
+    last_seen: number;
+    ip_address: string | null;
+    allow_downloads: boolean;
+    username?: string;
+    trackCount?: number;
+}
+
+export interface PeerTrack {
+    id: string;
+    session_id: string;
+    title: string;
+    artist: string | null;
+    album: string | null;
+    duration: number | null;
+    file_size: number | null;
+    mime_type: string | null;
+    allow_download: boolean;
+    created_at: number;
+    username?: string;
+    user_id?: number;
+}
+
+export interface PeerManager {
+    createPeerSession(id: string, userId: number, ipAddress: string | null, allowDownloads: boolean): void;
+    updatePeerSessionHeartbeat(id: string): void;
+    deletePeerSession(id: string): void;
+    getPeerSession(id: string): PeerSession | undefined;
+    getActivePeerSessions(): PeerSession[];
+    replacePeerTracks(sessionId: string, tracks: Omit<PeerTrack, 'session_id' | 'created_at'>[]): void;
+    getPeerTrack(sessionId: string, trackId: string): PeerTrack | undefined;
+    searchPeerTracks(query: string): PeerTrack[];
+    getTracksByPeerSession(sessionId: string): PeerTrack[];
+}
+
+export interface DatabaseService extends IdentityManager, LibraryManager, SocialManager, IntegrationManager, PeerManager {
     db: DatabaseType;
     identity: IdentityManager;
     library: LibraryManager;
     social: SocialManager;
     integration: IntegrationManager;
+    peer: PeerManager;
     transaction<T>(fn: () => T): T;
-
 }
 

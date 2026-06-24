@@ -520,6 +520,36 @@ export const AdminSettingsPanel = () => {
                   />
                 </label>
               </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Enable Peer Sharing</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Allow authorized users to connect local daemons and share folders of local music.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={settings.peerEnabled === true || (settings.peerEnabled as unknown) === "true"}
+                    onChange={(e) => setSettings({ ...settings, peerEnabled: e.target.checked })}
+                  />
+                </label>
+              </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Allow Peer Downloads</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Permit downloading tracks shared by connected peers (otherwise only streaming is allowed).</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={settings.peerAllowDownloads !== false && (settings.peerAllowDownloads as unknown) !== "false"}
+                    onChange={(e) => setSettings({ ...settings, peerAllowDownloads: e.target.checked })}
+                  />
+                </label>
+              </div>
             </div>
           )}
 

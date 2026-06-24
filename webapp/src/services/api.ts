@@ -685,6 +685,14 @@ const API = {
     pingNowPlaying: (data: { trackId?: number | string | null; title: string; artist?: string }) =>
         handleResponse(api.post<{ recorded: boolean }>('now-playing', data)),
     clearNowPlaying: () => handleResponse(api.post<{ recorded: boolean }>('now-playing', { title: '' })),
+
+    // --- Peer Sharing ---
+    getPeerSessions: () => handleResponse(api.get<any[]>('peers')),
+    searchPeerTracks: (query: string) => handleResponse(api.get<any[]>(`peers/search?q=${encodeURIComponent(query)}`)),
+    getPeerTracks: (sessionId: string) => handleResponse(api.get<any[]>(`peers/${sessionId}/tracks`)),
+    updateUserCanPeer: (userId: number, canPeer: boolean) => handleResponse(api.put(`peers/users/${userId}/can-peer`, { canPeer })),
+    kickPeerSession: (sessionId: string) => handleResponse(api.delete(`peers/${sessionId}`)),
+    getPeerStatus: () => handleResponse<{ enabled: boolean, allowDownloads: boolean }>(api.get('peers/status')),
 };
 
 export interface NowListeningEntry {

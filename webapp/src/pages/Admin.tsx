@@ -19,6 +19,7 @@ import { StoragePanel } from "../components/admin/StoragePanel";
 import { SystemPanel } from "../components/admin/SystemPanel";
 import { AdminAssetsList } from "../components/admin/AdminAssetsList";
 import { AdminRadioPanel } from "../components/admin/AdminRadioPanel";
+import { PeerSessionsPanel } from "../components/admin/PeerSessionsPanel";
 
 const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
@@ -41,6 +42,7 @@ const Admin = () => {
     | "system"
     | "store"
     | "radio"
+    | "peers"
   >(isRootAdmin ? "users" : "releases");
   const [stats, setStats] = useState<any>(null);
 
@@ -217,6 +219,15 @@ const Admin = () => {
             Radio
           </a>
         )}
+        {(isRootAdmin || isManager) && (
+          <a
+            role="tab"
+            className={`tab ${activeTab === "peers" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("peers")}
+          >
+            Peer Sessions
+          </a>
+        )}
       </div>
 
       <div className="bg-base-100 p-4 sm:p-6 rounded-b-box border-x border-b border-base-300 min-h-[400px] glass-effect overflow-x-hidden">
@@ -270,6 +281,7 @@ const Admin = () => {
         {activeTab === "system" && isRootAdmin && <SystemPanel />}
         {activeTab === "store" && <AdminAssetsList />}
         {activeTab === "radio" && (isRootAdmin || isManager) && <AdminRadioPanel />}
+        {activeTab === "peers" && (isRootAdmin || isManager) && <PeerSessionsPanel />}
       </div>
 
       <AdminUserModal

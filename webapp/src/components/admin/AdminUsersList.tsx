@@ -127,6 +127,7 @@ export const AdminUsersList = () => {
             <th>Username</th>
             <th>Role</th>
             <th>Linked Artist</th>
+            <th>Peer Sharing</th>
             <th>Created</th>
             <th>Actions</th>
           </tr>
@@ -192,6 +193,23 @@ export const AdminUsersList = () => {
                 ) : (
                   "-"
                 )}
+              </td>
+              <td>
+                <input 
+                  type="checkbox" 
+                  className="toggle toggle-xs toggle-primary" 
+                  checked={u.can_peer === 1}
+                  disabled={u.id === 1 || !isRootAdmin}
+                  onChange={async () => {
+                    try {
+                      await API.updateUserCanPeer(u.id, u.can_peer !== 1);
+                      notify.success(`Updated peer permission for ${u.username}`);
+                      loadUsers();
+                    } catch (e: any) {
+                      notify.error(e, "Failed to update peer permission");
+                    }
+                  }}
+                />
               </td>
               <td className="opacity-50">
                 {new Date(u.createdAt).toLocaleDateString()}
