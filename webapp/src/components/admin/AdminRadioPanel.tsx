@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Radio, Play, Square, Shuffle, RefreshCw } from "lucide-react";
+import { Radio, Play, Square, Shuffle, RefreshCw, ListMusic, Tag } from "lucide-react";
 import API from "../../services/api";
 import toast from "react-hot-toast";
 
@@ -7,6 +7,7 @@ interface RadioStatus {
     active: boolean;
     name: string;
     playlistId?: number | null;
+    sources?: string[];
     shuffle: boolean;
     startedAt?: string;
     currentTrack?: { id: number; title: string; artist_name?: string; duration?: number } | null;
@@ -22,13 +23,11 @@ interface Playlist {
 
 export function AdminRadioPanel() {
     const [status, setStatus] = useState<RadioStatus | null>(null);
-    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
+    const [genrePlaylists, setGenrePlaylists] = useState<Playlist[]>([]);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({
-        name: "TuneCamp Radio",
-        playlistId: "",
-        shuffle: false,
-    });
+    const [form, setForm] = useState({ name: "TuneCamp Radio", shuffle: false });
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
@@ -49,21 +48,28 @@ export function AdminRadioPanel() {
     const loadPlaylists = async () => {
         try {
             const data = await API.getPlaylists();
-            const filtered = (data || []).filter((p: any) => !String(p.id).startsWith("genre:"));
-            setPlaylists(filtered);
-            if (filtered.length > 0 && !form.playlistId) {
-                setForm(f => ({ ...f, playlistId: String(filtered[0].id) }));
-            }
+            const all = data || [];
+            // Genre playlists are virtual entries with a `genre:` id prefix.
+            setGenrePlaylists(all.filter((p: any) => String(p.id).startsWith("genre:")));
+            setUserPlaylists(all.filter((p: any) => !String(p.id).startsWith("genre:")));
         } catch {}
     };
 
+    const toggle = (id: string) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
     const handleStart = async () => {
-        if (!form.playlistId) { toast.error("Select a playlist first"); return; }
+        if (selected.size === 0) { toast.error("Select at least one playlist or genre"); return; }
         setLoading(true);
         try {
             await API.startRadio({
                 name: form.name,
-                playlistId: Number(form.playlistId),
+                sources: Array.from(selected),
                 shuffle: form.shuffle,
             });
             toast.success("Radio started!");
@@ -86,6 +92,24 @@ export function AdminRadioPanel() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const CheckRow = ({ p }: { p: Playlist }) => {
+        const id = String(p.id);
+        return (
+            <label className="label cursor-pointer gap-3 justify-start py-1">
+                <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm checkbox-primary"
+                    checked={selected.has(id)}
+                    onChange={() => toggle(id)}
+                />
+                <span className="label-text flex-1 text-sm">
+                    {p.name}
+                    {p.trackCount ? <span className="opacity-50"> ({p.trackCount})</span> : ""}
+                </span>
+            </label>
+        );
     };
 
     return (
@@ -117,6 +141,9 @@ export function AdminRadioPanel() {
                             )}
                         </div>
                     )}
+                    {status.sources && status.sources.length > 0 && (
+                        <div className="text-xs opacity-60">{status.sources.length} source{status.sources.length !== 1 ? "s" : ""} mixed</div>
+                    )}
                     {status.startedAt && (
                         <div className="text-xs opacity-50">
                             On air since {new Date(status.startedAt).toLocaleTimeString()}
@@ -132,7 +159,7 @@ export function AdminRadioPanel() {
 
             {/* Config form */}
             {!status?.active && (
-                <div className="space-y-4 max-w-md">
+                <div className="space-y-4 max-w-lg">
                     <div className="form-control">
                         <label className="label"><span className="label-text text-sm font-medium">Station Name</span></label>
                         <input
@@ -145,23 +172,28 @@ export function AdminRadioPanel() {
                         />
                     </div>
 
-                    <div className="form-control">
-                        <label className="label"><span className="label-text text-sm font-medium">Playlist</span></label>
-                        <select
-                            className="select select-bordered select-sm"
-                            value={form.playlistId}
-                            onChange={e => setForm(f => ({ ...f, playlistId: e.target.value }))}
-                        >
-                            <option value="">— Select a playlist —</option>
-                            {playlists.map(p => (
-                                <option key={p.id} value={String(p.id)}>
-                                    {p.name}{p.trackCount ? ` (${p.trackCount} tracks)` : ""}
-                                </option>
-                            ))}
-                        </select>
-                        {playlists.length === 0 && (
-                            <span className="text-xs opacity-50 mt-1">No playlists found — create one in the Playlists section first.</span>
-                        )}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="form-control">
+                            <span className="label-text text-sm font-medium flex items-center gap-1 mb-1"><ListMusic size={14} /> Your playlists</span>
+                            <div className="bg-base-200/50 rounded-box border border-base-content/10 p-2 max-h-56 overflow-y-auto">
+                                {userPlaylists.length === 0 ? (
+                                    <span className="text-xs opacity-50 px-1">No playlists yet.</span>
+                                ) : userPlaylists.map(p => <CheckRow key={p.id} p={p} />)}
+                            </div>
+                        </div>
+
+                        <div className="form-control">
+                            <span className="label-text text-sm font-medium flex items-center gap-1 mb-1"><Tag size={14} /> Genre mixes</span>
+                            <div className="bg-base-200/50 rounded-box border border-base-content/10 p-2 max-h-56 overflow-y-auto">
+                                {genrePlaylists.length === 0 ? (
+                                    <span className="text-xs opacity-50 px-1">No genres found.</span>
+                                ) : genrePlaylists.map(p => <CheckRow key={p.id} p={p} />)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="text-xs opacity-60">
+                        {selected.size} selected — tracks from all picks are merged (duplicates removed).
                     </div>
 
                     <div className="form-control">
@@ -173,7 +205,7 @@ export function AdminRadioPanel() {
                                 onChange={e => setForm(f => ({ ...f, shuffle: e.target.checked }))}
                             />
                             <span className="label-text flex items-center gap-1">
-                                <Shuffle size={14} /> Shuffle playlist
+                                <Shuffle size={14} /> Shuffle queue
                             </span>
                         </label>
                     </div>
@@ -186,7 +218,7 @@ export function AdminRadioPanel() {
                     <button
                         className="btn btn-primary btn-sm gap-2"
                         onClick={handleStart}
-                        disabled={loading || !form.playlistId}
+                        disabled={loading || selected.size === 0}
                     >
                         {loading ? <span className="loading loading-spinner loading-xs" /> : <Play size={15} />}
                         Start Radio

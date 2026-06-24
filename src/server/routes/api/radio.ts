@@ -26,19 +26,22 @@ export function createRadioRoutes(container: ServiceContainer): Router {
     router.post("/start", json(), authMiddleware.requireAdmin, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
         if (!radioService) return res.status(503).json({ error: "Radio service not available" });
 
-        const { name, playlistId, trackIds, shuffle } = req.body;
+        const { name, playlistId, trackIds, sources, shuffle } = req.body;
         if (!name || typeof name !== "string" || !name.trim()) {
             return res.status(400).json({ error: "Radio name is required" });
         }
-        if (!playlistId && (!trackIds || !Array.isArray(trackIds) || trackIds.length === 0)) {
-            return res.status(400).json({ error: "Either playlistId or trackIds must be provided" });
+        const hasSources = Array.isArray(sources) && sources.length > 0;
+        const hasTrackIds = Array.isArray(trackIds) && trackIds.length > 0;
+        if (!playlistId && !hasTrackIds && !hasSources) {
+            return res.status(400).json({ error: "Provide at least one source: sources, playlistId, or trackIds" });
         }
 
         try {
             await radioService.start({
                 name: name.trim(),
                 playlistId: playlistId ? Number(playlistId) : null,
-                trackIds: trackIds && Array.isArray(trackIds) ? trackIds.map(Number) : undefined,
+                trackIds: hasTrackIds ? trackIds.map(Number) : undefined,
+                sources: hasSources ? sources.map(String) : undefined,
                 shuffle: shuffle === true,
             });
             res.json({ success: true, status: radioService.getStatus() });
