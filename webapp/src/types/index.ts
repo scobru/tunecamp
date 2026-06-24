@@ -422,6 +422,28 @@ export interface RecomputeStorageResult {
     overview: InstanceStorage;
 }
 
+export interface SystemResources {
+    timestamp: number;
+    process: {
+        pid: number;
+        uptime: number;
+        nodeVersion: string;
+        memory: { rss: number; heapTotal: number; heapUsed: number; external: number; arrayBuffers: number };
+        cpuUsage: { user: number; system: number };
+    };
+    system: {
+        platform: string;
+        arch: string;
+        cpus: number;
+        loadavg: [number, number, number];
+        totalmem: number;
+        freemem: number;
+        uptime: number;
+    };
+    db: { path: string | null; size: number };
+    tasks: Array<{ taskId: string; status: string; startedAt: string; progress?: { current: number; total: number; message?: string } }>;
+}
+
 
 export interface UserPlaylistTrack {
     id: string;

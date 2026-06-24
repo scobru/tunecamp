@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
-    StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult,
+    StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
     LiveSession, ArtistEvent, ArtistEventInput
 } from '../types';
@@ -619,6 +619,7 @@ const API = {
     deleteGDriveAccount: (id: number) => handleResponse(api.delete(`storage/gdrive/accounts/${id}`)),
     getStorageOverview: () => handleResponse(api.get<InstanceStorage>('admin/storage/overview')),
     recomputeStorage: () => handleResponse(api.post<RecomputeStorageResult>('admin/storage/recompute')),
+    getSystemResources: () => handleResponse(api.get<SystemResources>('admin/system/resources')),
     
     // --- Torrents ---
     getTorrents: () => handleResponse(api.get<any[]>('admin/torrents')),

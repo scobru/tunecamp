@@ -16,6 +16,7 @@ import { IntegrationsPanel } from "../components/admin/IntegrationsPanel";
 import { AdminFederationPanel } from "../components/admin/AdminFederationPanel";
 import { BackupPanel } from "../components/admin/BackupPanel";
 import { StoragePanel } from "../components/admin/StoragePanel";
+import { SystemPanel } from "../components/admin/SystemPanel";
 import { AdminAssetsList } from "../components/admin/AdminAssetsList";
 import { AdminRadioPanel } from "../components/admin/AdminRadioPanel";
 
@@ -37,6 +38,7 @@ const Admin = () => {
     | "maintenance"
     | "integrations"
     | "federation"
+    | "system"
     | "store"
     | "radio"
   >(isRootAdmin ? "users" : "releases");
@@ -190,6 +192,15 @@ const Admin = () => {
               Federation
             </a>
         )}
+        {isRootAdmin && (
+            <a
+              role="tab"
+              className={`tab ${activeTab === "system" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("system")}
+            >
+              System
+            </a>
+        )}
         <a
           role="tab"
           className={`tab ${activeTab === "store" ? "tab-active" : ""}`}
@@ -256,6 +267,7 @@ const Admin = () => {
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
         {activeTab === "integrations" && isRootAdmin && <IntegrationsPanel />}
         {activeTab === "federation" && isRootAdmin && <AdminFederationPanel />}
+        {activeTab === "system" && isRootAdmin && <SystemPanel />}
         {activeTab === "store" && <AdminAssetsList />}
         {activeTab === "radio" && (isRootAdmin || isManager) && <AdminRadioPanel />}
       </div>
