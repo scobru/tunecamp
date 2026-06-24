@@ -26,6 +26,27 @@ const LabApp = () => {
 
       if (action === 'getUser') {
         respond(user ? { username: user.username, artistId: user.artistId ?? null } : null);
+      } else if (action === 'getLibrary') {
+        try {
+          const limit = payload?.limit ?? 50;
+          const tracks = await API.getTracks();
+          const slice = tracks.slice(0, limit);
+          respond({
+            tracks: slice.map((t) => ({
+              id: t.id,
+              title: t.title,
+              artist: t.artistName || t.artist_name || '',
+              album: t.albumName || t.album_title || '',
+              duration: t.duration,
+              streamUrl: API.getStreamUrl(t.id),
+              coverUrl: API.getTrackCoverUrl(t.id),
+            })),
+          });
+        } catch {
+          respond({ tracks: [] });
+        }
+      } else if (action === 'getNowPlaying') {
+        respond(null);
       } else if (action === 'exportAudio') {
         try {
           const blob: Blob = payload?.blob;
