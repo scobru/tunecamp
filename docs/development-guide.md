@@ -26,7 +26,7 @@ This guide covers how to set up a local development environment for TuneCamp and
    ```
 
 3. **Configure environment variables**:
-   Copy `.env.example` to `.env` and fill in the required values (port, JWT secret, music directory path). See the [Configuration section in the README](../README.md#configuration) for the full variable reference.
+   Copy `.env.example` to `.env` and fill in the required values (port, JWT secret, music directory path). See the [Configuration section in the README](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) for the full variable reference.
 
 ## Running in Development
 

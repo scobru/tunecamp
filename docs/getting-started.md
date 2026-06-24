@@ -28,7 +28,7 @@ cd tunecamp
 docker-compose up -d --build
 ```
 
-When the container is healthy, open **http://localhost:1970** in your browser.
+When the container is healthy, open `http://localhost:1970` in your browser.
 
 ## 3. First login & secure your instance
 
@@ -40,7 +40,7 @@ TuneCamp creates a default admin account on first run:
 
 (Override these before first run with `TUNECAMP_ADMIN_USER` / `TUNECAMP_ADMIN_PASS`.)
 
-**Change the admin password immediately** after logging in, from **Admin → Settings**. The server logs a security warning at startup while the admin account, open CORS, or an auto-generated JWT secret are left at defaults — see the [Configuration reference](../README.md#configuration) to harden these.
+**Change the admin password immediately** after logging in, from **Admin → Settings**. The server logs a security warning at startup while the admin account, open CORS, or an auto-generated JWT secret are left at defaults — see the [Configuration reference](https://github.com/scobru/tunecamp/blob/main/README.md#configuration) to harden these.
 
 > A built-in setup wizard forces a password change for any account still using a default password. Details in [Roles & Permissions](./ROLES.md#first-login-setup-wizard).
 
