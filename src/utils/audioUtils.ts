@@ -72,15 +72,6 @@ export function formatAudioFilename(trackNum: number, title: string, extension: 
 }
 
 /**
- * Returns the standard cover filename: "cover.jpg" or "cover.png"
- */
-export function getStandardCoverFilename(extension: string): string {
-  return LibraryUtils.getStandardCoverFilename(extension || 'jpg');
-}
-
-
-
-/**
  * Generates a simple SVG placeholder for missing covers
  */
 export function getPlaceholderSVG(text: string = 'No Cover'): string {
