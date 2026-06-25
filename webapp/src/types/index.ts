@@ -263,6 +263,7 @@ export interface SiteSettings {
     telegram_bot_token?: string;
     telegram_allowed_channels?: string;
     chatEnabled?: boolean | string;
+    boardEnabled?: boolean | string;
     scheduledScanHour?: string;
     adminFeePercentage?: string | number;
     adminTreasuryAddress?: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useChat } from "../hooks/useChat";
+import { useBoard } from "../hooks/useBoard";
 import { useAuthStore } from "../stores/useAuthStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
@@ -97,7 +97,7 @@ const renderMessageWithLinks = (text: string) => {
 };
 
 const Board = () => {
-  const { messages, isLoading, error, sendMessage, deleteMessage } = useChat();
+  const { messages, isLoading, error, sendMessage, deleteMessage } = useBoard();
   const { user, isAuthenticated, role } = useAuthStore();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
@@ -196,6 +196,8 @@ const Board = () => {
   }
 
   const isBoardEnabled =
+    siteSettings?.boardEnabled === true ||
+    siteSettings?.boardEnabled === "true" ||
     siteSettings?.chatEnabled === true ||
     siteSettings?.chatEnabled === "true";
 

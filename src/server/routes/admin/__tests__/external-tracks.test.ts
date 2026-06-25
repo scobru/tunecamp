@@ -16,13 +16,13 @@ jest.unstable_mockModule('../../../../utils/networkUtils.js', () => ({
 let createAdminRoutes: any;
 let createProxyRoutes: any;
 let createDatabase: any;
-let createChatRoutes: any;
+let createBoardRoutes: any;
 
 beforeAll(async () => {
     ({ createAdminRoutes } = await import('../admin.js'));
     ({ createProxyRoutes } = await import('../../network/proxy.js'));
     ({ createDatabase } = await import('../../../core/database.js'));
-    ({ createChatRoutes } = await import('../../api/chat.js'));
+    ({ createBoardRoutes } = await import('../../api/board.js'));
 });
 
 describe('External Tracks & Self-Healing Integration Test', () => {
@@ -67,7 +67,7 @@ describe('External Tracks & Self-Healing Integration Test', () => {
             publishingService: {
                 syncPost: jest.fn(() => Promise.resolve())
             },
-            chatService: {
+            boardService: {
                 addMessage: jest.fn((username: string, role: string, message: string) => {
                     return {
                         id: 1,
@@ -97,7 +97,7 @@ describe('External Tracks & Self-Healing Integration Test', () => {
         });
 
         // Pre-populate req for chat/board messages
-        app.use('/api/chat', (req: any, res, next) => {
+        app.use('/api/board', (req: any, res, next) => {
             req.username = 'admin';
             req.role = UserRole.ADMIN;
             req.userId = 1;
@@ -107,7 +107,7 @@ describe('External Tracks & Self-Healing Integration Test', () => {
 
         app.use('/api/admin', createAdminRoutes(container));
         app.use('/api/proxy', createProxyRoutes(container));
-        app.use('/api/chat', createChatRoutes(container));
+        app.use('/api/board', createBoardRoutes(container));
 
         mockFetch.mockReset();
     });
@@ -121,7 +121,7 @@ describe('External Tracks & Self-Healing Integration Test', () => {
     it('should parse external audio URLs from board messages and register them as external tracks', async () => {
         // 1. Send a board message with public audio links
         const msgRes = await request(app)
-            .post('/api/chat/messages')
+            .post('/api/board/messages')
             .send({
                 message: 'Check out my new track here: https://example.com/my-test-song.mp3 and another link http://example.org/cool-groove.wav!'
             });

@@ -1,9 +1,9 @@
 import { jest, describe, test, expect, beforeEach } from "@jest/globals";
 import express from "express";
 import request from "supertest";
-import { createChatRoutes } from "../chat.js";
+import { createBoardRoutes } from "../board.js";
 
-const mockChatService = {
+const mockBoardService = {
     addMessage: jest.fn(),
     getHistory: jest.fn(),
     getMessage: jest.fn(),
@@ -32,7 +32,7 @@ const mockAuthMiddleware = {
     }
 };
 
-describe("Chat Routes - ActivityPub Federation Tests", () => {
+describe("Board Routes - ActivityPub Federation Tests", () => {
     let app: express.Express;
     let customArtistId: number | undefined = undefined;
 
@@ -50,16 +50,16 @@ describe("Chat Routes - ActivityPub Federation Tests", () => {
             next();
         });
 
-        app.use("/api/chat", createChatRoutes({
-            chatService: mockChatService,
+        app.use("/api/board", createBoardRoutes({
+            boardService: mockBoardService,
             apService: mockApService,
             library: mockLibrary,
             authMiddleware: mockAuthMiddleware
         } as any));
     });
 
-    test("POST /api/chat/messages should not federate if req.artistId is not present", async () => {
-        mockChatService.addMessage.mockReturnValue({
+    test("POST /api/board/messages should not federate if req.artistId is not present", async () => {
+        mockBoardService.addMessage.mockReturnValue({
             id: 1,
             username: "testuser",
             message: "Hello world!",
@@ -67,11 +67,11 @@ describe("Chat Routes - ActivityPub Federation Tests", () => {
         });
 
         const response = await request(app)
-            .post("/api/chat/messages")
+            .post("/api/board/messages")
             .send({ message: "Hello world!" });
 
         expect(response.status).toBe(200);
-        expect(mockChatService.addMessage).toHaveBeenCalledWith(
+        expect(mockBoardService.addMessage).toHaveBeenCalledWith(
             "testuser",
             "user",
             "Hello world!",
@@ -80,9 +80,9 @@ describe("Chat Routes - ActivityPub Federation Tests", () => {
         expect(mockApService.broadcastBoardMessage).not.toHaveBeenCalled();
     });
 
-    test("POST /api/chat/messages should federate if req.artistId is present", async () => {
+    test("POST /api/board/messages should federate if req.artistId is present", async () => {
         customArtistId = 99;
-        mockChatService.addMessage.mockReturnValue({
+        mockBoardService.addMessage.mockReturnValue({
             id: 2,
             username: "testuser",
             message: "Hello Fediverse!",
@@ -90,11 +90,11 @@ describe("Chat Routes - ActivityPub Federation Tests", () => {
         });
 
         const response = await request(app)
-            .post("/api/chat/messages")
+            .post("/api/board/messages")
             .send({ message: "Hello Fediverse!" });
 
         expect(response.status).toBe(200);
-        expect(mockChatService.addMessage).toHaveBeenCalledWith(
+        expect(mockBoardService.addMessage).toHaveBeenCalledWith(
             "testuser",
             "user",
             "Hello Fediverse!",

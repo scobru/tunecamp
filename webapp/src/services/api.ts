@@ -655,14 +655,14 @@ const API = {
         handleResponse(api.delete(`dig/sessions/${sessionId}/crate/${itemId}`)),
     digGetHistory: () => handleResponse(api.get<DigHistoryItem[]>('dig/history')),
 
-    // --- Chat ---
-    getChatHistory: (limit?: number) => handleResponse(api.get<any[]>(`chat/history${limit ? `?limit=${limit}` : ''}`)),
-    sendChatMessage: (message: string, trackMetadata?: { artist?: string; title?: string; album?: string; url?: string }) => 
-        handleResponse(api.post<any>('chat/messages', { message, trackMetadata })),
-    deleteChatMessage: (id: number) => handleResponse<{ success: boolean }>(api.delete(`chat/messages/${id}`)),
-    getChatStreamUrl: () => {
+    // --- Board (Guestbook) ---
+    getBoardHistory: (limit?: number) => handleResponse(api.get<any[]>(`board/history${limit ? `?limit=${limit}` : ''}`)),
+    sendBoardMessage: (message: string, trackMetadata?: { artist?: string; title?: string; album?: string; url?: string }) => 
+        handleResponse(api.post<any>('board/messages', { message, trackMetadata })),
+    deleteBoardMessage: (id: number) => handleResponse<{ success: boolean }>(api.delete(`board/messages/${id}`)),
+    getBoardStreamUrl: () => {
         const token = localStorage.getItem('tunecamp_token');
-        return `/api/chat/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        return `/api/board/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
     },
 
     // --- Live (P2P audio streaming) ---

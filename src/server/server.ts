@@ -88,8 +88,8 @@ import { requireModuleEnabled } from "./middleware/moduleGuard.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { SoulseekService } from "./modules/integrations/soulseek.js";
 import { TelegramBotService } from "./modules/integrations/telegram-bot.js";
-import { ChatService } from "./modules/chat/chat.service.js";
-import { createChatRoutes } from "./routes/api/chat.js";
+import { BoardService } from "./modules/board/board.service.js";
+import { createBoardRoutes } from "./routes/api/board.js";
 import { createLiveRoutes } from "./routes/api/live.js";
 import { createNowPlayingRoutes } from "./routes/api/now-playing.js";
 import { LiveService } from "./modules/live/live.service.js";
@@ -321,7 +321,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
 
     const downloadService = initDownloadService(soulseekService, torrentService, 1, database);
 
-    const chatService = new ChatService(database);
+    const boardService = new BoardService(database);
     const liveService = new LiveService();
     const radioService = new RadioService(database, config.musicDir);
     const telegramBotService = new TelegramBotService(database, scanner, config, openRouterService);
@@ -357,7 +357,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
         catalogCache,
         lifecycleService,
         telegramBotService,
-        chatService,
+        boardService,
         liveService,
         radioService,
         peerService,
@@ -462,7 +462,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/users", createUsersRoutes(container));
     app.use("/api/mcp", authMiddleware.requireUser, createMcpRoutes(container));
     app.use("/api/comments", createCommentsRoutes(container));
-    app.use("/api/chat", authMiddleware.optionalAuth, requireModuleEnabled(container, "chatEnabled", { invert: true, allowAdmin: true }), createChatRoutes(container));
+    app.use("/api/board", authMiddleware.optionalAuth, requireModuleEnabled(container, "boardEnabled", { invert: true, allowAdmin: true }), createBoardRoutes(container));
     app.use("/api/live", createLiveRoutes(container));
     app.use("/api/radio", createRadioRoutes(container));
     app.use("/api/now-playing", createNowPlayingRoutes(container));

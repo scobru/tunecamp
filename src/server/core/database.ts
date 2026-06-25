@@ -449,7 +449,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS chat_messages (
+        CREATE TABLE IF NOT EXISTS board_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user',
@@ -1028,6 +1028,13 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
                 db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
             }
+        }
+
+        const chatMessagesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='chat_messages'").get();
+        const boardMessagesExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='board_messages'").get();
+        if (chatMessagesExists && !boardMessagesExists) {
+            console.log("📦 [Database] Renaming chat_messages table to board_messages...");
+            db.exec("ALTER TABLE chat_messages RENAME TO board_messages");
         }
     })();
 

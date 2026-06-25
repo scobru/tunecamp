@@ -395,6 +395,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 communityLink,
                 web3Enabled,
                 chatEnabled,
+                boardEnabled,
                 scheduledScanHour,
                 listenerSelfPublish,
                 listenerSelfPublishQuota,
@@ -449,7 +450,11 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 identity.setSetting("web3Enabled", isTrue(web3Enabled) ? "true" : "false");
             }
 
-            if (chatEnabled !== undefined) {
+            if (boardEnabled !== undefined) {
+                identity.setSetting("boardEnabled", isTrue(boardEnabled) ? "true" : "false");
+                identity.setSetting("chatEnabled", isTrue(boardEnabled) ? "true" : "false");
+            } else if (chatEnabled !== undefined) {
+                identity.setSetting("boardEnabled", isTrue(chatEnabled) ? "true" : "false");
                 identity.setSetting("chatEnabled", isTrue(chatEnabled) ? "true" : "false");
             }
 

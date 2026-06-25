@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import API from '../services/api';
 
-export interface ChatMessage {
+export interface BoardMessage {
     id: number;
     username: string;
     role: string;
@@ -13,21 +13,21 @@ export interface ChatMessage {
     deleted?: boolean;
 }
 
-export function useChat() {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+export function useBoard() {
+    const [messages, setMessages] = useState<BoardMessage[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch initial chat logs
+    // Fetch initial board logs
     const loadHistory = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const history = await API.getChatHistory();
+            const history = await API.getBoardHistory();
             setMessages(history);
         } catch (err: any) {
-            console.error('Failed to load chat history:', err);
-            setError(err.message || 'Failed to load chat history');
+            console.error('Failed to load board history:', err);
+            setError(err.message || 'Failed to load board history');
         } finally {
             setIsLoading(false);
         }
@@ -37,12 +37,12 @@ export function useChat() {
     useEffect(() => {
         loadHistory();
 
-        const streamUrl = API.getChatStreamUrl();
+        const streamUrl = API.getBoardStreamUrl();
         const eventSource = new EventSource(streamUrl);
 
         eventSource.onmessage = (event) => {
             try {
-                const newMsg = JSON.parse(event.data) as ChatMessage;
+                const newMsg = JSON.parse(event.data) as BoardMessage;
                 if (newMsg.deleted) {
                     setMessages((prev) => prev.filter((m) => m.id !== newMsg.id));
                 } else {
@@ -55,12 +55,12 @@ export function useChat() {
                     });
                 }
             } catch (err) {
-                console.error('Failed to parse chat stream event:', err);
+                console.error('Failed to parse board stream event:', err);
             }
         };
 
         eventSource.onerror = (err) => {
-            console.error('Chat stream connection error:', err);
+            console.error('Board stream connection error:', err);
             // Don't show critical UI error since EventSource automatically reconnects,
             // but log it in case of troubleshooting.
         };
@@ -73,7 +73,7 @@ export function useChat() {
     // Send a message
     const sendMessage = useCallback(async (messageText: string, trackMetadata?: { artist?: string; title?: string; album?: string; url?: string }) => {
         try {
-            await API.sendChatMessage(messageText, trackMetadata);
+            await API.sendBoardMessage(messageText, trackMetadata);
             return true;
         } catch (err: any) {
             console.error('Failed to send message:', err);
@@ -84,7 +84,7 @@ export function useChat() {
     // Delete a message
     const deleteMessage = useCallback(async (id: number) => {
         try {
-            await API.deleteChatMessage(id);
+            await API.deleteBoardMessage(id);
             setMessages((prev) => prev.filter((m) => m.id !== id));
             return true;
         } catch (err: any) {
@@ -99,6 +99,5 @@ export function useChat() {
         error,
         sendMessage,
         deleteMessage,
-        refresh: loadHistory
     };
 }

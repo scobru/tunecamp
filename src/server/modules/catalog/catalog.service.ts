@@ -400,14 +400,20 @@ export class CatalogService {
         const settings = [
             "siteName", "siteDescription", "donationLinks", "backgroundImage", "coverImage",
             "siteLogo", "mode", "siteId", "web3_checkout_address", "web3_nft_address",
-            "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "siteHandle",
+            "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "boardEnabled", "siteHandle",
             "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj",
             "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads",
             "brandPrimary", "brandAccent"
         ];
         const res: any = {};
         settings.forEach(k => {
-            const v = this.database.getSetting(k);
+            let v = this.database.getSetting(k);
+            if (k === 'boardEnabled' && (v === undefined || v === null)) {
+                v = this.database.getSetting('chatEnabled');
+            }
+            if (k === 'chatEnabled' && (v === undefined || v === null)) {
+                v = this.database.getSetting('boardEnabled');
+            }
             if (k === 'donationLinks' && v) {
                 res[k] = JSON.parse(v);
             } else {

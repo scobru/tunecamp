@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import type { DatabaseService } from '../../core/database.js';
 
-export interface ChatMessage {
+export interface BoardMessage {
     id: number;
     username: string;
     role: string;
@@ -13,34 +13,34 @@ export interface ChatMessage {
     created_at: string;
 }
 
-export class ChatService {
+export class BoardService {
     public events = new EventEmitter();
 
     constructor(private database: DatabaseService) {}
 
-    getHistory(limit = 100): ChatMessage[] {
+    getHistory(limit = 100): BoardMessage[] {
         try {
             const messages = this.database.db.prepare(`
-                SELECT cm.*, COALESCE(a.avatar, gu.avatar) AS avatar
-                FROM chat_messages cm
-                LEFT JOIN admin a ON cm.username = a.username COLLATE NOCASE
+                SELECT bm.*, COALESCE(a.avatar, gu.avatar) AS avatar
+                FROM board_messages bm
+                LEFT JOIN admin a ON bm.username = a.username COLLATE NOCASE
                 LEFT JOIN gun_users gu ON a.gun_pub = gu.pub
-                ORDER BY cm.id DESC LIMIT ?
-            `).all(limit) as ChatMessage[];
+                ORDER BY bm.id DESC LIMIT ?
+            `).all(limit) as BoardMessage[];
             return messages.reverse();
         } catch (err) {
-            console.error('[ChatService] Failed to fetch chat history:', err);
+            console.error('[BoardService] Failed to fetch board history:', err);
             return [];
         }
     }
 
-    getMessage(id: number): ChatMessage | null {
+    getMessage(id: number): BoardMessage | null {
         try {
             return this.database.db.prepare(
-                "SELECT * FROM chat_messages WHERE id = ?"
-            ).get(id) as ChatMessage | null;
+                "SELECT * FROM board_messages WHERE id = ?"
+            ).get(id) as BoardMessage | null;
         } catch (err) {
-            console.error('[ChatService] Failed to fetch chat message by ID:', err);
+            console.error('[BoardService] Failed to fetch board message by ID:', err);
             return null;
         }
     }
@@ -51,10 +51,10 @@ export class ChatService {
         message: string,
         source: 'webapp' | 'telegram' = 'webapp',
         telegramMessageId?: number
-    ): ChatMessage | null {
+    ): BoardMessage | null {
         try {
             const result = this.database.db.prepare(
-                "INSERT INTO chat_messages (username, role, message, source, telegram_message_id) VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO board_messages (username, role, message, source, telegram_message_id) VALUES (?, ?, ?, ?, ?)"
             ).run(username, role, message, source, telegramMessageId || null);
 
             // Fetch the user's avatar for the SSE broadcast
@@ -69,7 +69,7 @@ export class ChatService {
                 avatar = row?.avatar ?? null;
             } catch { /* avatar lookup is best-effort */ }
 
-            const insertedMsg: ChatMessage = {
+            const insertedMsg: BoardMessage = {
                 id: Number(result.lastInsertRowid),
                 username,
                 role,
@@ -85,7 +85,7 @@ export class ChatService {
 
             return insertedMsg;
         } catch (err) {
-            console.error('[ChatService] Failed to save chat message:', err);
+            console.error('[BoardService] Failed to save board message:', err);
             return null;
         }
     }
@@ -93,17 +93,17 @@ export class ChatService {
     deleteMessage(id: number): boolean {
         try {
             const result = this.database.db.prepare(
-                "DELETE FROM chat_messages WHERE id = ?"
+                "DELETE FROM board_messages WHERE id = ?"
             ).run(id);
 
             const success = result.changes > 0;
             if (success) {
-                // Broadcast deletion event via SSE stream
-                this.events.emit('message', { id, deleted: true } as any);
+                // Broadcast deletion event to active SSE streams (sends minimal object with deleted flag)
+                this.events.emit('message', { id, deleted: true });
             }
             return success;
         } catch (err) {
-            console.error('[ChatService] Failed to delete chat message:', err);
+            console.error('[BoardService] Failed to delete board message:', err);
             return false;
         }
     }

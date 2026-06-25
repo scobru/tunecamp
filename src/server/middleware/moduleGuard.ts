@@ -37,7 +37,10 @@ export function requireModuleEnabled(
 
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const value = identity.getSetting(settingKey);
+      let value = identity.getSetting(settingKey);
+      if (settingKey === 'boardEnabled' && (value === undefined || value === null)) {
+        value = identity.getSetting('chatEnabled');
+      }
       const hidden = invert ? value !== 'true' : value === 'true';
       if (hidden) {
         const isAdmin = !!(req.isAdmin || req.isRootAdmin || req.isSuperUser);

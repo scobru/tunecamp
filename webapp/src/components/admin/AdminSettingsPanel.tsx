@@ -515,8 +515,13 @@ export const AdminSettingsPanel = () => {
                   <input
                     type="checkbox"
                     className="toggle toggle-primary toggle-md shrink-0 ml-4"
-                    checked={settings.chatEnabled === true || (settings.chatEnabled as unknown) === "true"}
-                    onChange={(e) => setSettings({ ...settings, chatEnabled: e.target.checked })}
+                    checked={
+                      settings.boardEnabled === true ||
+                      (settings.boardEnabled as unknown) === "true" ||
+                      settings.chatEnabled === true ||
+                      (settings.chatEnabled as unknown) === "true"
+                    }
+                    onChange={(e) => setSettings({ ...settings, boardEnabled: e.target.checked, chatEnabled: e.target.checked })}
                   />
                 </label>
               </div>
