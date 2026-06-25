@@ -342,7 +342,7 @@ const ArtistGroup = memo(({
   const coverUrl = resolveUrl(firstWithCover?.coverUrl, baseUrl);
 
   return (
-    <details open={defaultOpen} className="group/artist bg-base-200/40 rounded-xl border border-base-content/5 overflow-hidden">
+    <details className="group/artist bg-base-200/40 rounded-xl border border-base-content/5 overflow-hidden">
       <summary className="flex items-center gap-3 p-3 cursor-pointer hover:bg-base-200/70 transition-colors list-none [&::-webkit-details-marker]:hidden">
         <div className="w-9 h-9 rounded-md bg-base-300 overflow-hidden flex-shrink-0 flex items-center justify-center text-sm font-bold opacity-70">
           {coverUrl ? <img src={coverUrl} className="w-full h-full object-cover" alt={artist} /> : <span>{artist.charAt(0)}</span>}
@@ -407,7 +407,7 @@ const InstanceGroup = memo(({
   const badge = getFederationBadge(federation);
 
   return (
-    <details open className="group bg-base-200/30 rounded-2xl border border-base-content/10 overflow-hidden">
+    <details className="group bg-base-200/30 rounded-2xl border border-base-content/10 overflow-hidden">
       <summary className="flex items-center gap-3 p-4 cursor-pointer hover:bg-base-200/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
         <Server size={18} className="text-accent flex-shrink-0" />
         <div className="flex-1 min-w-0">
