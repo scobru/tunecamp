@@ -696,6 +696,7 @@ const API = {
     updateUserCanPeer: (userId: number, canPeer: boolean) => handleResponse(api.put(`peers/users/${userId}/can-peer`, { canPeer })),
     kickPeerSession: (sessionId: string) => handleResponse(api.delete(`peers/${sessionId}`)),
     getPeerStatus: () => handleResponse<{ enabled: boolean, allowDownloads: boolean }>(api.get('peers/status')),
+    importPeerTrack: (sessionId: string, trackId: string) => handleResponse(api.post(`peers/${sessionId}/tracks/${trackId}/import`, {})),
 
     // --- Lab Apps ---
     getLabApps: () => handleResponse(api.get<LabAppRecord[]>('lab-apps')),
