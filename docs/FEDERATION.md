@@ -13,6 +13,7 @@ Tunecamp discovers other instances by **gossip over HTTP** — there is no centr
 - **Seed-based crawl**: discovery starts from AP-followed TuneCamp actors and `TUNECAMP_FEDERATION_SEEDS`, then gossips outward (capped depth/breadth, dead instances pruned).
 - **Liveness check**: a peer is only added if it answers as a live TuneCamp (NodeInfo type-check), not merely HTTP 200.
 - **Music Discovery**: the "Network" page reads the federated set, then fetches catalogs directly via HTTP (`/api/catalog`), cached stale-while-revalidate.
+- **Peer-track federation** (opt-in): when an instance enables *Federate Peer Tracks*, its currently-shared peer tracks ride along in `/api/catalog/full` and appear on remote Network pages (tagged `PEER`), streamable — and, if downloads are allowed, importable — cross-instance. These entries are ephemeral and use a short cache window so they vanish quickly when the peer disconnects. See [Peer Sharing](./peer-sharing.md#federating-peer-tracks-across-instances).
 - **One-click follow**: an admin can follow an instance directly by URL.
 
 ### Public endpoints
