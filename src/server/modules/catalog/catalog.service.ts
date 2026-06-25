@@ -402,7 +402,7 @@ export class CatalogService {
             "siteLogo", "mode", "siteId", "web3_checkout_address", "web3_nft_address",
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "boardEnabled", "siteHandle",
             "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj",
-            "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads",
+            "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads", "peerFederation",
             "brandPrimary", "brandAccent"
         ];
         const res: any = {};
@@ -428,6 +428,7 @@ export class CatalogService {
                     else if (k === 'membershipMonthlyPrice') res[k] = '10';
                     else if (k === 'peerEnabled') res[k] = 'false';
                     else if (k === 'peerAllowDownloads') res[k] = 'true';
+                    else if (k === 'peerFederation') res[k] = 'false';
                     else res[k] = '';
                 }
             }

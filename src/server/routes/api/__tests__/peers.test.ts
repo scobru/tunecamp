@@ -143,6 +143,35 @@ describe("Peers API Routes Tests", () => {
         expect(mockPrepare).not.toHaveBeenCalled();
     });
 
+    test("GET federated-stream streams when peer federation is enabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "true";
+            return null;
+        });
+        (mockPeerService.requestStream as any).mockImplementation((_s: string, _t: string, res: any) => {
+            res.json({ streaming: true });
+        });
+
+        const response = await request(app).get("/api/peers/sess-1/tracks/trk-1/federated-stream");
+
+        expect(response.status).toBe(200);
+        expect(mockPeerService.requestStream).toHaveBeenCalledWith("sess-1", "trk-1", expect.anything());
+    });
+
+    test("GET federated-stream is blocked when peer federation is disabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "false";
+            return null;
+        });
+
+        const response = await request(app).get("/api/peers/sess-1/tracks/trk-1/federated-stream");
+
+        expect(response.status).toBe(403);
+        expect(mockPeerService.requestStream).not.toHaveBeenCalled();
+    });
+
     test("POST /api/peers/:sessionId/tracks/:trackId/import imports into the library (manager/root only)", async () => {
         mockPeerService.requestImport.mockResolvedValue({
             filePath: "/music/peer-imports/Artist - Song-abcd1234.mp3",

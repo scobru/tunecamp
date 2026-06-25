@@ -51,6 +51,16 @@ Oltre allo streaming e al download occasionale, i **Root Admin e i Manager** pos
 
 L'importazione richiede che i download siano consentiti (a livello globale, per la sessione e per la traccia), poiché trasferisce il file completo. L'azione è esposta su `POST /api/peers/:sessionId/tracks/:trackId/import` ed è riservata ai ruoli Root Admin / Manager.
 
+### Federare le Tracce Peer tra le Istanze
+
+Quando l'opzione **Federate Peer Tracks** è attiva (Settings → Customize Modules, disattivata di default), un'istanza pubblicizza le proprie tracce peer **attualmente condivise** alle altre istanze TuneCamp federate, insieme alle release pubblicate. Questo riusa il percorso di federazione esistente:
+
+- Le tracce vengono aggiunte al payload `GET /api/catalog/full` dell'istanza in un array `peerTracks` (solo quando sono attive sia **Enable Peer Sharing** sia **Federate Peer Tracks**).
+- Le istanze remote le acquisiscono tramite la stessa cache del catalogo usata per le release e le mostrano nella pagina **Network** (`type: "peer"`).
+- La riproduzione passa da un endpoint **pubblico** dedicato, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, raggiungibile senza un account locale ma **solo** finché la federazione peer è abilitata. Questo percorso è **solo streaming** — non espone mai il tunnel di download, quindi i file completi non vengono trasferiti tra le istanze.
+
+Queste voci sono effimere: esistono solo finché il daemon peer è connesso. Dopo la disconnessione di un peer la traccia smette di essere pubblicizzata e le cache remote la rimuovono al successivo aggiornamento (entro il TTL della cache del catalogo, ~1h); tentare di riprodurre una traccia ormai offline restituisce semplicemente un errore.
+
 ---
 
 ## Esecuzione del Daemon CLI
