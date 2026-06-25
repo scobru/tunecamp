@@ -78,6 +78,42 @@ describe('CatalogCacheService', () => {
             type: 'peer',
             audioUrl: `${SITE.url}/api/peers/sess-1/tracks/trk-1/federated-stream`
         });
+        // No downloadUrl unless the remote explicitly allowed download.
+        expect(tracks[0].downloadUrl).toBeNull();
+    });
+
+    test('federated peer track exposes a download URL when allowed', async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                releases: [],
+                peerTracks: [
+                    { sessionId: 'sess-1', id: 'trk-1', title: 'Peer Song', allowDownload: true }
+                ]
+            })
+        });
+        const cache = createCatalogCacheService(db);
+
+        const tracks = await cache.getTracks([SITE]);
+
+        expect(tracks[0].downloadUrl).toBe(`${SITE.url}/api/peers/sess-1/tracks/trk-1/federated-download`);
+    });
+
+    test('peer-bearing catalogs revalidate after the short peer TTL, not the 1h TTL', async () => {
+        mockFetch.mockResolvedValue({ ok: true, json: async () => ({ releases: [], peerTracks: [] }) });
+        const cache = createCatalogCacheService(db);
+        // 5 min ago: still fresh under the 1h TTL, but stale under the 2m peer TTL.
+        const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+        db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at, has_peer) VALUES (?, ?, ?, ?)')
+            .run(SITE.url, JSON.stringify([{ title: 'Peer Song', type: 'peer' }]), fiveMinAgo, 1);
+
+        const tracks = await cache.getTracks([SITE]);
+
+        // Served from cache immediately...
+        expect(tracks[0].title).toBe('Peer Song');
+        // ...and a background revalidation fired because the peer TTL elapsed.
+        await new Promise(r => setTimeout(r, 50));
+        expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     test('fresh cache is served without any network call', async () => {

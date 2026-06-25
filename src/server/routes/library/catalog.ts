@@ -28,6 +28,9 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
         const peerFederation = identity.getSetting("peerFederation") === "true";
         if (!peerEnabled || !peerFederation) return [];
 
+        // Downloads (and thus cross-instance import) require the global toggle too.
+        const allowDownloadsGlobal = identity.getSetting("peerAllowDownloads") !== "false";
+
         const out: any[] = [];
         for (const session of peerService.getSessions()) {
             const tracks = peerService.getTracksBySession(session.id);
@@ -38,7 +41,8 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
                     title: t.title,
                     artist: t.artist,
                     album: t.album,
-                    duration: t.duration
+                    duration: t.duration,
+                    allowDownload: allowDownloadsGlobal && t.allow_download !== 0
                 });
             }
         }

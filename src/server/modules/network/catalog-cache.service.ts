@@ -15,6 +15,7 @@ import { isSafeUrl } from "../../../utils/networkUtils.js";
  */
 
 const TTL_MS = 60 * 60 * 1000;                 // 1h: entry considered fresh
+const PEER_TTL_MS = 2 * 60 * 1000;             // 2m: catalogs carrying ephemeral peer tracks revalidate fast so disconnected peers drop quickly
 const HARD_EXPIRY_MS = 48 * 60 * 60 * 1000;     // 48h: drop entries not refreshed since (a peer offline >2d stops showing)
 const FETCH_TIMEOUT = 5000;                     // 5s per instance
 
@@ -57,12 +58,17 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
             fetched_at INTEGER NOT NULL
         );
     `);
+    // Migration: track whether a cached catalog carries ephemeral peer tracks,
+    // so those entries can use a much shorter freshness window.
+    try {
+        db.exec("ALTER TABLE peer_catalog_cache ADD COLUMN has_peer INTEGER NOT NULL DEFAULT 0");
+    } catch { /* column already exists */ }
 
-    const selectStmt = db.prepare("SELECT tracks_json, fetched_at FROM peer_catalog_cache WHERE site_url = ?");
+    const selectStmt = db.prepare("SELECT tracks_json, fetched_at, has_peer FROM peer_catalog_cache WHERE site_url = ?");
     const upsertStmt = db.prepare(`
-        INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(site_url) DO UPDATE SET tracks_json = excluded.tracks_json, fetched_at = excluded.fetched_at
+        INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at, has_peer)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(site_url) DO UPDATE SET tracks_json = excluded.tracks_json, fetched_at = excluded.fetched_at, has_peer = excluded.has_peer
     `);
     const pruneStmt = db.prepare("DELETE FROM peer_catalog_cache WHERE fetched_at < ?");
     const deleteStmt = db.prepare("DELETE FROM peer_catalog_cache WHERE site_url = ?");
@@ -125,7 +131,8 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
                 const catalog: any = await response.json();
                 const tracks = parseCatalog(catalog, siteUrl, site.name);
 
-                upsertStmt.run(siteUrl, JSON.stringify(tracks), Date.now());
+                const hasPeer = tracks.some((t) => t.type === "peer") ? 1 : 0;
+                upsertStmt.run(siteUrl, JSON.stringify(tracks), Date.now(), hasPeer);
                 return tracks;
             } catch (error) {
                 // Instance offline or unreachable — keep serving cache
@@ -149,7 +156,7 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
             if (!site.url) continue;
             const siteUrl = site.url.replace(/\/$/, "");
 
-            let cached: { tracks_json: string; fetched_at: number } | undefined;
+            let cached: { tracks_json: string; fetched_at: number; has_peer?: number } | undefined;
             try {
                 cached = selectStmt.get(siteUrl) as any;
             } catch (e) {
@@ -170,7 +177,10 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
                     results.push(...JSON.parse(cached.tracks_json));
                 } catch { /* corrupted entry, refetch below */ }
 
-                if (now - cached.fetched_at > TTL_MS) {
+                // Catalogs carrying ephemeral peer tracks go stale much sooner,
+                // so a disconnected peer is dropped within minutes, not an hour.
+                const ttl = cached.has_peer ? PEER_TTL_MS : TTL_MS;
+                if (now - cached.fetched_at > ttl) {
                     // Stale: serve cached data now, revalidate in background
                     void fetchCatalog(site);
                 }
@@ -254,6 +264,9 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
                 releaseTitle: track.album || "Peer Share",
                 coverUrl: null,
                 audioUrl: `${siteUrl}/api/peers/${track.sessionId}/tracks/${track.id}/federated-stream`,
+                downloadUrl: track.allowDownload
+                    ? `${siteUrl}/api/peers/${track.sessionId}/tracks/${track.id}/federated-download`
+                    : null,
                 duration: track.duration || 0,
                 siteUrl: siteUrl,
                 federation: "http",
