@@ -317,13 +317,11 @@ const TrackCard = memo(({
 
 /**
  * A collapsible group of tracks by a single artist within an instance.
- * Collapsed by default unless its parent instance only has this one artist,
- * so a channel with many tracks doesn't flood the view.
+ * Always collapsed by default so the network page loads fast.
  */
 const ArtistGroup = memo(({
   artist,
   tracks,
-  defaultOpen,
   onPlay,
   onToggleVisibility,
   hiddenTracks,
@@ -331,7 +329,6 @@ const ArtistGroup = memo(({
 }: {
   artist: string;
   tracks: NetworkTrack[];
-  defaultOpen: boolean;
   onPlay: (item: NetworkTrack) => void;
   onToggleVisibility: (id: string) => void;
   hiddenTracks: string[];
@@ -403,7 +400,6 @@ const InstanceGroup = memo(({
     byArtist.get(a)!.push(t);
   }
   const artists = Array.from(byArtist.entries()).sort((a, b) => b[1].length - a[1].length);
-  const singleArtist = artists.length === 1;
   const badge = getFederationBadge(federation);
 
   return (
@@ -427,7 +423,6 @@ const InstanceGroup = memo(({
             key={artist}
             artist={artist}
             tracks={artistTracks}
-            defaultOpen={singleArtist}
             onPlay={onPlay}
             onToggleVisibility={onToggleVisibility}
             hiddenTracks={hiddenTracks}
