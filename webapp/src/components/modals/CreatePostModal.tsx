@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import API from '../../services/api';
-import { PenTool, Globe, Eye, Lock, Send, X } from 'lucide-react';
+import { PenTool, Globe, Eye, Lock, Send, X, Image as ImageIcon } from 'lucide-react';
 import type { Artist } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { renderMarkdown } from '../../utils/markdown';
@@ -21,6 +21,54 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
     const [linkPreview, setLinkPreview] = useState<{url: string; title: string | null; description: string | null; image: string | null; siteName: string | null} | null>(null);
     const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const [imageUploading, setImageUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImageUploading(true);
+        setError('');
+
+        try {
+            const res = await API.uploadPostMedia(file);
+            if (res && res.url) {
+                insertAtCursor(`![Image Description](${res.url})`);
+            } else {
+                setError('Failed to upload image');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to upload image');
+        } finally {
+            setImageUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const insertAtCursor = (textToInsert: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) {
+            setContent(prev => prev + textToInsert);
+            return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        setContent(before + textToInsert + after);
+
+        // Reset cursor position after insert
+        setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
+        }, 0);
+    };
 
     useEffect(() => {
         const handleOpen = (e: Event) => {
@@ -232,10 +280,11 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                         <div className="relative">
                             {tab === 'write' ? (
                                 <textarea 
+                                    ref={textareaRef}
                                     className="textarea textarea-bordered w-full min-h-[250px] text-base rounded-xl bg-base-200/30 border-base-content/10 focus:outline-none focus:border-primary p-4 scrollbar-thin resize-y" 
                                     value={content}
                                     onChange={e => setContent(e.target.value)}
-                                    placeholder="What's new in the community? Share releases, updates, thoughts... (Markdown supported)"
+                                    placeholder="What's new in the community? Share releases, thoughts, updates... (Markdown images supported)"
                                     maxLength={5500}
                                     required
                                 />
@@ -287,47 +336,71 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                     {/* Bottom controls panel inside modal */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pt-2 border-t border-base-content/5">
                         
-                        {/* Visibility settings dropdown */}
-                        <div className="dropdown dropdown-top">
-                            <div 
-                                tabIndex={0} 
-                                role="button" 
-                                className="btn btn-sm btn-ghost bg-base-200 border-none rounded-full gap-2 text-xs px-4"
-                            >
-                                {visibility === 'public' && <Globe size={14} className="text-primary" />}
-                                {visibility === 'unlisted' && <Eye size={14} className="text-accent" />}
-                                {visibility === 'private' && <Lock size={14} className="text-warning" />}
-                                <span className="capitalize font-bold">{visibility === 'private' ? 'Followers only' : visibility}</span>
+                        {/* Visibility settings dropdown & Upload media */}
+                        <div className="flex items-center gap-2">
+                            <div className="dropdown dropdown-top">
+                                <div 
+                                    tabIndex={0} 
+                                    role="button" 
+                                    className="btn btn-sm btn-ghost bg-base-200 border-none rounded-full gap-2 text-xs px-4"
+                                >
+                                    {visibility === 'public' && <Globe size={14} className="text-primary" />}
+                                    {visibility === 'unlisted' && <Eye size={14} className="text-accent" />}
+                                    {visibility === 'private' && <Lock size={14} className="text-warning" />}
+                                    <span className="capitalize font-bold">{visibility === 'private' ? 'Followers only' : visibility}</span>
+                                </div>
+                                <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[10] w-48 p-1.5 shadow-level-1 mb-1">
+                                    <li>
+                                        <button 
+                                            type="button" 
+                                            className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'public' ? 'active bg-primary text-primary-content' : ''}`}
+                                            onClick={() => setVisibility('public')}
+                                        >
+                                            <Globe size={14} /> <span>Public (🌐)</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            type="button" 
+                                            className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'unlisted' ? 'active bg-primary text-primary-content' : ''}`}
+                                            onClick={() => setVisibility('unlisted')}
+                                        >
+                                            <Eye size={14} /> <span>Unlisted (👁️)</span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            type="button" 
+                                            className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'private' ? 'active bg-primary text-primary-content' : ''}`}
+                                            onClick={() => setVisibility('private')}
+                                        >
+                                            <Lock size={14} /> <span>Followers-only (🔒)</span>
+                                        </button>
+                                    </li>
+                                </ul>
                             </div>
-                            <ul tabIndex={0} className="dropdown-content menu bg-base-200 border border-base-content/5 rounded-box z-[10] w-48 p-1.5 shadow-level-1 mb-1">
-                                <li>
-                                    <button 
-                                        type="button" 
-                                        className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'public' ? 'active bg-primary text-primary-content' : ''}`}
-                                        onClick={() => setVisibility('public')}
-                                    >
-                                        <Globe size={14} /> <span>Public (🌐)</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button 
-                                        type="button" 
-                                        className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'unlisted' ? 'active bg-primary text-primary-content' : ''}`}
-                                        onClick={() => setVisibility('unlisted')}
-                                    >
-                                        <Eye size={14} /> <span>Unlisted (👁️)</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button 
-                                        type="button" 
-                                        className={`gap-2 rounded-lg text-xs py-2 ${visibility === 'private' ? 'active bg-primary text-primary-content' : ''}`}
-                                        onClick={() => setVisibility('private')}
-                                    >
-                                        <Lock size={14} /> <span>Followers-only (🔒)</span>
-                                    </button>
-                                </li>
-                            </ul>
+
+                            {/* Upload Image Button */}
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-ghost bg-base-200 border-none rounded-full gap-2 text-xs px-4"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={imageUploading || loading}
+                            >
+                                {imageUploading ? (
+                                    <span className="loading loading-spinner loading-xs" />
+                                ) : (
+                                    <ImageIcon size={14} className="text-primary" />
+                                )}
+                                <span>Add Image</span>
+                            </button>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                ref={fileInputRef}
+                                onChange={handleImageUpload}
+                            />
                         </div>
 
                         {/* Character count & Submit buttons */}

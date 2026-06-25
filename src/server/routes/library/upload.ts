@@ -936,6 +936,41 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         });
     });
 
+    /**
+     * POST /api/admin/upload/post-media
+     * Upload an image to be embedded in a post
+     */
+    router.post("/post-media", rejectAs400(imageUpload.single("file")), async (req: any, res: any) => {
+        try {
+            const file = req.file;
+            if (!file) {
+                return res.status(400).json({ error: "No file uploaded" });
+            }
+
+            if (!req.isAdmin && !req.isActive) {
+                await storage.remove(file.path);
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            console.log(`🖼️ Uploaded post media: ${file.originalname}`);
+
+            const ext = path.extname(file.originalname).toLowerCase();
+            const mediaFilename = `post-media-${crypto.randomUUID()}${ext}`;
+            
+            const mediaDir = path.join(musicDir, "assets", "posts");
+            await storage.ensureDir(mediaDir);
+
+            const targetPath = path.join(mediaDir, mediaFilename);
+            await storage.move(file.path, targetPath, { overwrite: true });
+
+            res.json({ url: `/api/posts/media/${mediaFilename}` });
+        } catch (error) {
+            if (req.file) await storage.remove(req.file.path).catch(() => {});
+            console.error("Post media upload error:", error);
+            res.status(500).json({ error: "Media upload failed" });
+        }
+    });
+
     return router;
 }
 

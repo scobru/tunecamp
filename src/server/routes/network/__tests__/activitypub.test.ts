@@ -96,6 +96,52 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         expect(response.body.id).toContain("/api/ap/article/post/tunecamp-innovation-log/");
     });
 
+    test('GET /ap/article/post/:slug should extract and include markdown images in ActivityPub attachments', async () => {
+        const mockPost = {
+            id: 124,
+            artist_id: 1,
+            title: "Post with Images",
+            summary: "Testing image rendering",
+            content: "Check this image: ![Landscape](/api/posts/media/post-media-uuid.png) and another one: ![Portrait](https://example.com/portrait.jpg)",
+            slug: "post-with-images",
+            visibility: "public",
+            created_at: "2026-06-02T08:00:00.000Z"
+        };
+        const mockArtist = {
+            id: 1,
+            name: "Homologo",
+            slug: "homologo"
+        };
+
+        (mockDb.getPostBySlug as jest.Mock).mockReturnValue(mockPost);
+        (mockDb.getArtist as jest.Mock).mockReturnValue(mockArtist);
+
+        const response = await request(app)
+            .get('/ap/article/post/post-with-images');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty("attachment");
+        expect(Array.isArray(response.body.attachment)).toBe(true);
+        expect(response.body.attachment).toHaveLength(2);
+        
+        expect(response.body.attachment[0]).toEqual({
+            type: "Document",
+            mediaType: "image/png",
+            url: "https://sudorecords.scobrudot.dev/api/posts/media/post-media-uuid.png",
+            name: "Landscape"
+        });
+        expect(response.body.attachment[1]).toEqual({
+            type: "Document",
+            mediaType: "image/jpeg",
+            url: "https://example.com/portrait.jpg",
+            name: "Portrait"
+        });
+
+        // HTML should render <img> tags properly
+        expect(response.body.content).toContain('<img src="/api/posts/media/post-media-uuid.png" alt="Landscape" />');
+        expect(response.body.content).toContain('<img src="https://example.com/portrait.jpg" alt="Portrait" />');
+    });
+
     test('GET /ap/note/post/:slug should maintain backwards-compatibility and resolve Articles', async () => {
         const mockPost = {
             id: 123,

@@ -25,6 +25,9 @@ export function renderMarkdown(markdown: string): string {
     html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
     html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
+    // Images: ![alt](url)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-xl my-3 shadow-md border border-base-content/5" />');
+
     // Links: [text](url)
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>');
 
@@ -44,7 +47,7 @@ export function renderMarkdown(markdown: string): string {
         const trimmed = block.trim();
         if (!trimmed) return "";
         // If block is already wrapped in a block-level HTML element, return it directly
-        if (/^<(h[1-6]|ul|ol|li|hr|blockquote|p|div|a)/i.test(trimmed)) {
+        if (/^<(h[1-6]|ul|ol|li|hr|blockquote|p|div|a|img)/i.test(trimmed)) {
             return trimmed;
         }
         // Wrap regular paragraphs and turn single newlines into <br />

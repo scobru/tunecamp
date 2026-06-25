@@ -214,6 +214,24 @@ export function createMiscRoutes(container: ServiceContainer): Router {
     router.get("/api/settings/logo", (_req, res) => serveSiteAsset(res, "site-logo."));
     router.get("/api/settings/cover", (_req, res) => serveSiteAsset(res, "site-cover."));
 
+    // Serve post media images
+    router.get("/api/posts/media/:filename", async (req: Request, res: Response) => {
+        try {
+            const filename = req.params.filename;
+            if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+                return res.status(400).json({ error: "Invalid filename" });
+            }
+            const mediaDir = path.join(config.musicDir, "assets", "posts");
+            const filePath = path.join(mediaDir, filename);
+            if (!await fs.pathExists(filePath)) {
+                return res.status(404).json({ error: "File not found" });
+            }
+            res.sendFile(path.resolve(filePath));
+        } catch (error) {
+            res.status(500).json({ error: "Failed to serve post media" });
+        }
+    });
+
     // Helper function to build RSS 2.0 feed
     function buildRssFeed(
         publicUrl: string,

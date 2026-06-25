@@ -298,12 +298,41 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             for (const post of posts) {
                 const published = post.published_at || post.created_at;
-                let contentHtml = `<p>${post.content}</p>`;
+                let contentHtml = renderMarkdown(post.content);
                 if (post.title) {
                     contentHtml = `<h2>${post.title}</h2>` + 
                         (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") + 
                         contentHtml;
                 }
+
+                const fedifyAttachments: any[] = [];
+                const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+                let match;
+                while ((match = imageRegex.exec(post.content)) !== null) {
+                    const alt = match[1];
+                    let urlStr = match[2];
+                    if (urlStr.startsWith('/')) {
+                        urlStr = `${baseUrl}${urlStr}`;
+                    }
+                    try {
+                        const parsedUrl = new URL(urlStr);
+                        const ext = urlStr.split('.').pop()?.toLowerCase() || '';
+                        let mediaType = 'image/jpeg';
+                        if (ext === 'png') mediaType = 'image/png';
+                        else if (ext === 'webp') mediaType = 'image/webp';
+                        else if (ext === 'gif') mediaType = 'image/gif';
+                        else if (ext === 'avif') mediaType = 'image/avif';
+
+                        fedifyAttachments.push(new Image({
+                            url: parsedUrl,
+                            mediaType: mediaType,
+                            name: alt || undefined
+                        }));
+                    } catch (e) {
+                        console.error("Invalid URL in post markdown for Fedify attachment:", urlStr, e);
+                    }
+                }
+
                 activities.push(new Create({
                     id: new URL(`/ap/activity/post/${post.slug}`, baseUrl),
                     actor: new URL(`/users/${artist.slug}`, baseUrl),
@@ -317,6 +346,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                         url: new URL(`/artists/${artist.slug}?post=${post.slug}`, baseUrl),
                         published: published ? Temporal.Instant.fromEpochMilliseconds(new Date(published).getTime()) : undefined,
                         attribution: new URL(`/users/${artist.slug}`, baseUrl),
+                        attachments: fedifyAttachments.length > 0 ? fedifyAttachments : undefined,
                     })
                 }));
             }
@@ -846,4 +876,54 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         });
 
     return federation;
+}
+
+function renderMarkdown(markdown: string): string {
+    if (!markdown) return "";
+    // Escape HTML tags to prevent injection in the Fediverse
+    let html = markdown
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    // Normalize line endings
+    html = html.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+    // Headings
+    html = html.replace(/^### (.*?)$/gm, "<h3>$1</h3>");
+    html = html.replace(/^## (.*?)$/gm, "<h2>$1</h2>");
+    html = html.replace(/^# (.*?)$/gm, "<h1>$1</h1>");
+
+    // Bold & Italic
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
+    html = html.replace(/_(.*?)_/g, "<em>$1</em>");
+
+    // Images: ![alt](url)
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+
+    // Links: [text](url)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    // Bullet Lists
+    html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+    // Wrap <li> elements in <ul>
+    html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
+        return `<ul>${match}</ul>`;
+    });
+    html = html.replace(/<\/ul>\s*<ul>/g, "");
+
+    // Split by double newlines into block elements
+    const blocks = html.split(/\n\n+/);
+    const processedBlocks = blocks.map(block => {
+        const trimmed = block.trim();
+        if (!trimmed) return "";
+        if (/^<(h[1-6]|ul|ol|li|hr|blockquote|p|div|a|img)/i.test(trimmed)) {
+            return trimmed;
+        }
+        return `<p>${trimmed.replace(/\n/g, "<br />")}</p>`;
+    });
+
+    return processedBlocks.filter(Boolean).join("\n");
 }

@@ -115,6 +115,25 @@ export class ActivityPubRenderer {
 
         let contentHtml = this.renderMarkdown(post.content);
 
+        // Parse markdown image syntax to populate attachments array
+        const attachments: any[] = [];
+        const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+        let match;
+        while ((match = imageRegex.exec(post.content)) !== null) {
+            const alt = match[1];
+            let url = match[2];
+            // If the URL is relative, make it absolute using the instance's public URL
+            if (url.startsWith('/')) {
+                url = `${this.baseUrl}${url}`;
+            }
+            attachments.push({
+                type: "Document",
+                mediaType: this.getMimeType(url, "image/jpeg"),
+                url: url,
+                name: alt || undefined
+            });
+        }
+
         if (!post.title) {
             return {
                 "@context": "https://www.w3.org/ns/activitystreams",
@@ -124,7 +143,8 @@ export class ActivityPubRenderer {
                 content: contentHtml,
                 published: published,
                 to: ["https://www.w3.org/ns/activitystreams#Public"],
-                cc: [`${apiUrl}/followers`]
+                cc: [`${apiUrl}/followers`],
+                attachment: attachments.length > 0 ? attachments : undefined
             };
         }
 
@@ -145,7 +165,8 @@ export class ActivityPubRenderer {
             url: postUrl,
             published: published,
             to: ["https://www.w3.org/ns/activitystreams#Public"],
-            cc: [`${apiUrl}/followers`]
+            cc: [`${apiUrl}/followers`],
+            attachment: attachments.length > 0 ? attachments : undefined
         };
     }
 
@@ -195,6 +216,9 @@ export class ActivityPubRenderer {
         html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
         html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
+        // Images: ![alt](url)
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+
         // Links: [text](url)
         html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
@@ -211,7 +235,7 @@ export class ActivityPubRenderer {
         const processedBlocks = blocks.map(block => {
             const trimmed = block.trim();
             if (!trimmed) return "";
-            if (/^<(h[1-6]|ul|ol|li|hr|blockquote|p|div|a)/i.test(trimmed)) {
+            if (/^<(h[1-6]|ul|ol|li|hr|blockquote|p|div|a|img)/i.test(trimmed)) {
                 return trimmed;
             }
             return `<p>${trimmed.replace(/\n/g, "<br />")}</p>`;

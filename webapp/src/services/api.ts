@@ -455,6 +455,11 @@ const API = {
         formData.append('file', file);
         return handleResponse(api.post('admin/upload/site-logo', formData));
     },
+    uploadPostMedia: (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return handleResponse(api.post<{ url: string }>('admin/upload/post-media', formData));
+    },
     removeBackgroundImage: () => handleResponse(api.delete('admin/upload/background')),
     removeSiteCover: () => handleResponse(api.delete('admin/upload/site-cover')),
     removeSiteLogo: () => handleResponse(api.delete('admin/upload/site-logo')),
