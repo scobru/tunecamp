@@ -8,7 +8,7 @@ interface PriceCache {
 let cache: PriceCache | null = null;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// fallow-ignore-next-line unused-exports
+// fallow-ignore-next-line unused-export
 export function clearCache() {
     cache = null;
 }
