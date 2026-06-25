@@ -1,13 +1,15 @@
 import { Router, json } from "express";
+import path from "path";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ServiceContainer } from "../../core/container.js";
-import { UserRole } from "../../common/visibility.js";
+import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
 
 export function createPeersRoutes(container: ServiceContainer): Router {
     const authService = container.authService;
     const peerService = container.peerService;
     const database = container.database;
     const identity = container.identity;
+    const scannerService = container.scannerService;
     const authMiddleware = container.authMiddleware || createAuthMiddleware(authService);
     
     const router = Router();
@@ -86,6 +88,29 @@ export function createPeersRoutes(container: ServiceContainer): Router {
             if (!res.headersSent) {
                 res.status(500).json({ error: "Failed to initiate download" });
             }
+        }
+    });
+
+    // Import a peer track into the local library (Root Admin / Manager only).
+    // Pulls the full file over the tunnel, writes it to the music directory,
+    // and indexes it via the scanner so it becomes a permanent local release.
+    router.post("/:sessionId/tracks/:trackId/import", async (req: AuthenticatedRequest, res) => {
+        const isManagerOrAbove = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isManagerOrAbove) {
+            return res.status(403).json({ error: "Access denied: importing peer tracks is restricted to Root Admin or Manager" });
+        }
+
+        const { sessionId, trackId } = req.params;
+        try {
+            const destDir = path.join(container.musicDir, "peer-imports");
+            const { filePath, track } = await peerService.requestImport(sessionId, trackId, destDir);
+
+            const result = await scannerService.processAudioFile(filePath, container.musicDir, undefined, req.userId);
+            console.log(`📥 [PeersRoute] Imported peer track "${track.title}" (${trackId}) into library by ${req.username}`);
+            res.json({ success: true, track, result });
+        } catch (error: any) {
+            console.error(`[PeersRoute] Failed to import track ${trackId} from session ${sessionId}:`, error);
+            res.status(500).json({ error: "Failed to import peer track", details: error?.message });
         }
     });
 

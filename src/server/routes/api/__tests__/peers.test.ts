@@ -18,7 +18,12 @@ const mockPeerService = {
     getTracksBySession: jest.fn(),
     requestStream: jest.fn(),
     requestDownload: jest.fn(),
+    requestImport: jest.fn(),
     unregisterSession: jest.fn()
+};
+
+const mockScannerService = {
+    processAudioFile: jest.fn()
 };
 
 const mockAuthService = {
@@ -50,6 +55,8 @@ describe("Peers API Routes Tests", () => {
             peerService: mockPeerService,
             database: mockDatabase,
             identity: mockIdentity,
+            scannerService: mockScannerService,
+            musicDir: "/music",
             authMiddleware: mockAuthMiddleware
         } as any));
     });
@@ -134,6 +141,39 @@ describe("Peers API Routes Tests", () => {
 
         expect(response.status).toBe(403);
         expect(mockPrepare).not.toHaveBeenCalled();
+    });
+
+    test("POST /api/peers/:sessionId/tracks/:trackId/import imports into the library (manager/root only)", async () => {
+        mockPeerService.requestImport.mockResolvedValue({
+            filePath: "/music/peer-imports/Artist - Song-abcd1234.mp3",
+            track: { id: "track-1", title: "Song" }
+        } as any);
+        mockScannerService.processAudioFile.mockResolvedValue({ trackId: 99 } as any);
+
+        const response = await request(app)
+            .post("/api/peers/sess-123/tracks/track-1/import")
+            .set("test-role", "admin")
+            .send({});
+
+        expect(response.status).toBe(200);
+        expect(response.body.success).toBe(true);
+        expect(mockPeerService.requestImport).toHaveBeenCalledWith("sess-123", "track-1", "/music/peer-imports");
+        expect(mockScannerService.processAudioFile).toHaveBeenCalledWith(
+            "/music/peer-imports/Artist - Song-abcd1234.mp3",
+            "/music",
+            undefined,
+            42
+        );
+    });
+
+    test("POST /api/peers/:sessionId/tracks/:trackId/import blocks non-admins", async () => {
+        const response = await request(app)
+            .post("/api/peers/sess-123/tracks/track-1/import")
+            .set("test-role", "user")
+            .send({});
+
+        expect(response.status).toBe(403);
+        expect(mockPeerService.requestImport).not.toHaveBeenCalled();
     });
 
     test("DELETE /api/peers/:sessionId should disconnect peer (admin only)", async () => {

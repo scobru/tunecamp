@@ -45,6 +45,12 @@ Administrators can control peer sharing via the **Admin Panel**:
    - Real-time list of all connected daemons, showing the user account, connection time, last heartbeat, IP address, and total shared tracks.
    - Allows administrators to manually disconnect/kick any active daemon session.
 
+### Importing a Peer Track into the Library
+
+Beyond streaming and one-off downloads, **Root Admins and Managers** can permanently **import** a shared peer track into the local library. The import button (next to download on each peer track) pulls the full file over the tunnel, writes it under `<musicDir>/peer-imports/`, and runs it through the scanner so it becomes a regular local release — surviving after the peer disconnects.
+
+Importing requires downloads to be allowed (globally, for the session, and for the track), since it transfers the full file. The action is exposed at `POST /api/peers/:sessionId/tracks/:trackId/import` and is restricted to Root Admin / Manager roles.
+
 ---
 
 ## Running the CLI Daemon

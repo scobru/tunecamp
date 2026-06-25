@@ -1,6 +1,7 @@
-import { memo } from "react";
-import { Play, Pause, Download } from "lucide-react";
+import { memo, useState } from "react";
+import { Play, Pause, Download, Library, Loader2 } from "lucide-react";
 import { usePlayerStore } from "../../stores/usePlayerStore";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { formatDuration } from "../../utils/format";
 import API from "../../services/api";
 
@@ -31,7 +32,11 @@ export const PeerTrackCard = memo(({
   queue
 }: PeerTrackCardProps) => {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
-  
+  const role = useAuthStore((s) => s.role);
+  const canImport = role === "root_admin" || role === "admin";
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState(false);
+
   const peerTrackId = `peer:${sessionId}:${track.id}`;
   const isCurrent = currentTrack?.id === peerTrackId;
   const isCurrentlyPlaying = isCurrent && isPlaying;
@@ -71,6 +76,21 @@ export const PeerTrackCard = memo(({
 
   const downloadUrl = `/api/peers/${sessionId}/tracks/${track.id}/download?token=${API.getToken()}`;
   const canDownload = allowDownloadsGlobal && track.allow_download !== 0;
+
+  const handleImport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (importing || imported) return;
+    setImporting(true);
+    try {
+      await API.importPeerTrack(sessionId, track.id);
+      setImported(true);
+    } catch (err) {
+      console.error("Failed to import peer track:", err);
+      alert("Failed to import track into the library.");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <div
@@ -118,6 +138,21 @@ export const PeerTrackCard = memo(({
         <span className="text-xs font-mono opacity-50">
           {formatDuration(track.duration || 0)}
         </span>
+
+        {canImport && canDownload && (
+          <button
+            onClick={handleImport}
+            disabled={importing || imported}
+            className="btn btn-xs btn-ghost btn-circle opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity tooltip tooltip-left"
+            data-tip={imported ? "Imported into library" : "Import into library"}
+          >
+            {importing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Library size={14} className={imported ? "text-success" : "opacity-70 hover:opacity-100"} />
+            )}
+          </button>
+        )}
 
         {canDownload && (
           <a
