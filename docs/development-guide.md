@@ -90,7 +90,7 @@ See [backup-migration.md](./backup-migration.md) for more detail on data mainten
 
 - Use **TypeScript** for all new backend code.
 - Follow the existing **functional component** style in React.
-- Document new API endpoints in `docs/api-contracts.md`.
+- Document new API endpoints in [api-contracts.md](./api-contracts.md).
 - Every new database table must be added to `src/server/core/database.ts` with appropriate indexes.
 
 ## Contributing

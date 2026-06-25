@@ -35,7 +35,7 @@ If a single instance genuinely hits its limits, the answer that fits TuneCamp's 
 
 1. **Transcoding CPU**: lossless uploads (.wav and .flac) are pre-transcoded to MP3 320k at import time, so streams are served as static files. A rescan self-heals older libraries whose MP3s were never generated. For other on-the-fly cases (seek, bitrate reduction), raise `transcodeCacheMaxBytes` so transcodes are cached.
 2. **Import contention**: set the `scheduledScanHour` setting (0–23, server time) to run the daily scan off-peak automatically; it shares a task lock with the manual scan so they never overlap.
-3. **Bandwidth**: put the instance behind a CDN or use `xaccelRedirect` (nginx `X-Accel-Redirect` support is built in, see `docs/NGINX.md`).
+3. **Bandwidth**: put the instance behind a CDN or use `xaccelRedirect` (nginx `X-Accel-Redirect` support is built in, see [NGINX](./NGINX.md)).
 
 ## Durability: continuous SQLite replication with Litestream
 

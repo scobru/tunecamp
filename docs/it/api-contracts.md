@@ -20,9 +20,9 @@ Authorization: Bearer <token>
 
 | Metodo | Percorso | Descrizione |
 |--------|----------|-------------|
-| `POST` | `/api/auth/register` | Registra un nuovo utente |
+| `POST` | `/api/users/register` | Registra un nuovo utente |
 | `POST` | `/api/auth/login` | Autentica l'utente e restituisce un JWT |
-| `GET`  | `/api/auth/me` | Restituisce il profilo dell'utente corrente |
+| `GET`  | `/api/auth/status` | Restituisce la sessione corrente e il profilo utente |
 
 ### Catalogo Musicale (`/api/catalog`, `/api/tracks`, `/api/albums`)
 
@@ -33,14 +33,14 @@ Authorization: Bearer <token>
 | `GET`  | `/api/artists` | Elenca tutti gli artisti |
 | `GET`  | `/api/tracks/:id` | Metadati della traccia |
 | `GET`  | `/api/tracks/:id/stream` | Stream audio binario (supporta l'intestazione `Range` per le tracce cloud) |
-| `GET`  | `/api/tracks/:id/waveform` | Dati della forma d'onda per la visualizzazione grafica |
+| `GET`  | `/api/waveform/:id` | Dati della forma d'onda per la visualizzazione grafica |
 
 ### Pagamenti e Monetizzazione (`/api/payments`)
 
 | Metodo | Percorso | Descrizione |
 |--------|----------|-------------|
 | `POST` | `/api/payments/stripe/create-session` | Crea una sessione di Stripe Checkout per acquisti in valuta fiat |
-| `POST` | `/api/payments/onramp-session` | Crea una sessione di Stripe Crypto Onramp |
+| `GET`  | `/api/payments/onramp-config` | Configurazione di Stripe Crypto Onramp |
 | `POST` | `/api/payments/verify` | Verifica una transazione on-chain (ETH/USDC) su Base |
 | `GET`  | `/api/payments/download/:trackId?code=...` | Scarica una traccia acquistata tramite codice di sblocco |
 | `GET`  | `/api/payments/rate/USD` | Tasso di cambio corrente ETH/USD |
@@ -60,33 +60,32 @@ Authorization: Bearer <token>
 |--------|----------|-------------|
 | `GET`  | `/api/metadata/search?q=...` | Cerca i metadati dell'album tra i provider esterni (MusicBrainz, Discogs, iTunes, TheAudioDB) |
 | `GET`  | `/api/metadata/lyrics?artist=...&title=...` | Recupera i testi delle canzoni tramite Lyrics.ovh |
-| `POST` | `/api/metadata/maintenance/apply-track` | Applica i metadati selezionati a una traccia locale |
+| `POST` | `/api/metadata/apply` | Applica i metadati selezionati a una traccia locale |
 
-### Social, Commenti e Post (`/api/social`, `/api/comments`, `/api/activitypub`)
+### Social, Commenti e Post (`/api/artists`, `/api/comments`, `/api/ap`)
 
 | Metodo | Percorso | Descrizione |
 |--------|----------|-------------|
-| `GET`  | `/api/posts` | Elenca i post pubblici degli artisti |
-| `POST` | `/api/posts` | Crea un nuovo post (solo per amministratori) |
-| `GET`  | `/api/comments/:trackId` | Elenca i commenti per una traccia specifica |
-| `POST` | `/api/comments` | Aggiunge un commento (richiede autenticazione) |
-| `GET`  | `/api/social/feed` | Post recenti degli attori seguiti |
-| `GET`  | `/api/activitypub/actor/:username` | Profilo ActivityPub per un utente locale |
-| `POST` | `/api/activitypub/inbox` | Riceve messaggi ActivityPub remoti in entrata |
+| `GET`  | `/api/artists/:id/posts` | Elenca i post pubblici di un artista |
+| `POST` | `/api/admin/posts` | Crea un nuovo post (solo per amministratori) |
+| `GET`  | `/api/comments/track/:trackId` | Elenca i commenti per una traccia specifica |
+| `POST` | `/api/comments/track/:trackId` | Aggiunge un commento (richiede autenticazione) |
+| `GET`  | `/api/ap/timeline/:artistId` | Attività recente degli attori seguiti |
+| `GET`  | `/api/ap/users/:slug` | Profilo ActivityPub (actor) per un utente locale |
+| `POST` | `/api/ap/inbox` | Riceve messaggi ActivityPub remoti in entrata |
 
 ### Amministrazione (`/api/admin`)
 
 | Metodo | Percorso | Descrizione |
 |--------|----------|-------------|
-| `GET`  | `/api/admin/users` | Elenca gli utenti registrati (solo per amministratori) |
-| `POST` | `/api/admin/scan` | Avvia una scansione della libreria |
-| `POST` | `/api/admin/rescan` | Forza una scansione profonda completa |
+| `GET`  | `/api/admin/system/users` | Elenca gli utenti registrati (solo per amministratori) |
+| `POST` | `/api/admin/system/rescan` | Avvia una scansione completa della libreria |
 | `GET`  | `/api/admin/stats` | Statistiche di utilizzo del server e del database |
 | `GET`  | `/api/admin/system/resources` | Snapshot in tempo reale delle risorse del processo/host — CPU, memoria, RAM dell'host, dimensioni del database SQLite e attività in background in esecuzione (solo per amministratori root) |
 | `GET`  | `/api/admin/storage/overview` | Utilizzo del disco a livello di istanza e suddivisione per utente (solo per amministratori root) |
 | `GET`  | `/api/admin/torrents` | Elenca i torrent attivi e completati |
 | `POST` | `/api/admin/torrents/add` | Aggiunge un link magnet alla coda di download |
-| `DELETE` | `/api/admin/torrents/:infoHash` | Rimuove un torrent e facoltativamente i relativi dati scaricati |
+| `DELETE` | `/api/admin/torrents/:hash` | Rimuove un torrent e facoltativamente i relativi dati scaricati |
 
 ### Radio (`/api/radio`)
 
