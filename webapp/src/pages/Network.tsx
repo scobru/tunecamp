@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, memo } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users } from "lucide-react";
+import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText } from "lucide-react";
+
+type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PeerSessionCard } from "../components/network/PeerSessionCard";
@@ -446,6 +448,7 @@ const Network = () => {
   const [enabled, setEnabled] = useState(true);
   const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
   const [peerSessions, setPeerSessions] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<NetworkTab>("releases");
 
   useEffect(() => {
     const loadData = async () => {
@@ -711,147 +714,158 @@ const Network = () => {
         )}
       </PageHeader>
 
-      {/* Live Peer Channels */}
-      {peerStatus?.enabled && isAuthenticated && (
-        <section className="space-y-8">
-          <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
-            <Users size={24} className="text-primary" />
-            <div>
-              <h2 className="text-2xl font-bold">Live Peer Channels</h2>
-              <p className="text-sm opacity-50">Browse music shared directly by other listeners in real-time.</p>
-            </div>
-          </div>
+      {/* Tab Bar */}
+      {(() => {
+        const showPeers = peerStatus?.enabled && isAuthenticated;
+        const showPosts = allPosts.length > 0;
+        const tabs: { id: NetworkTab; label: string; icon: React.ElementType; count: number }[] = [
+          ...(showPeers ? [{ id: "peers" as NetworkTab, label: "Live Peers", icon: Users, count: peerSessions.length }] : []),
+          { id: "releases", label: "Network Releases", icon: Globe, count: instanceGroups.length },
+          { id: "my-instance", label: "My Instance", icon: Music, count: localReleases.length },
+          ...(showPosts ? [{ id: "posts" as NetworkTab, label: "Posts", icon: FileText, count: allPosts.length }] : []),
+          { id: "instances", label: "Instances", icon: Server, count: sites.length },
+        ];
+        const currentTab = tabs.find(t => t.id === activeTab) ? activeTab : tabs[0]?.id ?? "releases";
 
-          {peerSessions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {peerSessions.map((session) => (
-                <PeerSessionCard
-                  key={session.id}
-                  session={session}
-                  allowDownloadsGlobal={peerStatus.allowDownloads}
-                />
+        return (
+          <>
+            {/* Tab buttons */}
+            <div className="flex gap-0 border-b border-base-content/10 overflow-x-auto scrollbar-none -mb-4">
+              {tabs.map(({ id, label, icon: Icon, count }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap shrink-0 ${
+                    currentTab === id
+                      ? "border-primary text-primary"
+                      : "border-transparent opacity-40 hover:opacity-70"
+                  }`}
+                >
+                  <Icon size={15} />
+                  {label}
+                  {count > 0 && (
+                    <span className={`badge badge-sm font-bold ${currentTab === id ? "badge-primary" : "badge-neutral"}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-              No live peer channels currently online. Start a CLI daemon to share yours!
+
+            {/* Tab content */}
+            <div className="pt-4">
+
+              {/* Live Peers */}
+              {currentTab === "peers" && showPeers && (
+                <section className="space-y-6">
+                  {peerSessions.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {peerSessions.map((session) => (
+                        <PeerSessionCard
+                          key={session.id}
+                          session={session}
+                          allowDownloadsGlobal={peerStatus!.allowDownloads}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
+                      No live peer channels currently online. Start a CLI daemon to share yours!
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Network Releases */}
+              {currentTab === "releases" && (
+                <section className="space-y-4">
+                  {instanceGroups.length > 0 ? (
+                    instanceGroups.map((g) => (
+                      <InstanceGroup
+                        key={g.host}
+                        host={g.host}
+                        name={g.name}
+                        federation={g.items[0]?.federation}
+                        tracks={g.items}
+                        onPlay={handlePlayNetworkTrack}
+                        onToggleVisibility={toggleTrackVisibility}
+                        hiddenTracks={hiddenTracks}
+                        isAdmin={isAdminAuthenticated}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
+                      No remote tracks discovered yet. Other instances will appear once they federate via ActivityPub or are discovered over HTTP.
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* My Instance */}
+              {currentTab === "my-instance" && (
+                <section className="space-y-6">
+                  {localReleases.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {localReleases.map((item, i) => {
+                        const uniqueId = item.slug || String(i);
+                        return (
+                          <TrackCard
+                            key={uniqueId}
+                            item={item}
+                            onPlay={handlePlayNetworkTrack}
+                            onToggleVisibility={toggleTrackVisibility}
+                            isHidden={hiddenTracks.includes(uniqueId)}
+                            isAdmin={isAdminAuthenticated}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/10 rounded-xl text-sm">
+                      No public releases on this instance.
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Posts */}
+              {currentTab === "posts" && showPosts && (
+                <section className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {allPosts.map((item, i) => (
+                      <PostCard
+                        key={item.slug || i}
+                        item={item}
+                        onToggleVisibility={toggleTrackVisibility}
+                        isHidden={hiddenTracks.includes(item.slug || "")}
+                        isAdmin={isAdminAuthenticated}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Instances */}
+              {currentTab === "instances" && (
+                <section className="space-y-6">
+                  {sites.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {sites.map((site, i) => (
+                        <SiteCard key={site.url || i} site={site} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
+                      No instances discovered yet.
+                    </div>
+                  )}
+                </section>
+              )}
+
             </div>
-          )}
-        </section>
-      )}
-
-      {/* Remote Network Content */}
-      <section className="space-y-8">
-        <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
-          <Globe size={24} className="text-accent" />
-          <div>
-            <h2 className="text-2xl font-bold">Network Releases</h2>
-            <p className="text-sm opacity-50">Tracks discovered from other TuneCamp instances via HTTP and ActivityPub.</p>
-          </div>
-        </div>
-
-        {remoteReleases.length > 0 ? (
-          <div className="space-y-4">
-            {instanceGroups.map((g) => (
-              <InstanceGroup
-                key={g.host}
-                host={g.host}
-                name={g.name}
-                federation={g.items[0]?.federation}
-                tracks={g.items}
-                onPlay={handlePlayNetworkTrack}
-                onToggleVisibility={toggleTrackVisibility}
-                hiddenTracks={hiddenTracks}
-                isAdmin={isAdminAuthenticated}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-            No remote tracks discovered yet. Other instances will appear once they federate via ActivityPub or are discovered over HTTP.
-          </div>
-        )}
-      </section>
-
-      {/* Local Content */}
-      <section className="space-y-8 bg-base-content/5 p-8 rounded-3xl border border-base-content/5">
-        <div className="flex items-center gap-3 border-b border-base-content/10 pb-4">
-          <Music size={24} className="text-primary" />
-          <div>
-            <h2 className="text-2xl font-bold">My Instance</h2>
-            <p className="text-sm opacity-50">Public releases from this server.</p>
-          </div>
-        </div>
-
-        {localReleases.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {localReleases.map((item, i) => {
-              const uniqueId = item.slug || String(i);
-              return (
-                <TrackCard 
-                  key={uniqueId} 
-                  item={item} 
-                  onPlay={handlePlayNetworkTrack}
-                  onToggleVisibility={toggleTrackVisibility}
-                  isHidden={hiddenTracks.includes(uniqueId)}
-                  isAdmin={isAdminAuthenticated}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-8 opacity-40 border border-dashed border-base-content/10 rounded-xl text-sm">
-            No public releases on this instance.
-          </div>
-        )}
-      </section>
-
-      {/* Community Posts */}
-      {allPosts.length > 0 && (
-        <section className="space-y-8">
-          <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
-            <Globe size={24} className="text-info" />
-            <div>
-              <h2 className="text-2xl font-bold">Community Posts</h2>
-              <p className="text-sm opacity-50">Blog and social posts from the network.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {allPosts.map((item, i) => (
-              <PostCard 
-                key={item.slug || i} 
-                item={item} 
-                onToggleVisibility={toggleTrackVisibility}
-                isHidden={hiddenTracks.includes(item.slug || "")}
-                isAdmin={isAdminAuthenticated}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Instance Directory */}
-      <section className="space-y-8">
-        <div className="flex items-center gap-3 border-b border-base-content/5 pb-4">
-          <Server size={24} className="text-info" />
-          <div>
-            <h2 className="text-2xl font-bold">Instance Directory</h2>
-            <p className="text-sm opacity-50">All discovered TuneCamp instances across the network.</p>
-          </div>
-        </div>
-
-        {sites.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sites.map((site, i) => (
-              <SiteCard key={site.url || i} site={site} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-            No instances discovered yet.
-          </div>
-        )}
-      </section>
+          </>
+        );
+      })()}
     </div>
   );
 };
