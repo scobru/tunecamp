@@ -42,7 +42,7 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
                     artist: t.artist,
                     album: t.album,
                     duration: t.duration,
-                    allowDownload: allowDownloadsGlobal && t.allow_download !== 0
+                    allowDownload: allowDownloadsGlobal && !!t.allow_download
                 });
             }
         }
