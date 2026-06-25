@@ -119,25 +119,4 @@ export async function detectBpmFromUrl(url: string): Promise<number | null> {
     return tempo ? Math.round(tempo.bpm) : null;
 }
 
-export interface BeatInfo {
-    /** Estimated tempo in BPM (rounded). */
-    bpm: number;
-    /** Offset (ms) of the first beat of the detected grid within the track. */
-    beatOffsetMs: number;
-}
 
-/**
- * Like {@link detectBpmFromUrl} but also returns the beat-grid phase, so the DJ
- * engine can line transitions up to the beat. Returns null if undetectable.
- */
-export async function detectBeatInfoFromUrl(url: string): Promise<BeatInfo | null> {
-    const onset = await loadOnset(url);
-    if (!onset) return null;
-    const tempo = estimateTempo(onset);
-    if (!tempo) return null;
-    const phaseSamples = estimatePhase(onset, tempo.lag);
-    return {
-        bpm: Math.round(tempo.bpm),
-        beatOffsetMs: (phaseSamples / ENVELOPE_RATE) * 1000,
-    };
-}

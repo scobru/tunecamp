@@ -2,7 +2,7 @@ import fs from "fs-extra";
 import path from "path";
 import type { Database as DatabaseType } from "better-sqlite3";
 
-export interface UserStorageRow {
+interface UserStorageRow {
     id: number;
     username: string;
     role: string;

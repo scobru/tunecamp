@@ -403,7 +403,7 @@ export interface AdminStats {
     genres?: string[];
 }
 
-export interface UserStorageRow {
+interface UserStorageRow {
     id: number;
     username: string;
     role: string;

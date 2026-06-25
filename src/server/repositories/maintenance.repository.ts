@@ -11,12 +11,6 @@ export interface BareTrack {
     norm_title: string;
 }
 
-export interface EncodedTrack {
-    id: number;
-    file_path: string;
-    lossless_path: string | null;
-}
-
 export class MaintenanceRepository extends BaseRepository {
     constructor(db: DatabaseType) {
         super(db);

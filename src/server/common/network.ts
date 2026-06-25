@@ -69,7 +69,7 @@ export async function isLiveTuneCamp(url: string, timeoutMs = 5000): Promise<boo
 /**
  * Safely fetches JSON, ensuring the body is always consumed or drained.
  */
-export async function fetchJsonSafe<T>(url: string, init?: RequestInit): Promise<T | null> {
+async function fetchJsonSafe<T>(url: string, init?: RequestInit): Promise<T | null> {
     let res: Response | null = null;
     try {
         const isSafe = await isSafeUrl(url);

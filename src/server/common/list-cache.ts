@@ -30,7 +30,7 @@ const store = new Map<string, CacheEntry>();
 let generation = 0;
 
 /** Drops every cached list. Bumps a generation so in-flight keys can't collide. */
-export function invalidateListCache(): void {
+function invalidateListCache(): void {
     generation++;
     store.clear();
 }

@@ -5,6 +5,7 @@
       "entry": [
         "src/index.ts",
         "src/tools/*.ts",
+        "src/server/tools/*.ts",
         "src/server/modules/workers/heavy-task.worker.ts"
       ],
       "project": [
@@ -16,7 +17,10 @@
         "daisyui",
         "tailwindcss",
         "tsx"
-      ]
+      ],
+      "ignoreIssues": {
+        "src/utils/fileUtils.ts": ["exports"]
+      }
     },
     "webapp": {
       "project": [

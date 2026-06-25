@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import API from "../services/api";
-import type { Artist, Track, Album, Release } from "../types";
+
 
 /**
  * Centralized query keys for the cached catalog lists. Use these when reading
@@ -58,4 +58,3 @@ export function useTracks(options: { mine?: boolean } & QueryOpts = {}) {
     });
 }
 
-export type { Artist, Track, Album, Release };
