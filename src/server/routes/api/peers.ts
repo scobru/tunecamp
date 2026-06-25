@@ -1,8 +1,14 @@
 import { Router, json } from "express";
 import path from "path";
+import fs from "fs";
+import { pipeline } from "stream/promises";
+import { Readable } from "stream";
 import { createAuthMiddleware, type AuthenticatedRequest } from "../../middleware/auth.js";
 import type { ServiceContainer } from "../../core/container.js";
 import { UserRole, VisibilityGuardian } from "../../common/visibility.js";
+import { fetchSafe, drainResponse } from "../../common/network.js";
+
+const MAX_FEDERATED_IMPORT_BYTES = 200 * 1024 * 1024; // 200MB safety cap
 
 export function createPeersRoutes(container: ServiceContainer): Router {
     const authService = container.authService;
@@ -47,8 +53,79 @@ export function createPeersRoutes(container: ServiceContainer): Router {
         }
     });
 
+    // Public, cross-instance download of a shared peer track. Like
+    // federated-stream but transfers the full file, so it additionally requires
+    // peer downloads to be allowed globally. Used by remote instances to import.
+    router.get("/:sessionId/tracks/:trackId/federated-download", async (req, res) => {
+        const peerEnabled = identity.getSetting("peerEnabled") === "true";
+        const peerFederation = identity.getSetting("peerFederation") === "true";
+        const allowDownloads = identity.getSetting("peerAllowDownloads") !== "false";
+        if (!peerEnabled || !peerFederation || !allowDownloads) {
+            return res.status(403).json({ error: "Federated peer downloads are disabled on this instance" });
+        }
+
+        const { sessionId, trackId } = req.params;
+        try {
+            // requestDownload re-checks per-session and per-track download flags.
+            await peerService.requestDownload(sessionId, trackId, res);
+        } catch (error) {
+            console.error(`[PeersRoute] Failed federated-download of track ${trackId} from session ${sessionId}:`, error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: "Failed to initiate download" });
+            }
+        }
+    });
+
     // All other routes require user authentication
     router.use(authMiddleware.requireUser);
+
+    // Import a peer track shared by ANOTHER federated instance into this library
+    // (Root Admin / Manager only). Pulls the file over HTTP from the remote
+    // instance's federated-download endpoint, then indexes it locally.
+    router.post("/federated-import", async (req: AuthenticatedRequest, res) => {
+        const isManagerOrAbove = req.isAdmin || (req.role && VisibilityGuardian.isAdminRole(req.role));
+        if (!isManagerOrAbove) {
+            return res.status(403).json({ error: "Access denied: importing federated tracks is restricted to Root Admin or Manager" });
+        }
+
+        const { downloadUrl, title, artist, album } = req.body || {};
+        if (!downloadUrl || typeof downloadUrl !== "string") {
+            return res.status(400).json({ error: "A 'downloadUrl' is required" });
+        }
+
+        let remote: Response | null = null;
+        try {
+            remote = await fetchSafe(downloadUrl, { headers: { "User-Agent": "TuneCamp-Federation/2.0" } });
+            if (!remote.ok || !remote.body) {
+                await drainResponse(remote);
+                return res.status(502).json({ error: "Failed to fetch track from remote instance" });
+            }
+
+            const declaredSize = Number(remote.headers.get("content-length") || 0);
+            if (declaredSize > MAX_FEDERATED_IMPORT_BYTES) {
+                await drainResponse(remote);
+                return res.status(413).json({ error: "Remote track exceeds the import size limit" });
+            }
+
+            const destDir = path.join(container.musicDir, "peer-imports");
+            await fs.promises.mkdir(destDir, { recursive: true });
+
+            const ct = remote.headers.get("content-type") || "";
+            const ext = ct.includes("flac") ? "flac" : ct.includes("wav") ? "wav" : ct.includes("ogg") ? "ogg" : "mp3";
+            const base = `${artist || "Unknown Artist"} - ${title || "Track"}`.replace(/[<>:"/\\|?*]/g, "_");
+            const filePath = path.join(destDir, `${base}-${Date.now().toString(36)}.${ext}`);
+
+            await pipeline(Readable.fromWeb(remote.body as any), fs.createWriteStream(filePath));
+
+            const result = await scannerService.processAudioFile(filePath, container.musicDir, undefined, req.userId);
+            console.log(`📥 [PeersRoute] Imported federated track "${title || filePath}" by ${req.username}`);
+            res.json({ success: true, result });
+        } catch (error: any) {
+            if (remote) await drainResponse(remote).catch(() => {});
+            console.error(`[PeersRoute] Failed to import federated track from ${downloadUrl}:`, error);
+            res.status(500).json({ error: "Failed to import federated track", details: error?.message });
+        }
+    });
 
     // List active sessions
     router.get("/", (req: AuthenticatedRequest, res) => {

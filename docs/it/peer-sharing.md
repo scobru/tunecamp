@@ -57,9 +57,12 @@ Quando l'opzione **Federate Peer Tracks** è attiva (Settings → Customize Modu
 
 - Le tracce vengono aggiunte al payload `GET /api/catalog/full` dell'istanza in un array `peerTracks` (solo quando sono attive sia **Enable Peer Sharing** sia **Federate Peer Tracks**).
 - Le istanze remote le acquisiscono tramite la stessa cache del catalogo usata per le release e le mostrano nella pagina **Network** (`type: "peer"`).
-- La riproduzione passa da un endpoint **pubblico** dedicato, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, raggiungibile senza un account locale ma **solo** finché la federazione peer è abilitata. Questo percorso è **solo streaming** — non espone mai il tunnel di download, quindi i file completi non vengono trasferiti tra le istanze.
+- La riproduzione passa da un endpoint **pubblico** dedicato, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, raggiungibile senza un account locale ma **solo** finché la federazione peer è abilitata.
+- Nella pagina Network le tracce peer federate hanno un badge distinto **PEER** per distinguerle dalle release permanenti.
 
-Queste voci sono effimere: esistono solo finché il daemon peer è connesso. Dopo la disconnessione di un peer la traccia smette di essere pubblicizzata e le cache remote la rimuovono al successivo aggiornamento (entro il TTL della cache del catalogo, ~1h); tentare di riprodurre una traccia ormai offline restituisce semplicemente un errore.
+**Import tra istanze.** Se l'istanza di origine consente anche i download peer, le tracce peer federate vengono pubblicizzate con un URL `federated-download`. Un **Root Admin / Manager** su un'istanza remota può quindi importare la traccia nella propria libreria tramite il pulsante **import** nella pagina Network (oppure `POST /api/peers/federated-import` con il `downloadUrl`). L'istanza remota scarica il file via HTTP (protetto da SSRF, con limite di dimensione), lo salva in `<musicDir>/peer-imports/` e lo indicizza come un normale upload locale. Quando l'origine tiene i download disabilitati, viene offerto solo lo streaming.
+
+Queste voci sono effimere: esistono solo finché il daemon peer è connesso. Poiché un catalogo che pubblicizza tracce peer viene rivalidato su una finestra breve (~2 minuti, contro ~1 ora per i cataloghi di sole release), un peer disconnesso scompare dalle pagine Network remote entro un paio di minuti; tentare di riprodurre una traccia ormai offline restituisce semplicemente un errore.
 
 ---
 

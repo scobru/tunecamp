@@ -697,6 +697,7 @@ const API = {
     kickPeerSession: (sessionId: string) => handleResponse(api.delete(`peers/${sessionId}`)),
     getPeerStatus: () => handleResponse<{ enabled: boolean, allowDownloads: boolean }>(api.get('peers/status')),
     importPeerTrack: (sessionId: string, trackId: string) => handleResponse(api.post(`peers/${sessionId}/tracks/${trackId}/import`, {})),
+    importFederatedTrack: (payload: { downloadUrl: string; title?: string; artist?: string; album?: string }) => handleResponse(api.post(`peers/federated-import`, payload)),
 
     // --- Lab Apps ---
     getLabApps: () => handleResponse(api.get<LabAppRecord[]>('lab-apps')),

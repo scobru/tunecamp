@@ -57,9 +57,12 @@ When **Federate Peer Tracks** is enabled (Settings → Customize Modules, off by
 
 - The tracks are added to the instance's `GET /api/catalog/full` payload under a `peerTracks` array (only when both **Enable Peer Sharing** and **Federate Peer Tracks** are on).
 - Remote instances pick them up through the same catalog cache they use for releases and show them on the **Network** page (`type: "peer"`).
-- Playback streams through a dedicated **public** endpoint, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, which is reachable without a local account but **only** while peer federation is enabled. This path is **streaming-only** — it never exposes the download tunnel, so full files are not transferred cross-instance.
+- Playback streams through a dedicated **public** endpoint, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, reachable without a local account but **only** while peer federation is enabled.
+- On the Network page, federated peer tracks are tagged with a distinct **PEER** badge to set them apart from permanent releases.
 
-These entries are ephemeral: they exist only while the peer daemon is connected. After a peer disconnects it stops being advertised, and remote caches drop it on their next refresh (up to the catalog cache TTL, ~1h); attempting to play a track that has since gone offline simply returns an error.
+**Cross-instance import.** If the origin instance also allows peer downloads, federated peer tracks are advertised with a `federated-download` URL. A **Root Admin / Manager** on a remote instance can then import the track into their own library via the **import** button on the Network page (or `POST /api/peers/federated-import` with the `downloadUrl`). The remote instance fetches the file over HTTP (SSRF-guarded, size-capped), writes it under `<musicDir>/peer-imports/`, and indexes it like any local upload. When the origin keeps downloads disabled, only streaming is offered.
+
+These entries are ephemeral: they exist only while the peer daemon is connected. Because a catalog advertising peer tracks is revalidated on a short window (~2 minutes, versus ~1 hour for release-only catalogs), a disconnected peer drops from remote Network pages within a couple of minutes; attempting to play a track that has since gone offline simply returns an error.
 
 ---
 

@@ -376,8 +376,9 @@ export interface NetworkTrack {
     siteUrl: string;
     federation?: 'federated' | 'activitypub' | 'local' | 'http' | 'rss';
     // For ActivityPub/Local tracks/posts (flattened structure)
-    type?: 'release' | 'post';
+    type?: 'release' | 'post' | 'peer';
     audioUrl?: string;
+    downloadUrl?: string;
     title?: string;
     artistName?: string;
     slug?: string;

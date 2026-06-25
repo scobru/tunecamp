@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText } from "lucide-react";
+import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText, Library, Loader2 } from "lucide-react";
 
 type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -243,7 +243,31 @@ const TrackCard = memo(({
   const artist = item.artistName || item.track?.artistName || "Unknown Artist";
   const duration = item.duration || item.track?.duration || 0;
   const siteUrl = item.siteUrl;
-  const badge = getFederationBadge(item.federation);
+  const isPeer = item.type === "peer";
+  const badge = isPeer ? { label: "PEER", class: "badge-secondary" } : getFederationBadge(item.federation);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState(false);
+
+  const handleImport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (importing || imported || !item.downloadUrl) return;
+    setImporting(true);
+    try {
+      await API.importFederatedTrack({
+        downloadUrl: item.downloadUrl,
+        title,
+        artist,
+        album: item.releaseTitle,
+      });
+      setImported(true);
+      notify.success("Track imported into your library");
+    } catch (err) {
+      console.error("Failed to import federated peer track:", err);
+      notify.error("Failed to import track");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <div
@@ -299,6 +323,20 @@ const TrackCard = memo(({
           <div className="text-xs font-mono opacity-40">
             {formatDuration(duration)}
           </div>
+          {isAdmin && isPeer && item.downloadUrl && (
+            <button
+              className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
+              disabled={importing || imported}
+              onClick={handleImport}
+              data-tip={imported ? "Imported into library" : "Import into library"}
+            >
+              {importing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Library size={14} className={imported ? "text-success" : "opacity-70"} />
+              )}
+            </button>
+          )}
           {isAdmin && (
             <button
               className={`btn btn-xs btn-ghost btn-circle tooltip tooltip-left ${isHidden ? "text-primary" : "text-error opacity-0 group-hover:opacity-100"}`}
@@ -599,7 +637,7 @@ const Network = () => {
     return !hiddenTracks.includes(uniqueId);
   });
 
-  const allReleases = filteredItems.filter(t => !t.type || t.type === 'release');
+  const allReleases = filteredItems.filter(t => !t.type || t.type === 'release' || t.type === 'peer');
   const allPosts = filteredItems.filter(t => t.type === 'post');
 
   // Separate local from remote for sections

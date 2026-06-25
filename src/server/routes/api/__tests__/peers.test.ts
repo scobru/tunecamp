@@ -172,6 +172,55 @@ describe("Peers API Routes Tests", () => {
         expect(mockPeerService.requestStream).not.toHaveBeenCalled();
     });
 
+    test("GET federated-download streams the file when federation + downloads are on", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "true";
+            if (k === "peerAllowDownloads") return "true";
+            return null;
+        });
+        (mockPeerService.requestDownload as any).mockImplementation((_s: string, _t: string, res: any) => {
+            res.json({ downloading: true });
+        });
+
+        const response = await request(app).get("/api/peers/sess-1/tracks/trk-1/federated-download");
+
+        expect(response.status).toBe(200);
+        expect(mockPeerService.requestDownload).toHaveBeenCalledWith("sess-1", "trk-1", expect.anything());
+    });
+
+    test("GET federated-download is blocked when downloads are disabled", async () => {
+        mockIdentity.getSetting.mockImplementation((k: string) => {
+            if (k === "peerEnabled") return "true";
+            if (k === "peerFederation") return "true";
+            if (k === "peerAllowDownloads") return "false";
+            return null;
+        });
+
+        const response = await request(app).get("/api/peers/sess-1/tracks/trk-1/federated-download");
+
+        expect(response.status).toBe(403);
+        expect(mockPeerService.requestDownload).not.toHaveBeenCalled();
+    });
+
+    test("POST /api/peers/federated-import blocks non-admins", async () => {
+        const response = await request(app)
+            .post("/api/peers/federated-import")
+            .set("test-role", "user")
+            .send({ downloadUrl: "https://peer.example.com/file.mp3" });
+
+        expect(response.status).toBe(403);
+    });
+
+    test("POST /api/peers/federated-import requires a downloadUrl", async () => {
+        const response = await request(app)
+            .post("/api/peers/federated-import")
+            .set("test-role", "admin")
+            .send({});
+
+        expect(response.status).toBe(400);
+    });
+
     test("POST /api/peers/:sessionId/tracks/:trackId/import imports into the library (manager/root only)", async () => {
         mockPeerService.requestImport.mockResolvedValue({
             filePath: "/music/peer-imports/Artist - Song-abcd1234.mp3",
