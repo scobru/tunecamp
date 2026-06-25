@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Linux native binaries (rollup)
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu
+
       - name: Build docs
         run: npm run docs:build
 
