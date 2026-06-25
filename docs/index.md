@@ -59,7 +59,7 @@ For listeners and artists using a TuneCamp instance.
 |-----|-------------|
 | [Roles & Permissions](./ROLES.md) | What each role (Owner, Manager, Curator, Listener) can do |
 | [Radio](./radio.md) | Broadcasting an always-on station from your library (playlists + genre mixes) |
-| [Subsonic Protocol](./SUBSONIC.md) | Connecting external clients (DSub, Symfonium, Tempo, Substreamer) |
+| [Subsonic Protocol](./subsonic.md) | Connecting external clients (DSub, Symfonium, Tempo, Substreamer) |
 | [Social & Community Features](./social-features.md) | Posts, comments, and fan interactions |
 | [Becoming an Artist & Selling](./community-mode.md) | Artist request flow and the `can_sell` sales gate |
 | [Payments & Monetization](./payments.md) | Stripe checkout, crypto on-ramp, and on-chain purchases |

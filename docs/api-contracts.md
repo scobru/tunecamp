@@ -112,7 +112,7 @@ TuneCamp implements the Subsonic protocol (v1.16.1) for compatibility with exist
 - Base path: `/rest/*.view`
 - Supported methods include: `getAlbumList`, `getMusicDirectory`, `stream`, and more.
 
-See [SUBSONIC.md](./SUBSONIC.md) for the full compatibility table.
+See [SUBSONIC.md](./subsonic.md) for the full compatibility table.
 
 ### Model Context Protocol (`/api/mcp`)
 

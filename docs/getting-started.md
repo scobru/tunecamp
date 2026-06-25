@@ -55,7 +55,7 @@ You can also ingest music via the [Telegram bot](./telegram.md), [Soulseek](./so
 ## 5. Listen
 
 - **Web player** — already running at `http://localhost:1970`, with waveform display, queue, lyrics, and keyboard shortcuts.
-- **Mobile / desktop apps** — TuneCamp speaks the full Subsonic API. Point any Subsonic client (DSub, Symfonium, Tempo, Substreamer) at your server URL with your TuneCamp credentials. See [Subsonic Protocol](./SUBSONIC.md).
+- **Mobile / desktop apps** — TuneCamp speaks the full Subsonic API. Point any Subsonic client (DSub, Symfonium, Tempo, Substreamer) at your server URL with your TuneCamp credentials. See [Subsonic Protocol](./subsonic.md).
 
 ## 6. Where to go next
 
