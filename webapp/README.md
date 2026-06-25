@@ -64,3 +64,5 @@ Frontend build-time variables use the `VITE_` prefix (set in `.env` at the repo 
 | `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 
 See the root [README](../README.md#configuration) for the complete configuration reference.
+
+:-)
