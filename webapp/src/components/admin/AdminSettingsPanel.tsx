@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy } from "lucide-react";
+import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy, Trash2, RotateCcw } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory, TuneCampCheckout } from "shogun-contracts-sdk";
@@ -574,19 +574,18 @@ export const AdminSettingsPanel = () => {
                       onChange={(e) => {
                         const val = e.target.value;
                         setSettings({ ...settings, backgroundImage: val });
-                        const mainDiv = document.querySelector(".drawer");
-                        if (mainDiv) {
-                          if (val) {
-                            (mainDiv as HTMLElement).style.backgroundImage = `url(${val})`;
-                            (mainDiv as HTMLElement).style.backgroundSize = 'cover';
-                            (mainDiv as HTMLElement).style.backgroundPosition = 'center';
-                            (mainDiv as HTMLElement).style.backgroundAttachment = 'fixed';
-                            (mainDiv as HTMLElement).style.backgroundRepeat = 'no-repeat';
-                            (mainDiv as HTMLElement).classList.add("has-custom-bg");
-                          } else {
-                            (mainDiv as HTMLElement).style.backgroundImage = '';
-                            (mainDiv as HTMLElement).classList.remove("has-custom-bg");
+                        // Live preview: update the dedicated bg layer
+                        const bgLayer = document.querySelector(".tc-bg-layer") as HTMLElement;
+                        if (val) {
+                          if (bgLayer) {
+                            bgLayer.style.backgroundImage = `url(${val})`;
                           }
+                          const drawer = document.querySelector(".drawer");
+                          if (drawer) drawer.classList.add("has-custom-bg");
+                        } else {
+                          if (bgLayer) bgLayer.style.backgroundImage = '';
+                          const drawer = document.querySelector(".drawer");
+                          if (drawer) drawer.classList.remove("has-custom-bg");
                         }
                       }}
                       placeholder="/images/custom-bg.jpg"
@@ -606,15 +605,12 @@ export const AdminSettingsPanel = () => {
                         setBgFile(file);
                         if (file) {
                           const url = URL.createObjectURL(file);
-                          const mainDiv = document.querySelector(".drawer");
-                          if (mainDiv) {
-                            (mainDiv as HTMLElement).style.backgroundImage = `url(${url})`;
-                            (mainDiv as HTMLElement).style.backgroundSize = 'cover';
-                            (mainDiv as HTMLElement).style.backgroundPosition = 'center';
-                            (mainDiv as HTMLElement).style.backgroundAttachment = 'fixed';
-                            (mainDiv as HTMLElement).style.backgroundRepeat = 'no-repeat';
-                            (mainDiv as HTMLElement).classList.add("has-custom-bg");
+                          const bgLayer = document.querySelector(".tc-bg-layer") as HTMLElement;
+                          if (bgLayer) {
+                            bgLayer.style.backgroundImage = `url(${url})`;
                           }
+                          const drawer = document.querySelector(".drawer");
+                          if (drawer) drawer.classList.add("has-custom-bg");
                         }
                       }}
                     />
@@ -677,15 +673,112 @@ export const AdminSettingsPanel = () => {
                       type="range"
                       min="0"
                       max="24"
-                      step="4"
+                      step="2"
                       className="range range-xs range-primary"
                       value={parseInt(settings.themeBlur || "10px")}
                       onChange={(e) => {
                         const blurValue = `${e.target.value}px`;
                         setSettings({ ...settings, themeBlur: blurValue });
+                        // Update CSS var for the dedicated bg layer filter
                         document.documentElement.style.setProperty("--custom-bg-blur", blurValue);
                       }}
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Brand Colors */}
+              <div className="pt-4 border-t border-base-content/5">
+                <h5 className="font-bold text-sm mb-3 flex items-center gap-2 opacity-70">
+                  <Palette size={14} />
+                  Brand Colors
+                </h5>
+                <p className="text-[11px] opacity-50 mb-4">Override the theme's Primary and Accent colors across the entire site. Leave empty to use the theme default.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium text-sm">Brand Primary</span>
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        className="w-10 h-10 rounded-lg border border-base-content/10 cursor-pointer bg-transparent p-0.5"
+                        value={settings.brandPrimary || "#8b5cf6"}
+                        onChange={(e) => {
+                          const color = e.target.value;
+                          setSettings({ ...settings, brandPrimary: color });
+                          document.documentElement.style.setProperty("--color-primary", color);
+                        }}
+                      />
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm bg-base-300/50 flex-1 font-mono text-xs"
+                        value={settings.brandPrimary || ""}
+                        onChange={(e) => {
+                          const color = e.target.value;
+                          setSettings({ ...settings, brandPrimary: color });
+                          if (color) document.documentElement.style.setProperty("--color-primary", color);
+                          else document.documentElement.style.removeProperty("--color-primary");
+                        }}
+                        placeholder="Theme default"
+                      />
+                      {settings.brandPrimary && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs btn-square tooltip tooltip-left"
+                          data-tip="Reset to theme default"
+                          onClick={() => {
+                            setSettings({ ...settings, brandPrimary: "" });
+                            document.documentElement.style.removeProperty("--color-primary");
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium text-sm">Brand Accent</span>
+                    </label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        className="w-10 h-10 rounded-lg border border-base-content/10 cursor-pointer bg-transparent p-0.5"
+                        value={settings.brandAccent || "#22d3ee"}
+                        onChange={(e) => {
+                          const color = e.target.value;
+                          setSettings({ ...settings, brandAccent: color });
+                          document.documentElement.style.setProperty("--color-accent", color);
+                        }}
+                      />
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm bg-base-300/50 flex-1 font-mono text-xs"
+                        value={settings.brandAccent || ""}
+                        onChange={(e) => {
+                          const color = e.target.value;
+                          setSettings({ ...settings, brandAccent: color });
+                          if (color) document.documentElement.style.setProperty("--color-accent", color);
+                          else document.documentElement.style.removeProperty("--color-accent");
+                        }}
+                        placeholder="Theme default"
+                      />
+                      {settings.brandAccent && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs btn-square tooltip tooltip-left"
+                          data-tip="Reset to theme default"
+                          onClick={() => {
+                            setSettings({ ...settings, brandAccent: "" });
+                            document.documentElement.style.removeProperty("--color-accent");
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -722,23 +815,80 @@ export const AdminSettingsPanel = () => {
                 </div>
               </div>
 
+              {/* Image previews with remove buttons */}
               <div className="flex flex-wrap gap-4 mt-2">
                 {settings.backgroundImage && (
-                  <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
+                  <div className="text-xs flex items-center gap-2 opacity-80 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs">
                     <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${bust(settings.backgroundImage)})` }}></div>
-                    <span className="truncate">Background: {settings.backgroundImage}</span>
+                    <span className="truncate flex-1">Background</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error"
+                      title="Remove background"
+                      onClick={async () => {
+                        try {
+                          await API.removeBackgroundImage();
+                          setSettings({ ...settings, backgroundImage: "" });
+                          setImageCacheBust(Date.now());
+                          // Clear live preview
+                          const bgLayer = document.querySelector(".tc-bg-layer") as HTMLElement;
+                          if (bgLayer) bgLayer.style.backgroundImage = '';
+                          const drawer = document.querySelector(".drawer");
+                          if (drawer) drawer.classList.remove("has-custom-bg");
+                          setMessage("Background image removed.");
+                        } catch (e: any) {
+                          setMessage(`Failed to remove background: ${e.message}`);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 )}
                 {settings.coverImage && (
-                  <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
+                  <div className="text-xs flex items-center gap-2 opacity-80 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs">
                     <div className="w-8 h-8 rounded bg-cover bg-center shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${bust(settings.coverImage)})` }}></div>
-                    <span className="truncate">Node Cover: {settings.coverImage}</span>
+                    <span className="truncate flex-1">Node Cover</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error"
+                      title="Remove cover"
+                      onClick={async () => {
+                        try {
+                          await API.removeSiteCover();
+                          setSettings({ ...settings, coverImage: "" });
+                          setImageCacheBust(Date.now());
+                          setMessage("Cover image removed.");
+                        } catch (e: any) {
+                          setMessage(`Failed to remove cover: ${e.message}`);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 )}
                 {settings.siteLogo && (
-                  <div className="text-xs flex items-center gap-2 opacity-60 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs truncate">
+                  <div className="text-xs flex items-center gap-2 opacity-80 bg-base-300/30 p-2 rounded-lg border border-base-content/5 max-w-xs">
                     <div className="w-8 h-8 rounded bg-contain bg-center bg-no-repeat shrink-0 border border-base-content/10" style={{ backgroundImage: `url(${bust(settings.siteLogo)})` }}></div>
-                    <span className="truncate">Site Logo: {settings.siteLogo}</span>
+                    <span className="truncate flex-1">Site Logo</span>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs btn-square text-error/70 hover:text-error"
+                      title="Remove logo"
+                      onClick={async () => {
+                        try {
+                          await API.removeSiteLogo();
+                          setSettings({ ...settings, siteLogo: "" });
+                          setImageCacheBust(Date.now());
+                          setMessage("Site logo removed.");
+                        } catch (e: any) {
+                          setMessage(`Failed to remove logo: ${e.message}`);
+                        }
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 )}
               </div>

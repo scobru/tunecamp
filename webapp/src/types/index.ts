@@ -288,6 +288,8 @@ export interface SiteSettings {
     membershipMonthlyPrice?: number | string;
     peerEnabled?: boolean | string;
     peerAllowDownloads?: boolean | string;
+    brandPrimary?: string;
+    brandAccent?: string;
 }
 
 export interface LiveSession {

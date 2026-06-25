@@ -455,6 +455,9 @@ const API = {
         formData.append('file', file);
         return handleResponse(api.post('admin/upload/site-logo', formData));
     },
+    removeBackgroundImage: () => handleResponse(api.delete('admin/upload/background')),
+    removeSiteCover: () => handleResponse(api.delete('admin/upload/site-cover')),
+    removeSiteLogo: () => handleResponse(api.delete('admin/upload/site-logo')),
 
     // --- Admin: System ---
     getListeningStats: () => handleResponse(api.get<any>('stats/library/overview')),

@@ -353,24 +353,35 @@
                 box-shadow var(--duration-short-4) var(--ease-standard) !important;
   }
 
+  /* ─── Dedicated blurred background layer ─── */
+  .tc-bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    filter: blur(var(--custom-bg-blur, 10px));
+    /* Slight scale compensates for blur edge artifacts */
+    transform: scale(1.05);
+    pointer-events: none;
+  }
+
   /* Translucent theme-aware panels when global background image is applied */
   .has-custom-bg .drawer-content {
     background-color: color-mix(in srgb, var(--color-base-100) var(--custom-bg-opacity, 85%), transparent) !important;
-    backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
-    -webkit-backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
   }
 
   .has-custom-bg .drawer-side > div,
   .has-custom-bg .drawer-side > aside {
     background-color: color-mix(in srgb, var(--color-base-200) var(--custom-bg-opacity, 85%), transparent) !important;
-    backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
-    -webkit-backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
   }
   
   .has-custom-bg .navbar {
     background-color: color-mix(in srgb, var(--color-base-100) 80%, transparent) !important;
-    backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
-    -webkit-backdrop-filter: blur(var(--custom-bg-blur, 10px)) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
   }
 }
 

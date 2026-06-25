@@ -18,6 +18,25 @@ import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useUIStore } from "../../stores/useUIStore";
 import { applyThemeFont } from "../../utils/themeFont";
 
+/**
+ * Apply brand color overrides as CSS custom properties on :root.
+ * Uses oklch format matching the DaisyUI theme definitions.
+ * Accepts any valid CSS color string (hex, oklch, hsl, etc.).
+ */
+function applyBrandColors(primary?: string, accent?: string) {
+  const root = document.documentElement;
+  if (primary) {
+    root.style.setProperty("--color-primary", primary);
+  } else {
+    root.style.removeProperty("--color-primary");
+  }
+  if (accent) {
+    root.style.setProperty("--color-accent", accent);
+  } else {
+    root.style.removeProperty("--color-accent");
+  }
+}
+
 export const MainLayout = () => {
   const [siteName, setSiteName] = useState("TuneCamp");
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
@@ -56,22 +75,29 @@ export const MainLayout = () => {
     } else {
       document.documentElement.style.removeProperty("--custom-bg-opacity");
     }
+
+    // Apply brand color overrides
+    applyBrandColors(siteSettings.brandPrimary, siteSettings.brandAccent);
   }, [siteSettings]);
 
   const hasBgImage = !!siteSettings?.backgroundImage;
-  const bgImageStyle = hasBgImage ? {
-    backgroundImage: `url(${siteSettings.backgroundImage})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundAttachment: 'fixed',
-    backgroundRepeat: 'no-repeat',
-  } : undefined;
 
   return (
     <div 
       className={`drawer lg:drawer-open h-screen text-base-content font-sans overflow-hidden ${hasBgImage ? "has-custom-bg" : "bg-base-100"}`}
-      style={bgImageStyle}
     >
+      {/* Dedicated blurred background layer — sits behind everything,
+          the blur filter is applied directly to this div's background image,
+          making the Global Background Blur slider visually effective. */}
+      {hasBgImage && (
+        <div
+          className="tc-bg-layer"
+          style={{
+            backgroundImage: `url(${siteSettings!.backgroundImage})`,
+          }}
+        />
+      )}
+
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] btn btn-primary btn-sm"
@@ -80,7 +106,7 @@ export const MainLayout = () => {
       </a>
       <input id="main-drawer" type="checkbox" className="drawer-toggle" />
 
-      <div className="drawer-content relative flex flex-col h-full overflow-hidden bg-base-100">
+      <div className="drawer-content relative flex flex-col h-full overflow-hidden">
         {/* Dominant Color Glow - subtle and minimalist */}
         <div 
           className="absolute top-0 right-0 w-1/2 h-1/2 bg-primary/5 blur-[120px] pointer-events-none z-0"

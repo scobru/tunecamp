@@ -406,7 +406,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 hideDj,
                 membershipMonthlyPrice,
                 peerEnabled,
-                peerAllowDownloads
+                peerAllowDownloads,
+                brandPrimary,
+                brandAccent
             } = req.body;
             let settingsChanged = false;
             const isTrue = (val: any) => val === true || val === "true";
@@ -501,6 +503,14 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (themeOverlayOpacity !== undefined) {
                 identity.setSetting("themeOverlayOpacity", themeOverlayOpacity.toString());
+                settingsChanged = true;
+            }
+            if (brandPrimary !== undefined) {
+                identity.setSetting("brandPrimary", brandPrimary);
+                settingsChanged = true;
+            }
+            if (brandAccent !== undefined) {
+                identity.setSetting("brandAccent", brandAccent);
                 settingsChanged = true;
             }
             if (communityLink !== undefined) {

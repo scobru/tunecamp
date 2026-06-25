@@ -402,7 +402,8 @@ export class CatalogService {
             "siteLogo", "mode", "siteId", "web3_checkout_address", "web3_nft_address",
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "siteHandle",
             "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj",
-            "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads"
+            "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads",
+            "brandPrimary", "brandAccent"
         ];
         const res: any = {};
         settings.forEach(k => {

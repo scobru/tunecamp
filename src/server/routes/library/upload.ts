@@ -871,6 +871,71 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         });
     });
 
+    /**
+     * Helper to remove a site-setting image asset and clear the DB key.
+     */
+    async function handleSiteSettingImageRemoval(
+        req: any,
+        res: any,
+        options: { type: string; settingKey: string; errorLabel: string }
+    ) {
+        try {
+            if (!req.isRootAdmin) {
+                return res.status(403).json({ error: "Only root admin can change site settings" });
+            }
+            const assetsDir = path.join(musicDir, "assets");
+            try {
+                const existingFiles = await storage.readdir(assetsDir);
+                for (const f of existingFiles) {
+                    if (f.startsWith(options.type + ".")) {
+                        await storage.remove(path.join(assetsDir, f)).catch(() => {});
+                    }
+                }
+            } catch { /* assets dir may not exist */ }
+            identity.setSetting(options.settingKey, "");
+            res.json({ message: `${options.errorLabel} removed` });
+        } catch (error) {
+            console.error(`${options.errorLabel} removal error:`, error);
+            res.status(500).json({ error: `Failed to remove ${options.errorLabel}` });
+        }
+    }
+
+    /**
+     * DELETE /api/admin/upload/background
+     * Remove site background image and revert to default
+     */
+    router.delete("/background", async (req: any, res: any) => {
+        await handleSiteSettingImageRemoval(req, res, {
+            type: "background",
+            settingKey: "backgroundImage",
+            errorLabel: "site background"
+        });
+    });
+
+    /**
+     * DELETE /api/admin/upload/site-cover
+     * Remove site cover image and revert to default
+     */
+    router.delete("/site-cover", async (req: any, res: any) => {
+        await handleSiteSettingImageRemoval(req, res, {
+            type: "site-cover",
+            settingKey: "coverImage",
+            errorLabel: "site cover"
+        });
+    });
+
+    /**
+     * DELETE /api/admin/upload/site-logo
+     * Remove site logo and revert to default
+     */
+    router.delete("/site-logo", async (req: any, res: any) => {
+        await handleSiteSettingImageRemoval(req, res, {
+            type: "site-logo",
+            settingKey: "siteLogo",
+            errorLabel: "site logo"
+        });
+    });
+
     return router;
 }
 
