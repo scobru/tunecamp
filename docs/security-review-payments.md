@@ -18,7 +18,7 @@ Scope: `src/server/routes/api/payments.ts` (Stripe checkout, webhook, on-chain v
 
 | # | Severity | Finding | Recommendation |
 |---|----------|---------|----------------|
-| 5 | Medium | `purchaseWithUSDC` via the checkout contract is trusted on `trackId` match alone — no amount check server-side. This is sound **only if** the deployed contract enforces its own price mapping; the server cannot tell whether the configured `web3_checkout_address` actually does. | Trust assumption now documented here and in STATUS.md; optionally read the contract's price mapping via RPC and compare. Only the instance admin can set `web3_checkout_address`, so exploiting this requires a malicious or buggy admin-deployed contract. |
+| 5 | Medium | `purchaseWithUSDC` via the checkout contract is trusted on `trackId` match alone — no amount check server-side. This is sound **only if** the deployed contract enforces its own price mapping; the server cannot tell whether the configured `web3_checkout_address` actually does. | Trust assumption now documented here and in [STATUS.md](./STATUS.md); optionally read the contract's price mapping via RPC and compare. Only the instance admin can set `web3_checkout_address`, so exploiting this requires a malicious or buggy admin-deployed contract. |
 | 9 | Info | Path handling in downloads is safe: `track.file_path` comes from the DB (scanner-controlled), not from the request; asset absolute paths are admin-set. | — |
 | 10 | Info | Stripe webhook signature verification is correctly implemented with the raw body before any JSON parser. | — |
 

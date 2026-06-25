@@ -20,9 +20,9 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/auth/register` | Register a new user |
+| `POST` | `/api/users/register` | Register a new user |
 | `POST` | `/api/auth/login` | Authenticate and receive a JWT |
-| `GET` | `/api/auth/me` | Return the current user's profile |
+| `GET` | `/api/auth/status` | Return the current session and user profile |
 
 ### Music Catalog (`/api/catalog`, `/api/tracks`, `/api/albums`)
 
@@ -33,14 +33,14 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/artists` | List all artists |
 | `GET` | `/api/tracks/:id` | Track metadata |
 | `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
-| `GET` | `/api/tracks/:id/waveform` | Waveform data for visualisation |
+| `GET` | `/api/waveform/:id` | Waveform data for visualisation |
 
 ### Payments & Monetisation (`/api/payments`)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/api/payments/stripe/create-session` | Create a Stripe Checkout session for fiat purchases |
-| `POST` | `/api/payments/onramp-session` | Create a Stripe Crypto Onramp session |
+| `GET` | `/api/payments/onramp-config` | Stripe Crypto Onramp configuration |
 | `POST` | `/api/payments/verify` | Verify an on-chain transaction (ETH/USDC) on Base |
 | `GET` | `/api/payments/download/:trackId?code=...` | Download a purchased track via unlock code |
 | `GET` | `/api/payments/rate/USD` | Current ETH/USD exchange rate |
@@ -60,33 +60,32 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 |--------|------|-------------|
 | `GET` | `/api/metadata/search?q=...` | Search album metadata across external providers (MusicBrainz, Discogs, iTunes, TheAudioDB) |
 | `GET` | `/api/metadata/lyrics?artist=...&title=...` | Fetch song lyrics via Lyrics.ovh |
-| `POST` | `/api/metadata/maintenance/apply-track` | Apply selected metadata to a local track |
+| `POST` | `/api/metadata/apply` | Apply selected metadata to a local track |
 
-### Social, Comments & Posts (`/api/social`, `/api/comments`, `/api/activitypub`)
+### Social, Comments & Posts (`/api/artists`, `/api/comments`, `/api/ap`)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/posts` | List public artist posts |
-| `POST` | `/api/posts` | Create a new post (admin only) |
-| `GET` | `/api/comments/:trackId` | List comments for a specific track |
-| `POST` | `/api/comments` | Add a comment (requires authentication) |
-| `GET` | `/api/social/feed` | Recent posts from followed actors |
-| `GET` | `/api/activitypub/actor/:username` | ActivityPub profile for a local user |
-| `POST` | `/api/activitypub/inbox` | Receive incoming remote ActivityPub messages |
+| `GET` | `/api/artists/:id/posts` | List an artist's public posts |
+| `POST` | `/api/admin/posts` | Create a new post (admin only) |
+| `GET` | `/api/comments/track/:trackId` | List comments for a specific track |
+| `POST` | `/api/comments/track/:trackId` | Add a comment (requires authentication) |
+| `GET` | `/api/ap/timeline/:artistId` | Recent activity from followed actors |
+| `GET` | `/api/ap/users/:slug` | ActivityPub profile (actor) for a local user |
+| `POST` | `/api/ap/inbox` | Receive incoming remote ActivityPub messages |
 
 ### Administration (`/api/admin`)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/admin/users` | List registered users (admin only) |
-| `POST` | `/api/admin/scan` | Trigger a library scan |
-| `POST` | `/api/admin/rescan` | Force a full deep rescan |
+| `GET` | `/api/admin/system/users` | List registered users (admin only) |
+| `POST` | `/api/admin/system/rescan` | Trigger a full library rescan |
 | `GET` | `/api/admin/stats` | Server and database usage statistics |
 | `GET` | `/api/admin/system/resources` | Live process/host resource snapshot — CPU, memory, host RAM, SQLite DB size, and running background tasks (root admin only) |
 | `GET` | `/api/admin/storage/overview` | Instance-wide disk usage and per-user breakdown (root admin only) |
 | `GET` | `/api/admin/torrents` | List active and completed torrents |
 | `POST` | `/api/admin/torrents/add` | Add a magnet link to the download queue |
-| `DELETE` | `/api/admin/torrents/:infoHash` | Remove a torrent and optionally its downloaded data |
+| `DELETE` | `/api/admin/torrents/:hash` | Remove a torrent and optionally its downloaded data |
 
 ### Radio (`/api/radio`)
 
