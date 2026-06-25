@@ -67,25 +67,6 @@ function estimateTempo(onset: Float32Array): { bpm: number; lag: number } | null
     return bestBpm != null ? { bpm: bestBpm, lag: bestLag } : null;
 }
 
-/**
- * Find the beat-grid phase: the offset (in envelope samples, 0..lag) at which a
- * pulse train of period `lag` best lines up with the onset peaks — i.e. "where
- * the beat sits" — so transitions can be aligned to it.
- */
-function estimatePhase(onset: Float32Array, lag: number): number {
-    if (lag <= 0) return 0;
-    let bestPhase = 0;
-    let bestScore = -Infinity;
-    for (let p = 0; p < lag; p++) {
-        let score = 0;
-        for (let i = p; i < onset.length; i += lag) score += onset[i];
-        if (score > bestScore) {
-            bestScore = score;
-            bestPhase = p;
-        }
-    }
-    return bestPhase;
-}
 
 /** Decode the first MAX_SECONDS of `url` into an onset envelope. */
 async function loadOnset(url: string): Promise<Float32Array | null> {
