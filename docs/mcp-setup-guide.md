@@ -1,28 +1,28 @@
-# Guida all'integrazione del Server MCP in TuneCamp
+# Integrating the MCP Server in TuneCamp
 
-TuneCamp implementa il **Model Context Protocol (MCP)**, consentendo a client AI (come Claude Desktop) di connettersi, effettuare ricerche nel tuo catalogo musicale, avviare scansioni dei file e verificare le statistiche del server.
+TuneCamp implements the **Model Context Protocol (MCP)**, allowing AI clients (such as Claude Desktop) to connect, search your music catalog, trigger file scans, and check server statistics.
 
-Poiché la maggior parte dei client AI (incluso Claude Desktop) supporta nativamente solo connessioni locali via `stdio` (standard input/output), TuneCamp fornisce sia un server **SSE (Server-Sent Events)** protetto sia un'utility di **bridge locale** per far dialogare i due sistemi in totale sicurezza.
-
----
-
-## 1. Generare un API Token
-
-Tutte le richieste MCP sono protette. Per connetterti, devi prima creare un token:
-1. Accedi a TuneCamp con il tuo account amministratore o curatore.
-2. Vai su **Profile Settings** -> sezione **API Tokens**.
-3. Clicca su **Create New Token**, inserisci un nome (es. "Claude Desktop") e conferma.
-4. Copia il token generato (inizia con `tc_`). *Nota: non potrai visualizzarlo di nuovo per intero dopo la creazione.*
+Since most AI clients (including Claude Desktop) natively support only local connections via `stdio` (standard input/output), TuneCamp provides both a protected **SSE (Server-Sent Events)** server and a **local bridge** utility so the two systems can talk to each other securely.
 
 ---
 
-## 2. Configurare Claude Desktop
+## 1. Generate an API Token
 
-Apri il file di configurazione di Claude Desktop (`claude_desktop_config.json`):
+All MCP requests are protected. To connect, you must first create a token:
+1. Sign in to TuneCamp with your administrator or curator account.
+2. Go to **Profile Settings** -> **API Tokens** section.
+3. Click **Create New Token**, enter a name (e.g. "Claude Desktop"), and confirm.
+4. Copy the generated token (it starts with `tc_`). *Note: you will not be able to view it in full again after creation.*
+
+---
+
+## 2. Configure Claude Desktop
+
+Open the Claude Desktop configuration file (`claude_desktop_config.json`):
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 - **macOS/Linux**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-Aggiungi il server `tunecamp` nella sezione `mcpServers`. Assicurati di puntare alla cartella in cui è installato TuneCamp (sostituisci il percorso assoluto e il token `tc_...` con i tuoi):
+Add the `tunecamp` server under the `mcpServers` section. Make sure to point to the folder where TuneCamp is installed (replace the absolute path and the `tc_...` token with your own):
 
 ```json
 {
@@ -32,51 +32,51 @@ Aggiungi il server `tunecamp` nella sezione `mcpServers`. Assicurati di puntare 
       "args": [
         "d:/shogun-2/tunecamp/dist/server/tools/mcp-bridge.js",
         "http://localhost:1970/api/mcp/sse",
-        "tc_il_tuo_token_qui"
+        "tc_your_token_here"
       ]
     }
   }
 }
 ```
 
-*Nota: prima di avviare il bridge, assicurati di aver compilato il progetto TuneCamp in modo che il file `mcp-bridge.js` esista nella cartella `dist/`:*
+*Note: before starting the bridge, make sure you have built the TuneCamp project so that the `mcp-bridge.js` file exists in the `dist/` folder:*
 ```bash
 npm run build
 ```
 
 ---
 
-## 3. Tool Esportati e Disponibili
+## 3. Exported & Available Tools
 
-Una volta connesso, il tuo chatbot AI avrà accesso ai seguenti tool:
+Once connected, your AI chatbot will have access to the following tools:
 
 ### `search_music`
-- **Descrizione**: Cerca artisti, album e tracce nella libreria locale.
-- **Parametri**:
-  - `query` (string, richiesto): Testo da cercare.
+- **Description**: Searches artists, albums, and tracks in the local library.
+- **Parameters**:
+  - `query` (string, required): Text to search for.
 
 ### `list_recent_albums`
-- **Descrizione**: Mostra gli ultimi album aggiunti alla libreria di TuneCamp.
-- **Parametri**:
-  - `limit` (integer, opzionale): Numero massimo di album (default 20, max 100).
+- **Description**: Shows the most recently added albums in the TuneCamp library.
+- **Parameters**:
+  - `limit` (integer, optional): Maximum number of albums (default 20, max 100).
 
 ### `scan_library`
-- **Descrizione**: Avvia una scansione asincrona in background della directory musicale del server per rilevare nuovi file audio o aggiornamenti.
+- **Description**: Starts an asynchronous background scan of the server's music directory to detect new audio files or updates.
 
 ### `get_system_stats`
-- **Descrizione**: Restituisce statistiche globali sull'istanza TuneCamp (numero di artisti, album totali, tracce e spazio disco totale utilizzato).
+- **Description**: Returns global statistics about the TuneCamp instance (number of artists, total albums, tracks, and total disk space used).
 
 ---
 
-## 4. Aggiungere un nuovo Tool MCP (per sviluppatori)
+## 4. Adding a new MCP Tool (for developers)
 
-I tool non sono caricati da una cartella esterna come i [plugin provider](./PLUGINS.md): sono definiti direttamente nel server MCP, in un unico file: [`src/server/routes/api/mcp.ts`](../src/server/routes/api/mcp.ts).
+The tools are not loaded from an external folder like the [plugin providers](./PLUGINS.md): they are defined directly in the MCP server, in a single file: [`src/server/routes/api/mcp.ts`](../src/server/routes/api/mcp.ts).
 
-Aggiungere un tool richiede **due modifiche** nello stesso file, più una ricompilazione.
+Adding a tool requires **two changes** in the same file, plus a rebuild.
 
-### Passo 1 — Dichiarare il tool (handler `ListTools`)
+### Step 1 — Declare the tool (`ListTools` handler)
 
-Aggiungi una voce all'array `tools` restituito dall'handler `ListToolsRequestSchema`. È qui che il client AI scopre il tool e il suo schema di input (JSON Schema):
+Add an entry to the `tools` array returned by the `ListToolsRequestSchema` handler. This is where the AI client discovers the tool and its input schema (JSON Schema):
 
 ```typescript
 {
@@ -92,9 +92,9 @@ Aggiungi una voce all'array `tools` restituito dall'handler `ListToolsRequestSch
 }
 ```
 
-### Passo 2 — Implementare il tool (handler `CallTool`)
+### Step 2 — Implement the tool (`CallTool` handler)
 
-Aggiungi un `case` allo `switch (name)` dentro l'handler `CallToolRequestSchema`. Il `name` deve combaciare esattamente con quello del Passo 1. I servizi dell'istanza sono già disponibili tramite il `container` destrutturato in cima alla funzione (`library`, `database`, `scannerService`, `config`):
+Add a `case` to the `switch (name)` inside the `CallToolRequestSchema` handler. The `name` must match exactly the one from Step 1. The instance services are already available through the `container` destructured at the top of the function (`library`, `database`, `scannerService`, `config`):
 
 ```typescript
 case "get_artist_releases": {
@@ -113,21 +113,21 @@ case "get_artist_releases": {
         ? rows.map((r: any) => `- ${r.title} (${r.year || "N/A"})`).join("\n")
         : "No releases found.";
 
-    // Tutti i tool devono restituire { content: [{ type: "text", text }] }
+    // Every tool must return { content: [{ type: "text", text }] }
     return { content: [{ type: "text", text }] };
 }
 ```
 
-**Regole importanti:**
-- Restituisci **sempre** `{ content: [{ type: "text", text }] }`. Per segnalare un errore "morbido" aggiungi `isError: true`; per un errore di validazione/parametri lancia un `McpError` (`ErrorCode.InvalidParams`, `MethodNotFound`, ecc.).
-- Per query in lettura usa `library.search(...)` (rispetta la visibilità — vedi `VisibilityProfile`) o SQL diretto via `database.db.prepare(...)`.
-- Per lavoro pesante/asincrono **non bloccare**: avvialo con `taskManager.run("task-id", fn)` e ritorna subito un messaggio (vedi `scan_library` come esempio), così l'AI non resta in attesa.
-- Tutte le rotte MCP sono già protette dal token `tc_...`; non serve aggiungere auth nel singolo tool.
+**Important rules:**
+- **Always** return `{ content: [{ type: "text", text }] }`. To signal a "soft" error add `isError: true`; for a validation/parameter error throw an `McpError` (`ErrorCode.InvalidParams`, `MethodNotFound`, etc.).
+- For read queries use `library.search(...)` (which respects visibility — see `VisibilityProfile`) or direct SQL via `database.db.prepare(...)`.
+- For heavy/async work **do not block**: launch it with `taskManager.run("task-id", fn)` and return a message immediately (see `scan_library` as an example), so the AI does not have to wait.
+- All MCP routes are already protected by the `tc_...` token; you do not need to add auth in the individual tool.
 
-### Passo 3 — Ricompilare e riavviare
+### Step 3 — Rebuild and restart
 
 ```bash
-npm run build   # rigenera dist/, incluso il bridge mcp-bridge.js
+npm run build   # regenerates dist/, including the bridge mcp-bridge.js
 ```
 
-Riavvia l'istanza TuneCamp e riavvia il client (Claude Desktop) per ricaricare la lista tool.
+Restart the TuneCamp instance and restart the client (Claude Desktop) to reload the tool list.

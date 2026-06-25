@@ -1,89 +1,89 @@
-# Guida alla Configurazione dei Servizi Esterni (API)
+# External Services Setup Guide (API)
 
-Questa guida spiega passo-passo come ottenere e configurare le chiavi API necessarie per far funzionare tutte le integrazioni di TuneCamp.
+This guide explains step by step how to obtain and configure the API keys required to run all of TuneCamp's integrations.
 
 ---
 
-## 1. Pagamenti e Monetizzazione
+## 1. Payments & Monetization
 
 ### Stripe (Fiat & Onramp)
-1. Vai sulla [Dashboard di Stripe](https://dashboard.stripe.com/).
-2. **Secret Key**: Vai in *Developers > API Keys* e copia la `Secret key` (`sk_test_...` o `sk_live_...`).
+1. Go to the [Stripe Dashboard](https://dashboard.stripe.com/).
+2. **Secret Key**: Go to *Developers > API Keys* and copy the `Secret key` (`sk_test_...` or `sk_live_...`).
 3. **Webhook Secret**:
-   - Vai in *Developers > Webhooks*.
-   - Aggiungi un endpoint: `https://tuo-dominio.com/api/payments/stripe/webhook`.
-   - Seleziona l'evento: `checkout.session.completed`.
-   - **Importante (istanze multi-artista)**: Abilita l'opzione **"Listen to events on connected accounts"** sull'endpoint. Senza questa spunta, i pagamenti effettuati su account Stripe Connect degli artisti non attiveranno il webhook e nessun codice di sblocco verrà generato.
-   - Copia il "Signing secret" (`whsec_...`).
-4. **Crypto Onramp**: Richiedi l'accesso a "Crypto Onramp" nelle impostazioni di Stripe e copia la relativa chiave.
+   - Go to *Developers > Webhooks*.
+   - Add an endpoint: `https://your-domain.com/api/payments/stripe/webhook`.
+   - Select the event: `checkout.session.completed`.
+   - **Important (multi-artist instances)**: Enable the **"Listen to events on connected accounts"** option on the endpoint. Without this checkbox, payments made on artists' Stripe Connect accounts will not trigger the webhook and no unlock code will be generated.
+   - Copy the "Signing secret" (`whsec_...`).
+4. **Crypto Onramp**: Request access to "Crypto Onramp" in your Stripe settings and copy the related key.
 
-### Stripe Connect (onboarding artisti — solo istanze multi-artista)
+### Stripe Connect (artist onboarding — multi-artist instances only)
 
-Stripe Connect permette di instradare i pagamenti fiat direttamente sul conto Stripe di ogni artista, con la commissione dell'istanza trattenuta automaticamente come `application_fee`. **Non è necessario per istanze single-artist.**
+Stripe Connect lets you route fiat payments directly to each artist's Stripe account, with the instance's commission automatically withheld as an `application_fee`. **It is not required for single-artist instances.**
 
-1. Assicurati di avere un account Stripe con le funzionalità **Connect** abilitate (*Settings > Connect settings* nella dashboard).
-2. Dal pannello Admin di TuneCamp → artista → usa i seguenti endpoint (gestiti via Admin UI):
-   - `POST /api/admin/artists/:id/stripe-connect/onboard` — crea o riusa un account Express Stripe per l'artista e restituisce il link di onboarding KYC da inviare all'artista.
-   - `GET /api/admin/artists/:id/stripe-connect/status` — verifica `chargesEnabled`, `payoutsEnabled`, `detailsSubmitted`.
-   - `DELETE /api/admin/artists/:id/stripe-connect` — scollega l'account (non lo elimina su Stripe).
-3. L'artista completa il KYC direttamente sulla pagina ospitata da Stripe.
-4. Fino a quando `chargesEnabled = false`, i checkout dell'artista usano il fallback sull'account dell'istanza.
-5. **Nessuna nuova variabile d'ambiente richiesta**: l'onboarding riusa `STRIPE_SECRET_KEY` già configurata.
+1. Make sure you have a Stripe account with the **Connect** features enabled (*Settings > Connect settings* in the dashboard).
+2. From the TuneCamp Admin panel → artist → use the following endpoints (managed via the Admin UI):
+   - `POST /api/admin/artists/:id/stripe-connect/onboard` — creates or reuses an Express Stripe account for the artist and returns the KYC onboarding link to send to the artist.
+   - `GET /api/admin/artists/:id/stripe-connect/status` — checks `chargesEnabled`, `payoutsEnabled`, `detailsSubmitted`.
+   - `DELETE /api/admin/artists/:id/stripe-connect` — disconnects the account (does not delete it on Stripe).
+3. The artist completes KYC directly on the Stripe-hosted page.
+4. As long as `chargesEnabled = false`, the artist's checkouts fall back to the instance account.
+5. **No new environment variable required**: onboarding reuses the already-configured `STRIPE_SECRET_KEY`.
 
-### MoonPay (Onramp alternativo)
-1. Registrati su [MoonPay Dashboard](https://dashboard.moonpay.com/).
-2. Crea una nuova API Key per l'integrazione Onramp su rete **Base**.
+### MoonPay (alternative Onramp)
+1. Sign up at [MoonPay Dashboard](https://dashboard.moonpay.com/).
+2. Create a new API Key for the Onramp integration on the **Base** network.
 
 ---
 
-## 2. Intelligenza Artificiale
+## 2. Artificial Intelligence
 
-### OpenRouter (Metadati & Raccomandazioni)
-1. Vai su [OpenRouter.ai](https://openrouter.ai/).
-2. Crea un account e vai nella sezione *Keys*.
-3. Crea una nuova chiave API.
-4. (Opzionale) Se vuoi usare modelli gratuiti, assicurati di configurare `openrouter_model` su `openrouter/free` (comportamento di default).
+### OpenRouter (Metadata & Recommendations)
+1. Go to [OpenRouter.ai](https://openrouter.ai/).
+2. Create an account and go to the *Keys* section.
+3. Create a new API key.
+4. (Optional) If you want to use free models, make sure to set `openrouter_model` to `openrouter/free` (the default behavior).
 
 ---
 
 ## 3. Cloud Storage
 
 ### Google Drive (Streaming & Import)
-1. Vai sulla [Google Cloud Console](https://console.cloud.google.com/).
-2. Crea un nuovo progetto.
-3. Abilita la **Google Drive API**.
-4. Vai in *APIs & Services > Credentials*.
-5. Crea un **OAuth 2.0 Client ID** (tipo "Web application").
-6. Aggiungi gli URI di redirect autorizzati: `https://tuo-dominio.com/api/storage/gdrive/callback`.
-7. Copia il `Client ID` e il `Client Secret`.
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a new project.
+3. Enable the **Google Drive API**.
+4. Go to *APIs & Services > Credentials*.
+5. Create an **OAuth 2.0 Client ID** (type "Web application").
+6. Add the authorized redirect URIs: `https://your-domain.com/api/storage/gdrive/callback`.
+7. Copy the `Client ID` and the `Client Secret`.
 
 ---
 
-## 4. Messaggistica e Social
+## 4. Messaging & Social
 
-### Telegram Bot (Ingestione Rapida)
-1. Cerca [@BotFather](https://t.me/BotFather) su Telegram.
-2. Invia il comando `/newbot` e segui le istruzioni.
-3. Copia l'**API Token** fornito alla fine.
-4. Per sicurezza, usa il tuo ID utente come `TUNECAMP_TELEGRAM_MASTER_ID`. Puoi scoprirlo usando [@userinfobot](https://t.me/userinfobot).
+### Telegram Bot (Quick Ingestion)
+1. Search for [@BotFather](https://t.me/BotFather) on Telegram.
+2. Send the `/newbot` command and follow the instructions.
+3. Copy the **API Token** provided at the end.
+4. For security, use your own user ID as `TUNECAMP_TELEGRAM_MASTER_ID`. You can find it using [@userinfobot](https://t.me/userinfobot).
 
 ---
 
 ## 5. Peer-to-Peer (P2P)
 
-### Soulseek (Ricerca & Download)
-1. Non serve un'API Key, ma un account Soulseek standard.
-2. Scarica il client Soulseek originale o registrati tramite un client compatibile.
-3. Usa il tuo `Username` e `Password` nelle impostazioni di TuneCamp.
+### Soulseek (Search & Download)
+1. No API Key is needed, but a standard Soulseek account is required.
+2. Download the original Soulseek client or register through a compatible client.
+3. Use your `Username` and `Password` in the TuneCamp settings.
 
 ---
 
-## 6. Configurazione nel Server
+## 6. Server Configuration
 
-Tutte queste chiavi possono essere configurate in due modi:
+All of these keys can be configured in two ways:
 
-### Metodo A: File `.env` (Raccomandato per lo sviluppo)
-Crea un file `.env` nella root del progetto:
+### Method A: `.env` file (recommended for development)
+Create a `.env` file in the project root:
 ```env
 STRIPE_SECRET_KEY=sk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -96,17 +96,17 @@ SLSK_USER=...
 SLSK_PASS=...
 ```
 
-### Metodo B: Dashboard Admin (Raccomandato per la produzione)
-Molte di queste chiavi possono essere inserite direttamente nell'interfaccia Admin di TuneCamp nella sezione **Settings**. I valori inseriti qui hanno la precedenza sul file `.env` e vengono salvati nel database SQLite.
+### Method B: Admin Dashboard (recommended for production)
+Many of these keys can be entered directly in TuneCamp's Admin interface under the **Settings** section. Values entered here take precedence over the `.env` file and are stored in the SQLite database.
 
 ---
 
 ## 7. Model Context Protocol (MCP)
 
-Se desideri connettere un chatbot AI esterno (es. Claude Desktop) a TuneCamp, puoi usare il server MCP integrato. I client si autenticano tramite i token personali utente (Bearer `tc_...`) generabili dal proprio Profilo nel pannello webapp.
-Per la guida alla configurazione e l'uso dello script di bridge, vedi [mcp-setup-guide.md](./mcp-setup-guide.md).
+If you want to connect an external AI chatbot (e.g. Claude Desktop) to TuneCamp, you can use the built-in MCP server. Clients authenticate with per-user personal tokens (Bearer `tc_...`) that can be generated from your Profile in the webapp.
+For the setup guide and how to use the bridge script, see [mcp-setup-guide.md](./mcp-setup-guide.md).
 
 ---
 
-## Verifica
-Dopo aver inserito le chiavi, riavvia il server TuneCamp. Controlla i log di avvio per assicurarti che i servizi (Telegram, GDrive) siano inizializzati correttamente senza errori di autenticazione.
+## Verification
+After entering the keys, restart the TuneCamp server. Check the startup logs to make sure the services (Telegram, GDrive) are initialized correctly without authentication errors.
