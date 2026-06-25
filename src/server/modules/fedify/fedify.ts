@@ -21,6 +21,27 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         }
     };
 
+    // Persist a remote actor's profile (name/avatar/inbox) so followers render with
+    // their real identity in the dashboard instead of showing up as "Unknown".
+    const cacheFollowerActor = (actor: any) => {
+        const uri = actor?.id?.toString();
+        if (!uri) return;
+        try {
+            dbService.upsertRemoteActor({
+                uri,
+                type: actor instanceof Person ? 'Person' : 'Service',
+                username: actor.preferredUsername?.toString() || null,
+                name: actor.name?.toString() || null,
+                summary: (actor as any).summary?.toString() || null,
+                icon_url: (actor as any).icon?.id?.toString() || (actor as any).icon?.toString() || null,
+                inbox_url: actor.inboxId?.toString() || null,
+                outbox_url: actor.outboxId?.toString() || null,
+            });
+        } catch (e: any) {
+            console.warn(`⚠️ Failed to cache follower actor ${uri}:`, e?.message);
+        }
+    };
+
     const federation = createFederation<void>({
         kv,
     });
@@ -319,10 +340,14 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         if (!artist) return null;
         const followers = dbService.getFollowers(artist.id);
         return {
-            items: followers.map(f => ({
-                id: new URL(f.actor_uri),
-                inboxId: new URL(f.inbox_uri)
-            })),
+            // Skip followers whose inbox could not be resolved yet — `new URL('')`
+            // throws and would break the whole followers collection response.
+            items: followers
+                .filter(f => f.inbox_uri)
+                .map(f => ({
+                    id: new URL(f.actor_uri),
+                    inboxId: new URL(f.inbox_uri)
+                })),
         };
     });
 
@@ -349,27 +374,35 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             if (handle === getSiteHandle(dbService)) {
                 const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
-                if (!follower) return;
 
-                const followerUri = follower.id?.toString();
-                const followerInbox = follower.inboxId?.toString();
-                const sharedInbox = follower.endpoints?.sharedInbox?.toString();
+                // Derive the follower URI even when the actor document could not be
+                // fetched — `Follow.actorId` is always present — so a transient network
+                // failure never silently drops the follow (which previously required the
+                // remote to re-send the request, and left nothing to recover on restart).
+                const followerUri = follower?.id?.toString() || follow.actorId?.toString();
+                if (!followerUri) {
+                    console.warn("⚠️ Site Follow received without a resolvable actor URI; ignoring.");
+                    return;
+                }
+                const followerInbox = follower?.inboxId?.toString() || "";
+                const sharedInbox = follower?.endpoints?.sharedInbox?.toString();
 
                 console.log(`📥 New site follower: ${followerUri}`);
 
-                if (followerUri && followerInbox) {
-                    dbService.addFollower(-1, followerUri, followerInbox, sharedInbox);
-                    dbService.acceptFollower(-1, followerUri);
-                }
+                // Persist immediately and unconditionally so the follow is durable.
+                dbService.addFollower(-1, followerUri, followerInbox, sharedInbox);
+                dbService.acceptFollower(-1, followerUri);
+                if (follower) cacheFollowerActor(follower);
 
-                await ctx.sendActivity(
-                    { handle: getSiteHandle(dbService) },
-                    follower,
-                    new Accept({
-                        actor: follow.objectId,
-                        object: follow,
-                    }),
-                );
+                if (follower) {
+                    await ctx.sendActivity(
+                        { handle: getSiteHandle(dbService) },
+                        follower,
+                        new Accept({ actor: follow.objectId, object: follow }),
+                    ).catch(e => console.warn(`⚠️ Failed to send site Accept to ${followerUri}:`, e?.message));
+                } else {
+                    console.warn(`⚠️ Site follower ${followerUri} stored, but Accept not sent (actor unresolved). It will be re-attempted on the next Follow or Sync.`);
+                }
                 return;
             }
 
@@ -379,28 +412,40 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             // Get the follower actor
             const docLoader = await getAuthenticatedLoader(ctx, handle);
             const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
-            if (follower == null) return;
 
-            const followerUri = follower.id?.toString();
-            const followerInbox = follower.inboxId?.toString();
-            const sharedInbox = follower.endpoints?.sharedInbox?.toString();
+            const followerUri = follower?.id?.toString() || follow.actorId?.toString();
+            if (!followerUri) {
+                console.warn(`⚠️ Follow for ${artist.name} received without a resolvable actor URI; ignoring.`);
+                return;
+            }
+            const followerInbox = follower?.inboxId?.toString() || "";
+            const sharedInbox = follower?.endpoints?.sharedInbox?.toString();
 
-            if (!followerUri || !followerInbox) return;
-
-            // Store the follower in the database and immediately accept (artists are fully public)
+            // Persist the follower up-front so it survives transient fetch failures and
+            // instance restarts, even before we manage to resolve their inbox.
             dbService.addFollower(artist.id, followerUri, followerInbox, sharedInbox);
-            dbService.acceptFollower(artist.id, followerUri);
+            if (follower) cacheFollowerActor(follower);
             console.log(`📥 New follower for ${artist.name}: ${followerUri}`);
 
-            // Send Accept activity back to the follower
-            await ctx.sendActivity(
-                { handle: handle },
-                follower,
-                new Accept({
-                    actor: follow.objectId,
-                    object: follow,
-                }),
-            );
+            // Respect the artist's manual-approval preference: leave the request pending
+            // (surfaced under "Pending requests") instead of auto-accepting.
+            if ((artist as any).manually_approves_followers) {
+                console.log(`⏳ Follow from ${followerUri} left pending — ${artist.name} requires manual approval.`);
+                return;
+            }
+
+            dbService.acceptFollower(artist.id, followerUri);
+
+            // Send Accept activity back to the follower (only possible once resolved).
+            if (follower) {
+                await ctx.sendActivity(
+                    { handle: handle },
+                    follower,
+                    new Accept({ actor: follow.objectId, object: follow }),
+                ).catch(e => console.warn(`⚠️ Failed to send Accept to ${followerUri}:`, e?.message));
+            } else {
+                console.warn(`⚠️ Follower ${followerUri} accepted for ${artist.name}, but Accept not sent (actor unresolved).`);
+            }
         })
         .on(Accept, async (ctx, accept) => {
             // Handle Accept from a Relay

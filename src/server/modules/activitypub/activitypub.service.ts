@@ -1653,6 +1653,27 @@ export class ActivityPubService {
             }
         }
 
+        // Repair followers that were persisted without a deliverable inbox (e.g. the
+        // remote actor couldn't be fetched when the Follow first arrived). Re-resolve
+        // the inbox now so Sync makes them reachable again. addFollower upserts the
+        // inbox while preserving the follower's accepted status.
+        const allFollowers = this.db.getFollowers(artistId);
+        const missingInbox = allFollowers.filter(f => !f.inbox_uri);
+        if (missingInbox.length > 0) {
+            console.log(`  📮 Resolving inbox for ${missingInbox.length} follower(s) missing one...`);
+            await Promise.all(missingInbox.map(async (follower) => {
+                try {
+                    const inbox = await this.getInboxFromActor(follower.actor_uri);
+                    if (inbox) {
+                        this.db.addFollower(artistId, follower.actor_uri, inbox);
+                        await this.cacheRemoteActor(follower.actor_uri).catch(() => {});
+                    }
+                } catch (e) {
+                    console.warn(`  ⚠️ Could not resolve inbox for follower ${follower.actor_uri}`);
+                }
+            }));
+        }
+
         // Sync Releases
         const releases = this.db.getReleasesByArtist(artistId);
         if (releases.length > 0) {
