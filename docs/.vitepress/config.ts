@@ -27,6 +27,7 @@ export default defineConfig({
         text: '🎧 User Guide',
         items: [
           { text: 'Roles & Permissions', link: '/ROLES' },
+          { text: 'Radio', link: '/radio' },
           { text: 'Subsonic Protocol', link: '/SUBSONIC' },
           { text: 'Social & Community', link: '/social-features' },
           { text: 'Becoming an Artist & Selling', link: '/community-mode' },
@@ -38,6 +39,7 @@ export default defineConfig({
         items: [
           { text: 'Federation (ActivityPub)', link: '/FEDERATION' },
           { text: 'Plugins', link: '/PLUGINS' },
+          { text: 'Peer Sharing', link: '/peer-sharing' },
           { text: 'Monitoring & Alerting', link: '/monitoring' },
           { text: 'Scaling', link: '/scaling' },
           { text: 'MCP Setup', link: '/mcp-setup-guide' },
@@ -55,6 +57,8 @@ export default defineConfig({
           { text: 'UI Component Inventory', link: '/component-inventory' },
           { text: 'Source Tree', link: '/source-tree-analysis' },
           { text: 'Lab Apps', link: '/LAB' },
+          { text: 'Lab App: Audiofabric', link: '/audiofabric' },
+          { text: 'Lab App: 4-Track Recorder', link: '/4-track-recorder' },
         ],
       },
       {

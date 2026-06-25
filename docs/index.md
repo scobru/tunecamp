@@ -96,6 +96,8 @@ For contributors and people building on TuneCamp.
 | [API Contracts](./api-contracts.md) | REST endpoints, authentication, and supported protocols |
 | [Source Tree](./source-tree-analysis.md) | Directory layout and entry points |
 | [Lab Apps](./LAB.md) | Creating and submitting experimental audio tools |
+| [Lab App: Audiofabric](./audiofabric.md) | Real-time 3D WebGL music visualizer built-in Lab app |
+| [Lab App: 4-Track Recorder](./4-track-recorder.md) | Browser-based 4-track cassette recorder companion package |
 
 ---
 
