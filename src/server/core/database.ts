@@ -1,6 +1,6 @@
-import Database from "better-sqlite3";
 import type { Database as DatabaseType } from "better-sqlite3";
 import path from "path";
+import { openRawDatabase } from "./db-driver.js";
 import { TrackRepository } from "../repositories/track.repository.js";
 import { AlbumRepository } from "../repositories/album.repository.js";
 import { ArtistRepository } from "../repositories/artist.repository.js";
@@ -29,7 +29,7 @@ import type {
 } from "./database.types.js";
 
 export function createDatabase(dbPath: string): DatabaseService {
-    const db = new Database(dbPath);
+    const db = openRawDatabase(dbPath);
     
     db.pragma("journal_mode = WAL");
     db.pragma("busy_timeout = 5000");
