@@ -682,6 +682,103 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 console.log(`💔 Undo Announce received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
             }
         })
+        .on(Create, async (ctx, create) => {
+            // Without this listener, normal posts (a Create wrapping a Note/Article) from
+            // remote accounts a local artist follows are delivered to the inbox and then
+            // silently dropped — they never reach `remote_content`, so they never show up
+            // in the "following"/"all" timeline. Mirror the logic of the legacy manual
+            // inbox in routes/network/activitypub.ts, which only the /api/ap mount could
+            // reach and so never ran for real federation traffic.
+            try {
+                const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
+                const object = await create.getObject({ documentLoader: docLoader }).catch(() => null) || await create.getObject(ctx).catch(() => null);
+                if (!object) return;
+
+                const actorUri = create.actorId?.toString() || (object as any).attributionId?.toString();
+                if (!actorUri) return;
+
+                // 1. Reply handling: if this Create replies to one of OUR notes (or to an
+                //    existing reply on one), store it as a thread reply instead of a feed item.
+                const inReplyTo = (object as any).replyTargetId?.toString();
+                if (inReplyTo) {
+                    let parentNote = dbService.getApNote(inReplyTo);
+                    let targetNoteId = inReplyTo;
+                    if (!parentNote) {
+                        const parentReply = dbService.getApReply(inReplyTo);
+                        if (parentReply) {
+                            parentNote = dbService.getApNote(parentReply.note_id);
+                            targetNoteId = parentReply.note_id;
+                        }
+                    }
+
+                    if (parentNote) {
+                        const replyUri = object.id?.toString() || create.id?.toString();
+                        if (replyUri) {
+                            const actor = await create.getActor({ documentLoader: docLoader }).catch(() => null) || await create.getActor(ctx).catch(() => null);
+                            if (actor) cacheFollowerActor(actor);
+                            const content = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+                            dbService.addApReply(targetNoteId, replyUri, actorUri, content, object.published?.toString() || new Date().toISOString());
+                            console.log(`💬 Stored reply from ${actorUri} on note ${targetNoteId} (replying to ${inReplyTo})`);
+                        }
+                    }
+                    // A reply that isn't to one of our notes is not a feed item — stop here.
+                    return;
+                }
+
+                // 2. Top-level post → store to remote_content so followers see it in the feed.
+                if (!(object instanceof Note) && !(object instanceof Article) && !(object instanceof Audio)) return;
+
+                const author = await create.getActor({ documentLoader: docLoader }).catch(() => null) || await create.getActor(ctx).catch(() => null);
+                if (author) cacheFollowerActor(author);
+
+                let type = 'post';
+                let audioUrl: string | null = null;
+                let coverUrl: string | null = null;
+                let duration: number | null = null;
+
+                if (object instanceof Audio) {
+                    type = 'release';
+                    audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
+                    duration = object.duration ? object.duration.total('second') : null;
+                    const icon = await object.getIcon().catch(() => null);
+                    if (icon) coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
+                } else {
+                    // Note / Article: scan attachments for audio (a track) or an image (cover).
+                    for await (const attachment of (object as any).getAttachments()) {
+                        const aType = (attachment as any).type?.toString().toLowerCase() || "";
+                        const mediaType = (attachment as any).mediaType?.toString().toLowerCase() || "";
+                        if (aType.includes('audio') || mediaType.startsWith('audio/')) {
+                            type = 'release';
+                            audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                        } else if (aType.includes('image') || mediaType.startsWith('image/')) {
+                            coverUrl = coverUrl || attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                        }
+                    }
+                }
+
+                const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+                const title = (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, '').substring(0, 80) || "Untitled";
+                const authorName = author?.name?.toString() || author?.preferredUsername?.toString() || "Remote Artist";
+
+                dbService.upsertRemoteContent({
+                    ap_id: object.id?.toString() || "",
+                    actor_uri: actorUri,
+                    type,
+                    title,
+                    content: rawContent,
+                    url: (object as any).url?.toString() || null,
+                    cover_url: coverUrl,
+                    stream_url: audioUrl,
+                    artist_name: authorName,
+                    album_name: (object as any).name?.toString() || null,
+                    duration,
+                    published_at: object.published?.toString() || new Date().toISOString(),
+                });
+                console.log(`📥 Stored remote ${type} from ${actorUri}: ${title}`);
+            } catch (e) {
+                console.error("❌ Error processing Create:", e);
+            }
+        })
         .on(Move, async (ctx, move) => {
             try {
                 const oldActorUri = move.actorId?.toString();
