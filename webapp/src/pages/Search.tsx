@@ -260,13 +260,21 @@ const Search = () => {
                                      <div key={artist.id} className="group card-m3 overflow-hidden">
                                          <Link to={`/artists/${artist.slug || artist.id}`} className="flex-1">
                                              <figure className="aspect-square relative">
-                                                 {artist.coverImage ? (
-                                                     <img src={API.getArtistCoverUrl(artist.id)} alt={artist.name} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
-                                                 ) : (
-                                                     <div className="w-full h-full bg-neutral flex items-center justify-center text-4xl font-bold opacity-30">
-                                                         {artist.name ? artist.name[0] : '?'}
-                                                     </div>
-                                                 )}
+                                                 <img
+                                                     src={artist.coverImage || API.getArtistCoverUrl(artist.slug || artist.id)}
+                                                     alt={artist.name}
+                                                     className="absolute inset-0 object-cover w-full h-full group-hover:scale-105 transition-transform"
+                                                     onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.style.display = 'none';
+                                                        if (target.nextElementSibling) {
+                                                           (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                                                        }
+                                                     }}
+                                                 />
+                                                 <div className="hidden absolute inset-0 w-full h-full bg-neutral items-center justify-center text-4xl font-bold opacity-30">
+                                                     {artist.name ? artist.name[0] : '?'}
+                                                 </div>
                                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                      <button 
                                                          className={clsx(
@@ -377,7 +385,7 @@ const Search = () => {
                                             aria-label={`Play ${track.title} by ${track.artistName || 'Unknown Artist'}`}
                                         >
                                              <img
-                                                src={track.coverImage || API.getAlbumCoverUrl(track.albumId)}
+                                                src={track.coverImage || API.getAlbumCoverUrl(track.albumId || (track as any).album_id) || API.getTrackCoverUrl(track.id)}
                                                 alt={track.albumName ? `${track.albumName} cover` : "Album cover"}
                                                 className="w-full h-full rounded object-cover opacity-70 group-hover:opacity-100"
                                              />
