@@ -54,9 +54,11 @@ docker-compose up -d --build
 
 ### Streaming & Clients
 - 🔊 **Subsonic/OpenSubsonic API**: Full compatibility (v1.16.1) with mobile apps like DSub, Symfonium, Tempo, Substreamer, Amuse, and play:Sub.
+- 📻 **Radio Station**: Broadcast an always-on radio station transcoded from your playlists and dynamic genre mixes. Delivers a rolling HLS stream, M3U playlist, and podcast-style RSS feed. See [radio.md](docs/radio.md).
+- 🧪 **TuneCamp Lab**: Embedded playground that sandboxes experimental browser-based audio tools (like the 4-track cassette recorder or the regl 3D visualizer) via secure, sandboxed iFrames. See [LAB.md](docs/LAB.md).
 - 🎧 **Built-in Player**: Waveform visualization, queue management, lyrics display, and keyboard shortcuts.
 - 📋 **Playlists**: Create and share playlists (public/private).
-- 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners — a single encode shared across the audience, instead of one stream copy per listener.
+- 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners.
 - 💬 **Community Chat**: Built-in instance chat with persistent history and role badges.
 
 ### Web3 & Monetization
@@ -68,15 +70,16 @@ docker-compose up -d --build
 
 ### Administration
 - 🛡️ **Role-Based Access (RBAC)**: Root Admin, Admin, and Artist/User roles with granular permissions. See [ROLES.md](docs/ROLES.md).
+- 🤖 **Model Context Protocol (MCP)**: Built-in MCP server that allows AI assistants (like Claude Desktop) to connect securely and inspect or manage the instance catalog. See [mcp-setup-guide.md](docs/mcp-setup-guide.md).
+- 🧠 **AI Assistant**: Optional OpenRouter-powered assistant for library tasks. See [ai-integrations.md](docs/ai-integrations.md).
 - 📤 **Bulk Upload**: Multi-file upload with automatic metadata extraction and album assignment.
 - ✏️ **Batch Editing**: Edit cover art, metadata, and pricing across multiple tracks at once.
 - 📁 **File Browser**: Browse the server filesystem and attach files to the library.
 - 🤖 **Telegram Bot**: Rapid ingestion of music files and remote management. See [telegram.md](docs/telegram.md).
-- 🧠 **AI Assistant**: Optional OpenRouter-powered assistant for library tasks. See [ai-integrations.md](docs/ai-integrations.md).
 - 🧩 **Plugins**: Load custom providers (streaming, metadata, storage) from a plugins directory. See [PLUGINS.md](docs/PLUGINS.md).
 - 💾 **Backup & Restore**: Full database backup/restore via the admin panel or CLI.
 - 📊 **Statistics**: Play counts, listening time, top tracks/artists, and library stats.
-- 📟 **Monitoring**: `/health` endpoint plus optional Sentry crash reporting. See [monitoring.md](docs/monitoring.md).
+- 📟 **Monitoring & System Diagnostics**: Live CPU, memory, storage, and background task metrics via the admin System panel, plus `/health` endpoints and Sentry reporting. See [monitoring.md](docs/monitoring.md).
 
 ### Content Acquisition
 - 🔎 **Soulseek Search**: Search Soulseek from the admin panel with one-click import.
