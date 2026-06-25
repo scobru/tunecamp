@@ -240,6 +240,28 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
         }
     }
 
+    // Ephemeral peer-shared tracks advertised by the remote instance (only
+    // present when that instance has opted into peer federation). They stream
+    // through a dedicated public endpoint and disappear when the peer goes
+    // offline (subject to this cache's TTL).
+    if (catalog.peerTracks && Array.isArray(catalog.peerTracks)) {
+        for (const track of catalog.peerTracks) {
+            if (!track.sessionId || !track.id) continue;
+            tracks.push({
+                slug: `${siteUrl}::peer::${track.sessionId}::${track.id}`,
+                title: track.title || "Untitled",
+                artistName: track.artist || siteName || "Unknown Artist",
+                releaseTitle: track.album || "Peer Share",
+                coverUrl: null,
+                audioUrl: `${siteUrl}/api/peers/${track.sessionId}/tracks/${track.id}/federated-stream`,
+                duration: track.duration || 0,
+                siteUrl: siteUrl,
+                federation: "http",
+                type: "peer"
+            });
+        }
+    }
+
     // If no releases structure, try the flat tracks array
     if (tracks.length === 0 && catalog.tracks && Array.isArray(catalog.tracks)) {
         for (const track of catalog.tracks) {

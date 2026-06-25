@@ -51,6 +51,16 @@ Beyond streaming and one-off downloads, **Root Admins and Managers** can permane
 
 Importing requires downloads to be allowed (globally, for the session, and for the track), since it transfers the full file. The action is exposed at `POST /api/peers/:sessionId/tracks/:trackId/import` and is restricted to Root Admin / Manager roles.
 
+### Federating Peer Tracks Across Instances
+
+When **Federate Peer Tracks** is enabled (Settings → Customize Modules, off by default), an instance advertises its **currently-shared** peer tracks to other federated TuneCamp instances, alongside its published releases. This reuses the existing federation path:
+
+- The tracks are added to the instance's `GET /api/catalog/full` payload under a `peerTracks` array (only when both **Enable Peer Sharing** and **Federate Peer Tracks** are on).
+- Remote instances pick them up through the same catalog cache they use for releases and show them on the **Network** page (`type: "peer"`).
+- Playback streams through a dedicated **public** endpoint, `GET /api/peers/:sessionId/tracks/:trackId/federated-stream`, which is reachable without a local account but **only** while peer federation is enabled. This path is **streaming-only** — it never exposes the download tunnel, so full files are not transferred cross-instance.
+
+These entries are ephemeral: they exist only while the peer daemon is connected. After a peer disconnects it stops being advertised, and remote caches drop it on their next refresh (up to the catalog cache TTL, ~1h); attempting to play a track that has since gone offline simply returns an error.
+
 ---
 
 ## Running the CLI Daemon

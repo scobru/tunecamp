@@ -289,6 +289,7 @@ export interface SiteSettings {
     membershipMonthlyPrice?: number | string;
     peerEnabled?: boolean | string;
     peerAllowDownloads?: boolean | string;
+    peerFederation?: boolean | string;
     brandPrimary?: string;
     brandAccent?: string;
 }

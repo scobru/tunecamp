@@ -12,7 +12,38 @@ import type { ServiceContainer } from "../../core/container.js";
 export function createCatalogRoutes(container: ServiceContainer): Router {
     const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
     const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
+    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const peerService: ServiceContainer['peerService'] = (container as any).peerService;
     const router = Router();
+
+    /**
+     * Builds the list of currently-shared peer tracks to advertise to other
+     * instances. Only populated when peer sharing AND peer federation are both
+     * enabled; entries are ephemeral (they vanish when the daemon disconnects).
+     * The remote side turns each entry into a public federated-stream URL.
+     */
+    const buildFederatedPeerTracks = () => {
+        if (!peerService) return [];
+        const peerEnabled = identity.getSetting("peerEnabled") === "true";
+        const peerFederation = identity.getSetting("peerFederation") === "true";
+        if (!peerEnabled || !peerFederation) return [];
+
+        const out: any[] = [];
+        for (const session of peerService.getSessions()) {
+            const tracks = peerService.getTracksBySession(session.id);
+            for (const t of tracks) {
+                out.push({
+                    sessionId: session.id,
+                    id: t.id,
+                    title: t.title,
+                    artist: t.artist,
+                    album: t.album,
+                    duration: t.duration
+                });
+            }
+        }
+        return out;
+    };
 
     /**
      * GET /api/catalog/overview
@@ -39,6 +70,7 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
         try {
             const isAdmin = req.isAdmin || req.isSuperUser;
             const catalog = discoveryService.getFederationCatalog(isAdmin, req.username);
+            (catalog as any).peerTracks = buildFederatedPeerTracks();
             res.json(catalog);
         } catch (error) {
             console.error("Error getting full catalog:", error);

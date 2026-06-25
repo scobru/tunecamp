@@ -24,6 +24,29 @@ export function createPeersRoutes(container: ServiceContainer): Router {
         });
     });
 
+    // Public, cross-instance streaming of a shared peer track. Unlike the
+    // authenticated /stream below, this is reachable by other federated TuneCamp
+    // instances (and their visitors) without a local account — but ONLY when the
+    // admin has opted into peer federation. Streaming only; no download tunnel is
+    // exposed here, so full files never leave via this path.
+    router.get("/:sessionId/tracks/:trackId/federated-stream", async (req, res) => {
+        const peerEnabled = identity.getSetting("peerEnabled") === "true";
+        const peerFederation = identity.getSetting("peerFederation") === "true";
+        if (!peerEnabled || !peerFederation) {
+            return res.status(403).json({ error: "Peer federation is disabled on this instance" });
+        }
+
+        const { sessionId, trackId } = req.params;
+        try {
+            await peerService.requestStream(sessionId, trackId, res);
+        } catch (error) {
+            console.error(`[PeersRoute] Failed federated-stream of track ${trackId} from session ${sessionId}:`, error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: "Failed to initiate stream" });
+            }
+        }
+    });
+
     // All other routes require user authentication
     router.use(authMiddleware.requireUser);
 

@@ -555,6 +555,21 @@ export const AdminSettingsPanel = () => {
                   />
                 </label>
               </div>
+
+              <div className="form-control bg-base-300/20 p-4 rounded-xl border border-base-content/5 mt-4">
+                <label className="label cursor-pointer justify-between">
+                  <div>
+                    <span className="label-text font-bold">Federate Peer Tracks</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Advertise currently-shared peer tracks to other federated instances, which can stream them while the peer is online. Streaming only — no downloads are exposed.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-md shrink-0 ml-4"
+                    checked={settings.peerFederation === true || (settings.peerFederation as unknown) === "true"}
+                    onChange={(e) => setSettings({ ...settings, peerFederation: e.target.checked })}
+                  />
+                </label>
+              </div>
             </div>
           )}
 

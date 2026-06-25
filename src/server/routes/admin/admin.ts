@@ -408,6 +408,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 membershipMonthlyPrice,
                 peerEnabled,
                 peerAllowDownloads,
+                peerFederation,
                 brandPrimary,
                 brandAccent
             } = req.body;
@@ -420,6 +421,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
 
             if (peerAllowDownloads !== undefined) {
                 identity.setSetting("peerAllowDownloads", isTrue(peerAllowDownloads) ? "true" : "false");
+            }
+
+            if (peerFederation !== undefined) {
+                identity.setSetting("peerFederation", isTrue(peerFederation) ? "true" : "false");
             }
 
             if (hideLive !== undefined) {

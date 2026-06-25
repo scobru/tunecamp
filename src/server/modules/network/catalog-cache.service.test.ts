@@ -57,6 +57,29 @@ describe('CatalogCacheService', () => {
         expect(JSON.parse(row.tracks_json)).toHaveLength(1);
     });
 
+    test('federated peer tracks are parsed into streamable network tracks', async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                releases: [],
+                peerTracks: [
+                    { sessionId: 'sess-1', id: 'trk-1', title: 'Peer Song', artist: 'DJ', album: 'Live Set', duration: 200 }
+                ]
+            })
+        });
+        const cache = createCatalogCacheService(db);
+
+        const tracks = await cache.getTracks([SITE]);
+
+        expect(tracks).toHaveLength(1);
+        expect(tracks[0]).toMatchObject({
+            title: 'Peer Song',
+            artistName: 'DJ',
+            type: 'peer',
+            audioUrl: `${SITE.url}/api/peers/sess-1/tracks/trk-1/federated-stream`
+        });
+    });
+
     test('fresh cache is served without any network call', async () => {
         const cache = createCatalogCacheService(db);
         db.prepare('INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at) VALUES (?, ?, ?)')
