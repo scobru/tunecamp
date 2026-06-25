@@ -11,14 +11,31 @@ export class SocialRepository extends BaseRepository {
 
     addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void {
         const hasFollowIdCol = this.db.prepare("PRAGMA table_info(followers)").all().some((c: any) => c.name === 'follow_id');
+        // Upsert that PRESERVES an already-accepted follower's status. The previous
+        // `INSERT OR REPLACE ... 'pending'` reset every re-delivered or duplicate Follow
+        // back to 'pending', silently dropping the follower from the (accepted-only)
+        // dashboard list until it was re-accepted. We also avoid clobbering a previously
+        // resolved inbox with an empty string when a Follow arrives before the remote
+        // actor's inbox could be fetched.
         if (hasFollowIdCol) {
-            this.db.prepare(
-                "INSERT OR REPLACE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status, follow_id) VALUES (?, ?, ?, ?, 'pending', ?)"
-            ).run(artistId, actorUri, inboxUri, sharedInboxUri || null, followId || null);
+            this.db.prepare(`
+                INSERT INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status, follow_id)
+                VALUES (?, ?, ?, ?, 'pending', ?)
+                ON CONFLICT(artist_id, actor_uri) DO UPDATE SET
+                    inbox_uri = CASE WHEN excluded.inbox_uri != '' THEN excluded.inbox_uri ELSE followers.inbox_uri END,
+                    shared_inbox_uri = COALESCE(excluded.shared_inbox_uri, followers.shared_inbox_uri),
+                    follow_id = COALESCE(excluded.follow_id, followers.follow_id),
+                    status = CASE WHEN followers.status = 'accepted' THEN 'accepted' ELSE 'pending' END
+            `).run(artistId, actorUri, inboxUri, sharedInboxUri || null, followId || null);
         } else {
-            this.db.prepare(
-                "INSERT OR REPLACE INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status) VALUES (?, ?, ?, ?, 'pending')"
-            ).run(artistId, actorUri, inboxUri, sharedInboxUri || null);
+            this.db.prepare(`
+                INSERT INTO followers (artist_id, actor_uri, inbox_uri, shared_inbox_uri, status)
+                VALUES (?, ?, ?, ?, 'pending')
+                ON CONFLICT(artist_id, actor_uri) DO UPDATE SET
+                    inbox_uri = CASE WHEN excluded.inbox_uri != '' THEN excluded.inbox_uri ELSE followers.inbox_uri END,
+                    shared_inbox_uri = COALESCE(excluded.shared_inbox_uri, followers.shared_inbox_uri),
+                    status = CASE WHEN followers.status = 'accepted' THEN 'accepted' ELSE 'pending' END
+            `).run(artistId, actorUri, inboxUri, sharedInboxUri || null);
         }
     }
 
