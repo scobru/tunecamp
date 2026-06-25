@@ -59,7 +59,7 @@ docker-compose up -d --build
 - 🎧 **Built-in Player**: Waveform visualization, queue management, lyrics display, and keyboard shortcuts.
 - 📋 **Playlists**: Create and share playlists (public/private).
 - 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners.
-- 💬 **Community Chat**: Built-in instance chat with persistent history and role badges.
+- 💬 **Social Interactions**: Add comments to tracks, write artist posts, and view a unified feed combining local posts and federated network events (likes, shares). See [social-features.md](docs/social-features.md).
 
 ### Web3 & Monetization
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
