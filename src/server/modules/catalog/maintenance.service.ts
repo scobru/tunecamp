@@ -448,12 +448,26 @@ export class MaintenanceService {
      */
     async aiAutofillAlbumsMetadata(albumIds: number[], options: { force?: boolean }): Promise<any> {
         const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
-        const albums = this.db.getAlbumsByIds(albumIds);
+        const deduplicatedIds = [...new Set(albumIds)];
+        const albums = this.db.getAlbumsByIds(deduplicatedIds);
+
+        const validAlbumIds = albums.map(a => a.id);
+        const allTracks = this.db.getTracksByAlbumIds(validAlbumIds);
+
+        const albumTracksMap = new Map<number, Track[]>();
+        for (const track of allTracks) {
+            if (track.album_id) {
+                if (!albumTracksMap.has(track.album_id)) {
+                    albumTracksMap.set(track.album_id, []);
+                }
+                albumTracksMap.get(track.album_id)!.push(track);
+            }
+        }
 
         for (const album of albums) {
             try {
                 console.log(`[Maintenance] AI Magic for album: ${album.title}`);
-                const tracks = this.db.getTracksByAlbum(album.id);
+                const tracks = albumTracksMap.get(album.id) || [];
                 const trackTitles = tracks.map(t => t.title);
 
                 const metadata = await this.openRouter.identifyAlbum(album.title, album.artist_name || 'Unknown', trackTitles);
