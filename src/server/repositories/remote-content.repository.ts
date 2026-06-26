@@ -54,8 +54,8 @@ export class RemoteContentRepository extends BaseRepository {
         const rows = this.db.prepare(`
             SELECT rc.*, ra.type AS actor_type
             FROM remote_content rc
-            JOIN remote_actors ra ON rc.actor_uri = ra.uri
-            WHERE rc.type = 'post' AND ra.is_followed = 1
+            LEFT JOIN remote_actors ra ON rc.actor_uri = ra.uri
+            WHERE rc.type = 'post'
             ORDER BY rc.published_at DESC
         `).all() as RemoteContent[];
         return rows;

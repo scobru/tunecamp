@@ -771,7 +771,113 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     return;
                 }
 
+                // 2. Feed item handling (Post or Release/Track)
+                const actor = await create.getActor({ documentLoader: docLoader }).catch(() => null) || await create.getActor(ctx).catch(() => null);
+                if (actor) {
+                    cacheFollowerActor(actor);
+                }
 
+                if (object instanceof Note) {
+                    const note = object;
+                    let audioUrl: string | null = null;
+                    let coverUrl: string | null = null;
+                    let duration: number | null = null;
+
+                    for await (const attachment of note.getAttachments()) {
+                        const type = (attachment as any).type?.toString().toLowerCase();
+                        const mediaType = (attachment as any).mediaType?.toString().toLowerCase();
+                        
+                        if (type?.includes("audio") || mediaType?.startsWith("audio/")) {
+                            audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                            duration = (attachment as any).duration || null;
+                        } else if (type?.includes("image") || mediaType?.startsWith("image/")) {
+                            coverUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
+                        }
+                    }
+
+                    const apId = note.id?.toString();
+                    if (apId) {
+                        const rawContent = note.content?.toString() || note.summary?.toString() || "";
+                        if (audioUrl) {
+                            dbService.upsertRemoteContent({
+                                ap_id: apId,
+                                actor_uri: actorUri,
+                                type: "release",
+                                title: note.content?.toString().replace(/<[^>]*>/g, "").substring(0, 80) || "Untitled",
+                                content: rawContent,
+                                url: (note as any).url?.toString() || null,
+                                cover_url: coverUrl,
+                                stream_url: audioUrl,
+                                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
+                                album_name: (note as any).summary?.toString() || null,
+                                duration,
+                                published_at: note.published?.toString() || new Date().toISOString(),
+                            });
+                            console.log(`📡 Stored remote release via Create Note inbox: ${apId}`);
+                        } else {
+                            dbService.upsertRemoteContent({
+                                ap_id: apId,
+                                actor_uri: actorUri,
+                                type: "post",
+                                title: (note as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
+                                content: rawContent,
+                                url: (note as any).url?.toString() || null,
+                                cover_url: coverUrl,
+                                stream_url: null,
+                                artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
+                                album_name: null,
+                                published_at: note.published?.toString() || new Date().toISOString(),
+                            });
+                            console.log(`📡 Stored remote post via Create Note inbox: ${apId}`);
+                        }
+                    }
+                } else if (object instanceof Article) {
+                    const apId = object.id?.toString();
+                    if (apId) {
+                        const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+                        dbService.upsertRemoteContent({
+                            ap_id: apId,
+                            actor_uri: actorUri,
+                            type: "post",
+                            title: (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, "").substring(0, 80) || "Untitled",
+                            content: rawContent,
+                            url: (object as any).url?.toString() || null,
+                            cover_url: null,
+                            stream_url: null,
+                            artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Remote Artist",
+                            album_name: null,
+                            published_at: object.published?.toString() || new Date().toISOString(),
+                        });
+                        console.log(`📡 Stored remote post via Create Article inbox: ${apId}`);
+                    }
+                } else if (object instanceof Audio) {
+                    const apId = object.id?.toString();
+                    if (apId) {
+                        const audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
+                        const duration = object.duration ? (object.duration.total("second")) : null;
+                        const icon = await object.getIcon();
+                        let coverUrl: string | null = null;
+                        if (icon) {
+                            coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
+                        }
+                        const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+                        dbService.upsertRemoteContent({
+                            ap_id: apId,
+                            actor_uri: actorUri,
+                            type: "release",
+                            title: (object as any).name?.toString() || "Untitled",
+                            content: rawContent,
+                            url: (object as any).url?.toString() || null,
+                            cover_url: coverUrl,
+                            stream_url: audioUrl,
+                            artist_name: actor?.name?.toString() || actor?.preferredUsername?.toString() || "Unknown Artist",
+                            album_name: (object as any).summary?.toString() || null,
+                            duration,
+                            published_at: object.published?.toString() || new Date().toISOString(),
+                        });
+                        console.log(`📡 Stored remote release via Create Audio inbox: ${apId}`);
+                    }
+                }
             } catch (e) {
                 console.error("❌ Error processing Create:", e);
             }

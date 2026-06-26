@@ -209,13 +209,15 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const remoteApPosts = dbService.getRemotePosts();
             const filteredApPosts = remoteApPosts.filter(content => {
                 const actor = actorsMap.get(content.actor_uri);
-                if (!actor) return false;
+                
+                // 0. Explicitly followed actors are allowed
+                if (actor && actor.is_followed) return true;
                 
                 // 1. Site actors are allowed
-                if (actor.username === 'site' || actor.username === getSiteHandle(dbService)) return true;
+                if (actor && (actor.username === 'site' || actor.username === getSiteHandle(dbService))) return true;
 
                 // 1b. Followed RSS feeds (podcasts/blogs) are allowed
-                if (actor.type === 'rss') return true;
+                if (actor && actor.type === 'rss') return true;
 
                 // 2. Music artists (with releases) are allowed
                 if (actorsWithReleases.has(content.actor_uri)) return true;
