@@ -275,16 +275,6 @@ const ContentSearch: React.FC = () => {
         }
     };
 
-    const handleSyncSoulseek = async (id: number) => {
-        try {
-            await API.syncSoulseekDownload(id);
-            console.log('Sync triggered');
-            fetchDownloads();
-        } catch (err: any) {
-            console.error(`Failed to sync: ${err.message}`);
-        }
-    };
-
     const handleDeleteSoulseek = async (id: number) => {
         if (!await confirm('Are you sure you want to remove this transfer record?')) return;
         try {
