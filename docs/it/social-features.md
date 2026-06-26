@@ -32,3 +32,14 @@ Ogni **artista** in TuneCamp corrisponde a un **Attore ActivityPub** (di tipo "P
 - Le attività in uscita sono firmate con la **coppia di chiavi RSA a 4096 bit** dell'artista, generata automaticamente per ciascun profilo.
 
 > Nota: le versioni precedenti collegavano l'identità a coppie di chiavi Zen (SEA). Questa integrazione è stata rimossa — l'autenticazione avviene tramite nome utente/password (JWT) e la firma per la federazione si basa su chiavi RSA. Vedi [FEDERATION.md](./FEDERATION.md).
+
+## 5. Segnalazione e Moderazione delle Release
+
+Gli utenti e gli ospiti possono segnalare le release che violano il copyright, contengono contenuti inappropriati o violano le linee guida della community.
+- **Segnalazione**: Facendo clic sull'icona della bandierina ("Flag") in qualsiasi pagina di dettaglio della release, si apre la finestra `ReportReleaseModal` dove gli utenti possono specificare un motivo (Copyright, Contenuti Inappropriati, Spam, Altro) e fornire dettagli.
+- **Moderazione**: I proprietari e i gestori dell'istanza possono accedere al pannello "Reports" (Segnalazioni) nel pannello di amministrazione (`AdminReportsPanel`) per esaminare le segnalazioni, archiviarle o eliminare definitivamente le release segnalate.
+- **Endpoint API**:
+  - `POST /api/releases/:id/report`: Segnala una release.
+  - `GET /api/admin/reports`: Elenca tutte le segnalazioni attive.
+  - `DELETE /api/admin/reports/:id`: Risolve o archivia una segnalazione.
+

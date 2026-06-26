@@ -34,6 +34,7 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/tracks/:id` | Track metadata |
 | `GET` | `/api/tracks/:id/stream` | Binary audio stream (supports `Range` for cloud tracks) |
 | `GET` | `/api/waveform/:id` | Waveform data for visualisation |
+| `GET` | `/api/releases/:id/artwork/:filename` | Serve additional release artwork securely |
 
 ### Payments & Monetisation (`/api/payments`)
 
@@ -73,6 +74,9 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 | `GET` | `/api/ap/timeline/:artistId` | Recent activity from followed actors |
 | `GET` | `/api/ap/users/:slug` | ActivityPub profile (actor) for a local user |
 | `POST` | `/api/ap/inbox` | Receive incoming remote ActivityPub messages |
+| `POST` | `/api/releases/:id/report` | Report a release for copyright or inappropriate content |
+| `GET` | `/api/admin/reports` | List all active release reports (admin only) |
+| `DELETE` | `/api/admin/reports/:id` | Resolve or dismiss a report (admin only) |
 
 ### Administration (`/api/admin`)
 
@@ -80,6 +84,7 @@ Obtain a token by posting credentials to `POST /api/auth/login`.
 |--------|------|-------------|
 | `GET` | `/api/admin/system/users` | List registered users (admin only) |
 | `POST` | `/api/admin/system/rescan` | Trigger a full library rescan |
+| `POST` | `/api/admin/upload/additional-artworks` | Upload multiple additional artworks/booklets for a release (admin/artist only) |
 | `GET` | `/api/admin/stats` | Server and database usage statistics |
 | `GET` | `/api/admin/system/resources` | Live process/host resource snapshot — CPU, memory, host RAM, SQLite DB size, and running background tasks (root admin only) |
 | `GET` | `/api/admin/storage/overview` | Instance-wide disk usage and per-user breakdown (root admin only) |

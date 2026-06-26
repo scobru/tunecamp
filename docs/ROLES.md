@@ -26,7 +26,7 @@ The **Manager** has broad administrative powers to oversee the community and con
 ### Capabilities:
 - **User Monitoring:** Can view the list of registered users.
 - **Federated Network:** Manage ActivityPub follows and synchronization.
-- **Content Moderation:** Manage posts and releases across the instance.
+- **Content Moderation:** Manage posts and releases across the instance. Can review, resolve, or dismiss copyright and content reports from the Reports dashboard.
 - **Artist Support:** Can operate as any artist they are assigned to.
 
 ---

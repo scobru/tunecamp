@@ -34,3 +34,14 @@ Each **artist** in TuneCamp is an **ActivityPub Actor** (a "Person") — federat
 > Note: earlier versions tied identity to Zen (SEA) keypairs. That has been removed —
 > authentication is username/password (JWT) and federation signing uses RSA keys.
 > See [FEDERATION.md](FEDERATION.md).
+
+## 5. Release Reporting & Moderation
+
+Users and guests can report releases that infringe copyrights, contain inappropriate content, or violate community guidelines.
+- **Reporting**: Clicking the flag ("Flag") button on any release details page opens the `ReportReleaseModal` where users can specify a reason (Copyright, Inappropriate Content, Spam, Other) and provide detailed comments.
+- **Moderation**: Instance Owners and Managers can access the "Reports" panel in the Admin dashboard (`AdminReportsPanel`) to review reports, dismiss them, or delete the offending releases.
+- **API Endpoints**:
+  - `POST /api/releases/:id/report`: Submit a report for a release.
+  - `GET /api/admin/reports`: List all active reports.
+  - `DELETE /api/admin/reports/:id`: Resolve / dismiss a report.
+

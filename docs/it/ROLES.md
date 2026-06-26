@@ -26,7 +26,7 @@ Il **Manager** ha ampi poteri amministrativi per supervisionare la comunità e i
 ### Capacità:
 - **Monitoraggio Utenti:** Può visualizzare l'elenco degli utenti registrati.
 - **Rete Federata:** Gestire i follower e la sincronizzazione di ActivityPub.
-- **Moderazione dei Contenuti:** Gestire i post e le pubblicazioni (release) in tutta l'istanza.
+- **Moderazione dei Contenuti:** Gestire i post e le pubblicazioni (release) in tutta l'istanza. Può esaminare, risolvere o archiviare le segnalazioni di copyright e violazione dei contenuti dal pannello delle segnalazioni.
 - **Supporto Artisti:** Può operare per conto di qualsiasi artista a cui è assegnato.
 
 ---

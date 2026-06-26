@@ -34,6 +34,7 @@ Authorization: Bearer <token>
 | `GET`  | `/api/tracks/:id` | Metadati della traccia |
 | `GET`  | `/api/tracks/:id/stream` | Stream audio binario (supporta l'intestazione `Range` per le tracce cloud) |
 | `GET`  | `/api/waveform/:id` | Dati della forma d'onda per la visualizzazione grafica |
+| `GET`  | `/api/releases/:id/artwork/:filename` | Serve in modo sicuro gli artwork aggiuntivi delle release |
 
 ### Pagamenti e Monetizzazione (`/api/payments`)
 
@@ -73,6 +74,9 @@ Authorization: Bearer <token>
 | `GET`  | `/api/ap/timeline/:artistId` | Attività recente degli attori seguiti |
 | `GET`  | `/api/ap/users/:slug` | Profilo ActivityPub (actor) per un utente locale |
 | `POST` | `/api/ap/inbox` | Riceve messaggi ActivityPub remoti in entrata |
+| `POST` | `/api/releases/:id/report` | Segnala una release per violazione di copyright o contenuti inappropriati |
+| `GET`  | `/api/admin/reports` | Elenca tutte le segnalazioni attive di release (solo amministratori) |
+| `DELETE` | `/api/admin/reports/:id` | Risolve o archivia una segnalazione (solo amministratori) |
 
 ### Amministrazione (`/api/admin`)
 
@@ -80,6 +84,7 @@ Authorization: Bearer <token>
 |--------|----------|-------------|
 | `GET`  | `/api/admin/system/users` | Elenca gli utenti registrati (solo per amministratori) |
 | `POST` | `/api/admin/system/rescan` | Avvia una scansione completa della libreria |
+| `POST` | `/api/admin/upload/additional-artworks` | Carica più artwork/booklet aggiuntivi per una release (solo admin/artisti) |
 | `GET`  | `/api/admin/stats` | Statistiche di utilizzo del server e del database |
 | `GET`  | `/api/admin/system/resources` | Snapshot in tempo reale delle risorse del processo/host — CPU, memoria, RAM dell'host, dimensioni del database SQLite e attività in background in esecuzione (solo per amministratori root) |
 | `GET`  | `/api/admin/storage/overview` | Utilizzo del disco a livello di istanza e suddivisione per utente (solo per amministratori root) |
