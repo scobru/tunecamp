@@ -68,6 +68,28 @@ describe('Catalog Mappers', () => {
             expect(result.starred).toBe(false);
             expect(result.rating).toBe(0);
         });
+
+        test('handles conditional fallbacks correctly (album cover, empty artist, null waveform)', () => {
+            const mockTrack: any = {
+                id: 3,
+                album_id: 50, // Has album ID for cover fallback
+                artist_id: 60,
+                lossless_path: null,
+                external_artwork: null, // No external artwork
+                album_title: 'Fallback Album',
+                album_download: 0,
+                artist_name: '', // Empty string should map to null
+                file_path: null, // No file path
+                waveform: null // No waveform
+            };
+
+            const result = mapTrackDTO(mockTrack, mockDatabase);
+
+            expect(result.artistName).toBeNull();
+            expect(result.coverUrl).toBe('/api/albums/50/cover');
+            expect(result.waveform).toBeNull();
+            expect(result.filename).toBeUndefined();
+        });
     });
 
     describe('mapAlbumDTO', () => {
