@@ -401,7 +401,7 @@ export class LibrarySync {
         LEFT JOIN tracks t ON a.id = t.album_id
         WHERE t.id IS NULL AND a.is_release = 0
     `).all() as { id: number }[];
-    for (const row of emptyAlbums) this.database.deleteAlbum(row.id);
+    this.database.deleteAlbumsBatch(emptyAlbums.map(a => a.id));
 
     const emptyArtists = this.database.db.prepare(`
         SELECT ar.id FROM artists ar
@@ -409,6 +409,6 @@ export class LibrarySync {
         LEFT JOIN tracks t ON ar.id = t.artist_id
         WHERE a.id IS NULL AND t.id IS NULL
     `).all() as { id: number }[];
-    for (const row of emptyArtists) this.database.deleteArtist(row.id);
+    this.database.deleteArtistsBatch(emptyArtists.map(ar => ar.id));
   }
 }
