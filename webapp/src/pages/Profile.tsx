@@ -390,8 +390,8 @@ const Profile = () => {
       {/* Content */}
       <div className="min-h-[400px]">
         {activeTab === "settings" && (
-          <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="card bg-base-200 border border-base-content/10 p-6 space-y-6">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <User size={20} className="text-primary" /> Account Settings
@@ -679,7 +679,7 @@ const Profile = () => {
 
           {/* API Tokens Panel */}
           {isCuratorOrAbove && (
-            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4 mt-8">
+            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
               <h3 className="text-xl font-bold flex items-center gap-2">
                 <Key size={20} className="text-primary" /> API Tokens
               </h3>
@@ -795,7 +795,7 @@ const Profile = () => {
               )}
             </div>
           )}
-          </>
+          </div>
         )}
 
 

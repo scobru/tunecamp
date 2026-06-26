@@ -101,8 +101,13 @@ const Home = () => {
             >
                Browse Music
             </button>
+            {!(siteSettings?.hideNetwork === true || siteSettings?.hideNetwork === "true") && (
+              <Link to="/network" className="btn btn-ghost rounded-xl border border-base-content/10">
+                Explore Network
+              </Link>
+            )}
             <Link to="/about" className="btn btn-ghost rounded-xl border border-base-content/10">
-              Explore Network
+              About
             </Link>
             {siteSettings?.communityLink && (
               <a

@@ -334,20 +334,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                         </div>
                     )}
 
-                    {isRoot && (
-                         <div className="form-control">
-                            <label className="label cursor-pointer justify-start gap-4">
-                                <span className="label-text">Peer Sharing Allowed</span>
-                                <input 
-                                    type="checkbox" 
-                                    className="toggle toggle-primary"
-                                    checked={canPeer}
-                                    onChange={e => setCanPeer(e.target.checked)}
-                                    disabled={dialogRef.current?.dataset.userId === '1'} // Cannot change root admin
-                                />
-                            </label>
-                        </div>
-                    )}
+
                     
                     {error && <div className="text-error text-sm text-center">{error}</div>}
 

@@ -34,7 +34,7 @@ export const ChangePasswordCard = () => {
     };
 
     return (
-        <div className="card card-m3 overflow-hidden">
+        <div className="card bg-base-200 border border-base-content/10 overflow-hidden">
             <div className="bg-base-200/40 p-6 border-b border-base-content/5">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                     <KeyRound size={20} className="text-warning" /> Change Password
