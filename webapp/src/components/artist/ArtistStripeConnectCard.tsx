@@ -17,6 +17,8 @@ interface ArtistStripeConnectCardProps {
      */
     returnTo?: string;
     className?: string;
+    /** When true, hides connect/unlink actions — admin view only. */
+    readOnly?: boolean;
 }
 
 /**
@@ -25,7 +27,7 @@ interface ArtistStripeConnectCardProps {
  * (MANAGE_PRIVATE_LIBRARY) — render it only where that holds. Shared by the
  * admin artist modal and the artist's own profile editor.
  */
-export const ArtistStripeConnectCard = ({ artistId, returnTo, className }: ArtistStripeConnectCardProps) => {
+export const ArtistStripeConnectCard = ({ artistId, returnTo, className, readOnly }: ArtistStripeConnectCardProps) => {
     const [status, setStatus] = useState<StripeStatus | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -86,12 +88,12 @@ export const ArtistStripeConnectCard = ({ artistId, returnTo, className }: Artis
                 )}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                {!status?.connected && (
+                {!readOnly && !status?.connected && (
                     <button type="button" className="btn btn-sm btn-primary" onClick={handleConnect} disabled={busy}>
                         {busy ? 'Redirecting…' : 'Connect Stripe account'}
                     </button>
                 )}
-                {status?.connected && !status.chargesEnabled && (
+                {!readOnly && status?.connected && !status.chargesEnabled && (
                     <>
                         <span className="text-xs text-warning">Onboarding incomplete — charges not yet enabled.</span>
                         <button type="button" className="btn btn-sm btn-warning" onClick={handleConnect} disabled={busy}>
@@ -102,10 +104,13 @@ export const ArtistStripeConnectCard = ({ artistId, returnTo, className }: Artis
                 {status?.connected && status.chargesEnabled && (
                     <span className="text-xs text-success">Card payments go directly to this artist's Stripe account.</span>
                 )}
-                {status?.connected && (
+                {!readOnly && status?.connected && (
                     <button type="button" className="btn btn-sm btn-ghost text-error" onClick={handleUnlink} disabled={busy}>
                         Unlink
                     </button>
+                )}
+                {readOnly && !status?.connected && (
+                    <span className="text-xs opacity-50">Not connected — only the artist can link their Stripe account.</span>
                 )}
             </div>
             {error && <div className="text-error text-xs mt-2">{error}</div>}

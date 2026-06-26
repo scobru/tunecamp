@@ -40,7 +40,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const isRootAdmin = !!currentUser?.isRootAdmin;
     const isAdminUser = isRootAdmin || !!currentUser?.isAdmin;
     const isSelf = currentUser && editId && String(currentUser.artistId) === String(editId);
-    const canEditSensitive = !isEditing || isSelf || isRootAdmin; // Can edit sensitive fields on create, if it's self, or if root admin
+    const canEditSensitive = !isEditing || isSelf; // Only the artist (isSelf) can edit sensitive fields like wallet/Mastodon creds once set
 
     useEffect(() => {
         API.getCurrentUser().then(setCurrentUser).catch(console.error);
@@ -253,7 +253,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
 
     return (
         <dialog id="admin-artist-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
@@ -389,11 +389,11 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                     value={walletAddress}
                                     onChange={e => setWalletAddress(e.target.value)}
                                     placeholder="0x..."
-                                    disabled={!canEditSensitive && walletAddress !== ''}
+                                    disabled={isEditing && !isSelf && walletAddress !== ''}
                                 />
                                 <label className="label">
                                     <span className="label-text-alt opacity-70">
-                                        {(!canEditSensitive && walletAddress !== '') ?
+                                        {(isEditing && !isSelf && walletAddress !== '') ?
                                             "Only the artist can change their wallet once set." :
                                             "If provided, payments for this artist's releases will be sent directly to this address."
                                         }
@@ -402,25 +402,25 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                             </div>
 
                             {isEditing && (isAdminUser || isSelf) && editId && (
-                                <ArtistStripeConnectCard artistId={editId} />
+                                <ArtistStripeConnectCard artistId={editId} readOnly={!isSelf} />
                             )}
 
                             {isEditing && isAdminUser && (
-                                <div className="form-control bg-base-200/50 rounded-lg p-4 border border-base-content/5">
-                                    <label className="label cursor-pointer justify-between py-0">
-                                        <div>
-                                            <span className="label-text font-bold">Sales enabled (verified artist)</span>
+                                <div className="bg-base-200/50 rounded-lg p-4 border border-base-content/5">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-sm font-bold">Sales enabled (verified artist)</span>
                                             <p className="text-xs opacity-50 mt-1">
                                                 Off: this artist publishes free content only — prices are stripped and checkout refuses purchases. Turn on once you have verified the artist owns the rights to what they sell.
                                             </p>
                                         </div>
                                         <input
                                             type="checkbox"
-                                            className="toggle toggle-success"
+                                            className="toggle toggle-success shrink-0 mt-0.5"
                                             checked={canSell}
                                             onChange={e => setCanSell(e.target.checked)}
                                         />
-                                    </label>
+                                    </div>
                                 </div>
                             )}
 
