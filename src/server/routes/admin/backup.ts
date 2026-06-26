@@ -67,7 +67,7 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
         const isGzip = header[0] === 0x1f && header[1] === 0x8b;
 
         if (isZip) {
-            console.log("📦 [Restore] Detected ZIP format, using native unzip for extraction...");
+            console.log("📦 [Restore] Detected ZIP format, using native unzip for secure extraction...");
             // Use native unzip for .zip files (handles >2GB better than adm-zip)
             await new Promise<void>(async (resolve, reject) => {
                 const { execFile } = await import("child_process");
