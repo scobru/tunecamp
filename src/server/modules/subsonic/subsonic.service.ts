@@ -164,7 +164,7 @@ export class SubsonicService {
       const album = this.db.getAlbum(albumId) as any;
       if (!album) return null;
 
-      const tracks = this.db.getTracks(albumId);
+      const tracks = this.db.getTracks(albumId, VisibilityProfile.ALL_ACCESS);
       return {
         '@id': id,
         '@name': album.title,
@@ -194,7 +194,7 @@ export class SubsonicService {
     return {
       artist: results.artists.map((a: any) => this.formatArtist(a, username)),
       album: results.albums.map((a: any) => {
-        const tracks = this.db.getTracks(a.id);
+        const tracks = this.db.getTracks(a.id, VisibilityProfile.ALL_ACCESS);
         return this.formatAlbum({ ...a, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) }, username);
       }),
       song: this.formatTracksBulk(results.tracks, username)
@@ -262,7 +262,7 @@ export class SubsonicService {
     const album = this.db.getAlbum(albumId) as any;
     if (!album) return null;
 
-    const tracks = this.db.getTracks(albumId);
+    const tracks = this.db.getTracks(albumId, VisibilityProfile.ALL_ACCESS);
     return {
       ...this.formatAlbum({ ...album, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) }, username),
       song: this.formatTracksBulk(tracks, username)
