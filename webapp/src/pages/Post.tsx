@@ -4,6 +4,7 @@ import API from '../services/api';
 import { User, Clock, ArrowLeft, BookOpen, Share2 } from 'lucide-react';
 import type { Post } from '../types';
 import { renderMarkdown } from '../utils/markdown';
+import { sanitizeHtml } from '../utils/sanitize';
 
 const PostPage = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -145,7 +146,7 @@ const PostPage = () => {
                         className={`leading-relaxed opacity-95 font-serif text-lg sm:text-xl prose prose-invert max-w-none space-y-6 select-text pt-2 ${
                             isArticle ? 'prose-headings:font-serif prose-headings:font-black prose-p:font-serif first-letter:text-6xl first-letter:font-black first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:mt-1.5' : ''
                         }`}
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(post.content)) }}
                     />
                 </article>
             </div>

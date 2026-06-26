@@ -11,6 +11,7 @@ import type { Artist, Album, Post, Track, Release, Asset, ArtistEvent } from '..
 import { AssetCard, AssetViewerModal } from './Store';
 import { SubscriptionModal } from '../components/modals/SubscriptionModal';
 import { renderMarkdown } from '../utils/markdown';
+import { sanitizeHtml } from '../utils/sanitize';
 
 const PlatformIcon = ({ platform }: { platform: string }) => {
     const p = platform.toLowerCase();
@@ -284,7 +285,7 @@ const ArtistDetails = () => {
 
                                         <div 
                                             className="prose prose-sm max-w-none opacity-85 leading-relaxed font-serif line-clamp-4" 
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }} 
+                                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(post.content)) }}
                                         />
                                     </div>
 
@@ -317,7 +318,7 @@ const ArtistDetails = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="prose prose-sm max-w-none opacity-90 text-base-content/95" dangerouslySetInnerHTML={{ __html: renderMarkdown(post.content) }} />
+                                    <div className="prose prose-sm max-w-none opacity-90 text-base-content/95" dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(post.content)) }} />
                                 </div>
                             )
                         ))}

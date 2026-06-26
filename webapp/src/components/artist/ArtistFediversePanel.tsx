@@ -9,6 +9,7 @@ import API from '../../services/api';
 import { useAuthStore } from '../../stores/useAuthStore';
 import type { Artist, Post } from '../../types';
 import { renderMarkdown } from '../../utils/markdown';
+import { sanitizeHtml } from '../../utils/sanitize';
 import { notify } from '../../utils/notify';
 import { CreatePostModal } from '../modals/CreatePostModal';
 
@@ -752,7 +753,7 @@ export const ArtistFediversePanel = () => {
                                     ) : (
                                         <div 
                                             className="prose prose-sm prose-invert max-w-none p-3 rounded-xl bg-base-300/20 border border-base-content/10 min-h-[180px] max-h-[400px] overflow-y-auto scrollbar-thin select-text"
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(composerContent) || '<p class="opacity-40 italic">Nothing to preview yet...</p>' }}
+                                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(composerContent)) || '<p class="opacity-40 italic">Nothing to preview yet...</p>' }}
                                         />
                                     )}
                                 </div>
@@ -1022,7 +1023,7 @@ export const ArtistFediversePanel = () => {
                                                                 )}
                                                                 <div 
                                                                     className="text-sm opacity-90 line-clamp-3 leading-relaxed font-serif pt-1 prose prose-sm prose-invert max-w-none"
-                                                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(note.postContent) }}
+                                                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(note.postContent)) }}
                                                                 />
                                                                 <div className="pt-2">
                                                                     <Link 
@@ -1037,7 +1038,7 @@ export const ArtistFediversePanel = () => {
                                                         ) : (
                                                             <div 
                                                                 className="text-base leading-relaxed text-base-content/90 prose prose-sm prose-invert max-w-none select-text"
-                                                                dangerouslySetInnerHTML={{ __html: renderMarkdown(note.postContent) }}
+                                                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(note.postContent)) }}
                                                             />
                                                         )
                                                     )}
