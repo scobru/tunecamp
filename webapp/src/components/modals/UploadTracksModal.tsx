@@ -388,7 +388,9 @@ export const UploadTracksModal = ({
                 className="btn btn-secondary"
                 disabled={uploading || files.length === 0}
               >
-                {uploading ? "Uploading..." : "Start Upload"}
+                {uploading ? (
+                  <><span className="loading loading-spinner loading-xs"></span> Uploading...</>
+                ) : "Start Upload"}
               </button>
             </div>
           </div>
