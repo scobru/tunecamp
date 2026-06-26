@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.js';
+import { UserRole } from '../../../common/visibility.js';
 
 // Mock dependencies
 const mockDatabase = {
@@ -33,11 +34,21 @@ describe('Upload Routes - Security Check', () => {
         app = express();
         app.use(express.json());
 
-        // Simulate restricted admin middleware
+        // Simulate an authenticated, self-publishing Artist (NOT a global admin).
+        // Ownership is enforced via the VisibilityGuardian context the real auth
+        // middleware attaches; a plain artist must not reach another's release.
         app.use((req, res, next) => {
-            (req as any).isAdmin = true;
+            (req as any).isAdmin = false;
             (req as any).isRootAdmin = false;
+            (req as any).isActive = true;
+            (req as any).userId = 11;
             (req as any).artistId = 1; // Authenticated as Artist 1
+            (req as any).context = {
+                role: UserRole.NORMAL_USER,
+                userId: 11,
+                artistId: 1,
+                isActive: true,
+            };
             next();
         });
 

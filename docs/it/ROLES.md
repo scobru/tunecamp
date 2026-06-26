@@ -36,8 +36,10 @@ Il **Curatore** è un ruolo specializzato incentrato sulla qualità della librer
 
 ### Capacità:
 - **Visibilità Globale:** Può visualizzare tutti i contenuti (inclusi quelli privati/bozze) per assistere nella curatela.
-- **Gestione della Libreria:** Può modificare metadati, copertine e organizzazione per qualsiasi traccia o album.
+- **Gestione della Libreria:** Può modificare metadati, copertine e organizzazione per le **proprie** tracce e album. Modificare contenuti di proprietà di *altri* utenti richiede Manager/Root Admin (`MANAGE_ALL_CONTENT`); il Curatore ha solo `MANAGE_PRIVATE_LIBRARY`, che concede *visibilità* globale ma non la *scrittura* su contenuti altrui.
 - **Manutenzione:** Aiutare a mantenere la struttura della libreria e correggere eventuali errori.
+
+> **Nota:** i diritti di modifica del Curatore sono limitati al proprietario, applicati per-item da `VisibilityGuardian.canManageItem`. La visibilità globale gli permette di *vedere* tutto per triage e segnalazione, ma modificare contenuti di un altro proprietario è riservato a Manager e superiori.
 
 ---
 
@@ -89,7 +91,7 @@ Un **Ascoltatore-Artista** è un account con ruolo utente standard (`user`) che 
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | Modificare Impostazioni Sito | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Gestire gli Utenti | ✅ | ✅ (visualizza) | ❌ | ❌ | ❌ |
-| Modificare Contenuti di Altri | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Modificare Contenuti di Altri | ✅ | ✅ | ❌ (solo propri) | ❌ | ❌ |
 | Caricare Musica / Creare Release | ✅ | ✅ | ✅ (con link artista) | ✅ (solo proprio profilo) | ❌ |
 | Vendere Musica / Salvare Asset | ✅ | ✅ (con `can_sell`) | ✅ (con link artista + `can_sell`) | ✅ (con `can_sell`) | ❌ |
 | Post Social (ActivityPub) | ✅ | ✅ | ✅ (con link artista) | ✅ (solo proprio profilo) | ❌ |

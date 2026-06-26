@@ -328,6 +328,65 @@ export class VisibilityGuardian {
   }
 }
 
+/**
+ * Minimal data-access surface needed to decide track consumption.
+ * Kept as a narrow interface so the policy stays testable with a fake.
+ */
+export interface TrackAccessLookups {
+  getRelease(id: number): { visibility?: string } | undefined;
+  getAlbum(id: number): { visibility?: string } | undefined;
+  isTrackInPublicPlaylist(id: number): boolean;
+}
+
+/**
+ * Single source of truth for "may this viewer consume (stream/download/list/
+ * playlist) THIS track?". Previously this branchy rule was copy-pasted across
+ * the track stream, download, metadata and playlist-add routes — and the copies
+ * had drifted (some lacked the artist branch or the orphan/external handling).
+ *
+ * The DB lookups are performed lazily (only when the cheap checks don't already
+ * decide the outcome) so the streaming hot-path adds no queries for the common
+ * admin/owner case.
+ */
+export function canConsumeTrack(
+  track: {
+    id: number;
+    owner_id?: number | null;
+    artist_id?: number | null;
+    album_id?: number | null;
+    file_path?: string | null;
+  },
+  context: ViewerContext,
+  lookups: TrackAccessLookups
+): boolean {
+  // Curators/Managers/Admins see the whole private library.
+  if (VisibilityGuardian.can(context, Capability.VIEW_PRIVATE_LIBRARY)) return true;
+
+  // Owner (by user) or linked artist always reaches their own content.
+  const isOwner =
+    (context.userId != null && track.owner_id === context.userId) ||
+    (context.artistId != null && track.artist_id === context.artistId);
+  if (isOwner) return true;
+
+  // Album track: blocked only when its album is private AND it isn't surfaced
+  // through a public playlist.
+  if (track.album_id != null) {
+    const album = lookups.getRelease(track.album_id) || lookups.getAlbum(track.album_id);
+    if (album && album.visibility === "private" && !lookups.isTrackInPublicPlaylist(track.id)) {
+      return false;
+    }
+    return true;
+  }
+
+  // Orphan local-library file (no album): only via a public playlist.
+  if (track.file_path) {
+    return lookups.isTrackInPublicPlaylist(track.id);
+  }
+
+  // External/link track: requires login.
+  return context.userId != null;
+}
+
 export function getContextFromProfile(profile?: VisibilityProfile | ViewerContext): ViewerContext {
     if (!profile) return { role: UserRole.GUEST };
     if (typeof profile === 'object' && 'role' in profile) return profile as ViewerContext;
