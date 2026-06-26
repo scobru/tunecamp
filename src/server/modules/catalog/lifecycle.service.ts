@@ -142,11 +142,12 @@ export class LifecycleService {
 
         if (album) {
             this.db.updateAlbumStatus(id, 'draft');
+            this.db.updateAlbum(id, { curation_notes: reason });
         } else {
             this.db.updateReleaseStatus(id, 'draft');
+            this.db.updateRelease(id, { curation_notes: reason });
         }
 
         console.log(`[Lifecycle] Item ${id} rejected by Admin. Reason: ${reason}`);
-        // TODO: Store reason in curation_notes
     }
 }
