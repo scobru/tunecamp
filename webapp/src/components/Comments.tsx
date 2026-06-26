@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -62,7 +63,7 @@ export const Comments = ({ trackId }: CommentsProps) => {
   };
 
   const handleDelete = async (commentId: number) => {
-    if (!confirm("Delete this comment?")) return;
+    if (!await confirm("Delete this comment?")) return;
     try {
       await API.deleteComment(commentId);
       setComments(prev => prev.filter(c => c.id !== commentId));

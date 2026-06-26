@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -75,7 +76,7 @@ const MyPlaylistDetails = () => {
   const handleDelete = async () => {
     if (
       !playlist ||
-      !confirm(
+      !await confirm(
         "Are you sure you want to delete this playlist? This cannot be undone.",
       )
     )
@@ -92,7 +93,7 @@ const MyPlaylistDetails = () => {
 
   const handleRemoveTrack = async (trackId: string | number) => {
     if (!playlist) return;
-    if (!confirm("Remove track from playlist?")) return;
+    if (!await confirm("Remove track from playlist?")) return;
     try {
       await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
       loadPlaylist(String(playlist.id));

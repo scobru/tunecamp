@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle } from 'lucide-react';
 import API from '../../services/api';
@@ -74,7 +75,7 @@ export const ActivityPubPanel = () => {
     };
 
     const handleDelete = async (note: ApNote) => {
-        if (!confirm(`Are you sure you want to delete this ${note.note_type} from ActivityPub? This will send a Delete activity to all followers.`)) return;
+        if (!await confirm(`Are you sure you want to delete this ${note.note_type} from ActivityPub? This will send a Delete activity to all followers.`)) return;
 
         setProcessingId(note.id);
         try {
@@ -90,7 +91,7 @@ export const ActivityPubPanel = () => {
     };
 
     const handleSync = async () => {
-        if (!confirm('This will re-broadcast all public releases and posts to the Fediverse (Mastodon, etc) to ensure they are in sync. This might take a while. Continue?')) return;
+        if (!await confirm('This will re-broadcast all public releases and posts to the Fediverse (Mastodon, etc) to ensure they are in sync. This might take a while. Continue?')) return;
         
         setLoading(true);
         try {

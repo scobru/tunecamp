@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { Globe, Lock, Send, CheckCircle, Trash2, Disc } from "lucide-react";
@@ -44,7 +45,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Permanently delete ${selectedIds.length} selected items?`)) return;
+    if (!await confirm(`Permanently delete ${selectedIds.length} selected items?`)) return;
     
     try {
         await API.deleteReleasesBatch(selectedIds);
@@ -56,7 +57,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   };
 
   const handlePromote = async (id: number) => {
-    if (!confirm("Request promotion to public release? This will notify the Admin.")) return;
+    if (!await confirm("Request promotion to public release? This will notify the Admin.")) return;
     try {
         await API.requestPromotion(id);
         notify.success("Promotion requested!");
@@ -67,7 +68,7 @@ export const AdminReleasesList = ({ mine }: { mine?: boolean }) => {
   };
 
   const handleFinalize = async (id: number) => {
-    if (!confirm("Finalize release? This will broadcast it to the Fediverse.")) return;
+    if (!await confirm("Finalize release? This will broadcast it to the Fediverse.")) return;
     try {
         await API.finalizeRelease(id);
         notify.success("Release finalized!");

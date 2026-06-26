@@ -771,56 +771,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     return;
                 }
 
-                // 2. Top-level post → store to remote_content so followers see it in the feed.
-                if (!(object instanceof Note) && !(object instanceof Article) && !(object instanceof Audio)) return;
 
-                const author = await create.getActor({ documentLoader: docLoader }).catch(() => null) || await create.getActor(ctx).catch(() => null);
-                if (author) cacheFollowerActor(author);
-
-                let type = 'post';
-                let audioUrl: string | null = null;
-                let coverUrl: string | null = null;
-                let duration: number | null = null;
-
-                if (object instanceof Audio) {
-                    type = 'release';
-                    audioUrl = object.id?.toString() || (object as any).url?.toString() || null;
-                    duration = object.duration ? object.duration.total('second') : null;
-                    const icon = await object.getIcon().catch(() => null);
-                    if (icon) coverUrl = icon.id?.toString() || (icon as any).url?.toString() || null;
-                } else {
-                    // Note / Article: scan attachments for audio (a track) or an image (cover).
-                    for await (const attachment of (object as any).getAttachments()) {
-                        const aType = (attachment as any).type?.toString().toLowerCase() || "";
-                        const mediaType = (attachment as any).mediaType?.toString().toLowerCase() || "";
-                        if (aType.includes('audio') || mediaType.startsWith('audio/')) {
-                            type = 'release';
-                            audioUrl = attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                        } else if (aType.includes('image') || mediaType.startsWith('image/')) {
-                            coverUrl = coverUrl || attachment.id?.toString() || (attachment as any).url?.toString() || null;
-                        }
-                    }
-                }
-
-                const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
-                const title = (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, '').substring(0, 80) || "Untitled";
-                const authorName = author?.name?.toString() || author?.preferredUsername?.toString() || "Remote Artist";
-
-                dbService.upsertRemoteContent({
-                    ap_id: object.id?.toString() || "",
-                    actor_uri: actorUri,
-                    type,
-                    title,
-                    content: rawContent,
-                    url: (object as any).url?.toString() || null,
-                    cover_url: coverUrl,
-                    stream_url: audioUrl,
-                    artist_name: authorName,
-                    album_name: (object as any).name?.toString() || null,
-                    duration,
-                    published_at: object.published?.toString() || new Date().toISOString(),
-                });
-                console.log(`📥 Stored remote ${type} from ${actorUri}: ${title}`);
             } catch (e) {
                 console.error("❌ Error processing Create:", e);
             }

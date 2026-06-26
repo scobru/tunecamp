@@ -208,7 +208,6 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
             return {
                 uri: f.actor_uri,
                 created_at: f.created_at,
-                is_following_back: db.isFollowing(parsedArtistId, f.actor_uri),
                 actor: actor ? {
                     name: actor.name || actor.username || 'Unknown',
                     username: actor.username || 'unknown',
@@ -500,66 +499,10 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         }
     });
 
-    // Follow back / unfollow a remote actor as the artist (sends a real Follow / Undo(Follow))
-    const resolveFollowerHandle = (parsedArtistId: number): string | null => {
-        if (parsedArtistId === SITE_ACTOR_ID) return getSiteHandle(db);
-        const artist = db.getArtist(parsedArtistId);
-        return artist?.slug ?? null;
-    };
-
-    router.post("/followers/follow-back", authMiddleware.requireUser, async (req: any, res) => {
-        const { artistId, actorUri } = req.body;
-        const request = req as AuthenticatedRequest;
-        const parsedArtistId = Number(artistId);
-        if (isNaN(parsedArtistId) || !actorUri) {
-            return res.status(400).json({ error: "Invalid artistId or actorUri" });
-        }
-        if (parsedArtistId === -1 && !request.isRootAdmin) {
-            return res.status(403).json({ error: "Access denied" });
-        }
-        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
-            return res.status(403).json({ error: "Access denied" });
-        }
-        try {
-            const handle = resolveFollowerHandle(parsedArtistId);
-            if (!handle) return res.status(404).json({ error: "Artist not found" });
-            await apService.followRemoteActor(actorUri, handle);
-            res.json({ success: true, following: true });
-        } catch (e: any) {
-            console.error("Failed to follow back:", e);
-            res.status(500).json({ error: e.message || "Failed to follow back" });
-        }
-    });
-
-    router.post("/followers/unfollow", authMiddleware.requireUser, async (req: any, res) => {
-        const { artistId, actorUri } = req.body;
-        const request = req as AuthenticatedRequest;
-        const parsedArtistId = Number(artistId);
-        if (isNaN(parsedArtistId) || !actorUri) {
-            return res.status(400).json({ error: "Invalid artistId or actorUri" });
-        }
-        if (parsedArtistId === -1 && !request.isRootAdmin) {
-            return res.status(403).json({ error: "Access denied" });
-        }
-        if (!request.isRootAdmin && request.artistId !== parsedArtistId) {
-            return res.status(403).json({ error: "Access denied" });
-        }
-        try {
-            const handle = resolveFollowerHandle(parsedArtistId);
-            if (!handle) return res.status(404).json({ error: "Artist not found" });
-            await apService.unfollowRemoteActor(actorUri, handle);
-            res.json({ success: true, following: false });
-        } catch (e: any) {
-            console.error("Failed to unfollow:", e);
-            res.status(500).json({ error: e.message || "Failed to unfollow" });
-        }
-    });
-
-    // Timeline: my posts + following
+    // Timeline: my posts only
     router.get("/timeline/:artistId", authMiddleware.requireUser, async (req: any, res) => {
         const { artistId } = req.params;
         const request = req as AuthenticatedRequest;
-        const filter = (req.query.filter as string) || 'all';
 
         const parsedArtistId = Number(artistId);
         if (isNaN(parsedArtistId)) return res.status(400).json({ error: "Invalid artist ID" });
@@ -568,61 +511,21 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         }
 
         const items: any[] = [];
-
-        if (filter === 'mine' || filter === 'all') {
-            const myNotes = db.getApNotes(parsedArtistId);
-            for (const note of myNotes) {
-                if (!note.deleted_at) {
-                    items.push({
-                        source: 'mine',
-                        type: note.note_type,
-                        title: note.content_title,
-                        slug: note.content_slug,
-                        published_at: note.published_at,
-                        note_id: note.note_id,
-                        content_id: note.content_id,
-                        likes_count: note.likes_count || 0,
-                        announces_count: note.announces_count || 0,
-                        replies_count: note.replies_count || 0,
-                    });
-                }
-            }
-        }
-
-        if (filter === 'following' || filter === 'all') {
-            try {
-                const rawDb = (db as any).db;
-                if (rawDb) {
-                    const remoteContent = rawDb.prepare(`
-                        SELECT rc.*, ra.name as actor_name, ra.username as actor_username, ra.icon_url as actor_icon_url, ra.uri as actor_uri_col
-                        FROM remote_content rc
-                        LEFT JOIN remote_actors ra ON rc.actor_uri = ra.uri
-                        WHERE rc.actor_uri IN (SELECT actor_uri FROM ap_following WHERE artist_id = ?)
-                        ORDER BY rc.published_at DESC
-                        LIMIT 100
-                    `).all(parsedArtistId);
-
-                    for (const rc of remoteContent as any[]) {
-                        items.push({
-                            source: 'following',
-                            type: rc.type,
-                            title: rc.title,
-                            content: rc.content,
-                            url: rc.url,
-                            cover_url: rc.cover_url,
-                            artist_name: rc.artist_name,
-                            published_at: rc.published_at,
-                            actor: {
-                                name: rc.actor_name,
-                                username: rc.actor_username,
-                                icon_url: rc.actor_icon_url,
-                                uri: rc.actor_uri,
-                            }
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error("Timeline following query failed:", e);
+        const myNotes = db.getApNotes(parsedArtistId);
+        for (const note of myNotes) {
+            if (!note.deleted_at) {
+                items.push({
+                    source: 'mine',
+                    type: note.note_type,
+                    title: note.content_title,
+                    slug: note.content_slug,
+                    published_at: note.published_at,
+                    note_id: note.note_id,
+                    content_id: note.content_id,
+                    likes_count: note.likes_count || 0,
+                    announces_count: note.announces_count || 0,
+                    replies_count: note.replies_count || 0,
+                });
             }
         }
 

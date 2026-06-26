@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -119,7 +120,7 @@ const Files = () => {
 
     const handleDelete = async (e: React.MouseEvent, item: any) => {
         e.stopPropagation();
-        if (!confirm(`Are you sure you want to delete ${item.name}?`)) return;
+        if (!await confirm(`Are you sure you want to delete ${item.name}?`)) return;
         
         try {
             await API.deleteBrowserPath(item.path);

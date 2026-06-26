@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { User, Edit, Trash2, Globe, Lock } from "lucide-react";
@@ -60,7 +61,7 @@ export const AdminArtistsList = () => {
   };
 
   const handleDelete = async (id: string | number, name: string) => {
-    if (!confirm(`Are you sure you want to delete artist "${name}"? This will NOT delete their tracks, but they will become "Unknown Artist".`)) return;
+    if (!await confirm(`Are you sure you want to delete artist "${name}"? This will NOT delete their tracks, but they will become "Unknown Artist".`)) return;
     try {
       await API.deleteArtist(String(id));
       loadArtists();
@@ -71,7 +72,7 @@ export const AdminArtistsList = () => {
 
   const handleDeleteBatch = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Delete ${selectedIds.length} selected artists? Their tracks will become "Unknown Artist".`)) return;
+    if (!await confirm(`Delete ${selectedIds.length} selected artists? Their tracks will become "Unknown Artist".`)) return;
     try {
         await API.deleteArtistsBatch(selectedIds);
         setSelectedIds([]);

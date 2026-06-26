@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
 import { UploadCloud, Music, X, Trash2 } from "lucide-react";
@@ -88,7 +89,7 @@ export const UploadTracksModal = ({
 
   const handleDeleteTrack = async (trackId: string) => {
     if (
-      !confirm(
+      !await confirm(
         "Are you sure you want to delete this track? This will remove it from the database.",
       )
     )

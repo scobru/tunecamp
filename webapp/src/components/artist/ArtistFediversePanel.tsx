@@ -79,20 +79,11 @@ export const ArtistFediversePanel = () => {
     const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
     const composerFileInputRef = useRef<HTMLInputElement>(null);
 
-    // Timeline filter
-    const [timelineFilter, setTimelineFilter] = useState<'all' | 'mine' | 'following'>('mine');
-    const [followingItems, setFollowingItems] = useState<any[]>([]);
-    const [followingLoading, setFollowingLoading] = useState(false);
 
-    // Follow new actor
-    const [followActorInput, setFollowActorInput] = useState('');
-    const [followActorLoading, setFollowActorLoading] = useState(false);
 
     // Micro-interactions States
     const [copied, setCopied] = useState(false);
-    // Follow-back (real Follow activity) — keyed by follower actor uri
-    const [followBack, setFollowBack] = useState<Record<string, boolean>>({});
-    const [followBackLoading, setFollowBackLoading] = useState<Record<string, boolean>>({});
+
     // Replies (federated) — keyed by note_id (string URI)
     const [showReplies, setShowReplies] = useState<Record<string, boolean>>({});
     const [repliesByNote, setRepliesByNote] = useState<Record<string, ApReplyItem[]>>({});
@@ -164,12 +155,7 @@ export const ArtistFediversePanel = () => {
             setArtist(artistData);
             setPendingRequests(pendingData);
 
-            // Initialize real follow-back state from the backend (is_following_back)
-            const initialFollowBack: Record<string, boolean> = {};
-            (followersData as Follower[]).forEach(f => {
-                if (f?.uri) initialFollowBack[f.uri] = !!f.is_following_back;
-            });
-            setFollowBack(initialFollowBack);
+
         } catch (e) {
             console.error("Failed to load Fediverse data", e);
         } finally {
@@ -275,28 +261,7 @@ export const ArtistFediversePanel = () => {
         }
     };
 
-    // Real follow-back: send a Follow (or Undo) activity to the remote actor
-    const handleToggleFollowBack = async (uri: string) => {
-        if (!effectiveArtistId || followBackLoading[uri]) return;
-        const currentlyFollowing = !!followBack[uri];
-        setFollowBackLoading(prev => ({ ...prev, [uri]: true }));
-        // Optimistic update
-        setFollowBack(prev => ({ ...prev, [uri]: !currentlyFollowing }));
-        try {
-            if (currentlyFollowing) {
-                await API.unfollowFollowerActor(effectiveArtistId, uri);
-            } else {
-                await API.followBackActor(effectiveArtistId, uri);
-            }
-        } catch (e: any) {
-            // Revert on failure
-            setFollowBack(prev => ({ ...prev, [uri]: currentlyFollowing }));
-            console.error("Follow-back failed", e);
-            notify.error(e, "Failed to update follow status");
-        } finally {
-            setFollowBackLoading(prev => ({ ...prev, [uri]: false }));
-        }
-    };
+
 
     const handleAcceptRequest = async (actorUri: string) => {
         if (!effectiveArtistId) return;
@@ -384,38 +349,7 @@ export const ArtistFediversePanel = () => {
         }
     };
 
-    const loadFollowingFeed = async (id: string) => {
-        setFollowingLoading(true);
-        try {
-            const data = await API.getArtistTimeline(id, 'following');
-            setFollowingItems(data);
-        } catch (e) {
-            console.error("Failed to load following feed", e);
-        } finally {
-            setFollowingLoading(false);
-        }
-    };
 
-    const handleTimelineFilterChange = (f: 'all' | 'mine' | 'following') => {
-        setTimelineFilter(f);
-        if ((f === 'following' || f === 'all') && effectiveArtistId) {
-            loadFollowingFeed(effectiveArtistId);
-        }
-    };
-
-    const handleFollowNewActor = async () => {
-        if (!effectiveArtistId || !followActorInput.trim() || followActorLoading) return;
-        setFollowActorLoading(true);
-        try {
-            await API.followBackActor(effectiveArtistId, followActorInput.trim());
-            setFollowActorInput('');
-            notify.success('Follow request sent!');
-        } catch (e: any) {
-            notify.error(e, 'Failed to send follow request');
-        } finally {
-            setFollowActorLoading(false);
-        }
-    };
 
     const stripHtml = (html: string) => (html || '').replace(/<[^>]*>/g, '').trim();
 
@@ -705,8 +639,6 @@ export const ArtistFediversePanel = () => {
                             <div className="grid gap-3 max-h-[350px] overflow-y-auto scrollbar-thin pr-1">
                                 {followers.map(follower => {
                                     const key = follower.uri;
-                                    const isFollowingBack = !!followBack[key];
-                                    const isFbLoading = !!followBackLoading[key];
                                     return (
                                         <div key={key} className="flex items-center justify-between gap-3 p-2 bg-base-100/50 rounded-xl border border-base-content/5 hover:border-primary/20 transition-all duration-short-4">
                                             <div className="flex items-center gap-3 overflow-hidden">
@@ -733,16 +665,7 @@ export const ArtistFediversePanel = () => {
                                                 </div>
                                             </div>
 
-                                            <button
-                                                className={`btn btn-xs rounded-full border-none text-xs font-bold tooltip tooltip-left ${isFollowingBack ? 'bg-primary/20 text-primary' : 'bg-neutral hover:bg-neutral-focus text-neutral-content'}`}
-                                                onClick={() => handleToggleFollowBack(key)}
-                                                disabled={isFbLoading}
-                                                data-tip={isFollowingBack ? 'Click to unfollow' : 'Send a Follow to this actor'}
-                                            >
-                                                {isFbLoading
-                                                    ? <span className="loading loading-spinner loading-xs" />
-                                                    : (isFollowingBack ? 'Following' : 'Follow back')}
-                                            </button>
+
                                         </div>
                                     );
                                 })}
@@ -750,31 +673,7 @@ export const ArtistFediversePanel = () => {
                         )}
                     </div>
 
-                    {/* Follow New Account Card */}
-                    <div className="card-m3 bg-base-200/40 border border-base-content/5 rounded-2xl shadow-md p-6">
-                        <h3 className="font-bold text-lg flex items-center gap-2 mb-3">
-                            <Globe size={18} className="text-primary"/> Follow Account
-                        </h3>
-                        <p className="text-xs opacity-60 mb-3">Follow a Mastodon/Fediverse account as your artist identity.</p>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                className="input input-bordered input-sm flex-1 rounded-xl text-xs"
-                                placeholder="https://mastodon.social/users/alice"
-                                value={followActorInput}
-                                onChange={(e) => setFollowActorInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleFollowNewActor()}
-                            />
-                            <button
-                                className="btn btn-sm btn-primary rounded-xl gap-1"
-                                onClick={handleFollowNewActor}
-                                disabled={followActorLoading || !followActorInput.trim()}
-                            >
-                                {followActorLoading ? <span className="loading loading-spinner loading-xs" /> : <Send size={14} />}
-                                Follow
-                            </button>
-                        </div>
-                    </div>
+
                 </div>
 
                 {/* Right/Main - Composer & Timeline (lg:col-span-8) */}
@@ -977,76 +876,17 @@ export const ArtistFediversePanel = () => {
                                 <MessageSquare size={18} className="text-secondary"/> Timeline
                             </h3>
                             <div className="flex bg-base-300/60 p-0.5 rounded-xl text-xs">
-                                {(['mine', 'following', 'all'] as const).map(f => (
-                                    <button
-                                        key={f}
-                                        type="button"
-                                        className={`px-3 py-1.5 rounded-lg font-bold capitalize transition-all ${timelineFilter === f ? 'bg-primary text-primary-content shadow-sm' : 'opacity-60 hover:opacity-100'}`}
-                                        onClick={() => handleTimelineFilterChange(f)}
-                                    >
-                                        {f === 'mine' ? 'My Posts' : f === 'following' ? 'Following' : 'All'}
-                                    </button>
-                                ))}
+                                <button
+                                    type="button"
+                                    className="px-3 py-1.5 rounded-lg font-bold capitalize transition-all bg-primary text-primary-content shadow-sm"
+                                >
+                                    My Posts
+                                </button>
                             </div>
                         </div>
 
-                        {/* Following feed */}
-                        {timelineFilter !== 'mine' && (
-                            <div className="space-y-3">
-                                {followingLoading ? (
-                                    <div className="flex justify-center py-8">
-                                        <span className="loading loading-spinner loading-md opacity-40" />
-                                    </div>
-                                ) : followingItems.length === 0 ? (
-                                    <div className="text-center py-10 opacity-50 border-2 border-dashed border-base-content/5 rounded-2xl bg-base-200/10 text-sm">
-                                        <Globe className="mx-auto mb-2 opacity-40" size={28} />
-                                        <p>No posts from followed accounts yet.</p>
-                                        <p className="text-xs mt-1 opacity-70">Follow Fediverse accounts using the sidebar widget.</p>
-                                    </div>
-                                ) : followingItems.map((item, i) => (
-                                    <div key={`${item.source}-${i}`} className="card-m3 bg-base-200/20 hover:bg-base-200/40 border border-base-content/5 rounded-2xl p-4 transition-all duration-medium-2">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="avatar flex-shrink-0">
-                                                <div className="w-9 h-9 rounded-full bg-neutral overflow-hidden">
-                                                    {item.actor?.icon_url ? (
-                                                        <img src={item.actor.icon_url} alt={item.actor.name} onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                                    ) : (
-                                                        <span className="text-sm font-semibold flex items-center justify-center h-full">{(item.actor?.name || item.artist_name || '?')[0]?.toUpperCase()}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="font-bold text-sm truncate">{item.actor?.name || item.artist_name || 'Unknown'}</div>
-                                                <div className="text-xs opacity-50 flex items-center gap-1">
-                                                    {item.actor?.username && <span className="font-mono">@{item.actor.username}</span>}
-                                                    <span>·</span>
-                                                    <span>{getRelativeTime(item.published_at)}</span>
-                                                </div>
-                                            </div>
-                                            {item.url && (
-                                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn btn-xs btn-ghost btn-circle opacity-50 hover:opacity-100 flex-shrink-0">
-                                                    <ExternalLink size={13} />
-                                                </a>
-                                            )}
-                                        </div>
-                                        {item.title && <div className="font-semibold text-sm mb-1">{item.title}</div>}
-                                        {item.content && (
-                                            <div className="text-sm opacity-80 line-clamp-3" dangerouslySetInnerHTML={{ __html: item.content }} />
-                                        )}
-                                        {item.cover_url && (
-                                            <img src={item.cover_url} alt={item.title || ''} className="mt-2 rounded-xl w-full max-h-48 object-cover" onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                        )}
-                                        <div className="mt-2">
-                                            <span className="badge badge-xs badge-ghost">{item.type === 'release' ? 'Release' : 'Post'}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
                         {/* My Posts Skeletons or Empty / Content Render */}
-                        {timelineFilter !== 'following' && (
-                        loading && notes.length === 0 ? (
+                        {loading && notes.length === 0 ? (
                             <div className="space-y-4">
                                 {[1, 2].map(n => (
                                     <div key={n} className="card-m3 border border-base-content/5 rounded-2xl bg-base-200/20 p-6 animate-pulse space-y-4">
@@ -1421,7 +1261,6 @@ export const ArtistFediversePanel = () => {
                                     );
                                 })}
                             </div>
-                        )
                         )}
                     </div>
                 </div>

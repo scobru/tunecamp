@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { User, Trash2, Check, X } from "lucide-react";
@@ -39,7 +40,7 @@ export const AdminUsersList = () => {
 
   const handleDelete = async (id: string | number, username: string) => {
     if (
-      !confirm(
+      !await confirm(
         `Are you sure you want to delete user ${username}? This cannot be undone.`,
       )
     )
@@ -75,7 +76,7 @@ export const AdminUsersList = () => {
 
   const handleDeleteBatch = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Permanently delete ${selectedIds.length} selected users? This cannot be undone.`)) return;
+    if (!await confirm(`Permanently delete ${selectedIds.length} selected users? This cannot be undone.`)) return;
     try {
         await API.deleteUsersBatch(selectedIds);
         setSelectedIds([]);

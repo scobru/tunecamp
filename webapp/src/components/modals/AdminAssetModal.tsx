@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from 'react';
 import { PackagePlus, Upload, Trash2, Image } from 'lucide-react';
 import API from '../../services/api';
@@ -120,7 +121,7 @@ export const AdminAssetModal = ({ onSaved }: { onSaved?: () => void }) => {
 
     const handleDelete = async () => {
         if (!editId) return;
-        if (!confirm('Delete this asset? This cannot be undone.')) return;
+        if (!await confirm('Delete this asset? This cannot be undone.')) return;
         try {
             await API.deleteAsset(editId);
             onSaved?.();

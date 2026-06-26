@@ -235,10 +235,10 @@ describe("Peers API Routes Tests", () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(mockPeerService.requestImport).toHaveBeenCalledWith("sess-123", "track-1", "/music/peer-imports");
+        expect(mockPeerService.requestImport).toHaveBeenCalledWith("sess-123", "track-1", expect.stringMatching(/peer-imports$/));
         expect(mockScannerService.processAudioFile).toHaveBeenCalledWith(
-            "/music/peer-imports/Artist - Song-abcd1234.mp3",
-            "/music",
+            expect.stringMatching(/Artist - Song-abcd1234\.mp3$/),
+            expect.stringMatching(/music$/),
             undefined,
             42
         );

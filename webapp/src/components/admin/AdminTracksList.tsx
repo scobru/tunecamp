@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect, useMemo } from "react";
 import API from "../../services/api";
 import { Link as LinkIcon, Edit, Trash2, ChevronUp, ChevronDown, Search, X, Music } from "lucide-react";
@@ -70,7 +71,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
 
   const handleDelete = async (id: string, name: string) => {
     if (
-      !confirm(
+      !await confirm(
         `Are you sure you want to delete track ${name}? This cannot be undone.`,
       )
     )
@@ -89,7 +90,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       ? `Do you want to download "${name}" from Google Drive and save it on the server? This will replace the Google Drive link with a local file.`
       : `Do you want to download and localize "${name}"? This will save the audio to the server's local library.`;
     
-    if (!confirm(confirmMsg)) return;
+    if (!await confirm(confirmMsg)) return;
     
     setLocalizing(id);
     try {
@@ -119,7 +120,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       return;
     }
 
-    if (!confirm(`Are you sure you want to localize ${toLocalize.length} tracks? This will download them to the server library.`)) return;
+    if (!await confirm(`Are you sure you want to localize ${toLocalize.length} tracks? This will download them to the server library.`)) return;
     
     setIsLocalizingBatch(true);
     let success = 0;
@@ -165,7 +166,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
 
   const handleBatchDelete = async () => {
     const count = selectedIds.size;
-    if (!confirm(`Are you sure you want to delete ${count} tracks? This will also delete their files and cannot be undone.`)) return;
+    if (!await confirm(`Are you sure you want to delete ${count} tracks? This will also delete their files and cannot be undone.`)) return;
     
     try {
       await API.deleteTracksBatch(Array.from(selectedIds), true);

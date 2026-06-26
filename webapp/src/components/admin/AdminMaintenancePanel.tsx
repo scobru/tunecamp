@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { useConfigStore } from "../../stores/useConfigStore";
@@ -159,7 +160,7 @@ export const AdminMaintenancePanel = () => {
 
     const handleAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
-        if (!confirm(`Are you sure you want to attempt autofill for ${ids.length} tracks?`)) return;
+        if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} tracks?`)) return;
 
         setIsProcessing(true);
         try {
@@ -175,7 +176,7 @@ export const AdminMaintenancePanel = () => {
 
     const handleAIAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
-        if (!confirm(`Are you sure you want to attempt AI Magic Autofill for ${ids.length} tracks? This will use your OpenRouter credits.`)) return;
+        if (!await confirm(`Are you sure you want to attempt AI Magic Autofill for ${ids.length} tracks? This will use your OpenRouter credits.`)) return;
 
         setIsAIProcessing(true);
         try {
@@ -191,7 +192,7 @@ export const AdminMaintenancePanel = () => {
 
     const handleAlbumAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
-        if (!confirm(`Are you sure you want to attempt autofill for ${ids.length} albums?`)) return;
+        if (!await confirm(`Are you sure you want to attempt autofill for ${ids.length} albums?`)) return;
 
         setIsProcessing(true);
         try {
@@ -207,7 +208,7 @@ export const AdminMaintenancePanel = () => {
 
     const handleAIAlbumAutofill = async (ids: number[]) => {
         if (ids.length === 0) return;
-        if (!confirm(`Are you sure you want to attempt AI Magic Autofill for ${ids.length} albums? This will use your OpenRouter credits.`)) return;
+        if (!await confirm(`Are you sure you want to attempt AI Magic Autofill for ${ids.length} albums? This will use your OpenRouter credits.`)) return;
 
         setIsAIProcessing(true);
         try {
@@ -222,7 +223,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleRepairArtistLinks = async (artistId: number) => {
-        if (!confirm("This will attempt to relink orphaned tracks and albums to this artist by matching names. Continue?")) return;
+        if (!await confirm("This will attempt to relink orphaned tracks and albums to this artist by matching names. Continue?")) return;
         setIsProcessing(true);
         try {
             const res = await API.repairArtistLinks(artistId);
@@ -236,7 +237,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleStartAudit = async (forceRepair = false, useAI = false) => {
-        if (!confirm(`This will audit your entire library metadata. It might take a while. Continue?`)) return;
+        if (!await confirm(`This will audit your entire library metadata. It might take a while. Continue?`)) return;
         try {
             await API.startLibraryAudit({ forceRepair, useAI });
             const status = await API.getAuditStatus();
@@ -257,7 +258,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleOptimizeDB = async () => {
-        if (!confirm("This will merge duplicate albums (same artist + title), remove orphaned albums and artists. Continue?")) return;
+        if (!await confirm("This will merge duplicate albums (same artist + title), remove orphaned albums and artists. Continue?")) return;
         setIsProcessing(true);
         try {
             const res = await API.pruneOrphans();
@@ -270,7 +271,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleSyncTags = async () => {
-        if (!confirm("This will write metadata from the database into the audio files tags. This process runs in the background. Continue?")) return;
+        if (!await confirm("This will write metadata from the database into the audio files tags. This process runs in the background. Continue?")) return;
         setIsProcessing(true);
         try {
             const res = await API.syncTagsToFiles();
@@ -283,7 +284,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handlePrewarmCache = async () => {
-        if (!confirm("Pre-warm the transcode cache for all tracks that need it? This runs in the background and may take a while.")) return;
+        if (!await confirm("Pre-warm the transcode cache for all tracks that need it? This runs in the background and may take a while.")) return;
         setIsPrewarming(true);
         try {
             const res = await API.prewarmCache();
@@ -296,7 +297,7 @@ export const AdminMaintenancePanel = () => {
     };
 
     const handleRescan = async () => {
-        if (!confirm("Trigger a full library rescan? This deep scan finds new files and updates existing metadata.")) return;
+        if (!await confirm("Trigger a full library rescan? This deep scan finds new files and updates existing metadata.")) return;
         setIsProcessing(true);
         try {
             await API.triggerRescan();

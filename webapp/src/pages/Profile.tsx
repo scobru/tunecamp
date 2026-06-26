@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect, useMemo } from "react";
 import { useAuthStore } from "../stores/useAuthStore";
 import { useWalletStore } from "../stores/useWalletStore";
@@ -139,7 +140,7 @@ const Profile = () => {
   };
 
   const handleDeleteToken = async (id: number) => {
-    if (!confirm("Are you sure you want to revoke this API token? Any applications using it will lose access.")) return;
+    if (!await confirm("Are you sure you want to revoke this API token? Any applications using it will lose access.")) return;
     try {
       await API.deleteApiToken(id);
       loadApiTokens();
@@ -927,7 +928,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
   const handleInitiateMove = async () => {
     if (!targetMoveUri.trim() || isMoving) return;
-    if (!confirm(`Are you sure you want to initiate migration of this identity to ${targetMoveUri}?\nThis will broadcast a Move activity to all followers and they will automatically follow the new profile.`)) return;
+    if (!await confirm(`Are you sure you want to initiate migration of this identity to ${targetMoveUri}?\nThis will broadcast a Move activity to all followers and they will automatically follow the new profile.`)) return;
     setIsMoving(true);
     try {
       await API.initiateArtistMove(initialData.id, targetMoveUri.trim());
@@ -975,7 +976,7 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
 
   const handleSync = async () => {
     if (!initialData?.id || isSyncing) return;
-    if (!confirm("Synchronize your releases and posts with the Fediverse?")) return;
+    if (!await confirm("Synchronize your releases and posts with the Fediverse?")) return;
     setIsSyncing(true);
     try {
       await API.syncArtistActivityPub(initialData.id);

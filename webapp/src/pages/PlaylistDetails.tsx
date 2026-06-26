@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../services/api";
@@ -49,7 +50,7 @@ const PlaylistDetails = () => {
   const handleDelete = async () => {
     if (
       !playlist ||
-      !confirm(
+      !await confirm(
         "Are you sure you want to delete this playlist? This cannot be undone.",
       )
     )
@@ -66,7 +67,7 @@ const PlaylistDetails = () => {
 
   const handleRemoveTrack = async (trackId: string) => {
     if (!playlist) return;
-    if (!confirm("Remove track from playlist?")) return;
+    if (!await confirm("Remove track from playlist?")) return;
     try {
       await API.removeTrackFromPlaylist(String(playlist.id), trackId);
       loadPlaylist(String(playlist.id));

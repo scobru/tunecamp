@@ -622,11 +622,7 @@ export interface SocialManager {
     updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void;
     unfollowActor(uri: string): void;
 
-    // Following (per-artist: which remote actors a local artist follows back)
-    addFollowing(artistId: number, actorUri: string, inboxUri?: string): void;
-    removeFollowing(artistId: number, actorUri: string): void;
-    isFollowing(artistId: number, actorUri: string): boolean;
-    getFollowingActors(artistId: number): RemoteActor[];
+
 
     // Starred / Social / Ratings
     starItem(user: string, type: 'track' | 'album' | 'artist', id: string): void;

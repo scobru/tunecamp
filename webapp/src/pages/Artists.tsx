@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import API from '../services/api';
@@ -33,7 +34,7 @@ const Artists = () => {
     const handleDelete = async (e: React.MouseEvent, artist: Artist) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!window.confirm(`Are you sure you want to delete ${artist.name}? This action cannot be undone.`)) return;
+        if (!await confirm(`Are you sure you want to delete ${artist.name}? This action cannot be undone.`)) return;
         
         try {
             await API.deleteArtist(artist.id.toString());

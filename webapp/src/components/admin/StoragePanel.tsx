@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { HardDrive, Cloud, Plus, Trash2, Folder, Music, RefreshCw, Database, Server } from 'lucide-react';
 import API from '../../services/api';
@@ -80,7 +81,7 @@ export const StoragePanel = () => {
             window.open(url, '_blank', 'width=600,height=600');
             
             // Poll for completion or show a "Done" button
-            if (confirm("Click OK after you have finished the Google authorization in the new window.")) {
+            if (await confirm("Click OK after you have finished the Google authorization in the new window.")) {
                 loadAccounts();
             }
         } catch (e) {
@@ -90,7 +91,7 @@ export const StoragePanel = () => {
     };
 
     const handleDisconnect = async (id: number) => {
-        if (!confirm("Are you sure you want to disconnect this account?")) return;
+        if (!await confirm("Are you sure you want to disconnect this account?")) return;
         try {
             await API.deleteGDriveAccount(id);
             loadAccounts();
@@ -127,7 +128,7 @@ export const StoragePanel = () => {
     };
 
     const handleImportAllRecursive = async () => {
-        if (!confirm("Are you sure you want to recursively import all WAV/MP3 files from this folder and all its subfolders? This might take a few moments.")) return;
+        if (!await confirm("Are you sure you want to recursively import all WAV/MP3 files from this folder and all its subfolders? This might take a few moments.")) return;
         
         setImportingAll(true);
         try {

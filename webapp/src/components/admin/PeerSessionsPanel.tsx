@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect, useRef } from "react";
 import API from "../../services/api";
 import { notify } from "../../utils/notify";
@@ -36,7 +37,7 @@ export const PeerSessionsPanel = () => {
   }, []);
 
   const handleKick = async (sessionId: string, username: string) => {
-    if (!confirm(`Are you sure you want to disconnect and kick the peer session for user "${username}"?`)) {
+    if (!await confirm(`Are you sure you want to disconnect and kick the peer session for user "${username}"?`)) {
       return;
     }
     try {

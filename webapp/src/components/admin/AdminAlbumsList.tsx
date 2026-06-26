@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { Disc, Edit, Trash2, Globe, Lock, Share2 } from "lucide-react";
@@ -58,8 +59,8 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
   };
 
   const handleDelete = async (id: string | number, title: string) => {
-    if (!confirm(`Are you sure you want to delete album "${title}"? Tracks will not be deleted unless you choose to in the next step.`)) return;
-    const keepFiles = confirm("Keep audio files on server?");
+    if (!await confirm(`Are you sure you want to delete album "${title}"? Tracks will not be deleted unless you choose to in the next step.`)) return;
+    const keepFiles = await confirm("Keep audio files on server?");
     try {
       await API.deleteAlbum(String(id), keepFiles);
       loadAlbums();
@@ -70,8 +71,8 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
 
   const handleDeleteBatch = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Delete ${selectedIds.length} selected albums?`)) return;
-    const keepFiles = confirm("Keep audio files on server?");
+    if (!await confirm(`Delete ${selectedIds.length} selected albums?`)) return;
+    const keepFiles = await confirm("Keep audio files on server?");
     try {
         await API.deleteReleasesBatch(selectedIds, keepFiles);
         setSelectedIds([]);
@@ -93,7 +94,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
   };
 
   const handlePromote = async (id: string | number) => {
-      if (!confirm("Promote this library album to a formal Release? This will allow it to be sold and federated.")) return;
+      if (!await confirm("Promote this library album to a formal Release? This will allow it to be sold and federated.")) return;
       try {
           await API.promoteToRelease(String(id));
           notify.success("Album promoted to release draft!");

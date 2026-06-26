@@ -72,33 +72,6 @@ export class SocialRepository extends BaseRepository {
         return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND actor_uri = ?").get(artistId, actorUri) as Follower | undefined;
     }
 
-    // --- Following (per-artist, i.e. our local artists following remote actors) ---
-
-    addFollowing(artistId: number, actorUri: string, inboxUri?: string): void {
-        this.db.prepare(
-            "INSERT OR REPLACE INTO ap_following (artist_id, actor_uri, inbox_uri) VALUES (?, ?, ?)"
-        ).run(artistId, actorUri, inboxUri || null);
-    }
-
-    removeFollowing(artistId: number, actorUri: string): void {
-        this.db.prepare("DELETE FROM ap_following WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
-    }
-
-    isFollowing(artistId: number, actorUri: string): boolean {
-        const row = this.db.prepare("SELECT 1 FROM ap_following WHERE artist_id = ? AND actor_uri = ?").get(artistId, actorUri);
-        return !!row;
-    }
-
-    getFollowingActors(artistId: number): RemoteActor[] {
-        const rows = this.db.prepare(`
-            SELECT ra.* FROM ap_following af
-            JOIN remote_actors ra ON ra.uri = af.actor_uri
-            WHERE af.artist_id = ?
-            ORDER BY af.created_at DESC
-        `).all(artistId) as any[];
-        return rows.map(r => ({ ...r, is_followed: !!r.is_followed }));
-    }
-
     // --- Likes ---
 
     addLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void {

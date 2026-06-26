@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import { useBoard } from "../hooks/useBoard";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -115,7 +116,7 @@ const Board = () => {
   const isAdmin = role === 'admin' || role === 'root_admin' || role === 'super_user';
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this message?")) return;
+    if (!await confirm("Are you sure you want to delete this message?")) return;
     try {
       await deleteMessage(id);
     } catch (err: unknown) {

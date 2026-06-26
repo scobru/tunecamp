@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { Download, Upload, AlertTriangle, FileAudio, Cloud } from 'lucide-react';
 import API from '../../services/api';
@@ -26,7 +27,7 @@ export const BackupPanel = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (!confirm("WARNING: This will overwite your database and music library with the backup contents. This action cannot be undone. Are you sure?")) {
+        if (!await confirm("WARNING: This will overwite your database and music library with the backup contents. This action cannot be undone. Are you sure?")) {
             e.target.value = ''; // Reset input
             return;
         }

@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { RefreshCw, Trash2, ExternalLink, Globe, Rss, Server } from 'lucide-react';
 import API from '../../services/api';
@@ -77,7 +78,7 @@ export const AdminFederationPanel = () => {
     };
 
     const handleUnfollowPeer = async (url: string) => {
-        if (!confirm(`Are you sure you want to unfollow ${url}? This will send an Undo(Follow) activity.`)) return;
+        if (!await confirm(`Are you sure you want to unfollow ${url}? This will send an Undo(Follow) activity.`)) return;
 
         try {
             await API.unfollowRemoteActor(url);
@@ -130,7 +131,7 @@ export const AdminFederationPanel = () => {
     };
 
     const handleUnfollowFeed = async (url: string) => {
-        if (!confirm(`Stop following ${url}?`)) return;
+        if (!await confirm(`Stop following ${url}?`)) return;
         try {
             await API.unfollowRssFeed(url);
             setPeers(prev => prev.filter(p => p.uri !== url));

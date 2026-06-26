@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
 import { Music, Trash2, Save, Search, FileText, Loader2 } from "lucide-react";
@@ -133,7 +134,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
   const handleDelete = async () => {
     if (
       !trackId ||
-      !confirm(
+      !await confirm(
         "Are you sure you want to delete this track? This cannot be undone.",
       )
     )

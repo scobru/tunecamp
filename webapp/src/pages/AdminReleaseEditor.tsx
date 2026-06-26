@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -301,7 +302,7 @@ export default function AdminReleaseEditor() {
 
   const handleDelete = async () => {
     if (
-      !window.confirm(
+      !await confirm(
         "Are you sure you want to delete this release? This cannot be undone.",
       )
     )

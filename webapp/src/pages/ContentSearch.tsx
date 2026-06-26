@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -223,7 +224,7 @@ const ContentSearch: React.FC = () => {
     };
 
     const handleDeleteTorrent = async (infoHash: string) => {
-        if (!confirm('Are you sure you want to remove this torrent?')) return;
+        if (!await confirm('Are you sure you want to remove this torrent?')) return;
         try {
             await API.deleteTorrent(infoHash);
             fetchTorrents();
@@ -253,7 +254,7 @@ const ContentSearch: React.FC = () => {
     };
 
     const handlePurgeStuck = async () => {
-        if (!confirm('Remove all torrents that are errored or stuck on metadata?')) return;
+        if (!await confirm('Remove all torrents that are errored or stuck on metadata?')) return;
         try {
             const result = await API.purgeStuckTorrents();
             fetchTorrents();
@@ -285,7 +286,7 @@ const ContentSearch: React.FC = () => {
     };
 
     const handleDeleteSoulseek = async (id: number) => {
-        if (!confirm('Are you sure you want to remove this transfer record?')) return;
+        if (!await confirm('Are you sure you want to remove this transfer record?')) return;
         try {
             await API.deleteSoulseekDownload(id);
             fetchDownloads();
@@ -295,7 +296,7 @@ const ContentSearch: React.FC = () => {
     };
 
     const handleClearFailedSoulseek = async () => {
-        if (!confirm('Are you sure you want to clear all failed transfers?')) return;
+        if (!await confirm('Are you sure you want to clear all failed transfers?')) return;
         try {
             await API.clearFailedSoulseekDownloads();
             fetchDownloads();

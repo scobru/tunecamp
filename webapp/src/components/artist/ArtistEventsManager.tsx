@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
 import { Calendar, MapPin, Ticket, Plus, Trash2, Edit, Send, X } from 'lucide-react';
 import API from '../../services/api';
@@ -90,7 +91,7 @@ export const ArtistEventsManager = () => {
 
     const handleDelete = async (ev: ArtistEvent) => {
         if (!artistId) return;
-        if (!confirm(`Delete event "${ev.title}"?`)) return;
+        if (!await confirm(`Delete event "${ev.title}"?`)) return;
         try {
             await API.deleteArtistEvent(artistId, ev.id);
             setEvents(prev => prev.filter(e => e.id !== ev.id));

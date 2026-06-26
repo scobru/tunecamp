@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { CheckCircle, XCircle, Play, Info } from "lucide-react";
@@ -26,7 +27,7 @@ export const CurationQueue = () => {
     }, []);
 
     const handleApprove = async (id: number) => {
-        if (!confirm("Are you sure you want to APPROVE this release?")) return;
+        if (!await confirm("Are you sure you want to APPROVE this release?")) return;
         try {
             await API.approvePromotion(id);
             notify.success("Release approved!");

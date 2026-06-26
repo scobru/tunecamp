@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { Disc, Trash2, Search } from 'lucide-react';
@@ -121,9 +122,9 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
         
         const itemType = isLibrary ? (type === 'single' || selectedTrackIds.length <= 1 ? 'track' : 'album') : 'release';
         
-        if (!confirm(`Are you sure you want to delete this ${itemType}? This will remove the database entries. You will be asked next if you want to delete the files from disk.`)) return;
+        if (!await confirm(`Are you sure you want to delete this ${itemType}? This will remove the database entries. You will be asked next if you want to delete the files from disk.`)) return;
         
-        const deleteFiles = confirm('PERMANENTLY DELETE FILES? \nOK = Delete files from disk (Cannot be undone) \nCancel = Keep files on disk (Will be re-scanned if not moved)');
+        const deleteFiles = await confirm('PERMANENTLY DELETE FILES? \nOK = Delete files from disk (Cannot be undone) \nCancel = Keep files on disk (Will be re-scanned if not moved)');
         
         setLoading(true);
         setError('');

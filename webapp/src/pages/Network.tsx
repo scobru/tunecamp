@@ -1,3 +1,4 @@
+import { confirm } from '@/utils/confirm';
 import React, { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
@@ -714,7 +715,7 @@ const Network = () => {
             data-tip="Federated sync: pull and push metadata updates"
             onClick={async () => {
               if (
-                confirm(
+                await confirm(
                   "Do you want to synchronize all content with ActivityPub? This will update metadata and ensure visibility settings are correct on remote instances.",
                 )
               ) {

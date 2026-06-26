@@ -5,6 +5,7 @@ import { useAuthStore } from "./stores/useAuthStore";
 import { useConfigStore } from "./stores/useConfigStore";
 import { useSiteSettingsStore, type ModuleFlag } from "./stores/useSiteSettingsStore";
 import { SetupWizardModal } from "./components/modals/SetupWizardModal";
+import { ConfirmModal } from "./components/modals/ConfirmModal";
 import { Toaster } from "react-hot-toast";
 
 
@@ -159,6 +160,7 @@ function App() {
   return (
     <>
       <SetupWizardModal />
+      <ConfirmModal />
       <Toaster
         position="top-right"
         toastOptions={{
