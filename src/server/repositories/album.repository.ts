@@ -406,6 +406,29 @@ export class AlbumRepository extends BaseRepository {
         })();
     }
 
+    deleteBatch(ids: number[], keepTracks = false): void {
+        if (ids.length === 0) return;
+
+        this.db.transaction(() => {
+            const CHUNK_SIZE = 900;
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                const chunk = ids.slice(i, i + CHUNK_SIZE);
+                const placeholders = chunk.map(() => '?').join(',');
+
+                this.db.prepare(`DELETE FROM unlock_codes WHERE release_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE content_id IN (${placeholders}) AND note_type = 'release'`).run(...chunk);
+
+                if (keepTracks) {
+                    this.db.prepare(`UPDATE tracks SET album_id = NULL WHERE album_id IN (${placeholders})`).run(...chunk);
+                } else {
+                    this.db.prepare(`DELETE FROM tracks WHERE album_id IN (${placeholders})`).run(...chunk);
+                }
+
+                this.db.prepare(`DELETE FROM albums WHERE id IN (${placeholders})`).run(...chunk);
+            }
+        })();
+    }
+
     updateReleaseStatus(id: number, status: string): void {
         this.db.prepare("UPDATE albums SET status = ? WHERE id = ?").run(status, id);
     }

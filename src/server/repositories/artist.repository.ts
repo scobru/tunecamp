@@ -226,6 +226,23 @@ export class ArtistRepository extends BaseRepository {
         })();
     }
 
+    deleteBatch(ids: number[]): void {
+        if (ids.length === 0) return;
+
+        this.db.transaction(() => {
+            const CHUNK_SIZE = 900;
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                const chunk = ids.slice(i, i + CHUNK_SIZE);
+                const placeholders = chunk.map(() => '?').join(',');
+
+                this.db.prepare(`UPDATE albums SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`UPDATE tracks SET artist_id = NULL WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`DELETE FROM followers WHERE artist_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`DELETE FROM artists WHERE id IN (${placeholders})`).run(...chunk);
+            }
+        })();
+    }
+
     isLinkedToUser(id: number): boolean {
         return !!this.db.prepare("SELECT 1 FROM admin WHERE artist_id = ?").get(id);
     }
