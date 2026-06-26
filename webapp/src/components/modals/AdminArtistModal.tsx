@@ -36,11 +36,16 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
     const [currentUser, setCurrentUser] = useState<DbUser | null>(null);
     const [isLibraryOnly, setIsLibraryOnly] = useState(false);
     const [canSell, setCanSell] = useState(true);
+    const [hasLinkedUser, setHasLinkedUser] = useState(false);
 
     const isRootAdmin = !!currentUser?.isRootAdmin;
     const isAdminUser = isRootAdmin || !!currentUser?.isAdmin;
     const isSelf = currentUser && editId && String(currentUser.artistId) === String(editId);
     const canEditSensitive = !isEditing || isSelf; // Only the artist (isSelf) can edit sensitive fields like wallet/Mastodon creds once set
+    // An artist tied to a platform user is managed by that user. Nobody else —
+    // not even an admin — edits their profile here; the admin only keeps the
+    // sales toggle. To take over, unlink the user from the artist first.
+    const profileLocked = !!(isEditing && hasLinkedUser && !isSelf);
 
     useEffect(() => {
         API.getCurrentUser().then(setCurrentUser).catch(console.error);
@@ -91,6 +96,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 setWalletAddress(artist.walletAddress || '');
                 setIsLibraryOnly(!!artist.isLibraryArtist);
                 setCanSell(artist.can_sell !== 0);
+                setHasLinkedUser(!!artist.hasLinkedUser);
 
             } else {
                 // Create Mode
@@ -106,6 +112,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 setWalletAddress('');
                 setIsLibraryOnly(false); // Manually created artists get all fields
                 setCanSell(true);
+                setHasLinkedUser(false);
             }
             
             setAvatarFile(null);
@@ -205,7 +212,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                     links: allLinks,
                     postParams: postParamsValue,
                     walletAddress: walletAddress || undefined,
-                    ...(isAdminUser ? { canSell } : {})
+                    ...(isAdminUser && !profileLocked ? { canSell } : {})
                 });
             } else {
                 artist = await API.createArtist({ 
@@ -263,6 +270,38 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Sales toggle. For a user-linked artist it's managed from the
+                        Edit User dialog, so here the admin only sees it read-only. */}
+                    {isEditing && isAdminUser && !isLibraryOnly && (
+                        <div className="bg-base-200/50 rounded-lg p-4 border border-base-content/5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-sm font-bold">Sales enabled (verified artist)</span>
+                                    <p className="text-xs opacity-50 mt-1">
+                                        {profileLocked
+                                            ? "Managed from the linked user's Edit User dialog. Read-only here."
+                                            : "Off: this artist publishes free content only — prices are stripped and checkout refuses purchases. Turn on once you have verified the artist owns the rights to what they sell."}
+                                    </p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="toggle toggle-success shrink-0 mt-0.5"
+                                    checked={canSell}
+                                    onChange={e => setCanSell(e.target.checked)}
+                                    disabled={profileLocked}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {profileLocked && (
+                        <div className="alert alert-info py-2 text-xs bg-info/10 border-info/20">
+                            <AlertTriangle size={16} />
+                            <span>This artist is managed by its linked user. Their profile is read-only here — unlink the user from the artist to take over editing.</span>
+                        </div>
+                    )}
+
+                    <fieldset disabled={profileLocked} className={`space-y-4 min-w-0 p-0 m-0 border-0 ${profileLocked ? 'opacity-60' : ''}`}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="form-control">
                             <label className="label">
@@ -405,25 +444,6 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                                 <ArtistStripeConnectCard artistId={editId} readOnly={!isSelf} />
                             )}
 
-                            {isEditing && isAdminUser && (
-                                <div className="bg-base-200/50 rounded-lg p-4 border border-base-content/5">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-sm font-bold">Sales enabled (verified artist)</span>
-                                            <p className="text-xs opacity-50 mt-1">
-                                                Off: this artist publishes free content only — prices are stripped and checkout refuses purchases. Turn on once you have verified the artist owns the rights to what they sell.
-                                            </p>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            className="toggle toggle-success shrink-0 mt-0.5"
-                                            checked={canSell}
-                                            onChange={e => setCanSell(e.target.checked)}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
                             <div className="divider text-xs opacity-50 tracking-normal">ActivityPub / Mastodon Config</div>
                             <div className="bg-base-200 p-4 rounded-lg space-y-4">
                                 <div className="alert alert-info py-2 text-xs bg-info/10 border-info/20 mb-2">
@@ -503,7 +523,8 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
                             <span className="label-text-alt opacity-70">JPG or PNG, max 5MB. Providing a URL will download the image to the server.</span>
                         </label>
                     </div>
-                    
+                    </fieldset>
+
                     {error && <div className="text-error text-sm text-center">{error}</div>}
 
                     {warning && (

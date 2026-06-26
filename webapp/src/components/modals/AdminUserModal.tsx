@@ -17,6 +17,9 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [isRoot, setIsRoot] = useState(false);
+    const [isAdminUser, setIsAdminUser] = useState(false);
+    const [salesEnabled, setSalesEnabled] = useState(true);
+    const [initialSalesEnabled, setInitialSalesEnabled] = useState(true);
     const [isActive, setIsActive] = useState(true);
     const [initialIsActive, setInitialIsActive] = useState(true);
     const [storageQuota, setStorageQuota] = useState<number>(0);
@@ -32,6 +35,23 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
         }
     }, [role]);
 
+    // Sales-enabled is a property of the linked artist, but it's managed here so
+    // the admin controls it from the user that owns the artist. Mirror the
+    // artist's current can_sell whenever the linked artist changes/loads.
+    useEffect(() => {
+        if (!isEditMode || !artistId) {
+            setSalesEnabled(true);
+            setInitialSalesEnabled(true);
+            return;
+        }
+        const linked = artists.find(a => String(a.id) === String(artistId));
+        if (linked) {
+            const cs = linked.can_sell !== 0;
+            setSalesEnabled(cs);
+            setInitialSalesEnabled(cs);
+        }
+    }, [artistId, artists, isEditMode]);
+
     useEffect(() => {
         const loadData = async () => {
              try {
@@ -41,6 +61,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 ]);
                 setArtists(artistsData);
                 setIsRoot(!!meData.isRootAdmin);
+                setIsAdminUser(!!meData.isRootAdmin || !!meData.isAdmin);
              } catch (e) {
                  console.error('Failed to load data', e);
              }
@@ -123,6 +144,11 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 // Update peer sharing permission if changed (only root admin can do this)
                 if (isRoot && canPeer !== initialCanPeer) {
                     await API.updateUserCanPeer(Number(targetUserId), canPeer);
+                }
+
+                // Sales-enabled lives on the linked artist; admins toggle it here.
+                if (isAdminUser && artistId && salesEnabled !== initialSalesEnabled) {
+                    await API.updateArtist(String(artistId), { canSell: salesEnabled });
                 }
             } else {
                 const res = await API.createUser({ ...payload, password }); // Password required for create
@@ -216,10 +242,12 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                                     ? "Listeners (Standard Users) cannot be linked to an artist profile — promote them to Curator first."
                                     : "Linking to an artist lets this user manage that artist's profile and publish music for it."}
                             </span>
-                            {isEditMode && artistId && (
+                        </label>
+                        {isEditMode && artistId && (
+                            <div className="flex justify-center mt-1">
                                 <button
                                     type="button"
-                                    className="label-text-alt btn btn-xs btn-ghost gap-1 text-primary h-auto min-h-0 py-1"
+                                    className="btn btn-xs btn-ghost gap-1 text-primary h-auto min-h-0 py-1"
                                     onClick={() => {
                                         const fullArtist = artists.find(a => String(a.id) === String(artistId));
                                         dialogRef.current?.close();
@@ -228,9 +256,28 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                                 >
                                     <ExternalLink size={11} /> Edit Artist Profile
                                 </button>
-                            )}
-                        </label>
+                            </div>
+                        )}
                     </div>
+
+                    {isEditMode && artistId && isAdminUser && (
+                        <div className="bg-base-200/50 rounded-lg p-4 border border-base-content/5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                    <span className="text-sm font-bold">Sales enabled (verified artist)</span>
+                                    <p className="text-xs opacity-50 mt-1">
+                                        Off: the linked artist publishes free content only — prices are stripped and checkout refuses purchases. Turn on once you have verified the artist owns the rights to what they sell.
+                                    </p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="toggle toggle-success shrink-0 mt-0.5"
+                                    checked={salesEnabled}
+                                    onChange={e => setSalesEnabled(e.target.checked)}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <div className="form-control">
                         <label className="label">
