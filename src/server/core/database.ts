@@ -146,6 +146,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             album_artist TEXT,
             use_nft INTEGER DEFAULT 1,
             product_type TEXT DEFAULT 'music',
+            curation_notes TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -742,6 +743,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'podcast_explicit')) {
                 console.log("📦 [Database] Migrating albums table: adding podcast_explicit column...");
                 db.exec("ALTER TABLE albums ADD COLUMN podcast_explicit INTEGER DEFAULT 0");
+            }
+            if (!cols.some(col => col.name === 'curation_notes')) {
+                console.log("📦 [Database] Migrating albums table: adding curation_notes column...");
+                db.exec("ALTER TABLE albums ADD COLUMN curation_notes TEXT");
             }
 
             // Data migration: unify the release category onto the `type` column.
