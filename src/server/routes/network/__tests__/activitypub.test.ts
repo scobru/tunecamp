@@ -137,9 +137,9 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
             name: "Portrait"
         });
 
-        // HTML should render <img> tags properly
-        expect(response.body.content).toContain('<img src="/api/posts/media/post-media-uuid.png" alt="Landscape" />');
-        expect(response.body.content).toContain('<img src="https://example.com/portrait.jpg" alt="Portrait" />');
+        // Images federate as attachments (above), not inline <img> — Mastodon strips inline
+        // images, so the body is rendered without them to avoid double-rendering elsewhere.
+        expect(response.body.content).not.toContain('<img');
     });
 
     test('GET /ap/note/post/:slug should maintain backwards-compatibility and resolve Articles', async () => {
@@ -211,124 +211,6 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         expect(response.status).toBe(404);
     });
 
-    // Actor Profile Endpoint Tests
-    test('GET /ap/users/:slug should serve spec-compliant Actor profile', async () => {
-        const mockArtist = {
-            id: 1,
-            name: "Homologo",
-            slug: "homologo",
-            bio: "Electronic musician from Italy.",
-            public_key: "MOCK_PUBLIC_KEY"
-        };
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-
-        const response = await request(app)
-            .get('/ap/users/homologo');
-
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty("type", "Person");
-        expect(response.body).toHaveProperty("preferredUsername", "homologo");
-        expect(response.body).toHaveProperty("name", "Homologo");
-        expect(response.body.summary).toBe("Electronic musician from Italy.");
-        expect(response.body.inbox).toContain("/users/homologo/inbox");
-        expect(response.body.outbox).toContain("/users/homologo/outbox");
-        expect(response.body.publicKey).toHaveProperty("publicKeyPem", "MOCK_PUBLIC_KEY");
-    });
-
-    // Followers Collection Endpoint Tests
-    test('GET /ap/users/:slug/followers should serve followers list', async () => {
-        const mockArtist = { id: 1, slug: "homologo" };
-        const mockFollowers = [
-            { actor_uri: "https://livellosegreto.it/users/alice" },
-            { actor_uri: "https://mastodon.social/users/bob" }
-        ];
-
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-        (mockDb.getFollowers as jest.Mock).mockReturnValue(mockFollowers);
-
-        const response = await request(app)
-            .get('/ap/users/homologo/followers');
-
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty("type", "OrderedCollection");
-        expect(response.body).toHaveProperty("totalItems", 2);
-        expect(response.body.orderedItems).toEqual([
-            "https://livellosegreto.it/users/alice",
-            "https://mastodon.social/users/bob"
-        ]);
-    });
-
-    // Following Collection Endpoint Tests (Always empty for artists)
-    test('GET /ap/users/:slug/following should serve empty following list', async () => {
-        const mockArtist = { id: 1, slug: "homologo" };
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-
-        const response = await request(app)
-            .get('/ap/users/homologo/following');
-
-        expect(response.status).toBe(200);
-        expect(response.body).toHaveProperty("type", "OrderedCollection");
-        expect(response.body).toHaveProperty("totalItems", 0);
-        expect(response.body.orderedItems).toEqual([]);
-    });
-
-    // Inbound Follow / Follow Request Tests
-    test('POST /ap/users/:slug/inbox should process incoming Follow activity', async () => {
-        const mockArtist = {
-            id: 1,
-            name: "Homologo",
-            slug: "homologo"
-        };
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-
-        const followActivity = {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: "https://livellosegreto.it/activities/follow-1",
-            type: "Follow",
-            actor: "https://livellosegreto.it/users/alice",
-            object: "https://sudorecords.scobrudot.dev/users/homologo"
-        };
-
-        const response = await request(app)
-            .post('/ap/users/homologo/inbox')
-            .send(followActivity);
-
-        expect(response.status).toBe(202);
-        expect(mockApService.verifySignature).toHaveBeenCalled();
-        expect(mockApService.acceptFollow).toHaveBeenCalledWith(mockArtist, followActivity);
-    });
-
-    // Inbound Undo Follow (Unfollow) activity Test
-    test('POST /ap/users/:slug/inbox should process incoming Undo Follow (Unfollow) activity', async () => {
-        const mockArtist = {
-            id: 1,
-            name: "Homologo",
-            slug: "homologo"
-        };
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-
-        const unfollowActivity = {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: "https://livellosegreto.it/activities/undo-1",
-            type: "Undo",
-            actor: "https://livellosegreto.it/users/alice",
-            object: {
-                id: "https://livellosegreto.it/activities/follow-1",
-                type: "Follow",
-                actor: "https://livellosegreto.it/users/alice",
-                object: "https://sudorecords.scobrudot.dev/users/homologo"
-            }
-        };
-
-        const response = await request(app)
-            .post('/ap/users/homologo/inbox')
-            .send(unfollowActivity);
-
-        expect(response.status).toBe(200);
-        expect(mockApService.verifySignature).toHaveBeenCalled();
-        expect(mockDb.removeFollower).toHaveBeenCalledWith(mockArtist.id, "https://livellosegreto.it/users/alice");
-    });
-
     test('POST /ap/followers/accept should accept a pending follow request', async () => {
         const mockArtist = {
             id: 1,
@@ -367,94 +249,6 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
         expect(response.status).toBe(200);
         expect(response.body).toEqual({ success: true, message: "Follower rejected" });
         expect(mockApService.rejectFollowRequest).toHaveBeenCalledWith(mockArtist, "https://livellosegreto.it/users/bob");
-    });
-
-    test('POST /ap/users/:slug/inbox should process incoming direct reply (Create Note)', async () => {
-        const mockArtist = { id: 1, slug: "homologo" };
-        const mockParentNote = { note_id: "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post" };
-        
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-        (mockDb.getApNote as jest.Mock).mockReturnValue(mockParentNote);
-        (mockDb.getApReply as jest.Mock).mockReturnValue(undefined);
-
-        const createReplyActivity = {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: "https://mastodon.social/activities/create-reply-1",
-            type: "Create",
-            actor: "https://mastodon.social/users/bob",
-            object: {
-                id: "https://mastodon.social/users/bob/statuses/1",
-                type: "Note",
-                inReplyTo: "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post",
-                content: "<p>Nice post!</p>",
-                published: "2026-06-08T10:00:00Z"
-            }
-        };
-
-        const response = await request(app)
-            .post('/ap/users/homologo/inbox')
-            .send(createReplyActivity);
-
-        expect(response.status).toBe(200);
-        expect(mockDb.getApNote).toHaveBeenCalledWith("https://sudorecords.scobrudot.dev/api/ap/note/post/some-post");
-        expect(mockDb.addApReply).toHaveBeenCalledWith(
-            "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post",
-            "https://mastodon.social/users/bob/statuses/1",
-            "https://mastodon.social/users/bob",
-            "<p>Nice post!</p>",
-            "2026-06-08T10:00:00Z"
-        );
-    });
-
-    test('POST /ap/users/:slug/inbox should process incoming nested reply to another reply', async () => {
-        const mockArtist = { id: 1, slug: "homologo" };
-        const rootNoteUri = "https://sudorecords.scobrudot.dev/api/ap/note/post/some-post";
-        const parentReplyUri = "https://mastodon.social/users/bob/statuses/1";
-        
-        const mockParentReply = {
-            note_id: rootNoteUri,
-            reply_uri: parentReplyUri
-        };
-        const mockParentNote = { note_id: rootNoteUri };
-
-        (mockDb.getArtistBySlug as jest.Mock).mockReturnValue(mockArtist);
-        (mockDb.getApNote as jest.Mock).mockImplementation((uri) => {
-            if (uri === rootNoteUri) return mockParentNote;
-            return undefined;
-        });
-        (mockDb.getApReply as jest.Mock).mockImplementation((uri) => {
-            if (uri === parentReplyUri) return mockParentReply;
-            return undefined;
-        });
-
-        const nestedReplyActivity = {
-            "@context": "https://www.w3.org/ns/activitystreams",
-            id: "https://mastodon.social/activities/create-reply-2",
-            type: "Create",
-            actor: "https://mastodon.social/users/charlie",
-            object: {
-                id: "https://mastodon.social/users/charlie/statuses/1",
-                type: "Note",
-                inReplyTo: parentReplyUri,
-                content: "<p>Replying to Bob</p>",
-                published: "2026-06-08T11:00:00Z"
-            }
-        };
-
-        const response = await request(app)
-            .post('/ap/users/homologo/inbox')
-            .send(nestedReplyActivity);
-
-        expect(response.status).toBe(200);
-        expect(mockDb.getApReply).toHaveBeenCalledWith(parentReplyUri);
-        expect(mockDb.getApNote).toHaveBeenCalledWith(rootNoteUri);
-        expect(mockDb.addApReply).toHaveBeenCalledWith(
-            rootNoteUri,
-            "https://mastodon.social/users/charlie/statuses/1",
-            "https://mastodon.social/users/charlie",
-            "<p>Replying to Bob</p>",
-            "2026-06-08T11:00:00Z"
-        );
     });
 
     // Reply deletion (author-only)

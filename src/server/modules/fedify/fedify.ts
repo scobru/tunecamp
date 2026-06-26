@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio, Article, Move } from "@fedify/fedify";
+import { createFederation, Person, Endpoints, CryptographicKey, Follow, Accept, Undo, Announce, Service, Note, Like, Image, Create, Audio, Article, Move, Delete, Update } from "@fedify/fedify";
 import { BetterSqliteKvStore } from "./fedify-kv.js";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -82,6 +82,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         let slug = handle;
         let alsoKnownAs: string[] | null = null;
         let movedTo: string | null = null;
+        let manuallyApprovesFollowers = false;
 
         if (handle === getSiteHandle(dbService)) {
             name = dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance";
@@ -97,6 +98,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 slug = artist.slug;
                 alsoKnownAs = artist.also_known_as || null;
                 movedTo = artist.moved_to || null;
+                manuallyApprovesFollowers = !!(artist as any).manually_approves_followers;
             } else {
                 // Phase 4: Fall back to regular user account
                 const user = dbService.getUserByUsername(handle);
@@ -149,7 +151,8 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 publicKey: cryptoKey
             }) : undefined,
             aliases: alsoKnownAs && alsoKnownAs.length > 0 ? alsoKnownAs.map(uri => new URL(uri)) : undefined,
-            successor: movedTo ? new URL(movedTo) : undefined
+            successor: movedTo ? new URL(movedTo) : undefined,
+            manuallyApprovesFollowers,
         };
 
         return type === 'Service' ? new Service(actorOptions) : new Person(actorOptions);
@@ -298,12 +301,6 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
             for (const post of posts) {
                 const published = post.published_at || post.created_at;
-                let contentHtml = renderMarkdown(post.content);
-                if (post.title) {
-                    contentHtml = `<h2>${post.title}</h2>` + 
-                        (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") + 
-                        contentHtml;
-                }
 
                 const fedifyAttachments: any[] = [];
                 const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
@@ -331,6 +328,18 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                     } catch (e) {
                         console.error("Invalid URL in post markdown for Fedify attachment:", urlStr, e);
                     }
+                }
+
+                // Images federate as attachments (Mastodon strips inline <img>); drop the
+                // image markdown from the body so other software doesn't render it twice.
+                const body = fedifyAttachments.length > 0
+                    ? post.content.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+                    : post.content;
+                let contentHtml = renderMarkdown(body);
+                if (post.title) {
+                    contentHtml = `<h2>${post.title}</h2>` +
+                        (post.summary ? `<p><em>${post.summary}</em></p><hr>` : "") +
+                        contentHtml;
                 }
 
                 activities.push(new Create({
@@ -873,9 +882,105 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             } catch (e) {
                 console.error("❌ Error processing Move activity:", e);
             }
+        })
+        .on(Delete, async (ctx, del) => {
+            try {
+                handleDeleteObject(dbService, del.objectId?.toString(), del.actorId?.toString());
+            } catch (e) {
+                console.error("❌ Error processing Delete:", e);
+            }
+        })
+        .on(Update, async (ctx, update) => {
+            try {
+                const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
+                const object = await update.getObject({ documentLoader: docLoader }).catch(() => null) || await update.getObject(ctx).catch(() => null);
+                if (!object) return;
+
+                let author: any = null;
+                if (object instanceof Note || object instanceof Article || object instanceof Audio) {
+                    author = await update.getActor({ documentLoader: docLoader }).catch(() => null) || await update.getActor(ctx).catch(() => null);
+                }
+                handleUpdateObject(dbService, object, update.actorId?.toString(), author, cacheFollowerActor);
+            } catch (e) {
+                console.error("❌ Error processing Update:", e);
+            }
         });
 
     return federation;
+}
+
+/**
+ * Apply an inbound Delete activity. Extracted from the inbox closure so the
+ * branching (account deletion vs object deletion) is unit-testable without a
+ * full Fedify context.
+ */
+export function handleDeleteObject(
+    dbService: DatabaseService,
+    objectId: string | undefined,
+    actorUri: string | undefined,
+): void {
+    if (!objectId) return;
+
+    // Account deletion: Delete(Actor) — the deleted object IS the actor.
+    // Drop them as a follower everywhere (per-artist + the site actor).
+    if (actorUri && objectId === actorUri) {
+        for (const artist of dbService.getArtists()) {
+            dbService.removeFollower(artist.id, actorUri);
+        }
+        dbService.removeFollower(-1, actorUri);
+        console.log(`🗑️ Remote actor deleted; removed as follower: ${actorUri}`);
+        return;
+    }
+
+    // Object deletion: a reply to one of our notes, or remote content we cached.
+    if (dbService.deleteApReply(objectId)) {
+        console.log(`🗑️ Deleted federated reply ${objectId}`);
+    }
+    dbService.deleteRemoteContent(objectId);
+    console.log(`🗑️ Processed Delete for object ${objectId}`);
+}
+
+/**
+ * Apply an inbound Update activity to an already-resolved object. Extracted from
+ * the inbox closure so the actor-refresh vs content-refresh branching is
+ * unit-testable. `cacheActor` is injected (the inbox passes its cacheFollowerActor).
+ */
+export function handleUpdateObject(
+    dbService: DatabaseService,
+    object: any,
+    updateActorId: string | undefined,
+    author: any,
+    cacheActor: (actor: any) => void,
+): void {
+    // Actor profile update (avatar/name/key change) → refresh the cached actor.
+    // This is the common case and what Mastodon sends on profile edits.
+    if (object instanceof Person || object instanceof Service) {
+        cacheActor(object);
+        console.log(`🔄 Updated remote actor profile: ${object.id?.toString()}`);
+        return;
+    }
+
+    // Content edit → refresh stored remote content (best-effort).
+    if (object instanceof Note || object instanceof Article || object instanceof Audio) {
+        const apId = object.id?.toString();
+        const actorUri = updateActorId || (object as any).attributionId?.toString();
+        if (!apId || !actorUri) return;
+        const rawContent = (object as any).content?.toString() || (object as any).summary?.toString() || "";
+        dbService.upsertRemoteContent({
+            ap_id: apId,
+            actor_uri: actorUri,
+            type: object instanceof Audio ? 'release' : 'post',
+            title: (object as any).name?.toString() || rawContent.replace(/<[^>]*>?/gm, '').substring(0, 80) || "Untitled",
+            content: rawContent,
+            url: (object as any).url?.toString() || null,
+            cover_url: null,
+            stream_url: null,
+            artist_name: author?.name?.toString() || author?.preferredUsername?.toString() || "Remote Artist",
+            album_name: (object as any).name?.toString() || null,
+            published_at: object.published?.toString() || new Date().toISOString(),
+        } as any);
+        console.log(`🔄 Updated remote content: ${apId}`);
+    }
 }
 
 function renderMarkdown(markdown: string): string {
@@ -900,11 +1005,21 @@ function renderMarkdown(markdown: string): string {
     html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
     html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
+    // Sanitize URLs: allow only http(s), mailto, anchors, and site-relative paths.
+    // Input is already escaped for &<>, but NOT quotes — reject any URL carrying
+    // quotes/spaces/angle brackets so it can't break out of the src/href attribute.
+    const safeUrl = (url: string): string => {
+        const u = url.trim();
+        return /^(https?:\/\/|mailto:|\/|#)/i.test(u) && !/["'<>\s]/.test(u) ? u : "#";
+    };
+
     // Images: ![alt](url)
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, url) =>
+        `<img src="${safeUrl(url)}" alt="${alt}" />`);
 
     // Links: [text](url)
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) =>
+        `<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`);
 
     // Bullet Lists
     html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");
