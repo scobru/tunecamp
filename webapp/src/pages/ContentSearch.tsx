@@ -936,15 +936,6 @@ const ContentSearch: React.FC = () => {
                                         <td className="text-xs opacity-40 font-bold">{new Date(dl.added_at).toLocaleDateString()}</td>
                                         <td className="text-right">
                                             <div className="flex justify-end gap-1">
-                                                {dl.status === 'completed' && (
-                                                    <button 
-                                                        onClick={() => handleSyncSoulseek(dl.id)}
-                                                        className="btn btn-ghost btn-xs text-primary gap-1 font-bold"
-                                                        title="Sync to Library"
-                                                    >
-                                                        <RefreshCw size={14} /> Sync
-                                                    </button>
-                                                )}
                                                 <button 
                                                     onClick={() => handleDeleteSoulseek(dl.id)}
                                                     className="btn btn-ghost btn-xs text-error hover:bg-error/10"
