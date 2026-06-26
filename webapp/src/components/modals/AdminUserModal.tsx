@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
-import { UserPlus, UserCog } from 'lucide-react';
+import { UserPlus, UserCog, ExternalLink } from 'lucide-react';
 
 interface AdminUserModalProps {
     onUserUpdated: () => void;
@@ -22,6 +22,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
     const [storageQuota, setStorageQuota] = useState<number>(0);
     const [canPeer, setCanPeer] = useState(false);
     const [initialCanPeer, setInitialCanPeer] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     // Publishing requires Curator+ with an artist link: listeners are
     // consumers, so changing the role to Listener clears the artist link.
@@ -71,7 +72,8 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setStorageQuota(userToEdit.storage_quota !== undefined ? userToEdit.storage_quota : 0);
                 setCanPeer(userToEdit.can_peer === 1);
                 setInitialCanPeer(userToEdit.can_peer === 1);
-                
+                setIsEditMode(true);
+
                 dialogRef.current.dataset.userId = userToEdit.id;
                 dialogRef.current.dataset.mode = 'edit';
              } else {
@@ -85,6 +87,7 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                 setStorageQuota(1024 * 1024 * 1024); // default 1GB for new users
                 setCanPeer(false);
                 setInitialCanPeer(false);
+                setIsEditMode(false);
                 dialogRef.current.dataset.mode = 'create';
              }
              setError('');
@@ -213,6 +216,19 @@ export const AdminUserModal = ({ onUserUpdated, user }: AdminUserModalProps) => 
                                     ? "Listeners (Standard Users) cannot be linked to an artist profile — promote them to Curator first."
                                     : "Linking to an artist lets this user manage that artist's profile and publish music for it."}
                             </span>
+                            {isEditMode && artistId && (
+                                <button
+                                    type="button"
+                                    className="label-text-alt btn btn-xs btn-ghost gap-1 text-primary h-auto min-h-0 py-1"
+                                    onClick={() => {
+                                        const fullArtist = artists.find(a => String(a.id) === String(artistId));
+                                        dialogRef.current?.close();
+                                        document.dispatchEvent(new CustomEvent('open-admin-artist-modal', { detail: fullArtist ?? { id: artistId } }));
+                                    }}
+                                >
+                                    <ExternalLink size={11} /> Edit Artist Profile
+                                </button>
+                            )}
                         </label>
                     </div>
 
