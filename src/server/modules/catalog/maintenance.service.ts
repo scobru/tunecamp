@@ -639,7 +639,7 @@ export class MaintenanceService {
                             existingArtist = { id: artistId, name: artistName, slug } as any;
                             artistsMap.set(normalizedName, existingArtist);
                         } catch (e) {
-                            console.warn("Could not create artist for admin", adm.username);
+                            console.warn(`[Maintenance] Could not create artist for admin: ${adm.username}`);
                         }
                     }
                     if (existingArtist) {
