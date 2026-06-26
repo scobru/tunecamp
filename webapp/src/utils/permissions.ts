@@ -21,7 +21,7 @@ export function canPublish(
   user: PublishUser,
   role: Role,
 ): boolean {
-  if (user?.isRootAdmin || role === "root_admin") return true;
+  if (user?.isRootAdmin || role === "root_admin" || role === "admin") return true;
   return !!user?.artistId && PUBLISHING_ROLES.has(role ?? "");
 }
 
@@ -37,10 +37,9 @@ type ManageUser = { userId?: number | null; artistId?: string | number | null; i
  * (src/server/common/visibility.ts): Managers/Root Admins manage everything;
  * everyone else (Curator, Listener-Artist) only their own content.
  *
- * Note: the auth store does not currently expose the numeric userId, so the
- * owner_id check only fires if a userId is present. The artist_id match covers
- * the self-publish case (a user's own releases carry their artistId). The
- * server enforces the real gate regardless of this client-side affordance.
+ * A user manages their own content if they are the direct owner (owner_id matches
+ * userId), or if they are the linked artist and the content is unowned (owner_id
+ * is null and artist_id matches artistId). The server enforces this gate.
  */
 export function canManageItem(
   user: ManageUser,
@@ -52,6 +51,7 @@ export function canManageItem(
   if (user?.userId != null && item.owner_id === user.userId) return true;
   if (
     user?.artistId != null &&
+    item.owner_id == null &&
     item.artist_id != null &&
     String(item.artist_id) === String(user.artistId)
   ) return true;

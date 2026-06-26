@@ -687,8 +687,9 @@ export default function AdminReleaseEditor() {
         </div>
         <div className="flex-none gap-2">
           {/* Read-only notice: a Curator/Listener-Artist who can publish in
-              general but doesn't manage THIS release (different artist). */}
-          {!isNew && canEdit && !canManageThis && (
+              general but doesn't manage THIS release (different artist). Curators
+              can curate (edit metadata) any release so they are excluded from read-only. */}
+          {!isNew && canEdit && !canManageThis && role !== 'super_user' && (
             <span className="badge badge-ghost badge-sm gap-1" title="You can only edit your own releases">
               Read-only
             </span>
@@ -704,7 +705,7 @@ export default function AdminReleaseEditor() {
               Delete
             </button>
           )}
-          {canEdit && canManageThis && (
+          {canEdit && (canManageThis || role === 'super_user') && (
             <>
               <button
                 className="btn btn-ghost btn-sm"

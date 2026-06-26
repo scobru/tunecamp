@@ -239,7 +239,7 @@ export const AdminArtistsList = () => {
                       >
                           <Edit size={14} /> Edit
                       </button>
-                      {(user?.isRootAdmin || role === 'super_user') && (
+                      {isAdmin && (
                           <button
                               className="btn btn-xs btn-ghost text-error"
                               onClick={() => handleDelete(a.id, a.name)}

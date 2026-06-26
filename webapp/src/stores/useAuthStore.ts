@@ -71,6 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isRootAdmin: !!status.isRootAdmin,
                 id: String(status.artistId ?? '0'),
                 artistId: status.artistId != null ? String(status.artistId) : undefined,
+                userId: status.userId != null ? Number(status.userId) : undefined,
                 isActive: status.isActive,
                 alias: (status as any).alias ?? null,
                 avatar: (status as any).avatar ?? null,

@@ -1485,9 +1485,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
      */
     router.get("/system/users", (req: AuthenticatedRequest, res: any) => {
         try {
-            // Only root admin can list users
-            if (!req.context || !VisibilityGuardian.can(req.context, Capability.MANAGE_SYSTEM)) {
-                return res.status(403).json({ error: "Only Root Admin can list users" });
+            // Only root admin or manager can list users
+            if (!req.context || !(req.role === 'root_admin' || req.role === 'admin')) {
+                return res.status(403).json({ error: "Only Root Admin or Manager can list users" });
             }
             const admins = authService.listAdmins();
             res.json(admins);

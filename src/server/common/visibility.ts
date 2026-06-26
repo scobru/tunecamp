@@ -114,9 +114,9 @@ export class VisibilityGuardian {
    */
   static canPublishContent(context: ViewerContext): boolean {
     const role = context.role;
-    if (role === UserRole.ROOT_ADMIN) return true;
+    if ([UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role)) return true;
     return !!context.artistId &&
-      [UserRole.ADMIN, UserRole.SUPER_USER, UserRole.NORMAL_USER].includes(role);
+      [UserRole.SUPER_USER, UserRole.NORMAL_USER].includes(role);
   }
 
   /**
@@ -173,10 +173,10 @@ export class VisibilityGuardian {
       case Capability.CREATE_RELEASES:
         // Any user with a linked artist profile can publish their own releases.
         // Curator/Manager elevation grants additional capabilities but is not
-        // required for publishing. Root Admin is omnipotent.
-        if (role === UserRole.ROOT_ADMIN) return true;
+        // required for publishing. Root Admin and Manager are omnipotent for creation.
+        if ([UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role)) return true;
         return !!context.artistId &&
-          [UserRole.ADMIN, UserRole.SUPER_USER, UserRole.NORMAL_USER].includes(role);
+          [UserRole.SUPER_USER, UserRole.NORMAL_USER].includes(role);
 
       case Capability.MANAGE_ALL_CONTENT:
         return [UserRole.ROOT_ADMIN, UserRole.ADMIN].includes(role);

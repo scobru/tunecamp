@@ -22,7 +22,7 @@ export const AdminAlbumsList = ({ mine }: { mine?: boolean }) => {
       
       let filtered = data;
       if (mine && user?.userId) {
-        filtered = data.filter(a => (a as any).owner_id === user.userId || (user.artistId && (a as any).artist_id === user.artistId));
+        filtered = data.filter(a => (a as any).owner_id === user.userId || (user.artistId && String((a as any).artist_id) === String(user.artistId)));
       }
       
       setAlbums(filtered.filter(a => !a.is_release));

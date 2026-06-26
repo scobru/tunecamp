@@ -67,7 +67,7 @@ const MyMusic = () => {
         icon={Upload}
         iconColor="text-primary"
       >
-        {(user?.isRootAdmin || role === 'super_user') && (
+        {(user?.isRootAdmin || role === 'super_user' || role === 'admin') && (
            <button 
              className="btn btn-ghost btn-sm gap-2"
              onClick={() => navigate("/admin")}
@@ -246,7 +246,7 @@ const MyMusic = () => {
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <h3 className="font-bold text-lg tracking-tight">My Artist Profiles</h3>
-                    {(user?.isRootAdmin || role === 'super_user') && (
+                    {(user?.isRootAdmin || role === 'super_user' || role === 'admin') && (
                         <button 
                             className="btn btn-sm btn-primary"
                             onClick={() => document.dispatchEvent(new CustomEvent("open-admin-artist-modal"))}
