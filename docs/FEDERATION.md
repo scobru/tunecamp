@@ -32,12 +32,12 @@ Tunecamp discovers other instances by **gossip over HTTP** — there is no centr
 
 ActivityPub allows Tunecamp to communicate with other platforms like Mastodon, Pleroma, Funkwhale, and Lemmy.
 
-### Key Roles
+### Key Roles (Broadcaster Model)
 
 - **Artist Profiles**: Every artist on Tunecamp is an ActivityPub "Person" actor.
-- **Followers & Likes**: Users on other Fediverse instances can follow Tunecamp artists and like/favorite their releases and posts.
-- **Broadcasts**: When an artist publishes a new release or a post, Tunecamp broadcasts a "Create Note" activity to all followers.
-- **Interoperability**: Tunecamp supports WebFinger and standard ActivityPub inboxes/outboxes.
+- **Outbound Broadcasting**: Tunecamp focuses on a "Broadcaster" model. When an artist publishes a new release or a post, Tunecamp broadcasts a "Create Note" activity to all followers across the Fediverse.
+- **Inbound Engagement**: Users on other Fediverse instances can follow Tunecamp artists and like/favorite/comment on their releases and posts. Replies and comments are federated back to Tunecamp.
+- **Interoperability**: Tunecamp supports WebFinger and standard ActivityPub inboxes/outboxes. Note: Tunecamp no longer maintains an internal, Mastodon-style consumption timeline or client-side following mechanics to prioritize lightweight performance.
 
 ### Implementation Details
 

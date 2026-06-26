@@ -20,10 +20,10 @@ Users can leave comments on individual tracks to provide feedback or discuss the
   - `GET /api/comments/:trackId`: Fetch all comments for a track.
   - `POST /api/comments`: Add a new comment.
 
-## 3. Engagement Feed
+## 3. Broadcasting & Engagement
 
-The main "Feed" combines local artist posts with social interactions (likes, shares) from the federated network.
-- **Implementation**: Managed by the social manager (`src/server/core/managers/social.ts`, backed by `social.repository.ts`); posts are exposed through `src/server/routes/network/activitypub.ts` and comments through `src/server/routes/network/comments.ts`.
+The platform follows a **Broadcaster** model for social features. Instead of maintaining a heavy internal social timeline (like Mastodon), TuneCamp focuses on broadcasting to the Fediverse and receiving engagement (comments/replies). 
+- **Implementation**: Managed by the social manager (`src/server/core/managers/social.ts`, backed by `social.repository.ts`); posts are exposed through `src/server/routes/network/activitypub.ts` and comments through `src/server/routes/network/comments.ts`. The internal following and timeline ingestion features have been pruned to keep the system lightweight and focused on music.
 
 ## 4. Federated Identity
 
