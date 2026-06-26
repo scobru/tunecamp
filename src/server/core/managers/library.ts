@@ -23,6 +23,7 @@ export function createLibraryManager(
         getArtistBySlug: (s: string) => artistRepository.getBySlug(s),
         getArtistBySlugSimple: (s: string) => artistRepository.getBySlug(s) as any,
         getArtistByName: (n: string) => artistRepository.getByName(n),
+        getArtistsByNames: (names: string[]) => artistRepository.getArtistsByNames(names),
         getArtistsByIds: (ids: number[]) => artistRepository.getByIds(ids),
         createArtist: (n: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v: any = 'private', e?: string) => artistRepository.create(n, b, p, l, pp, w, v, e),
         updateArtist: (id: number, n?: string, b?: string, p?: string, l?: any, pp?: any, w?: string, v?: any, maf?: boolean) => artistRepository.update(id, n, b, p, l, pp, w, v, maf),
