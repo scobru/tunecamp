@@ -206,6 +206,17 @@ export class SubsonicService {
     const response: any = { artist: [], album: [], song: [] };
     const tracksToFormat: Track[] = [];
 
+    const trackIds = starred
+      .filter((item: any) => item.item_type === 'track')
+      .map((item: any) => {
+        const idParts = item.item_id.split('_');
+        return parseInt(idParts[1] || idParts[0]);
+      });
+
+    const uniqueTrackIds = [...new Set<number>(trackIds)];
+    const tracks = uniqueTrackIds.length > 0 ? this.db.getTracksByIds(uniqueTrackIds) : [];
+    const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
+
     starred.forEach((item: any) => {
       const idParts = item.item_id.split('_');
       const id = parseInt(idParts[1] || idParts[0]);
@@ -216,7 +227,7 @@ export class SubsonicService {
         const a = this.db.getAlbum(id);
         if (a) response.album.push(this.formatAlbum(a, username));
       } else if (item.item_type === 'track') {
-        const t = this.db.getTrack(id);
+        const t = trackMap.get(id);
         if (t) tracksToFormat.push(t);
       }
     });
@@ -409,15 +420,14 @@ export class SubsonicService {
     if (rows.length === 0) return [];
 
     const ids = [...new Set<number>(rows.map((r: any) => r.id))];
-    const tracks = this.db.getTracksByIds(ids);
-    const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
+    const trackBatch = this.db.getTracksByIds(ids);
+    const trackMap = new Map<number, Track>(trackBatch.map((t: Track) => [t.id, t]));
 
-    const finalTracks: Track[] = [];
+    const tracks: Track[] = [];
     for (const row of rows) {
       const track = trackMap.get(row.id);
-      if (track) finalTracks.push(track);
+      if (track) tracks.push(track);
     }
-
-    return finalTracks.map((t: Track) => this.formatPodcastEpisode(t, context.userId ? 'user' : 'guest'));
+    return tracks.map((t: Track) => this.formatPodcastEpisode(t, context.userId ? 'user' : 'guest'));
   }
 }
