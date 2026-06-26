@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs-extra";
 import crypto from "crypto";
 import type { DatabaseService } from "../../core/database.js";
-import { VisibilityProfile, VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
+import { VisibilityProfile, VisibilityGuardian, Capability, UserRole, canConsumeTrack } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 
@@ -27,6 +27,13 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
         },
         limits: { fileSize: 10 * 1024 * 1024 },
     });
+
+    // Lazy DB lookups for canConsumeTrack (arrow-wrapped to preserve `this`).
+    const trackLookups = {
+        getRelease: (id: number) => library.getRelease(id),
+        getAlbum: (id: number) => library.getAlbum(id),
+        isTrackInPublicPlaylist: (id: number) => library.isTrackInPublicPlaylist(id),
+    };
 
     /**
      * GET /api/playlists
@@ -403,25 +410,11 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
                 return res.status(404).json({ error: "Track not found" });
             }
 
-            // SECURITY: Prevent adding private-library tracks to playlists unless you own them
-            // or can see the private library (admin/curator). Covers both album tracks and
-            // orphan local files (album_id NULL but file_path set).
-            const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-            if (!req.isAdmin && !canSeePrivate) {
-                const isOwner = track.owner_id === req.userId || (track.artist_id && track.artist_id === req.artistId);
-
-                if (!isOwner) {
-                    if (track.album_id) {
-                        const album = library.getAlbum(track.album_id);
-                        if (album && album.visibility === 'private') {
-                            console.warn(`🛑 [Playlist] User ${req.username} tried to add private track ${actualTrackId} from album ${album.id} to playlist ${playlistId}`);
-                            return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
-                        }
-                    } else if (track.file_path) {
-                        console.warn(`🛑 [Playlist] User ${req.username} tried to add orphan private track ${actualTrackId} to playlist ${playlistId}`);
-                        return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
-                    }
-                }
+            // SECURITY: Prevent adding tracks the user can't consume (private-library
+            // tracks they don't own) to a playlist. Same rule as stream/download.
+            if (!canConsumeTrack(track, req.context || { role: UserRole.GUEST }, trackLookups)) {
+                console.warn(`🛑 [Playlist] User ${req.username} tried to add track ${actualTrackId} they cannot consume to playlist ${playlistId}`);
+                return res.status(403).json({ error: "Cannot add private tracks you don't own to a playlist" });
             }
 
             library.addTrackToPlaylist(playlistId, actualTrackId);

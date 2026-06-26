@@ -16,7 +16,7 @@ if (ffmpegPath) {
 }
 
 import { metadataService } from "../../modules/catalog/metadata.service.js";
-import { VisibilityGuardian, Capability, UserRole } from "../../common/visibility.js";
+import { VisibilityGuardian, Capability, UserRole, canConsumeTrack } from "../../common/visibility.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 import { sendStreamResult } from "../../modules/media/media-engine.js";
 import type { ServiceContainer } from "../../core/container.js";
@@ -40,6 +40,13 @@ export function createTracksRoutes(container: ServiceContainer): Router {
     const router = Router();
     router.use(express.json());
     router.use(invalidateListCacheOnMutation);
+
+    // Lazy DB lookups for canConsumeTrack (arrow-wrapped to preserve `this`).
+    const trackLookups = {
+        getRelease: (id: number) => library.getRelease(id),
+        getAlbum: (id: number) => library.getAlbum(id),
+        isTrackInPublicPlaylist: (id: number) => library.isTrackInPublicPlaylist(id),
+    };
 
     /**
      * GET /api/tracks
@@ -472,21 +479,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         if (trackId && !isNaN(trackId)) {
             const track = library.getTrack(trackId);
             if (!track) { if (!externalId) throw new NotFoundError("Track not found"); }
-            else {
-                const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-                const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-                if (!canSeePrivate && !isOwner) {
-                    if (track.album_id) {
-                        const album = library.getRelease(track.album_id) || library.getAlbum(track.album_id);
-                        if (album && album.visibility === 'private' && !library.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
-                    } else if (track.file_path) {
-                        // Orphan local-library file: streamable only if published via a public playlist
-                        if (!library.isTrackInPublicPlaylist(trackId)) throw new ForbiddenError("Access denied");
-                    } else if (!req.userId) {
-                        // External/link tracks require login
-                        throw new ForbiddenError("Access denied");
-                    }
-                }
+            else if (!canConsumeTrack(track, req.context || { role: UserRole.GUEST }, trackLookups)) {
+                throw new ForbiddenError("Access denied");
             }
         } else if (!externalId) throw new BadRequestError("Invalid track ID");
 
@@ -514,19 +508,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
         }
 
         if (!track) throw new NotFoundError("Track not found");
-        const isOwner = (req.userId !== undefined && track.owner_id === req.userId) || (req.artistId !== undefined && track.artist_id === req.artistId);
-        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        if (!canSeePrivate && !isOwner) {
-            if (track.album_id) {
-                const album = library.getRelease(track.album_id) || library.getAlbum(track.album_id);
-                if (album && album.visibility === 'private' && !library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
-            } else if (track.file_path) {
-                // Orphan local-library file: downloadable only if published via a public playlist
-                if (!library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
-            } else if (!req.userId) {
-                // External/link tracks require login
-                throw new ForbiddenError("Access denied");
-            }
+        if (!canConsumeTrack(track, req.context || { role: UserRole.GUEST }, trackLookups)) {
+            throw new ForbiddenError("Access denied");
         }
 
         if (!track.file_path) throw new NotFoundError("Track file not found");
@@ -574,12 +557,8 @@ export function createTracksRoutes(container: ServiceContainer): Router {
             if (!isNaN(id)) track = library.getTrack(id);
         }
         if (!track) throw new NotFoundError("Track not found");
-        const canSeePrivate = VisibilityGuardian.can(req.context || { role: UserRole.GUEST }, Capability.VIEW_PRIVATE_LIBRARY);
-        if (!canSeePrivate && track.album_id) {
-            const album = library.getAlbum(track.album_id);
-            if (album && album.visibility === 'private' && track.owner_id !== req.userId) {
-                if (!library.isTrackInPublicPlaylist(track.id)) throw new ForbiddenError("Access denied");
-            }
+        if (!canConsumeTrack(track, req.context || { role: UserRole.GUEST }, trackLookups)) {
+            throw new ForbiddenError("Access denied");
         }
         res.json(mapTrackDTO(track, database, req.username));
     }));

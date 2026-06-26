@@ -36,8 +36,10 @@ The **Curator** is a specialized role focused on library quality and content org
 
 ### Capabilities:
 - **Global Visibility:** Can view all content (including private/drafts) to assist in curation.
-- **Library Management:** Can edit metadata, cover art, and organization for any track or album.
+- **Library Management:** Can edit metadata, cover art, and organization for **their own** tracks and albums. Editing content owned by *other* users requires Manager/Root Admin (`MANAGE_ALL_CONTENT`); a Curator has only `MANAGE_PRIVATE_LIBRARY`, which grants global *visibility* but not cross-owner *write*.
 - **Maintenance:** Help maintain the library structure and correct errors.
+
+> **Note:** the Curator's edit rights are owner-scoped, enforced per-item by `VisibilityGuardian.canManageItem`. The global-visibility capability lets them *see* everything to triage and report, but modifying another owner's content is reserved for Managers and above.
 
 ---
 
@@ -89,7 +91,7 @@ A **Listener-Artist** is a standard `user`-role account that has been linked to 
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | Modify Site Settings | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Manage Users | ✅ | ✅ (view) | ❌ | ❌ | ❌ |
-| Edit Others' Content | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Edit Others' Content | ✅ | ✅ | ❌ (own only) | ❌ | ❌ |
 | Upload Music / Create Releases | ✅ | ✅ | ✅ (with artist link) | ✅ (own profile only) | ❌ |
 | Sell Music / Store Assets | ✅ | ✅ (with `can_sell`) | ✅ (with artist link + `can_sell`) | ✅ (with `can_sell`) | ❌ |
 | Social Posts (ActivityPub) | ✅ | ✅ | ✅ (with artist link) | ✅ (own profile only) | ❌ |

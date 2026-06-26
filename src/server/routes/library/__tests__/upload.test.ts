@@ -9,6 +9,7 @@ import type { DatabaseService } from '../../../core/database.js';
 import type { ScannerService } from '../../../modules/catalog/scanner.js';
 import type { PublishingService } from '../../../modules/publishing/publishing.service.js';
 import type { AuthService } from '../../../modules/auth/auth.service.js';
+import { UserRole } from '../../../common/visibility.js';
 
 // Mock dependencies
 const mockDatabase = {
@@ -134,7 +135,11 @@ describe('Upload Routes - Authorization', () => {
 
     test('POST /upload/cover denies upload if user matches neither', async () => {
         const validSlug = 'test-album';
-        Object.assign(currentTestUser, { userId: 99, artistId: 99, isRootAdmin: false, isAdmin: true, isActive: true });
+        // A plain artist (not admin) who owns neither the release nor its artist.
+        Object.assign(currentTestUser, {
+            userId: 99, artistId: 99, isRootAdmin: false, isAdmin: false, isActive: true,
+            context: { role: UserRole.NORMAL_USER, userId: 99, artistId: 99, isActive: true },
+        });
         
         (mockDatabase.getReleaseBySlug as jest.Mock).mockReturnValue({
             id: 1,
@@ -154,6 +159,32 @@ describe('Upload Routes - Authorization', () => {
 
         expect(response.status).toBe(403);
         expect(response.body.error).toContain('Cannot upload cover for another artist');
+    }, 30000);
+
+    test('POST /upload/cover allows a (non-root) admin to manage another artist\'s release', async () => {
+        // Policy: MANAGE_ALL_CONTENT (root_admin + admin) bypasses per-item
+        // ownership, matching VisibilityGuardian.canManageItem — the single
+        // source of truth shared with the rest of the catalog write routes.
+        const validSlug = 'test-album';
+        Object.assign(currentTestUser, {
+            userId: 99, artistId: 99, isRootAdmin: false, isAdmin: true, isActive: true,
+            context: { role: UserRole.ADMIN, userId: 99, artistId: 99, isActive: true },
+        });
+
+        (mockDatabase.getReleaseBySlug as jest.Mock).mockReturnValue({
+            id: 1, slug: validSlug, artist_id: 5, owner_id: 10, title: 'Test Album'
+        });
+        (mockDatabase.getAlbumBySlug as jest.Mock).mockReturnValue(undefined);
+
+        const imagePath = path.join(tempMusicDir, 'test.jpg');
+        await fs.writeFile(imagePath, 'fake image');
+
+        const response = await request(app)
+            .post('/upload/cover')
+            .field('releaseSlug', validSlug)
+            .attach('file', imagePath);
+
+        expect(response.status).toBe(200);
     }, 30000);
 
     test('POST /upload/cover allows root admin to bypass all checks', async () => {

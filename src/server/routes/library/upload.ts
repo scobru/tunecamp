@@ -11,6 +11,7 @@ import type { PublishingService } from "../../modules/publishing/publishing.serv
 import { sanitizeFilename } from "../../../utils/audioUtils.js";
 import type { StorageEngine } from "../../modules/storage/storage.engine.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
+import { VisibilityGuardian } from "../../common/visibility.js";
 
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
@@ -93,6 +94,40 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         try {
             await storage.remove(filePath);
         } catch (err) {}
+    };
+
+    /**
+     * Per-item ownership gate. Delegates to the VisibilityGuardian deep module
+     * (the single source of truth for owner/artist checks) instead of repeating
+     * the root-admin/owner/artist comparison inline at every upload endpoint.
+     */
+    const canModify = (
+        req: any,
+        item: { owner_id?: number | null; artist_id?: number | null }
+    ) => VisibilityGuardian.canManageItem(
+        req.context ?? VisibilityGuardian.deriveContext(req),
+        item
+    );
+
+    /**
+     * Persist an uploaded image into musicDir/<...subdir>/<filename> and return
+     * the musicDir-relative, forward-slashed path ready for DB storage.
+     * Centralizes the ensureDir + move + path-normalization that every image
+     * endpoint repeated (the `.replace(/\\/g, "/")` step is easy to forget).
+     */
+    const storeImageAsset = async (
+        file: { path: string },
+        filename: string,
+        ...subdir: string[]
+    ): Promise<{ targetPath: string; dbPath: string }> => {
+        const dir = path.join(musicDir, ...subdir);
+        await storage.ensureDir(dir);
+        const targetPath = path.join(dir, filename);
+        if (file.path !== targetPath) {
+            await storage.move(file.path, targetPath, { overwrite: true });
+        }
+        const dbPath = path.relative(musicDir, targetPath).replace(/\\/g, "/");
+        return { targetPath, dbPath };
     };
 
     if (authService) {
@@ -320,10 +355,8 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 console.warn(`⚠️ Target release not found: ${releaseSlug}`);
             }
 
-            // SECURITY FIX: Prevent uploading to another artist's release (unless root admin)
-            const isAuthorized = req.isRootAdmin ||
-                (req.userId !== undefined && req.userId !== null && release?.owner_id !== undefined && release?.owner_id !== null && Number(release.owner_id) === Number(req.userId)) ||
-                (req.artistId !== undefined && req.artistId !== null && release?.artist_id !== undefined && release?.artist_id !== null && Number(release.artist_id) === Number(req.artistId));
+            // SECURITY: Prevent uploading to another artist's release.
+            const isAuthorized = release ? canModify(req, release) : true;
 
             if (release && !isAuthorized) {
                 console.warn(`⛔ Access Denied: User ${(req as any).username} (User ID ${req.userId}) tried to upload to release ${release.slug} (Owner ${release.owner_id})`);
@@ -464,11 +497,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                     return res.status(404).json({ error: "Release not found" });
                 }
 
-                const isAuthorized = req.isRootAdmin ||
-                    (req.userId !== undefined && req.userId !== null && targetItem.owner_id !== undefined && targetItem.owner_id !== null && Number(targetItem.owner_id) === Number(req.userId)) ||
-                    (req.artistId !== undefined && req.artistId !== null && targetItem.artist_id !== undefined && targetItem.artist_id !== null && Number(targetItem.artist_id) === Number(req.artistId));
-
-                if (!isAuthorized) {
+                if (!canModify(req, targetItem)) {
                     await storage.remove(file.path);
                     return res.status(403).json({ error: "Access denied: Cannot upload cover for another artist's release" });
                 }
@@ -575,10 +604,9 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Artist ID required" });
             }
 
-            // Permission Check
-            const isAuthorizedAvatar = req.isRootAdmin ||
-                (req.artistId !== undefined && req.artistId !== null && artistId !== undefined && artistId !== null && Number(req.artistId) === Number(artistId));
-            if (!isAuthorizedAvatar) {
+            // Permission Check: own artist profile (or admin). Synthesize an
+            // ownerless item so the guardian's linked-artist branch applies.
+            if (!canModify(req, { owner_id: null, artist_id: artistId })) {
                 await storage.remove(file.path);
                 return res.status(403).json({ error: "Access denied: You can only upload avatars for your own artist" });
             }
@@ -586,23 +614,12 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             console.log(`👤 Uploaded avatar for artist ${artistId}: ${file.originalname}`);
 
             const ext = path.extname(file.originalname).toLowerCase();
-
-            // Move avatar to assets folder
-            const assetsDir = path.join(musicDir, "assets");
-            await storage.ensureDir(assetsDir);
-
             const avatarFilename = `avatar-${artistId}${ext}`;
-            const avatarPath = path.join(assetsDir, avatarFilename);
-
-            // Remove old file if in different location, or overwrite
-            if (file.path !== avatarPath) {
-                await storage.move(file.path, avatarPath, { overwrite: true });
-            }
+            const { targetPath: avatarPath, dbPath } = await storeImageAsset(file, avatarFilename, "assets");
 
             // Update artist in database (relative path)
             const artist = library.getArtist(artistId);
             if (artist) {
-                const dbPath = path.relative(musicDir, avatarPath).replace(/\\/g, "/");
                 // Correct parameter order: (id, name, bio, photoPath, links)
                 // We pass undefined for name to avoid changing it.
                 library.updateArtist(artist.id, undefined, artist.bio || undefined, dbPath, artist.links ? artist.links : undefined);
@@ -645,9 +662,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 return res.status(403).json({ error: "Access denied: Account must be activated by admin" });
             }
 
-            const isAuthorized = req.isRootAdmin ||
-                (req.artistId !== undefined && req.artistId !== null && Number(req.artistId) === Number(artistId));
-            if (!isAuthorized) {
+            if (!canModify(req, { owner_id: null, artist_id: artistId })) {
                 await storage.remove(file.path);
                 return res.status(403).json({ error: "Access denied: You can only upload banners for your own artist" });
             }
@@ -665,17 +680,8 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             }
 
             const ext = path.extname(file.originalname).toLowerCase();
-            const assetsDir = path.join(musicDir, "assets");
-            await storage.ensureDir(assetsDir);
-
             const bannerFilename = `banner-${artistId}${ext}`;
-            const bannerPath = path.join(assetsDir, bannerFilename);
-
-            if (file.path !== bannerPath) {
-                await storage.move(file.path, bannerPath, { overwrite: true });
-            }
-
-            const dbPath = path.relative(musicDir, bannerPath).replace(/\\/g, "/");
+            const { targetPath: bannerPath, dbPath } = await storeImageAsset(file, bannerFilename, "assets");
             library.updateArtistBanner(artistId, dbPath);
 
             res.json({
@@ -715,22 +721,14 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             }
 
             // Permission Check
-            const isOwner = req.userId !== undefined && req.userId !== null && track.owner_id !== undefined && track.owner_id !== null && Number(track.owner_id) === Number(req.userId);
-            if (!req.isRootAdmin && !isOwner) {
+            if (!canModify(req, track)) {
                 await storage.remove(file.path);
                 return res.status(403).json({ error: "Access denied: Cannot upload artwork for this track" });
             }
 
             const ext = path.extname(file.originalname).toLowerCase();
-            const assetsDir = path.join(musicDir, "assets", "tracks");
-            await storage.ensureDir(assetsDir);
-
             const targetFilename = `track-${trackId}-${Date.now()}${ext}`;
-            const targetPath = path.join(assetsDir, targetFilename);
-
-            await storage.move(file.path, targetPath, { overwrite: true });
-
-            const dbPath = path.relative(musicDir, targetPath).replace(/\\/g, "/");
+            const { targetPath, dbPath } = await storeImageAsset(file, targetFilename, "assets", "tracks");
             library.updateTrackExternalArtwork(trackId, dbPath);
 
             res.json({
@@ -768,10 +766,8 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
             const id = parseInt(artistId as string, 10);
 
-            // Permission Check
-            const isAuthorizedUrl = req.isRootAdmin ||
-                (req.artistId !== undefined && req.artistId !== null && id !== undefined && id !== null && Number(req.artistId) === Number(id));
-            if (!isAuthorizedUrl) {
+            // Permission Check: own artist profile (or admin).
+            if (!canModify(req, { owner_id: null, artist_id: id })) {
                 return res.status(403).json({ error: "Access denied: You can only upload avatars for your own artist" });
             }
 
@@ -956,12 +952,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
             const ext = path.extname(file.originalname).toLowerCase();
             const mediaFilename = `post-media-${crypto.randomUUID()}${ext}`;
-            
-            const mediaDir = path.join(musicDir, "assets", "posts");
-            await storage.ensureDir(mediaDir);
-
-            const targetPath = path.join(mediaDir, mediaFilename);
-            await storage.move(file.path, targetPath, { overwrite: true });
+            await storeImageAsset(file, mediaFilename, "assets", "posts");
 
             res.json({ url: `/api/posts/media/${mediaFilename}` });
         } catch (error) {
