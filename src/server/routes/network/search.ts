@@ -97,8 +97,16 @@ export function createSearchRoutes(container: ServiceContainer): Router {
             // Start download in background
             soulseek.download(result).then(async (dest) => {
                 integration.updateSoulseekDownloadProgress(downloadId, 1, 'completed', dest);
-                // Trigger scanner on the new file
                 console.log(`📡 Soulseek download finished: ${dest}`);
+                // Auto-sync: index the downloaded file into the library
+                try {
+                    const settings = identity.getAllSettings();
+                    const musicDir = settings.musicDir || process.env.TUNECAMP_MUSIC_DIR || "music";
+                    await scanner.processAudioFile(dest, musicDir, undefined, req.userId!);
+                    console.log(`✅ Soulseek auto-sync completed: ${dest}`);
+                } catch (syncErr) {
+                    console.error(`⚠️ Soulseek auto-sync failed:`, syncErr);
+                }
             }).catch(err => {
                 console.error(`❌ Soulseek background download failed:`, err);
                 integration.updateSoulseekDownloadProgress(downloadId, 0, 'failed');

@@ -213,7 +213,7 @@ export const AdminUsersList = () => {
                 />
               </td>
               <td className="opacity-50">
-                {new Date(u.createdAt).toLocaleDateString()}
+                {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
               </td>
               <td className="flex gap-2">
                 {isRootAdmin ? (
