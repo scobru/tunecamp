@@ -253,7 +253,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
 
     return (
         <dialog id="admin-artist-modal" className="modal" ref={dialogRef}>
-            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl">
+            <div className="modal-box bg-base-100 border border-base-content/5 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
                 <form method="dialog">
                     <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                 </form>
