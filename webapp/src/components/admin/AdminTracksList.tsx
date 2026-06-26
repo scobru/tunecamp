@@ -19,8 +19,12 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   const [localizing, setLocalizing] = useState<string | number | null>(null);
   const [isLocalizingBatch, setIsLocalizingBatch] = useState(false);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "title", direction: "asc" });
+  const [loading, setLoading] = useState(true);
 
-  const loadTracks = () => API.getTracks({ mine }).then(setTracks).catch(console.error);
+  const loadTracks = () => {
+    setLoading(true);
+    return API.getTracks({ mine }).then(setTracks).catch(console.error).finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     loadTracks();
@@ -177,6 +181,26 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
       notify.error(e, "Failed to perform batch deletion");
     }
   };
+
+  if (loading) return (
+    <div className="overflow-x-auto">
+      <table className="table table-zebra table-sm w-full">
+        <tbody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <tr key={i}>
+              <td><div className="skeleton h-4 w-4 rounded" /></td>
+              <td><div className="skeleton h-4 w-40 rounded" /></td>
+              <td><div className="skeleton h-4 w-24 rounded" /></td>
+              <td><div className="skeleton h-4 w-32 rounded" /></td>
+              <td><div className="skeleton h-4 w-20 rounded" /></td>
+              <td><div className="skeleton h-4 w-12 rounded" /></td>
+              <td><div className="skeleton h-4 w-28 rounded" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   if (tracks.length === 0)
     return <div className="opacity-50 text-center py-4">No tracks found.</div>;

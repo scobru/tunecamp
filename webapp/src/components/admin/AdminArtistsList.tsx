@@ -93,7 +93,13 @@ export const AdminArtistsList = () => {
     }
   };
 
-  if (loading) return <div className="p-4 text-center opacity-50">Loading artists...</div>;
+  if (loading) return (
+    <div className="flex flex-col gap-3 p-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="skeleton h-14 w-full rounded-lg" />
+      ))}
+    </div>
+  );
 
   if (artists.length === 0)
     return (
