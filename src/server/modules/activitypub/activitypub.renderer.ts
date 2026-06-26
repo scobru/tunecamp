@@ -1,5 +1,6 @@
 import type { Artist, Album, Track, Post } from "../../core/database.types.js";
 import { renderApMarkdown } from "../../common/ap-markdown.js";
+import { Temporal } from "@js-temporal/polyfill";
 
 export class ActivityPubRenderer {
     constructor(private baseUrl: string) {}
@@ -74,7 +75,7 @@ export class ActivityPubRenderer {
                 url: track.file_path ? `${this.baseUrl}/api/tracks/${track.id}/stream` : track.url,
                 name: track.title,
                 duration: (track.duration && Number.isFinite(track.duration)) 
-                    ? `${Math.floor(track.duration / 3600).toString().padStart(2, '0')}:${Math.floor((track.duration % 3600) / 60).toString().padStart(2, '0')}:${Math.floor(track.duration % 60).toString().padStart(2, '0')}`
+                    ? Temporal.Duration.from({ seconds: Math.floor(track.duration) }).toString()
                     : undefined,
                 "https://funkwhale.audio/ns#bitrate": track.bitrate,
                 "https://funkwhale.audio/ns#duration": track.duration
