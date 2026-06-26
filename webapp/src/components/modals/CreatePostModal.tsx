@@ -4,6 +4,7 @@ import { PenTool, Globe, Eye, Lock, Send, X, Image as ImageIcon } from 'lucide-r
 import type { Artist } from '../../types';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { renderMarkdown } from '../../utils/markdown';
+import { sanitizeHtml } from '../../utils/sanitize';
 
 export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void }) => {
     const dialogRef = useRef<HTMLDialogElement>(null);
@@ -291,7 +292,7 @@ export const CreatePostModal = ({ onPostCreated }: { onPostCreated?: () => void 
                             ) : (
                                 <div 
                                     className="prose prose-sm prose-invert max-w-none p-4 rounded-xl bg-base-200/30 border border-base-content/10 min-h-[250px] max-h-[400px] overflow-y-auto scrollbar-thin select-text"
-                                    dangerouslySetInnerHTML={{ __html: renderMarkdown(content) || '<p class="opacity-40 italic">Nothing to preview yet...</p>' }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(content)) || '<p class="opacity-40 italic">Nothing to preview yet...</p>' }}
                                 />
                             )}
                         </div>
