@@ -23,7 +23,7 @@ api.interceptors.request.use((config) => {
 });
 
 /** Error subclass that preserves the HTTP response status code. */
-class ApiError extends Error {
+export class ApiError extends Error {
     status: number;
     constructor(message: string, status: number) {
         super(message);
@@ -33,7 +33,7 @@ class ApiError extends Error {
 }
 
 // Helper to handle response
-const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<T> => {
+export const handleResponse = async <T>(request: Promise<{ data: T }>): Promise<T> => {
     try {
         const response = await request;
         return response.data;
