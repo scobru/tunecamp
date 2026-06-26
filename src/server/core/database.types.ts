@@ -48,6 +48,7 @@ export interface Artist {
     created_at?: string;
     // Computed fields
     isLibraryArtist?: boolean;
+    hasLinkedUser?: boolean;
     coverImage?: string;
     bannerImage?: string;
     starred?: boolean;

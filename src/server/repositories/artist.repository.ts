@@ -59,6 +59,7 @@ export class ArtistRepository extends BaseRepository {
         return {
             ...row,
             isLibraryArtist: !!row.isLibraryArtist,
+            hasLinkedUser: !!row.hasLinkedUser,
             links,
             post_params,
             also_known_as
@@ -117,7 +118,8 @@ export class ArtistRepository extends BaseRepository {
             (CASE WHEN EXISTS (SELECT 1 FROM admin WHERE artist_id = a.id)
                   OR EXISTS (SELECT 1 FROM releases WHERE artist_id = a.id)
                   OR EXISTS (SELECT 1 FROM albums WHERE artist_id = a.id AND is_release = 1)
-                  THEN 0 ELSE 1 END) as isLibraryArtist
+                  THEN 0 ELSE 1 END) as isLibraryArtist,
+            (CASE WHEN EXISTS (SELECT 1 FROM admin WHERE artist_id = a.id) THEN 1 ELSE 0 END) as hasLinkedUser
             FROM artists a
         `;
         const sql = publicOnly 
