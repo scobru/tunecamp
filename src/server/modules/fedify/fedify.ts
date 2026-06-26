@@ -6,7 +6,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { VisibilityProfile } from "../../common/visibility.js";
-import { getSiteHandle } from "../../core/site-actor.js";
+import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 
 export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     const db = dbService.db;
@@ -376,9 +376,15 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
     // Followers dispatcher
     federation.setFollowersDispatcher("/users/{handle}/followers", async (ctx, handle, cursor) => {
-        const artist = dbService.getArtistBySlug(handle);
-        if (!artist) return null;
-        const followers = dbService.getFollowers(artist.id);
+        let artistId: number;
+        if (handle === getSiteHandle(dbService)) {
+            artistId = SITE_ACTOR_ID;
+        } else {
+            const artist = dbService.getArtistBySlug(handle);
+            if (!artist) return null;
+            artistId = artist.id;
+        }
+        const followers = dbService.getFollowers(artistId);
         return {
             // Skip followers whose inbox could not be resolved yet — `new URL('')`
             // throws and would break the whole followers collection response.
