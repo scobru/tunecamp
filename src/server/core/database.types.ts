@@ -88,6 +88,7 @@ export interface Album {
     podcast_email?: string | null;
     podcast_category?: string | null;
     podcast_explicit?: boolean | number;
+    curation_notes?: string | null;
     // View fields
     artist_name?: string;
     artist_slug?: string;

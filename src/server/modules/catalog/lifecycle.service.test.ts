@@ -67,4 +67,28 @@ describe("LifecycleService", () => {
         expect(mockAp.ensureArtistKeys).toHaveBeenCalledWith(5);
         expect(mockPublishing.publishReleaseToAP).toHaveBeenCalledWith(release);
     });
+
+    test("rejectPromotion should update status to draft and save curation notes for album", async () => {
+        const album = { id: 1, status: 'pending' };
+        mockDb.getAlbum.mockReturnValue(album);
+        mockDb.getRelease.mockReturnValue(undefined);
+        mockDb.updateAlbum = jest.fn();
+
+        await lifecycleService.rejectPromotion(1, "Needs better cover art", { userId: 1, role: 'root_admin' });
+
+        expect(mockDb.updateAlbumStatus).toHaveBeenCalledWith(1, 'draft');
+        expect(mockDb.updateAlbum).toHaveBeenCalledWith(1, { curation_notes: "Needs better cover art" });
+    });
+
+    test("rejectPromotion should update status to draft and save curation notes for release", async () => {
+        mockDb.getAlbum.mockReturnValue(undefined);
+        const release = { id: 2, status: 'pending' };
+        mockDb.getRelease.mockReturnValue(release);
+        mockDb.updateRelease = jest.fn();
+
+        await lifecycleService.rejectPromotion(2, "Needs better cover art", { userId: 1, role: 'root_admin' });
+
+        expect(mockDb.updateReleaseStatus).toHaveBeenCalledWith(2, 'draft');
+        expect(mockDb.updateRelease).toHaveBeenCalledWith(2, { curation_notes: "Needs better cover art" });
+    });
 });
