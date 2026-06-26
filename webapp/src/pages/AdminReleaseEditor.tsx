@@ -88,6 +88,7 @@ interface LocalRelease {
   podcast_category?: string;
   podcast_explicit?: boolean | number;
   externalLinks?: { label: string; url: string }[];
+  additional_artworks?: string;
 }
 
 export default function AdminReleaseEditor() {
@@ -140,6 +141,7 @@ export default function AdminReleaseEditor() {
     podcast_category: "",
     podcast_explicit: false,
     externalLinks: [],
+    additional_artworks: "",
   });
 
   // Per-item management gate (edit/publish/delete). A new release is always
@@ -162,6 +164,10 @@ export default function AdminReleaseEditor() {
   // Cover Art
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  // Additional Artworks (Booklet)
+  const [existingAdditionalArtworks, setExistingAdditionalArtworks] = useState<string[]>([]);
+  const [additionalArtworksToUpload, setAdditionalArtworksToUpload] = useState<File[]>([]);
 
   // Unlock Codes Modal
   const [showUnlockManager, setShowUnlockManager] = useState(false);
@@ -259,7 +265,20 @@ export default function AdminReleaseEditor() {
         podcast_category: data.podcast_category || data.podcastCategory || "",
         podcast_explicit: data.podcast_explicit !== undefined ? !!data.podcast_explicit : false,
         externalLinks: data.external_links ? (typeof data.external_links === 'string' ? JSON.parse(data.external_links) : data.external_links) : [],
+        additional_artworks: data.additional_artworks || "",
       });
+
+      let parsedArtworks: string[] = [];
+      if (data.additional_artworks) {
+        try {
+          parsedArtworks = typeof data.additional_artworks === 'string'
+            ? JSON.parse(data.additional_artworks)
+            : data.additional_artworks;
+        } catch (e) {
+          console.error("Failed to parse additional_artworks", e);
+        }
+      }
+      setExistingAdditionalArtworks(parsedArtworks);
 
       if (data.slug || releaseId) {
         setCoverPreview(API.getReleaseCoverUrl(data.slug || releaseId));
@@ -349,6 +368,7 @@ export default function AdminReleaseEditor() {
           currency: t.currency || "ETH" 
         })),
         externalLinks: metadata.externalLinks,
+        additional_artworks: JSON.stringify(existingAdditionalArtworks),
       } as any;
 
       // Prefer the URL id, then any id we created earlier in this session.
@@ -427,6 +447,11 @@ export default function AdminReleaseEditor() {
         await API.uploadCover(coverFile, currentSlug);
       }
 
+      // 2b. Upload Additional Artworks
+      if (additionalArtworksToUpload.length > 0 && currentSlug) {
+        await API.uploadAdditionalArtworks(currentSlug, additionalArtworksToUpload);
+      }
+
       // 3. Handle File Uploads (Sequentially to report progress/errors)
       if (filesToUpload.length > 0 && currentSlug) {
         try {
@@ -479,6 +504,7 @@ export default function AdminReleaseEditor() {
         // Reload release to get updated state (including new tracks if any were uploaded)
         setUploadingFileIndex(null);
         setCoverFile(null);
+        setAdditionalArtworksToUpload([]);
         loadRelease(releaseId);
       }
     } catch (e) {
@@ -777,6 +803,101 @@ export default function AdminReleaseEditor() {
                     }}
                   />
                 </div>
+              </div>
+
+              {/* Additional Artworks (Booklet) */}
+              <div className="card bg-base-100 shadow-level-1 border border-base-content/5 p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-[11px] font-bold tracking-normal opacity-50 whitespace-normal uppercase">
+                    Additional Artworks / Booklet
+                  </h3>
+                  <span className="badge badge-sm font-mono opacity-50">
+                    {existingAdditionalArtworks.length + additionalArtworksToUpload.length} / 10
+                  </span>
+                </div>
+                
+                {/* Image Previews / Grid */}
+                {(existingAdditionalArtworks.length > 0 || additionalArtworksToUpload.length > 0) && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Existing Images */}
+                    {existingAdditionalArtworks.map((pathStr, index) => {
+                      const artworkUrl = API.getAdditionalArtworkUrl(metadata.slug || metadata.id || '', pathStr);
+                      return (
+                        <div key={`existing-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-base-content/10 group">
+                          <img
+                            src={artworkUrl}
+                            alt={`Artwork ${index + 1}`}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          />
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExistingAdditionalArtworks(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              className="absolute top-1 right-1 bg-black/60 hover:bg-red-600/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Pending uploads previews */}
+                    {additionalArtworksToUpload.map((file, index) => {
+                      const objectUrl = URL.createObjectURL(file);
+                      return (
+                        <div key={`pending-${index}`} className="relative aspect-square rounded-lg overflow-hidden border border-dashed border-primary/30 group">
+                          <img
+                            src={objectUrl}
+                            alt={`Pending ${index + 1}`}
+                            className="w-full h-full object-cover opacity-60"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <span className="text-[10px] text-white bg-primary px-1.5 py-0.5 rounded font-bold">New</span>
+                          </div>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAdditionalArtworksToUpload(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              className="absolute top-1 right-1 bg-black/60 hover:bg-red-600/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Upload Action */}
+                {canEdit && (
+                  <div
+                    onClick={() => document.getElementById("additional-artworks-upload")?.click()}
+                    className="border border-dashed border-base-content/20 hover:border-primary/50 hover:bg-base-200/50 rounded-xl p-4 flex flex-col items-center justify-center gap-1 cursor-pointer transition-all text-center"
+                  >
+                    <Plus className="w-5 h-5 opacity-40" />
+                    <span className="text-xs font-bold opacity-60">Add Images</span>
+                    <span className="text-[10px] opacity-40">Booklet, liner notes, inside jackets (Max 25MB)</span>
+                    <input
+                      id="additional-artworks-upload"
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          const files = Array.from(e.target.files);
+                          setAdditionalArtworksToUpload(prev => [...prev, ...files].slice(0, 10 - existingAdditionalArtworks.length));
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Album Primary Info */}

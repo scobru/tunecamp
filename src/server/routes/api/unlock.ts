@@ -12,6 +12,7 @@ export function createUnlockRoutes(container: ServiceContainer): Router {
     const integration: ServiceContainer['integration'] = (container as any).integration || (database as any).integration || database;
     const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
     const router = Router();
+    router.use(json());
     router.post("/validate", (req, res) => {
         const { code } = req.body;
         if (!code) return res.status(400).json({ error: "Code required" });
@@ -29,11 +30,6 @@ export function createUnlockRoutes(container: ServiceContainer): Router {
 
         res.json({ valid: true, isUsed: result.isUsed, release });
     });
-
-    /**
-     * POST /api/unlock/redeem
-     * Redeem a code (mark as used) - usually happens on download
-     */
     router.post("/redeem", (req, res) => {
         const { code } = req.body;
         if (!code) return res.status(400).json({ error: "Code required" });

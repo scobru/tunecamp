@@ -21,6 +21,7 @@ import { AdminAssetsList } from "../components/admin/AdminAssetsList";
 import { AdminRadioPanel } from "../components/admin/AdminRadioPanel";
 import { PeerSessionsPanel } from "../components/admin/PeerSessionsPanel";
 import { AdminLabAppsPanel } from "../components/admin/AdminLabAppsPanel";
+import { AdminReportsPanel } from "../components/admin/AdminReportsPanel";
 
 const Admin = () => {
   const { isAuthenticated, isLoading, role, user } = useAuthStore();
@@ -45,6 +46,7 @@ const Admin = () => {
     | "radio"
     | "peers"
     | "lab"
+    | "reports"
   >(isRootAdmin ? "users" : "releases");
   const [stats, setStats] = useState<any>(null);
 
@@ -129,6 +131,15 @@ const Admin = () => {
             onClick={() => setActiveTab("curation")}
           >
             Curation Queue
+          </a>
+        )}
+        {(isRootAdmin || isManager || isSuperUser) && (
+          <a
+            role="tab"
+            className={`tab ${activeTab === "reports" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("reports")}
+          >
+            Reports
           </a>
         )}
         {(isRootAdmin || isManager) && (
@@ -260,6 +271,7 @@ const Admin = () => {
         )}
 
         {activeTab === "curation" && (isRootAdmin || isManager || isSuperUser) && <CurationQueue />}
+        {activeTab === "reports" && (isRootAdmin || isManager || isSuperUser) && <AdminReportsPanel />}
 
 
         {activeTab === "users" && (isRootAdmin || isManager) && (

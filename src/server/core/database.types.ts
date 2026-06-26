@@ -90,6 +90,7 @@ export interface Album {
     podcast_category?: string | null;
     podcast_explicit?: boolean | number;
     curation_notes?: string | null;
+    additional_artworks?: string | null;
     // View fields
     artist_name?: string;
     artist_slug?: string;
@@ -243,6 +244,22 @@ interface ArtistEventInput {
     country?: string | null;
     ticket_url?: string | null;
     description?: string | null;
+}
+
+export interface Report {
+    id: number;
+    reporter_id: number | null;
+    reporter_name: string | null;
+    reporter_email: string | null;
+    release_id: number;
+    reason: string;
+    details: string | null;
+    status: string;
+    created_at: string;
+    // Joined/View fields
+    release_title?: string;
+    release_slug?: string;
+    artist_name?: string;
 }
 
 export interface ApNote {
@@ -715,6 +732,11 @@ export interface SocialManager {
     saveRemotePost(post: any): void;
     deleteRemotePost(apId: string): void;
     deleteRemoteContent(apId: string): void;
+
+    // Reports
+    createReport(report: Omit<Report, "id" | "created_at" | "status">): number;
+    getReports(): Report[];
+    deleteReport(id: number): void;
 }
 
 export interface IntegrationManager {

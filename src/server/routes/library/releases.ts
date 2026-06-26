@@ -359,6 +359,49 @@ export function createReleaseRouter(container: ServiceContainer): Router {
     }));
 
     /**
+     * GET /api/releases/:id/artwork/:filename
+     * Serves additional artwork booklet images, with path traversal checks.
+     */
+    router.get("/:id/artwork/:filename", wrapAsync(async (req: any, res: any) => {
+        try {
+            const param = req.params.id as string;
+            const filename = req.params.filename as string;
+
+            // Basic validation to prevent directory traversal
+            if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+                throw new BadRequestError("Invalid filename");
+            }
+
+            let release = null;
+            if (/^\d+$/.test(param)) {
+                const releaseId = parseInt(param, 10);
+                release = library.getRelease(releaseId) || library.getAlbum(releaseId);
+            } else {
+                release = library.getReleaseBySlug(param) || library.getAlbumBySlug(param);
+            }
+
+            if (!release) {
+                throw new NotFoundError("Release not found");
+            }
+
+            // The files are placed in: musicDir/releases/<slug>/artwork/<filename>
+            const artworkPath = path.join(musicDir, "releases", release.slug, "artwork", filename);
+            if (await fs.pathExists(artworkPath)) {
+                return res.sendFile(path.resolve(artworkPath), { maxAge: 86400000 });
+            }
+
+            throw new NotFoundError("Artwork not found");
+        } catch (e) {
+            console.error("Error loading additional artwork:", e);
+            if (e instanceof BadRequestError || e instanceof NotFoundError) {
+                res.status(e.statusCode).json({ error: e.message });
+            } else {
+                res.status(500).send("Error loading additional artwork");
+            }
+        }
+    }));
+
+    /**
      * PUT /api/admin/releases/:id
      */
     router.put("/:id", wrapAsync(async (req: any, res: any) => {
@@ -414,6 +457,34 @@ export function createReleaseRouter(container: ServiceContainer): Router {
             console.error("Error deleting release:", error);
             res.status(500).json({ error: "Failed to delete release" });
         }
+    }));
+
+    /**
+     * POST /api/releases/:id/report
+     * Submit a report for a release.
+     */
+    router.post("/:id/report", wrapAsync(async (req: any, res: any) => {
+        const releaseId = parseInt(req.params.id);
+        const release = library.getRelease(releaseId);
+        if (!release) throw new NotFoundError("Release not found");
+
+        const { reason, details, name, email } = req.body;
+        if (!reason) {
+            throw new BadRequestError("Reason is required");
+        }
+
+        const reporterId = req.userId || null;
+
+        const reportId = database.createReport({
+            reporter_id: reporterId,
+            reporter_name: name || null,
+            reporter_email: email || null,
+            release_id: releaseId,
+            reason,
+            details: details || null
+        });
+
+        res.json({ success: true, reportId });
     }));
 
     return router;

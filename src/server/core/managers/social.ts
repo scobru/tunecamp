@@ -2,6 +2,7 @@ import type { Database as DatabaseType } from "better-sqlite3";
 import type { SocialRepository } from "../../repositories/social.repository.js";
 import type { RemoteActorRepository } from "../../repositories/remote-actor.repository.js";
 import type { RemoteContentRepository } from "../../repositories/remote-content.repository.js";
+import type { ReportsRepository } from "../../repositories/reports.repository.js";
 import type { SocialManager, Follower, Post, ApNote, RemoteActor, RemoteContent, TrackWithPlayCount, ArtistWithPlayCount, PlayHistoryEntry } from "../database.types.js";
 import { VisibilityProfile, ViewerContext, getContextFromProfile, UserRole } from "../../common/visibility.js";
 
@@ -9,7 +10,8 @@ export function createSocialManager(
     db: DatabaseType,
     socialRepository: SocialRepository,
     remoteActorRepository: RemoteActorRepository,
-    remoteContentRepository: RemoteContentRepository
+    remoteContentRepository: RemoteContentRepository,
+    reportsRepository: ReportsRepository
 ): SocialManager {
     return {
         // Followers
@@ -212,5 +214,10 @@ export function createSocialManager(
         saveRemotePost: (p: any) => { remoteContentRepository.saveRemotePost(p); },
         deleteRemotePost: (id: string) => { remoteContentRepository.deleteRemotePost(id); },
         deleteRemoteContent: (id: string) => { remoteContentRepository.deleteRemoteContent(id); },
+
+        // Reports
+        createReport: (r) => reportsRepository.createReport(r),
+        getReports: () => reportsRepository.getReports(),
+        deleteReport: (id) => reportsRepository.deleteReport(id),
     };
 }

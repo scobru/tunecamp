@@ -2517,6 +2517,40 @@ export function createAdminRoutes(container: ServiceContainer): Router {
         }
     });
 
+    /**
+     * GET /api/admin/reports
+     * List all reports for moderation.
+     */
+    router.get("/reports", (req: AuthenticatedRequest, res: any) => {
+        try {
+            const canView = req.context && VisibilityGuardian.can(req.context, Capability.VIEW_PRIVATE_LIBRARY);
+            if (!canView) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            const reports = database.getReports();
+            res.json(reports);
+        } catch (error) {
+            console.error("Error getting reports:", error);
+            res.status(500).json({ error: "Failed to get reports" });
+        }
+    });
+
+    /**
+     * DELETE /api/admin/reports/:id
+     * Dismiss/delete a report.
+     */
+    router.delete("/reports/:id", (req: AuthenticatedRequest, res: any) => {
+        try {
+            const id = parseInt(req.params.id, 10);
+            database.deleteReport(id);
+            res.json({ success: true, message: "Report dismissed" });
+        } catch (error) {
+            console.error("Error deleting report:", error);
+            res.status(500).json({ error: "Failed to dismiss report" });
+        }
+    });
+
     return router;
 }
 

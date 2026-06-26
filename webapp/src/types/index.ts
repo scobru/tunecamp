@@ -97,6 +97,7 @@ export interface Release {
     license?: string;
     track_ids?: (string | number)[];
     tracks?: Track[]; // Compat with existing code
+    additional_artworks?: string;
     product_type?: 'music' | 'podcast';
     podcast_author?: string;
     podcast_email?: string;
@@ -173,6 +174,7 @@ export interface Album {
     artist_id?: string | number;
     visibility?: 'public' | 'private' | 'unlisted';
     status?: string;
+    additional_artworks?: string;
 }
 
 export interface Playlist {
@@ -595,4 +597,19 @@ export interface LabAppRecord {
     allow: string[];
     enabled: boolean;
     created_at: string;
+}
+
+export interface Report {
+    id: number;
+    reporter_id: number | null;
+    reporter_name: string | null;
+    reporter_email: string | null;
+    release_id: number;
+    reason: string;
+    details: string | null;
+    status: string;
+    created_at: string;
+    release_title?: string;
+    release_slug?: string;
+    artist_name?: string;
 }

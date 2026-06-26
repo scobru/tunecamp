@@ -582,6 +582,109 @@ export function createUploadRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/admin/upload/additional-artworks
+     * Upload additional artwork images for a release
+     */
+    router.post("/additional-artworks", rejectAs400(imageUpload.array("files", 10)), async (req: any, res: any) => {
+        try {
+            const files = req.files as Express.Multer.File[];
+            const releaseSlug = req.body.releaseSlug;
+
+            if (!files || files.length === 0) {
+                return res.status(400).json({ error: "No files uploaded" });
+            }
+
+            if (!req.isAdmin && !req.isActive) {
+                await Promise.all(files.map(file => safeRemove(file.path)));
+                return res.status(403).json({ error: "Access denied: Account must be activated by admin to upload additional artworks" });
+            }
+
+            if (!releaseSlug) {
+                await Promise.all(files.map(file => safeRemove(file.path)));
+                return res.status(400).json({ error: "Release slug required" });
+            }
+
+            // Permission Check
+            const release = library.getReleaseBySlug(releaseSlug);
+            const album = library.getAlbumBySlug(releaseSlug);
+            const targetItem = release || album;
+
+            if (!targetItem) {
+                await Promise.all(files.map(file => safeRemove(file.path)));
+                return res.status(404).json({ error: "Release not found" });
+            }
+
+            if (!canModify(req, targetItem)) {
+                await Promise.all(files.map(file => safeRemove(file.path)));
+                return res.status(403).json({ error: "Access denied: Cannot upload artwork for another artist's release" });
+            }
+
+            // 1. Determine target directory: musicDir/releases/<slug>/artwork/
+            const safeSlug = targetItem.slug;
+            const releaseDir = path.join(musicDir, "releases", safeSlug);
+            const artworkDir = path.join(releaseDir, "artwork");
+            await storage.ensureDir(artworkDir);
+
+            // Get existing additional artworks
+            let additionalArtworks: string[] = [];
+            if (targetItem.additional_artworks) {
+                try {
+                    additionalArtworks = JSON.parse(targetItem.additional_artworks);
+                } catch (e) {
+                    console.error("Failed to parse additional_artworks:", e);
+                }
+            }
+
+            for (const file of files) {
+                const ext = path.extname(file.originalname).toLowerCase();
+                const uniqueId = Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+                const targetFilename = `additional-${uniqueId}${ext}`;
+                const targetPath = path.join(artworkDir, targetFilename);
+
+                await storage.move(file.path, targetPath, { overwrite: true });
+                console.log(`   Moved additional artwork to: ${targetPath}`);
+                
+                const relativePath = `artwork/${targetFilename}`;
+                additionalArtworks.push(relativePath);
+            }
+
+            // Update release.yaml
+            const releaseYamlPath = path.join(releaseDir, "release.yaml");
+            if (await storage.pathExists(releaseYamlPath)) {
+                try {
+                    const yaml = await import("yaml");
+                    const content = await storage.readFile(releaseYamlPath, "utf-8");
+                    const config = yaml.parse(content);
+                    config.additional_artworks = additionalArtworks;
+                    await storage.writeFile(releaseYamlPath, yaml.stringify(config));
+                } catch (err) {
+                    console.error("Error updating release.yaml:", err);
+                }
+            }
+
+            // Update database
+            const dbValue = JSON.stringify(additionalArtworks);
+            library.updateRelease(targetItem.id, { additional_artworks: dbValue });
+            console.log(`📀 Updated additional_artworks for release ${targetItem.title} -> ${dbValue}`);
+
+            // Sync changes
+            publishingService.syncRelease(targetItem.id).catch(e => console.error("Failed to sync additional artwork upload:", e));
+
+            res.json({
+                message: "Additional artworks uploaded",
+                additional_artworks: additionalArtworks
+            });
+        } catch (error) {
+            console.error("❌ Additional artworks upload error:", error);
+            if (req.files) {
+                const files = req.files as Express.Multer.File[];
+                await Promise.all(files.map(file => safeRemove(file.path)));
+            }
+            res.status(500).json({ error: "Additional artworks upload failed" });
+        }
+    });
+
+    /**
      * POST /api/admin/upload/avatar
      * Upload avatar for an artist
      */

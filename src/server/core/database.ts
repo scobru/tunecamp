@@ -9,6 +9,7 @@ import { ReleaseTrackRepository } from "../repositories/release-track.repository
 import { SocialRepository } from "../repositories/social.repository.js";
 import { RemoteActorRepository } from "../repositories/remote-actor.repository.js";
 import { RemoteContentRepository } from "../repositories/remote-content.repository.js";
+import { ReportsRepository } from "../repositories/reports.repository.js";
 import { createIdentityManager } from "./managers/identity.js";
 import { createLibraryManager } from "./managers/library.js";
 import { createSocialManager } from "./managers/social.js";
@@ -147,6 +148,7 @@ export function createDatabase(dbPath: string): DatabaseService {
             use_nft INTEGER DEFAULT 1,
             product_type TEXT DEFAULT 'music',
             curation_notes TEXT,
+            additional_artworks TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -459,6 +461,18 @@ export function createDatabase(dbPath: string): DatabaseService {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id INTEGER REFERENCES admin(id) ON DELETE SET NULL,
+            reporter_name TEXT,
+            reporter_email TEXT,
+            release_id INTEGER NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+            reason TEXT NOT NULL,
+            details TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS board_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
@@ -756,6 +770,10 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'curation_notes')) {
                 console.log("📦 [Database] Migrating albums table: adding curation_notes column...");
                 db.exec("ALTER TABLE albums ADD COLUMN curation_notes TEXT");
+            }
+            if (!cols.some(col => col.name === 'additional_artworks')) {
+                console.log("📦 [Database] Migrating albums table: adding additional_artworks column...");
+                db.exec("ALTER TABLE albums ADD COLUMN additional_artworks TEXT");
             }
 
             // Data migration: unify the release category onto the `type` column.
@@ -1182,6 +1200,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE INDEX IF NOT EXISTS idx_albums_visibility ON albums(visibility);
         CREATE INDEX IF NOT EXISTS idx_api_tokens_token ON api_tokens(token);
         CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
+        CREATE INDEX IF NOT EXISTS idx_reports_release ON reports(release_id);
         -- Legacy indexes on releases removed (releases is now a view)
     `);
 
@@ -1248,6 +1267,7 @@ export function createDatabase(dbPath: string): DatabaseService {
     const socialRepository = new SocialRepository(db);
     const remoteActorRepository = new RemoteActorRepository(db);
     const remoteContentRepository = new RemoteContentRepository(db);
+    const reportsRepository = new ReportsRepository(db);
 
     const identity = createIdentityManager(db);
     const library = createLibraryManager(
@@ -1262,7 +1282,8 @@ export function createDatabase(dbPath: string): DatabaseService {
         db,
         socialRepository,
         remoteActorRepository,
-        remoteContentRepository
+        remoteContentRepository,
+        reportsRepository
     );
     const integration = createIntegrationManager(db);
     const peer = createPeerManager(db);

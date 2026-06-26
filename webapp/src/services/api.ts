@@ -4,7 +4,7 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord
+    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report
 } from '../types';
 
 const API_URL = '/api';
@@ -99,6 +99,11 @@ const API = {
     getRelease: (idOrSlug: string | number) => handleResponse(api.get<Release>(`releases/${idOrSlug}`)),
     getReleaseCoverUrl: (id: string | number, timestamp?: number) => id ? `${API_URL}/releases/${id}/cover${timestamp ? `?v=${timestamp}` : ''}` : '',
     getTrackCoverUrl: (id: string | number, timestamp?: number) => id ? `${API_URL}/tracks/${id}/cover${timestamp ? `?v=${timestamp}` : ''}` : '',
+    getAdditionalArtworkUrl: (idOrSlug: string | number, filename: string) => {
+        if (!idOrSlug || !filename) return '';
+        const cleanFilename = filename.replace(/^artwork\//, '');
+        return `${API_URL}/releases/${idOrSlug}/artwork/${cleanFilename}`;
+    },
 
     getArtists: () => handleResponse(api.get<Artist[]>('artists')),
     getArtist: (idOrSlug: string | number) => handleResponse(api.get<Artist>(`artists/${idOrSlug}`)),
@@ -416,6 +421,12 @@ const API = {
         }
         return handleResponse(api.post('admin/upload/cover', formData));
     },
+    uploadAdditionalArtworks: (releaseSlug: string, files: File[]) => {
+        const formData = new FormData();
+        formData.append('releaseSlug', releaseSlug);
+        files.forEach(file => formData.append('files', file));
+        return handleResponse(api.post<{ additional_artworks: string[] }>('admin/upload/additional-artworks', formData));
+    },
 
     uploadTrackArtwork: (trackId: string, file: File) => {
         const formData = new FormData();
@@ -711,6 +722,12 @@ const API = {
     createLabApp: (data: Partial<LabAppRecord>) => handleResponse(api.post<LabAppRecord>('admin/lab-apps', data)),
     updateLabApp: (id: number, data: Partial<LabAppRecord>) => handleResponse(api.put<LabAppRecord>(`admin/lab-apps/${id}`, data)),
     deleteLabApp: (id: number) => handleResponse(api.delete<{ success: boolean }>(`admin/lab-apps/${id}`)),
+
+    // --- Release Reporting ---
+    reportRelease: (releaseId: number | string, reason: string, details: string | null, name?: string | null, email?: string | null) =>
+        handleResponse(api.post<{ success: boolean, reportId: number }>(`releases/${releaseId}/report`, { reason, details, name, email })),
+    getReports: () => handleResponse<Report[]>(api.get('admin/reports')),
+    deleteReport: (id: number) => handleResponse<{ success: boolean }>(api.delete(`admin/reports/${id}`)),
 };
 
 export interface NowListeningEntry {

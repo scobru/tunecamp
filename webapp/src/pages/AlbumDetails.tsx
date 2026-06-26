@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical } from "lucide-react";
+import { Share2, Play, Heart, Download, Unlock, ExternalLink, RefreshCw, CheckCircle2, Wallet, Copyright, Mic, ListPlus, ListMusic, MoreVertical, Flag, X } from "lucide-react";
 
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -21,6 +21,7 @@ import { sanitizeHtml } from "../utils/sanitize";
 import { Comments } from "../components/Comments";
 import { RelatedTracks } from "../components/RelatedTracks";
 import { GenreTags } from "../components/GenreTags";
+import { ReportReleaseModal } from "../components/modals/ReportReleaseModal";
 
 const AlbumDetails = () => {
   const { idOrSlug } = useParams();
@@ -40,6 +41,8 @@ const AlbumDetails = () => {
   const [isAlbumLiked, setIsAlbumLiked] = useState(false);
   const [seedingMagnet, setSeedingMagnet] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [activeArtworkIndex, setActiveArtworkIndex] = useState<number | null>(null);
 
   const canEditGenre = isAdmin || Boolean(user?.artistId && String(album?.artistId) === String(user?.artistId));
 
@@ -223,6 +226,34 @@ const AlbumDetails = () => {
     }
   })();
 
+  const additionalArtworks = (() => {
+    if (!album?.additional_artworks) return [];
+    try {
+      return typeof album.additional_artworks === 'string'
+        ? JSON.parse(album.additional_artworks)
+        : album.additional_artworks;
+    } catch {
+      return [];
+    }
+  })();
+
+  useEffect(() => {
+    if (activeArtworkIndex === null || additionalArtworks.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setActiveArtworkIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : additionalArtworks.length - 1));
+      } else if (e.key === "ArrowRight") {
+        setActiveArtworkIndex((prev) => (prev !== null && prev < additionalArtworks.length - 1 ? prev + 1 : 0));
+      } else if (e.key === "Escape") {
+        setActiveArtworkIndex(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeArtworkIndex, additionalArtworks.length]);
+
   // External Showcase: purchases happen off-platform (Bandcamp) via the
   // configured "External Buy URL". No file is served by TuneCamp, so the
   // track row links to the buy URL instead of offering a download.
@@ -398,6 +429,14 @@ const AlbumDetails = () => {
                 title="Share Album"
               >
                 <Share2 size={24} className="opacity-60" />
+              </button>
+
+              <button
+                className="btn btn-lg btn-square rounded-2xl border border-base-content/5 hover:bg-base-content/5 hover:border-base-content/10 transition-all tooltip tooltip-top"
+                onClick={() => setIsReportModalOpen(true)}
+                data-tip="Report Release"
+              >
+                <Flag size={24} className="opacity-60 text-warning" />
               </button>
 
               {isAdmin && (
@@ -692,6 +731,40 @@ const AlbumDetails = () => {
           </div>
         )}
 
+        {/* Additional Artworks / Booklet Gallery */}
+        {additionalArtworks && additionalArtworks.length > 0 && (
+          <div className="card bg-base-200/20 border border-base-content/5 rounded-3xl p-6 md:p-8 space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xs font-black tracking-[0.2em] opacity-40 uppercase">Digital Booklet & Booklet Artworks</h2>
+              <span className="text-xs opacity-50 font-medium">{additionalArtworks.length} images</span>
+            </div>
+
+            {/* Premium horizontal slider with hover actions */}
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-base-content/10 scrollbar-track-transparent snap-x snap-mandatory">
+              {additionalArtworks.map((pathStr: string, idx: number) => {
+                const artworkUrl = API.getAdditionalArtworkUrl(album.slug || album.id, pathStr);
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setActiveArtworkIndex(idx)}
+                    className="flex-shrink-0 w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden border border-base-content/10 cursor-pointer snap-start relative group hover:scale-[1.02] hover:shadow-xl transition-all duration-300 bg-base-300"
+                  >
+                    <img
+                      src={artworkUrl}
+                      alt={`Booklet ${idx + 1}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                      <span className="text-xs text-white font-bold">Image {idx + 1} of {additionalArtworks.length}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* AI Recommendations */}
         {album.tracks?.[0] && (
         <div className="px-2">
@@ -720,6 +793,57 @@ const AlbumDetails = () => {
           trackId={album.tracks?.[0]?.id ? String(album.tracks[0].id) : undefined}
         />
       </div>
+
+      <ReportReleaseModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        releaseId={album.id}
+        releaseTitle={album.title}
+      />
+
+      {/* Lightbox Dialog / Slideshow Overlay */}
+      {activeArtworkIndex !== null && additionalArtworks.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md animate-fade-in">
+          {/* Close button in top-right */}
+          <button
+            onClick={() => setActiveArtworkIndex(null)}
+            className="absolute top-6 right-6 btn btn-ghost btn-circle btn-lg text-white hover:bg-white/10 z-[110]"
+            aria-label="Close lightbox"
+          >
+            <X className="w-8 h-8" />
+          </button>
+
+          {/* Left Arrow Navigation */}
+          <button
+            onClick={() => setActiveArtworkIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : additionalArtworks.length - 1))}
+            className="absolute left-4 md:left-8 btn btn-ghost btn-circle btn-lg text-white hover:bg-white/10 z-[110]"
+            aria-label="Previous image"
+          >
+            <span className="text-3xl">&lsaquo;</span>
+          </button>
+
+          {/* Center Image Container */}
+          <div className="max-w-[85vw] max-h-[80vh] flex flex-col items-center justify-center select-none">
+            <img
+              src={API.getAdditionalArtworkUrl(album.slug || album.id, additionalArtworks[activeArtworkIndex])}
+              alt={`Booklet ${activeArtworkIndex + 1}`}
+              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl transition-all duration-300"
+            />
+            <div className="text-white/60 text-sm mt-4 font-bold">
+              Image {activeArtworkIndex + 1} of {additionalArtworks.length}
+            </div>
+          </div>
+
+          {/* Right Arrow Navigation */}
+          <button
+            onClick={() => setActiveArtworkIndex((prev) => (prev !== null && prev < additionalArtworks.length - 1 ? prev + 1 : 0))}
+            className="absolute right-4 md:right-8 btn btn-ghost btn-circle btn-lg text-white hover:bg-white/10 z-[110]"
+            aria-label="Next image"
+          >
+            <span className="text-3xl">&rsaquo;</span>
+          </button>
+        </div>
+      )}
 
     </div>
   );
