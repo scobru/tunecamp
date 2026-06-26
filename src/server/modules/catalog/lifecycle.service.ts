@@ -148,6 +148,6 @@ export class LifecycleService {
             this.db.updateRelease(id, { curation_notes: reason });
         }
 
-        console.log(`[Lifecycle] Item ${id} rejected by Admin. Reason: ${reason}`);
+        console.log(`[Lifecycle] Item ${id} rejected by Admin. Reason: ${reason}. Curation notes updated.`);
     }
 }
