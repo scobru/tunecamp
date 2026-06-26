@@ -527,6 +527,8 @@ export interface LibraryManager {
     updateTrackArtistInfo(id: number, artistId: number | null, name: string | null): void;
     updateTrackAlbum(id: number, albumId: number | null): void;
     updateTracksAlbum(trackIds: number[], albumId: number | null): void;
+    updateTracksLosslessPathBatch(ids: number[], path: string | null): void;
+    updateTracksPathsBatch(updates: { id: number, path: string }[]): void;
     updateTrackOrder(id: number, trackNum: number): void;
     updateTrackNumber(id: number, num: number | null): void;
     updateTracksOrder(trackOrders: { id: number, trackNum: number }[]): void;

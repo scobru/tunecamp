@@ -278,6 +278,28 @@ export class TrackRepository extends BaseRepository {
         this.db.prepare("UPDATE tracks SET lossless_path = ? || SUBSTR(lossless_path, LENGTH(?) + 1) WHERE lossless_path = ? OR lossless_path LIKE ? || '/%'").run(newPrefix, oldPrefix, oldPrefix, oldPrefix);
     }
 
+    updateLosslessPathBatch(ids: number[], path: string | null): void {
+        if (ids.length === 0) return;
+        this.db.transaction(() => {
+            const CHUNK_SIZE = 900;
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                const chunk = ids.slice(i, i + CHUNK_SIZE);
+                const placeholders = chunk.map(() => '?').join(',');
+                this.db.prepare(`UPDATE tracks SET lossless_path = ? WHERE id IN (${placeholders})`).run(path, ...chunk);
+            }
+        })();
+    }
+
+    updatePathsBatch(updates: { id: number, path: string }[]): void {
+        if (updates.length === 0) return;
+        this.db.transaction(() => {
+            const stmt = this.db.prepare("UPDATE tracks SET file_path = ? WHERE id = ?");
+            for (const { id, path } of updates) {
+                stmt.run(path, id);
+            }
+        })();
+    }
+
     merge(fromId: number, toId: number, targetFilePath: string): void {
         this.db.transaction(() => {
             try {
@@ -361,6 +383,19 @@ export class TrackRepository extends BaseRepository {
         this.db.transaction(() => {
             this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(id);
             this.db.prepare("DELETE FROM tracks WHERE id = ?").run(id);
+        })();
+    }
+
+    deleteBatch(ids: number[]): void {
+        if (ids.length === 0) return;
+        this.db.transaction(() => {
+            const CHUNK_SIZE = 900;
+            for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+                const chunk = ids.slice(i, i + CHUNK_SIZE);
+                const placeholders = chunk.map(() => '?').join(',');
+                this.db.prepare(`DELETE FROM track_ownership WHERE track_id IN (${placeholders})`).run(...chunk);
+                this.db.prepare(`DELETE FROM tracks WHERE id IN (${placeholders})`).run(...chunk);
+            }
         })();
     }
 
