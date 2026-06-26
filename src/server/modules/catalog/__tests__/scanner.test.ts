@@ -26,6 +26,9 @@ const mockDbService = {
     createTrack: jest.fn(),
     updateTrackLosslessPath: jest.fn(),
     deleteTrack: jest.fn(),
+    deleteTracksBatch: jest.fn(),
+    updateTracksLosslessPathBatch: jest.fn(),
+    updateTracksPathsBatch: jest.fn(),
     mergeTracks: jest.fn(),
     getArtistByName: jest.fn(),
     getAlbumBySlug: jest.fn(),
@@ -117,8 +120,8 @@ describe('Scanner Core Logic', () => {
         // @ts-ignore
         await scanner.cleanupStaleLibraryTracks('/music', knownFiles);
 
-        expect(mockDbService.deleteTrack).toHaveBeenCalledWith(2);
-        expect(mockDbService.deleteTrack).not.toHaveBeenCalledWith(1);
+        expect(mockDbService.deleteTracksBatch).toHaveBeenCalledWith([2]);
+        expect(mockDbService.deleteTracksBatch).not.toHaveBeenCalledWith([1]);
     });
 });
 
