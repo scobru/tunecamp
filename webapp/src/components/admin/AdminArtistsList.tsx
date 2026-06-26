@@ -24,7 +24,7 @@ export const AdminArtistsList = () => {
       
       const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
       if (!isAdmin && user?.artistId) {
-          setArtists(data.filter(a => a.id === user.artistId));
+          setArtists(data.filter(a => String(a.id) === String(user.artistId)));
       } else {
           setArtists(data);
       }

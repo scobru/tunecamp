@@ -5,7 +5,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
 import { useWalletStore } from "../stores/useWalletStore";
 import { notify } from "../utils/notify";
-import { canPublish } from "../utils/permissions";
+import { canPublish, canManageItem } from "../utils/permissions";
 import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
 import { TrackPickerModal } from "../components/modals/TrackPickerModal";
@@ -96,7 +96,6 @@ export default function AdminReleaseEditor() {
   const { user, role, isAuthenticated, isLoading } = useAuthStore();
   const isNew = !id;
   const isAdmin = role === 'admin' || role === 'root_admin';
-  const isSuperUser = role === 'super_user';
   // Mirrors the backend VisibilityGuardian.canPublishContent gate: a listener in
   // self-publish mode (role "user" + artistId) may edit/publish their own content,
   // not just admins/super_users. Keep edit-affordances in sync with this.
@@ -142,6 +141,13 @@ export default function AdminReleaseEditor() {
     podcast_explicit: false,
     externalLinks: [],
   });
+
+  // Per-item management gate (edit/publish/delete). A new release is always
+  // manageable by anyone who can publish; an existing one only by its owner /
+  // linked artist or a Manager/Root Admin. Mirrors backend canManageItem so a
+  // Curator can't act on another artist's release (the server would 403).
+  const canManageThis =
+    isNew || canManageItem(user as any, role, { owner_id: metadata.owner_id, artist_id: metadata.artist_id });
 
   // Tracks State
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
@@ -680,14 +686,14 @@ export default function AdminReleaseEditor() {
           </h1>
         </div>
         <div className="flex-none gap-2">
-          {!isNew && (
-            isAdmin ||
-            (isSuperUser && user?.artistId) ||
-            // The release owner or the linked artist may delete their own
-            // release — mirrors the backend VisibilityGuardian.canManageItem gate.
-            (user?.userId != null && metadata.owner_id === user.userId) ||
-            (user?.artistId != null && metadata.artist_id === Number(user.artistId))
-          ) && (
+          {/* Read-only notice: a Curator/Listener-Artist who can publish in
+              general but doesn't manage THIS release (different artist). */}
+          {!isNew && canEdit && !canManageThis && (
+            <span className="badge badge-ghost badge-sm gap-1" title="You can only edit your own releases">
+              Read-only
+            </span>
+          )}
+          {!isNew && canManageThis && (
             <button
               className="btn btn-ghost btn-sm text-error hidden sm:flex"
               id="delete-release-btn"
@@ -698,7 +704,7 @@ export default function AdminReleaseEditor() {
               Delete
             </button>
           )}
-          {canEdit && (
+          {canEdit && canManageThis && (
             <>
               <button
                 className="btn btn-ghost btn-sm"
