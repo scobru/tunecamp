@@ -373,6 +373,73 @@ export function createMetadataRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/metadata/maintenance/artists/autofill
+     */
+    router.post("/maintenance/artists/autofill", async (req: AuthenticatedRequest, res) => {
+        if (!req.isAdmin && !req.isSuperUser) return res.status(403).json({ error: "Admin only" });
+        const { artistIds, force } = req.body;
+        if (!Array.isArray(artistIds)) return res.status(400).json({ error: "artistIds array required" });
+
+        const results = { success: 0, failed: 0, skipped: 0, errors: [] as string[] };
+
+        for (const artistId of artistIds) {
+            try {
+                const artist = library.getArtist(artistId);
+                if (!artist) {
+                    results.skipped++;
+                    continue;
+                }
+
+                // If not forcing and artist already has bio/photo, skip
+                if (!force && artist.photo_path && artist.bio) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const candidates = await maintenance.getArtistPhotoCandidates(artistId);
+                const bestMatch = candidates[0];
+
+                if (!bestMatch) {
+                    results.skipped++;
+                    continue;
+                }
+
+                let photoPath = artist.photo_path;
+
+                // Download photo if URL provided and we don't have one (or force is true)
+                if (bestMatch.avatarUrl && (!photoPath || force)) {
+                    const artistAssetsDir = path.join(musicDir, "artists", artist.slug || String(artistId));
+                    await fs.ensureDir(artistAssetsDir);
+                    
+                    const ext = path.extname(new URL(bestMatch.avatarUrl).pathname) || ".jpg";
+                    const dest = path.join(artistAssetsDir, `photo-${Date.now()}${ext}`);
+                    
+                    const success = await downloadImage(bestMatch.avatarUrl, dest);
+                    if (success) {
+                        photoPath = path.relative(musicDir, dest).replace(/\\/g, "/");
+                    }
+                }
+
+                // Update Database
+                library.updateArtist(
+                    artistId,
+                    bestMatch.name || undefined,
+                    (force || !artist.bio) ? (bestMatch.aiBio || bestMatch.bio || undefined) : undefined,
+                    photoPath || undefined,
+                    bestMatch.links ? (typeof bestMatch.links === 'string' ? bestMatch.links : JSON.stringify(bestMatch.links)) : undefined
+                );
+
+                results.success++;
+            } catch (err: any) {
+                results.failed++;
+                results.errors.push(`Artist ${artistId}: ${err.message}`);
+            }
+        }
+
+        res.json(results);
+    });
+
+    /**
      * POST /api/metadata/maintenance/audit-all
      * Starts the background library audit/repair process
      */

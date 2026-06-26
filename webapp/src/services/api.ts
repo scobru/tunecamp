@@ -502,6 +502,9 @@ const API = {
     aiAutofillAlbumMetadata: (albumIds: (string | number)[], force?: boolean) =>
         handleResponse(api.post<{ success: number, failed: number, skipped: number, errors: string[] }>('metadata/maintenance/albums/ai-autofill', { albumIds, force })),
 
+    autofillArtistMetadata: (artistIds: (string | number)[], force?: boolean) =>
+        handleResponse<{ success: number, failed: number, skipped: number, errors: string[] }>(api.post('metadata/maintenance/artists/autofill', { artistIds, force })),
+
     getRelatedTracks: (trackId: string | number, limit = 5) =>
         handleResponse(api.get<Track[]>(`catalog/tracks/${trackId}/related?limit=${limit}`)),
 

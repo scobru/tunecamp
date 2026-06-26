@@ -346,6 +346,16 @@ export const AdminMaintenancePanel = () => {
                 </div>
                 
                 <div className="flex gap-2">
+                    <button
+                        className="btn btn-sm btn-outline btn-secondary tooltip tooltip-bottom"
+                        onClick={handleRescan}
+                        disabled={isProcessing}
+                        data-tip="Deep scan of the music directory to detect new files"
+                    >
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+                        Rescan Library
+                    </button>
+
                     <button 
                         className="btn btn-sm btn-ghost"
                         onClick={mode === 'tracks' ? loadTracks : mode === 'artists' ? loadArtists : loadAlbums}
@@ -459,27 +469,6 @@ export const AdminMaintenancePanel = () => {
             {/* CONTEXTUAL COMPARTMENTS */}
             {mode === 'tracks' && (
                 <div className="space-y-6">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div className="card card-m3 bg-base-300/30 border border-base-content/5">
-                            <div className="card-body p-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Zap className="text-secondary" size={18} />
-                                    <h2 className="card-title text-sm font-bold tracking-normal">Library Scanning</h2>
-                                </div>
-                                <p className="opacity-70 text-xs mb-4">
-                                    Deep scan of the music directory to detect new files.
-                                </p>
-                                <button
-                                    className="btn btn-secondary btn-outline btn-xs w-full"
-                                    onClick={handleRescan}
-                                    disabled={isProcessing}
-                                >
-                                    Rescan Library
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
                     <div className="bg-base-300/30 border border-base-content/10 rounded-xl p-4 space-y-4">
                         <div className="flex flex-col md:flex-row justify-between gap-4">
                             <div className="flex items-start gap-3">
@@ -650,12 +639,41 @@ export const AdminMaintenancePanel = () => {
             )}
 
             {mode === 'artists' && (
-                <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
-                    <User className="text-primary" />
-                    <div>
-                        <h3 className="font-bold">Artist Profile Enrichment</h3>
-                        <div className="text-xs opacity-70">
-                            Missing photos or bios? Use external providers to find high-quality imagery.
+                <div className="flex flex-col gap-4">
+                    <div className="alert alert-info shadow-sm bg-primary/10 border-primary/20">
+                        <User className="text-primary" />
+                        <div>
+                            <h3 className="font-bold">Artist Profile Enrichment</h3>
+                            <div className="text-xs opacity-70">
+                                Missing photos or bios? Use external providers to find high-quality imagery.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex gap-1 items-center bg-base-300/50 p-1 rounded-lg">
+                            <button 
+                                className="btn btn-sm btn-primary"
+                                disabled={selectedIds.length === 0 || isProcessing}
+                                onClick={async () => {
+                                    if (selectedIds.length === 0) return;
+                                    if (!await confirm(`Are you sure you want to attempt autofill for ${selectedIds.length} artists?`)) return;
+
+                                    setIsProcessing(true);
+                                    try {
+                                        const res = await API.autofillArtistMetadata(selectedIds);
+                                        setResults(res);
+                                        loadArtists(); // Refresh list
+                                    } catch (e: any) {
+                                        notify.error(e, "Artist Autofill failed");
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
+                                }}
+                            >
+                                {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <Wand2 size={18} />}
+                                Autofill ({selectedIds.length})
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -773,7 +791,7 @@ export const AdminMaintenancePanel = () => {
                                         </>
                                     )}
                                     <td className="text-right">
-                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 className="btn btn-xs btn-ghost"
                                                 onClick={() => {

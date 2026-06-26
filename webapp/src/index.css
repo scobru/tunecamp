@@ -60,8 +60,8 @@
   name: "light";
   color-scheme: light;
   --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(96% 0.01 280);
-  --color-base-300: oklch(92% 0.02 280);
+  --color-base-200: oklch(93% 0.015 280);
+  --color-base-300: oklch(86% 0.025 280);
   --color-base-content: oklch(15% 0.02 280);
 
   --color-primary: oklch(60% 0.25 290);
@@ -108,8 +108,8 @@
   name: "nordic";
   color-scheme: light;
   --color-base-100: oklch(97% 0.015 220); /* Ice Blue Base */
-  --color-base-200: oklch(93% 0.025 220);
-  --color-base-300: oklch(89% 0.035 220);
+  --color-base-200: oklch(90% 0.025 220);
+  --color-base-300: oklch(83% 0.035 220);
   --color-base-content: oklch(25% 0.08 220);
 
   --color-prominent: oklch(10% 0.1 220);
@@ -383,5 +383,23 @@
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
   }
+}
+
+/* Increase contrast of translucent boxes in light themes so they don't wash out to white */
+[data-theme="light"] .bg-base-200\/10,
+[data-theme="nordic"] .bg-base-200\/10 {
+  background-color: color-mix(in srgb, var(--color-base-200) 40%, transparent) !important;
+}
+[data-theme="light"] .bg-base-200\/20,
+[data-theme="nordic"] .bg-base-200\/20 {
+  background-color: color-mix(in srgb, var(--color-base-200) 65%, transparent) !important;
+}
+[data-theme="light"] .bg-base-300\/30,
+[data-theme="nordic"] .bg-base-300\/30 {
+  background-color: color-mix(in srgb, var(--color-base-300) 70%, transparent) !important;
+}
+[data-theme="light"] .bg-base-300\/40,
+[data-theme="nordic"] .bg-base-300\/40 {
+  background-color: color-mix(in srgb, var(--color-base-300) 80%, transparent) !important;
 }
 

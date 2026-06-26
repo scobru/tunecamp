@@ -14,6 +14,8 @@ import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
+import { renderMarkdown } from "../utils/markdown";
+import { sanitizeHtml } from "../utils/sanitize";
 
 
 import { Comments } from "../components/Comments";
@@ -679,6 +681,16 @@ const AlbumDetails = () => {
           })}
         </div>
         </div>
+
+        {album.description && (
+          <div className="card bg-base-200/20 border border-base-content/5 rounded-3xl p-6 md:p-8 space-y-4">
+            <h2 className="text-xs font-black tracking-[0.2em] opacity-40 uppercase">About this release</h2>
+            <div 
+              className="prose prose-sm max-w-none opacity-90 text-base-content/95"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(album.description)) }} 
+            />
+          </div>
+        )}
 
         {/* AI Recommendations */}
         {album.tracks?.[0] && (
