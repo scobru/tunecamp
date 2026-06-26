@@ -338,7 +338,8 @@ export class AlbumRepository extends BaseRepository {
             podcastAuthor: 'podcast_author',
             podcastEmail: 'podcast_email',
             podcastCategory: 'podcast_category',
-            podcastExplicit: 'podcast_explicit'
+            podcastExplicit: 'podcast_explicit',
+            curationNotes: 'curation_notes'
         };
 
         for (const [key, value] of Object.entries(album)) {
