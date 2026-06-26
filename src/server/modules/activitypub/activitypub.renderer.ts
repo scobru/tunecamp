@@ -113,9 +113,7 @@ export class ActivityPubRenderer {
         const published = post.published_at || post.created_at;
         const sentTime = published ? new Date(published).getTime() : 0;
 
-        let contentHtml = this.renderMarkdown(post.content);
-
-        // Parse markdown image syntax to populate attachments array
+        // Parse markdown image syntax to populate the attachments array
         const attachments: any[] = [];
         const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
         let match;
@@ -133,6 +131,13 @@ export class ActivityPubRenderer {
                 name: alt || undefined
             });
         }
+
+        // Images federate as attachments (Mastodon strips inline <img>); drop the image
+        // markdown from the body so other software doesn't render the same image twice.
+        const body = attachments.length > 0
+            ? post.content.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+            : post.content;
+        let contentHtml = this.renderMarkdown(body);
 
         if (!post.title) {
             return {
@@ -216,11 +221,21 @@ export class ActivityPubRenderer {
         html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
         html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
+        // Sanitize URLs: allow only http(s), mailto, anchors, and site-relative paths.
+        // Input is already escaped for &<>, but NOT quotes — reject any URL carrying
+        // quotes/spaces/angle brackets so it can't break out of the src/href attribute.
+        const safeUrl = (url: string): string => {
+            const u = url.trim();
+            return /^(https?:\/\/|mailto:|\/|#)/i.test(u) && !/["'<>\s]/.test(u) ? u : "#";
+        };
+
         // Images: ![alt](url)
-        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />');
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, url) =>
+            `<img src="${safeUrl(url)}" alt="${alt}" />`);
 
         // Links: [text](url)
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) =>
+            `<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer">${text}</a>`);
 
         // Bullet Lists
         html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");

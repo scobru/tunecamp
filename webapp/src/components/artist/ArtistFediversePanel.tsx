@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
     RefreshCw, Trash2, MessageSquare, Disc, AlertTriangle, Users,
     Globe, Eye, Lock, Send, Heart, Repeat, MessageCircle, ExternalLink, Copy, Check, Music,
-    Edit
+    Edit, Image as ImageIcon
 } from 'lucide-react';
 import API from '../../services/api';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -75,7 +75,9 @@ export const ArtistFediversePanel = () => {
     const [composerLoading, setComposerLoading] = useState(false);
     const [isComposerFocused, setIsComposerFocused] = useState(false);
     const [composerTab, setComposerTab] = useState<'write' | 'preview'>('write');
+    const [composerImageUploading, setComposerImageUploading] = useState(false);
     const composerTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const composerFileInputRef = useRef<HTMLInputElement>(null);
 
     // Timeline filter
     const [timelineFilter, setTimelineFilter] = useState<'all' | 'mine' | 'following'>('mine');
@@ -221,6 +223,34 @@ export const ArtistFediversePanel = () => {
             notify.error(e, "Failed to create post");
         } finally {
             setComposerLoading(false);
+        }
+    };
+
+    // Upload an image and insert its Markdown at the cursor — same flow as CreatePostModal.
+    const handleComposerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setComposerImageUploading(true);
+        try {
+            const res = await API.uploadPostMedia(file);
+            if (res?.url) {
+                const snippet = `![Image Description](${res.url})`;
+                const ta = composerTextareaRef.current;
+                if (ta) {
+                    const start = ta.selectionStart, end = ta.selectionEnd;
+                    setComposerContent(prev => prev.slice(0, start) + snippet + prev.slice(end));
+                } else {
+                    setComposerContent(prev => prev + snippet);
+                }
+                setIsComposerFocused(true);
+            } else {
+                notify.error(null, 'Failed to upload image');
+            }
+        } catch (err: any) {
+            notify.error(err, 'Failed to upload image');
+        } finally {
+            setComposerImageUploading(false);
+            if (composerFileInputRef.current) composerFileInputRef.current.value = '';
         }
     };
 
@@ -832,7 +862,18 @@ export const ArtistFediversePanel = () => {
                             {/* Active Action Panel */}
                             {isComposerFocused && (
                                 <div className="flex items-center justify-between pt-3 border-t border-base-content/5 animate-fade-in">
-                                    {/* Left controls: Visibility Setting */}
+                                    {/* Left controls: Image upload + Visibility */}
+                                    <div className="flex items-center gap-1">
+                                    <input ref={composerFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleComposerImageUpload} />
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-ghost btn-circle text-base-content/60 hover:text-primary tooltip tooltip-top"
+                                        data-tip="Add image"
+                                        disabled={composerImageUploading}
+                                        onClick={() => composerFileInputRef.current?.click()}
+                                    >
+                                        {composerImageUploading ? <span className="loading loading-spinner loading-xs" /> : <ImageIcon size={16} />}
+                                    </button>
                                     <div className="dropdown dropdown-top dropdown-right">
                                         <div 
                                             tabIndex={0} 
@@ -873,6 +914,7 @@ export const ArtistFediversePanel = () => {
                                                 </button>
                                             </li>
                                         </ul>
+                                    </div>
                                     </div>
 
                                     {/* Right controls: Char Count and Publish button */}

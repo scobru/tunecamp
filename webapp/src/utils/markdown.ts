@@ -25,11 +25,21 @@ export function renderMarkdown(markdown: string): string {
     html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
     html = html.replace(/_(.*?)_/g, "<em>$1</em>");
 
+    // Sanitize URLs: allow only http(s), mailto, anchors, and site-relative paths.
+    // Input is already escaped for &<>, but NOT quotes — reject any URL carrying
+    // quotes/spaces/angle brackets so it can't break out of the src/href attribute.
+    const safeUrl = (url: string): string => {
+        const u = url.trim();
+        return /^(https?:\/\/|mailto:|\/|#)/i.test(u) && !/["'<>\s]/.test(u) ? u : "#";
+    };
+
     // Images: ![alt](url)
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-xl my-3 shadow-md border border-base-content/5" />');
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, url) =>
+        `<img src="${safeUrl(url)}" alt="${alt}" class="max-w-full h-auto rounded-xl my-3 shadow-md border border-base-content/5" />`);
 
     // Links: [text](url)
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>');
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) =>
+        `<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${text}</a>`);
 
     // Bullet Lists (lines starting with - or *)
     html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");

@@ -1287,13 +1287,13 @@ const ArtistProfileEditor = ({ initialData, onSaved }: { initialData: any; onSav
                       <input
                         type="text"
                         readOnly
-                        value={`${window.location.origin}/api/ap/users/${initialData?.slug}`}
+                        value={`${window.location.origin}/users/${initialData?.slug}`}
                         className="input input-sm input-bordered font-mono text-xs flex-1 bg-base-300/60"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/api/ap/users/${initialData?.slug}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/users/${initialData?.slug}`);
                           notify.success("Actor URI copied to clipboard!");
                         }}
                         className="btn btn-sm btn-outline btn-square tooltip tooltip-left"
