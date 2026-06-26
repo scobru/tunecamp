@@ -70,11 +70,10 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
             console.log("📦 [Restore] Detected ZIP format, using native unzip for extraction...");
             // Use native unzip for .zip files (handles >2GB better than adm-zip)
             await new Promise<void>(async (resolve, reject) => {
-                const { exec } = await import("child_process");
+                const { execFile } = await import("child_process");
                 // -o overwrites, -d specifies destination
-                const cmd = `unzip -o "${path.resolve(zipPath)}" -d "${path.resolve(extractPath)}"`;
 
-                exec(cmd, { maxBuffer: 1024 * 1024 * 10 }, (error: any, stdout: string, stderr: string) => {
+                execFile("unzip", ["-o", path.resolve(zipPath), "-d", path.resolve(extractPath)], { maxBuffer: 1024 * 1024 * 10 }, (error: any, stdout: string, stderr: string) => {
                     if (error) {
                         console.error(`❌ [Restore] unzip extraction failed: ${stderr}`);
                         reject(new Error(`Extraction failed: ${stderr || error.message}`));
@@ -88,11 +87,10 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
 
             // Use native tar for .tar.gz (better for large files >2GB)
             await new Promise<void>(async (resolve, reject) => {
-                const { exec } = await import("child_process");
-                // Use absolute paths and quotes to handle potential spaces
-                const cmd = `tar -xf "${path.resolve(zipPath)}" -C "${path.resolve(extractPath)}"`;
+                const { execFile } = await import("child_process");
+                // Use absolute paths to handle potential spaces
 
-                exec(cmd, (error: any, stdout: string, stderr: string) => {
+                execFile("tar", ["-xf", path.resolve(zipPath), "-C", path.resolve(extractPath)], (error: any, stdout: string, stderr: string) => {
                     if (error) {
                         console.error(`❌ [Restore] tar extraction failed: ${stderr}`);
                         reject(new Error(`Extraction failed: ${stderr || error.message}`));
