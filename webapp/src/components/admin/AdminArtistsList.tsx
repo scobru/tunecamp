@@ -16,13 +16,13 @@ export const AdminArtistsList = () => {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
 
   const loadArtists = async () => {
     setLoading(true);
     try {
       const data = await API.getArtists();
       
-      const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
       if (!isAdmin && user?.artistId) {
           setArtists(data.filter(a => String(a.id) === String(user.artistId)));
       } else {
