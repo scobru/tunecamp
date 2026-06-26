@@ -405,11 +405,19 @@ export class SubsonicService {
     `;
     const params = [...filter.params, size, offset];
     const rows = (this.db as any).db.prepare(sql).all(...params);
-    const tracks: Track[] = [];
+
+    if (rows.length === 0) return [];
+
+    const ids = [...new Set<number>(rows.map((r: any) => r.id))];
+    const tracks = this.db.getTracksByIds(ids);
+    const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
+
+    const finalTracks: Track[] = [];
     for (const row of rows) {
-      const track = this.db.getTrack(row.id);
-      if (track) tracks.push(track);
+      const track = trackMap.get(row.id);
+      if (track) finalTracks.push(track);
     }
-    return tracks.map((t: Track) => this.formatPodcastEpisode(t, context.userId ? 'user' : 'guest'));
+
+    return finalTracks.map((t: Track) => this.formatPodcastEpisode(t, context.userId ? 'user' : 'guest'));
   }
 }
