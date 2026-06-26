@@ -7,6 +7,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/Docs-GitHub%20Pages-blue)](https://scobru.github.io/tunecamp/)
+[![Website](https://img.shields.io/badge/Website-Tunecamp-blue)](https://tunecamp.vercel.app)
 
 ## Why This Exists
 
@@ -38,6 +39,7 @@ docker-compose up -d --build
 ## Features
 
 ### Core
+
 - 🎵 **Audio-first**: Automatically reads metadata, generates waveforms, and processes cover art from your audio files (MP3, FLAC, WAV, etc.).
 - 🖥️ **Streaming Server**: Personal streaming server with a modern, responsive web interface.
 - 🎨 **Customizable**: Theming, background images, cover images, site branding, and per-artist profiles.
@@ -47,12 +49,14 @@ docker-compose up -d --build
 - 🔊 **Smart Streaming**: Provider fallback for missing local files via SoundCloud and Bandcamp, with caching and automatic retries. Additional providers (e.g. YouTube) can be added through the [plugin system](docs/PLUGINS.md).
 
 ### Decentralization & Federation
+
 - 🔐 **Instance Identity**: Each server holds a cryptographic keypair used to sign its entry in the community registry.
 - 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma) as a broadcaster. Artists are ActivityPub actors with followers, posts, and release broadcasts.
 - 🌐 **Community Network**: Discover other Tunecamp instances via federated HTTP gossip, then fetch catalogs directly via HTTP REST for always-fresh content.
 - 🔗 **HTTP Federation**: Instances expose a public `/api/catalog` endpoint, enabling direct instance-to-instance content discovery without intermediary replication.
 
 ### Streaming & Clients
+
 - 🔊 **Subsonic/OpenSubsonic API**: Full compatibility (v1.16.1) with mobile apps like DSub, Symfonium, Tempo, Substreamer, Amuse, and play:Sub.
 - 📻 **Radio Station**: Broadcast an always-on radio station transcoded from your playlists and dynamic genre mixes. Delivers a rolling HLS stream, M3U playlist, and podcast-style RSS feed. See [radio.md](docs/radio.md).
 - 🧪 **TuneCamp Lab**: Embedded playground that sandboxes experimental browser-based audio tools (like the 4-track cassette recorder or the regl 3D visualizer) via secure, sandboxed iFrames. See [LAB.md](docs/LAB.md).
@@ -62,6 +66,7 @@ docker-compose up -d --build
 - 💬 **Social Interactions**: Add comments to tracks, write artist posts, and broadcast to the federated network via ActivityPub. See [social-features.md](docs/social-features.md).
 
 ### Web3 & Monetization
+
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
 - 💳 **Fiat Payments**: Optional Stripe checkout for non-crypto purchases.
 - 🏭 **Factory Contract**: Self-hosters deploy their own NFT + Checkout contract instances via EIP-1167 minimal proxies.
@@ -69,6 +74,7 @@ docker-compose up -d --build
 - 👛 **Wallet Integration**: Connect a browser wallet (MetaMask or any injected EIP-1193 provider) for on-chain purchases.
 
 ### Administration
+
 - 🛡️ **Role-Based Access (RBAC)**: Root Admin, Admin, and Artist/User roles with granular permissions. See [ROLES.md](docs/ROLES.md).
 - 🤖 **Model Context Protocol (MCP)**: Built-in MCP server that allows AI assistants (like Claude Desktop) to connect securely and inspect or manage the instance catalog. See [mcp-setup-guide.md](docs/mcp-setup-guide.md).
 - 🧠 **AI Assistant**: Optional OpenRouter-powered assistant for library tasks. See [ai-integrations.md](docs/ai-integrations.md).
@@ -82,12 +88,14 @@ docker-compose up -d --build
 - 📟 **Monitoring & System Diagnostics**: Live CPU, memory, storage, and background task metrics via the admin System panel, plus `/health` endpoints and Sentry reporting. See [monitoring.md](docs/monitoring.md).
 
 ### Content Acquisition
+
 - 🔎 **Soulseek Search**: Search Soulseek from the admin panel with one-click import.
 - 🧲 **Torrents**: BitTorrent search and download for catalog ingestion. See [torrents.md](docs/torrents.md).
 - 🏷️ **Discogs Metadata**: Match tracks against the Discogs database for accurate tagging.
 - ☁️ **Google Drive Storage**: Optional Google Drive backend for media storage. See [google-drive.md](docs/google-drive.md).
 
 ### Deployment
+
 - 📦 **Docker Ready**: Multi-stage Dockerfile with health checks, optimized for production.
 - 🚀 **CapRover Support**: One-click deploy with automatic cache busting.
 - 📱 **PWA Support**: Installable as a Progressive Web App with offline service worker.
@@ -136,6 +144,7 @@ npm start
 ```
 
 For development with hot-reload:
+
 ```bash
 # Terminal 1: Watch backend TypeScript and CSS
 npm run dev
@@ -170,58 +179,58 @@ Configuration is managed via environment variables (or an `.env` file).
 
 **Core**
 
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `TUNECAMP_PORT` | Server listen port | `1970` |
-| `TUNECAMP_MUSIC_DIR` | Path to the music library | `./music` |
-| `TUNECAMP_DB_PATH` | Path to the SQLite database | `./tunecamp.db` |
-| `TUNECAMP_JWT_SECRET` | JWT signing secret (auto-generated if not set) | *auto* |
-| `TUNECAMP_ADMIN_USER` | Default admin username | `admin` |
-| `TUNECAMP_ADMIN_PASS` | Default admin password | `admin` |
-| `TUNECAMP_PUBLIC_URL` | Public HTTPS URL (required for ActivityPub federation) | — |
-| `TUNECAMP_SITE_NAME` | Human-readable instance name | `My TuneCamp Server` |
-| `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins | *all* |
-| `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads | `./music/downloads` (local) / `/data/downloads` (Docker) |
-| `TUNECAMP_PLUGINS_DIR` | Directory to load provider plugins from | `./plugins` |
+| Variable                | Description                                            | Default                                                  |
+| :---------------------- | :----------------------------------------------------- | :------------------------------------------------------- |
+| `TUNECAMP_PORT`         | Server listen port                                     | `1970`                                                   |
+| `TUNECAMP_MUSIC_DIR`    | Path to the music library                              | `./music`                                                |
+| `TUNECAMP_DB_PATH`      | Path to the SQLite database                            | `./tunecamp.db`                                          |
+| `TUNECAMP_JWT_SECRET`   | JWT signing secret (auto-generated if not set)         | _auto_                                                   |
+| `TUNECAMP_ADMIN_USER`   | Default admin username                                 | `admin`                                                  |
+| `TUNECAMP_ADMIN_PASS`   | Default admin password                                 | `admin`                                                  |
+| `TUNECAMP_PUBLIC_URL`   | Public HTTPS URL (required for ActivityPub federation) | —                                                        |
+| `TUNECAMP_SITE_NAME`    | Human-readable instance name                           | `My TuneCamp Server`                                     |
+| `TUNECAMP_CORS_ORIGINS` | Comma-separated allowed CORS origins                   | _all_                                                    |
+| `TUNECAMP_DOWNLOAD_DIR` | Directory for Soulseek/torrent downloads               | `./music/downloads` (local) / `/data/downloads` (Docker) |
+| `TUNECAMP_PLUGINS_DIR`  | Directory to load provider plugins from                | `./plugins`                                              |
 
 **Federation & Network**
 
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `TUNECAMP_FEDERATION_SEEDS` | Comma/space-separated seed instance URLs to bootstrap HTTP gossip discovery | — |
+| Variable                    | Description                                                                 | Default |
+| :-------------------------- | :-------------------------------------------------------------------------- | :------ |
+| `TUNECAMP_FEDERATION_SEEDS` | Comma/space-separated seed instance URLs to bootstrap HTTP gossip discovery | —       |
 
 > ActivityPub relay broadcasting is configured at runtime via the admin panel (`relayUrl` setting), not an environment variable.
 
 **Integrations**
 
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `TUNECAMP_TELEGRAM_BOT_TOKEN` | Telegram Bot API token for ingestion | — |
-| `TUNECAMP_TELEGRAM_MASTER_ID` | Telegram User ID of the master administrator | — |
-| `OPENROUTER_API_KEY` | OpenRouter API key for the Linda AI assistant | — |
-| `OPENROUTER_MODEL` | OpenRouter model id | `openrouter/free` |
-| `DISCOGS_TOKEN` | Discogs API token for metadata matching (also settable in admin) | — |
-| `TUNECAMP_GDRIVE_CLIENT_ID` | Google Drive OAuth client ID for storage backend | — |
-| `TUNECAMP_GDRIVE_CLIENT_SECRET` | Google Drive OAuth client secret | — |
+| Variable                        | Description                                                      | Default           |
+| :------------------------------ | :--------------------------------------------------------------- | :---------------- |
+| `TUNECAMP_TELEGRAM_BOT_TOKEN`   | Telegram Bot API token for ingestion                             | —                 |
+| `TUNECAMP_TELEGRAM_MASTER_ID`   | Telegram User ID of the master administrator                     | —                 |
+| `OPENROUTER_API_KEY`            | OpenRouter API key for the Linda AI assistant                    | —                 |
+| `OPENROUTER_MODEL`              | OpenRouter model id                                              | `openrouter/free` |
+| `DISCOGS_TOKEN`                 | Discogs API token for metadata matching (also settable in admin) | —                 |
+| `TUNECAMP_GDRIVE_CLIENT_ID`     | Google Drive OAuth client ID for storage backend                 | —                 |
+| `TUNECAMP_GDRIVE_CLIENT_SECRET` | Google Drive OAuth client secret                                 | —                 |
 
 > Last.fm and ListenBrainz scrobbling are configured per-user in the app settings (no environment variable needed).
 
 **Payments (Web3 & Fiat)**
 
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `TUNECAMP_RPC_URL` | Base Network RPC endpoint (backend) | — |
-| `TUNECAMP_OWNER_ADDRESS` | Instance owner wallet address for payouts | — |
-| `STRIPE_SECRET_KEY` | Stripe secret key for fiat checkout | — |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | — |
-| `STRIPE_ONRAMP_SECRET_KEY` | Stripe key for crypto on-ramp (falls back to `STRIPE_SECRET_KEY`) | — |
+| Variable                   | Description                                                       | Default |
+| :------------------------- | :---------------------------------------------------------------- | :------ |
+| `TUNECAMP_RPC_URL`         | Base Network RPC endpoint (backend)                               | —       |
+| `TUNECAMP_OWNER_ADDRESS`   | Instance owner wallet address for payouts                         | —       |
+| `STRIPE_SECRET_KEY`        | Stripe secret key for fiat checkout                               | —       |
+| `STRIPE_WEBHOOK_SECRET`    | Stripe webhook signing secret                                     | —       |
+| `STRIPE_ONRAMP_SECRET_KEY` | Stripe key for crypto on-ramp (falls back to `STRIPE_SECRET_KEY`) | —       |
 
 **Frontend build (Vite — `VITE_*`)**
 
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `VITE_TUNECAMP_RPC_URL` | Base RPC endpoint used by the in-browser wallet | `https://mainnet.base.org` |
-| `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| Variable                          | Description                                     | Default                                      |
+| :-------------------------------- | :---------------------------------------------- | :------------------------------------------- |
+| `VITE_TUNECAMP_RPC_URL`           | Base RPC endpoint used by the in-browser wallet | `https://mainnet.base.org`                   |
+| `VITE_TUNECAMP_CURRENCY_CONTRACT` | ERC-20 token contract (USDC on Base)            | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 
 ## API & Integrations
 
@@ -230,6 +239,7 @@ Configuration is managed via environment variables (or an `.env` file).
 Tunecamp exposes a full Subsonic API (version 1.16.1) at `/rest`. This allows you to use your Tunecamp library with major mobile clients like DSub, Symfonium, Tempo, and Substreamer.
 
 **Connection settings for your app:**
+
 - **Server URL**: `https://your-server.com`
 - **Username/Password**: Your Tunecamp credentials
 
@@ -251,11 +261,11 @@ See the [Nginx Configuration Guide →](./docs/NGINX.md)
 
 Tunecamp uses a **hybrid federation model**:
 
-| Layer | Protocol | Purpose |
-|:------|:---------|:--------|
+| Layer         | Protocol    | Purpose                                                      |
+| :------------ | :---------- | :----------------------------------------------------------- |
 | **Discovery** | HTTP Gossip | NodeInfo-based discovery — announces presence to the network |
-| **Content** | HTTP REST | Direct catalog fetching between instances (`/api/catalog`) |
-| **Social** | ActivityPub | Artist federation, followers, release broadcasts, posts |
+| **Content**   | HTTP REST   | Direct catalog fetching between instances (`/api/catalog`)   |
+| **Social**    | ActivityPub | Artist federation, followers, release broadcasts, posts      |
 
 Instances discover each other via HTTP gossip crawling. The Network page then fetches catalogs directly from each discovered instance via HTTP, ensuring content is always fresh and eliminating stale CRDT data. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale via a lightweight Broadcaster model.
 
@@ -264,6 +274,7 @@ See the [Federation Guide →](./docs/FEDERATION.md)
 ### Smart Contracts
 
 The Web3 payment system uses three Solidity contracts deployed on the Base Network:
+
 - **TuneCampFactory**: Deploys per-instance NFT + Checkout contracts via EIP-1167 minimal proxies.
 - **TuneCampNFT**: ERC-1155 multi-role tokens (License, Ownership, Collectible) for music tracks.
 - **TuneCampCheckout**: Handles purchases with ETH or USDC with a configurable artist/platform revenue split (85/15 default, 100% for Pro artists).
@@ -273,6 +284,7 @@ See the [contracts/](./contracts/) directory.
 ## Roles & Permissions
 
 Tunecamp uses a role-based access control (RBAC) system with tiered permissions:
+
 - **Instance Owner (Root Admin)**: Full system control, server identity, and global configuration.
 - **Manager (Full Admin)**: User monitoring, federation management, and cross-artist content control.
 - **Curator (Super User)**: Advanced library management, metadata correction, and global content visibility.
