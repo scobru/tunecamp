@@ -440,6 +440,7 @@ export interface LibraryManager {
     getArtistBySlug(slug: string): Artist | undefined;
     getArtistBySlugSimple(slug: string): Artist | undefined;
     getArtistByName(name: string): Artist | undefined;
+    getArtistsByNames(names: string[]): Artist[];
     getArtistsByIds(ids: number[]): Artist[];
     createArtist(name: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', externalId?: string): number;
     updateArtist(id: number, name?: string, bio?: string, photoPath?: string, links?: any, postParams?: any, walletAddress?: string, visibility?: 'public' | 'private' | 'unlisted', manuallyApprovesFollowers?: boolean): void;

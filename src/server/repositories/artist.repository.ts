@@ -128,6 +128,30 @@ export class ArtistRepository extends BaseRepository {
         return rows.map(row => this.mapArtist(row)) as Artist[];
     }
 
+    getArtistsByNames(names: string[]): Artist[] {
+        if (names.length === 0) return [];
+        const uniqueNames = [...new Set(names)];
+        let allArtists: Artist[] = [];
+        const CHUNK_SIZE = 900;
+
+        for (let i = 0; i < uniqueNames.length; i += CHUNK_SIZE) {
+            const chunk = uniqueNames.slice(i, i + CHUNK_SIZE);
+            const placeholders = chunk.map(() => "?").join(",");
+            const sql = `
+                SELECT a.*, a.wallet_address as walletAddress,
+                (CASE WHEN EXISTS (SELECT 1 FROM admin WHERE artist_id = a.id)
+                      OR EXISTS (SELECT 1 FROM releases WHERE artist_id = a.id)
+                      OR EXISTS (SELECT 1 FROM albums WHERE artist_id = a.id AND is_release = 1)
+                      THEN 0 ELSE 1 END) as isLibraryArtist
+                FROM artists a WHERE a.name COLLATE NOCASE IN (${placeholders})
+            `;
+            const rows = this.db.prepare(sql).all(...chunk);
+            allArtists = allArtists.concat(rows.map(row => this.mapArtist(row)) as Artist[]);
+        }
+        return allArtists;
+    }
+
+
     getByIds(ids: number[]): Artist[] {
         if (ids.length === 0) return [];
         const placeholders = ids.map(() => "?").join(",");

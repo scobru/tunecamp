@@ -604,14 +604,26 @@ export class MaintenanceService {
                 if (fixedArtistsCount > 0) console.log(`✅ [Maintenance] Auto-assigned ${fixedArtistsCount} albums to their track artists.`);
 
                 const adminsWithoutArtist = this.repo.getAdminsWithoutArtist();
+                const artistNames = adminsWithoutArtist.map(adm => adm.username);
+                const uniqueArtistNames = [...new Set(artistNames)];
+                const artistsList = this.db.getArtistsByNames(uniqueArtistNames);
+
+                const artistsMap = new Map<string, any>();
+                for (const artist of artistsList) {
+                    artistsMap.set(artist.name.toLowerCase(), artist);
+                }
+
                 for (const adm of adminsWithoutArtist) {
                     const artistName = adm.username;
-                    let existingArtist = this.db.getArtistByName(artistName);
+                    const normalizedName = artistName.toLowerCase();
+                    let existingArtist = artistsMap.get(normalizedName);
+
                     if (!existingArtist) {
                         const slug = artistName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "artist";
                         try {
                             const artistId = this.db.createArtist(artistName);
                             existingArtist = { id: artistId, name: artistName, slug } as any;
+                            artistsMap.set(normalizedName, existingArtist);
                         } catch (e) {
                             console.warn("Could not create artist for admin", adm.username);
                         }
