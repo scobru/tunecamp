@@ -1,27 +1,18 @@
-import { jest, describe, test, expect, beforeEach } from '@jest/globals';
+import { describe, test, expect } from '@jest/globals';
 import path from 'path';
-import fsExtra from 'fs-extra';
 import * as fileUtils from './fileUtils.js';
 
-const accessSpy = jest.spyOn(fsExtra, 'access' as any);
-
 describe('fileExists', () => {
-    beforeEach(() => {
-        jest.clearAllMocks();
-    });
-
     test('should return true if file exists', async () => {
-        accessSpy.mockResolvedValue(undefined as any);
-        const exists = await fileUtils.fileExists('path/to/existing/file.txt');
+        // Use an actual existing file (package.json) to test the happy path without mocks
+        const exists = await fileUtils.fileExists('package.json');
         expect(exists).toBe(true);
-        expect(accessSpy).toHaveBeenCalledWith('path/to/existing/file.txt');
     });
 
     test('should return false if file does not exist', async () => {
-        accessSpy.mockRejectedValue(new Error('File not found') as any);
-        const exists = await fileUtils.fileExists('path/to/non-existing/file.txt');
+        // Use a definitely non-existent file path to natively cover the catch block for the error path without mocks
+        const exists = await fileUtils.fileExists('path/to/non-existing/file-123456789.txt');
         expect(exists).toBe(false);
-        expect(accessSpy).toHaveBeenCalledWith('path/to/non-existing/file.txt');
     });
 });
 
