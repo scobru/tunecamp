@@ -288,6 +288,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             UNIQUE(artist_id, actor_uri)
         );
 
+        CREATE TABLE IF NOT EXISTS following (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
+            actor_uri TEXT NOT NULL,
+            inbox_uri TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(artist_id, actor_uri)
+        );
+
         CREATE TABLE IF NOT EXISTS remote_actors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             uri TEXT NOT NULL UNIQUE,

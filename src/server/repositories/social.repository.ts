@@ -72,6 +72,26 @@ export class SocialRepository extends BaseRepository {
         return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND actor_uri = ?").get(artistId, actorUri) as Follower | undefined;
     }
 
+    addFollowing(artistId: number, actorUri: string, inboxUri?: string): void {
+        this.db.prepare(`
+            INSERT OR REPLACE INTO following (artist_id, actor_uri, inbox_uri)
+            VALUES (?, ?, ?)
+        `).run(artistId, actorUri, inboxUri || null);
+    }
+
+    removeFollowing(artistId: number, actorUri: string): void {
+        this.db.prepare(`
+            DELETE FROM following WHERE artist_id = ? AND actor_uri = ?
+        `).run(artistId, actorUri);
+    }
+
+    isFollowing(artistId: number, actorUri: string): boolean {
+        const row = this.db.prepare(`
+            SELECT 1 FROM following WHERE artist_id = ? AND actor_uri = ?
+        `).get(artistId, actorUri);
+        return !!row;
+    }
+
     // --- Likes ---
 
     addLike(actorUri: string, objectType: 'album' | 'track' | 'post', objectId: number): void {

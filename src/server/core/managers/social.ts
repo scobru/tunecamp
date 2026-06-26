@@ -36,6 +36,9 @@ export function createSocialManager(
         removeFollower: (id: number, u: string) => socialRepository.removeFollower(id, u),
         updateFollowerUri: (o: string, n: string, i: string, si?: string) => socialRepository.updateFollowerUri(o, n, i, si),
         unfollowActor: (u: string) => { db.prepare("UPDATE remote_actors SET is_followed = 0 WHERE uri = ?").run(u); },
+        addFollowing: (artistId: number, actorUri: string, inboxUri?: string) => socialRepository.addFollowing(artistId, actorUri, inboxUri),
+        removeFollowing: (artistId: number, actorUri: string) => socialRepository.removeFollowing(artistId, actorUri),
+        isFollowing: (artistId: number, actorUri: string) => socialRepository.isFollowing(artistId, actorUri),
 
 
 

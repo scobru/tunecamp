@@ -626,6 +626,9 @@ export interface SocialManager {
     removeFollower(artistId: number, actorUri: string): void;
     updateFollowerUri(oldActorUri: string, newActorUri: string, newInboxUri: string, newSharedInboxUri?: string): void;
     unfollowActor(uri: string): void;
+    addFollowing(artistId: number, actorUri: string, inboxUri?: string): void;
+    removeFollowing(artistId: number, actorUri: string): void;
+    isFollowing(artistId: number, actorUri: string): boolean;
 
 
 
