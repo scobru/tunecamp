@@ -909,15 +909,16 @@ export class Scanner implements ScannerService {
             }
         }
 
-        for (const id of toDelete) this.database.deleteTrack(id);
-        for (const id of toUpdateLossless) this.database.updateTrackLosslessPath(id, null);
-        for (const { id, lossless } of toPromoteLossless) {
-            try {
-                // Don't pass album_id (would null it out). Just update the path.
-                this.database.updateTrack(id, { file_path: lossless });
-            } catch (e) {
-                console.warn(`[Scanner] Could not promote lossless_path for track ${id}:`, (e as any).message);
+        try {
+            if (toDelete.length > 0) this.database.deleteTracksBatch(toDelete);
+            if (toUpdateLossless.length > 0) this.database.updateTracksLosslessPathBatch(toUpdateLossless, null);
+            if (toPromoteLossless.length > 0) {
+                this.database.updateTracksPathsBatch(
+                    toPromoteLossless.map(x => ({ id: x.id, path: x.lossless }))
+                );
             }
+        } catch (e) {
+            console.warn(`[Scanner] Error during memory-efficient stale track cleanup batch operations:`, (e as any).message);
         }
     }
 
