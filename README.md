@@ -10,7 +10,7 @@
 
 ## Why This Exists
 
-Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) and uses a hybrid federation model—Zen for instance discovery (signaling), direct HTTP for content sharing—giving artists ownership of their distribution without sacrificing reach.
+Streaming platforms take significant cuts from artists and lock their communities into walled gardens. Tunecamp allows you to host your own music with a beautiful web interface, fully compatible with existing Subsonic mobile apps. It connects you to the Fediverse (via ActivityPub) as a broadcaster and uses federated HTTP gossip for instance discovery, giving artists ownership of their distribution without sacrificing reach.
 
 ## Quick Start
 
@@ -48,8 +48,8 @@ docker-compose up -d --build
 
 ### Decentralization & Federation
 - 🔐 **Instance Identity**: Each server holds a cryptographic keypair used to sign its entry in the community registry.
-- 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma). Artists are ActivityPub actors with followers, posts, and release broadcasts.
-- 🌐 **Community Network**: Discover other Tunecamp instances via Zen signaling, then fetch catalogs directly via HTTP REST for always-fresh content.
+- 📡 **ActivityPub**: Connect with the Fediverse (Mastodon, Funkwhale, Pleroma) as a broadcaster. Artists are ActivityPub actors with followers, posts, and release broadcasts.
+- 🌐 **Community Network**: Discover other Tunecamp instances via federated HTTP gossip, then fetch catalogs directly via HTTP REST for always-fresh content.
 - 🔗 **HTTP Federation**: Instances expose a public `/api/catalog` endpoint, enabling direct instance-to-instance content discovery without intermediary replication.
 
 ### Streaming & Clients
@@ -59,7 +59,7 @@ docker-compose up -d --build
 - 🎧 **Built-in Player**: Waveform visualization, queue management, lyrics display, and keyboard shortcuts.
 - 📋 **Playlists**: Create and share playlists (public/private).
 - 🎙️ **Live Streaming (HLS)**: Artists broadcast live audio from the browser; the server transcodes it to HLS (AAC segments) with FFmpeg and serves a rolling playlist to all listeners.
-- 💬 **Social Interactions**: Add comments to tracks, write artist posts, and view a unified feed combining local posts and federated network events (likes, shares). See [social-features.md](docs/social-features.md).
+- 💬 **Social Interactions**: Add comments to tracks, write artist posts, and broadcast to the federated network via ActivityPub. See [social-features.md](docs/social-features.md).
 
 ### Web3 & Monetization
 - 💰 **On-chain Payments**: NFT-based purchases (ERC-1155) with USDC and ETH on the Base Network.
@@ -253,11 +253,11 @@ Tunecamp uses a **hybrid federation model**:
 
 | Layer | Protocol | Purpose |
 |:------|:---------|:--------|
-| **Discovery** | Zen | Instance URL signaling — announces presence to the network |
+| **Discovery** | HTTP Gossip | NodeInfo-based discovery — announces presence to the network |
 | **Content** | HTTP REST | Direct catalog fetching between instances (`/api/catalog`) |
 | **Social** | ActivityPub | Artist federation, followers, release broadcasts, posts |
 
-Instances register their URL on the Zen network. The Network page then fetches catalogs directly from each discovered instance via HTTP, ensuring content is always fresh and eliminating stale CRDT data. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale.
+Instances discover each other via HTTP gossip crawling. The Network page then fetches catalogs directly from each discovered instance via HTTP, ensuring content is always fresh and eliminating stale CRDT data. ActivityPub handles artist-level social features and is compatible with Mastodon and Funkwhale via a lightweight Broadcaster model.
 
 See the [Federation Guide →](./docs/FEDERATION.md)
 
