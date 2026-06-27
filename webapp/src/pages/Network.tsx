@@ -4,7 +4,7 @@ import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText, Library, Loader2 } from "lucide-react";
 
-type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances";
+type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances" | "tunecamp-network" | "other-networks";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PeerSessionCard } from "../components/network/PeerSessionCard";
@@ -488,7 +488,7 @@ const Network = () => {
   const [enabled, setEnabled] = useState(true);
   const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
   const [peerSessions, setPeerSessions] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<NetworkTab>("releases");
+  const [activeTab, setActiveTab] = useState<NetworkTab>("tunecamp-network");
 
   useEffect(() => {
     const loadData = async () => {
