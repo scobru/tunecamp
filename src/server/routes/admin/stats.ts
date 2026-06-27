@@ -193,7 +193,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
             // 3. Get posts from ActivityPub (Standard Federation - Remote)
             const communityDomains = new Set<string>();
-            for (const s of discoveredSites) {
+            for (const s of remoteSites) {
                 if (s.url) {
                     try {
                         const hostname = new URL(s.url).hostname;
@@ -237,7 +237,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                 artistName: content.artist_name || "Unknown Artist",
                 content: content.content || "",
                 coverUrl: content.cover_url || null,
-                siteUrl: content.url || null,
+                siteUrl: content.url || content.ap_id || null,
                 pubKey: content.actor_uri,
                 published_at: content.published_at,
                 federation: (content as any).actor_type === "rss" ? "rss" : "activitypub",

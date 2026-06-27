@@ -184,7 +184,7 @@ const PostCard = memo(({
           </div>
         </div>
 
-        <div className="text-sm opacity-80 line-clamp-4 prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(item.content || "")) }}>
+        <div className="text-sm opacity-80 line-clamp-4 prose prose-sm prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.federation === "local" ? renderMarkdown(item.content || "") : item.content || "") }}>
         </div>
 
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-base-content/5">
@@ -656,13 +656,27 @@ const Network = () => {
       if (h && (s as any).name) siteNameByHost.set(h, (s as any).name);
     } catch { /* ignore */ }
   }
-  const remoteByHost = new Map<string, NetworkTrack[]>();
-  for (const t of remoteReleases) {
+  const tunecampHostnames = new Set(sites.map(s => getHostname((s as any).url)));
+  const tunecampReleases = remoteReleases.filter(t => tunecampHostnames.has(getHostname(t.siteUrl)));
+  const otherReleases = remoteReleases.filter(t => !tunecampHostnames.has(getHostname(t.siteUrl)));
+
+  const tunecampByHost = new Map<string, NetworkTrack[]>();
+  for (const t of tunecampReleases) {
     const host = getHostname(t.siteUrl);
-    if (!remoteByHost.has(host)) remoteByHost.set(host, []);
-    remoteByHost.get(host)!.push(t);
+    if (!tunecampByHost.has(host)) tunecampByHost.set(host, []);
+    tunecampByHost.get(host)!.push(t);
   }
-  const instanceGroups = Array.from(remoteByHost.entries())
+  const tunecampGroups = Array.from(tunecampByHost.entries())
+    .map(([host, items]) => ({ host, items, name: siteNameByHost.get(host) }))
+    .sort((a, b) => b.items.length - a.items.length);
+
+  const otherByHost = new Map<string, NetworkTrack[]>();
+  for (const t of otherReleases) {
+    const host = getHostname(t.siteUrl);
+    if (!otherByHost.has(host)) otherByHost.set(host, []);
+    otherByHost.get(host)!.push(t);
+  }
+  const otherGroups = Array.from(otherByHost.entries())
     .map(([host, items]) => ({ host, items, name: siteNameByHost.get(host) }))
     .sort((a, b) => b.items.length - a.items.length);
 
@@ -760,12 +774,13 @@ const Network = () => {
         const showPosts = allPosts.length > 0;
         const tabs: { id: NetworkTab; label: string; icon: React.ElementType; count: number }[] = [
           ...(showPeers ? [{ id: "peers" as NetworkTab, label: "Live Peers", icon: Users, count: peerSessions.length }] : []),
-          { id: "releases", label: "Network Releases", icon: Globe, count: instanceGroups.length },
+          { id: "tunecamp-network", label: "TuneCamp Network", icon: Globe, count: tunecampGroups.length },
+          { id: "other-networks", label: "Other Networks", icon: ExternalLink, count: otherGroups.length },
           { id: "my-instance", label: "My Instance", icon: Music, count: localReleases.length },
           ...(showPosts ? [{ id: "posts" as NetworkTab, label: "Posts", icon: FileText, count: allPosts.length }] : []),
           { id: "instances", label: "Instances", icon: Server, count: sites.length },
         ];
-        const currentTab = tabs.find(t => t.id === activeTab) ? activeTab : tabs[0]?.id ?? "releases";
+        const currentTab = tabs.find(t => t.id === activeTab) ? activeTab : tabs[0]?.id ?? "tunecamp-network";
 
         return (
           <>
@@ -816,11 +831,11 @@ const Network = () => {
                 </section>
               )}
 
-              {/* Network Releases */}
-              {currentTab === "releases" && (
+              {/* TuneCamp Network */}
+              {currentTab === "tunecamp-network" && (
                 <section className="space-y-4">
-                  {instanceGroups.length > 0 ? (
-                    instanceGroups.map((g) => (
+                  {tunecampGroups.length > 0 ? (
+                    tunecampGroups.map((g) => (
                       <InstanceGroup
                         key={g.host}
                         host={g.host}
@@ -835,7 +850,32 @@ const Network = () => {
                     ))
                   ) : (
                     <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-                      No remote tracks discovered yet. Other instances will appear once they federate via ActivityPub or are discovered over HTTP.
+                      No remote TuneCamp tracks discovered yet. Other instances will appear once they federate via ActivityPub or are discovered over HTTP.
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Other Networks */}
+              {currentTab === "other-networks" && (
+                <section className="space-y-4">
+                  {otherGroups.length > 0 ? (
+                    otherGroups.map((g) => (
+                      <InstanceGroup
+                        key={g.host}
+                        host={g.host}
+                        name={g.name}
+                        federation={g.items[0]?.federation}
+                        tracks={g.items}
+                        onPlay={handlePlayNetworkTrack}
+                        onToggleVisibility={toggleTrackVisibility}
+                        hiddenTracks={hiddenTracks}
+                        isAdmin={isAdminAuthenticated}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
+                      No tracks from other networks (RSS, external ActivityPub) discovered yet.
                     </div>
                   )}
                 </section>

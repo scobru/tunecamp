@@ -728,16 +728,6 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 console.log(`💔 Undo Announce received from ${actorUri} for ${note.note_type} ${note.content_slug}`);
             }
         })
-        .on(Delete, async (ctx, del) => {
-            const objectUri = del.objectId?.toString();
-            if (objectUri) {
-                console.log(`🗑️ Delete received for object: ${objectUri}`);
-                // Delete local representation of the remote content
-                dbService.deleteRemoteContent(objectUri);
-                // Also try deleting if it's stored as a reply
-                dbService.deleteApReply(objectUri);
-            }
-        })
         .on(Create, async (ctx, create) => {
             // Without this listener, normal posts (a Create wrapping a Note/Article) from
             // remote accounts a local artist follows are delivered to the inbox and then
