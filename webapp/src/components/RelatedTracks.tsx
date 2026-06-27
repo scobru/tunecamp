@@ -57,9 +57,12 @@ export const RelatedTracks = ({ trackId }: RelatedTracksProps) => {
                     >
                         <div className="relative shrink-0">
                             <img 
-                                src={track.coverImage || "https://placehold.co/100x100?text=No+Cover"} 
+                                src={track.coverImage || track.coverUrl || track.external_artwork || (track.albumId ? API.getAlbumCoverUrl(track.albumId) : null) || API.getTrackCoverUrl(track.id) || "https://placehold.co/100x100?text=No+Cover"} 
                                 alt={track.title}
-                                className="w-16 h-16 rounded-xl object-cover shadow-level-1 group-hover:scale-105 transition-transform"
+                                className="w-16 h-16 rounded-xl object-cover shadow-level-1 group-hover:scale-105 transition-transform bg-base-300"
+                                onError={(e) => {
+                                    e.currentTarget.src = "https://placehold.co/100x100?text=No+Cover";
+                                }}
                             />
                             <button 
                                 onClick={() => playTrack(track, related)}
