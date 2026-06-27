@@ -6,10 +6,10 @@ export function renderMarkdown(markdown: string): string {
     if (!markdown) return "";
 
     // Escape HTML characters to prevent XSS
+    // Note: We only escape & (if needed), but we rely on DOMPurify (sanitizeHtml)
+    // for true XSS protection, allowing safe HTML tags (like <p>) to pass through.
     let html = markdown
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+        .replace(/&/g, "&amp;");
 
     // Normalize line endings
     html = html.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
