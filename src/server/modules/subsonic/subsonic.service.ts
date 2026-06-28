@@ -52,13 +52,11 @@ export class SubsonicService {
 
   formatAlbumsBulk(albums: any[], username: string) {
     if (albums.length === 0) return [];
-    const starredItems = this.db.getStarredItems(username, 'album');
-    const starredSet = new Set<string>(starredItems.map((s: any) => s.item_id));
     const ratingsMap = this.db.getItemRatings(username, 'album');
-    return albums.map((a: any) => this.formatAlbum(a, username, starredSet, ratingsMap));
+    return albums.map((a: any) => this.formatAlbum(a, username, ratingsMap));
   }
 
-  formatAlbum(album: any, username: string, starredSet?: Set<string>, ratingsMap?: Map<string, number>) {
+  formatAlbum(album: any, username: string, ratingsMap?: Map<string, number>) {
     const id = `al_${album.id}`;
     const artistId = album.artist_id ? `ar_${album.artist_id}` : undefined;
     return {
@@ -74,7 +72,7 @@ export class SubsonicService {
       '@created': album.created_at,
       '@year': album.year || (album.date ? new Date(album.date).getFullYear() : undefined),
       '@genre': album.genre,
-      '@starred': (starredSet ? starredSet.has(id) : this.db.isStarred(username, 'album', id)) ? album.created_at || new Date().toISOString() : undefined,
+      '@starred': this.db.isStarred(username, 'album', id) ? album.created_at || new Date().toISOString() : undefined,
       '@userRating': (ratingsMap ? ratingsMap.get(id) : this.db.getItemRating(username, 'album', id)) || undefined
     };
   }
