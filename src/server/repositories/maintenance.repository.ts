@@ -99,9 +99,33 @@ export class MaintenanceRepository extends BaseRepository {
         return this.db.prepare(`SELECT DISTINCT artist_id FROM tracks WHERE album_id = ? AND artist_id IS NOT NULL`).all(albumId);
     }
 
+    getTrackArtistsForAlbums(albumIds: number[]): { album_id: number, artist_id: number }[] {
+        if (albumIds.length === 0) return [];
+        const result: { album_id: number, artist_id: number }[] = [];
+        for (let i = 0; i < albumIds.length; i += 900) {
+            const chunk = albumIds.slice(i, i + 900);
+            const placeholders = chunk.map(() => '?').join(',');
+            const rows = this.db.prepare(`SELECT DISTINCT album_id, artist_id FROM tracks WHERE album_id IN (${placeholders}) AND artist_id IS NOT NULL`).all(...chunk) as { album_id: number, artist_id: number }[];
+            result.push(...rows);
+        }
+        return result;
+    }
+
     getAlbumArtistId(albumId: number): number | null {
         const album = this.db.prepare(`SELECT artist_id FROM albums WHERE id = ?`).get(albumId) as any;
         return album?.artist_id;
+    }
+
+    getAlbumArtists(albumIds: number[]): { id: number, artist_id: number | null }[] {
+        if (albumIds.length === 0) return [];
+        const result: { id: number, artist_id: number | null }[] = [];
+        for (let i = 0; i < albumIds.length; i += 900) {
+            const chunk = albumIds.slice(i, i + 900);
+            const placeholders = chunk.map(() => '?').join(',');
+            const rows = this.db.prepare(`SELECT id, artist_id FROM albums WHERE id IN (${placeholders})`).all(...chunk) as { id: number, artist_id: number | null }[];
+            result.push(...rows);
+        }
+        return result;
     }
 
     setAlbumArtist(albumId: number, artistId: number): void {
