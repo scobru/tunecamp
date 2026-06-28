@@ -6,6 +6,7 @@ import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { wrapAsync } from '../../middleware/error-handling.js';
 import { HlsLiveService } from '../../modules/live/hls.service.js';
 import type { LiveSession } from '../../modules/live/live.service.js';
+import { rateLimit } from '../../middleware/rateLimit.js';
 import { VisibilityGuardian } from '../../common/visibility.js';
 import { sanitizeFilename } from '../../../utils/audioUtils.js';
 
@@ -141,6 +142,7 @@ export function createLiveRoutes(container: ServiceContainer): Router {
      */
     router.post('/:roomId/ingest',
         authMiddleware.requireUser,
+        rateLimit({ windowMs: 10000, max: 30, message: 'Ingest rate limit exceeded' }),
         raw({ type: () => true, limit: '15mb' }),
         wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
             const { roomId } = req.params;

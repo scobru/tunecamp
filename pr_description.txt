@@ -1,0 +1,10 @@
+🔒 Fix memory exhaustion DoS in Live HLS ingest
+
+🎯 **What:** The vulnerability fixed
+Added rate limiting to the `POST /api/live/:roomId/ingest` endpoint to limit the frequency of requests. Crucially, the rate limiting middleware is positioned *before* the `raw()` body parser.
+
+⚠️ **Risk:** The potential impact if left unfixed
+A malicious actor could send a rapid burst of requests with large payloads (up to 15MB each). Because the `raw()` body parser buffers the payload into memory, and there was no rate limit, this could easily exhaust the server's memory, leading to an Out of Memory (OOM) crash and a Denial of Service (DoS) for the entire application.
+
+🛡️ **Solution:** How the fix addresses the vulnerability
+The `rateLimit` middleware (configured to a generous 30 requests per 10 seconds to accommodate normal chunking behavior and network burstiness) is now applied *before* the body parsing. If an attacker sends too many requests, the connection is rejected *before* the 15MB payload is buffered into RAM, effectively stopping the memory exhaustion attack.
