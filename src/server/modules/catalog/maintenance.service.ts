@@ -604,14 +604,31 @@ export class MaintenanceService {
 
                 let fixedArtistsCount = 0;
                 const orphanAlbumsWithTracks = this.repo.getOrphanAlbumsWithTracks();
-                for (const { album_id } of orphanAlbumsWithTracks) {
-                    const tracks = this.repo.getTrackArtistsForAlbum(album_id);
-                    if (tracks.length === 1) {
-                        const artistId = tracks[0].artist_id;
-                        const albumArtistId = this.repo.getAlbumArtistId(album_id);
-                        if (albumArtistId !== artistId) {
-                            this.repo.setAlbumArtist(album_id, artistId);
-                            fixedArtistsCount++;
+                const albumIds = [...new Set(orphanAlbumsWithTracks.map(row => row.album_id))];
+
+                if (albumIds.length > 0) {
+                    const tracksByAlbum = new Map<number, number[]>();
+                    const trackArtists = this.repo.getTrackArtistsForAlbums(albumIds);
+                    for (const { album_id, artist_id } of trackArtists) {
+                        if (!tracksByAlbum.has(album_id)) tracksByAlbum.set(album_id, []);
+                        tracksByAlbum.get(album_id)!.push(artist_id);
+                    }
+
+                    const albumArtistsMap = new Map<number, number | null>();
+                    const albumsData = this.repo.getAlbumArtists(albumIds);
+                    for (const { id, artist_id } of albumsData) {
+                        albumArtistsMap.set(id, artist_id);
+                    }
+
+                    for (const albumId of albumIds) {
+                        const tracks = tracksByAlbum.get(albumId) || [];
+                        if (tracks.length === 1) {
+                            const artistId = tracks[0];
+                            const albumArtistId = albumArtistsMap.get(albumId) ?? null;
+                            if (albumArtistId !== artistId) {
+                                this.repo.setAlbumArtist(albumId, artistId);
+                                fixedArtistsCount++;
+                            }
                         }
                     }
                 }
