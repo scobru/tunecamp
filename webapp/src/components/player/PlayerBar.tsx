@@ -32,6 +32,7 @@ import { useConfigStore } from "../../stores/useConfigStore";
 import { formatDuration } from "../../utils/format";
 import { notify } from "../../utils/notify";
 import { useNowPlayingHeartbeat } from "../../hooks/useNowPlayingHeartbeat";
+import { fixRelativeUrl } from '../../utils/url';
 
 // Robust interop for color-thief-react which has inconsistent exports across versions/builds
 const ColorThiefReact: any = ColorThiefReactModule;
@@ -463,14 +464,7 @@ export const PlayerBar = () => {
   ) : "";
 
   // Fix relative paths that might be missing the root / or /api
-  if (coverUrl && !coverUrl.startsWith('http') && !coverUrl.startsWith('/') && !coverUrl.startsWith('data:') && !coverUrl.startsWith('blob:')) {
-    // If it looks like a local asset path, prepend /api/
-    if (coverUrl.startsWith('assets/')) {
-        coverUrl = `/api/${coverUrl}`;
-    } else {
-        coverUrl = `/${coverUrl}`;
-    }
-  }
+  coverUrl = fixRelativeUrl(coverUrl);
 
   if (!currentTrack)
     return (

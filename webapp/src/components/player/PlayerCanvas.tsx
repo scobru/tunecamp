@@ -11,6 +11,7 @@ import {
 import { Waveform } from "./Waveform";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import { fixRelativeUrl } from '../../utils/url';
 
 export const PlayerCanvas = () => {
     const { 
@@ -48,9 +49,7 @@ export const PlayerCanvas = () => {
     );
 
     // Fix relative paths
-    if (coverUrl && !coverUrl.startsWith('http') && !coverUrl.startsWith('/') && !coverUrl.startsWith('data:')) {
-        coverUrl = `/${coverUrl}`;
-    }
+    coverUrl = fixRelativeUrl(coverUrl);
 
     return (
         <div className={clsx(
