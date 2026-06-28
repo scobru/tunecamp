@@ -1347,7 +1347,20 @@ export class ActivityPubService {
         for (const f of this.db.getFollowers(artist.id)) {
             if (f.inbox_uri) inboxes.add(f.inbox_uri);
         }
-        await Promise.all(threadActors.map(async actorUri => {
+
+        const uniqueThreadActors = [...new Set(threadActors)];
+        const cachedActors = new Map<string, any>();
+
+        if (uniqueThreadActors.length > 0) {
+            const cached = this.db.getRemoteActorsByUris(uniqueThreadActors);
+            for (const actor of cached) {
+                cachedActors.set(actor.uri, actor);
+                if (actor.inbox_url) inboxes.add(actor.inbox_url);
+            }
+        }
+
+        const uncachedActors = uniqueThreadActors.filter(uri => !cachedActors.has(uri));
+        await Promise.all(uncachedActors.map(async actorUri => {
             try {
                 const inbox = await this.getInboxFromActor(actorUri);
                 if (inbox) inboxes.add(inbox);
@@ -1404,7 +1417,20 @@ export class ActivityPubService {
         for (const f of this.db.getFollowers(artist.id)) {
             if (f.inbox_uri) inboxes.add(f.inbox_uri);
         }
-        await Promise.all(threadActors.map(async actorUri => {
+
+        const uniqueThreadActors = [...new Set(threadActors)];
+        const cachedActors = new Map<string, any>();
+
+        if (uniqueThreadActors.length > 0) {
+            const cached = this.db.getRemoteActorsByUris(uniqueThreadActors);
+            for (const actor of cached) {
+                cachedActors.set(actor.uri, actor);
+                if (actor.inbox_url) inboxes.add(actor.inbox_url);
+            }
+        }
+
+        const uncachedActors = uniqueThreadActors.filter(uri => !cachedActors.has(uri));
+        await Promise.all(uncachedActors.map(async actorUri => {
             try {
                 const inbox = await this.getInboxFromActor(actorUri);
                 if (inbox) inboxes.add(inbox);

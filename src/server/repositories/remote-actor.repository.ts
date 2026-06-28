@@ -55,6 +55,19 @@ export class RemoteActorRepository extends BaseRepository {
         return rows.map(r => ({ ...r, is_followed: !!r.is_followed }));
     }
 
+    getRemoteActorsByUris(uris: string[]): RemoteActor[] {
+        if (!uris || uris.length === 0) return [];
+        const CHUNK_SIZE = 900;
+        const results: any[] = [];
+        for (let i = 0; i < uris.length; i += CHUNK_SIZE) {
+            const chunk = uris.slice(i, i + CHUNK_SIZE);
+            const placeholders = chunk.map(() => '?').join(',');
+            const rows = this.db.prepare(`SELECT * FROM remote_actors WHERE uri IN (${placeholders})`).all(...chunk) as any[];
+            results.push(...rows);
+        }
+        return results.map(r => ({ ...r, is_followed: !!r.is_followed }));
+    }
+
     getFollowedActors(): RemoteActor[] {
         const rows = this.db.prepare("SELECT * FROM remote_actors WHERE is_followed = 1 ORDER BY last_seen DESC").all() as any[];
         return rows.map(r => ({ ...r, is_followed: !!r.is_followed }));
