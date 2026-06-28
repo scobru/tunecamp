@@ -118,7 +118,6 @@ export function createPeersRoutes(container: ServiceContainer): Router {
             await pipeline(Readable.fromWeb(remote.body as any), fs.createWriteStream(filePath));
 
             const result = await scannerService.processAudioFile(filePath, container.musicDir, undefined, req.userId);
-            console.log(`📥 [PeersRoute] Imported federated track "${title || filePath}" by ${req.username}`);
             res.json({ success: true, result });
         } catch (error: any) {
             if (remote) await drainResponse(remote).catch(() => {});
