@@ -50,7 +50,15 @@ export class SubsonicService {
     return tracks.map((t: Track) => this.formatTrack(t, username, starredSet, ratingsMap));
   }
 
-  formatAlbum(album: any, username: string) {
+  formatAlbumsBulk(albums: any[], username: string) {
+    if (albums.length === 0) return [];
+    const starredItems = this.db.getStarredItems(username, 'album');
+    const starredSet = new Set<string>(starredItems.map((s: any) => s.item_id));
+    const ratingsMap = this.db.getItemRatings(username, 'album');
+    return albums.map((a: any) => this.formatAlbum(a, username, starredSet, ratingsMap));
+  }
+
+  formatAlbum(album: any, username: string, starredSet?: Set<string>, ratingsMap?: Map<string, number>) {
     const id = `al_${album.id}`;
     const artistId = album.artist_id ? `ar_${album.artist_id}` : undefined;
     return {
@@ -66,8 +74,8 @@ export class SubsonicService {
       '@created': album.created_at,
       '@year': album.year || (album.date ? new Date(album.date).getFullYear() : undefined),
       '@genre': album.genre,
-      '@starred': this.db.isStarred(username, 'album', id) ? album.created_at || new Date().toISOString() : undefined,
-      '@userRating': this.db.getItemRating(username, 'album', id) || undefined
+      '@starred': (starredSet ? starredSet.has(id) : this.db.isStarred(username, 'album', id)) ? album.created_at || new Date().toISOString() : undefined,
+      '@userRating': (ratingsMap ? ratingsMap.get(id) : this.db.getItemRating(username, 'album', id)) || undefined
     };
   }
 
@@ -155,7 +163,7 @@ export class SubsonicService {
         '@id': id,
         '@name': artist.name,
         '@parent': '1',
-        child: allAlbums.map((album: any) => this.formatAlbum(album, username))
+      child: this.formatAlbumsBulk(allAlbums, username)
       };
     }
 
@@ -186,17 +194,20 @@ export class SubsonicService {
     else if (type === 'alphabeticalByArtist') albums.sort((a, b) => (a.artist_name || '').localeCompare(b.artist_name || ''));
 
     const paginated = albums.slice(offset, offset + size);
-    return paginated.map((a: any) => this.formatAlbum(a, username));
+    return this.formatAlbumsBulk(paginated, username);
   }
 
   search(query: string, username: string) {
     const results = this.db.search(query, VisibilityProfile.ALL_ACCESS);
+
+    const mappedAlbums = results.albums.map((a: any) => {
+      const tracks = this.db.getTracks(a.id, VisibilityProfile.ALL_ACCESS);
+      return { ...a, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) };
+    });
+
     return {
       artist: results.artists.map((a: any) => this.formatArtist(a, username)),
-      album: results.albums.map((a: any) => {
-        const tracks = this.db.getTracks(a.id, VisibilityProfile.ALL_ACCESS);
-        return this.formatAlbum({ ...a, songCount: tracks.length, duration: tracks.reduce((acc: number, t: Track) => acc + (t.duration || 0), 0) }, username);
-      }),
+      album: this.formatAlbumsBulk(mappedAlbums, username),
       song: this.formatTracksBulk(results.tracks, username)
     };
   }
@@ -217,6 +228,7 @@ export class SubsonicService {
     const tracks = uniqueTrackIds.length > 0 ? this.db.getTracksByIds(uniqueTrackIds) : [];
     const trackMap = new Map<number, Track>(tracks.map((t: Track) => [t.id, t]));
 
+    const albumsToFormat: any[] = [];
     starred.forEach((item: any) => {
       const idParts = item.item_id.split('_');
       const id = parseInt(idParts[1] || idParts[0]);
@@ -225,13 +237,14 @@ export class SubsonicService {
         if (a) response.artist.push(this.formatArtist(a, username));
       } else if (item.item_type === 'album') {
         const a = this.db.getAlbum(id);
-        if (a) response.album.push(this.formatAlbum(a, username));
+        if (a) albumsToFormat.push(a);
       } else if (item.item_type === 'track') {
         const t = trackMap.get(id);
         if (t) tracksToFormat.push(t);
       }
     });
 
+    response.album = this.formatAlbumsBulk(albumsToFormat, username);
     response.song = this.formatTracksBulk(tracksToFormat, username);
     return response;
   }
@@ -264,7 +277,7 @@ export class SubsonicService {
 
     return {
       ...this.formatArtist(artist, username),
-      album: albums.map(a => this.formatAlbum(a, username))
+      album: this.formatAlbumsBulk(albums, username)
     };
   }
 
