@@ -59,6 +59,7 @@ export interface FederationProvider {
   // AP Notes
   createApNote(artistId: number, noteId: string, noteType: 'post' | 'release' | 'board', contentId: number, contentSlug: string, contentTitle: string): number;
   getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
+  getApNotesByArtistIds(artistIds: number[], includeDeleted?: boolean): ApNote[];
   getApNote(noteId: string): ApNote | undefined;
   markApNoteDeleted(noteId: string): void;
   addApReply(noteId: string, replyUri: string, actorUri: string, content: string, publishedAt?: string): boolean;
