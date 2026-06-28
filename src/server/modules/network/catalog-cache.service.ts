@@ -64,8 +64,7 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
         db.exec("ALTER TABLE peer_catalog_cache ADD COLUMN has_peer INTEGER NOT NULL DEFAULT 0");
     } catch { /* column already exists */ }
 
-    const selectStmt = db.prepare("SELECT tracks_json, fetched_at, has_peer FROM peer_catalog_cache WHERE site_url = ?");
-    const upsertStmt = db.prepare(`
+        const upsertStmt = db.prepare(`
         INSERT INTO peer_catalog_cache (site_url, tracks_json, fetched_at, has_peer)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(site_url) DO UPDATE SET tracks_json = excluded.tracks_json, fetched_at = excluded.fetched_at, has_peer = excluded.has_peer
@@ -152,16 +151,30 @@ export function createCatalogCacheService(db: DatabaseType): CatalogCacheService
         const results: any[] = [];
         const liveFetches: Promise<any[] | null>[] = [];
 
+        const uniqueSiteUrls = [...new Set(sites.map(s => s.url).filter(Boolean).map(url => url.replace(/\/$/, "")))];
+        const cachedMap = new Map<string, { tracks_json: string; fetched_at: number; has_peer?: number }>();
+
+        const CHUNK_SIZE = 900;
+        for (let i = 0; i < uniqueSiteUrls.length; i += CHUNK_SIZE) {
+            const chunk = uniqueSiteUrls.slice(i, i + CHUNK_SIZE);
+            const placeholders = chunk.map(() => "?").join(",");
+            try {
+                const query = `SELECT site_url, tracks_json, fetched_at, has_peer FROM peer_catalog_cache WHERE site_url IN (${placeholders})`;
+                const stmt = db.prepare(query);
+                const rows = stmt.all(...chunk) as any[];
+                for (const row of rows) {
+                    cachedMap.set(row.site_url, row);
+                }
+            } catch (e) {
+                console.error("❌ [CatalogCache] Batch read failed:", e);
+            }
+        }
+
         for (const site of sites) {
             if (!site.url) continue;
             const siteUrl = site.url.replace(/\/$/, "");
 
-            let cached: { tracks_json: string; fetched_at: number; has_peer?: number } | undefined;
-            try {
-                cached = selectStmt.get(siteUrl) as any;
-            } catch (e) {
-                console.error("❌ [CatalogCache] Read failed:", e);
-            }
+            let cached = cachedMap.get(siteUrl);
 
             if (cached) {
                 // Past the hard expiry the peer has been unrefreshed (offline)
