@@ -1084,14 +1084,19 @@ export class ActivityPubService {
         await this.sendActivity(artist, inboxUri, rejectActivity);
     }
 
-    public async broadcastRelease(album: Album, force: boolean = false): Promise<void> {
+    public async broadcastRelease(album: Album, force: boolean = false, publishedReleaseIds?: Set<number>): Promise<void> {
         if (!album.artist_id) return;
         const artist = this.db.getArtist(album.artist_id);
         if (!artist) return;
 
         if (!force) {
-            const existingNotes = this.db.getApNotes(artist.id, false);
-            const alreadyPublished = existingNotes.find(n => n.note_type === 'release' && n.content_id === album.id);
+            let alreadyPublished = false;
+            if (publishedReleaseIds) {
+                alreadyPublished = publishedReleaseIds.has(album.id);
+            } else {
+                const existingNotes = this.db.getApNotes(artist.id, false);
+                alreadyPublished = existingNotes.some(n => n.note_type === 'release' && n.content_id === album.id);
+            }
             if (alreadyPublished) {
                 console.log(`ℹ️ Release "${album.title}" already published via ActivityPub. Skipping broadcast.`);
                 return;
@@ -1133,15 +1138,20 @@ export class ActivityPubService {
         this.db.createApNote(artist.id, note.id, 'release', album.id, album.slug, album.title);
     }
 
-    public async broadcastPost(post: Post, force: boolean = false): Promise<void> {
+    public async broadcastPost(post: Post, force: boolean = false, publishedPostIds?: Set<number>): Promise<void> {
         if (post.visibility !== 'public') return;
 
         const artist = this.db.getArtist(post.artist_id);
         if (!artist) return;
 
         if (!force) {
-            const existingNotes = this.db.getApNotes(artist.id, false);
-            const alreadyPublished = existingNotes.find(n => n.note_type === 'post' && n.content_id === post.id);
+            let alreadyPublished = false;
+            if (publishedPostIds) {
+                alreadyPublished = publishedPostIds.has(post.id);
+            } else {
+                const existingNotes = this.db.getApNotes(artist.id, false);
+                alreadyPublished = existingNotes.some(n => n.note_type === 'post' && n.content_id === post.id);
+            }
             if (alreadyPublished) {
                 console.log(`ℹ️ Post "${post.slug}" already published via ActivityPub. Skipping broadcast.`);
                 return;
@@ -1413,7 +1423,7 @@ export class ActivityPubService {
         this.db.deleteApReply(replyUri);
     }
 
-    public async broadcastDelete(album: Album, manualNoteId?: string): Promise<void> {
+    public async broadcastDelete(album: Album, manualNoteId?: string, noteIdMap?: Map<number, { id: string, deleted: boolean }>): Promise<void> {
         if (!album.artist_id) return;
         const artist = this.db.getArtist(album.artist_id);
         if (!artist) return;
@@ -1423,11 +1433,19 @@ export class ActivityPubService {
         let isAlreadyDeleted = false;
 
         if (!noteId) {
-            const notes = this.db.getApNotes(artist.id, true);
-            const note = notes.find(n => n.note_type === 'release' && n.content_id === album.id);
-            if (note) {
-                noteId = note.note_id;
-                isAlreadyDeleted = !!note.deleted_at;
+            if (noteIdMap) {
+                if (noteIdMap.has(album.id)) {
+                    const mapEntry = noteIdMap.get(album.id)!;
+                    noteId = mapEntry.id;
+                    isAlreadyDeleted = mapEntry.deleted;
+                }
+            } else {
+                const notes = this.db.getApNotes(artist.id, true);
+                const note = notes.find(n => n.note_type === 'release' && n.content_id === album.id);
+                if (note) {
+                    noteId = note.note_id;
+                    isAlreadyDeleted = !!note.deleted_at;
+                }
             }
         } else {
             const note = this.db.getApNote(noteId);
@@ -1516,7 +1534,7 @@ export class ActivityPubService {
         return { inboxes: inboxes.length };
     }
 
-    public async broadcastPostDelete(post: Post, manualNoteId?: string): Promise<void> {
+    public async broadcastPostDelete(post: Post, manualNoteId?: string, noteIdMap?: Map<number, { id: string, deleted: boolean }>): Promise<void> {
         const artist = this.db.getArtist(post.artist_id);
         if (!artist) return;
 
@@ -1525,11 +1543,19 @@ export class ActivityPubService {
         let isAlreadyDeleted = false;
 
         if (!noteId) {
-            const notes = this.db.getApNotes(artist.id, true);
-            const note = notes.find(n => n.note_type === 'post' && n.content_id === post.id);
-            if (note) {
-                noteId = note.note_id;
-                isAlreadyDeleted = !!note.deleted_at;
+            if (noteIdMap) {
+                if (noteIdMap.has(post.id)) {
+                    const mapEntry = noteIdMap.get(post.id)!;
+                    noteId = mapEntry.id;
+                    isAlreadyDeleted = mapEntry.deleted;
+                }
+            } else {
+                const notes = this.db.getApNotes(artist.id, true);
+                const note = notes.find(n => n.note_type === 'post' && n.content_id === post.id);
+                if (note) {
+                    noteId = note.note_id;
+                    isAlreadyDeleted = !!note.deleted_at;
+                }
             }
         } else {
             const note = this.db.getApNote(noteId);
@@ -1603,15 +1629,31 @@ export class ActivityPubService {
         }
 
         for (const artist of artists) {
+            const artistNotes = this.db.getApNotes(artist.id, true);
+            const publishedReleaseIds = new Set<number>();
+            const publishedPostIds = new Set<number>();
+            const noteIdMap = new Map<number, { id: string, deleted: boolean }>();
+            const postNoteIdMap = new Map<number, { id: string, deleted: boolean }>();
+
+            for (const note of artistNotes) {
+                if (note.note_type === 'release') {
+                    if (!note.deleted_at) publishedReleaseIds.add(note.content_id);
+                    noteIdMap.set(note.content_id, { id: note.note_id, deleted: !!note.deleted_at });
+                } else if (note.note_type === 'post') {
+                    if (!note.deleted_at) publishedPostIds.add(note.content_id);
+                    postNoteIdMap.set(note.content_id, { id: note.note_id, deleted: !!note.deleted_at });
+                }
+            }
+
             const artistReleases = releasesByArtist[artist.id] || [];
             const releasePromises = artistReleases.map(async (release) => {
                 noteCount++;
                 if (release.visibility === 'public' || release.visibility === 'unlisted') {
                     console.log(`  - Syncing public release: ${release.title}`);
-                    await this.broadcastRelease(release as any, true).catch(e => console.error(e));
+                    await this.broadcastRelease(release as any, true, publishedReleaseIds).catch(e => console.error(e));
                 } else {
                     console.log(`  - Syncing private release (Delete): ${release.title}`);
-                    await this.broadcastDelete(release as any).catch(e => console.error(e));
+                    await this.broadcastDelete(release as any, undefined, noteIdMap).catch(e => console.error(e));
                 }
             });
             await Promise.all(releasePromises);
@@ -1620,9 +1662,9 @@ export class ActivityPubService {
             const postPromises = posts.map(async (post) => {
                 noteCount++;
                 if (post.visibility === 'public') {
-                    await this.broadcastPost(post, true).catch(e => console.error(e));
+                    await this.broadcastPost(post, true, publishedPostIds).catch(e => console.error(e));
                 } else {
-                    await this.broadcastPostDelete(post).catch(e => console.error(e));
+                    await this.broadcastPostDelete(post, undefined, postNoteIdMap).catch(e => console.error(e));
                 }
             });
             await Promise.all(postPromises);
@@ -1674,6 +1716,22 @@ export class ActivityPubService {
             }));
         }
 
+        const artistNotes = this.db.getApNotes(artistId, true);
+        const publishedReleaseIds = new Set<number>();
+        const publishedPostIds = new Set<number>();
+        const noteIdMap = new Map<number, { id: string, deleted: boolean }>();
+        const postNoteIdMap = new Map<number, { id: string, deleted: boolean }>();
+
+        for (const note of artistNotes) {
+            if (note.note_type === 'release') {
+                if (!note.deleted_at) publishedReleaseIds.add(note.content_id);
+                noteIdMap.set(note.content_id, { id: note.note_id, deleted: !!note.deleted_at });
+            } else if (note.note_type === 'post') {
+                if (!note.deleted_at) publishedPostIds.add(note.content_id);
+                postNoteIdMap.set(note.content_id, { id: note.note_id, deleted: !!note.deleted_at });
+            }
+        }
+
         // Sync Releases
         const releases = this.db.getReleasesByArtist(artistId);
         if (releases.length > 0) {
@@ -1681,9 +1739,9 @@ export class ActivityPubService {
             const releasePromises = releases.map(async (release) => {
                 noteCount++;
                 if (release.visibility === 'public' || release.visibility === 'unlisted') {
-                    await this.broadcastRelease(release as any, true).catch(e => console.error(`❌ Sync release "${release.title}" failed:`, e));
+                    await this.broadcastRelease(release as any, true, publishedReleaseIds).catch(e => console.error(`❌ Sync release "${release.title}" failed:`, e));
                 } else {
-                    await this.broadcastDelete(release as any).catch(e => console.error(`❌ Sync delete release "${release.title}" failed:`, e));
+                    await this.broadcastDelete(release as any, undefined, noteIdMap).catch(e => console.error(`❌ Sync delete release "${release.title}" failed:`, e));
                 }
             });
             await Promise.all(releasePromises);
@@ -1696,9 +1754,9 @@ export class ActivityPubService {
             const postPromises = posts.map(async (post) => {
                 noteCount++;
                 if (post.visibility === 'public') {
-                    await this.broadcastPost(post, true).catch(e => console.error(`❌ Sync post failed:`, e));
+                    await this.broadcastPost(post, true, publishedPostIds).catch(e => console.error(`❌ Sync post failed:`, e));
                 } else {
-                    await this.broadcastPostDelete(post).catch(e => console.error(`❌ Sync delete post failed:`, e));
+                    await this.broadcastPostDelete(post, undefined, postNoteIdMap).catch(e => console.error(`❌ Sync delete post failed:`, e));
                 }
             });
             await Promise.all(postPromises);
