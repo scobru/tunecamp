@@ -102,18 +102,15 @@ export function createLibraryManager(
         getTracksByPaths: (ps: string[]) => trackRepository.getByIds(ps.map(p => trackRepository.getByPath(p)?.id).filter(id => id !== undefined) as number[]),
         getTracksByAlbumIds: (aids: number[]) => {
             if (aids.length === 0) return [];
-            const uniqueIds = [...new Set(aids)];
-            const tracks: Track[] = [];
+            const uniqueAids = [...new Set(aids)];
+            const trackIds: number[] = [];
             const CHUNK_SIZE = 900;
-            for (let i = 0; i < uniqueIds.length; i += CHUNK_SIZE) {
-                const chunk = uniqueIds.slice(i, i + CHUNK_SIZE);
-                const placeholders = chunk.map(() => "?").join(",");
-                const trackIds = db.prepare(`SELECT id FROM tracks WHERE album_id IN (${placeholders})`).all(...chunk).map((r: any) => r.id);
-                if (trackIds.length > 0) {
-                    tracks.push(...trackRepository.getByIds(trackIds));
-                }
+            for (let i = 0; i < uniqueAids.length; i += CHUNK_SIZE) {
+                const chunk = uniqueAids.slice(i, i + CHUNK_SIZE);
+                const rows = db.prepare(`SELECT id FROM tracks WHERE album_id IN (${chunk.map(() => "?").join(",")})`).all(...chunk) as { id: number }[];
+                trackIds.push(...rows.map(r => r.id));
             }
-            return tracks;
+            return trackIds.length > 0 ? trackRepository.getByIds([...new Set(trackIds)]) : [];
         },
         getRandomTracks: (l: number) => trackRepository.getRandom(l),
         createTrack: (t: any) => { const tid = trackRepository.create(t); if (t.owner_id) trackRepository.addOwner(tid, t.owner_id); return tid; },
