@@ -11,11 +11,11 @@ import { loadConfig } from '../server/core/config.js';
 
 async function main() {
   const args = process.argv.slice(2);
+  const isForce = args.includes('--force') || args.includes('-f');
   const backupFile = args.find(a => !a.startsWith('-'));
-  const force = args.includes('--force') || args.includes('-f');
   
   if (!backupFile) {
-    console.log('Usage: node dist/tools/restore.js <backup-file> [--force]');
+    console.error('Usage: node dist/tools/restore.js <backup-file> [--force]');
     process.exit(1);
   }
 
@@ -29,7 +29,7 @@ async function main() {
       process.exit(1);
     }
 
-    if (await fs.pathExists(dbPath) && !force) {
+    if (await fs.pathExists(dbPath) && !isForce) {
       console.warn(`Warning: Database already exists at ${dbPath}`);
       console.warn(`Use --force or -f to overwrite.`);
       process.exit(1);
