@@ -161,6 +161,19 @@ export function createSocialManager(
         // AP Metadata
         createApNote: (aid: number, nid: string, nt: any, cid: number, cs: string, ct: string) => Number(db.prepare("INSERT OR IGNORE INTO ap_notes (artist_id, note_id, note_type, content_id, content_slug, content_title) VALUES (?, ?, ?, ?, ?, ?)").run(aid, nid, nt, cid, cs, ct).lastInsertRowid),
         getApNotes: (aid: number, id = false) => db.prepare(id ? "SELECT * FROM ap_notes WHERE artist_id = ?" : "SELECT * FROM ap_notes WHERE artist_id = ? AND deleted_at IS NULL").all(aid) as any[],
+        getApNotesByArtistIds: (aids: number[], id = false) => {
+            if (aids.length === 0) return [];
+            const uniqueAids = [...new Set(aids)];
+            const CHUNK_SIZE = 900;
+            let allNotes: any[] = [];
+            for (let i = 0; i < uniqueAids.length; i += CHUNK_SIZE) {
+                const chunk = uniqueAids.slice(i, i + CHUNK_SIZE);
+                const placeholders = chunk.map(() => "?").join(",");
+                const query = id ? `SELECT * FROM ap_notes WHERE artist_id IN (${placeholders})` : `SELECT * FROM ap_notes WHERE artist_id IN (${placeholders}) AND deleted_at IS NULL`;
+                allNotes = allNotes.concat(db.prepare(query).all(...chunk));
+            }
+            return allNotes;
+        },
         getApNote: (nid: string) => db.prepare("SELECT * FROM ap_notes WHERE note_id = ?").get(nid) as any,
         markApNoteDeleted: (nid: string) => { db.prepare("UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE note_id = ?").run(nid); },
         deleteApNote: (nid: string) => { db.prepare("DELETE FROM ap_notes WHERE note_id = ?").run(nid); },

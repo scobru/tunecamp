@@ -710,6 +710,7 @@ export interface SocialManager {
     // ActivityPub Metadata Notes
     createApNote(artistId: number, noteId: string, noteType: 'post' | 'release' | 'board', contentId: number, contentSlug: string, contentTitle: string): number;
     getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
+    getApNotesByArtistIds(artistIds: number[], includeDeleted?: boolean): ApNote[];
     getApNote(noteId: string): ApNote | undefined;
     markApNoteDeleted(noteId: string): void;
     deleteApNote(noteId: string): void;
