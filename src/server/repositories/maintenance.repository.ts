@@ -47,6 +47,9 @@ export class MaintenanceRepository extends BaseRepository {
     }
 
     repairOwnershipGaps(adminId: number) {
+        // Temporarily disable FK checks to fix legacy corrupted data or schema inconsistencies
+        this.db.exec("PRAGMA foreign_keys = OFF");
+        try {
             const trackFix = this.db.prepare("UPDATE tracks SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
             const albumFix = this.db.prepare("UPDATE albums SET owner_id = ? WHERE owner_id IS NULL").run(adminId);
             
@@ -73,6 +76,9 @@ export class MaintenanceRepository extends BaseRepository {
                 cleanTrackOwnership: cleanTrackOwnership.changes,
                 cleanAlbumOwnership: cleanAlbumOwnership.changes
             };
+        } finally {
+            this.db.exec("PRAGMA foreign_keys = ON");
+        }
     }
 
     fixOrphanedAlbums(): number {
