@@ -15,6 +15,7 @@ const mockDb = {
     getArtistBySlug: jest.fn(),
     getApNotes: jest.fn(),
     getFollowers: jest.fn(),
+    getFollowerInboxes: jest.fn(),
     getRemoteActor: jest.fn(),
 } as unknown as DatabaseService;
 

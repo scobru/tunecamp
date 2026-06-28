@@ -1343,10 +1343,7 @@ export class ActivityPubService {
         this.db.addApReply(parentNoteId, replyUri, artistActorUrl, contentHtml, published);
 
         // Resolve delivery inboxes: followers + thread participants
-        const inboxes = new Set<string>();
-        for (const f of this.db.getFollowers(artist.id)) {
-            if (f.inbox_uri) inboxes.add(f.inbox_uri);
-        }
+        const inboxes = new Set<string>(this.db.getFollowerInboxes(artist.id));
 
         const uniqueThreadActors = [...new Set(threadActors)];
         const cachedActors = new Map<string, any>();
