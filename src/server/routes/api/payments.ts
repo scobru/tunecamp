@@ -395,7 +395,20 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     }
                 }
             } else {
-                const album = library.getAlbum(parseInt(itemId, 10));                console.log(`[Stripe Debug] Album found for ID ${itemId}:`, album ? { id: album.id, title: album.title, price: album.price, price_usdc: album.price_usdc, price_usdt: album.price_usdt, currency: album.currency } : 'NULL');
+                const album = library.getAlbum(parseInt(itemId, 10));
+                console.log(
+                    `[Stripe Debug] Album found for ID ${itemId}:`,
+                    album
+                        ? {
+                              id: album.id,
+                              title: album.title,
+                              price: album.price,
+                              price_usdc: album.price_usdc,
+                              price_usdt: album.price_usdt,
+                              currency: album.currency,
+                          }
+                        : 'NULL'
+                );
                 if (!album) return res.status(404).json({ error: `Album ${itemId} not found` });
                 name = album.title;
 
