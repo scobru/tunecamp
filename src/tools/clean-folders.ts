@@ -40,8 +40,6 @@ async function isDirEmptyOrDead(dirPath: string): Promise<boolean> {
 }
 
 async function cleanFolders() {
-  console.log("🧹 [Cleanup] Starting Tunecamp Folder Cleanup Utility...");
-  
   try {
     const config = loadConfig();
     const musicDir = path.resolve(config.musicDir);
