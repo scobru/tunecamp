@@ -36,6 +36,7 @@ export interface FederationProvider {
 
   // Remote Content
   getRemoteActor(uri: string): RemoteActor | undefined;
+  getRemoteActorsByUris(uris: string[]): RemoteActor[];
   upsertRemoteActor(actor: Partial<RemoteActor>): void;
   upsertRemoteContent(content: any): void;
   unfollowActor(uri: string): void;

@@ -206,6 +206,7 @@ export function createSocialManager(
         // Remote Content
         getRemoteActor: (u: string) => remoteActorRepository.getRemoteActor(u),
         getRemoteActors: () => remoteActorRepository.getRemoteActors(),
+        getRemoteActorsByUris: (uris: string[]) => remoteActorRepository.getRemoteActorsByUris(uris),
         getFollowedActors: () => remoteActorRepository.getFollowedActors(),
         upsertRemoteActor: (a: any) => { remoteActorRepository.upsertRemoteActor(a); },
         upsertRemoteContent: (c: any) => { remoteContentRepository.upsertRemoteContent(c); },

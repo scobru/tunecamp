@@ -724,6 +724,7 @@ export interface SocialManager {
     // Remote Content & Actors (AP/Fedify)
     getRemoteActor(uri: string): RemoteActor | undefined;
     getRemoteActors(): RemoteActor[];
+    getRemoteActorsByUris(uris: string[]): RemoteActor[];
     getFollowedActors(): RemoteActor[];
     upsertRemoteActor(actor: any): void;
     upsertRemoteContent(content: any): void;
