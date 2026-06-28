@@ -3,8 +3,6 @@ import type { ScrobbleProvider } from "../../core/provider.js";
 import type { DatabaseService } from "../../core/database.js";
 
 const LASTFM_API_URL = 'https://ws.audioscrobbler.com/2.0/';
-const LASTFM_API_KEY = Buffer.from('MmI3NWRjYjI5MWUyYjBjOWEyYzk5NGFjYTUyMmFjMTQ=', 'base64').toString();
-const LASTFM_API_SECRET = Buffer.from('MmVlNDllMzVmMDhiODM3ZDQzYjI4MjQxOTgxNzFmYzg=', 'base64').toString();
 
 export class LastFmProvider implements ScrobbleProvider {
     readonly id = "lastfm";
@@ -22,30 +20,45 @@ export class LastFmProvider implements ScrobbleProvider {
         return this.database.getSetting("lastfm_session_key") || null;
     }
 
+    private getApiKey(): string | null {
+        return process.env.LASTFM_API_KEY || this.database.getSetting("lastfm_api_key") || null;
+    }
+
+    private getApiSecret(): string | null {
+        return process.env.LASTFM_API_SECRET || this.database.getSetting("lastfm_api_secret") || null;
+    }
+
     async isAvailable(): Promise<boolean> {
-        return true;
+        return !!this.getApiKey() && !!this.getApiSecret();
     }
 
     async isConfigured(): Promise<boolean> {
-        return !!this.getSessionKey();
+        return !!this.getSessionKey() && !!this.getApiKey() && !!this.getApiSecret();
     }
 
-    private createSignature(params: Record<string, string>): string {
+    private createSignature(params: Record<string, string>, apiSecret: string): string {
         const sortedKeys = Object.keys(params).sort();
         let s = "";
         for (const key of sortedKeys) {
             s += key + params[key];
         }
-        s += LASTFM_API_SECRET;
+        s += apiSecret;
         return crypto.createHash("md5").update(s).digest("hex");
     }
 
     private async post(params: Record<string, string>): Promise<any> {
+        const apiKey = this.getApiKey();
+        const apiSecret = this.getApiSecret();
+
+        if (!apiKey || !apiSecret) {
+            throw new Error("Last.fm API key or secret not configured");
+        }
+
         const baseParams = {
             ...params,
-            api_key: LASTFM_API_KEY,
+            api_key: apiKey,
         };
-        const api_sig = this.createSignature(baseParams);
+        const api_sig = this.createSignature(baseParams, apiSecret);
         const finalParams = {
             ...baseParams,
             api_sig,
