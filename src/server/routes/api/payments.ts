@@ -230,8 +230,6 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     } catch (e: any) {
                         console.error(`[Stripe Connect] Failed to retrieve account ${connectedAccountId}:`, e.message);
                     }
-                } else {
-                    console.log(`[Stripe Connect] ${event.type} for unknown account ${connectedAccountId} — ignored`);
                 }
             }
             return res.json({ received: true });
