@@ -84,7 +84,7 @@ describe('StringUtils.sanitizeFilename', () => {
 });
 
 describe('StringUtils.generateUnlockCode', () => {
-    test('should generate codes matching the format XXXX-XXXX-XXXX', () => {
+    test('should generate codes matching the format AAAA-BBBB-CCCC', () => {
         const regex = /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/;
         for (let i = 0; i < 100; i++) {
             const code = StringUtils.generateUnlockCode();
