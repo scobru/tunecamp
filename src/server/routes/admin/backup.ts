@@ -3,6 +3,7 @@ import archiver from "archiver";
 import AdmZip from "adm-zip";
 import fs from "fs-extra";
 import path from "path";
+import * as tar from "tar";
 import multer from "multer";
 import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -67,36 +68,34 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
         const isGzip = header[0] === 0x1f && header[1] === 0x8b;
 
         if (isZip) {
-            console.log("📦 [Restore] Detected ZIP format, using native unzip for secure extraction...");
-            // Use native unzip for .zip files (handles >2GB better than adm-zip)
-            await new Promise<void>(async (resolve, reject) => {
-                const { execFile } = await import("child_process");
-                // -o overwrites, -d specifies destination
-                execFile("unzip", ["-o", path.resolve(zipPath), "-d", path.resolve(extractPath)], { maxBuffer: 1024 * 1024 * 10 }, (error: any, stdout: string, stderr: string) => {
-                    if (error) {
-                        console.error(`❌ [Restore] unzip extraction failed: ${stderr}`);
-                        reject(new Error(`Extraction failed: ${stderr || error.message}`));
-                    } else {
-                        resolve();
-                    }
-                });
+            console.log("📦 [Restore] Detected ZIP format, extracting with adm-zip...");
+            await new Promise<void>((resolve, reject) => {
+                try {
+                    const zip = new AdmZip(zipPath);
+                    zip.extractAllToAsync(extractPath, true, false, (error) => {
+                        if (error) {
+                            console.error(`❌ [Restore] adm-zip extraction failed: ${error}`);
+                            reject(new Error(`Extraction failed: ${error.message || error}`));
+                        } else {
+                            resolve();
+                        }
+                    });
+                } catch (err: any) {
+                    console.error(`❌ [Restore] adm-zip extraction error: ${err}`);
+                    reject(new Error(`Extraction failed: ${err.message || err}`));
+                }
             });
         } else {
-            console.log(`📦 [Restore] Detected ${isGzip ? 'Compressed' : 'TAR'} format, using native tar...`);
-
-            // Use native tar for .tar.gz (better for large files >2GB)
-            await new Promise<void>(async (resolve, reject) => {
-                const { execFile } = await import("child_process");
-                // Use absolute paths to handle potential spaces
-                execFile("tar", ["-xf", path.resolve(zipPath), "-C", path.resolve(extractPath)], (error: any, stdout: string, stderr: string) => {
-                    if (error) {
-                        console.error(`❌ [Restore] tar extraction failed: ${stderr}`);
-                        reject(new Error(`Extraction failed: ${stderr || error.message}`));
-                    } else {
-                        resolve();
-                    }
+            console.log(`📦 [Restore] Detected ${isGzip ? 'Compressed' : 'TAR'} format, extracting with tar...`);
+            try {
+                await tar.x({
+                    file: path.resolve(zipPath),
+                    cwd: path.resolve(extractPath),
                 });
-            });
+            } catch (err: any) {
+                console.error(`❌ [Restore] tar extraction failed: ${err}`);
+                throw new Error(`Extraction failed: ${err.message || err}`);
+            }
         }
 
 
