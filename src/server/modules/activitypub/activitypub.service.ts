@@ -1654,8 +1654,19 @@ export class ActivityPubService {
             }
         }
 
+        const allNotes = this.db.getApNotesByArtistIds(artists.map(a => a.id), true);
+        const notesByArtist = new Map<number, any[]>();
+        for (const note of allNotes) {
+            let artistNotes = notesByArtist.get(note.artist_id);
+            if (!artistNotes) {
+                artistNotes = [];
+                notesByArtist.set(note.artist_id, artistNotes);
+            }
+            artistNotes.push(note);
+        }
+
         for (const artist of artists) {
-            const artistNotes = this.db.getApNotes(artist.id, true);
+            const artistNotes = notesByArtist.get(artist.id) || [];
             const publishedReleaseIds = new Set<number>();
             const publishedPostIds = new Set<number>();
             const noteIdMap = new Map<number, { id: string, deleted: boolean }>();

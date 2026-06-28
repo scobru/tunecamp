@@ -18,8 +18,6 @@ async function main() {
     const dbArgIdx = args.indexOf('--db');
     const dbOverride = dbArgIdx !== -1 ? args[dbArgIdx + 1] : null;
 
-    console.log(`\n🔊 Tunecamp Database Recovery: Path Fixer`);
-    console.log(`========================================`);
 
     const config = loadConfig();
     const dbPath = dbOverride || config.dbPath;
