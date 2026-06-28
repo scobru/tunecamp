@@ -174,6 +174,7 @@ export function createSocialManager(
             }
             return allNotes;
         },
+        getApNoteByContent: (aid: number, nt: string, cid: number) => db.prepare("SELECT * FROM ap_notes WHERE artist_id = ? AND note_type = ? AND content_id = ?").get(aid, nt, cid) as any,
         getApNote: (nid: string) => db.prepare("SELECT * FROM ap_notes WHERE note_id = ?").get(nid) as any,
         markApNoteDeleted: (nid: string) => { db.prepare("UPDATE ap_notes SET deleted_at = CURRENT_TIMESTAMP WHERE note_id = ?").run(nid); },
         deleteApNote: (nid: string) => { db.prepare("DELETE FROM ap_notes WHERE note_id = ?").run(nid); },

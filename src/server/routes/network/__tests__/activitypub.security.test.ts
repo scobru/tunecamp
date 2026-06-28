@@ -7,6 +7,7 @@ import type { ActivityPubService } from '../../../modules/activitypub/activitypu
 
 const mockDb = {
     getApNote: jest.fn(),
+    getApNoteByContent: jest.fn(),
     getAlbum: jest.fn(),
     getPost: jest.fn(),
     deleteApNote: jest.fn(),

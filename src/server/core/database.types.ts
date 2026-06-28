@@ -711,6 +711,7 @@ export interface SocialManager {
     createApNote(artistId: number, noteId: string, noteType: 'post' | 'release' | 'board', contentId: number, contentSlug: string, contentTitle: string): number;
     getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
     getApNotesByArtistIds(artistIds: number[], includeDeleted?: boolean): ApNote[];
+    getApNoteByContent(artistId: number, noteType: string, contentId: number): ApNote | undefined;
     getApNote(noteId: string): ApNote | undefined;
     markApNoteDeleted(noteId: string): void;
     deleteApNote(noteId: string): void;
