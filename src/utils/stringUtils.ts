@@ -114,7 +114,7 @@ export const StringUtils = {
 
     /**
      * Generates a random unlock code
-     * Format: XXXX-XXXX-XXXX (alphanumeric, no ambiguous characters)
+     * Format: AAAA-BBBB-CCCC (alphanumeric, no ambiguous characters)
      */
     generateUnlockCode: (): string => {
         const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0, O, 1, I
