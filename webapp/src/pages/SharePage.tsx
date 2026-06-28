@@ -7,6 +7,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { notify } from "../utils/notify";
 import type { Track, Album } from "../types";
 import clsx from "clsx";
+import { fixRelativeUrl } from '../utils/url';
 
 const SharePage = () => {
     const { id } = useParams<{ id: string }>();
@@ -134,14 +135,7 @@ const SharePage = () => {
     }
 
     // Fix relative paths that might be missing the root / or /api
-    if (coverUrl && !coverUrl.startsWith('http') && !coverUrl.startsWith('/') && !coverUrl.startsWith('data:') && !coverUrl.startsWith('blob:')) {
-        // If it looks like a local asset path, prepend /api/
-        if (coverUrl.startsWith('assets/')) {
-            coverUrl = `/api/${coverUrl}`;
-        } else {
-            coverUrl = `/${coverUrl}`;
-        }
-    }
+    coverUrl = fixRelativeUrl(coverUrl);
 
     return (
         <div className="max-w-4xl mx-auto space-y-12 py-8 animate-fade-in">
