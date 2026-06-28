@@ -227,7 +227,6 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                         const acct = await stripe.accounts.retrieve(connectedAccountId);
                         const canSell = !!(acct as any).charges_enabled;
                         database.setArtistCanSell(artist.id, canSell);
-                        console.log(`[Stripe Connect] ${event.type} → artist ${artist.id} can_sell=${canSell} (charges_enabled=${canSell})`);
                     } catch (e: any) {
                         console.error(`[Stripe Connect] Failed to retrieve account ${connectedAccountId}:`, e.message);
                     }
