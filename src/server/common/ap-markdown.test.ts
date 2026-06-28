@@ -3,6 +3,10 @@ import { renderApMarkdown } from './ap-markdown.js';
 
 describe('renderApMarkdown', () => {
     describe('basic inputs and HTML escaping', () => {
+        it('should handle whitespace-only input blocks', () => {
+            expect(renderApMarkdown('   \n\n   ')).toBe('');
+        });
+
         it('should handle empty or missing input', () => {
             expect(renderApMarkdown('')).toBe('');
             // @ts-ignore
@@ -101,6 +105,7 @@ describe('renderApMarkdown', () => {
         });
 
         it('should correctly escape and wrap tags in <p> if they are input directly', () => {
+
             const input = '<ul><li>Item</li></ul>\n\n### Heading 3\n\n<p>Already a p tag text</p>';
             const result = renderApMarkdown(input);
             expect(result).toBe('<p>&lt;ul&gt;&lt;li&gt;Item&lt;/li&gt;&lt;/ul&gt;</p>\n<h3>Heading 3</h3>\n<p>&lt;p&gt;Already a p tag text&lt;/p&gt;</p>');
