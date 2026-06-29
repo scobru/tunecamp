@@ -12,6 +12,10 @@ interface WalletState {
     isConnecting: boolean;
     error: string | null;
 
+    balance: number;
+    currency: string;
+    setBalance: (balance: number) => void;
+
     connect: () => Promise<void>;
     tryReconnect: () => Promise<void>;
     disconnect: () => void;
@@ -35,6 +39,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     isConnected: false,
     isConnecting: false,
     error: null,
+
+    balance: 0,
+    currency: 'USD',
+    setBalance: (balance: number) => set({ balance }),
 
     connect: async () => {
         if (get().isConnecting) return;
