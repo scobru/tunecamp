@@ -71,6 +71,59 @@ describe('MetadataService', () => {
         metadataService = new MetadataService();
     });
 
+    describe('MetadataCache integration', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+        });
+
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        test('should evict cache entries after TTL (1 hour)', async () => {
+            const providerRegistry = metadataService.getRegistry();
+            providerRegistry._setEnabled([mockProviders.itunesProvider]);
+            mockProviders.itunesProvider.searchRelease.mockResolvedValue([{ id: '1', title: 'TTL Album' }]);
+
+            // Initial call caches the result
+            await metadataService.searchRelease('ttl query');
+            expect(mockProviders.itunesProvider.searchRelease).toHaveBeenCalledTimes(1);
+
+            // Advance time just under 1 hour
+            jest.advanceTimersByTime(60 * 60 * 1000 - 1);
+            await metadataService.searchRelease('ttl query');
+            expect(mockProviders.itunesProvider.searchRelease).toHaveBeenCalledTimes(1); // Still cached
+
+            // Advance time past 1 hour
+            jest.advanceTimersByTime(2);
+            await metadataService.searchRelease('ttl query');
+            expect(mockProviders.itunesProvider.searchRelease).toHaveBeenCalledTimes(2); // Cache evicted, queried again
+        });
+
+        test('should evict oldest cache entries when MAX_SIZE is exceeded', async () => {
+            const providerRegistry = metadataService.getRegistry();
+            providerRegistry._setEnabled([mockProviders.itunesProvider]);
+            mockProviders.itunesProvider.searchRelease.mockResolvedValue([{ id: '1', title: 'Max Size Album' }]);
+
+            // Fill cache to MAX_SIZE (1000)
+            for (let i = 0; i < 1000; i++) {
+                await metadataService.searchRelease(`query ${i}`);
+            }
+
+            // Verify that 'query 0' is cached
+            mockProviders.itunesProvider.searchRelease.mockClear();
+            await metadataService.searchRelease('query 0');
+            expect(mockProviders.itunesProvider.searchRelease).toHaveBeenCalledTimes(0); // Served from cache
+
+            // Add 1001th item
+            await metadataService.searchRelease('query 1000');
+
+            // Verify that 'query 0' was evicted
+            await metadataService.searchRelease('query 0');
+            expect(mockProviders.itunesProvider.searchRelease).toHaveBeenCalledTimes(2); // Evicted, queried again (query 1000 + query 0)
+        });
+    });
+
     describe('searchRelease', () => {
         test('should return cached results if available', async () => {
             const providerRegistry = metadataService.getRegistry();
