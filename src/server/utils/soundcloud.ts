@@ -113,3 +113,20 @@ export function resolveArtworkUrl(track: SoundcloudTrack | any): string | undefi
     if (!url) return undefined;
     return url.replace(/-large\./, `${ARTWORK_LARGE_SUFFIX}.`);
 }
+
+export class SoundCloudClient {
+  private clientId: string;
+
+  constructor(clientId: string) {
+    this.clientId = clientId;
+  }
+
+  async resolveUrl(url: string) {
+    const fetchUrl = `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(url)}&client_id=${this.clientId}`;
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      throw new Error(`SoundCloud API error: ${response.status}`);
+    }
+    return response.json();
+  }
+}
