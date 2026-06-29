@@ -23,10 +23,10 @@ describe('BoardService', () => {
     });
 
     describe('getHistory', () => {
-        test('should return reversed array of board messages', () => {
+        test('should return reversed array of board messages and verify query construction', () => {
             const mockMessages = [
-                { id: 1, message: 'first' },
-                { id: 2, message: 'second' }
+                { id: 1, message: 'first', avatar: null },
+                { id: 2, message: 'second', avatar: 'avatar2.png' }
             ];
 
             const mockAll = jest.fn().mockReturnValue(mockMessages);
@@ -34,11 +34,17 @@ describe('BoardService', () => {
 
             const result = boardService.getHistory();
 
+            // Specifically verify the query structure highlighted in the issue description
             expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('SELECT bm.*, COALESCE(a.avatar, gu.avatar) AS avatar'));
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('FROM board_messages bm'));
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN admin a ON bm.username = a.username COLLATE NOCASE'));
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN gun_users gu ON a.gun_pub = gu.pub'));
+            expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('ORDER BY bm.id DESC LIMIT ?'));
+
             expect(mockAll).toHaveBeenCalledWith(100);
             expect(result).toEqual([
-                { id: 2, message: 'second' },
-                { id: 1, message: 'first' }
+                { id: 2, message: 'second', avatar: 'avatar2.png' },
+                { id: 1, message: 'first', avatar: null }
             ]);
         });
 
@@ -123,6 +129,33 @@ describe('BoardService', () => {
                 created_at: expect.any(String)
             }));
 
+            expect(emitSpy).toHaveBeenCalledWith('message', result);
+        });
+
+        test('should handle undefined row in avatar lookup', () => {
+            const mockRun = jest.fn().mockReturnValue({ lastInsertRowid: 123 });
+            const mockGet = jest.fn().mockReturnValue(undefined);
+
+            mockDb.prepare.mockImplementation((query: string) => {
+                if (query.includes('INSERT')) {
+                    return { run: mockRun };
+                } else if (query.includes('SELECT COALESCE')) {
+                    return { get: mockGet };
+                }
+                return {};
+            });
+
+            const emitSpy = jest.spyOn(boardService.events, 'emit');
+
+            const result = boardService.addMessage('testuser', 'admin', 'hello world');
+
+            expect(mockRun).toHaveBeenCalledWith('testuser', 'admin', 'hello world', 'webapp', null);
+            expect(mockGet).toHaveBeenCalledWith('testuser');
+
+            expect(result).toEqual(expect.objectContaining({
+                id: 123,
+                avatar: null
+            }));
             expect(emitSpy).toHaveBeenCalledWith('message', result);
         });
 
