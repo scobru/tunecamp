@@ -21,6 +21,33 @@ Tunecamp discovers other instances by **gossip over HTTP** — there is no centr
 - `GET /api/community/instance` — this instance's own descriptor.
 - `GET /api/community/peers` — known peers (the gossip surface).
 - `GET /api/community/sites` — aggregated discoverable sites (local + federated + ActivityPub). CORS-enabled for external directories.
+- `POST /api/community/register` — self-registration: submit your instance URL to a directory instance and appear immediately, without waiting for the next 6-hour crawl. See below.
+
+### Self-registering with a directory
+
+Instead of waiting up to 6 hours for gossip to reach a directory instance, admins can self-register:
+
+```http
+POST /api/community/register
+Content-Type: application/json
+
+{ "url": "https://your-instance.example.com" }
+```
+
+The directory instance will:
+1. Probe your URL via NodeInfo (`/.well-known/nodeinfo`) to verify it is a reachable TuneCamp instance.
+2. Store the metadata immediately — your instance appears in `GET /api/community/sites` right away.
+
+**Responses:**
+
+| Status | Meaning |
+| :----- | :------ |
+| `200 OK` | Registered. Appears in `/api/community/sites` immediately. |
+| `400` | Missing or invalid `url` field. |
+| `422` | URL is not a reachable TuneCamp instance (NodeInfo check failed). |
+| `429` | Rate limited — 1 registration per IP per hour. `Retry-After` header included. |
+
+The endpoint is public (no auth required) and CORS-enabled, so the [community website](https://github.com/scobru/tunecamp-website) can call it directly from the browser. The rate limit is enforced per IP to prevent abuse.
 
 ### Configuration
 
