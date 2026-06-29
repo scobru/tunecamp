@@ -4,6 +4,16 @@ This page takes you from nothing to a running TuneCamp instance with music in it
 
 > **New to TuneCamp?** It's a self-hosted music platform: your own streaming server with a web player, mobile-app support (Subsonic), Fediverse federation (ActivityPub), and optional Web3 monetization. You run it; you own the data.
 
+## Deploy on Railway (no VPS)
+
+Don't have a server? Deploy directly from the official Railway template — one click, HTTPS included:
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/tunecamp?referralCode=BUSsSY&utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+See the full [Railway deployment guide](./railway.md) for environment variables, persistent storage, and federation setup.
+
+---
+
 ## 1. Prerequisites
 
 The fastest path uses Docker. You need:
