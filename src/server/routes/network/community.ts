@@ -82,7 +82,10 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
     // express.json() is applied per-route (there is no global body parser); without it
     // req.body is undefined and registration always fails with "url is required".
     router.post("/register", express.json(), async (req, res) => {
-        const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+        // Use req.ip, which resolves the real client IP from X-Forwarded-For because
+        // 'trust proxy' is enabled (server.ts). Reading the socket address directly would
+        // collapse to the nginx/proxy IP, turning the per-IP limit into a global one.
+        const ip = req.ip || "unknown";
         const last = registerRateLimit.get(ip);
         if (last && Date.now() - last < REGISTER_COOLDOWN_MS) {
             const retryAfter = Math.ceil((REGISTER_COOLDOWN_MS - (Date.now() - last)) / 1000);
