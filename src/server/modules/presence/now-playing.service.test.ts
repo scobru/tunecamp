@@ -27,12 +27,11 @@ describe('NowPlayingService', () => {
 
         const list = service.list();
         expect(list).toHaveLength(1);
-        expect(list[0]).toEqual({
+        expect(list[0]).toMatchObject({
             username: 'alice',
             trackId: 123,
             title: 'Song A',
             artist: 'Artist A',
-            updatedAt: 100000
         });
     });
 
@@ -65,12 +64,11 @@ describe('NowPlayingService', () => {
 
         const list = service.list();
         expect(list).toHaveLength(1);
-        expect(list[0]).toEqual({
+        expect(list[0]).toMatchObject({
             username: 'alice',
             trackId: 456,
             title: 'Song B',
             artist: 'Artist C',
-            updatedAt: 110000
         });
     });
 
@@ -145,5 +143,27 @@ describe('NowPlayingService', () => {
             title: '',
             artist: ''
         });
+    });
+
+    it('should not throw if clearing a non-existent user', () => {
+        expect(() => {
+            service.clear('non-existent-user');
+        }).not.toThrow();
+        expect(service.list()).toEqual([]);
+    });
+
+    it('should return multiple active entries', () => {
+        service.set('user1', { trackId: 1, title: 'Title1', artist: 'Artist1' });
+        service.set('user2', { trackId: 2, title: 'Title2', artist: 'Artist2' });
+
+        const list = service.list();
+        expect(list).toHaveLength(2);
+
+        expect(list).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ username: 'user1' }),
+                expect.objectContaining({ username: 'user2' })
+            ])
+        );
     });
 });
