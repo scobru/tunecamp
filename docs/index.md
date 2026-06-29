@@ -45,6 +45,7 @@ Once you're up and running, the guides below go deeper.
 | Doc | Description |
 |-----|-------------|
 | [Getting Started](./getting-started.md) | **Install → first login → add music → listen** (start here) |
+| [Deploy on Railway](./railway.md) | One-click deploy on Railway — no VPS required, HTTPS included |
 | [API & Services Setup](./api-setup-guide.md) | Step-by-step configuration for Stripe, Google Drive, AI, and other integrations |
 | [Nginx Configuration](./NGINX.md) | Reverse proxy setup for SSL, WebSocket, and HLS |
 | [Backup & Migration](./backup-migration.md) | Database backup, restore, and moving your instance |
