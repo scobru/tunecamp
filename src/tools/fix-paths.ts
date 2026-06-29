@@ -3,6 +3,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import sqlite3 from 'better-sqlite3';
+import pLimit from 'p-limit';
 import { loadConfig } from '../server/core/config.js';
 import { StringUtils } from '../utils/stringUtils.js';
 
@@ -40,7 +41,9 @@ async function main() {
 
     const updates: { id: number, file_path: string, lossless_path: string | null }[] = [];
 
-    for (const track of tracks) {
+    const limit = pLimit(100);
+
+    await Promise.all(tracks.map(track => limit(async () => {
         let changed = false;
         let newPath = track.file_path;
         let newLossless = track.lossless_path;
@@ -57,7 +60,15 @@ async function main() {
         // Verify existence
         if (newPath) {
             const fullPath = path.join(musicDir, newPath);
-            if (fs.existsSync(fullPath)) {
+            let exists = false;
+            try {
+                await fs.promises.access(fullPath, fs.constants.F_OK);
+                exists = true;
+            } catch {
+                exists = false;
+            }
+
+            if (exists) {
                 verifiedCount++;
                 if (changed) {
                     updates.push({ id: track.id, file_path: newPath!, lossless_path: newLossless });
@@ -70,7 +81,15 @@ async function main() {
                 const tracksAltPath = path.join('tracks', fileName);
                 const fullAltPath = path.join(musicDir, tracksAltPath);
                 
-                if (fs.existsSync(fullAltPath)) {
+                let altExists = false;
+                try {
+                    await fs.promises.access(fullAltPath, fs.constants.F_OK);
+                    altExists = true;
+                } catch {
+                    altExists = false;
+                }
+
+                if (altExists) {
                     console.log(`  [Found Alt] ID ${track.id} (${track.title}) found in tracks/: ${tracksAltPath}`);
                     updates.push({ id: track.id, file_path: tracksAltPath, lossless_path: newLossless });
                     fixedCount++;
@@ -79,7 +98,7 @@ async function main() {
                 }
             }
         }
-    }
+    })));
 
     if (updates.length > 0) {
         console.log(`\n🚀 Applying ${updates.length} path fixes...`);
