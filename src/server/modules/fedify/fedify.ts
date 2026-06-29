@@ -6,7 +6,7 @@ import type { DatabaseService } from "../../core/database.js";
 import type { ServerConfig } from "../../core/config.js";
 import { Temporal } from "@js-temporal/polyfill";
 import { VisibilityProfile } from "../../common/visibility.js";
-import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
+import { getSiteHandle, isSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 
 export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     const db = dbService.db;
@@ -85,7 +85,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
         let movedTo: string | null = null;
         let manuallyApprovesFollowers = false;
 
-        if (handle === getSiteHandle(dbService)) {
+        if (isSiteHandle(handle, dbService)) {
             name = dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance";
             summary = dbService.getSetting("siteDescription") || "Tunecamp Federation Actor";
             publicKey = dbService.getSetting("site_public_key") || null;
@@ -142,7 +142,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             following: new URL(`/users/${slug}/following`, baseUrl),
             icon: new Image({ url: new URL(`/api/artists/${slug}/cover`, baseUrl) }),
             image: new Image({ url: new URL(`/api/artists/${slug}/cover`, baseUrl) }),
-            url: new URL(handle === getSiteHandle(dbService) ? "/" : `/@${slug}`, baseUrl),
+            url: new URL(isSiteHandle(handle, dbService) ? "/" : `/@${slug}`, baseUrl),
             endpoints: new Endpoints({
                 sharedInbox: new URL("/inbox", baseUrl)
             }),
@@ -162,7 +162,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             let publicKey: string | null = null;
             let privateKeyStr: string | null = null;
 
-            if (handle === getSiteHandle(dbService)) {
+            if (isSiteHandle(handle, dbService)) {
                 publicKey = dbService.getSetting("site_public_key") || null;
                 privateKeyStr = dbService.getSetting("site_private_key") || null;
             } else {
@@ -228,7 +228,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
 
     // Outbox Dispatcher - allows other instances to fetch historical content
     federation.setOutboxDispatcher("/users/{handle}/outbox", async (ctx, handle, cursor) => {
-        const isSite = handle === getSiteHandle(dbService);
+        const isSite = isSiteHandle(handle, dbService);
         const artist = isSite ? null : dbService.getArtistBySlug(handle);
         if (!artist && !isSite) return null;
 
@@ -377,7 +377,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
     // Followers dispatcher
     federation.setFollowersDispatcher("/users/{handle}/followers", async (ctx, handle, cursor) => {
         let artistId: number;
-        if (handle === getSiteHandle(dbService)) {
+        if (isSiteHandle(handle, dbService)) {
             artistId = SITE_ACTOR_ID;
         } else {
             const artist = dbService.getArtistBySlug(handle);
@@ -417,7 +417,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             const handle = parsed.identifier;
 
             // Handle site follow (relay or other instances)
-            if (handle === getSiteHandle(dbService)) {
+            if (isSiteHandle(handle, dbService)) {
                 const docLoader = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                 const follower = await follow.getActor({ documentLoader: docLoader }).catch(() => null) || await follow.getActor(ctx).catch(() => null);
 
@@ -672,7 +672,7 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                 if (parsed?.type !== "actor") return;
 
                 const handle = parsed.identifier;
-                if (handle === getSiteHandle(dbService)) {
+                if (isSiteHandle(handle, dbService)) {
                     const docLoaderFollow = await getAuthenticatedLoader(ctx, getSiteHandle(dbService));
                     const unfollower = await undo.getActor({ documentLoader: docLoaderFollow }).catch(() => null) || await undo.getActor(ctx).catch(() => null);
                     const unfollowerUri = unfollower?.id?.toString();

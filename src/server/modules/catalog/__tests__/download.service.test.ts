@@ -1,5 +1,5 @@
-import { describe, test, expect, beforeEach, jest } from '@jest/globals';
-import { DownloadService } from '../download.service.js';
+import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { DownloadService, getDownloadService, initDownloadService } from '../download.service.js';
 import type { DownloadProvider, DownloadResult } from '../../../core/provider.js';
 
 class MockDownloadProvider implements DownloadProvider {
@@ -84,6 +84,49 @@ describe('DownloadService', () => {
             expect(results[0].source).toBe('p1');
         });
 
+        test('merges results when one provider fails and another succeeds (waterfall strategy)', async () => {
+            const successProvider1 = new MockDownloadProvider('p1', 'Provider 1', '1.0.0', true, [
+                { id: '1', title: 'Track 1', filename: 'track1.mp3', sizeBytes: 100, source: 'p1' }
+            ]);
+            const failingProvider = new MockDownloadProvider('p2', 'Provider 2', '1.0.0', true, [], true);
+            const successProvider2 = new MockDownloadProvider('p3', 'Provider 3', '1.0.0', true, [
+                { id: '2', title: 'Track 2', filename: 'track2.mp3', sizeBytes: 200, source: 'p3' }
+            ]);
+
+            service.getRegistry().register(successProvider1, true);
+            service.getRegistry().register(failingProvider, true);
+            service.getRegistry().register(successProvider2, true);
+
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            const results = await service.search('query');
+
+            // Should still return results from the successful providers
+            expect(results).toHaveLength(2);
+            expect(results[0].source).toBe('p1');
+            expect(results[1].source).toBe('p3');
+            expect(consoleErrorSpy).toHaveBeenCalledWith(`[DownloadService] ❌ Provider "Provider 2" search failed:`, expect.any(Error));
+
+            consoleErrorSpy.mockRestore();
+        });
+
+        test('returns empty array if all providers fail', async () => {
+            const failingProvider1 = new MockDownloadProvider('p1', 'Provider 1', '1.0.0', true, [], true);
+            const failingProvider2 = new MockDownloadProvider('p2', 'Provider 2', '1.0.0', true, [], true);
+
+            service.getRegistry().register(failingProvider1, true);
+            service.getRegistry().register(failingProvider2, true);
+
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            const results = await service.search('query');
+
+            expect(results).toHaveLength(0);
+            expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+
+            consoleErrorSpy.mockRestore();
+        });
+
         test('handles errors from providers gracefully', async () => {
             const provider1 = new MockDownloadProvider('p1', 'Provider 1', '1.0.0', true, [
                 { id: '1', title: 'Track 1', filename: 'track1.mp3', sizeBytes: 100, source: 'p1' }
@@ -151,6 +194,65 @@ describe('DownloadService', () => {
             expect(list).toHaveLength(2);
             expect(list[0]).toEqual({ id: 'p1', name: 'Provider 1', version: '1.0.0' });
             expect(list[1]).toEqual({ id: 'p2', name: 'Provider 2', version: '2.0.0' });
+        });
+    });
+
+    describe('Singleton functions', () => {
+        test('initDownloadService and getDownloadService', async () => {
+            const soulseekService = {} as any;
+            const service = initDownloadService(soulseekService);
+            expect(service).toBeInstanceOf(DownloadService);
+            expect(getDownloadService()).toBe(service);
+
+            const registry = service.getRegistry();
+            expect(registry.get('soulseek')).toBeDefined();
+            expect(registry.isEnabled('soulseek')).toBe(false);
+            expect(registry.get('torrent')).toBeUndefined();
+        });
+
+        test('initDownloadService with torrentService', () => {
+            const soulseekService = {} as any;
+            const torrentService = {} as any;
+            const service = initDownloadService(soulseekService, torrentService, 1);
+
+            const registry = service.getRegistry();
+            expect(registry.get('torrent')).toBeDefined();
+            expect(registry.isEnabled('torrent')).toBe(false);
+        });
+
+        test('initDownloadService with db sync success', async () => {
+            const soulseekService = {} as any;
+            const db = {
+                getAllPluginsState: jest.fn().mockReturnValue([
+                    { id: 'soulseek', enabled: 1 }
+                ])
+            };
+            const service = initDownloadService(soulseekService, undefined, 1, db);
+
+            // Allow the async syncRegistryWithDatabase to complete
+            await new Promise(process.nextTick);
+
+            const registry = service.getRegistry();
+            expect(registry.isEnabled('soulseek')).toBe(true);
+        });
+
+        test('initDownloadService with db sync failure', async () => {
+            const soulseekService = {} as any;
+            const db = {
+                getAllPluginsState: jest.fn().mockImplementation(() => {
+                    throw new Error('DB Error');
+                })
+            };
+
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+            initDownloadService(soulseekService, undefined, 1, db);
+
+            // Allow the promise catch block to run
+            await new Promise(process.nextTick);
+
+            expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to sync download registry:', expect.any(Error));
+            consoleErrorSpy.mockRestore();
         });
     });
 });

@@ -48,6 +48,7 @@ export interface FederationProvider {
 
   // Social
   getFollowers(artistId: number): Follower[];
+  getFollowerInboxes(artistId: number): string[];
   getPendingFollowers(artistId: number): Follower[];
   getFollower(artistId: number, actorUri: string): Follower | undefined;
   addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void;
@@ -60,6 +61,7 @@ export interface FederationProvider {
   createApNote(artistId: number, noteId: string, noteType: 'post' | 'release' | 'board', contentId: number, contentSlug: string, contentTitle: string): number;
   getApNotes(artistId: number, includeDeleted?: boolean): ApNote[];
   getApNotesByArtistIds(artistIds: number[], includeDeleted?: boolean): ApNote[];
+  getApNoteByContent(artistId: number, noteType: string, contentId: number): ApNote | undefined;
   getApNote(noteId: string): ApNote | undefined;
   markApNoteDeleted(noteId: string): void;
   addApReply(noteId: string, replyUri: string, actorUri: string, content: string, publishedAt?: string): boolean;

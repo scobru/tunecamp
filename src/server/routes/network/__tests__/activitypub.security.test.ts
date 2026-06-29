@@ -7,6 +7,7 @@ import type { ActivityPubService } from '../../../modules/activitypub/activitypu
 
 const mockDb = {
     getApNote: jest.fn(),
+    getApNoteByContent: jest.fn(),
     getAlbum: jest.fn(),
     getPost: jest.fn(),
     deleteApNote: jest.fn(),
@@ -15,6 +16,7 @@ const mockDb = {
     getArtistBySlug: jest.fn(),
     getApNotes: jest.fn(),
     getFollowers: jest.fn(),
+    getFollowerInboxes: jest.fn(),
     getRemoteActor: jest.fn(),
 } as unknown as DatabaseService;
 

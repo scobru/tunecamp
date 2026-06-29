@@ -158,6 +158,75 @@ describe('LocalizationService', () => {
         expect(args[args.length - 1]).toBe('https://www.youtube.com/watch?v=abc1234');
     });
 
+    test('should handle ext: prefix with http actual url', async () => {
+        mockDb.getTrack.mockReturnValue({ id: 1, url: 'ext:provider:http://example.com/audio.mp3', title: 'test' });
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await service.localizeTrack(1);
+
+        expect(mockExecFile).toHaveBeenCalled();
+        const args = mockExecFile.mock.calls[0][1] as string[];
+        expect(args[args.length - 1]).toBe('http://example.com/audio.mp3');
+    });
+
+    test('should handle ext: prefix with 2 parts where second part starts with http', async () => {
+        // We simulate a 2-part split by creating a url that won't result in 3 parts when split by ':'
+        // But the 2nd part starts with http. Since it splits by :, we'll use a URL without further colons,
+        // e.g. "ext:http//example.com/audio.mp3" (no colon after http)
+        mockDb.getTrack.mockReturnValue({ id: 1, url: 'ext:http//example.com/audio.mp3', title: 'test' });
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await service.localizeTrack(1);
+
+        expect(mockExecFile).toHaveBeenCalled();
+        const args = mockExecFile.mock.calls[0][1] as string[];
+        expect(args[args.length - 1]).toBe('http//example.com/audio.mp3');
+    });
+
+    test('should handle unrecognised provider in ext: prefix without http', async () => {
+        mockDb.getTrack.mockReturnValue({ id: 1, url: 'ext:unknownprovider:some_id', title: 'test' });
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await service.localizeTrack(1);
+
+        expect(mockExecFile).toHaveBeenCalled();
+        const args = mockExecFile.mock.calls[0][1] as string[];
+        expect(args[args.length - 1]).toBe('ext:unknownprovider:some_id'); // If it doesn't match, it uses original url (minus external_id logic fallback)
+    });
+
+    test('should handle ext:soundcloud prefix with numeric ID', async () => {
+        mockDb.getTrack.mockReturnValue({ id: 1, url: 'ext:soundcloud:123456', title: 'test' });
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await service.localizeTrack(1);
+
+        expect(mockExecFile).toHaveBeenCalled();
+        const args = mockExecFile.mock.calls[0][1] as string[];
+        expect(args[args.length - 1]).toBe('https://api.soundcloud.com/tracks/123456');
+    });
+
+    test('should handle ext:soundcloud prefix with non-numeric ID', async () => {
+        mockDb.getTrack.mockReturnValue({ id: 1, url: 'ext:soundcloud:some-track-name', title: 'test' });
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await service.localizeTrack(1);
+
+        expect(mockExecFile).toHaveBeenCalled();
+        const args = mockExecFile.mock.calls[0][1] as string[];
+        expect(args[args.length - 1]).toBe('https://soundcloud.com/some-track-name');
+    });
+
+    test('should fallback to external_id if no url and no known service', async () => {
+        mockDb.getTrack.mockReturnValue({ id: 1, service: 'other', external_id: 'https://example.com/audio.mp3', title: 'test' });
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await service.localizeTrack(1);
+
+        expect(mockExecFile).toHaveBeenCalled();
+        const args = mockExecFile.mock.calls[0][1] as string[];
+        expect(args[args.length - 1]).toBe('https://example.com/audio.mp3');
+    });
+
     test('should throw if no valid URL can be determined', async () => {
         mockDb.getTrack.mockReturnValue({ id: 1, service: 'unknown', external_id: null, url: null, title: 'test' });
         const service = new LocalizationService(mockDb, mockCatalog, '/music');
@@ -234,5 +303,63 @@ describe('LocalizationService', () => {
             service: 'local'
         });
         expect(result.file_path).toBe('localized/Test Artist/Test Album/Test Song.m4a');
+    });
+
+    test('should fetch album title from database if album_id is present', async () => {
+        mockDb.getTrack.mockReturnValueOnce({
+            id: 1,
+            service: 'youtube',
+            external_id: 'test_id',
+            title: 'Test Song',
+            artist_name: 'Test Artist',
+            album_id: 42
+        }).mockReturnValueOnce({
+            id: 1,
+            file_path: 'localized/Test Artist/Fetched Album/Test Song.m4a',
+            format: 'm4a',
+            service: 'local'
+        });
+        mockDb.getAlbum.mockReturnValue({ id: 42, title: 'Fetched Album' });
+        mockReaddir.mockResolvedValue(['temp_1.m4a'] as never);
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        const result = await service.localizeTrack(1);
+
+        expect(mockDb.getAlbum).toHaveBeenCalledWith(42);
+        expect(mockMove).toHaveBeenCalled();
+        expect(mockDb.updateTrack).toHaveBeenCalledWith(1, {
+            file_path: 'localized/Test Artist/Fetched Album/Test Song.m4a',
+            format: 'm4a',
+            service: 'local'
+        });
+    });
+
+    test('should handle missing album from database gracefully', async () => {
+        mockDb.getTrack.mockReturnValueOnce({
+            id: 1,
+            service: 'youtube',
+            external_id: 'test_id',
+            title: 'Test Song',
+            artist_name: 'Test Artist',
+            album_id: 42
+        }).mockReturnValueOnce({
+            id: 1,
+            file_path: 'localized/Test Artist/Unknown Album/Test Song.m4a',
+            format: 'm4a',
+            service: 'local'
+        });
+        mockDb.getAlbum.mockReturnValue(undefined);
+        mockReaddir.mockResolvedValue(['temp_1.m4a'] as never);
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        const result = await service.localizeTrack(1);
+
+        expect(mockDb.getAlbum).toHaveBeenCalledWith(42);
+        expect(mockMove).toHaveBeenCalled();
+        expect(mockDb.updateTrack).toHaveBeenCalledWith(1, {
+            file_path: 'localized/Test Artist/Unknown Album/Test Song.m4a',
+            format: 'm4a',
+            service: 'local'
+        });
     });
 });

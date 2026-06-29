@@ -161,7 +161,7 @@ export class SubsonicService {
         '@id': id,
         '@name': artist.name,
         '@parent': '1',
-      child: this.formatAlbumsBulk(allAlbums, username)
+        child: this.formatAlbumsBulk(allAlbums, username)
       };
     }
 

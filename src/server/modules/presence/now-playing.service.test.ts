@@ -129,4 +129,21 @@ describe('NowPlayingService', () => {
         expect(list).toHaveLength(1);
         expect(list[0].username).toBe('alice');
     });
+
+    it('should handle empty strings for title and artist gracefully', () => {
+        service.set('charlie', {
+            trackId: null,
+            title: '',
+            artist: ''
+        });
+
+        const list = service.list();
+        expect(list).toHaveLength(1);
+        expect(list[0]).toMatchObject({
+            username: 'charlie',
+            trackId: null,
+            title: '',
+            artist: ''
+        });
+    });
 });

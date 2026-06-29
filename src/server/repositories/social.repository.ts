@@ -68,6 +68,11 @@ export class SocialRepository extends BaseRepository {
         return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND status = 'accepted'").all(artistId) as Follower[];
     }
 
+    getFollowerInboxes(artistId: number): string[] {
+        const rows = this.db.prepare("SELECT DISTINCT inbox_uri FROM followers WHERE artist_id = ? AND status = 'accepted' AND inbox_uri IS NOT NULL").all(artistId) as { inbox_uri: string }[];
+        return rows.map(r => r.inbox_uri);
+    }
+
     getFollower(artistId: number, actorUri: string): Follower | undefined {
         return this.db.prepare("SELECT * FROM followers WHERE artist_id = ? AND actor_uri = ?").get(artistId, actorUri) as Follower | undefined;
     }

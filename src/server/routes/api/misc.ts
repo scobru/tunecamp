@@ -176,8 +176,7 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         }
 
         // Exclude posts that are deleted from ActivityPub
-        const apNotes = social.getApNotes(post.artist_id, true);
-        const apNote = apNotes.find((n: any) => n.note_type === 'post' && n.content_id === post.id);
+        const apNote = social.getApNoteByContent(post.artist_id, 'post', post.id);
         if (apNote && apNote.deleted_at) {
             return res.status(404).json({ error: "Post not found" });
         }

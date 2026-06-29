@@ -1094,8 +1094,8 @@ export class ActivityPubService {
             if (publishedReleaseIds) {
                 alreadyPublished = publishedReleaseIds.has(album.id);
             } else {
-                const existingNotes = this.db.getApNotes(artist.id, false);
-                alreadyPublished = existingNotes.some(n => n.note_type === 'release' && n.content_id === album.id);
+                const existingNote = this.db.getApNoteByContent(artist.id, 'release', album.id);
+                alreadyPublished = !!existingNote && !existingNote.deleted_at;
             }
             if (alreadyPublished) {
                 console.log(`ℹ️ Release "${album.title}" already published via ActivityPub. Skipping broadcast.`);
@@ -1149,8 +1149,8 @@ export class ActivityPubService {
             if (publishedPostIds) {
                 alreadyPublished = publishedPostIds.has(post.id);
             } else {
-                const existingNotes = this.db.getApNotes(artist.id, false);
-                alreadyPublished = existingNotes.some(n => n.note_type === 'post' && n.content_id === post.id);
+                const existingNote = this.db.getApNoteByContent(artist.id, 'post', post.id);
+                alreadyPublished = !!existingNote && !existingNote.deleted_at;
             }
             if (alreadyPublished) {
                 console.log(`ℹ️ Post "${post.slug}" already published via ActivityPub. Skipping broadcast.`);
@@ -1343,10 +1343,7 @@ export class ActivityPubService {
         this.db.addApReply(parentNoteId, replyUri, artistActorUrl, contentHtml, published);
 
         // Resolve delivery inboxes: followers + thread participants
-        const inboxes = new Set<string>();
-        for (const f of this.db.getFollowers(artist.id)) {
-            if (f.inbox_uri) inboxes.add(f.inbox_uri);
-        }
+        const inboxes = new Set<string>(this.db.getFollowerInboxes(artist.id));
 
         const uniqueThreadActors = [...new Set(threadActors)];
         const cachedActors = new Map<string, any>();
@@ -1466,8 +1463,7 @@ export class ActivityPubService {
                     isAlreadyDeleted = mapEntry.deleted;
                 }
             } else {
-                const notes = this.db.getApNotes(artist.id, true);
-                const note = notes.find(n => n.note_type === 'release' && n.content_id === album.id);
+                const note = this.db.getApNoteByContent(artist.id, 'release', album.id);
                 if (note) {
                     noteId = note.note_id;
                     isAlreadyDeleted = !!note.deleted_at;
@@ -1576,8 +1572,7 @@ export class ActivityPubService {
                     isAlreadyDeleted = mapEntry.deleted;
                 }
             } else {
-                const notes = this.db.getApNotes(artist.id, true);
-                const note = notes.find(n => n.note_type === 'post' && n.content_id === post.id);
+                const note = this.db.getApNoteByContent(artist.id, 'post', post.id);
                 if (note) {
                     noteId = note.note_id;
                     isAlreadyDeleted = !!note.deleted_at;

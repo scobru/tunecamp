@@ -5,8 +5,6 @@ function fakeDb(sessionKey: string | null) {
     return {
         getSetting: (key: string) => {
             if (key === 'lastfm_session_key') return sessionKey;
-            if (key === 'lastfm_api_key') return 'test_api_key';
-            if (key === 'lastfm_api_secret') return 'test_api_secret';
             return null;
         }
     } as any;
@@ -15,21 +13,49 @@ function fakeDb(sessionKey: string | null) {
 describe('LastFmProvider', () => {
     let fetchMock: any;
     let originalFetch: any;
+    let originalEnv: any;
 
     beforeEach(() => {
         originalFetch = (global as any).fetch;
         fetchMock = jest.fn(async () => ({ json: async () => ({}) }));
         (global as any).fetch = fetchMock;
+        originalEnv = { ...process.env };
+        process.env.LASTFM_API_KEY = 'test_key';
+        process.env.LASTFM_API_SECRET = 'test_secret';
     });
 
     afterEach(() => {
         (global as any).fetch = originalFetch;
+        process.env = originalEnv;
     });
 
     test('has the expected provider identity', () => {
         const p = new LastFmProvider(fakeDb('sk'));
         expect(p.id).toBe('lastfm');
         expect(p.name).toBe('Last.fm');
+    });
+
+
+    describe('isAvailable', () => {
+        test('true when both API key and secret are provided', async () => {
+            expect(await new LastFmProvider(fakeDb('sk')).isAvailable()).toBe(true);
+        });
+
+        test('false when API key is missing', async () => {
+            delete process.env.LASTFM_API_KEY;
+            expect(await new LastFmProvider(fakeDb('sk')).isAvailable()).toBe(false);
+        });
+
+        test('false when API secret is missing', async () => {
+            delete process.env.LASTFM_API_SECRET;
+            expect(await new LastFmProvider(fakeDb('sk')).isAvailable()).toBe(false);
+        });
+
+        test('false when both are missing', async () => {
+            delete process.env.LASTFM_API_KEY;
+            delete process.env.LASTFM_API_SECRET;
+            expect(await new LastFmProvider(fakeDb('sk')).isAvailable()).toBe(false);
+        });
     });
 
     describe('isConfigured', () => {

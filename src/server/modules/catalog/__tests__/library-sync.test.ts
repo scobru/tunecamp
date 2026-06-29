@@ -174,4 +174,152 @@ describe('LibrarySync', () => {
             album_id: 42
         }));
     });
+
+    test('syncFile handles hash generation error', async () => {
+        const { getFastFileHash } = await import('../../../../utils/fileUtils.js');
+        (getFastFileHash as jest.Mock).mockRejectedValueOnce(new Error('Hash error'));
+
+        mockDb.getTrackByPath.mockReturnValue({
+            id: 10,
+            file_path: 'artist/album/01-song.mp3',
+            album_id: 2
+        });
+
+        const result = await librarySync.syncFile('/music/artist/album/01-song.mp3', {}, { musicDir: '/music' });
+        expect(result.action).toBe('updated');
+    });
+
+    test('syncFile handles FFmpeg duration fallback failure', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        const { getDurationFromFfmpeg } = await import('../../media/ffmpeg.js');
+        (getDurationFromFfmpeg as jest.Mock).mockRejectedValueOnce(new Error('FFmpeg error'));
+
+        const metadata = { format: {} };
+        const result = await librarySync.syncFile('/music/01-song.mp3', metadata, { musicDir: '/music' });
+
+        expect(result.action).toBe('created');
+        expect(mockDb.createTrack).toHaveBeenCalledWith(expect.objectContaining({ duration: null }));
+    });
+
+    test('handleHashMatch adds owner to track and album', async () => {
+        mockDb.getTrackByHash.mockReturnValue({
+            id: 10,
+            file_path: 'artist/album/01-song.mp3',
+            album_id: 2
+        });
+
+        const result = await librarySync.syncFile('/music/artist/album/01-song.mp3', {}, { musicDir: '/music', ownerId: 5 });
+
+        expect(result.action).toBe('unchanged');
+        expect(mockDb.addTrackOwner).toHaveBeenCalledWith(10, 5);
+        expect(mockDb.addAlbumOwner).toHaveBeenCalledWith(2, 5);
+    });
+
+    test('resolveAlbum should create album based on metadata hints', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        const hints = { album: 'Hint Album', year: 2024 };
+        const result = await librarySync.syncFile('/music/artist/album/01-song.mp3', {}, { musicDir: '/music', metadataHints: hints, suggestedCoverPath: '/music/cover.jpg' });
+
+        expect(mockDb.createAlbum).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Hint Album',
+            year: 2024,
+            cover_path: 'cover.jpg'
+        }));
+    });
+
+    test('resolveAlbum should handle release folder matching', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        mockDb.getReleaseBySlug.mockImplementation((slug) => {
+            if (slug === 'my-release') return { id: 99 };
+            return null;
+        });
+
+        const result = await librarySync.syncFile('/music/releases/my-release/01-song.mp3', {}, { musicDir: '/music' });
+        expect(mockDb.createTrack).toHaveBeenCalledWith(expect.objectContaining({ album_id: 99 }));
+    });
+
+    test('updateExistingTrack should protect existing track titles when no hints are present', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue({
+            id: 10,
+            title: 'Protected Title',
+            file_path: 'artist/album/01-song.mp3',
+            album_id: 2
+        });
+
+        const result = await librarySync.syncFile('/music/artist/album/01-song.mp3', { common: { title: 'New Title' } }, { musicDir: '/music' });
+
+        expect(result.action).toBe('updated');
+        expect(mockDb.updateTrackTitle).not.toHaveBeenCalled();
+    });
+
+    test('updateExistingTrack should update title if existing is Untitled', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue({
+            id: 10,
+            title: 'Untitled',
+            file_path: 'artist/album/01-song.mp3',
+            album_id: 2
+        });
+
+        const result = await librarySync.syncFile('/music/artist/album/01-song.mp3', { common: { title: 'New Title' } }, { musicDir: '/music' });
+
+        expect(result.action).toBe('updated');
+        expect(mockDb.updateTrackTitle).toHaveBeenCalledWith(10, 'New Title');
+    });
+
+    test('createNewTrack catches autotagger audit error', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+        mockDb.getTrack.mockReturnValue({ id: 10, artist_name: 'Unknown Artist', album_id: null });
+
+        mockAutotagger.auditTrack.mockRejectedValueOnce(new Error('Audit error'));
+
+        const result = await librarySync.syncFile('/music/01-song.mp3', {}, { musicDir: '/music' });
+        expect(result.action).toBe('created');
+        // The error should be caught internally
+    });
+
+    test('getMimeType covers different extensions', async () => {
+        const types = [
+            { ext: '.mp3', mime: 'audio/mpeg' },
+            { ext: '.wav', mime: 'audio/wav' },
+            { ext: '.flac', mime: 'audio/flac' },
+            { ext: '.ogg', mime: 'audio/ogg' },
+            { ext: '.opus', mime: 'audio/opus' },
+            { ext: '.m4a', mime: 'audio/mp4' },
+            { ext: '.aac', mime: 'audio/aac' },
+            { ext: '.unknown', mime: 'application/octet-stream' }
+        ];
+
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        for (const { ext, mime } of types) {
+            await librarySync.syncFile(`/music/song${ext}`, {}, { musicDir: '/music' });
+            expect(mockDb.createTrack).toHaveBeenCalledWith(expect.objectContaining({ mime_type: mime }));
+        }
+    });
+
+    test('getMimeType uses formatMimeType if provided', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+
+        const metadata = { format: { mimeType: 'audio/custom' } };
+        await librarySync.syncFile('/music/song.mp3', metadata, { musicDir: '/music' });
+
+        expect(mockDb.createTrack).toHaveBeenCalledWith(expect.objectContaining({ mime_type: 'audio/custom' }));
+    });
 });
