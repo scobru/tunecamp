@@ -68,15 +68,28 @@ async function performRestore(zipPath: string, config: ServerConfig, database: D
 
         if (isZip) {
             console.log("📦 [Restore] Detected ZIP format, using extract-zip for secure extraction...");
+            // Use extract-zip for .zip files (handles >2GB better than adm-zip and prevents command injection)
             const extract = (await import("extract-zip")).default;
-            await extract(path.resolve(zipPath), { dir: path.resolve(extractPath) });
+            try {
+                await extract(path.resolve(zipPath), { dir: path.resolve(extractPath) });
+            } catch (error: any) {
+                console.error(`❌ [Restore] extract-zip extraction failed: ${error.message}`);
+                throw new Error(`Extraction failed: ${error.message}`);
+            }
         } else {
-            console.log(`📦 [Restore] Detected ${isGzip ? 'Compressed' : 'TAR'} format, using native tar module...`);
+            console.log(`📦 [Restore] Detected ${isGzip ? 'Compressed' : 'TAR'} format, using tar module...`);
+
+            // Use node-tar for .tar.gz (prevents command injection)
             const tar = await import("tar");
-            await tar.x({
-                file: path.resolve(zipPath),
-                cwd: path.resolve(extractPath),
-            });
+            try {
+                await tar.x({
+                    file: path.resolve(zipPath),
+                    cwd: path.resolve(extractPath)
+                });
+            } catch (error: any) {
+                console.error(`❌ [Restore] tar extraction failed: ${error.message}`);
+                throw new Error(`Extraction failed: ${error.message}`);
+            }
         }
 
 
