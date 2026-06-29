@@ -1,0 +1,3 @@
+🎯 **What:** Added a comprehensive test suite for `src/server/utils/spotify.ts` which was previously untested.
+📊 **Coverage:** Covered utility functions (`isSpotifyPlaylistUrl`, `extractSpotifyPlaylistId`) for parsing Spotify links. Additionally, tested the main logic in `SpotifyMetadataClient` methods (`searchTracks`, `getPlaylist`) by mocking global fetch, verifying successful responses and API failure handling/fallbacks.
+✨ **Result:** Test coverage for Spotify utilities is established, ensuring reliable integration with Spotify's Pathfinder APIs and stable URL parsing.
