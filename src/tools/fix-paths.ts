@@ -18,7 +18,6 @@ async function main() {
     const dbArgIdx = args.indexOf('--db');
     const dbOverride = dbArgIdx !== -1 ? args[dbArgIdx + 1] : null;
 
-
     const config = loadConfig();
     const dbPath = dbOverride || config.dbPath;
     const musicDir = path.resolve(config.musicDir);
