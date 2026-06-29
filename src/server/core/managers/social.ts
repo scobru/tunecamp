@@ -16,6 +16,7 @@ export function createSocialManager(
     return {
         // Followers
         getFollowers: (id: number) => socialRepository.getFollowers(id),
+        getFollowerInboxes: (id: number) => socialRepository.getFollowerInboxes(id),
         getPendingFollowers: (id: number) => socialRepository.getPendingFollowers(id),
         getFollower: (artistId: number, actorUri: string) => socialRepository.getFollower(artistId, actorUri),
         addFollower(id: number, u: string, i: string, si?: string, fid?: string) {
