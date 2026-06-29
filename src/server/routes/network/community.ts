@@ -2,6 +2,10 @@ import { Router } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import { buildCommunitySites } from "../../modules/network/community-sites.js";
 
+// ponytail: in-memory rate limit, 1 registration per IP per hour
+const registerRateLimit = new Map<string, number>();
+const REGISTER_COOLDOWN_MS = 60 * 60 * 1000;
+
 /**
  * Public `/api/community/*` endpoints — the federated discovery surface.
  *
@@ -64,6 +68,45 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Error getting community sites:", error);
             res.status(500).json({ error: "Failed to get community sites" });
+        }
+    });
+
+    /**
+     * POST /api/community/register
+     * Self-registration: an admin submits their instance URL. We probe it via
+     * NodeInfo to verify it's a real TuneCamp instance, then store it immediately
+     * so it appears in /api/community/sites without waiting for the next crawl.
+     *
+     * Rate-limited to 1 request per IP per hour (in-memory).
+     */
+    router.post("/register", async (req, res) => {
+        const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+        const last = registerRateLimit.get(ip);
+        if (last && Date.now() - last < REGISTER_COOLDOWN_MS) {
+            const retryAfter = Math.ceil((REGISTER_COOLDOWN_MS - (Date.now() - last)) / 1000);
+            res.setHeader("Retry-After", String(retryAfter));
+            res.status(429).json({ error: "Too many registration requests. Try again later." });
+            return;
+        }
+
+        const { url } = req.body || {};
+        if (!url || typeof url !== "string") {
+            res.status(400).json({ error: "url is required" });
+            return;
+        }
+
+        registerRateLimit.set(ip, Date.now());
+
+        try {
+            const ok = await federatedDiscoveryService.probeOrigin(url);
+            if (!ok) {
+                res.status(422).json({ error: "Could not verify as a TuneCamp instance. Check the URL and that the instance is reachable." });
+                return;
+            }
+            res.json({ ok: true, message: "Instance registered and will appear in the directory." });
+        } catch (error) {
+            console.error("Error registering community instance:", error);
+            res.status(500).json({ error: "Registration failed" });
         }
     });
 
