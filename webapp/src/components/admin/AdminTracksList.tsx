@@ -322,19 +322,24 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                       </span>
                     );
                   })()}
-                  {t.lossless_path ? (
-                    <span className="badge badge-outline badge-xs opacity-50 font-mono scale-90">
-                      {t.lossless_path.toLowerCase().endsWith(".wav")
-                        ? "WAV"
-                        : "FLAC"}
-                    </span>
-                  ) : (
-                    t.format && (
-                      <span className="badge badge-outline badge-xs opacity-50 font-mono scale-90">
-                        {t.format}
+                  {(() => {
+                    // Show both qualities when both exist: the compressed/streamed
+                    // format (+ bitrate, e.g. "MP3 320") and the lossless master
+                    // (WAV/FLAC). Listing them side by side is the only place a
+                    // manager can tell a track ships in dual quality.
+                    const fmt = t.format?.toLowerCase();
+                    const compressed = t.format && fmt !== "wav" && fmt !== "flac"
+                      ? `${t.format.toUpperCase()}${t.bitrate ? ` ${t.bitrate}` : ""}`
+                      : null;
+                    const lossless = t.lossless_path
+                      ? (t.lossless_path.toLowerCase().endsWith(".wav") ? "WAV" : "FLAC")
+                      : null;
+                    return [compressed, lossless].filter(Boolean).map((label, i) => (
+                      <span key={i} className="badge badge-outline badge-xs opacity-50 font-mono scale-90">
+                        {label}
                       </span>
-                    )
-                  )}
+                    ));
+                  })()}
                 </div>
               </td>
               <td>{t.artist_name}</td>
