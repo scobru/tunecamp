@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import * as mm from 'music-metadata';
 import { glob } from 'glob';
+import pLimit from 'p-limit';
 import type { DatabaseService, Track } from "../../core/database.js";
 import { metadataService } from "./metadata.service.js";
 import type { CatalogService } from "./catalog.service.js";
@@ -780,7 +781,8 @@ export class MaintenanceService {
                 if (genuineOrphans.length > 0) {
                     const artists = this.repo.getAllArtists();
                     const artistMap = new Map(artists.map(a => [a.name.toLowerCase(), a.id]));
-                    for (const file of genuineOrphans) {
+                    const limit = pLimit(10);
+                    await Promise.all(genuineOrphans.map(file => limit(async () => {
                         try {
                             const fullPath = path.join(this.musicDir, file);
                             const metadata = await mm.parseFile(fullPath);
@@ -813,7 +815,7 @@ export class MaintenanceService {
                                 currency: 'ETH'
                             });
                         } catch (e) {}
-                    }
+                    })));
                 }
             }
 
