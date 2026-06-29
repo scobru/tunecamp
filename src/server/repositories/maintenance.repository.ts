@@ -161,6 +161,24 @@ export class MaintenanceRepository extends BaseRepository {
         `).all(filePath);
     }
 
+    getTracksByPaths(filePaths: string[]): any[] {
+        if (filePaths.length === 0) return [];
+        const uniquePaths = [...new Set(filePaths)];
+        const allTracks: any[] = [];
+        const CHUNK_SIZE = 900;
+
+        for (let i = 0; i < uniquePaths.length; i += CHUNK_SIZE) {
+            const chunk = uniquePaths.slice(i, i + CHUNK_SIZE);
+            const placeholders = chunk.map(() => "?").join(",");
+            const stmt = this.db.prepare(`
+                SELECT id, album_id, duration, fingerprint, external_id, lyrics, lossless_path, file_path
+                FROM tracks WHERE file_path IN (${placeholders})
+            `);
+            allTracks.push(...stmt.all(chunk));
+        }
+        return allTracks;
+    }
+
     getBareTracks(): BareTrack[] {
         return this.db.prepare(`
             SELECT t.id, LOWER(TRIM(t.title)) as norm_title

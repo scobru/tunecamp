@@ -703,20 +703,36 @@ export class MaintenanceService {
 
             const duplicates = this.repo.getDuplicatePaths();
             let mergedCount = 0;
-            for (const dup of duplicates) {
-                const dupTracks = this.repo.getTracksByPath(dup.file_path);
-                dupTracks.sort((a, b) => {
-                    const score = (t: any) => (t.album_id ? 8 : 0) + (t.duration ? 4 : 0) + (t.fingerprint ? 2 : 0) + (t.external_id ? 1 : 0) + (t.lyrics ? 1 : 0) + (t.lossless_path ? 1 : 0);
-                    const diff = score(b) - score(a);
-                    if (diff !== 0) return diff;
-                    return a.id - b.id;
-                });
-                const keepId = dupTracks[0].id;
-                for (const t of dupTracks.slice(1)) {
-                    try {
-                        this.db.mergeTracks(t.id, keepId);
-                        mergedCount++;
-                    } catch (err) {}
+
+            if (duplicates.length > 0) {
+                const filePaths = duplicates.map(d => d.file_path);
+                const allDupTracks = this.repo.getTracksByPaths(filePaths);
+
+                const tracksByPath = new Map<string, any[]>();
+                for (const t of allDupTracks) {
+                    if (!tracksByPath.has(t.file_path)) {
+                        tracksByPath.set(t.file_path, []);
+                    }
+                    tracksByPath.get(t.file_path)!.push(t);
+                }
+
+                for (const dup of duplicates) {
+                    const dupTracks = tracksByPath.get(dup.file_path) || [];
+                    if (dupTracks.length < 2) continue;
+
+                    dupTracks.sort((a, b) => {
+                        const score = (t: any) => (t.album_id ? 8 : 0) + (t.duration ? 4 : 0) + (t.fingerprint ? 2 : 0) + (t.external_id ? 1 : 0) + (t.lyrics ? 1 : 0) + (t.lossless_path ? 1 : 0);
+                        const diff = score(b) - score(a);
+                        if (diff !== 0) return diff;
+                        return a.id - b.id;
+                    });
+                    const keepId = dupTracks[0].id;
+                    for (const t of dupTracks.slice(1)) {
+                        try {
+                            this.db.mergeTracks(t.id, keepId);
+                            mergedCount++;
+                        } catch (err) {}
+                    }
                 }
             }
             if (mergedCount > 0) console.log(`✅ [Maintenance] Merged ${mergedCount} duplicate track records.`);
