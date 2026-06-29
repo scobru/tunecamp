@@ -5,8 +5,6 @@ function fakeDb(sessionKey: string | null) {
     return {
         getSetting: (key: string) => {
             if (key === 'lastfm_session_key') return sessionKey;
-            if (key === 'lastfm_api_key') return 'test_api_key';
-            if (key === 'lastfm_api_secret') return 'test_api_secret';
             return null;
         }
     } as any;
