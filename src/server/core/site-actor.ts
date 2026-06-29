@@ -30,6 +30,17 @@ export function getSiteHandle(db: SettingReader): string {
 }
 
 /**
+ * Return true if `handle` refers to the site (instance) actor.
+ *
+ * Accepts both the current configured handle and the legacy "site" default so
+ * that activities delivered to the old handle continue to be routed correctly
+ * after an admin renames the instance (e.g. "site" → "sudo-records").
+ */
+export function isSiteHandle(handle: string, db: SettingReader): boolean {
+    return handle === getSiteHandle(db) || handle === DEFAULT_SITE_HANDLE;
+}
+
+/**
  * Derive a stable, webfinger-safe slug from an instance name.
  * Mirrors the slug pattern used elsewhere in the repo (see artist.repository.ts).
  */
