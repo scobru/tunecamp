@@ -156,6 +156,46 @@ describe('DownloadService', () => {
             expect(results).toHaveLength(1);
             expect(results[0].source).toBe('p1');
         });
+
+        test('waterfall strategy correctly merges results with simultaneous successes and failures', async () => {
+            // Three providers simulating simultaneous parallel requests
+            const providerFastSuccess = new MockDownloadProvider('p1', 'Provider Fast', '1.0.0', true, [
+                { id: '1', title: 'Track 1', filename: 'track1.mp3', sizeBytes: 100, source: 'p1' }
+            ]);
+            const providerError = new MockDownloadProvider('p2', 'Provider Error', '1.0.0', true, [], true);
+            const providerUnavailable = new MockDownloadProvider('p3', 'Provider Unavailable', '1.0.0', false, []);
+            const providerSlowSuccess = new MockDownloadProvider('p4', 'Provider Slow', '1.0.0', true, [
+                { id: '2', title: 'Track 2', filename: 'track2.mp3', sizeBytes: 200, source: 'p4' }
+            ]);
+
+            service.getRegistry().register(providerFastSuccess, true);
+            service.getRegistry().register(providerError, true);
+            service.getRegistry().register(providerUnavailable, true);
+            service.getRegistry().register(providerSlowSuccess, true);
+
+            // Mock console.error to avoid test output noise, and console.log to verify skipping
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+            const results = await service.search('query');
+
+            expect(results).toHaveLength(2);
+            // Verify results are merged correctly despite errors/unavailability
+            expect(results.some(r => r.source === 'p1')).toBe(true);
+            expect(results.some(r => r.source === 'p4')).toBe(true);
+
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                `[DownloadService] ❌ Provider "Provider Error" search failed:`,
+                expect.any(Error)
+            );
+
+            expect(consoleLogSpy).toHaveBeenCalledWith(
+                `[DownloadService] ⏭️ Skipping "Provider Unavailable" (not available)`
+            );
+
+            consoleErrorSpy.mockRestore();
+            consoleLogSpy.mockRestore();
+        });
     });
 
     describe('download', () => {
