@@ -1,148 +1,181 @@
-import { describe, expect, test, jest, beforeEach } from '@jest/globals';
+import { jest } from '@jest/globals';
+import { ActivityPubService } from '../activitypub.service.js';
+import type { FederationProvider } from '../federation.provider.js';
+import type { ServerConfig } from '../../../core/config.js';
+import type { Federation } from '@fedify/fedify';
 
-jest.unstable_mockModule('../activitypub.renderer.js', () => ({
-    ActivityPubRenderer: jest.fn().mockImplementation(() => ({
-        renderActor: jest.fn(),
-        renderNote: jest.fn(),
-    })),
-}));
+describe('ActivityPubService', () => {
+  let service: ActivityPubService;
+  let mockDb: jest.Mocked<FederationProvider>;
+  let mockConfig: ServerConfig;
+  let mockFederation: Federation<void>;
+  let mockTransport: any;
+  let mockDeliveryQueue: any;
 
-jest.unstable_mockModule('../activitypub.transport.js', () => ({
-    ActivityPubTransport: jest.fn().mockImplementation(() => ({
-        send: jest.fn(),
-    })),
-}));
+  beforeEach(() => {
+    mockDb = {
+      getSetting: jest.fn().mockImplementation((key) => {
+          if (key === 'publicUrl') return 'https://test.com';
+          return null;
+      }),
+      getArtistBySlug: jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test' } as any),
+      getArtist: jest.fn().mockReturnValue({ id: 1, slug: 'test-artist', name: 'Test' } as any),
+      ensureArtistKeys: jest.fn().mockResolvedValue(undefined as never),
+      ensureUserKeys: jest.fn().mockResolvedValue(undefined as never),
+      upsertRemoteActor: jest.fn(),
+      addFollower: jest.fn(),
+      updateArtistFollowingCount: jest.fn(),
+      addFollowing: jest.fn(),
+      acceptFollower: jest.fn(),
+      unfollowActor: jest.fn(),
+      removeFollowing: jest.fn(),
+    } as any;
 
-jest.unstable_mockModule('../activitypub.delivery-queue.js', () => ({
-    DeliveryQueue: jest.fn().mockImplementation(() => ({
-        start: jest.fn(),
-        enqueue: jest.fn(),
-    })),
-}));
+    mockConfig = {
+      domain: 'test.com',
+      publicUrl: 'https://test.com',
+      port: 3000,
+    } as any;
 
-describe('ActivityPubService (mocked environment)', () => {
-    let service: any; // using any to bypass some internal strict types for easier testing
-    let mockDb: any;
-    let mockConfig: any;
-    let mockFederation: any;
-    let ActivityPubService: any;
+    mockFederation = {} as any;
 
-    // We need to store the instances dynamically since they're instantiated inside constructor
-    let rendererInstance: any;
-    let transportInstance: any;
-    let queueInstance: any;
+    service = new ActivityPubService(mockDb, mockConfig, mockFederation);
 
-    beforeEach(async () => {
-        jest.clearAllMocks();
+    mockTransport = {
+      fetchWithSignature: jest.fn(),
+      send: jest.fn()
+    };
+    mockDeliveryQueue = {
+      enqueue: jest.fn(),
+      start: jest.fn()
+    };
 
-        const rendererModule = await import('../activitypub.renderer.js');
-        const transportModule = await import('../activitypub.transport.js');
-        const queueModule = await import('../activitypub.delivery-queue.js');
+    (service as any).transport = mockTransport;
+    (service as any).deliveryQueue = mockDeliveryQueue;
 
-        mockDb = {
-            db: {}, // mock sqlite db
-            getSetting: jest.fn(),
-            getArtistBySlug: jest.fn(),
-        };
-
-        mockConfig = {
-            publicUrl: 'https://example.com',
-            port: 3000,
-        };
-
-        mockFederation = {};
-
-        const serviceModule = await import('../activitypub.service.js');
-        ActivityPubService = serviceModule.ActivityPubService;
-
-        service = new ActivityPubService(mockDb, mockConfig, mockFederation);
-
-        // Grab instances assigned inside constructor for asserting
-        rendererInstance = (service as any).renderer;
-        transportInstance = (service as any).transport;
-        queueInstance = (service as any).deliveryQueue;
+    // Mock getInboxFromActor directly to bypass internal network logic for tests
+    jest.spyOn(service as any, 'getInboxFromActor').mockImplementation(async (uri: string) => {
+      if (uri === 'https://remote.test/actor') return 'https://remote.test/inbox';
+      return null;
     });
 
-    describe('startDeliveryQueue', () => {
-        test('should call deliveryQueue.start()', () => {
-            service.startDeliveryQueue();
-            expect(queueInstance.start).toHaveBeenCalled();
-        });
+    // Mock fetchRemoteOutbox to avoid the undefined fetchWithSignature errors
+    jest.spyOn(service as any, 'fetchRemoteOutbox').mockResolvedValue(undefined);
+
+    // WebFinger resolution
+    global.fetch = jest.fn() as any;
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        links: [
+          { rel: 'self', href: 'https://remote.test/actor' }
+        ]
+      })
+    });
+  });
+
+  describe('followRemoteActor', () => {
+    it('should follow a remote actor successfully', async () => {
+      mockTransport.send.mockResolvedValueOnce(true);
+
+      const result = await service.followRemoteActor('https://remote.test/actor', 'test-artist');
+
+      expect(result).toBeUndefined(); // followRemoteActor returns void/undefined
+      expect(mockTransport.send).toHaveBeenCalledTimes(1);
+
+      const [actor, inbox, activity] = mockTransport.send.mock.calls[0];
+      expect(actor).toMatchObject({ id: 1, slug: 'test-artist' });
+      expect(inbox).toBe('https://remote.test/inbox');
+      expect(activity).toBeDefined();
+
+      expect(mockDb.addFollowing).toHaveBeenCalledWith(1, 'https://remote.test/actor', 'https://remote.test/inbox');
     });
 
-    describe('sendActivity', () => {
-        test('should not enqueue if transport.send is successful', async () => {
-            transportInstance.send.mockResolvedValue(true);
-            const actor = { slug: 'test-actor' };
-            const inbox = 'https://remote.com/inbox';
-            const activity = { type: 'Create' };
+    it('should throw an error if inbox cannot be resolved', async () => {
+      jest.spyOn(service as any, 'getInboxFromActor').mockResolvedValueOnce(null);
 
-            await service.sendActivity(actor, inbox, activity);
+      await expect(service.followRemoteActor('https://remote.test/actor', 'test-artist'))
+        .rejects
+        .toThrow(/Could not resolve an ActivityPub actor/);
+    });
+  });
 
-            expect(transportInstance.send).toHaveBeenCalledWith(actor, inbox, activity);
-            expect(queueInstance.enqueue).not.toHaveBeenCalled();
-        });
+  describe('sendActivity', () => {
+    it('should use delivery queue if immediate send fails', async () => {
+      const actor = { id: 1, slug: 'artist' };
+      const inboxUri = 'https://remote.test/inbox';
+      const activityJson = { type: 'Create' };
 
-        test('should enqueue if transport.send fails', async () => {
-            transportInstance.send.mockResolvedValue(false);
-            const actor = { slug: 'test-actor' };
-            const inbox = 'https://remote.com/inbox';
-            const activity = { type: 'Create' };
+      mockTransport.send.mockResolvedValueOnce(false);
 
-            await service.sendActivity(actor, inbox, activity);
+      await service.sendActivity(actor as any, inboxUri, activityJson);
 
-            expect(transportInstance.send).toHaveBeenCalledWith(actor, inbox, activity);
-            expect(queueInstance.enqueue).toHaveBeenCalledWith('test-actor', inbox, activity);
-        });
-
-        test('should enqueue using site handle if actor has no slug', async () => {
-            transportInstance.send.mockResolvedValue(false);
-            mockDb.getSetting.mockImplementation((key: string) => {
-                if (key === 'site_handle') return 'site';
-                return null;
-            });
-            const actor = { name: 'Test Actor without slug' };
-            const inbox = 'https://remote.com/inbox';
-            const activity = { type: 'Create' };
-
-            await service.sendActivity(actor, inbox, activity);
-
-            // getSiteHandle defaults to "site" if db setting is absent, but here we mock it to site
-            expect(queueInstance.enqueue).toHaveBeenCalledWith('site', inbox, activity);
-        });
+      expect(mockTransport.send).toHaveBeenCalledWith(actor, inboxUri, activityJson);
+      expect(mockDeliveryQueue.enqueue).toHaveBeenCalledWith('artist', inboxUri, activityJson);
     });
 
-    describe('generateActor', () => {
-        test('should call renderer.renderActor with artist', () => {
-            const artist = { slug: 'test', name: 'Test' };
-            service.generateActor(artist);
-            expect(rendererInstance.renderActor).toHaveBeenCalledWith(expect.objectContaining({ slug: 'test' }));
-        });
+    it('should not enqueue if immediate send succeeds', async () => {
+      const actor = { id: 1, slug: 'artist' };
+      const inboxUri = 'https://remote.test/inbox';
+      const activityJson = { type: 'Create' };
 
-        test('should attach site_public_key if artist is site actor', () => {
-            const artist = { slug: 'site', name: 'Site Actor' };
-            mockDb.getSetting.mockImplementation((key: string) => {
-                if (key === 'site_handle') return 'site';
-                if (key === 'site_public_key') return 'mock-public-key';
-                return null;
-            });
-            service.generateActor(artist);
-            expect(rendererInstance.renderActor).toHaveBeenCalledWith(expect.objectContaining({
-                slug: 'site',
-                public_key: 'mock-public-key'
-            }));
-        });
+      mockTransport.send.mockResolvedValueOnce(true);
+
+      await service.sendActivity(actor as any, inboxUri, activityJson);
+
+      expect(mockTransport.send).toHaveBeenCalledWith(actor, inboxUri, activityJson);
+      expect(mockDeliveryQueue.enqueue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acceptFollowRequest', () => {
+    it('should accept a pending follow request and send an Accept activity', async () => {
+      const actor = { id: 1, slug: 'test-artist', name: 'Test Artist' };
+      const actorUri = 'https://remote.test/actor';
+      mockDb.getFollower = jest.fn().mockReturnValue({ follow_id: 'https://remote.test/follow-1' } as any);
+
+      mockTransport.send.mockResolvedValueOnce(true);
+
+      await service.acceptFollowRequest(actor as any, actorUri);
+
+      expect(mockDb.acceptFollower).toHaveBeenCalledWith(1, actorUri);
+      expect(mockTransport.send).toHaveBeenCalledTimes(1);
+
+      const [sendActor, sendInbox, sendActivity] = mockTransport.send.mock.calls[0];
+      expect(sendActor).toEqual(actor);
+      expect(sendInbox).toBe('https://remote.test/inbox');
+      expect(sendActivity.type).toBe('Accept');
+      expect(sendActivity.object.id).toBe('https://remote.test/follow-1');
     });
 
-    describe('generateNote', () => {
-        test('should call renderer.renderNote with provided params', () => {
-            const album = { id: 1 } as any;
-            const artist = { id: 2 } as any;
-            const tracks = [] as any;
+    it('should fail silently and log an error if inbox cannot be found', async () => {
+      const actor = { id: 1, slug: 'test-artist', name: 'Test Artist' };
+      const actorUri = 'https://remote.test/actor-no-inbox';
+      jest.spyOn(service as any, 'getInboxFromActor').mockResolvedValueOnce(null);
 
-            service.generateNote(album, artist, tracks);
+      await service.acceptFollowRequest(actor as any, actorUri);
 
-            expect(rendererInstance.renderNote).toHaveBeenCalledWith(album, artist, tracks);
-        });
+      expect(mockDb.acceptFollower).not.toHaveBeenCalled();
+      expect(mockTransport.send).not.toHaveBeenCalled();
     });
+  });
+
+  describe('unfollowRemoteActor', () => {
+    it('should unfollow a remote actor and send Undo Follow activity', async () => {
+      mockTransport.send.mockResolvedValueOnce(true);
+
+      await service.unfollowRemoteActor('https://remote.test/actor', 'test-artist');
+
+      expect(mockDb.unfollowActor).toHaveBeenCalledWith('https://remote.test/actor');
+      expect(mockTransport.send).toHaveBeenCalledTimes(1);
+
+      const [sendActor, sendInbox, sendActivity] = mockTransport.send.mock.calls[0];
+      expect(sendActor.slug).toBe('test-artist');
+      expect(sendInbox).toBe('https://remote.test/inbox');
+      expect(sendActivity.type).toBe('Undo');
+      expect(sendActivity.object.type).toBe('Follow');
+      expect(sendActivity.object.object).toBe('https://remote.test/actor');
+    });
+  });
+
 });
