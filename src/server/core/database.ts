@@ -730,6 +730,10 @@ export function createDatabase(dbPath: string): DatabaseService {
                 // Reconcile the stored slug with the configured handle if they drifted.
                 db.prepare("UPDATE artists SET slug = ? WHERE id = -1 AND slug != ?").run(siteSlug, siteSlug);
             }
+            // Give the site actor the site logo as its default photo so Fediverse
+            // clients (and the Social page) show the instance branding image.
+            // Only sets the default — a custom upload via the artist avatar form takes precedence.
+            db.prepare("UPDATE artists SET photo_path = '/api/settings/logo' WHERE id = -1 AND (photo_path IS NULL OR photo_path = '')").run();
         }
 
         const albumsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='albums'").get();
