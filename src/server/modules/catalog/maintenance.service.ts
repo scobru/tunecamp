@@ -716,38 +716,42 @@ export class MaintenanceService {
                     tracksByPath.get(t.file_path)!.push(t);
                 }
 
-                for (const dup of duplicates) {
-                    const dupTracks = tracksByPath.get(dup.file_path) || [];
-                    if (dupTracks.length < 2) continue;
+                this.db.transaction(() => {
+                    for (const dup of duplicates) {
+                        const dupTracks = tracksByPath.get(dup.file_path) || [];
+                        if (dupTracks.length < 2) continue;
 
-                    dupTracks.sort((a, b) => {
-                        const score = (t: any) => (t.album_id ? 8 : 0) + (t.duration ? 4 : 0) + (t.fingerprint ? 2 : 0) + (t.external_id ? 1 : 0) + (t.lyrics ? 1 : 0) + (t.lossless_path ? 1 : 0);
-                        const diff = score(b) - score(a);
-                        if (diff !== 0) return diff;
-                        return a.id - b.id;
-                    });
-                    const keepId = dupTracks[0].id;
-                    for (const t of dupTracks.slice(1)) {
-                        try {
-                            this.db.mergeTracks(t.id, keepId);
-                            mergedCount++;
-                        } catch (err) {}
+                        dupTracks.sort((a, b) => {
+                            const score = (t: any) => (t.album_id ? 8 : 0) + (t.duration ? 4 : 0) + (t.fingerprint ? 2 : 0) + (t.external_id ? 1 : 0) + (t.lyrics ? 1 : 0) + (t.lossless_path ? 1 : 0);
+                            const diff = score(b) - score(a);
+                            if (diff !== 0) return diff;
+                            return a.id - b.id;
+                        });
+                        const keepId = dupTracks[0].id;
+                        for (const t of dupTracks.slice(1)) {
+                            try {
+                                this.db.mergeTracks(t.id, keepId);
+                                mergedCount++;
+                            } catch (err) {}
+                        }
                     }
-                }
+                })();
             }
             if (mergedCount > 0) console.log(`✅ [Maintenance] Merged ${mergedCount} duplicate track records.`);
 
             const bareTracks = this.repo.getBareTracks();
             let mergedBareCount = 0;
-            for (const bare of bareTracks) {
-                const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
-                if (richMatch) {
-                    try {
-                        this.db.mergeTracks(bare.id, richMatch.id);
-                        mergedBareCount++;
-                    } catch (err) {}
+            this.db.transaction(() => {
+                for (const bare of bareTracks) {
+                    const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
+                    if (richMatch) {
+                        try {
+                            this.db.mergeTracks(bare.id, richMatch.id);
+                            mergedBareCount++;
+                        } catch (err) {}
+                    }
                 }
-            }
+            })();
             if (mergedBareCount > 0) console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records.`);
 
             const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: this.musicDir, posix: true });
