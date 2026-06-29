@@ -39,10 +39,11 @@ async function isDirEmptyOrDead(dirPath: string): Promise<boolean> {
   return validEntries.length === 0;
 }
 
-async function cleanFolders() {
+async function main() {
+  const config = loadConfig();
+  const musicDir = path.resolve(config.musicDir);
+
   try {
-    const config = loadConfig();
-    const musicDir = path.resolve(config.musicDir);
 
     if (!await fs.pathExists(musicDir)) {
       console.error(`❌ Error: Music directory does not exist at: ${musicDir}`);
@@ -106,4 +107,4 @@ async function cleanFolders() {
   }
 }
 
-cleanFolders();
+main();
