@@ -77,6 +77,16 @@ A **Listener-Artist** is a standard `user`-role account that has been linked to 
 1. **Admin-initiated:** Admin links an artist profile to an existing user manually (Admin → Users → Edit → Artist Profile).
 2. **Self-request:** The listener requests one from **Profile → Settings → Become an Artist**. The admin approves from the Users panel (`POST /api/admin/system/users/:id/approve-artist`): an artist profile is created under their username, `can_sell` is set to `false`, and the storage quota is applied. The role stays `user`.
 
+### Self-Publish mode (admin auto-approval flag)
+The **Listener Self-Publish** toggle in **Admin → Settings** (setting `listenerSelfPublish`) removes the admin from the loop entirely. When it is **on**:
+
+- **Artist requests are auto-approved.** `POST /api/users/me/artist-request` immediately creates the artist profile (applying `listenerSelfPublishQuota`) and returns `autoApproved: true` with a fresh token — no "Artist requested" badge to review. The role still stays `user` and `can_sell` still defaults to `false`.
+- **Releases are auto-published.** A self-publishing artist's promotion (`POST /api/lifecycle/promote/:id`) skips the curation queue and goes straight to `released` instead of `pending`, so the release never waits for admin approval.
+
+When the flag is **off** (default), both steps require explicit admin action: the request sits as a pending badge in **Admin → Users**, and the release sits in the **Curation Queue** (`status = 'pending'`) until a Manager/Root Admin approves it (`POST /api/lifecycle/approve/:id`).
+
+The companion `listenerSelfPublishQuota` sets the default physical-upload quota granted at auto-approval (MB; default `1024` = 1 GB, `0` = unlimited; still adjustable per user afterwards).
+
 ---
 
 ## 6. The `can_sell` flag (per-artist sales gate)

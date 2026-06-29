@@ -15,7 +15,7 @@ L'istanza rappresenta il negozio di un artista o di un'etichetta.
 Per ridurre l'attrito nel percorso da ascoltatore a artista:
 
 1. L'ascoltatore apre **Profile → Settings → Become an Artist** e fa clic su *Richiedi Profilo Artista* (`POST /api/users/me/artist-request`).
-2. L'amministratore vede il contrassegno "Artist requested" in **Admin → Users** e lo approva con un clic (`POST /api/admin/system/users/:id/approve-artist`): viene creato un artista con il nome dell'utente, collegato al suo account, **e l'account viene promosso a Curatore**. Le vendite rimangono disabilitate.
+2. L'amministratore vede il contrassegno "Artist requested" in **Admin → Users** e lo approva con un clic (`POST /api/admin/system/users/:id/approve-artist`): viene creato un artista con il nome dell'utente e collegato al suo account. **L'account mantiene il ruolo `user`** — è il collegamento al profilo artista a concedere i diritti di pubblicazione (è lo stato "Ascoltatore-Artista"; vedi [ROLES.md](ROLES.md)), quindi non avviene alcuna promozione a Curatore. Le vendite rimangono disabilitate. (Con **Listener Self-Publish** attivo in Admin → Settings, questo passaggio di approvazione viene saltato e la richiesta è auto-approvata.)
 3. L'amministratore abilita le vendite separatamente una volta verificato l'artista.
 
 L'approvazione rappresenta proprio quel "contatto diretto amministratore-artista" richiesto per la pubblicazione: approvare significa assumersi la responsabilità di quell'artista sulla propria istanza.
@@ -38,5 +38,5 @@ Razionale: su una piattaforma che consente la vendita di musica, i caricamenti a
 ## Note sulla Migrazione
 
 - Gli artisti esistenti hanno `can_sell = 1` (la migrazione utilizza il valore predefinito 1): non cambia nulla per le istanze attuali.
-- L'impostazione `mode` non viene più letta da nessuna parte: le istanze che la avevano impostata su `community` torneranno al comportamento standard a partire dalla prossima versione. I profili artista creati automaticamente rimangono collegati, ma tali account (con ruolo `user`) non potranno più pubblicare fino a quando l'amministratore non li promuoverà a Curatore.
+- L'impostazione `mode` non viene più letta da nessuna parte: le istanze che la avevano impostata su `community` torneranno al comportamento standard a partire dalla prossima versione. I profili artista creati automaticamente rimangono collegati, e tali account (con ruolo `user`) possono pubblicare tramite quel collegamento al profilo artista (il modello Ascoltatore-Artista) — non è richiesta alcuna promozione a Curatore.
 - La casella "Registrazione Pubblica" nelle impostazioni amministratore ora funziona correttamente: in precedenza scriveva `allowPublicRegistration` mentre la registrazione controllava la chiave legacy `allowRegistration` (ora il controllo verifica entrambe).

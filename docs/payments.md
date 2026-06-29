@@ -35,6 +35,22 @@ TuneCamp supports a hybrid payment system combining traditional Fiat (via Stripe
 - **Mechanism**: Backend fetches the transaction and receipt from the Base RPC, parses the transaction data (using `ethers.js`), and verifies the recipient and amount.
 - **Note**: Store assets have no on-chain verify endpoint yet — the crypto tab is hidden for asset checkouts, which are Stripe-only.
 
+## 1.5 Release distribution modes ("Download Experience")
+
+Every album/release picks **one** distribution mode in the editor (**Studio → Release → Download Experience**). It is stored on `albums.download` and decides which (if any) purchase/download flow the release page exposes.
+
+| Mode (UI) | `download` value | Behavior |
+| :--- | :--- | :--- |
+| **Streaming Only** | `none` (or `null`) | In-app streaming only. No download button, no purchase flow. |
+| **Free Download** | `free` | Public ZIP download via `GET /api/releases/:slug/download?format=mp3\|wav` — no payment, no code. |
+| **Unlock Codes** | `codes` | Download is gated behind a unique unlock code (see §2). Codes are issued on purchase (Stripe/crypto) or handed out manually from the editor. |
+| **External Showcase** | `external` | **All on-platform purchase/download flows are disabled.** The release page replaces the buy button with a single **"Buy on Bandcamp"** link pointing at the configured *External Buy URL*. |
+
+**External Showcase details:**
+- The buy URL is stored as the first entry of `albums.external_links` (`[{ label, url }]`). The button label is `Buy on {label}`, defaulting to **"Buy on Bandcamp"** when no label is set.
+- Selecting this mode forces `use_nft = false` and clears the price — TuneCamp never takes a cut of an off-platform sale.
+- Streaming on TuneCamp still works for any audio that was uploaded to the release; only the *sale* happens off-platform. Uploading audio is optional and only needed if you also want in-app playback (publishing/streaming model is unchanged — TuneCamp does not stream from Bandcamp).
+
 ## 2. Unlock Codes
 
 When a payment is verified (either via Stripe Webhook or On-chain Verify), the system generates a unique 10-character alphanumeric code.

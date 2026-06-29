@@ -15,7 +15,7 @@ The instance is the store of an artist or a label.
 To reduce friction in the listener → artist path:
 
 1. The listener opens **Profile → Settings → Become an Artist** and clicks *Request Artist Profile* (`POST /api/users/me/artist-request`).
-2. The admin sees the "Artist requested" badge in **Admin → Users** and approves it with a click (`POST /api/admin/system/users/:id/approve-artist`): an artist is created with the user's name, linked to their account, **and the account is promoted to Curator**. Sales remain disabled.
+2. The admin sees the "Artist requested" badge in **Admin → Users** and approves it with a click (`POST /api/admin/system/users/:id/approve-artist`): an artist is created with the user's name and linked to their account. **The account keeps its `user` role** — the artist-profile link is what grants publishing rights (this is the "Listener-Artist" state; see [ROLES.md](ROLES.md)), so no Curator promotion happens. Sales remain disabled. (With **Listener Self-Publish** enabled in Admin → Settings, this approval step is skipped and the request is auto-approved.)
 3. The admin enables sales separately once they have verified the artist.
 
 Approval is exactly the "direct admin–artist contact" that publishing requires: approving means taking responsibility for that artist on your instance.
@@ -38,5 +38,5 @@ Rationale: on a platform that sells music, open uploads without verification is 
 ## Migration Notes
 
 - Existing artists have `can_sell = 1` (migration uses DEFAULT 1): nothing changes for current instances.
-- The `mode` setting is no longer read anywhere: instances that had it set to `community` return to standard behavior in the next release. Auto-created artist profiles remain linked, but those accounts (role `user`) can no longer publish until the admin promotes them to Curator.
+- The `mode` setting is no longer read anywhere: instances that had it set to `community` return to standard behavior in the next release. Auto-created artist profiles remain linked, and those accounts (role `user`) can publish through that artist-profile link (the Listener-Artist model) — no Curator promotion is required.
 - The "Public Registration" toggle in admin settings now works correctly: it previously wrote `allowPublicRegistration` while registration checked the legacy `allowRegistration` key (the check now reads both).
