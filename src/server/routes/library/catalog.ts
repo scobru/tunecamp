@@ -32,20 +32,24 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
         const allowDownloadsGlobal = identity.getSetting("peerAllowDownloads") !== "false";
 
         const out: any[] = [];
-        for (const session of peerService.getSessions()) {
-            const tracks = peerService.getTracksBySession(session.id);
-            for (const t of tracks) {
-                out.push({
-                    sessionId: session.id,
-                    id: t.id,
-                    title: t.title,
-                    artist: t.artist,
-                    album: t.album,
-                    duration: t.duration,
-                    allowDownload: allowDownloadsGlobal && !!t.allow_download
-                });
-            }
+        const sessions = peerService.getSessions();
+        if (sessions.length === 0) return out;
+
+        const sessionIds = sessions.map(s => s.id);
+        const tracks = peerService.getTracksBySessions(sessionIds);
+
+        for (const t of tracks) {
+            out.push({
+                sessionId: t.session_id,
+                id: t.id,
+                title: t.title,
+                artist: t.artist,
+                album: t.album,
+                duration: t.duration,
+                allowDownload: allowDownloadsGlobal && !!t.allow_download
+            });
         }
+
         return out;
     };
 

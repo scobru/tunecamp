@@ -426,6 +426,10 @@ export class PeerService {
         return this.database.peer.getTracksByPeerSession(sessionId);
     }
 
+    getTracksBySessions(sessionIds: string[]): PeerTrack[] {
+        return this.database.peer.getTracksByPeerSessions(sessionIds);
+    }
+
     getSessions(): PeerSession[] {
         return this.database.peer.getActivePeerSessions();
     }
