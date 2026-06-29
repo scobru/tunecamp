@@ -37,8 +37,8 @@
 
 ### Publishing & Roles
 - **Listeners (`user` role) cannot publish.** No uploads, releases, sales, or social posts.
-- Gate: `VisibilityGuardian.canPublishContent()` — root_admin/admin always; super_user (curator) only with artist link; listener never.
-- "Become an Artist" flow promotes account to Curator after admin approval.
+- Gate: `VisibilityGuardian.canPublishContent()` — root_admin/admin always; super_user (curator) **or** `user` (listener) only when they have a linked artist profile (`artistId`); anyone without an artist link never. The gate is the artist link, not the role.
+- "Become an Artist" flow keeps the account's `user` role after admin approval — it links an artist profile that grants publishing via `canPublishContent` (the "Listener-Artist" state). No Curator promotion happens; Curator/Manager elevation is a separate root-admin action. The `listenerSelfPublish` admin flag auto-approves these requests (and auto-publishes their releases).
 - Every new publish/sell endpoint must use `canPublishContent`, not raw `artistId` checks.
 
 ### Playlists
