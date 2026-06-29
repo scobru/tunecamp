@@ -230,6 +230,7 @@ export function createSocialManager(
         saveRemotePost: (p: any) => { remoteContentRepository.saveRemotePost(p); },
         deleteRemotePost: (id: string) => { remoteContentRepository.deleteRemotePost(id); },
         deleteRemoteContent: (id: string) => { remoteContentRepository.deleteRemoteContent(id); },
+        deleteRemoteContentByActorPrefix: (prefix: string) => remoteContentRepository.deleteRemoteContentByActorPrefix(prefix),
 
         // Reports
         createReport: (r) => reportsRepository.createReport(r),

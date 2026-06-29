@@ -1,6 +1,6 @@
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Trash2, ExternalLink, MessageSquare, Disc, AlertTriangle, DatabaseZap } from 'lucide-react';
 import API from '../../services/api';
 import type { Artist } from '../../types';
 import { notify } from '../../utils/notify';
@@ -92,7 +92,7 @@ export const ActivityPubPanel = () => {
 
     const handleSync = async () => {
         if (!await confirm('This will re-broadcast all public releases and posts to the Fediverse (Mastodon, etc) to ensure they are in sync. This might take a while. Continue?')) return;
-        
+
         setLoading(true);
         try {
             await API.syncActivityPub();
@@ -101,6 +101,23 @@ export const ActivityPubPanel = () => {
         } catch (e) {
             console.error(e);
             notify.error(e, 'Failed to start synchronization');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePurgeLocalCache = async () => {
+        if (!await confirm(
+            'This will remove stale posts from this instance that were cached in the federated remote-content store (e.g. after key regeneration). Local posts will still appear normally. Continue?'
+        )) return;
+
+        setLoading(true);
+        try {
+            const result = await API.purgeLocalFederationCache() as any;
+            notify.success(result?.message || `Removed ${result?.deleted ?? 0} stale local post(s) from the federated cache.`);
+        } catch (e) {
+            console.error(e);
+            notify.error(e, 'Failed to purge local federation cache');
         } finally {
             setLoading(false);
         }
@@ -133,6 +150,14 @@ export const ActivityPubPanel = () => {
                         data-tip="Re-broadcast all public content to the Fediverse"
                     >
                         <RefreshCw size={20} className={loading ? 'animate-spin' : ''}/> Sync
+                    </button>
+                    <button
+                        className="btn btn-warning btn-outline gap-2 shadow-sm tooltip tooltip-bottom"
+                        onClick={handlePurgeLocalCache}
+                        disabled={loading}
+                        data-tip="Remove stale local posts from the federated cache (e.g. after key regeneration)"
+                    >
+                        <DatabaseZap size={20} /> Purge Cache
                     </button>
                 </div>
             </div>

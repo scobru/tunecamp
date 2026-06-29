@@ -98,4 +98,11 @@ export class RemoteContentRepository extends BaseRepository {
     deleteRemoteContent(apId: string): void {
         this.db.prepare("DELETE FROM remote_content WHERE ap_id = ?").run(apId);
     }
+
+    deleteRemoteContentByActorPrefix(actorUriPrefix: string): number {
+        const result = this.db.prepare(
+            "DELETE FROM remote_content WHERE actor_uri LIKE ?"
+        ).run(`${actorUriPrefix}%`);
+        return result.changes as number;
+    }
 }

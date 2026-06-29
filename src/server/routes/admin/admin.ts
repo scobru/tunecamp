@@ -2340,6 +2340,28 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * DELETE /api/admin/network/local-cache
+     * Remove remote_content entries whose actor_uri belongs to this instance.
+     * These are stale duplicates created by outbox re-fetches (e.g. after key
+     * regeneration) and are already surfaced via the local posts path.
+     */
+    router.delete("/network/local-cache", async (req: AuthenticatedRequest, res: any) => {
+        try {
+            if (!req.isAdmin) {
+                return res.status(403).json({ error: "Only admin can purge the local remote-content cache" });
+            }
+            const publicUrl = identity.getSetting("publicUrl") || config.publicUrl || `http://localhost:${config.port}`;
+            const baseUrl = publicUrl.replace(/\/$/, "");
+            const deleted = social.deleteRemoteContentByActorPrefix(baseUrl);
+            console.log(`🧹 [Admin] Purged ${deleted} stale local entries from remote_content`);
+            res.json({ success: true, deleted, message: `Removed ${deleted} stale local post(s) from the federated cache.` });
+        } catch (error: any) {
+            console.error("Error purging local remote-content cache:", error);
+            res.status(500).json({ error: error.message || "Failed to purge local cache" });
+        }
+    });
+
+    /**
      * POST /api/admin/network/rss/follow
      * Follow a plain RSS/Atom source (podcast, Owncast, blog).
      */
