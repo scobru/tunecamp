@@ -236,7 +236,6 @@ export const PlayerBar = () => {
     // 2. Update Source if changed
     const srcChanged = audio.src !== newSrc && !audio.src.endsWith(newSrc) && audio.src !== newSrc + "/";
     if (srcChanged) {
-      console.log("Player: Changing source to", newSrc);
       isInternalChange.current = true;
       audio.src = newSrc;
       // When source changes, browser automatically pauses.
