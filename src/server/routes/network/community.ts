@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import { buildCommunitySites } from "../../modules/network/community-sites.js";
 
@@ -79,7 +79,9 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
      *
      * Rate-limited to 1 request per IP per hour (in-memory).
      */
-    router.post("/register", async (req, res) => {
+    // express.json() is applied per-route (there is no global body parser); without it
+    // req.body is undefined and registration always fails with "url is required".
+    router.post("/register", express.json(), async (req, res) => {
         const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
         const last = registerRateLimit.get(ip);
         if (last && Date.now() - last < REGISTER_COOLDOWN_MS) {
@@ -89,7 +91,8 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
             return;
         }
 
-        const { url } = req.body || {};
+        // Accept the URL from the JSON body or the ?url= query string (the website sends both).
+        const url = (req.body?.url ?? req.query?.url) as unknown;
         if (!url || typeof url !== "string") {
             res.status(400).json({ error: "url is required" });
             return;
