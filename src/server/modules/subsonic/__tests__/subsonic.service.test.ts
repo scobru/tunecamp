@@ -11,10 +11,26 @@ describe('SubsonicService', () => {
     mockDb = {
       isStarred: jest.fn(),
       getItemRating: jest.fn(),
-      getStarredItems: jest.fn(),
+      getStarredItems: jest.fn().mockReturnValue([]),
       getSetting: jest.fn(),
-      getItemRatings: jest.fn(),
+      getItemRatings: jest.fn().mockReturnValue(new Map()),
+      getArtistsWithStats: jest.fn(),
+      getArtist: jest.fn(),
+      getAlbumsByArtist: jest.fn(),
+      getTracksByAlbumIds: jest.fn(),
+      getAlbum: jest.fn(),
+      getTracks: jest.fn(),
+      getAlbumsWithStats: jest.fn(),
+      search: jest.fn(),
+      getTracksByIds: jest.fn(),
+      getAlbums: jest.fn(),
+      getPlaylists: jest.fn(),
+      getPlaylistTracks: jest.fn(),
+      getPlaylist: jest.fn(),
+      getArtists: jest.fn(),
+      getArtistAlbumCounts: jest.fn(),
     } as unknown as jest.Mocked<DatabaseService>;
+    (mockDb as any).db = { prepare: jest.fn().mockReturnValue({ all: jest.fn() }) };
 
     service = new SubsonicService(mockDb);
   });
@@ -305,4 +321,297 @@ describe('SubsonicService', () => {
           expect(result['@isDir']).toBe(false);
       });
   });
+
+  describe('getIndexes', () => {
+    test('should return grouped artists', () => {
+      mockDb.getArtists = jest.fn().mockReturnValue([
+        { id: 1, name: 'Artist A' },
+        { id: 2, name: 'artist B' },
+        { id: 3, name: '123 Artist' }
+      ] as any) as any;
+      mockDb.getArtistAlbumCounts = jest.fn().mockReturnValue([{ artist_id: 1, count: 2 }] as any) as any;
+      mockDb.getAlbumsByArtist.mockReturnValue([]);
+
+      const result = service.getIndexes('testuser');
+      expect(result).toHaveLength(2);
+      expect(result.map((r: any) => r['@name'])).toEqual(['#', 'A']);
+      expect(result[0].artist).toHaveLength(1);
+      expect(result[1].artist).toHaveLength(2);
+    });
+  });
+
+  describe('getMusicDirectory', () => {
+    test('should handle artist id', () => {
+      mockDb.getArtist.mockReturnValue({ id: 1, name: 'Artist A' } as any);
+      mockDb.getAlbumsByArtist.mockReturnValue([{ id: 10, title: 'Album 1' }] as any);
+      mockDb.getTracksByAlbumIds.mockReturnValue([{ album_id: 10, duration: 100 }] as any);
+
+      const result = service.getMusicDirectory('ar_1', 'testuser');
+      expect(result?.['@name']).toBe('Artist A');
+      expect(result?.child).toHaveLength(1);
+      expect(result?.child[0]['@songCount']).toBe(1);
+    });
+
+    test('should handle album id', () => {
+      mockDb.getAlbum.mockReturnValue({ id: 10, title: 'Album 1' } as any);
+      mockDb.getTracks.mockReturnValue([{ id: 100, title: 'Track 1' }] as any);
+
+      const result = service.getMusicDirectory('al_10', 'testuser');
+      expect(result?.['@name']).toBe('Album 1');
+      expect(result?.child).toHaveLength(1);
+    });
+
+    test('should return null for unknown id prefix', () => {
+      expect(service.getMusicDirectory('unknown_1', 'testuser')).toBeNull();
+    });
+
+    test('should return null for missing artist', () => {
+      mockDb.getArtist.mockReturnValue(undefined as any);
+      expect(service.getMusicDirectory('ar_1', 'testuser')).toBeNull();
+    });
+
+    test('should return null for missing album', () => {
+      mockDb.getAlbum.mockReturnValue(undefined as any);
+      expect(service.getMusicDirectory('al_10', 'testuser')).toBeNull();
+    });
+  });
+
+  describe('getAlbumList', () => {
+    test('should sort albums correctly', () => {
+      mockDb.getAlbumsWithStats.mockReturnValue([
+        { id: 1, title: 'B Album', created_at: '2023-01-01', artist_name: 'Z Artist' },
+        { id: 2, title: 'A Album', created_at: '2023-01-02', artist_name: 'A Artist' }
+      ] as any);
+
+      let result = service.getAlbumList('alphabeticalByName', 10, 0, 'testuser');
+      expect(result[0]['@id']).toBe('al_2');
+      expect(result[1]['@id']).toBe('al_1');
+
+      result = service.getAlbumList('alphabeticalByArtist', 10, 0, 'testuser');
+      expect(result[0]['@id']).toBe('al_2');
+      expect(result[1]['@id']).toBe('al_1');
+
+      result = service.getAlbumList('newest', 10, 0, 'testuser');
+      expect(result[0]['@id']).toBe('al_2');
+      expect(result[1]['@id']).toBe('al_1');
+
+      result = service.getAlbumList('random', 10, 0, 'testuser');
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('search', () => {
+    test('should return mapped results', () => {
+      mockDb.search.mockReturnValue({
+        artists: [{ id: 1, name: 'A' }],
+        albums: [{ id: 10, title: 'B' }],
+        tracks: [{ id: 100, title: 'C' }]
+      } as any);
+      mockDb.getTracks.mockReturnValue([{ duration: 120 }] as any);
+
+      const result = service.search('query', 'testuser');
+      expect(result.artist).toHaveLength(1);
+      expect(result.album).toHaveLength(1);
+      expect(result.song).toHaveLength(1);
+      expect(result.album[0]['@songCount']).toBe(1);
+      expect(result.album[0]['@duration']).toBe(120);
+    });
+  });
+
+  describe('getStarred', () => {
+    test('should return starred items', () => {
+      mockDb.getStarredItems.mockReturnValue([
+        { item_type: 'track', item_id: 'tr_1' },
+        { item_type: 'artist', item_id: 'ar_2' },
+        { item_type: 'album', item_id: 'al_3' }
+      ] as any);
+
+      mockDb.getTracksByIds.mockReturnValue([{ id: 1, title: 'Track 1' }] as any);
+      mockDb.getArtist.mockReturnValue({ id: 2, name: 'Artist 2' } as any);
+      mockDb.getAlbum.mockReturnValue({ id: 3, title: 'Album 3' } as any);
+
+      const result = service.getStarred('testuser');
+      expect(result.artist).toHaveLength(1);
+      expect(result.album).toHaveLength(1);
+      expect(result.song).toHaveLength(1);
+    });
+
+    test('should handle missing starred items gracefully', () => {
+      mockDb.getStarredItems.mockReturnValue([
+        { item_type: 'track', item_id: 'tr_1' },
+        { item_type: 'artist', item_id: 'ar_2' },
+        { item_type: 'album', item_id: 'al_3' }
+      ] as any);
+
+      mockDb.getTracksByIds.mockReturnValue([] as any);
+      mockDb.getArtist.mockReturnValue(undefined as any);
+      mockDb.getAlbum.mockReturnValue(undefined as any);
+
+      const result = service.getStarred('testuser');
+      expect(result.artist).toHaveLength(0);
+      expect(result.album).toHaveLength(0);
+      expect(result.song).toHaveLength(0);
+    });
+  });
+
+  describe('getArtist', () => {
+    test('should return artist with albums', () => {
+      mockDb.getArtist.mockReturnValue({ id: 1, name: 'A' } as any);
+      mockDb.getAlbumsByArtist.mockReturnValue([{ id: 10, title: 'B' }] as any);
+      mockDb.getTracksByAlbumIds.mockReturnValue([{ album_id: 10, duration: 100 }] as any);
+
+      const result = service.getArtist('ar_1', 'testuser');
+      expect(result?.['@name']).toBe('A');
+      expect(result?.album).toHaveLength(1);
+      expect(result?.album[0]['@songCount']).toBe(1);
+      expect(result?.album[0]['@duration']).toBe(100);
+    });
+
+    test('should return null for missing artist', () => {
+      mockDb.getArtist.mockReturnValue(undefined as any);
+      expect(service.getArtist('ar_1', 'testuser')).toBeNull();
+    });
+  });
+
+  describe('getAlbum', () => {
+    test('should return album with songs', () => {
+      mockDb.getAlbum.mockReturnValue({ id: 10, title: 'B' } as any);
+      mockDb.getTracks.mockReturnValue([{ id: 100, duration: 100 }] as any);
+
+      const result = service.getAlbum('al_10', 'testuser');
+      expect(result?.['@name']).toBe('B');
+      expect(result?.song).toHaveLength(1);
+      expect(result?.['@songCount']).toBe(1);
+      expect(result?.['@duration']).toBe(100);
+    });
+
+    test('should return null for missing album', () => {
+      mockDb.getAlbum.mockReturnValue(undefined as any);
+      expect(service.getAlbum('al_10', 'testuser')).toBeNull();
+    });
+  });
+
+  describe('getGenres', () => {
+    test('should return mapped genres', () => {
+      mockDb.getAlbums.mockReturnValue([{ id: 10, genre: 'Rock, Pop' }, { id: 11 } ] as any);
+      mockDb.getTracksByAlbumIds.mockReturnValue([{ album_id: 10 }, { album_id: 10 }] as any);
+
+      const result = service.getGenres();
+      expect(result).toHaveLength(2);
+      expect(result[0]['@value']).toBe('Pop');
+      expect(result[0]['@songCount']).toBe(2);
+      expect(result[0]['@albumCount']).toBe(1);
+      expect(result[1]['@value']).toBe('Rock');
+    });
+  });
+
+  describe('getPlaylists', () => {
+    test('should return playlists', () => {
+      mockDb.getPlaylists.mockReturnValue([{ id: 1, name: 'P1', isPublic: true, created_at: '2023' }] as any);
+      mockDb.getPlaylistTracks.mockReturnValue([{}, {}] as any);
+
+      const result = service.getPlaylists('testuser');
+      expect(result).toHaveLength(1);
+      expect(result[0]['@songCount']).toBe(2);
+      expect(result[0]['@public']).toBe('true');
+    });
+
+    test('should handle private playlists', () => {
+      mockDb.getPlaylists.mockReturnValue([{ id: 1, name: 'P1', isPublic: false }] as any);
+      mockDb.getPlaylistTracks.mockReturnValue([] as any);
+
+      const result = service.getPlaylists('testuser');
+      expect(result[0]['@public']).toBe('false');
+    });
+  });
+
+  describe('getPlaylist', () => {
+    test('should return playlist details', () => {
+      mockDb.getPlaylist.mockReturnValue({ id: 1, name: 'P1' } as any);
+      mockDb.getPlaylistTracks.mockReturnValue([{ id: 100 }] as any);
+
+      const result = service.getPlaylist(1, 'testuser');
+      expect(result?.['@name']).toBe('P1');
+      expect(result?.entry).toHaveLength(1);
+    });
+
+    test('should return null for missing playlist', () => {
+      mockDb.getPlaylist.mockReturnValue(undefined as any);
+      expect(service.getPlaylist(1, 'testuser')).toBeNull();
+    });
+  });
+
+  describe('getPodcasts', () => {
+    test('should return podcasts', () => {
+      const mockAll = jest.fn().mockReturnValue([{ id: 10, title: 'Podcast 1' }]);
+      (mockDb as any).db.prepare.mockReturnValue({ all: mockAll });
+
+      const result = service.getPodcasts(undefined, false, { userId: 1 } as any);
+      expect(result).toHaveLength(1);
+      expect(result[0]['@title']).toBe('Podcast 1');
+    });
+
+    test('should return specific podcast with episodes', () => {
+      const mockAll = jest.fn().mockReturnValue([{ id: 10, title: 'Podcast 1' }]);
+      (mockDb as any).db.prepare.mockReturnValue({ all: mockAll });
+      mockDb.getTracks.mockReturnValue([{ id: 100 }] as any);
+
+      const result = service.getPodcasts('al_10', true, {} as any);
+      expect(result).toHaveLength(1);
+      expect(result[0].episode).toHaveLength(1);
+    });
+  });
+
+  describe('getNewestPodcasts', () => {
+    test('should return newest episodes', () => {
+      const mockAll = jest.fn().mockReturnValue([{ id: 100 }]);
+      (mockDb as any).db.prepare.mockReturnValue({ all: mockAll });
+      mockDb.getTracksByIds.mockReturnValue([{ id: 100, title: 'Ep 1' }] as any);
+
+      const result = service.getNewestPodcasts(10, 0, { userId: 1 } as any);
+      expect(result).toHaveLength(1);
+      expect(result[0]['@title']).toBe('Ep 1');
+    });
+
+    test('should handle empty result', () => {
+      const mockAll = jest.fn().mockReturnValue([]);
+      (mockDb as any).db.prepare.mockReturnValue({ all: mockAll });
+
+      const result = service.getNewestPodcasts(10, 0, {} as any);
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('formatPodcastChannel with episodes', () => {
+    test('should include episodes and author properties', () => {
+        const mockAlbum = {
+            id: 10,
+            title: 'Podcast',
+            podcast_author: 'Author',
+            podcast_email: 'test@test.com',
+            podcast_category: 'Tech',
+            podcast_explicit: true
+        };
+        mockDb.getTracks.mockReturnValue([{ id: 1, title: 'Ep 1' }] as any);
+
+        const result = service.formatPodcastChannel(mockAlbum, 'testuser', true, {});
+
+        expect(result['@author']).toBe('Author');
+        expect(result['@email']).toBe('test@test.com');
+        expect(result['@category']).toBe('Tech');
+        expect(result['@explicit']).toBe('true');
+        expect(result.episode).toHaveLength(1);
+    });
+
+    test('should handle podcast_explicit false', () => {
+        const mockAlbum = {
+            id: 10,
+            title: 'Podcast',
+            podcast_explicit: false
+        };
+        const result = service.formatPodcastChannel(mockAlbum, 'testuser', false, {});
+        expect(result['@explicit']).toBe('false');
+    });
+  });
+
 });
