@@ -39,6 +39,20 @@ describe('LiveService', () => {
         expect(service.list()[0].roomId).toEqual(session2.roomId);
     });
 
+
+    test('supports multiple active sessions for different users', () => {
+        const session1 = service.start('user1', 'Title 1', 'artist-1');
+        const session2 = service.start('user2', 'Title 2', 'artist-2');
+
+        expect(service.list()).toHaveLength(2);
+
+        const found1 = service.getByUsername('user1');
+        const found2 = service.getByUsername('user2');
+
+        expect(found1).toEqual(session1);
+        expect(found2).toEqual(session2);
+    });
+
     test('getByUsername returns the correct session or undefined', () => {
         expect(service.getByUsername('nonexistent')).toBeUndefined();
 
