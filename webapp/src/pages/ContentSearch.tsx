@@ -268,7 +268,6 @@ const ContentSearch: React.FC = () => {
     const handleSoulseekDownload = async (result: any) => {
         try {
             await API.downloadSoulseek(result);
-            console.log('Download started');
             fetchDownloads();
         } catch (err: any) {
             console.error(`Failed to start download: ${err.message}`);
