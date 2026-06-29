@@ -74,7 +74,6 @@ export const CheckoutModal = () => {
   useEffect(() => {
     const handleOpen = async (e: any) => {
       try {
-        console.log("Opening checkout modal for track:", e.detail?.track);
         const t = e.detail?.track as CheckoutTrack;
         if (!t) {
           console.error("No track data provided to checkout modal");
