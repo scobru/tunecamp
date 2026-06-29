@@ -1611,7 +1611,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     // --- Stripe Connect onboarding (fiat direct charges to artist accounts) ---
     const getStripe = () => {
         const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
-        return sKey ? new Stripe(sKey) : null;
+        return sKey ? new Stripe(sKey, { apiVersion: '2026-04-22.dahlia' }) : null;
     };
     const canManageConnect = (req: AuthenticatedRequest, artistId?: number): boolean => {
         if (!req.context) return false;

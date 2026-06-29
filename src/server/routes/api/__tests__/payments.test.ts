@@ -126,6 +126,7 @@ describe('Payments Routes', () => {
                 type: 'checkout.session.completed',
                 data: {
                     object: {
+                        id: 'cs_test_456',
                         metadata: {
                             itemId: '5',
                             type: 'track',
@@ -147,7 +148,7 @@ describe('Payments Routes', () => {
                 expect.any(String),
                 10,
                 5,
-                undefined,
+                'stripe:cs_test_456',
                 undefined,
                 undefined
             );

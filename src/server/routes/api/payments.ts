@@ -5,6 +5,14 @@ import path from "path";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import Stripe from "stripe";
+
+// ponytail: lazy singleton keyed by secret — safe for runtime key changes via admin UI
+function _newStripe(key: string) { return new Stripe(key, { apiVersion: '2026-04-22.dahlia' }); }
+const _stripeClients = new Map<string, ReturnType<typeof _newStripe>>();
+function stripeClient(key: string) {
+    if (!_stripeClients.has(key)) _stripeClients.set(key, _newStripe(key));
+    return _stripeClients.get(key)!;
+}
 import type { DatabaseService } from "../../core/database.js";
 import { getEthUsdRate } from "../../modules/catalog/price.js";
 import type { ServerConfig } from "../../core/config.js";
@@ -199,7 +207,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
         if (!sKey || !wSecret) {
             return res.status(501).json({ error: "Stripe not configured" });
         }
-        const stripe = new Stripe(sKey);
+        const stripe = stripeClient(sKey);
         const sig = req.headers['stripe-signature'] as string;
         let event;
 
@@ -216,21 +224,14 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
         // connected accounts" on this webhook endpoint in the Stripe dashboard.
         // Unlock-code generation below keys off session.metadata, which is
         // identical for platform and connected sessions — no branching needed.
-        // Stripe Connect account lifecycle events: auto-sync can_sell with charges_enabled.
-        // Fires when an artist completes onboarding or Stripe changes their account status.
-        if (event.type.startsWith('v2.core.account')) {
-            const connectedAccountId: string | undefined = (event as any).account;
-            if (connectedAccountId) {
-                const artist = database.getArtistByStripeAccountId(connectedAccountId);
-                if (artist) {
-                    try {
-                        const acct = await stripe.accounts.retrieve(connectedAccountId);
-                        const canSell = !!(acct as any).charges_enabled;
-                        database.setArtistCanSell(artist.id, canSell);
-                    } catch (e: any) {
-                        console.error(`[Stripe Connect] Failed to retrieve account ${connectedAccountId}:`, e.message);
-                    }
-                }
+        // Stripe Connect account lifecycle: auto-sync can_sell with charges_enabled.
+        // account.updated fires when an artist completes onboarding or Stripe changes status.
+        // Event payload already contains the full account object — no extra retrieve() needed.
+        if (event.type === 'account.updated') {
+            const acct = event.data.object as any;
+            const artist = database.getArtistByStripeAccountId(acct.id);
+            if (artist) {
+                database.setArtistCanSell(artist.id, !!acct.charges_enabled);
             }
             return res.json({ received: true });
         }
@@ -239,10 +240,19 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             const session = event.data.object as any;
             const metadata = session.metadata;
             if (metadata) {
+                // Idempotency: Stripe delivers at-least-once. session.id is stable across
+                // retries; reusing it as txHash lets us detect duplicate deliveries without
+                // a separate table.
+                const evtKey = 'stripe:' + session.id;
+                if (integration.getUnlockCodeByTxHash(evtKey)) {
+                    return res.json({ received: true });
+                }
+
                 if (metadata.type === 'subscription' && metadata.userId) {
                     const userId = parseInt(metadata.userId, 10);
                     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
                     identity.updateSubscription(userId, 'active', expiresAt);
+                    integration.createUnlockCode('stripe:' + session.id, undefined, undefined, evtKey);
                     console.log(`✅ Stripe Subscription Success: User ${userId} is now active until ${expiresAt}`);
                 } else if (metadata.itemId && metadata.type) {
                     const itemId = parseInt(metadata.itemId, 10);
@@ -269,7 +279,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                     }
 
                     if (releaseId || trackId || assetId) {
-                        integration.createUnlockCode(code, releaseId, trackId, undefined, assetId, buyerUserId);
+                        integration.createUnlockCode(code, releaseId, trackId, evtKey, assetId, buyerUserId);
                         console.log(`✅ Stripe Payment Success: Generated code ${code} for ${itemType} ${itemId}${buyerUserId ? ` (user ${buyerUserId})` : ''}`);
                     }
                 }
@@ -339,7 +349,7 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 return res.status(501).json({ error: "Stripe not configured on this server." });
             }
 
-            const stripe = new Stripe(sKey);
+            const stripe = stripeClient(sKey);
 
             let name = "";
             let amount = 0;
@@ -432,7 +442,6 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
             }
 
             const baseSessionParams: any = {
-                payment_method_types: ['card'],
                 line_items: [{
                     price_data: {
                         currency: 'usd',
@@ -527,12 +536,11 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
                 return res.status(501).json({ error: "Stripe not configured on this server." });
             }
 
-            const stripe = new Stripe(sKey);
+            const stripe = stripeClient(sKey);
             const rawPrice = identity.getSetting("membershipMonthlyPrice");
             const unitAmount = rawPrice ? Math.round(parseFloat(rawPrice) * 100) : 1000;
             const siteName = identity.getSetting("siteName") || "TuneCamp";
             const session = await stripe.checkout.sessions.create({
-                payment_method_types: ['card'],
                 line_items: [{
                     price_data: {
                         currency: 'usd',
