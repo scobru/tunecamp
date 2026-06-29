@@ -735,7 +735,7 @@ export class MaintenanceService {
                             } catch (err) {}
                         }
                     }
-                })();
+                });
             }
             if (mergedCount > 0) console.log(`✅ [Maintenance] Merged ${mergedCount} duplicate track records.`);
 
@@ -751,7 +751,7 @@ export class MaintenanceService {
                         } catch (err) {}
                     }
                 }
-            })();
+            });
             if (mergedBareCount > 0) console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records.`);
 
             const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: this.musicDir, posix: true });
