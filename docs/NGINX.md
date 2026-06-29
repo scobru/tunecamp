@@ -64,6 +64,8 @@ TUNECAMP_PUBLIC_URL=https://your-domain.com
 ### 2. Trusting the Proxy
 Tunecamp is already configured to trust proxies (via `app.set('trust proxy', true)`), which allows it to correctly identify the original IP of your visitors from the `X-Forwarded-For` header.
 
+> **Important:** the `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` line above is required. Without it, every request appears to come from the proxy's own IP, and per-IP features collapse to a single shared bucket — for example the `POST /api/community/register` rate limit (1 request/hour/IP) would apply globally to all visitors at once.
+
 
 
 ## Offloading Audio Delivery with X-Accel-Redirect (optional)
