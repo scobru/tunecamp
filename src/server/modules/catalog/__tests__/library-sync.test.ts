@@ -322,4 +322,31 @@ describe('LibrarySync', () => {
 
         expect(mockDb.createTrack).toHaveBeenCalledWith(expect.objectContaining({ mime_type: 'audio/custom' }));
     });
+
+    test('resolveArtist falls back to Unknown Artist for invalid names', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue(null);
+        mockDb.getTrackByMetadata.mockReturnValue(null);
+        mockDb.getArtistByName.mockReturnValue(null); // Trigger createArtist
+
+        const metadata = { common: { artist: 'null' } };
+        await librarySync.syncFile('/music/song.mp3', metadata, { musicDir: '/music' });
+
+        expect(mockDb.createArtist).toHaveBeenCalledWith('Unknown Artist', undefined, undefined, undefined, undefined, undefined, 'private');
+    });
+
+    test('updateExistingTrack updates lossless_path for lossless files if missing', async () => {
+        mockDb.getTrackByHash.mockReturnValue(null);
+        mockDb.getTrackByPath.mockReturnValue({
+            id: 10,
+            title: 'Lossless Song',
+            file_path: 'song.flac',
+            album_id: 2,
+            lossless_path: null
+        });
+
+        await librarySync.syncFile('/music/song.flac', {}, { musicDir: '/music' });
+
+        expect(mockDb.updateTrackLosslessPath).toHaveBeenCalledWith(10, 'song.flac');
+    });
 });
