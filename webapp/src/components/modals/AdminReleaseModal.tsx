@@ -2,7 +2,7 @@ import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { Disc, Trash2, Search } from 'lucide-react';
-import { GENRES } from '../../constants/genres';
+import { genreDatalistOptions } from '../../constants/genres';
 import { MetadataMatchModal } from '../MetadataMatchModal';
 import { useConfigStore } from '../../stores/useConfigStore';
 
@@ -284,7 +284,7 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                             placeholder="e.g. Rock, Electronic"
                         />
                         <datalist id="genre-list-release">
-                            {GENRES.map(g => <option key={g} value={g} />)}
+                            {genreDatalistOptions(genre || "").map(g => <option key={g} value={g} />)}
                         </datalist>
                     </div>
 

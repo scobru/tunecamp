@@ -57,3 +57,18 @@ for (const g of GENRES) {
 export function normalizeGenre(input: string): string | null {
   return _lookup.get(input.toLowerCase().replace(/[-\s&]/g, "")) ?? null;
 }
+
+// Native <datalist> matches options against the FULL input value. For a
+// comma-separated genre field (e.g. "Dream Pop, Pop") that means suggestions
+// stop appearing after the first tag — no single-genre option ever matches the
+// whole string. Re-prefix each option with the already-committed segments so
+// the browser can match (and complete) only the segment being typed. Genres
+// already present in the field are dropped to avoid suggesting duplicates.
+export function genreDatalistOptions(currentValue: string): string[] {
+  const lastComma = currentValue.lastIndexOf(",");
+  const prefix = lastComma === -1 ? "" : currentValue.slice(0, lastComma + 1) + " ";
+  const chosen = new Set(
+    currentValue.split(",").map(g => g.trim().toLowerCase()).filter(Boolean)
+  );
+  return GENRES.filter(g => !chosen.has(g.toLowerCase())).map(g => prefix + g);
+}

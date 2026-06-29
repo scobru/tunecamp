@@ -216,9 +216,12 @@ const AlbumDetails = () => {
 
 
 
-  // Parse external links safely
+  // Parse external links safely. The API (AlbumRepository.mapAlbum) already
+  // parses external_links into an array, but legacy/raw responses may still
+  // deliver a JSON string — handle both so the buy button isn't silently lost.
   const externalLinks = (() => {
     if (!album?.external_links) return [];
+    if (Array.isArray(album.external_links)) return album.external_links;
     try {
       return JSON.parse(album.external_links);
     } catch {

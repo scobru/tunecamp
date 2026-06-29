@@ -2,7 +2,7 @@ import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from "react";
 import API from "../../services/api";
 import { Music, Trash2, Save, Search, FileText, Loader2 } from "lucide-react";
-import { GENRES } from "../../constants/genres";
+import { genreDatalistOptions } from "../../constants/genres";
 import { MetadataMatchModal } from "../MetadataMatchModal";
 import { useConfigStore } from "../../stores/useConfigStore";
 
@@ -307,7 +307,7 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
                 placeholder="e.g. Techno"
               />
               <datalist id="genre-list-track">
-                {GENRES.map(g => <option key={g} value={g} />)}
+                {genreDatalistOptions(genre || "").map(g => <option key={g} value={g} />)}
               </datalist>
             </div>
             <div className="form-control">
