@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Tag, Plus, X, Check, Loader } from "lucide-react";
-import API from "../services/api";
 import { notify } from "../utils/notify";
+import { GENRES, normalizeGenre } from "../constants/genres";
 
 interface GenreTagsProps {
   genres: string | null | undefined;
@@ -16,21 +16,12 @@ export const GenreTags = ({ genres, canEdit = false, onSave, size = "md" }: Genr
   );
   const [adding, setAdding] = useState(false);
   const [input, setInput] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTags(genres ? genres.split(",").map(g => g.trim()).filter(Boolean) : []);
   }, [genres]);
-
-  const loadSuggestions = async () => {
-    if (suggestions.length) return;
-    try {
-      const all = await API.getGenres();
-      setSuggestions(all);
-    } catch {}
-  };
 
   const save = async (nextTags: string[]) => {
     setSaving(true);
@@ -48,8 +39,10 @@ export const GenreTags = ({ genres, canEdit = false, onSave, size = "md" }: Genr
 
   const addTag = () => {
     const val = input.trim();
-    if (!val || tags.includes(val)) { setAdding(false); setInput(""); return; }
-    save([...tags, val]);
+    if (!val) { setAdding(false); setInput(""); return; }
+    const canonical = normalizeGenre(val) ?? val;
+    if (tags.includes(canonical)) { setAdding(false); setInput(""); return; }
+    save([...tags, canonical]);
     setAdding(false);
     setInput("");
   };
@@ -90,13 +83,13 @@ export const GenreTags = ({ genres, canEdit = false, onSave, size = "md" }: Genr
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") addTag(); if (e.key === "Escape") { setAdding(false); setInput(""); } }}
               onBlur={() => { if (!input.trim()) { setAdding(false); } }}
-              list="genre-suggestions"
+              list="genre-tags-list"
               placeholder="e.g. Electronic"
               className="input input-xs w-32 rounded-lg border border-base-content/20 bg-base-200/50 text-xs focus:outline-none focus:border-primary/50"
               autoFocus
             />
-            <datalist id="genre-suggestions">
-              {suggestions.filter(s => !tags.includes(s)).map(s => <option key={s} value={s} />)}
+            <datalist id="genre-tags-list">
+              {GENRES.filter(s => !tags.includes(s)).map(s => <option key={s} value={s} />)}
             </datalist>
             <button onClick={addTag} className="btn btn-xs btn-circle btn-ghost text-success" aria-label="Confirm">
               <Check size={11} />
@@ -107,7 +100,7 @@ export const GenreTags = ({ genres, canEdit = false, onSave, size = "md" }: Genr
           </div>
         ) : (
           <button
-            onClick={() => { setAdding(true); loadSuggestions(); setTimeout(() => inputRef.current?.focus(), 50); }}
+            onClick={() => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 50); }}
             className="badge badge-ghost badge-sm opacity-30 hover:opacity-70 transition-opacity cursor-pointer gap-1 text-[11px]"
             aria-label="Add genre"
           >
