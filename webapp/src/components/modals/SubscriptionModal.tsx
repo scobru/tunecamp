@@ -203,7 +203,7 @@ export const SubscriptionModal = ({ onSubscribed }: { onSubscribed?: () => void 
                                     disabled={isProcessing}
                                 >
                                     {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
-                                    {isProcessing ? 'Redirecting...' : 'Pay $10 with Card'}
+                                    {isProcessing ? 'Redirecting...' : `Pay $${priceUsd} with Card`}
                                 </button>
                             </div>
                         )}

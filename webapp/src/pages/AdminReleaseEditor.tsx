@@ -1117,21 +1117,21 @@ export default function AdminReleaseEditor() {
               
               {/* Actions Toolbar */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-base-100 p-4 rounded-2xl shadow-level-1 border border-base-content/5">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 shrink-0">
                   <h2 className="text-xl font-black italic tracking-tighter flex items-center gap-3">
                     <Music className="w-6 h-6 text-primary" /> Tracks
                   </h2>
-                  <div className="badge badge-primary badge-outline font-mono">{tracks.length} Brani</div>
+                  <div className="badge badge-primary badge-outline font-mono whitespace-nowrap shrink-0">{tracks.length} Brani</div>
                 </div>
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
                     <button
-                      className="btn btn-sm btn-outline gap-2"
+                      className="btn btn-sm btn-outline gap-2 flex-nowrap whitespace-nowrap"
                       onClick={() => setShowTrackPicker(true)}
                     >
-                      <Library className="w-4 h-4" /> Add Library
+                      <Library className="w-4 h-4 shrink-0" /> Add Library
                     </button>
-                    <label className="btn btn-sm btn-primary gap-2">
-                      <Plus className="w-4 h-4" /> Upload Audio
+                    <label className="btn btn-sm btn-primary gap-2 flex-nowrap whitespace-nowrap">
+                      <Plus className="w-4 h-4 shrink-0" /> Upload Audio
                       <input
                         type="file" multiple accept="audio/*" className="hidden"
                         onChange={(e) => {
@@ -1141,17 +1141,17 @@ export default function AdminReleaseEditor() {
                       />
                     </label>
                     <button
-                      className="btn btn-sm bg-[#629aa9] hover:bg-[#4d7b87] text-white gap-2 border-none"
+                      className="btn btn-sm bg-[#629aa9] hover:bg-[#4d7b87] text-white gap-2 border-none flex-nowrap whitespace-nowrap"
                       onClick={() => document.dispatchEvent(new Event('open-import-bandcamp-modal'))}
                     >
-                      <Globe className="w-4 h-4" /> Import from Bandcamp
+                      <Globe className="w-4 h-4 shrink-0" /> Import from Bandcamp
                     </button>
-                    <button 
+                    <button
                       type="button"
-                      className="btn btn-sm btn-ghost gap-2"
+                      className="btn btn-sm btn-ghost gap-2 flex-nowrap whitespace-nowrap"
                       onClick={() => window.dispatchEvent(new CustomEvent('open-add-youtube-modal'))}
                     >
-                      <Youtube className="w-4 h-4 text-red-500" /> Add YouTube
+                      <Youtube className="w-4 h-4 shrink-0 text-red-500" /> Add YouTube
                     </button>
                 </div>
               </div>
