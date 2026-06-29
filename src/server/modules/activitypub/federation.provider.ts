@@ -48,6 +48,7 @@ export interface FederationProvider {
 
   // Social
   getFollowers(artistId: number): Follower[];
+  getFollowerInboxes(artistId: number): string[];
   getPendingFollowers(artistId: number): Follower[];
   getFollower(artistId: number, actorUri: string): Follower | undefined;
   addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void;
