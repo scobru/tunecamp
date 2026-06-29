@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
@@ -67,6 +67,7 @@
     "multer": "^2.0.2",
     "music-metadata": "^11.12.3",
     "node-id3": "^0.2.9",
+    "p-limit": "^7.3.0",
     "stripe": "^22.1.1",
     "tar": "^7.5.19",
     "telegraf": "^4.16.3",
