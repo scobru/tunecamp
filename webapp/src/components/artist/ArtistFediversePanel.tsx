@@ -484,9 +484,7 @@ export const ArtistFediversePanel = () => {
                                 <div className="w-20 h-20 rounded-full border-4 border-base-100 shadow-level-1 overflow-hidden bg-base-300 relative group/avatar">
                                     {artist ? (
                                         <img
-                                            src={(artist as any).photo_path
-                                                ? API.getArtistCoverUrl(artist.id)
-                                                : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name)}`}
+                                            src={API.getArtistCoverUrl(artist.id)}
                                             alt={artist.name}
                                             className="object-cover w-full h-full transition-transform duration-medium-4 group-hover/avatar:scale-110"
                                             onError={(e) => {
@@ -689,9 +687,7 @@ export const ArtistFediversePanel = () => {
                                     <div className="w-10 h-10 rounded-full border border-base-content/5 bg-base-300">
                                         <img
                                             src={artist
-                                                ? ((artist as any).photo_path
-                                                    ? API.getArtistCoverUrl(artist.id)
-                                                    : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name || 'TC')}`)
+                                                ? API.getArtistCoverUrl(artist.id)
                                                 : `https://api.dicebear.com/7.x/initials/svg?seed=TC`}
                                             alt={artist?.name}
                                             onError={(e) => {
@@ -933,9 +929,7 @@ export const ArtistFediversePanel = () => {
                                                             <div className="w-11 h-11 rounded-full border border-base-content/5 bg-base-300 shadow-inner">
                                                                 <img
                                                                     src={artist
-                                                                        ? ((artist as any).photo_path
-                                                                            ? API.getArtistCoverUrl(artist.id)
-                                                                            : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(artist.name || 'TC')}`)
+                                                                        ? API.getArtistCoverUrl(artist.id)
                                                                         : `https://api.dicebear.com/7.x/initials/svg?seed=TC`}
                                                                     alt={artist?.name}
                                                                     onError={(e) => {
