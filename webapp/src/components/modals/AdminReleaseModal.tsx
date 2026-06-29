@@ -2,6 +2,7 @@ import { confirm } from '@/utils/confirm';
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { Disc, Trash2, Search } from 'lucide-react';
+import { GENRES } from '../../constants/genres';
 import { MetadataMatchModal } from '../MetadataMatchModal';
 import { useConfigStore } from '../../stores/useConfigStore';
 
@@ -274,13 +275,17 @@ export const AdminReleaseModal = ({ onReleaseUpdated }: AdminReleaseModalProps) 
                         <label className="label">
                             <span className="label-text">Genre</span>
                         </label>
-                        <input 
-                            type="text" 
-                            className="input input-bordered w-full" 
+                        <input
+                            type="text"
+                            list="genre-list-release"
+                            className="input input-bordered w-full"
                             value={genre}
                             onChange={e => setGenre(e.target.value)}
                             placeholder="e.g. Rock, Electronic"
                         />
+                        <datalist id="genre-list-release">
+                            {GENRES.map(g => <option key={g} value={g} />)}
+                        </datalist>
                     </div>
 
                     {!isLibrary && (

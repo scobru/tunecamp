@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
+import { GENRES } from "../constants/genres";
 import { useWalletStore } from "../stores/useWalletStore";
 import { notify } from "../utils/notify";
 import { canPublish, canManageItem } from "../utils/permissions";
@@ -1058,11 +1059,15 @@ export default function AdminReleaseEditor() {
                   <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Genre / Tags</label>
                   <input
                     type="text"
+                    list="genre-list-editor"
                     className="input input-bordered w-full text-sm"
                     placeholder="techno, ambient..."
                     value={metadata.genre || ""}
                     onChange={(e) => setMetadata((prev) => ({ ...prev, genre: e.target.value }))}
                   />
+                  <datalist id="genre-list-editor">
+                    {GENRES.map(g => <option key={g} value={g} />)}
+                  </datalist>
                 </div>
               </div>
 
