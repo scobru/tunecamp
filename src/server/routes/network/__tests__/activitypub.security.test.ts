@@ -44,6 +44,10 @@ const mockAuthMiddleware = {
         } else if (token === 'Bearer artist2') {
             req.isAdmin = true;
             req.artistId = 2;
+        } else if (token === 'Bearer admin_no_artist') {
+            req.isAdmin = true;
+            req.artistId = null;
+            req.isRootAdmin = false;
         } else {
              // Default generic admin for existing tests compatibility, or treat as restricted?
              // Let's treat as root for 'validtoken' to keep existing test passing (mostly)
@@ -137,6 +141,24 @@ describe('ActivityPub Security', () => {
         const response = await request(app)
             .delete('/ap/note?id=http://example.com/note/1')
             .set('Authorization', 'Bearer artist1');
+
+        expect(response.status).toBe(403);
+    });
+
+    test('DELETE /note should deny access if restricted admin has no artistId', async () => {
+        // Note belongs to Artist 2
+        (mockDb.getApNote as jest.Mock).mockReturnValue({
+            note_id: 'http://example.com/note/1',
+            artist_id: 2,
+            note_type: 'release',
+            content_id: 123
+        });
+        (mockDb.getAlbum as jest.Mock).mockReturnValue({ id: 123, artist_id: 2 });
+
+        // Request from restricted admin with no artistId
+        const response = await request(app)
+            .delete('/ap/note?id=http://example.com/note/1')
+            .set('Authorization', 'Bearer admin_no_artist');
 
         expect(response.status).toBe(403);
     });
