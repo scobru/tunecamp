@@ -833,6 +833,7 @@ export interface PeerManager {
     getPeerTrack(sessionId: string, trackId: string): PeerTrack | undefined;
     searchPeerTracks(query: string): PeerTrack[];
     getTracksByPeerSession(sessionId: string): PeerTrack[];
+    getTracksByPeerSessions(sessionIds: string[]): PeerTrack[];
 }
 
 export interface DatabaseService extends IdentityManager, LibraryManager, SocialManager, IntegrationManager, PeerManager {

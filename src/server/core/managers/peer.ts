@@ -142,6 +142,34 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                 allow_download: !!row.allow_download,
                 created_at: row.created_at
             }));
+        },
+        getTracksByPeerSessions(sessionIds: string[]): PeerTrack[] {
+            if (sessionIds.length === 0) return [];
+
+            const CHUNK_SIZE = 900;
+            const results: PeerTrack[] = [];
+
+            for (let i = 0; i < sessionIds.length; i += CHUNK_SIZE) {
+                const chunk = sessionIds.slice(i, i + CHUNK_SIZE);
+                const placeholders = chunk.map(() => "?").join(",");
+
+                const rows = db.prepare(`SELECT * FROM peer_tracks WHERE session_id IN (${placeholders})`).all(chunk) as any[];
+
+                results.push(...rows.map(row => ({
+                    id: row.id,
+                    session_id: row.session_id,
+                    title: row.title,
+                    artist: row.artist,
+                    album: row.album,
+                    duration: row.duration,
+                    file_size: row.file_size,
+                    mime_type: row.mime_type,
+                    allow_download: !!row.allow_download,
+                    created_at: row.created_at
+                })));
+            }
+
+            return results;
         }
     };
 }
