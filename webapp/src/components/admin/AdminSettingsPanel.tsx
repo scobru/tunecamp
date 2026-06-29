@@ -1,3 +1,4 @@
+declare const __APP_VERSION__: string;
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy, Trash2, RotateCcw } from "lucide-react";
@@ -415,6 +416,10 @@ export const AdminSettingsPanel = () => {
                   ))}
                 </select>
                 <p className="text-[11px] opacity-40 px-1 mt-1">Run a full library scan automatically once a day at this hour (server time). Pick an off-peak hour to keep imports away from listener traffic.</p>
+              </div>
+
+              <div className="pt-4 border-t border-base-content/5 mt-4 flex items-center justify-between">
+                <span className="text-xs opacity-40 font-mono">TuneCamp v{__APP_VERSION__}</span>
               </div>
             </div>
           )}
