@@ -26,8 +26,16 @@ The **Manager** has broad administrative powers to oversee the community and con
 ### Capabilities:
 - **User Monitoring:** Can view the list of registered users.
 - **Federated Network:** Manage ActivityPub follows and synchronization.
-- **Content Moderation:** Manage posts and releases across the instance. Can review, resolve, or dismiss copyright and content reports from the Reports dashboard.
+- **Content Moderation:** Manage posts and releases across the instance. Can review, resolve, or dismiss copyright and content reports from the Reports dashboard (Admin → Reports).
 - **Artist Support:** Can operate as any artist they are assigned to.
+
+### Release Reports (copyright & content)
+
+Any logged-in user can report a release via `POST /api/releases/:id/report`. The payload should include a `reason` string (e.g. `"copyright"`, `"inappropriate"`).
+
+Managers and Root Admins see pending reports at **Admin → Reports** (`GET /api/admin/reports`). Each report shows the release, the reporting user, and the reason. To resolve or dismiss a report: `DELETE /api/admin/reports/:id`.
+
+Reports are also surfaced in the admin panel UI — a badge on the Reports menu item counts unresolved items.
 
 ---
 
@@ -80,7 +88,8 @@ A **Listener-Artist** is a standard `user`-role account that has been linked to 
 | `1` | Full sales enabled — Stripe (direct charge to artist's connected account if `stripe_account_id` is set, otherwise instance account), crypto, and NFT mint all work. |
 
 **How `can_sell` gets enabled:**
-- Manager or Root Admin toggles "Sales enabled" in the artist editor (Admin → Library → Artists → Edit).
+- **Artist with a linked user account:** toggle "Sales enabled" in **Admin → Users → Edit User** (the artist section of that dialog). The control in Admin → Library → Artists → Edit is read-only for linked artists ("Managed from the linked user's Edit User dialog").
+- **Artist without a linked user account (library-only):** toggle "Sales enabled" in **Admin → Library → Artists → Edit**.
 - **Automatic via Stripe Connect:** When an artist completes Stripe Connect onboarding and `charges_enabled` becomes `true` on their connected account, the `account.updated` webhook automatically sets `can_sell = 1`. If Stripe later disables charges, it reverts to `0`.
 
 ---
