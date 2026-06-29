@@ -736,6 +736,7 @@ export interface SocialManager {
     saveRemotePost(post: any): void;
     deleteRemotePost(apId: string): void;
     deleteRemoteContent(apId: string): void;
+    deleteRemoteContentByActorPrefix(actorUriPrefix: string): number;
 
     // Reports
     createReport(report: Omit<Report, "id" | "created_at" | "status">): number;

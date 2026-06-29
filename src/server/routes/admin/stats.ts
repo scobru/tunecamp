@@ -208,11 +208,20 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
             const remoteApPosts = dbService.getRemotePosts();
             const filteredApPosts = remoteApPosts.filter(content => {
+                // Exclude posts whose actor_uri belongs to this instance — they are
+                // already served as localPosts and would appear as stale duplicates
+                // (e.g. after key regeneration the outbox was re-fetched and stored).
+                try {
+                    const actorHostname = new URL(content.actor_uri).hostname;
+                    const localHostname = new URL(baseUrl).hostname;
+                    if (actorHostname === localHostname) return false;
+                } catch {}
+
                 const actor = actorsMap.get(content.actor_uri);
-                
+
                 // 0. Explicitly followed actors are allowed
                 if (actor && actor.is_followed) return true;
-                
+
                 // 1. Site actors are allowed
                 if (actor && (actor.username === 'site' || actor.username === getSiteHandle(dbService))) return true;
 
@@ -221,13 +230,13 @@ export function createStatsRoutes(container: ServiceContainer): Router {
 
                 // 2. Music artists (with releases) are allowed
                 if (actorsWithReleases.has(content.actor_uri)) return true;
-                
+
                 // 3. Actors belonging to community instance domains are allowed
                 try {
                     const hostname = new URL(content.actor_uri).hostname;
                     if (communityDomains.has(hostname)) return true;
                 } catch {}
-                
+
                 return false;
             });
 

@@ -491,6 +491,7 @@ const API = {
     deleteBrowserPath: (path: string) => handleResponse(api.delete(`browser?path=${encodeURIComponent(path)}`)),
     renameBrowserPath: (oldPath: string, newPath: string) => handleResponse(api.put("browser", { oldPath, newPath })),
     syncActivityPub: () => handleResponse(api.post('ap/sync')),
+    purgeLocalFederationCache: () => handleResponse(api.delete('admin/network/local-cache')),
     getAPIHealth: () => handleResponse(api.get<any>('admin/system/health')),
     getMaintenanceMissing: (filter: 'genre' | 'year' | 'cover' | 'album' | 'description' | 'artist' = 'genre') => handleResponse(api.get<any[]>(`metadata/maintenance/missing?filter=${filter}`)),
     getAlbumsMissingMetadata: (filter: 'genre' | 'year' | 'cover' | 'description' | 'artist' = 'genre') => handleResponse(api.get<any[]>(`metadata/maintenance/albums/missing?filter=${filter}`)),
