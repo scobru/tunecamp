@@ -54,6 +54,12 @@ export interface FederatedDiscoveryService {
     getPeers(): string[];
     /** Drops entries older than the hard expiry. Called automatically after each crawl. */
     prune(): void;
+    /**
+     * Removes a specific origin from the discovery cache immediately.
+     * Called when an instance is explicitly unfollowed so it stops appearing in the
+     * Network → Instances tab without waiting for the 7-day hard expiry.
+     */
+    deleteInstance(rawOrigin: string): void;
 }
 
 /** Strip path/query and return the canonical origin, or null if unparseable. */
@@ -113,6 +119,7 @@ export function createFederatedDiscoveryService(
             fetched_at = excluded.fetched_at
     `);
     const pruneStmt = db.prepare("DELETE FROM federated_instances WHERE fetched_at < ?");
+    const deleteStmt = db.prepare("DELETE FROM federated_instances WHERE origin = ?");
 
     let crawling = false;
 
@@ -320,7 +327,17 @@ export function createFederatedDiscoveryService(
         }
     };
 
+    const deleteInstance = (rawOrigin: string): void => {
+        const o = normalizeOrigin(rawOrigin);
+        if (!o) return;
+        try {
+            deleteStmt.run(o);
+        } catch (e) {
+            console.error("❌ [FederatedDiscovery] deleteInstance failed:", e);
+        }
+    };
+
     prune();
 
-    return { crawl, probeOrigin, getCommunitySites, getPeers, prune };
+    return { crawl, probeOrigin, getCommunitySites, getPeers, prune, deleteInstance };
 }

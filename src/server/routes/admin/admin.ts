@@ -2301,6 +2301,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             await apService.unfollowRemoteActor(url, getSiteHandle(database));
+            // Remove from gossip-discovery cache so the instance stops appearing
+            // in Network → Instances immediately rather than after the 7-day expiry.
+            federatedDiscoveryService.deleteInstance(url);
             res.json({ message: `Successfully sent unfollow request to ${url}` });
         } catch (error: any) {
             console.error("Error unfollowing AP actor:", error);
