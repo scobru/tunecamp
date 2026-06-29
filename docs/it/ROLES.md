@@ -69,6 +69,16 @@ Un **Ascoltatore-Artista** è un account con ruolo utente standard (`user`) che 
 1. **Iniziato dall'amministratore:** L'amministratore collega manualmente un profilo artista a un utente esistente (Admin → Users → Edit → Artist Profile).
 2. **Richiesta autonoma:** L'ascoltatore ne richiede uno da **Profile → Settings → Become an Artist**. L'amministratore lo approva dal pannello Utenti (`POST /api/admin/system/users/:id/approve-artist`): viene creato un profilo artista con il suo nome utente, il flag `can_sell` viene impostato su `false` e viene applicata la quota di archiviazione. Il ruolo rimane `user`.
 
+### Modalità Self-Publish (flag admin di auto-approvazione)
+L'interruttore **Listener Self-Publish** in **Admin → Settings** (impostazione `listenerSelfPublish`) toglie del tutto l'amministratore dal flusso. Quando è **attivo**:
+
+- **Le richieste artista vengono auto-approvate.** `POST /api/users/me/artist-request` crea subito il profilo artista (applicando `listenerSelfPublishQuota`) e restituisce `autoApproved: true` con un nuovo token — nessun badge "Artist requested" da revisionare. Il ruolo resta comunque `user` e `can_sell` resta `false` di default.
+- **Le release vengono auto-pubblicate.** La promozione di un artista self-publish (`POST /api/lifecycle/promote/:id`) salta la coda di curation e passa direttamente a `released` invece che a `pending`: la release non attende l'approvazione admin.
+
+Quando il flag è **disattivo** (default), entrambi i passaggi richiedono un'azione esplicita dell'amministratore: la richiesta resta come badge in sospeso in **Admin → Users**, e la release resta nella **Coda di Curation** (`status = 'pending'`) finché un Manager/Root Admin non la approva (`POST /api/lifecycle/approve/:id`).
+
+L'impostazione collegata `listenerSelfPublishQuota` definisce la quota di upload fisico assegnata di default all'auto-approvazione (in MB; default `1024` = 1 GB, `0` = illimitata; comunque modificabile per singolo utente in seguito).
+
 ---
 
 ## 6. Il flag `can_sell` (gate di vendita per artista)

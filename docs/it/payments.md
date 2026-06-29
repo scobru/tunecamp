@@ -35,6 +35,22 @@ TuneCamp supporta un sistema di pagamento ibrido che combina la valuta fiat trad
 - **Meccanismo**: Il backend recupera la transazione e la ricevuta dal server RPC di Base, analizza i dati della transazione (utilizzando `ethers.js`) e verifica il destinatario e l'importo.
 - **Nota**: Gli asset dello store non hanno ancora un endpoint di verifica on-chain — la scheda crypto è nascosta per i checkout degli asset, che sono limitati a Stripe.
 
+## 1.5 Modalità di distribuzione della release ("Download Experience")
+
+Ogni album/release sceglie **una sola** modalità di distribuzione nell'editor (**Studio → Release → Download Experience**). Viene salvata su `albums.download` e determina quale flusso di acquisto/download (se presente) la pagina della release espone.
+
+| Modalità (UI) | Valore `download` | Comportamento |
+| :--- | :--- | :--- |
+| **Streaming Only** | `none` (o `null`) | Solo streaming in-app. Nessun pulsante di download, nessun flusso di acquisto. |
+| **Free Download** | `free` | Download ZIP pubblico tramite `GET /api/releases/:slug/download?format=mp3\|wav` — senza pagamento, senza codice. |
+| **Unlock Codes** | `codes` | Il download è protetto da un codice di sblocco univoco (vedi §2). I codici vengono emessi all'acquisto (Stripe/crypto) o distribuiti manualmente dall'editor. |
+| **External Showcase** | `external` | **Tutti i flussi di acquisto/download su TuneCamp sono disabilitati.** La pagina della release sostituisce il pulsante di acquisto con un unico link **"Buy on Bandcamp"** che punta all'*External Buy URL* configurato. |
+
+**Dettagli External Showcase:**
+- L'URL di acquisto è memorizzato come prima voce di `albums.external_links` (`[{ label, url }]`). L'etichetta del pulsante è `Buy on {label}`, con default **"Buy on Bandcamp"** quando non è impostata nessuna etichetta.
+- Selezionando questa modalità si forza `use_nft = false` e si azzera il prezzo — TuneCamp non trattiene mai una quota su una vendita fuori piattaforma.
+- Lo streaming su TuneCamp continua a funzionare per l'audio eventualmente caricato sulla release; solo la *vendita* avviene fuori piattaforma. Caricare l'audio è facoltativo e serve solo se si vuole anche la riproduzione in-app (il modello di pubblicazione/streaming è invariato — TuneCamp non streamma da Bandcamp).
+
 ## 2. Codici di Sblocco
 
 Quando un pagamento viene verificato (tramite webhook di Stripe o verifica on-chain), il sistema genera un codice alfanumerico univoco di 10 caratteri.
