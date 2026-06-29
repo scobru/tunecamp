@@ -133,6 +133,12 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); 
     app.use('/rest', rateLimit({ windowMs: 15 * 60 * 1000, max: 5000 }));
 
+    // Public federation endpoints must be cross-origin accessible regardless of
+    // TUNECAMP_CORS_ORIGINS — they are the federation surface the website and
+    // peer crawlers fetch from arbitrary origins.
+    app.use('/api/community', cors({ origin: '*' }));
+    app.use('/api/catalog', cors({ origin: '*' }));
+
     const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : false;
     app.use(cors({ origin: corsOrigin, credentials: true }));
 
