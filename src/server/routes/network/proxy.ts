@@ -11,9 +11,13 @@ export function createProxyRoutes(container: ServiceContainer): Router {
     const deleteBrokenTrack = (url: string, reason: string) => {
         try {
             const tracks = Array.from(library.iterateTracks("url = ? AND file_path IS NULL", [url]));
+            const trackIds: number[] = [];
             for (const track of tracks) {
                 console.warn(`🧹 [Self-Healing] Deleting broken external track ${track.id} ("${track.title}"): ${reason}`);
-                library.deleteTrack(track.id);
+                trackIds.push(track.id);
+            }
+            if (trackIds.length > 0) {
+                library.deleteTracksBatch(trackIds);
             }
         } catch (dbErr) {
             console.error("❌ [Self-Healing] Failed to delete broken track:", dbErr);
