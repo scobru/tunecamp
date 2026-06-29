@@ -15,7 +15,7 @@ async function main() {
   const backupFile = args.find(a => !a.startsWith('-'));
   
   if (!backupFile) {
-    console.error('Usage: node dist/tools/restore.js <backup-file> [--force]');
+    process.stderr.write('Usage: node dist/tools/restore.js <backup-file> [--force]\n');
     process.exit(1);
   }
 
