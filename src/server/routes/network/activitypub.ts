@@ -346,7 +346,7 @@ export function createActivityPubRoutes(container: ServiceContainer): Router {
         const note = db.getApNote(noteId);
         if (!note) return res.status(404).send("Note not found");
 
-        // SECURITY PATCH: Check if restricted admin owns this note
+        // SECURITY: Check if restricted admin owns this note
         const request = req as AuthenticatedRequest;
         if (!request.isRootAdmin && (request.artistId === undefined || request.artistId === null || Number(note.artist_id) !== Number(request.artistId))) {
             console.warn(`⛔ Access Denied: Artist ${request.artistId} tried to delete note ${noteId} owned by Artist ${note.artist_id}`);

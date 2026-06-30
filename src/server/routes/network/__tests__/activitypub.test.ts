@@ -8,6 +8,8 @@ import type { DatabaseService } from '../../../core/database.js';
 
 const mockDb = {
     getPostBySlug: jest.fn(),
+    getPost: jest.fn(),
+    getAlbum: jest.fn(),
     getArtist: jest.fn(),
     getArtistBySlug: jest.fn(),
     removeFollower: jest.fn(),
@@ -44,8 +46,11 @@ const mockAuthMiddleware = {
         next();
     },
     requireUser: (req: any, res: any, next: any) => {
-        req.isAdmin = true;
-        req.isRootAdmin = true;
+        req.isAdmin = req.headers['x-is-admin'] !== 'false';
+        req.isRootAdmin = req.headers['x-is-root-admin'] !== 'false';
+        if (req.headers['x-artist-id']) {
+            req.artistId = Number(req.headers['x-artist-id']);
+        }
         next();
     },
     optionalAuth: (req: any, res: any, next: any) => next(),
@@ -303,5 +308,69 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
             .query({ uri: "https://sudorecords.scobrudot.dev/api/ap/note/reply/missing" });
 
         expect(response.status).toBe(404);
+    });
+
+    describe('DELETE /ap/note', () => {
+        test('should allow root admin to delete any note', async () => {
+            const mockNote = { note_id: "test-note", note_type: "post", content_id: 1, artist_id: 2 };
+            (mockDb.getApNote as jest.Mock).mockReturnValue(mockNote);
+            (mockDb.getPost as jest.Mock).mockReturnValue({ id: 1, title: "Test" });
+            mockApService.broadcastPostDelete = jest.fn<any>().mockResolvedValue(undefined);
+
+            const response = await request(app)
+                .delete('/ap/note')
+                .query({ id: "test-note" })
+                .set('x-is-root-admin', 'true')
+                .set('x-artist-id', '1');
+
+            expect(response.status).toBe(200);
+            expect(mockApService.broadcastPostDelete).toHaveBeenCalled();
+        });
+
+        test('should allow restricted admin to delete their own note', async () => {
+            const mockNote = { note_id: "test-note-own", note_type: "post", content_id: 2, artist_id: 42 };
+            (mockDb.getApNote as jest.Mock).mockReturnValue(mockNote);
+            (mockDb.getPost as jest.Mock).mockReturnValue({ id: 2, title: "My Post" });
+            mockApService.broadcastPostDelete = jest.fn<any>().mockResolvedValue(undefined);
+
+            const response = await request(app)
+                .delete('/ap/note')
+                .query({ id: "test-note-own" })
+                .set('x-is-root-admin', 'false')
+                .set('x-artist-id', '42');
+
+            expect(response.status).toBe(200);
+            expect(mockApService.broadcastPostDelete).toHaveBeenCalled();
+        });
+
+        test('should reject restricted admin from deleting someone else\'s note', async () => {
+            const mockNote = { note_id: "test-note-other", note_type: "post", content_id: 3, artist_id: 99 };
+            (mockDb.getApNote as jest.Mock).mockReturnValue(mockNote);
+            (mockDb.getPost as jest.Mock).mockReturnValue({ id: 3, title: "Other Post" });
+            mockApService.broadcastPostDelete = jest.fn<any>().mockResolvedValue(undefined);
+
+            const response = await request(app)
+                .delete('/ap/note')
+                .query({ id: "test-note-other" })
+                .set('x-is-root-admin', 'false')
+                .set('x-artist-id', '42');
+
+            expect(response.status).toBe(403);
+            expect(mockApService.broadcastPostDelete).not.toHaveBeenCalled();
+        });
+
+        test('should return 400 if id is missing', async () => {
+            const response = await request(app)
+                .delete('/ap/note');
+            expect(response.status).toBe(400);
+        });
+
+        test('should return 404 if note not found', async () => {
+            (mockDb.getApNote as jest.Mock).mockReturnValue(undefined);
+            const response = await request(app)
+                .delete('/ap/note')
+                .query({ id: "missing-note" });
+            expect(response.status).toBe(404);
+        });
     });
 });
