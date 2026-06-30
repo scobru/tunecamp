@@ -219,10 +219,13 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
             url: new URL(`/api/tracks/${track.id}/stream`, baseUrl),
             mediaType: "audio/mpeg",
             attribution: artist ? new URL(`/users/${artist.slug}`, baseUrl) : undefined,
-            icon: artist ? new Image({
-                url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
+            // Use the track's own cover, which falls back to the album cover (and
+            // then a placeholder) when the track has no artwork of its own — instead
+            // of always advertising the artist avatar.
+            icon: new Image({
+                url: new URL(`/api/tracks/${track.id}/cover`, baseUrl),
                 mediaType: "image/jpeg"
-            }) : undefined
+            })
         });
     });
 
@@ -276,8 +279,10 @@ export function createFedify(dbService: DatabaseService, config: ServerConfig) {
                             url: new URL(`/api/tracks/${mainTrack.id}/stream`, baseUrl),
                             mediaType: "audio/mpeg",
                             attribution: new URL(`/users/${artist.slug}`, baseUrl),
+                            // Inherit the album cover when the track has no artwork
+                            // of its own (track-cover → album-cover → placeholder).
                             icon: new Image({
-                                url: new URL(`/api/artists/${artist.slug}/cover`, baseUrl),
+                                url: new URL(`/api/tracks/${mainTrack.id}/cover`, baseUrl),
                                 mediaType: "image/jpeg"
                             })
                         })

@@ -74,7 +74,15 @@ export class ActivityPubRenderer {
                 mediaType: this.getAudioMimeType(track.file_path),
                 url: track.file_path ? `${this.baseUrl}/api/tracks/${track.id}/stream` : track.url,
                 name: track.title,
-                duration: (track.duration && Number.isFinite(track.duration)) 
+                // The track inherits the album cover when it has no artwork of its
+                // own: /api/tracks/:id/cover resolves track-art → album-cover →
+                // placeholder, so federated track objects always carry a cover.
+                icon: {
+                    type: "Image",
+                    mediaType: this.getMimeType(album.cover_path || "", "image/jpeg"),
+                    url: `${this.baseUrl}/api/tracks/${track.id}/cover`
+                },
+                duration: (track.duration && Number.isFinite(track.duration))
                     ? Temporal.Duration.from({ seconds: Math.floor(track.duration) }).toString()
                     : undefined,
                 "https://funkwhale.audio/ns#bitrate": track.bitrate,
