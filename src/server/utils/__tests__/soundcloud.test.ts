@@ -32,6 +32,20 @@ describe('SoundCloudClient', () => {
     expect(result).toEqual(mockResponse);
   });
 
+  it('should throw an error when fetch rejects (network error)', async () => {
+    const mockUrl = 'https://soundcloud.com/artist/track';
+    const networkError = new Error('Network failure');
+
+    (global.fetch as jest.Mock).mockRejectedValueOnce(networkError);
+
+    await expect(client.resolveUrl(mockUrl)).rejects.toThrow('Network failure');
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(mockUrl)}&client_id=${mockClientId}`
+    );
+  });
+
   it('should throw an error when the API request fails', async () => {
     const mockUrl = 'https://soundcloud.com/artist/track';
 
@@ -124,6 +138,13 @@ describe('getClientId and clearSoundCloudClientId', () => {
     const id2 = await getClientId(true);
     expect(id2).toBe('new_client_id');
     expect(global.fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it('should throw an error if SoundCloud homepage fetch rejects (network error)', async () => {
+    const networkError = new Error('Network timeout');
+    (global.fetch as jest.Mock).mockRejectedValueOnce(networkError);
+
+    await expect(getClientId()).rejects.toThrow('Network timeout');
   });
 
   it('should throw an error if SoundCloud homepage fetch fails', async () => {
@@ -251,6 +272,22 @@ describe('scApiRequest', () => {
 
     expect(result).toEqual(mockResponse);
     expect(global.fetch).toHaveBeenNthCalledWith(3, 'https://api-v2.soundcloud.com/users/123/tracks?limit=10&client_id=my_client_id', expect.any(Object));
+  });
+
+  it('should throw an error if the API request rejects (network error)', async () => {
+    const networkError = new Error('API down');
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => '<html><script src="https://a-v2.sndcdn.com/assets/1-2.js"></script></html>',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'var config={client_id:"my_client_id"};',
+      })
+      .mockRejectedValueOnce(networkError);
+
+    await expect(scApiRequest('invalid-endpoint')).rejects.toThrow('API down');
   });
 
   it('should throw an error if the API request fails with non 401/403 status', async () => {
