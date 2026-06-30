@@ -330,19 +330,20 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
         const archive = archiver('zip', { zlib: { level: 9 } });
         archive.pipe(res);
 
-        const validFiles = await Promise.all(tracks.map(async (track) => {
+        const fileCheckPromises = tracks.map((track) => {
             if (track.file_path) {
                 const trackPath = path.join(musicDir, track.file_path);
-                if (await fs.pathExists(trackPath)) {
-                    return trackPath;
-                }
+                return fs.pathExists(trackPath).then(exists => exists ? trackPath : null);
             }
             return null;
-        }));
+        });
 
-        for (const trackPath of validFiles) {
-            if (trackPath) {
-                archive.file(trackPath, { name: path.basename(trackPath) });
+        for (const checkPromise of fileCheckPromises) {
+            if (checkPromise) {
+                const trackPath = await checkPromise;
+                if (trackPath) {
+                    archive.file(trackPath, { name: path.basename(trackPath) });
+                }
             }
         }
         await archive.finalize();
