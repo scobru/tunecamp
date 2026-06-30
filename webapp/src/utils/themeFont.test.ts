@@ -75,4 +75,16 @@ describe('applyThemeFont', () => {
         // The href should be updated to the new font
         expect(linkElement.href).toContain('family=Roboto:wght@400;500;600;700&display=swap');
     });
+
+    it('handles undefined by removing --font-family', () => {
+        document.documentElement.style.setProperty('--font-family', 'OldFont');
+        applyThemeFont(undefined);
+        expect(document.documentElement.style.getPropertyValue('--font-family')).toBe('');
+    });
+
+    it('handles empty string by removing --font-family', () => {
+        document.documentElement.style.setProperty('--font-family', 'OldFont');
+        applyThemeFont('');
+        expect(document.documentElement.style.getPropertyValue('--font-family')).toBe('');
+    });
 });
