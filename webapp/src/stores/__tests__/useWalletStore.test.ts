@@ -289,6 +289,15 @@ describe('useWalletStore', () => {
         expect(mockProvider.send).not.toHaveBeenCalled();
     });
 
+    test('tryReconnect silently ignores errors during eth_accounts request', async () => {
+        mockEth.request.mockRejectedValue(new Error('User rejected request'));
+
+        const store = useWalletStore.getState();
+        await store.tryReconnect();
+
+        expect(mockProvider.send).not.toHaveBeenCalled();
+    });
+
     test('refreshBalances updates ETH and USDC balances', async () => {
         useWalletStore.setState({
             provider: mockProvider,
