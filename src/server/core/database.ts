@@ -1024,33 +1024,36 @@ export function createDatabase(dbPath: string): DatabaseService {
         db.exec(`CREATE INDEX IF NOT EXISTS idx_play_history_track ON play_history(track_id)`);
 
         // peer_tracks PK migration: old schema used id TEXT PRIMARY KEY (single-column).
-        // Two concurrent sessions sharing the same track ID (e.g. from the library) cause
-        // SQLITE_CONSTRAINT_PRIMARYKEY. Fix: composite PK (id, session_id).
-        // peer_tracks is transient — drop is safe.
+        // Two concurrent sessions sharing the same track ID (e.g. from the library) caused
+        // SQLITE_CONSTRAINT_PRIMARYKEY. Upgraded to composite PK (id, session_id).
         const peerTracksExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='peer_tracks'").get();
         if (peerTracksExists) {
             const ptCols = db.prepare("PRAGMA table_info(peer_tracks)").all() as any[];
             const sessionIdCol = ptCols.find((c: any) => c.name === 'session_id');
             if (sessionIdCol && sessionIdCol.pk === 0) {
                 console.log("📦 [Database] Migrating peer_tracks: upgrading to composite PK (id, session_id)...");
-                db.exec("DROP TABLE peer_tracks");
-                db.exec(`
-                    CREATE TABLE peer_tracks (
-                        id TEXT NOT NULL,
-                        session_id TEXT NOT NULL REFERENCES peer_sessions(id) ON DELETE CASCADE,
-                        title TEXT NOT NULL,
-                        artist TEXT,
-                        album TEXT,
-                        duration REAL,
-                        file_size INTEGER,
-                        mime_type TEXT,
-                        allow_download INTEGER NOT NULL DEFAULT 1,
-                        created_at INTEGER NOT NULL,
-                        PRIMARY KEY (id, session_id)
-                    )
-                `);
-                db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
-                db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
+                db.transaction(() => {
+                    db.exec(`
+                        CREATE TABLE peer_tracks_new (
+                            id TEXT NOT NULL,
+                            session_id TEXT NOT NULL REFERENCES peer_sessions(id) ON DELETE CASCADE,
+                            title TEXT NOT NULL,
+                            artist TEXT,
+                            album TEXT,
+                            duration REAL,
+                            file_size INTEGER,
+                            mime_type TEXT,
+                            allow_download INTEGER NOT NULL DEFAULT 1,
+                            created_at INTEGER NOT NULL,
+                            PRIMARY KEY (id, session_id)
+                        )
+                    `);
+                    db.exec("INSERT OR IGNORE INTO peer_tracks_new SELECT * FROM peer_tracks");
+                    db.exec("DROP TABLE peer_tracks");
+                    db.exec("ALTER TABLE peer_tracks_new RENAME TO peer_tracks");
+                    db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
+                    db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
+                })();
             }
         }
 
