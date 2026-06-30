@@ -331,15 +331,10 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
 
         archive.on('warning', (err: any) => {
             if (err.code === 'ENOENT') {
-                // Ignore missing files, which handles tracks whose file_path doesn't exist anymore
-                console.warn(`[Album Download] Skipping missing file: ${err.message}`);
+                console.warn(`[Albums] Missing file skipped in ZIP: ${err.message}`);
             } else {
                 throw err;
             }
-        });
-
-        archive.on('error', (err: any) => {
-            throw err;
         });
 
         archive.pipe(res);
