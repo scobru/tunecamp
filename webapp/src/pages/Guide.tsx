@@ -68,10 +68,10 @@ const ROLES: RoleCard[] = [
     color: "text-secondary",
     badge: "bg-secondary/10 text-secondary border-secondary/20",
     bullets: [
-      "Can view all content, including private items and drafts.",
-      "Edit metadata, cover art, and organization for any track or album.",
-      "Helps maintain library structure and correct errors.",
-      "With an artist link, can publish like an Artist.",
+      "See all content, including private items and drafts — to triage and report.",
+      "Upload tracks and build the library catalog, even without an artist link.",
+      "Edit metadata and cover art for your own content — not other owners'.",
+      "With an artist link, releases & social posts publish under that artist identity.",
     ],
   },
   {
@@ -114,7 +114,7 @@ const MATRIX: MatrixRow[] = [
   { capability: "Upload music / create releases", values: [true, true, "link", true, false] },
   { capability: "Sell music / store assets", values: [true, true, "link+", "flag", false] },
   { capability: "Social posts (federation)", values: [true, true, "link", true, false] },
-  { capability: "Edit others' content", values: [true, true, true, false, false] },
+  { capability: "Edit others' content", values: [true, true, false, false, false] },
   { capability: "Manage federation", values: [true, true, false, false, false] },
   { capability: "Manage users", values: [true, "view", false, false, false] },
   { capability: "Modify site settings", values: [true, false, false, false, false] },
@@ -233,9 +233,10 @@ const Guide = () => {
                 <Link to="/profile" className="link link-accent font-semibold">
                   Profile → Become an Artist
                 </Link>{" "}
-                you can request one; once an admin approves it, your account is
-                promoted and an artist profile is created and linked. Selling is then
-                enabled per-artist by staff.
+                you can request one; once an admin approves it, an artist profile is
+                created and linked to your account (your role stays the same — the
+                link is what unlocks publishing). Selling is then enabled per-artist
+                by staff.
               </p>
             </div>
           </div>
