@@ -740,17 +740,15 @@ export class MaintenanceService {
 
             const bareTracks = this.repo.getBareTracks();
             let mergedBareCount = 0;
-            this.db.transaction(() => {
-                for (const bare of bareTracks) {
-                    const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
-                    if (richMatch) {
-                        try {
-                            this.db.mergeTracks(bare.id, richMatch.id);
-                            mergedBareCount++;
-                        } catch (err) {}
-                    }
+            for (const bare of bareTracks) {
+                const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
+                if (richMatch) {
+                    try {
+                        this.db.mergeTracks(bare.id, richMatch.id);
+                        mergedBareCount++;
+                    } catch (err) {}
                 }
-            })();
+            }
             if (mergedBareCount > 0) console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records.`);
 
             const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: this.musicDir, posix: true });
