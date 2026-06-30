@@ -40,4 +40,23 @@ describe('confirm utility', () => {
     expect(mockConfirm).toHaveBeenCalledWith('Are you sure?', undefined);
     expect(result).toBe(false);
   });
+
+  it('should pass through custom text options', async () => {
+    const mockConfirm = vi.fn().mockResolvedValue(true);
+    vi.mocked(useConfirmStore.getState).mockReturnValue({
+      confirm: mockConfirm,
+    } as any);
+
+    const options = {
+      title: 'Danger',
+      confirmText: 'Delete',
+      cancelText: 'Keep'
+    };
+
+    const result = await confirm('Delete this item?', options);
+
+    expect(useConfirmStore.getState).toHaveBeenCalled();
+    expect(mockConfirm).toHaveBeenCalledWith('Delete this item?', options);
+    expect(result).toBe(true);
+  });
 });
