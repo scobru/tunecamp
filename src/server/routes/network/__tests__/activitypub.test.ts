@@ -48,7 +48,11 @@ const mockAuthMiddleware = {
     requireUser: (req: any, res: any, next: any) => {
         req.isAdmin = req.headers['x-is-admin'] !== 'false';
         req.isRootAdmin = req.headers['x-is-root-admin'] !== 'false';
-        if (req.headers['x-artist-id']) {
+        if (req.headers['x-artist-id'] === 'null') {
+            req.artistId = null;
+        } else if (req.headers['x-artist-id'] === 'undefined') {
+            req.artistId = undefined;
+        } else if (req.headers['x-artist-id']) {
             req.artistId = Number(req.headers['x-artist-id']);
         }
         next();
@@ -359,6 +363,38 @@ describe('ActivityPub Outbound Article Federation Tests', () => {
             expect(mockApService.broadcastPostDelete).not.toHaveBeenCalled();
         });
 
+
+        test('should reject restricted admin from deleting if artistId is null', async () => {
+            const mockNote = { note_id: "test-note-null", note_type: "post", content_id: 4, artist_id: 99 };
+            (mockDb.getApNote as jest.Mock).mockReturnValue(mockNote);
+            (mockDb.getPost as jest.Mock).mockReturnValue({ id: 4, title: "Null Post" });
+            mockApService.broadcastPostDelete = jest.fn<any>().mockResolvedValue(undefined);
+
+            const response = await request(app)
+                .delete('/ap/note')
+                .query({ id: "test-note-null" })
+                .set('x-is-root-admin', 'false')
+                .set('x-artist-id', 'null');
+
+            expect(response.status).toBe(403);
+            expect(mockApService.broadcastPostDelete).not.toHaveBeenCalled();
+        });
+
+        test('should reject restricted admin from deleting if artistId is undefined', async () => {
+            const mockNote = { note_id: "test-note-undef", note_type: "post", content_id: 5, artist_id: 99 };
+            (mockDb.getApNote as jest.Mock).mockReturnValue(mockNote);
+            (mockDb.getPost as jest.Mock).mockReturnValue({ id: 5, title: "Undef Post" });
+            mockApService.broadcastPostDelete = jest.fn<any>().mockResolvedValue(undefined);
+
+            const response = await request(app)
+                .delete('/ap/note')
+                .query({ id: "test-note-undef" })
+                .set('x-is-root-admin', 'false')
+                .set('x-artist-id', 'undefined');
+
+            expect(response.status).toBe(403);
+            expect(mockApService.broadcastPostDelete).not.toHaveBeenCalled();
+        });
         test('should return 400 if id is missing', async () => {
             const response = await request(app)
                 .delete('/ap/note');
