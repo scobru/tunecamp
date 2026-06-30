@@ -50,6 +50,19 @@ describe('useNowPlayingStore', () => {
         expect(state.loaded).toBe(true);
     });
 
+    test('fetchPref updates state on success when enabled is false', async () => {
+        vi.mocked(API.getNowPlayingPref).mockResolvedValue({ enabled: false });
+        useNowPlayingStore.setState({ enabled: true, loaded: false });
+
+        const store = useNowPlayingStore.getState();
+        await store.fetchPref();
+
+        const state = useNowPlayingStore.getState();
+        expect(API.getNowPlayingPref).toHaveBeenCalledTimes(1);
+        expect(state.enabled).toBe(false);
+        expect(state.loaded).toBe(true);
+    });
+
     test('fetchPref handles failure gracefully', async () => {
         vi.mocked(API.getNowPlayingPref).mockRejectedValue(new Error('Network error'));
 
@@ -71,5 +84,24 @@ describe('useNowPlayingStore', () => {
         const state = useNowPlayingStore.getState();
         expect(API.setNowPlayingPref).toHaveBeenCalledWith(true);
         expect(state.enabled).toBe(true);
+    });
+
+    test('setEnabled updates preference via API to false and sets new state', async () => {
+        vi.mocked(API.setNowPlayingPref).mockResolvedValue({ enabled: false });
+
+        useNowPlayingStore.setState({ enabled: true, loaded: true });
+        const store = useNowPlayingStore.getState();
+        await store.setEnabled(false);
+
+        const state = useNowPlayingStore.getState();
+        expect(API.setNowPlayingPref).toHaveBeenCalledWith(false);
+        expect(state.enabled).toBe(false);
+    });
+
+    test('setEnabled propagates errors when API fails', async () => {
+        vi.mocked(API.setNowPlayingPref).mockRejectedValue(new Error('Network error'));
+
+        const store = useNowPlayingStore.getState();
+        await expect(store.setEnabled(true)).rejects.toThrow('Network error');
     });
 });

@@ -22,6 +22,12 @@ const FONT_LINK_ID = "dynamic-google-font";
  * utility picks it up app-wide.
  */
 export function applyThemeFont(font: string | undefined | null): void {
+    if (!font) {
+        document.documentElement.style.removeProperty('--font-family');
+    } else {
+        document.documentElement.style.setProperty('--font-family', font);
+    }
+
     const family = font || "Outfit";
 
     if (!STATIC_FONTS.has(family)) {
