@@ -32,8 +32,8 @@ async function main() {
     console.log(`📂 Music Directory: ${musicDir}`);
     console.log(`🗄️  Database: ${dbPath}`);
 
-    const tracks = db.prepare("SELECT id, title, file_path, lossless_path FROM tracks").all() as TrackRow[];
-    console.log(`🔍 Checking ${tracks.length} tracks...`);
+    const trackIterator = db.prepare("SELECT id, title, file_path, lossless_path FROM tracks").iterate() as IterableIterator<TrackRow>;
+    console.log(`🔍 Checking tracks in batches...`);
 
     let fixedCount = 0;
     let verifiedCount = 0;
@@ -42,9 +42,12 @@ async function main() {
     const updates: { id: number, file_path: string, lossless_path: string | null }[] = [];
 
     const limit = pLimit(100);
+    const BATCH_SIZE = 1000;
+    let batch: TrackRow[] = [];
 
-    await Promise.all(tracks.map(track => limit(async () => {
-        let changed = false;
+    async function processBatch(currentBatch: TrackRow[]) {
+        await Promise.all(currentBatch.map(track => limit(async () => {
+            let changed = false;
         let newPath = track.file_path;
         let newLossless = track.lossless_path;
 
@@ -62,7 +65,7 @@ async function main() {
             const fullPath = path.join(musicDir, newPath);
             let exists = false;
             try {
-                await fs.promises.access(fullPath, fs.constants.F_OK);
+                await fs.promises.stat(fullPath);
                 exists = true;
             } catch {
                 exists = false;
@@ -83,7 +86,7 @@ async function main() {
                 
                 let altExists = false;
                 try {
-                    await fs.promises.access(fullAltPath, fs.constants.F_OK);
+                    await fs.promises.stat(fullAltPath);
                     altExists = true;
                 } catch {
                     altExists = false;
@@ -98,7 +101,19 @@ async function main() {
                 }
             }
         }
-    })));
+        })));
+    }
+
+    for (const track of trackIterator) {
+        batch.push(track);
+        if (batch.length >= BATCH_SIZE) {
+            await processBatch(batch);
+            batch = [];
+        }
+    }
+    if (batch.length > 0) {
+        await processBatch(batch);
+    }
 
     if (updates.length > 0) {
         console.log(`\n🚀 Applying ${updates.length} path fixes...`);
