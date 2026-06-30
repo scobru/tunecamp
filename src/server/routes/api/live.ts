@@ -1,4 +1,4 @@
-import { Router, json, raw, Request, Response } from 'express';
+import { Router, json, raw, Request, Response, NextFunction } from 'express';
 import fs from 'fs-extra';
 import path from 'path';
 import type { ServiceContainer } from '../../core/container.js';
@@ -143,13 +143,17 @@ export function createLiveRoutes(container: ServiceContainer): Router {
     router.post('/:roomId/ingest',
         authMiddleware.requireUser,
         rateLimit({ windowMs: 10000, max: 30, message: 'Ingest rate limit exceeded' }),
-        raw({ type: () => true, limit: '15mb' }),
-        wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
+        (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
             const { roomId } = req.params;
             const own = liveService.getByUsername(req.username!);
             if (!own || own.roomId !== roomId) {
                 return res.status(403).json({ error: 'Not your live session' });
             }
+            next();
+        },
+        raw({ type: () => true, limit: '15mb' }),
+        wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
+            const { roomId } = req.params;
             if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
                 return res.status(400).json({ error: 'Empty chunk' });
             }
