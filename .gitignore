@@ -84,3 +84,8 @@ scratch/
 !.claude/CLAUDE.md
 
 .fallow
+test-music/
+test.db
+test-benchmark.js
+test-runner.js
+test-config.json
