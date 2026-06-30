@@ -61,6 +61,40 @@ describe('SoundCloudClient', () => {
       `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(mockUrl)}&client_id=${mockClientId}`
     );
   });
+
+  it('should propagate json parsing errors gracefully', async () => {
+    const mockUrl = 'https://soundcloud.com/artist/track';
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => { throw new Error('Invalid JSON'); },
+    });
+
+    await expect(client.resolveUrl(mockUrl)).rejects.toThrow('Invalid JSON');
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `https://api-v2.soundcloud.com/resolve?url=${encodeURIComponent(mockUrl)}&client_id=${mockClientId}`
+    );
+  });
+
+  it('should encode special characters correctly in the resolve URL', async () => {
+    const mockUrl = 'https://soundcloud.com/artist/track with space & ampersand';
+    const mockResponse = { id: 789 };
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockResponse,
+    });
+
+    const result = await client.resolveUrl(mockUrl);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `https://api-v2.soundcloud.com/resolve?url=https%3A%2F%2Fsoundcloud.com%2Fartist%2Ftrack%20with%20space%20%26%20ampersand&client_id=${mockClientId}`
+    );
+    expect(result).toEqual(mockResponse);
+  });
 });
 
 describe('getClientId and clearSoundCloudClientId', () => {
@@ -163,6 +197,25 @@ describe('getClientId and clearSoundCloudClientId', () => {
     });
 
     await expect(getClientId()).rejects.toThrow('No sndcdn script URLs found on SoundCloud homepage');
+  });
+
+  it('should handle script fetch timeouts gracefully and move to the next', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => '<html><script src="https://a-v2.sndcdn.com/assets/1-2.js"></script><script src="https://a-v2.sndcdn.com/assets/3-4.js"></script></html>',
+      })
+      // reverse order fetch, so 3-4.js is fetched first and timeouts
+      .mockRejectedValueOnce(new Error('AbortError'))
+      // 1-2.js fetched next and succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'var config={client_id:"my_sc_client_id_timeout"};',
+      });
+
+    const clientId = await getClientId();
+    expect(clientId).toBe('my_sc_client_id_timeout');
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
   it('should continue if a script fetch fails or returns not ok', async () => {
