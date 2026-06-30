@@ -41,6 +41,19 @@ describe('confirm utility', () => {
     expect(result).toBe(false);
   });
 
+  it('should call confirm on the store correctly with an empty message string', async () => {
+    const mockConfirm = vi.fn().mockResolvedValue(true);
+    vi.mocked(useConfirmStore.getState).mockReturnValue({
+      confirm: mockConfirm,
+    } as any);
+
+    const result = await confirm('');
+
+    expect(useConfirmStore.getState).toHaveBeenCalled();
+    expect(mockConfirm).toHaveBeenCalledWith('', undefined);
+    expect(result).toBe(true);
+  });
+
   it('should pass through custom text options', async () => {
     const mockConfirm = vi.fn().mockResolvedValue(true);
     vi.mocked(useConfirmStore.getState).mockReturnValue({
