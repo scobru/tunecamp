@@ -54,4 +54,17 @@ describe('DiscoveryService.getFederationCatalog track fallback', () => {
         expect(releases[0].tracks).toHaveLength(1);
         expect(releases[0].tracks[0].title).toBe('Track A');
     });
+
+    test('release tracks inherit a cover URL so they fall back to the album art', () => {
+        (mockDb.getReleases as jest.Mock).mockReturnValue([{ id: 7, title: 'Formal Release', visibility: 'public' }]);
+        (mockDb.getReleaseTracks as jest.Mock).mockReturnValue([
+            { id: 10, title: 'No Artwork Track' },
+        ]);
+
+        const { releases } = service.getFederationCatalog(false);
+
+        // /api/tracks/:id/cover resolves track-art → album-cover → placeholder, so a
+        // track without its own artwork still federates with a usable cover URL.
+        expect(releases[0].tracks[0].coverUrl).toBe('/api/tracks/10/cover');
+    });
 });

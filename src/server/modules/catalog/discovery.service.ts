@@ -51,7 +51,15 @@ export class DiscoveryService {
     /** Maps a release row to a DTO with its tracks attached. */
     private mapReleaseWithTracks(r: Release, profile: VisibilityProfile, username?: string) {
         const mapped = mapAlbumDTO(r, this.database, username);
-        let tracks: any[] = this.database.getReleaseTracks(r.id);
+        let tracks: any[] = this.database.getReleaseTracks(r.id).map((t: any) => ({
+            ...t,
+            // A track with no artwork of its own inherits the album cover. The
+            // /api/tracks/:id/cover endpoint already resolves track-art → album-cover
+            // → placeholder, so attaching it here gives every release track a usable
+            // cover both locally (overview/Network) and over HTTP federation, where
+            // the consuming instance resolves this relative URL against the peer base.
+            coverUrl: t.coverUrl || (t.id != null ? `/api/tracks/${t.id}/cover` : ((mapped as any).coverImage || null)),
+        }));
         // Some releases keep their audio linked only by album_id, with no rows in
         // release_tracks (e.g. promoted library albums). The release detail page
         // (getAlbumForUser) falls back to the album's tracks in that case; mirror
