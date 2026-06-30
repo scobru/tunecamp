@@ -15,6 +15,8 @@ describe('useNowPlayingStore', () => {
         useNowPlayingStore.setState({
             enabled: false,
             loaded: false,
+            currentTrack: null,
+            isPlaying: false,
         });
     });
 
@@ -22,20 +24,42 @@ describe('useNowPlayingStore', () => {
         const state = useNowPlayingStore.getState();
         expect(state.enabled).toBe(false);
         expect(state.loaded).toBe(false);
+        expect(state.currentTrack).toBeNull();
+        expect(state.isPlaying).toBe(false);
     });
 
     test('reset clears the state', () => {
-        useNowPlayingStore.setState({ enabled: true, loaded: true });
+        useNowPlayingStore.setState({
+            enabled: true,
+            loaded: true,
+            currentTrack: { id: 1, title: 'Test Track' } as any,
+            isPlaying: true
+        });
 
         let state = useNowPlayingStore.getState();
         expect(state.enabled).toBe(true);
         expect(state.loaded).toBe(true);
+        expect(state.currentTrack).not.toBeNull();
+        expect(state.isPlaying).toBe(true);
 
         state.reset();
 
         state = useNowPlayingStore.getState();
         expect(state.enabled).toBe(false);
         expect(state.loaded).toBe(false);
+        expect(state.currentTrack).toBeNull();
+        expect(state.isPlaying).toBe(false);
+    });
+
+    test('setCurrentTrack updates currentTrack and sets isPlaying to true', () => {
+        const mockTrack = { id: 123, title: 'Mock Track' } as any;
+        const store = useNowPlayingStore.getState();
+
+        store.setCurrentTrack(mockTrack);
+
+        const state = useNowPlayingStore.getState();
+        expect(state.currentTrack).toEqual(mockTrack);
+        expect(state.isPlaying).toBe(true);
     });
 
     test('fetchPref updates state on success', async () => {
