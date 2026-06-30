@@ -43,11 +43,16 @@ Reports are also surfaced in the admin panel UI — a badge on the Reports menu 
 The **Curator** is a specialized role focused on library quality and content organization.
 
 ### Capabilities:
-- **Global Visibility:** Can view all content (including private/drafts) to assist in curation.
-- **Library Management:** Can edit metadata, cover art, and organization for **their own** tracks and albums. Editing content owned by *other* users requires Manager/Root Admin (`MANAGE_ALL_CONTENT`); a Curator has only `MANAGE_PRIVATE_LIBRARY`, which grants global *visibility* but not cross-owner *write*.
-- **Maintenance:** Help maintain the library structure and correct errors.
+- **Global Visibility:** Can view all content (including private/drafts) across the whole library via `VIEW_PRIVATE_LIBRARY` — to triage, review, and report.
+- **Upload:** Can upload tracks and create albums/releases into the library via `canWriteContent` (it holds `MANAGE_PRIVATE_LIBRARY`), **even without a linked artist profile**. This is what distinguishes a Curator from a plain Listener. Publishing a release *attributed to an artist identity* still requires a linked artist profile (`canPublishContent`/`artistId`), same as everyone else.
+- **Library Management (own content only):** Can edit metadata, cover art, and organization for content it owns (`owner_id` matches, e.g. its own uploads).
 
-> **Note:** the Curator's edit rights are owner-scoped, enforced per-item by `VisibilityGuardian.canManageItem`. The global-visibility capability lets them *see* everything to triage and report, but modifying another owner's content is reserved for Managers and above.
+### What a Curator deliberately *cannot* do:
+- **Edit or delete other owners' content.** Per-item writes are owner-scoped, enforced by `VisibilityGuardian.canManageItem`; cross-owner write requires Manager/Root Admin (`MANAGE_ALL_CONTENT`). The global-visibility capability lets a Curator *see* everything to triage and report, not mutate it.
+- **Manage users, site settings, or federation** — those are Manager/Root-Admin powers.
+- **Moderate community posts (the Board).** Deleting another user's Board message is a Manager/Root-Admin action; a Curator can only delete its own posts.
+
+> **Naming caveat:** the capability is called `MANAGE_PRIVATE_LIBRARY`, but for a Curator it grants global *read visibility* plus write of its *own* content — not cross-owner write. Don't read the name as "can manage everyone's library".
 
 ---
 

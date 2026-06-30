@@ -190,7 +190,11 @@ export function createBoardRoutes(container: ServiceContainer): Router {
             return res.status(404).json({ error: 'Message not found' });
         }
 
-        const isAdmin = req.role === 'admin' || req.role === 'root_admin' || req.role === 'super_user';
+        // Moderation (deleting another user's post) is a Manager/Root-Admin power.
+        // A Curator (super_user) has global *read* visibility but does not mutate
+        // other owners' content, so it is intentionally excluded here — it may
+        // still delete its own posts via the isOwner check below.
+        const isAdmin = req.role === 'admin' || req.role === 'root_admin';
         const isOwner = req.username === msg.username;
 
         if (!isAdmin && !isOwner) {
