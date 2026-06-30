@@ -35,11 +35,16 @@ Il **Manager** ha ampi poteri amministrativi per supervisionare la comunità e i
 Il **Curatore** è un ruolo specializzato incentrato sulla qualità della libreria e sull'organizzazione dei contenuti.
 
 ### Capacità:
-- **Visibilità Globale:** Può visualizzare tutti i contenuti (inclusi quelli privati/bozze) per assistere nella curatela.
-- **Gestione della Libreria:** Può modificare metadati, copertine e organizzazione per le **proprie** tracce e album. Modificare contenuti di proprietà di *altri* utenti richiede Manager/Root Admin (`MANAGE_ALL_CONTENT`); il Curatore ha solo `MANAGE_PRIVATE_LIBRARY`, che concede *visibilità* globale ma non la *scrittura* su contenuti altrui.
-- **Manutenzione:** Aiutare a mantenere la struttura della libreria e correggere eventuali errori.
+- **Visibilità Globale:** Può visualizzare tutti i contenuti (inclusi quelli privati/bozze) dell'intera libreria tramite `VIEW_PRIVATE_LIBRARY` — per triage, revisione e segnalazione.
+- **Upload:** Può caricare tracce e creare album/release nella libreria tramite `canWriteContent` (possiede `MANAGE_PRIVATE_LIBRARY`), **anche senza un profilo artista collegato**. È questo che distingue un Curatore da un semplice Ascoltatore. Pubblicare una release *attribuita a un'identità artista* richiede comunque un profilo artista collegato (`canPublishContent`/`artistId`), come per tutti gli altri.
+- **Gestione della Libreria (solo contenuti propri):** Può modificare metadati, copertine e organizzazione per i contenuti di cui è proprietario (`owner_id` corrispondente, es. i propri upload).
 
-> **Nota:** i diritti di modifica del Curatore sono limitati al proprietario, applicati per-item da `VisibilityGuardian.canManageItem`. La visibilità globale gli permette di *vedere* tutto per triage e segnalazione, ma modificare contenuti di un altro proprietario è riservato a Manager e superiori.
+### Cosa un Curatore deliberatamente *non* può fare:
+- **Modificare o eliminare contenuti di altri proprietari.** Le scritture per-item sono limitate al proprietario, applicate da `VisibilityGuardian.canManageItem`; la scrittura cross-owner richiede Manager/Root Admin (`MANAGE_ALL_CONTENT`). La visibilità globale gli permette di *vedere* tutto per triage e segnalazione, non di modificarlo.
+- **Gestire utenti, impostazioni del sito o federazione** — sono poteri da Manager/Root Admin.
+- **Moderare i post della community (la Board).** Eliminare il messaggio Board di un altro utente è un'azione da Manager/Root Admin; un Curatore può eliminare solo i propri post.
+
+> **Nota sul naming:** la capability si chiama `MANAGE_PRIVATE_LIBRARY`, ma per un Curatore concede *visibilità in lettura* globale più la scrittura dei *propri* contenuti — non la scrittura cross-owner. Non interpretare il nome come "può gestire la libreria di tutti".
 
 ---
 
