@@ -6,6 +6,7 @@ This guide covers how to set up a local development environment for TuneCamp and
 
 - **Node.js**: v18 or higher
 - **FFmpeg**: Required for audio processing and waveform generation
+- **Native build toolchain**: Required to compile native modules (`better-sqlite3`, `node-datachannel`/`webtorrent`, …) when no prebuilt binary matches your platform. Install **Python 3**, **make**, and a **C/C++ compiler** (`gcc`/`g++` on Linux, the Xcode Command Line Tools on macOS, or the "Desktop development with C++" workload on Windows). **CMake** is also needed if `node-datachannel` has to build from source. On Debian/Ubuntu: `sudo apt install build-essential python3 cmake`. These are the same tools the Dockerfile installs (`python3 make g++`) for the image build, so the Docker path doesn't require them on the host.
 - **SQLite3**: Optional — useful for manual database inspection
 
 ## Initial Setup

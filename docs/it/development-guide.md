@@ -6,6 +6,7 @@ Questa guida illustra come configurare un ambiente di sviluppo locale per TuneCa
 
 - **Node.js**: versione 18 o superiore
 - **FFmpeg**: Richiesto per l'elaborazione audio e la generazione delle forme d'onda
+- **Toolchain di build nativa**: Richiesta per compilare i moduli nativi (`better-sqlite3`, `node-datachannel`/`webtorrent`, …) quando nessun binario precompilato corrisponde alla tua piattaforma. Installa **Python 3**, **make** e un **compilatore C/C++** (`gcc`/`g++` su Linux, gli Xcode Command Line Tools su macOS, o il workload "Desktop development with C++" su Windows). Serve anche **CMake** se `node-datachannel` deve compilare dai sorgenti. Su Debian/Ubuntu: `sudo apt install build-essential python3 cmake`. Sono gli stessi strumenti che il Dockerfile installa (`python3 make g++`) per la build dell'immagine, quindi la via Docker non li richiede sull'host.
 - **SQLite3**: Opzionale — utile per l'ispezione manuale del database
 
 ## Configurazione Iniziale
