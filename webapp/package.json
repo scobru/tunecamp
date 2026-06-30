@@ -41,6 +41,7 @@
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.6",
     "autoprefixer": "^10.4.24",
     "daisyui": "^5.5.16",
