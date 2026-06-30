@@ -1,6 +1,7 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { useNowPlayingStore } from '../useNowPlayingStore';
 import API from '../../services/api';
+import { Track } from '../../types';
 
 vi.mock('../../services/api', () => ({
     default: {
@@ -15,6 +16,8 @@ describe('useNowPlayingStore', () => {
         useNowPlayingStore.setState({
             enabled: false,
             loaded: false,
+            currentTrack: null,
+            isPlaying: false,
         });
     });
 
@@ -22,6 +25,8 @@ describe('useNowPlayingStore', () => {
         const state = useNowPlayingStore.getState();
         expect(state.enabled).toBe(false);
         expect(state.loaded).toBe(false);
+        expect(state.currentTrack).toBeNull();
+        expect(state.isPlaying).toBe(false);
     });
 
     test('reset clears the state', () => {
@@ -103,5 +108,60 @@ describe('useNowPlayingStore', () => {
 
         const store = useNowPlayingStore.getState();
         await expect(store.setEnabled(true)).rejects.toThrow('Network error');
+    });
+
+    test('fetchPref preserves enabled state when API fails', async () => {
+        vi.mocked(API.getNowPlayingPref).mockRejectedValue(new Error('Network error'));
+        useNowPlayingStore.setState({ enabled: true, loaded: false });
+
+        const store = useNowPlayingStore.getState();
+        await store.fetchPref();
+
+        const state = useNowPlayingStore.getState();
+        expect(state.enabled).toBe(true);
+        expect(state.loaded).toBe(true);
+    });
+
+    test('setEnabled syncs state with API response even if different from requested', async () => {
+        vi.mocked(API.setNowPlayingPref).mockResolvedValue({ enabled: false });
+
+        const store = useNowPlayingStore.getState();
+        await store.setEnabled(true);
+
+        const state = useNowPlayingStore.getState();
+        expect(API.setNowPlayingPref).toHaveBeenCalledWith(true);
+        expect(state.enabled).toBe(false);
+    });
+
+    test('setCurrentTrack updates the current track', () => {
+        const mockTrack: Track = {
+            id: '1',
+            title: 'Test Track',
+            duration: 180,
+            artist: { id: 'a1', name: 'Test Artist' },
+            album: { id: 'al1', title: 'Test Album' },
+        } as any;
+
+        const store = useNowPlayingStore.getState();
+        store.setCurrentTrack(mockTrack);
+
+        const state = useNowPlayingStore.getState();
+        expect(state.currentTrack).toEqual(mockTrack);
+    });
+
+    test('setCurrentTrack handles subsequent updates', () => {
+        const mockTrack1: Track = { id: '1', title: 'Track 1' } as any;
+        const mockTrack2: Track = { id: '2', title: 'Track 2' } as any;
+
+        const store = useNowPlayingStore.getState();
+        store.setCurrentTrack(mockTrack1);
+
+        let state = useNowPlayingStore.getState();
+        expect(state.currentTrack).toEqual(mockTrack1);
+
+        store.setCurrentTrack(mockTrack2);
+
+        state = useNowPlayingStore.getState();
+        expect(state.currentTrack).toEqual(mockTrack2);
     });
 });
