@@ -168,6 +168,37 @@ describe('useWalletStore', () => {
         expect(state.error).toBeNull();
         expect(mockEth.on).toHaveBeenCalledWith('accountsChanged', expect.any(Function));
         expect(mockEth.on).toHaveBeenCalledWith('chainChanged', expect.any(Function));
+
+        // Test eth.on callbacks
+        const accountsChangedCallback = mockEth.on.mock.calls.find((call: any[]) => call[0] === 'accountsChanged')[1];
+        const chainChangedCallback = mockEth.on.mock.calls.find((call: any[]) => call[0] === 'chainChanged')[1];
+
+        // Mock disconnect and connect on store
+        const disconnectSpy = vi.spyOn(useWalletStore.getState(), 'disconnect');
+        const connectSpy = vi.spyOn(useWalletStore.getState(), 'connect');
+
+        // Empty accounts triggers disconnect
+        accountsChangedCallback([]);
+        expect(disconnectSpy).toHaveBeenCalled();
+
+        // Non-empty accounts triggers connect
+        accountsChangedCallback(['0x456']);
+        expect(connectSpy).toHaveBeenCalled();
+
+        // Test chainChanged triggers reload
+        const originalLocation = window.location;
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            value: { reload: vi.fn() }
+        });
+
+        chainChangedCallback();
+        expect(window.location.reload).toHaveBeenCalled();
+
+        Object.defineProperty(window, 'location', {
+            configurable: true,
+            value: originalLocation
+        });
     });
 
     test('connect prevents concurrent connections', async () => {
@@ -180,6 +211,7 @@ describe('useWalletStore', () => {
     });
 
     test('connect handles connection errors', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         mockProvider.send.mockRejectedValue(new Error('User rejected connection'));
 
         const store = useWalletStore.getState();
@@ -189,6 +221,36 @@ describe('useWalletStore', () => {
         expect(state.isConnected).toBe(false);
         expect(state.error).toBe('User rejected connection');
         expect(state.isConnecting).toBe(false);
+
+        consoleSpy.mockRestore();
+    });
+
+    test('connect handles connection errors without message', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockProvider.send.mockRejectedValue('Unknown Error');
+
+        const store = useWalletStore.getState();
+        await store.connect();
+
+        const state = useWalletStore.getState();
+        expect(state.isConnected).toBe(false);
+        expect(state.error).toBe('Failed to connect wallet');
+        expect(state.isConnecting).toBe(false);
+
+        consoleSpy.mockRestore();
+    });
+
+    test('tryReconnect does nothing if window.ethereum is not present', async () => {
+        const originalEthereum = (window as any).ethereum;
+        delete (window as any).ethereum;
+
+        const store = useWalletStore.getState();
+        await store.tryReconnect();
+
+        const state = useWalletStore.getState();
+        expect(state.isConnected).toBe(false);
+
+        (window as any).ethereum = originalEthereum;
     });
 
     test('tryReconnect does nothing if already connected or connecting', async () => {
@@ -257,5 +319,23 @@ describe('useWalletStore', () => {
 
         expect(mockProvider.getBalance).not.toHaveBeenCalled();
         expect(WalletService.getUsdcBalance).not.toHaveBeenCalled();
+    });
+
+    test('refreshBalances handles errors', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        useWalletStore.setState({
+            provider: mockProvider,
+            address: '0x123',
+        });
+
+        const error = new Error('Test error');
+        mockProvider.getBalance.mockRejectedValue(error);
+
+        const store = useWalletStore.getState();
+        await store.refreshBalances();
+
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to fetch balances:', error);
+
+        consoleSpy.mockRestore();
     });
 });
