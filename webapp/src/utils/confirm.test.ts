@@ -72,4 +72,33 @@ describe('confirm utility', () => {
     expect(mockConfirm).toHaveBeenCalledWith('Delete this item?', options);
     expect(result).toBe(true);
   });
+
+  it('should propagate errors if the store confirm method throws', async () => {
+    const mockConfirm = vi.fn().mockRejectedValue(new Error('Store error'));
+    vi.mocked(useConfirmStore.getState).mockReturnValue({
+      confirm: mockConfirm,
+    } as any);
+
+    await expect(confirm('Error check')).rejects.toThrow('Store error');
+    expect(useConfirmStore.getState).toHaveBeenCalled();
+    expect(mockConfirm).toHaveBeenCalledWith('Error check', undefined);
+  });
+
+  it('should pass through partial ConfirmOptions', async () => {
+    const mockConfirm = vi.fn().mockResolvedValue(false);
+    vi.mocked(useConfirmStore.getState).mockReturnValue({
+      confirm: mockConfirm,
+    } as any);
+
+    const options = {
+      title: 'Partial Title',
+      cancelText: 'Only Cancel'
+    };
+
+    const result = await confirm('Partial test', options);
+
+    expect(useConfirmStore.getState).toHaveBeenCalled();
+    expect(mockConfirm).toHaveBeenCalledWith('Partial test', options);
+    expect(result).toBe(false);
+  });
 });

@@ -1,4 +1,10 @@
-import { useConfirmStore, type ConfirmOptions } from '../stores/useConfirmStore';
+import { useConfirmStore } from '../stores/useConfirmStore';
+
+export interface ConfirmOptions {
+  title?: string;
+  confirmText?: string;
+  cancelText?: string;
+}
 
 /**
  * Triggers a custom styled confirmation modal and returns a promise that
