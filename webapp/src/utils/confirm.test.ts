@@ -54,22 +54,22 @@ describe('confirm utility', () => {
     expect(result).toBe(true);
   });
 
-  it('should pass all confirm options to the underlying store', async () => {
+  it('should pass through custom text options', async () => {
     const mockConfirm = vi.fn().mockResolvedValue(true);
     vi.mocked(useConfirmStore.getState).mockReturnValue({
       confirm: mockConfirm,
     } as any);
 
-    const fullOptions = {
-      title: 'Warning',
-      confirmText: 'Yes',
-      cancelText: 'No',
+    const options = {
+      title: 'Danger',
+      confirmText: 'Delete',
+      cancelText: 'Keep'
     };
 
-    const result = await confirm('Proceed?', fullOptions);
+    const result = await confirm('Delete this item?', options);
 
     expect(useConfirmStore.getState).toHaveBeenCalled();
-    expect(mockConfirm).toHaveBeenCalledWith('Proceed?', fullOptions);
+    expect(mockConfirm).toHaveBeenCalledWith('Delete this item?', options);
     expect(result).toBe(true);
   });
 });

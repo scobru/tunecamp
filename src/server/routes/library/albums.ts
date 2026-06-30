@@ -327,21 +327,26 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
         res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(album.title || 'album')}.zip"`);
 
         const archiver = (await import('archiver')).default;
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        const archive = archiver('zip', { zlib: { level: 9 }, statConcurrency: 50 });
+
+        archive.on('warning', (err: any) => {
+            if (err.code === 'ENOENT') {
+                // Ignore missing files, which handles tracks whose file_path doesn't exist anymore
+                console.warn(`[Album Download] Skipping missing file: ${err.message}`);
+            } else {
+                throw err;
+            }
+        });
+
+        archive.on('error', (err: any) => {
+            throw err;
+        });
+
         archive.pipe(res);
 
-        const validFiles = await Promise.all(tracks.map(async (track) => {
+        for (const track of tracks) {
             if (track.file_path) {
                 const trackPath = path.join(musicDir, track.file_path);
-                if (await fs.pathExists(trackPath)) {
-                    return trackPath;
-                }
-            }
-            return null;
-        }));
-
-        for (const trackPath of validFiles) {
-            if (trackPath) {
                 archive.file(trackPath, { name: path.basename(trackPath) });
             }
         }

@@ -740,15 +740,17 @@ export class MaintenanceService {
 
             const bareTracks = this.repo.getBareTracks();
             let mergedBareCount = 0;
-            for (const bare of bareTracks) {
-                const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
-                if (richMatch) {
-                    try {
-                        this.db.mergeTracks(bare.id, richMatch.id);
-                        mergedBareCount++;
-                    } catch (err) {}
+            this.db.transaction(() => {
+                for (const bare of bareTracks) {
+                    const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
+                    if (richMatch) {
+                        try {
+                            this.db.mergeTracks(bare.id, richMatch.id);
+                            mergedBareCount++;
+                        } catch (err) {}
+                    }
                 }
-            }
+            });
             if (mergedBareCount > 0) console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records.`);
 
             const files = await glob("**/*.{mp3,flac,wav,m4a,ogg}", { cwd: this.musicDir, posix: true });
@@ -782,40 +784,58 @@ export class MaintenanceService {
                     const artists = this.repo.getAllArtists();
                     const artistMap = new Map(artists.map(a => [a.name.toLowerCase(), a.id]));
                     const limit = pLimit(10);
-                    await Promise.all(genuineOrphans.map(file => limit(async () => {
-                        try {
-                            const fullPath = path.join(this.musicDir, file);
-                            const metadata = await mm.parseFile(fullPath);
-                            const artistName = metadata.common.artist || "Unknown Artist";
-                            let artistId = artistMap.get(artistName.toLowerCase());
-                            if (!artistId) {
-                                artistId = this.db.createArtist(artistName);
-                                artistMap.set(artistName.toLowerCase(), artistId);
+                    const chunkSize = 50;
+
+                    for (let i = 0; i < genuineOrphans.length; i += chunkSize) {
+                        const chunk = genuineOrphans.slice(i, i + chunkSize);
+
+                        // Phase 1: Parallel Async I/O
+                        const parsedChunk = await Promise.all(chunk.map(file => limit(async () => {
+                            try {
+                                const fullPath = path.join(this.musicDir, file);
+                                const metadata = await mm.parseFile(fullPath);
+                                const hash = await getFastFileHash(fullPath);
+                                return { file, metadata, hash };
+                            } catch (e) {
+                                return null;
                             }
-                            const hash = await getFastFileHash(fullPath);
-                            this.db.createTrack({
-                                title: metadata.common.title || path.basename(file, path.extname(file)),
-                                album_id: null,
-                                artist_id: artistId,
-                                owner_id: primaryAdminId || null,
-                                track_num: metadata.common.track?.no || null,
-                                duration: metadata.format.duration || 0,
-                                file_path: file.replace(/\\/g, '/'),
-                                format: metadata.format.codec || path.extname(file).substring(1),
-                                bitrate: metadata.format.bitrate ? Math.round(metadata.format.bitrate / 1000) : null,
-                                sample_rate: metadata.format.sampleRate || null,
-                                lossless_path: ['.wav', '.flac'].includes(path.extname(file).toLowerCase()) ? file.replace(/\\/g, '/') : null,
-                                waveform: null,
-                                url: null,
-                                service: null,
-                                external_artwork: null,
-                                hash: hash,
-                                price: 0,
-                                price_usdc: 0,
-                                currency: 'ETH'
-                            });
-                        } catch (e) {}
-                    })));
+                        })));
+
+                        // Phase 2: Synchronous Database Insertions
+                        this.db.transaction(() => {
+                            for (const data of parsedChunk) {
+                                if (!data) continue;
+                                const { file, metadata, hash } = data;
+                                const artistName = metadata.common.artist || "Unknown Artist";
+                                let artistId = artistMap.get(artistName.toLowerCase());
+                                if (!artistId) {
+                                    artistId = this.db.createArtist(artistName);
+                                    artistMap.set(artistName.toLowerCase(), artistId);
+                                }
+                                this.db.createTrack({
+                                    title: metadata.common.title || path.basename(file, path.extname(file)),
+                                    album_id: null,
+                                    artist_id: artistId,
+                                    owner_id: primaryAdminId || null,
+                                    track_num: metadata.common.track?.no || null,
+                                    duration: metadata.format.duration || 0,
+                                    file_path: file.replace(/\\/g, '/'),
+                                    format: metadata.format.codec || path.extname(file).substring(1),
+                                    bitrate: metadata.format.bitrate ? Math.round(metadata.format.bitrate / 1000) : null,
+                                    sample_rate: metadata.format.sampleRate || null,
+                                    lossless_path: ['.wav', '.flac'].includes(path.extname(file).toLowerCase()) ? file.replace(/\\/g, '/') : null,
+                                    waveform: null,
+                                    url: null,
+                                    service: null,
+                                    external_artwork: null,
+                                    hash: hash,
+                                    price: 0,
+                                    price_usdc: 0,
+                                    currency: 'ETH'
+                                });
+                            }
+                        });
+                    }
                 }
             }
 
