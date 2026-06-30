@@ -32,8 +32,8 @@ async function main() {
     console.log(`📂 Music Directory: ${musicDir}`);
     console.log(`🗄️  Database: ${dbPath}`);
 
-    const trackIterator = db.prepare("SELECT id, title, file_path, lossless_path FROM tracks").iterate() as IterableIterator<TrackRow>;
-    console.log(`🔍 Checking tracks in batches...`);
+    const tracks = db.prepare("SELECT id, title, file_path, lossless_path FROM tracks").all() as TrackRow[];
+    console.log(`🔍 Checking ${tracks.length} tracks...`);
 
     let fixedCount = 0;
     let verifiedCount = 0;
@@ -41,65 +41,56 @@ async function main() {
 
     const updates: { id: number, file_path: string, lossless_path: string | null }[] = [];
 
-    const limit = pLimit(100);
+    const limit = pLimit(200);
 
-    const checkPromises: { track: TrackRow, promise: Promise<{ exists: boolean, altExists: boolean, tracksAltPath: string, changed: boolean, newPath: string | null, newLossless: string | null }> }[] = [];
+    // Phase 1: Concurrently execute all I/O checks with Promise.all
+    const results = await Promise.all(tracks.map(track => limit(async () => {
+        let changed = false;
+        let newPath = track.file_path;
+        let newLossless = track.lossless_path;
 
-    // Phase 1: Concurrently initiate I/O checks for all tracks, mapping them to unresolved promises
-    for (const track of trackIterator) {
-        const promise = limit(async () => {
-            let changed = false;
-            let newPath = track.file_path;
-            let newLossless = track.lossless_path;
+        const cleanedPath = StringUtils.cleanPath(track.file_path);
+        const cleanedLossless = StringUtils.cleanPath(track.lossless_path);
 
-            const cleanedPath = StringUtils.cleanPath(track.file_path);
-            const cleanedLossless = StringUtils.cleanPath(track.lossless_path);
+        if (cleanedPath !== track.file_path || cleanedLossless !== track.lossless_path) {
+            newPath = cleanedPath;
+            newLossless = cleanedLossless;
+            changed = true;
+        }
 
-            if (cleanedPath !== track.file_path || cleanedLossless !== track.lossless_path) {
-                newPath = cleanedPath;
-                newLossless = cleanedLossless;
-                changed = true;
+        let exists = false;
+        let altExists = false;
+        let tracksAltPath = '';
+
+        // Verify existence
+        if (newPath) {
+            const fullPath = path.join(musicDir, newPath);
+            try {
+                await fs.promises.stat(fullPath);
+                exists = true;
+            } catch {
+                exists = false;
             }
 
-            let exists = false;
-            let altExists = false;
-            let tracksAltPath = '';
+            if (!exists) {
+                // If it's still missing, maybe it's in tracks/ but the DB says downloads/
+                const fileName = path.basename(newPath);
+                tracksAltPath = path.join('tracks', fileName);
+                const fullAltPath = path.join(musicDir, tracksAltPath);
 
-            // Verify existence
-            if (newPath) {
-                const fullPath = path.join(musicDir, newPath);
                 try {
-                    await fs.promises.stat(fullPath);
-                    exists = true;
+                    await fs.promises.stat(fullAltPath);
+                    altExists = true;
                 } catch {
-                    exists = false;
-                }
-
-                if (!exists) {
-                    // If it's still missing, maybe it's in tracks/ but the DB says downloads/
-                    const fileName = path.basename(newPath);
-                    tracksAltPath = path.join('tracks', fileName);
-                    const fullAltPath = path.join(musicDir, tracksAltPath);
-
-                    try {
-                        await fs.promises.stat(fullAltPath);
-                        altExists = true;
-                    } catch {
-                        altExists = false;
-                    }
+                    altExists = false;
                 }
             }
-            return { exists, altExists, tracksAltPath, changed, newPath, newLossless };
-        });
+        }
+        return { track, exists, altExists, tracksAltPath, changed, newPath, newLossless };
+    })));
 
-        checkPromises.push({ track, promise });
-    }
-
-    // Phase 2: Await promises sequentially to process valid items immediately and perform map updates
-    for (const { track, promise } of checkPromises) {
-        const result = await promise;
-        const { exists, altExists, tracksAltPath, changed, newPath, newLossless } = result;
-
+    // Phase 2: Process results sequentially
+    for (const { track, exists, altExists, tracksAltPath, changed, newPath, newLossless } of results) {
         if (newPath) {
             if (exists) {
                 verifiedCount++;
