@@ -65,6 +65,11 @@ describe('resolveSafePath', () => {
         expect(resultMulti?.endsWith(path.normalize('artist/song.mp3'))).toBe(true);
     });
 
+    test('should strip leading backslashes and resolve correctly', () => {
+        const result = fileUtils.resolveSafePath(rootDir, '\\\\artist\\song.mp3');
+        expect(result?.endsWith(path.normalize('artist\\song.mp3'))).toBe(true);
+    });
+
     test('should return null for null byte injection', () => {
         const result = fileUtils.resolveSafePath(rootDir, 'artist/song\0.mp3');
         expect(result).toBeNull();
@@ -96,5 +101,15 @@ describe('resolveSafePath', () => {
         const result = fileUtils.resolveSafePath(rootDir, 'artist/album/../song.mp3');
         expect(result?.endsWith(path.normalize('artist/song.mp3'))).toBe(true);
         expect(result?.includes(path.resolve(rootDir))).toBe(true);
+    });
+
+    test('should return null when rootDir is the filesystem root and userPath is valid', () => {
+        // Since path.resolve('/', 'foo') resolves to '/foo' and path.relative('/', '/foo') resolves to 'foo'
+        // the check `!absPath.startsWith(resolvedRoot + path.sep)` evaluates to:
+        // !('/foo'.startsWith('/' + '/')) -> !('/foo'.startsWith('//')) -> !false -> true
+        // and absPath !== resolvedRoot -> '/foo' !== '/' -> true
+        // Thus, isSafePath('/', '/foo') returns false.
+        const result = fileUtils.resolveSafePath('/', 'foo');
+        expect(result).toBeNull();
     });
 });
