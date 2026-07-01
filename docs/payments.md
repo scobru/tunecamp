@@ -15,15 +15,9 @@ TuneCamp supports a hybrid payment system combining traditional Fiat (via Stripe
   5. Upon successful payment, Stripe sends a webhook to `/api/payments/stripe/webhook`. For direct charges this arrives as a **connected-account event** (enable "Listen to events on connected accounts" on the endpoint).
   6. Backend generates an **Unlock Code** and stores it in the database.
 
-### Crypto Onramp (Stripe & MoonPay)
-- **Purpose**: Enables users to buy USDC directly on the Base network to use for Web3 purchases.
-- **Providers**: TuneCamp supports both **Stripe Onramp** and **MoonPay**.
-- **Route**: `GET /api/payments/onramp-config`
-- **Mechanism**:
-  - The server checks which providers are configured via API keys.
-  - For **Stripe**, it creates a session via `POST /api/payments/onramp-session`.
-  - For **MoonPay**, it provides the API key to the frontend to initialize the MoonPay SDK or widget.
-  - The preferred provider can be toggled in the Admin Settings (`onramp_provider`).
+### Crypto Onramp — not implemented
+- **Route**: `GET /api/payments/onramp-config` always returns `configured: false`. There is no `onramp-session` endpoint and no onramp provider (Stripe Onramp, MoonPay) is wired up.
+- Buyers without crypto cannot convert fiat → USDC in-app today. The only crypto path is **Web3 On-chain Verification** below (send ETH/USDC you already hold).
 
 ### Web3 On-chain Verification
 - **Purpose**: Unlocks content based on direct blockchain transactions.
@@ -82,7 +76,7 @@ TuneCamp's pitch is "no platform middleman fees", not "100% of revenue". Here is
 
 **Example** — €10 album sold via Stripe on your own self-hosted instance: €10 − €0.59 Stripe ≈ **€9.41 to you (~94%)**. The same sale on Bandcamp: 10% revenue share + ~5% payment processing ≈ **€8.50**. The difference compounds with volume, but be honest with yourself about the fixed hosting cost: below roughly €10–20/month in sales, a hosted platform may net you more.
 
-**On-chain payments: near-zero fees, with caveats.** A buyer who already holds USDC on Base pays only gas (cents), and you receive ~100% — the best case of any payment path, beating Stripe's ~94%. Two caveats keep it from being the default recommendation: (1) buyers *without* crypto who use the onramp (MoonPay/Stripe Onramp) pay ~1–4.5% conversion fees plus extra UX friction, often worse than a plain card checkout; (2) you receive USDC/ETH, so cashing out to EUR has its own exchange/withdrawal costs, and holding ETH carries price risk until you convert (USDC largely avoids this). The instance fee split (85/15 default) applies on-chain too — it is enforced by the `TuneCampCheckout` contract itself.
+**On-chain payments: near-zero fees, with caveats.** A buyer who already holds USDC on Base pays only gas (cents), and you receive ~100% — the best case of any payment path, beating Stripe's ~94%. Two caveats keep it from being the default recommendation: (1) buyers *without* crypto have no in-app onramp today (see §1, "Crypto Onramp — not implemented") — they'd have to buy USDC/ETH elsewhere first, worse UX than a plain card checkout; (2) you receive USDC/ETH, so cashing out to EUR has its own exchange/withdrawal costs, and holding ETH carries price risk until you convert (USDC largely avoids this). The instance fee split (85/15 default) applies on-chain too — it is enforced by the `TuneCampCheckout` contract itself.
 
 ## 3.2 Stripe Connect onboarding (artist accounts)
 
@@ -101,7 +95,6 @@ Required Environment Variables:
 - `STRIPE_WEBHOOK_SECRET`: Secret for verifying webhook signatures.
 - `TUNECAMP_RPC_URL`: RPC endpoint for Base Network (e.g., Alchemy or Base public RPC).
 - `TUNECAMP_OWNER_ADDRESS`: Default address for platform fees.
-- `MOONPAY_API_KEY`: API Key for MoonPay Onramp integration.
 
 ### Stripe webhook — "Listen to events on connected accounts"
 

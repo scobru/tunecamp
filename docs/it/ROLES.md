@@ -26,8 +26,16 @@ Il **Manager** ha ampi poteri amministrativi per supervisionare la comunità e i
 ### Capacità:
 - **Monitoraggio Utenti:** Può visualizzare l'elenco degli utenti registrati.
 - **Rete Federata:** Gestire i follower e la sincronizzazione di ActivityPub.
-- **Moderazione dei Contenuti:** Gestire i post e le pubblicazioni (release) in tutta l'istanza. Può esaminare, risolvere o archiviare le segnalazioni di copyright e violazione dei contenuti dal pannello delle segnalazioni.
+- **Moderazione dei Contenuti:** Gestire i post e le pubblicazioni (release) in tutta l'istanza. Può esaminare, risolvere o archiviare le segnalazioni di copyright e violazione dei contenuti dal pannello delle segnalazioni (Admin → Segnalazioni).
 - **Supporto Artisti:** Può operare per conto di qualsiasi artista a cui è assegnato.
+
+### Segnalazioni sulle Release (copyright e contenuti)
+
+Qualsiasi utente registrato può segnalare una release tramite `POST /api/releases/:id/report`. Il payload deve includere una stringa `reason` (es. `"copyright"`, `"inappropriate"`).
+
+Manager e Root Admin vedono le segnalazioni in attesa in **Admin → Segnalazioni** (`GET /api/admin/reports`). Ogni segnalazione mostra la release, l'utente che ha segnalato e il motivo. Per risolvere o archiviare una segnalazione: `DELETE /api/admin/reports/:id`.
+
+Le segnalazioni compaiono anche nell'interfaccia del pannello admin — un badge sulla voce di menu Segnalazioni conta gli elementi non risolti.
 
 ---
 

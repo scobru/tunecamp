@@ -15,15 +15,9 @@ TuneCamp supporta un sistema di pagamento ibrido che combina la valuta fiat trad
   5. A pagamento avvenuto, Stripe invia un webhook a `/api/payments/stripe/webhook`. Per gli addebiti diretti, questo arriva come un **evento dell'account connesso** (assicurarsi di abilitare "Ascolta gli eventi sugli account connessi" sull'endpoint di Stripe).
   6. Il backend genera un **Codice di Sblocco (Unlock Code)** e lo memorizza nel database.
 
-### Crypto Onramp (Stripe e MoonPay)
-- **Scopo**: Consente agli utenti di acquistare USDC direttamente sulla rete Base per utilizzarli per acquisti Web3.
-- **Provider**: TuneCamp supporta sia **Stripe Onramp** che **MoonPay**.
-- **Rotta**: `GET /api/payments/onramp-config`
-- **Meccanismo**:
-  - Il server verifica quali provider sono configurati tramite le rispettive chiavi API.
-  - Per **Stripe**, crea una sessione tramite `POST /api/payments/onramp-session`.
-  - Per **MoonPay**, fornisce la chiave API al frontend per inizializzare l'SDK o il widget di MoonPay.
-  - Il provider preferito può essere selezionato nelle Impostazioni Amministratore (`onramp_provider`).
+### Crypto Onramp — non implementato
+- **Rotta**: `GET /api/payments/onramp-config` restituisce sempre `configured: false`. Non esiste un endpoint `onramp-session` né un provider onramp collegato (Stripe Onramp, MoonPay).
+- Chi non possiede già cripto non può convertire fiat → USDC in-app oggi. L'unico percorso crypto è la **Verifica On-chain Web3** qui sotto (inviare ETH/USDC già posseduti).
 
 ### Verifica On-chain Web3
 - **Scopo**: Sblocca i contenuti in base a transazioni dirette sulla blockchain.
@@ -82,7 +76,7 @@ La promessa di TuneCamp è "nessun intermediario che impone tariffe di piattafor
 
 **Esempio** — Album da 10 € venduto tramite Stripe sulla tua istanza self-hosted: 10 € − 0,59 € (Stripe) ≈ **9,41 € a te (~94%)**. La stessa vendita su Bandcamp: 10% di revenue share + ~5% di elaborazione dei pagamenti ≈ **8,50 €**. La differenza si accumula con il volume delle vendite, ma è importante essere realisti riguardo ai costi fissi di hosting: al di sotto di circa 10–20 € al mese di vendite, una piattaforma gestita esternamente potrebbe farti guadagnare di più.
 
-**Pagamenti on-chain: commissioni vicine allo zero, con alcune avvertenze.** Un acquirente che possiede già USDC su Base paga solo il gas (centesimi) e tu ricevi quasi il 100% — la situazione migliore in assoluto, superiore al ~94% di Stripe. Due avvertenze impediscono che questa sia la scelta predefinita raccomandata: (1) gli acquirenti *senza* criptovalute che utilizzano l'onramp (MoonPay/Stripe Onramp) pagano commissioni di conversione del ~1–4,5% con maggiore attrito a livello di UX, risultando spesso peggiore di un semplice checkout con carta; (2) ricevi USDC/ETH, quindi convertire in EUR comporta costi di cambio/prelievo, e detenere ETH comporta rischi legati alle oscillazioni di prezzo (USDC evita ampiamente questo aspetto). La ripartizione delle commissioni dell'istanza (85/15 predefinita) si applica anche on-chain — è applicata dal smart contract `TuneCampCheckout` stesso.
+**Pagamenti on-chain: commissioni vicine allo zero, con alcune avvertenze.** Un acquirente che possiede già USDC su Base paga solo il gas (centesimi) e tu ricevi quasi il 100% — la situazione migliore in assoluto, superiore al ~94% di Stripe. Due avvertenze impediscono che questa sia la scelta predefinita raccomandata: (1) chi non possiede già criptovalute non ha oggi un onramp in-app (vedi §1, "Crypto Onramp — non implementato") — dovrebbe acquistare USDC/ETH altrove prima, UX peggiore di un semplice checkout con carta; (2) ricevi USDC/ETH, quindi convertire in EUR comporta costi di cambio/prelievo, e detenere ETH comporta rischi legati alle oscillazioni di prezzo (USDC evita ampiamente questo aspetto). La ripartizione delle commissioni dell'istanza (85/15 predefinita) si applica anche on-chain — è applicata dal smart contract `TuneCampCheckout` stesso.
 
 ## 3.2 Onboarding Stripe Connect (account artisti)
 
@@ -101,7 +95,6 @@ Variabili d'Ambiente Richieste:
 - `STRIPE_WEBHOOK_SECRET`: Segreto per verificare le firme dei webhook.
 - `TUNECAMP_RPC_URL`: Endpoint RPC per la rete Base (es. Alchemy o RPC pubblico di Base).
 - `TUNECAMP_OWNER_ADDRESS`: Indirizzo predefinito per le commissioni della piattaforma.
-- `MOONPAY_API_KEY`: Chiave API per l'integrazione di MoonPay Onramp.
 
 ### Webhook Stripe — "Ascolta gli eventi sugli account connessi"
 

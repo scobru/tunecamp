@@ -6,7 +6,7 @@ Questa guida spiega passo dopo passo come ottenere e configurare le chiavi API r
 
 ## 1. Pagamenti e Monetizzazione
 
-### Stripe (Fiat e Onramp)
+### Stripe (Fiat)
 1. Vai sulla [Dashboard di Stripe](https://dashboard.stripe.com/).
 2. **Secret Key**: Vai su *Sviluppatori > Chiavi API* e copia la `Chiave segreta` (`sk_test_...` o `sk_live_...`).
 3. **Webhook Secret**:
@@ -15,7 +15,6 @@ Questa guida spiega passo dopo passo come ottenere e configurare le chiavi API r
    - Seleziona l'evento: `checkout.session.completed`.
    - **Importante (istanze multi-artista)**: Abilita l'opzione **"Ascolta gli eventi sugli account connessi"** sull'endpoint. Senza questa spunta, i pagamenti effettuati sugli account Stripe Connect degli artisti non attiveranno il webhook e non verrà generato alcun codice di sblocco.
    - Copia la "Chiave segreta per la firma" (`whsec_...`).
-4. **Crypto Onramp**: Richiedi l'accesso a "Crypto Onramp" nelle impostazioni di Stripe e copia la chiave relativa.
 
 ### Stripe Connect (onboarding artisti — solo istanze multi-artista)
 
@@ -29,10 +28,6 @@ Stripe Connect ti consente di instradare i pagamenti in valuta fiat direttamente
 3. L'artista completa le procedure KYC direttamente sulla pagina ospitata da Stripe.
 4. Finché `chargesEnabled = false`, i pagamenti dell'artista fanno fallback sull'account dell'istanza principale.
 5. **Nessuna nuova variabile d'ambiente richiesta**: l'onboarding riutilizza la `STRIPE_SECRET_KEY` già configurata.
-
-### MoonPay (Onramp alternativa)
-1. Registrati sulla [Dashboard di MoonPay](https://dashboard.moonpay.com/).
-2. Crea una nuova chiave API per l'integrazione Onramp sulla rete **Base**.
 
 ---
 
