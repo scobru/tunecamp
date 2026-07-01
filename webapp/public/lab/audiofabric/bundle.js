@@ -9706,7 +9706,11 @@ function checkTexture2D (info, mipData, limits) {
         check(img.data.byteLength === rowSize * mh,
           'invalid data for image, buffer size is inconsistent with image format');
       } else if (img.element) {
-        // TODO: check element can be loaded
+        if (typeof HTMLImageElement !== 'undefined' && img.element instanceof HTMLImageElement) {
+          check(img.element.complete, 'image element not completely loaded');
+        } else if (typeof HTMLVideoElement !== 'undefined' && img.element instanceof HTMLVideoElement) {
+          check(img.element.readyState >= img.element.HAVE_CURRENT_DATA, 'video element not ready');
+        }
       } else if (img.copy) {
         // TODO: check compatible format and type
       }
@@ -9776,7 +9780,11 @@ function checkTextureCube (texture, info, faces, limits) {
             Math.max(pixelSize(img.type, c), img.unpackAlignment),
             'invalid data for image, buffer size is inconsistent with image format');
         } else if (img.element) {
-          // TODO: check element can be loaded
+          if (typeof HTMLImageElement !== 'undefined' && img.element instanceof HTMLImageElement) {
+            check(img.element.complete, 'image element not completely loaded');
+          } else if (typeof HTMLVideoElement !== 'undefined' && img.element instanceof HTMLVideoElement) {
+            check(img.element.readyState >= img.element.HAVE_CURRENT_DATA, 'video element not ready');
+          }
         } else if (img.copy) {
           // TODO: check compatible format and type
         }
