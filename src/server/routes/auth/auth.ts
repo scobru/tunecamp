@@ -254,6 +254,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             alias: profile?.alias || null,
             avatar: profile?.avatar || (username ? authService.getZenAvatar(username) : null),
             email: profile?.email || null,
+            shareActivity: username ? authService.getShareActivity(username) : false,
             firstRun: authService.isFirstRun(),
             mustChangePassword: username ? await authService.isDefaultPassword(username) : false
         });
@@ -265,9 +266,15 @@ export function createAuthRoutes(container: ServiceContainer): Router {
      */
     router.patch("/profile", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
         try {
-            const { alias, avatar, email } = req.body;
-            if (alias === undefined && avatar === undefined && email === undefined) {
-                return res.status(400).json({ error: "alias, avatar or email required" });
+            const { alias, avatar, email, shareActivity } = req.body;
+            if (alias === undefined && avatar === undefined && email === undefined && shareActivity === undefined) {
+                return res.status(400).json({ error: "alias, avatar, email or shareActivity required" });
+            }
+            if (shareActivity !== undefined) {
+                if (typeof shareActivity !== 'boolean') {
+                    return res.status(400).json({ error: "shareActivity must be a boolean" });
+                }
+                authService.setShareActivity(req.username!, shareActivity);
             }
 
             if (email !== undefined && email !== null) {

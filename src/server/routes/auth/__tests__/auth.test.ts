@@ -22,7 +22,9 @@ describe('Auth Routes', () => {
             getUserByUsername: jest.fn(),
             getUserProfile: jest.fn().mockReturnValue(null),
             updateUserProfile: jest.fn(),
-            getZenAvatar: jest.fn().mockReturnValue(null)
+            getZenAvatar: jest.fn().mockReturnValue(null),
+            getShareActivity: jest.fn().mockReturnValue(false),
+            setShareActivity: jest.fn()
         };
 
         mockAuthMiddleware = {

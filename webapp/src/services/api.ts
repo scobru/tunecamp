@@ -337,7 +337,7 @@ const API = {
     getComments: (trackId: string) => handleResponse(api.get<any[]>(`comments/track/${trackId}`)),
     postComment: (trackId: string, data: { text: string }) => handleResponse(api.post('comments/track/' + trackId, data)),
     deleteComment: (commentId: string | number) => handleResponse(api.delete(`comments/${commentId}`)),
-    patchProfile: (data: { alias?: string; avatar?: string; email?: string | null }) => handleResponse(api.patch('auth/profile', data)),
+    patchProfile: (data: { alias?: string; avatar?: string; email?: string | null; shareActivity?: boolean }) => handleResponse(api.patch('auth/profile', data)),
 
     // --- Admin: Artists ---
     createArtist: (data: Partial<Artist>) => handleResponse(api.post<Artist>('artists', data)),

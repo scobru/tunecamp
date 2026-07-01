@@ -27,6 +27,7 @@ describe('Community activity feed', () => {
             CREATE TABLE starred_items (id INTEGER PRIMARY KEY, username TEXT, item_type TEXT, item_id TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
             CREATE TABLE unlock_codes (id INTEGER PRIMARY KEY, code TEXT, release_id INTEGER, track_id INTEGER, tx_hash TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
             CREATE TABLE playlists (id INTEGER PRIMARY KEY, name TEXT, username TEXT, is_public INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+            CREATE TABLE admin (id INTEGER PRIMARY KEY, username TEXT, alias TEXT, share_activity INTEGER DEFAULT 0);
         `);
 
         db.exec(`
@@ -38,10 +39,14 @@ describe('Community activity feed', () => {
                 VALUES (11, 'Private Library Album', 'private-album', 1, 0, 'draft', 'private');
             INSERT INTO tracks (id, title, album_id, artist_name) VALUES (100, 'Public Track', 10, 'The Artist');
             INSERT INTO tracks (id, title, album_id, artist_name) VALUES (101, 'Private Track', 11, 'The Artist');
+            -- admin opted into sharing identity (with alias), bob did not
+            INSERT INTO admin (username, alias, share_activity) VALUES ('admin', 'Scobru', 1);
+            INSERT INTO admin (username, alias, share_activity) VALUES ('bob', NULL, 0);
             -- likes: one on the public album, one on a public-release track, one on private stuff
             INSERT INTO starred_items (username, item_type, item_id, created_at) VALUES ('admin', 'album', '10', '2026-07-01 11:00:00');
             INSERT INTO starred_items (username, item_type, item_id, created_at) VALUES ('admin', 'track', '100', '2026-07-01 11:05:00');
             INSERT INTO starred_items (username, item_type, item_id, created_at) VALUES ('admin', 'album', '11', '2026-07-01 11:10:00');
+            INSERT INTO starred_items (username, item_type, item_id, created_at) VALUES ('bob', 'album', '10', '2026-07-01 10:30:00');
             -- purchase with tx (real) vs admin-minted code without tx
             INSERT INTO unlock_codes (code, release_id, tx_hash, created_at) VALUES ('BUY-1', 10, '0xabc', '2026-07-01 12:00:00');
             INSERT INTO unlock_codes (code, release_id, tx_hash, created_at) VALUES ('FREE-1', 10, NULL, '2026-07-01 12:05:00');
@@ -66,11 +71,12 @@ describe('Community activity feed', () => {
 
         const events = res.body.events;
         const types = events.map((e: any) => `${e.type}:${e.object.title}`);
-        // public playlist, real purchase, track like, album like, release publish — in this ts order (desc)
+        // public playlist, real purchase, track like, album likes, release publish — in this ts order (desc)
         expect(types).toEqual([
             'playlist:Summer Mix',
             'purchase:Public Release',
             'like:Public Track',
+            'like:Public Release',
             'like:Public Release',
             'release:Public Release',
         ]);
@@ -81,8 +87,9 @@ describe('Community activity feed', () => {
         expect(titles).not.toContain('Secret Stash');
         expect(events.filter((e: any) => e.type === 'purchase')).toHaveLength(1);
 
-        // no actor identity on likes/purchases; playlists carry the creator
-        expect(events.find((e: any) => e.type === 'like').user).toBeNull();
+        // likes: identity only for opted-in users (alias preferred); purchases never; playlists carry the creator
+        const likes = events.filter((e: any) => e.type === 'like');
+        expect(likes.map((e: any) => e.user)).toEqual(['Scobru', 'Scobru', null]); // admin opted in, bob not
         expect(events.find((e: any) => e.type === 'purchase').user).toBeNull();
         expect(events.find((e: any) => e.type === 'playlist').user).toBe('alice');
 

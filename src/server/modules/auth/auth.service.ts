@@ -92,6 +92,10 @@ export interface AuthService {
     getNowPlayingEnabled(userId: number): boolean;
     /** Sets the user's "now listening" opt-in flag. */
     setNowPlayingEnabled(userId: number, enabled: boolean): void;
+    /** Whether the user opted into showing their name on the public activity feed (likes). */
+    getShareActivity(username: string): boolean;
+    /** Sets the user's public-activity-identity opt-in flag. */
+    setShareActivity(username: string, enabled: boolean): void;
 }
 
 export function createAuthService(
@@ -549,6 +553,15 @@ export function createAuthService(
 
         setNowPlayingEnabled(userId: number, enabled: boolean): void {
             db.prepare("UPDATE admin SET now_playing_enabled = ? WHERE id = ?").run(enabled ? 1 : 0, userId);
+        },
+
+        getShareActivity(username: string): boolean {
+            const row = db.prepare("SELECT share_activity FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { share_activity: number } | undefined;
+            return !!row?.share_activity;
+        },
+
+        setShareActivity(username: string, enabled: boolean): void {
+            db.prepare("UPDATE admin SET share_activity = ? WHERE username = ? COLLATE NOCASE").run(enabled ? 1 : 0, username);
         },
 
         listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number }[] {

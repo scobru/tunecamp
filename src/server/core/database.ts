@@ -912,6 +912,11 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding now_playing_enabled column...");
                 db.exec("ALTER TABLE admin ADD COLUMN now_playing_enabled INTEGER DEFAULT 0");
             }
+            // Opt-in identity on the public activity feed (off by default for privacy).
+            if (!cols.some(col => col.name === 'share_activity')) {
+                console.log("📦 [Database] Migrating admin table: adding share_activity column...");
+                db.exec("ALTER TABLE admin ADD COLUMN share_activity INTEGER DEFAULT 0");
+            }
             if (!cols.some(col => col.name === 'can_peer')) {
                 console.log("📦 [Database] Migrating admin table: adding can_peer column...");
                 db.exec("ALTER TABLE admin ADD COLUMN can_peer INTEGER NOT NULL DEFAULT 0");

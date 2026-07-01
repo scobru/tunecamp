@@ -79,10 +79,11 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
      * GET /api/community/activity?limit=30
      * Public activity feed — likes, purchases, public playlists and releases,
      * newest first. Only events on *published public releases* (and public
-     * playlists) are exposed; private library items never appear. No actor
-     * identity is included for likes/purchases (there is no opt-in for those,
-     * unlike now-playing); playlists carry their creator's username because a
-     * public playlist is a deliberate publication.
+     * playlists) are exposed; private library items never appear. Likes carry
+     * the liker's alias/username ONLY if that user opted in (admin.share_activity,
+     * off by default — same privacy model as now-playing). Purchases never carry
+     * buyer identity. Playlists carry their creator's username because a public
+     * playlist is a deliberate publication.
      */
     router.get("/activity", (req, res) => {
         try {
@@ -95,18 +96,22 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
             const rows = dbService.db.prepare(`
                 SELECT * FROM (
                     SELECT 'like' AS type, s.created_at AS ts, a.title AS title,
-                           COALESCE(ar.name, a.album_artist) AS artist, a.slug AS slug, a.cover_path AS cover, NULL AS user
+                           COALESCE(ar.name, a.album_artist) AS artist, a.slug AS slug, a.cover_path AS cover,
+                           CASE WHEN ad.share_activity = 1 THEN COALESCE(ad.alias, ad.username) END AS user
                     FROM starred_items s
                     JOIN albums a ON a.id = CAST(s.item_id AS INTEGER)
                     LEFT JOIN artists ar ON ar.id = a.artist_id
+                    LEFT JOIN admin ad ON ad.username = s.username COLLATE NOCASE
                     WHERE s.item_type = 'album' AND ${PUB}
                     UNION ALL
                     SELECT 'like', s.created_at, t.title,
-                           COALESCE(t.artist_name, ar.name), a.slug, a.cover_path, NULL
+                           COALESCE(t.artist_name, ar.name), a.slug, a.cover_path,
+                           CASE WHEN ad.share_activity = 1 THEN COALESCE(ad.alias, ad.username) END
                     FROM starred_items s
                     JOIN tracks t ON t.id = CAST(s.item_id AS INTEGER)
                     JOIN albums a ON a.id = t.album_id
                     LEFT JOIN artists ar ON ar.id = a.artist_id
+                    LEFT JOIN admin ad ON ad.username = s.username COLLATE NOCASE
                     WHERE s.item_type = 'track' AND ${PUB}
                     UNION ALL
                     SELECT 'purchase', u.created_at, a.title,

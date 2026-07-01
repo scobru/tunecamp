@@ -97,6 +97,7 @@ const Profile = () => {
   const [email, setEmail] = useState(user?.email || "");
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
+  const [shareActivity, setShareActivity] = useState(user?.shareActivity || false);
   const [isSaving, setIsSaving] = useState(false);
   const [starredTracks, setStarredTracks] = useState<Track[]>([]);
   const [allTracks, setAllTracks] = useState<Track[]>([]);
@@ -191,8 +192,18 @@ const Profile = () => {
       setAlias(user.alias || "");
       setAvatar(user.avatar || null);
       setEmail(user.email || "");
+      setShareActivity(user.shareActivity || false);
     }
   }, [user]);
+
+  const handleToggleShareActivity = async (enabled: boolean) => {
+    setShareActivity(enabled); // optimistic
+    try {
+      await API.patchProfile({ shareActivity: enabled });
+    } catch {
+      setShareActivity(!enabled);
+    }
+  };
 
   const handleUpdateEmail = async () => {
     setIsSavingEmail(true);
@@ -469,6 +480,23 @@ const Profile = () => {
                 <label className="label">
                   <span className="label-text-alt opacity-40 italic">
                     {emailMessage || "Used to send you a password reset link."}
+                  </span>
+                </label>
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label cursor-pointer justify-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary"
+                    checked={shareActivity}
+                    onChange={(e) => handleToggleShareActivity(e.target.checked)}
+                  />
+                  <span className="label-text opacity-80">Show my name on the public network feed</span>
+                </label>
+                <label className="label">
+                  <span className="label-text-alt opacity-40 italic">
+                    When on, your likes on public releases appear with your display name on the network-wide activity feed. Off by default — likes stay anonymous.
                   </span>
                 </label>
               </div>

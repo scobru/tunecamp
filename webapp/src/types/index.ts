@@ -226,6 +226,8 @@ export interface User {
     alias?: string | null;
     avatar?: string | null;
     email?: string | null;
+    /** Opt-in: show my name on the public network activity feed (likes). */
+    shareActivity?: boolean;
 }
 
 export interface AuthStatus {
