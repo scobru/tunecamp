@@ -53,7 +53,21 @@ Stripe Connect lets you route fiat payments directly to each artist's Stripe acc
 
 ---
 
-## 4. Messaging & Social
+## 4. Transactional Email
+
+### Brevo (Password Reset)
+TuneCamp's login is username + password only, with no built-in mail server — Brevo's HTTP API sends the "reset your password" email.
+1. Go to [Brevo](https://www.brevo.com/) and create an account.
+2. Go to *SMTP & API > API Keys* and create a new API key.
+3. Verify a sender address/domain under *Senders & IP*.
+4. Set `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` (the verified sender) in your `.env`. `BREVO_SENDER_NAME` is optional (defaults to the site name).
+5. Each user must set an email on their account (Profile → Account Settings) before they can request a reset — TuneCamp never asks for one at signup.
+
+Without `BREVO_API_KEY`/`BREVO_SENDER_EMAIL` configured, `/forgot-password` still responds successfully (to avoid leaking account existence) but no email is actually sent.
+
+---
+
+## 5. Messaging & Social
 
 ### Telegram Bot (Quick Ingestion)
 1. Search for [@BotFather](https://t.me/BotFather) on Telegram.
@@ -63,7 +77,7 @@ Stripe Connect lets you route fiat payments directly to each artist's Stripe acc
 
 ---
 
-## 5. Peer-to-Peer (P2P)
+## 6. Peer-to-Peer (P2P)
 
 ### Soulseek (Search & Download)
 1. No API Key is needed, but a standard Soulseek account is required.
@@ -72,7 +86,7 @@ Stripe Connect lets you route fiat payments directly to each artist's Stripe acc
 
 ---
 
-## 6. Server Configuration
+## 7. Server Configuration
 
 All of these keys can be configured in two ways:
 
@@ -88,6 +102,8 @@ TUNECAMP_TELEGRAM_BOT_TOKEN=...
 TUNECAMP_TELEGRAM_MASTER_ID=...
 SLSK_USER=...
 SLSK_PASS=...
+BREVO_API_KEY=...
+BREVO_SENDER_EMAIL=noreply@your-domain.com
 ```
 
 ### Method B: Admin Dashboard (recommended for production)
@@ -95,7 +111,7 @@ Many of these keys can be entered directly in TuneCamp's Admin interface under t
 
 ---
 
-## 7. Model Context Protocol (MCP)
+## 8. Model Context Protocol (MCP)
 
 If you want to connect an external AI chatbot (e.g. Claude Desktop) to TuneCamp, you can use the built-in MCP server. Clients authenticate with per-user personal tokens (Bearer `tc_...`) that can be generated from your Profile in the webapp.
 For the setup guide and how to use the bridge script, see [mcp-setup-guide.md](./mcp-setup-guide.md).

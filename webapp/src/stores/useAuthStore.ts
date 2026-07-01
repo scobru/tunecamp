@@ -75,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isActive: status.isActive,
                 alias: (status as any).alias ?? null,
                 avatar: (status as any).avatar ?? null,
+                email: (status as any).email ?? null,
             } as User : null);
 
             set({

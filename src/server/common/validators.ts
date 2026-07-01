@@ -14,3 +14,12 @@ export function validatePassword(password: string): ValidationResult {
 
     return { valid: true };
 }
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateEmail(email: string): ValidationResult {
+    if (!email || !EMAIL_RE.test(email)) {
+        return { valid: false, error: "Invalid email address" };
+    }
+    return { valid: true };
+}

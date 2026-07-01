@@ -28,6 +28,9 @@ export interface ServerConfig {
     stripeWebhookSecret?: string;
     gdriveClientId?: string;
     gdriveClientSecret?: string;
+    brevoApiKey?: string;
+    brevoSenderEmail?: string;
+    brevoSenderName?: string;
 
     // Live streaming (P2P WebRTC audio rooms). The server only announces
     // sessions; media flows browser-to-browser, so the cost of enabling
@@ -133,6 +136,9 @@ export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<Ser
         stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || overrides?.stripeWebhookSecret,
         gdriveClientId: process.env.TUNECAMP_GDRIVE_CLIENT_ID || overrides?.gdriveClientId,
         gdriveClientSecret: process.env.TUNECAMP_GDRIVE_CLIENT_SECRET || overrides?.gdriveClientSecret,
+        brevoApiKey: process.env.BREVO_API_KEY || overrides?.brevoApiKey,
+        brevoSenderEmail: process.env.BREVO_SENDER_EMAIL || overrides?.brevoSenderEmail,
+        brevoSenderName: process.env.BREVO_SENDER_NAME || overrides?.brevoSenderName,
         liveEnabled: process.env.TUNECAMP_LIVE_ENABLED !== undefined
             ? process.env.TUNECAMP_LIVE_ENABLED !== "false"
             : (overrides?.liveEnabled ?? true),

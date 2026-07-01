@@ -94,6 +94,9 @@ const Profile = () => {
   }, [hasArtistProfile, activeTab]);
   const [alias, setAlias] = useState(user?.alias || "");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar || null);
+  const [email, setEmail] = useState(user?.email || "");
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [starredTracks, setStarredTracks] = useState<Track[]>([]);
   const [allTracks, setAllTracks] = useState<Track[]>([]);
@@ -187,8 +190,22 @@ const Profile = () => {
     if (user) {
       setAlias(user.alias || "");
       setAvatar(user.avatar || null);
+      setEmail(user.email || "");
     }
   }, [user]);
+
+  const handleUpdateEmail = async () => {
+    setIsSavingEmail(true);
+    setEmailMessage("");
+    try {
+      await API.patchProfile({ email: email.trim() || null });
+      setEmailMessage("Email updated.");
+    } catch (err: any) {
+      setEmailMessage(err?.message ?? "Failed to update email");
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -425,6 +442,33 @@ const Profile = () => {
                 <label className="label">
                   <span className="label-text-alt opacity-40 italic">
                     This name is displayed across TuneCamp.
+                  </span>
+                </label>
+              </div>
+
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text opacity-60">Email</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    className="input input-bordered flex-1"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <button
+                    className={clsx("btn btn-primary btn-square", isSavingEmail && "loading")}
+                    onClick={handleUpdateEmail}
+                    disabled={email === (user?.email || "") || isSavingEmail}
+                  >
+                    {!isSavingEmail && <Check size={20} />}
+                  </button>
+                </div>
+                <label className="label">
+                  <span className="label-text-alt opacity-40 italic">
+                    {emailMessage || "Used to send you a password reset link."}
                   </span>
                 </label>
               </div>

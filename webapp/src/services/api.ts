@@ -76,6 +76,10 @@ const API = {
         handleResponse(api.post<{ token: string, user: User }>('auth/setup', { username, password })),
     changePassword: (currentPassword: string, newPassword: string) =>
         handleResponse(api.post('auth/password', { currentPassword, newPassword })),
+    forgotPassword: (email: string) =>
+        handleResponse(api.post<{ message: string }>('auth/forgot-password', { email })),
+    resetPassword: (token: string, newPassword: string) =>
+        handleResponse(api.post<{ message: string }>('auth/reset-password', { token, newPassword })),
     logout: () => {
         API.setToken(null);
     },
@@ -333,7 +337,7 @@ const API = {
     getComments: (trackId: string) => handleResponse(api.get<any[]>(`comments/track/${trackId}`)),
     postComment: (trackId: string, data: { text: string }) => handleResponse(api.post('comments/track/' + trackId, data)),
     deleteComment: (commentId: string | number) => handleResponse(api.delete(`comments/${commentId}`)),
-    patchProfile: (data: { alias?: string; avatar?: string }) => handleResponse(api.patch('auth/profile', data)),
+    patchProfile: (data: { alias?: string; avatar?: string; email?: string | null }) => handleResponse(api.patch('auth/profile', data)),
 
     // --- Admin: Artists ---
     createArtist: (data: Partial<Artist>) => handleResponse(api.post<Artist>('artists', data)),

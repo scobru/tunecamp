@@ -225,6 +225,7 @@ export interface User {
     isActive?: boolean;
     alias?: string | null;
     avatar?: string | null;
+    email?: string | null;
 }
 
 export interface AuthStatus {

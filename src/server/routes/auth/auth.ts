@@ -1,15 +1,17 @@
 import { Router, json } from "express";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
-import { validatePassword } from "../../common/validators.js";
+import { validatePassword, validateEmail } from "../../common/validators.js";
 import { UserRole } from "../../common/visibility.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
+import { sendBrevoEmail } from "../../utils/mailer.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createAuthRoutes(container: ServiceContainer): Router {
     const authService = container.authService;
     const authMiddleware = container.authMiddleware;
+    const config = container.config;
     const apService: ServiceContainer['apService'] = (container as any).apService || null;
     const router = Router();
     router.use(json({ limit: "10mb" }));
@@ -178,6 +180,61 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/auth/forgot-password
+     * Request a password reset email via Brevo. Always responds with a generic
+     * message regardless of whether the email is registered, to avoid leaking
+     * which accounts exist.
+     */
+    router.post("/forgot-password", rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), async (req, res) => {
+        const { email } = req.body;
+        if (!email || typeof email !== "string") {
+            return res.status(400).json({ error: "Email required" });
+        }
+
+        try {
+            const result = authService.createPasswordResetToken(email);
+            if (result) {
+                const base = config.publicUrl || `${req.protocol}://${req.get("host")}`;
+                const resetUrl = `${base}/reset-password?token=${result.token}`;
+                await sendBrevoEmail(
+                    config,
+                    email,
+                    "Reset your password",
+                    `<p>Hi ${result.username},</p><p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`
+                );
+            }
+        } catch (error) {
+            console.error("Forgot-password error:", error);
+            // Don't leak success/failure — fall through to the generic response.
+        }
+
+        res.json({ message: "If that email is registered, a reset link has been sent." });
+    });
+
+    /**
+     * POST /api/auth/reset-password
+     * Complete a password reset using the token emailed by /forgot-password.
+     */
+    router.post("/reset-password", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), async (req, res) => {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) {
+            return res.status(400).json({ error: "Token and new password required" });
+        }
+
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) {
+            return res.status(400).json({ error: passwordValidation.error });
+        }
+
+        const success = await authService.resetPasswordWithToken(token, newPassword);
+        if (!success) {
+            return res.status(400).json({ error: "Invalid or expired reset link" });
+        }
+
+        res.json({ message: "Password reset successfully. You can now log in." });
+    });
+
+    /**
      * GET /api/auth/status
      * Check authentication status
      */
@@ -196,6 +253,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             pair: username ? authService.getUserPair(username) : null,
             alias: profile?.alias || null,
             avatar: profile?.avatar || (username ? authService.getZenAvatar(username) : null),
+            email: profile?.email || null,
             firstRun: authService.isFirstRun(),
             mustChangePassword: username ? await authService.isDefaultPassword(username) : false
         });
@@ -207,13 +265,27 @@ export function createAuthRoutes(container: ServiceContainer): Router {
      */
     router.patch("/profile", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
         try {
-            const { alias, avatar } = req.body;
-            if (alias === undefined && avatar === undefined) {
-                return res.status(400).json({ error: "alias or avatar required" });
+            const { alias, avatar, email } = req.body;
+            if (alias === undefined && avatar === undefined && email === undefined) {
+                return res.status(400).json({ error: "alias, avatar or email required" });
             }
+
+            if (email !== undefined && email !== null) {
+                const emailValidation = validateEmail(email);
+                if (!emailValidation.valid) {
+                    return res.status(400).json({ error: emailValidation.error });
+                }
+            }
+            if (email !== undefined) {
+                authService.setEmail(req.username!, email || null);
+            }
+
             authService.updateUserProfile(req.username!, { alias, avatar });
             res.json({ success: true });
-        } catch (err) {
+        } catch (err: any) {
+            if (String(err?.message).includes("UNIQUE")) {
+                return res.status(409).json({ error: "Email already in use" });
+            }
             console.error("Profile update error:", err);
             res.status(500).json({ error: "Failed to update profile" });
         }

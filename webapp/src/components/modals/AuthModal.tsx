@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import API from '../../services/api';
-import { LogIn, UserPlus, Shield } from 'lucide-react';
+import { LogIn, UserPlus, Shield, KeyRound } from 'lucide-react';
 import { match } from 'ts-pattern';
 
 export const AuthModal = () => {
     const dialogRef = useRef<HTMLDialogElement>(null);
-    const [mode, setMode] = useState<'login' | 'register' | 'setup'>('login');
+    const [mode, setMode] = useState<'login' | 'register' | 'setup' | 'forgot'>('login');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotMessage, setForgotMessage] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
     const { login, register, checkAuth, error, clearError, isFirstRun } = useAuthStore();
     const [localError, setLocalError] = useState('');
     const [showSetupOffer, setShowSetupOffer] = useState(false);
@@ -32,11 +35,26 @@ export const AuthModal = () => {
         return () => document.removeEventListener('open-auth-modal', handleOpen);
     }, [isFirstRun]);
 
-    const switchMode = (newMode: 'login' | 'register' | 'setup') => {
+    const switchMode = (newMode: 'login' | 'register' | 'setup' | 'forgot') => {
         setMode(newMode);
         clearError();
         setLocalError('');
         setShowSetupOffer(false);
+        setForgotMessage('');
+    };
+
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setForgotLoading(true);
+        setForgotMessage('');
+        try {
+            const result = await API.forgotPassword(forgotEmail);
+            setForgotMessage(result.message);
+        } catch (err: any) {
+            setForgotMessage(err?.message ?? 'Something went wrong. Please try again.');
+        } finally {
+            setForgotLoading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -79,25 +97,70 @@ export const AuthModal = () => {
                     {match(mode)
                         .with('register', () => <><UserPlus size={20}/> Create Account</>)
                         .with('setup', () => <><Shield size={20}/> Create First Admin</>)
+                        .with('forgot', () => <><KeyRound size={20}/> Reset Password</>)
                         .otherwise(() => <><LogIn size={20}/> Sign In</>)
                     }
                 </h3>
 
-                <div className="tabs tabs-boxed bg-base-200 p-1 mb-6 flex flex-wrap" role="tablist">
-                    <button 
-                        className={`tab flex-auto ${mode === 'login' ? 'tab-active' : ''}`}
-                        onClick={() => switchMode('login')}
-                        role="tab"
-                        aria-selected={mode === 'login'}
-                    >Login</button>
-                    <button 
-                        className={`tab flex-auto ${mode === 'register' ? 'tab-active' : ''}`}
-                        onClick={() => switchMode('register')}
-                        role="tab"
-                        aria-selected={mode === 'register'}
-                    >Register</button>
-                </div>
+                {mode !== 'forgot' && (
+                    <div className="tabs tabs-boxed bg-base-200 p-1 mb-6 flex flex-wrap" role="tablist">
+                        <button
+                            className={`tab flex-auto ${mode === 'login' ? 'tab-active' : ''}`}
+                            onClick={() => switchMode('login')}
+                            role="tab"
+                            aria-selected={mode === 'login'}
+                        >Login</button>
+                        <button
+                            className={`tab flex-auto ${mode === 'register' ? 'tab-active' : ''}`}
+                            onClick={() => switchMode('register')}
+                            role="tab"
+                            aria-selected={mode === 'register'}
+                        >Register</button>
+                    </div>
+                )}
 
+                {mode === 'forgot' ? (
+                    <form onSubmit={handleForgotSubmit} className="space-y-4">
+                        <p className="text-sm opacity-70">
+                            Enter the email linked to your account and we'll send you a reset link.
+                        </p>
+                        <div className="form-control">
+                            <label className="label" htmlFor="forgot-email">
+                                <span className="label-text">Email</span>
+                            </label>
+                            <input
+                                id="forgot-email"
+                                type="email"
+                                placeholder="you@example.com"
+                                className="input input-bordered w-full"
+                                value={forgotEmail}
+                                onChange={e => setForgotEmail(e.target.value)}
+                                required
+                                autoComplete="email"
+                            />
+                        </div>
+
+                        {forgotMessage && (
+                            <div className="text-sm text-center opacity-80">{forgotMessage}</div>
+                        )}
+
+                        <button type="submit" className="btn btn-primary w-full mt-2" disabled={forgotLoading}>
+                            {forgotLoading ? (
+                                <span className="loading loading-spinner loading-sm"></span>
+                            ) : (
+                                'Send Reset Link'
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="link link-hover text-sm w-full text-center block opacity-70"
+                            onClick={() => switchMode('login')}
+                        >
+                            Back to Sign In
+                        </button>
+                    </form>
+                ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="form-control">
                                 <label className="label" htmlFor="username">
@@ -130,7 +193,17 @@ export const AuthModal = () => {
                                     autoComplete={mode === 'register' ? "new-password" : "current-password"}
                                 />
                             </div>
-                            
+
+                            {mode === 'login' && (
+                                <button
+                                    type="button"
+                                    className="link link-hover text-xs opacity-70 -mt-2"
+                                    onClick={() => switchMode('forgot')}
+                                >
+                                    Forgot password?
+                                </button>
+                            )}
+
                             {mode === 'register' && (
                                 <div className="form-control">
                                     <label className="label" htmlFor="confirmPass">
@@ -202,6 +275,7 @@ export const AuthModal = () => {
                         </button>
                     )}
                 </form>
+                )}
             </div>
 
             <form method="dialog" className="modal-backdrop">

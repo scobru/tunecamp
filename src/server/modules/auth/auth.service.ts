@@ -58,6 +58,12 @@ export interface AuthService {
     /** Returns the timestamp of the user's pending artist request, or null. */
     getArtistRequest(userId: number): string | null;
     changePassword(username: string, newPassword: string): Promise<void>;
+    /** Sets (or clears, with null) the account's email used for password-reset delivery. */
+    setEmail(username: string, email: string | null): void;
+    /** Generates a password reset token for the account with this email, valid 30 minutes. Returns null if no account has that email. */
+    createPasswordResetToken(email: string): { token: string; username: string } | null;
+    /** Validates a reset token and, if valid and unused, sets the new password. Returns false if the token is invalid/expired/used. */
+    resetPasswordWithToken(token: string, newPassword: string): Promise<boolean>;
     isFirstRun(): boolean;
     /** Returns true if the username belongs to the root admin (id=1, first created). */
     isRootAdmin(username: string): boolean;
@@ -79,7 +85,7 @@ export interface AuthService {
     /** Returns the avatar stored in gun_users for this username, or null. */
     getZenAvatar(username: string): string | null;
     /** Returns alias and avatar from the admin table. */
-    getUserProfile(username: string): { alias: string | null; avatar: string | null } | null;
+    getUserProfile(username: string): { alias: string | null; avatar: string | null; email: string | null } | null;
     /** Updates alias and/or avatar in the admin table. */
     updateUserProfile(username: string, data: { alias?: string; avatar?: string }): void;
     /** Whether the user opted into sharing their "now listening" presence. */
@@ -521,8 +527,8 @@ export function createAuthService(
             return row?.avatar ?? null;
         },
 
-        getUserProfile(username: string): { alias: string | null; avatar: string | null } | null {
-            const row = db.prepare("SELECT alias, avatar FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { alias: string | null; avatar: string | null } | undefined;
+        getUserProfile(username: string): { alias: string | null; avatar: string | null; email: string | null } | null {
+            const row = db.prepare("SELECT alias, avatar, email FROM admin WHERE username = ? COLLATE NOCASE").get(username) as { alias: string | null; avatar: string | null; email: string | null } | undefined;
             return row ?? null;
         },
 
@@ -634,6 +640,40 @@ export function createAuthService(
         async changePassword(username: string, newPassword: string): Promise<void> {
             const hash = await this.hashPassword(newPassword);
             db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(hash, username);
+        },
+
+        setEmail(username: string, email: string | null): void {
+            db.prepare("UPDATE admin SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE").run(email, username);
+        },
+
+        createPasswordResetToken(email: string): { token: string; username: string } | null {
+            const user = db.prepare("SELECT id, username FROM admin WHERE email = ? COLLATE NOCASE AND is_active = 1").get(email) as { id: number; username: string } | undefined;
+            if (!user) return null;
+
+            const token = crypto.randomBytes(32).toString("hex");
+            const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+            // One live reset token per account — a fresh request invalidates any earlier one.
+            db.prepare("DELETE FROM password_reset_tokens WHERE admin_id = ?").run(user.id);
+            db.prepare(
+                "INSERT INTO password_reset_tokens (admin_id, token_hash, expires_at) VALUES (?, ?, datetime('now', '+30 minutes'))"
+            ).run(user.id, tokenHash);
+
+            return { token, username: user.username };
+        },
+
+        async resetPasswordWithToken(token: string, newPassword: string): Promise<boolean> {
+            const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+            const row = db.prepare(
+                "SELECT id, admin_id FROM password_reset_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')"
+            ).get(tokenHash) as { id: number; admin_id: number } | undefined;
+            if (!row) return false;
+
+            const hash = await this.hashPassword(newPassword);
+            db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, row.admin_id);
+            db.prepare("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
+            this.revokeTokens(row.admin_id);
+            return true;
         },
 
         isFirstRun(): boolean {
