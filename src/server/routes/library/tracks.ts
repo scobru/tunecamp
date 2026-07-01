@@ -23,7 +23,7 @@ import type { ServiceContainer } from "../../core/container.js";
 
 
 export function createTracksRoutes(container: ServiceContainer): Router {
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const database = container.database;
     const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (database as any).publishingService || database;
     const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (database as any).catalogService || database;
     const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (database as any).discoveryService || database;

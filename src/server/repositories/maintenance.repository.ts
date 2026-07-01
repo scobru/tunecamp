@@ -1,5 +1,4 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 
 export interface DuplicatePath {
     file_path: string;
@@ -11,10 +10,8 @@ export interface BareTrack {
     norm_title: string;
 }
 
-export class MaintenanceRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class MaintenanceRepository {
+    constructor(protected db: DatabaseType) {}
 
     removePollutedImageTracks(): number {
         const res = this.db.prepare(`
@@ -212,7 +209,7 @@ export class MaintenanceRepository extends BaseRepository {
     }
 
     repairArtistAssociations(): any {
-        const trackFix = this.db.prepare(`
+        const trackRes = this.db.prepare(`
             UPDATE tracks
             SET artist_id = artists.id
             FROM artists
@@ -220,9 +217,9 @@ export class MaintenanceRepository extends BaseRepository {
               AND tracks.artist_name IS NOT NULL
               AND tracks.artist_name = artists.name COLLATE NOCASE
         `).run();
-        let trackFixCount = trackFix.changes;
+        const trackFixCount = trackRes.changes;
 
-        const albumFixByName = this.db.prepare(`
+        const albumRes = this.db.prepare(`
             UPDATE albums
             SET artist_id = artists.id
             FROM artists
@@ -231,7 +228,7 @@ export class MaintenanceRepository extends BaseRepository {
               AND albums.album_artist != ''
               AND albums.album_artist = artists.name COLLATE NOCASE
         `).run();
-        let albumFixByNameCount = albumFixByName.changes;
+        const albumFixByNameCount = albumRes.changes;
 
         const albumFix = this.db.prepare(`
             UPDATE albums 

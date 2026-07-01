@@ -121,12 +121,12 @@ function getDownloadUserId(req: express.Request, jwtSecret: string): number | nu
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createPaymentsRoutes(container: ServiceContainer): Router {
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const config: ServiceContainer['config'] = (container as any).config || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const musicDir = container.musicDir;
+    const config = container.config;
+    const identity = container.identity;
+    const library = container.library;
+    const integration = container.integration;
+    const database = container.database;
     const router = Router();
 
     /** Sales gate: the item's artist must have can_sell enabled. Items without

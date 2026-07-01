@@ -6,7 +6,7 @@ import { wrapAsync } from "../../middleware/error-handling.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createLifecycleRoutes(container: ServiceContainer): Router {
-    const lifecycleService: ServiceContainer['lifecycleService'] = (container as any).lifecycleService || (container as any);
+    const lifecycleService = container.lifecycleService;
     const identity = (container as any).identity;
     const router = Router();
     router.use(json());

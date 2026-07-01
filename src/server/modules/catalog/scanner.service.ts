@@ -39,47 +39,27 @@ export class ScannerService {
         return results;
     }
 
+    /** Returns the underlying Scanner behind the local-fs provider. */
+    private getLocalScanner(): Scanner {
+        const local = this.registry.get("local-fs") as any;
+        if (!local || !local.scanner) {
+            throw new Error("Local filesystem scanner not found");
+        }
+        return local.scanner;
+    }
+
     /**
      * Proxies to the local scanner for backward compatibility with admin routes.
      */
     async scanDirectory(dir: string, onProgress?: (processed: number, total: number) => void): Promise<any> {
-        const local = this.registry.get("local-fs") as any;
-        if (local && local.scanner) {
-            return local.scanner.scanDirectory(dir, onProgress);
-        }
-        throw new Error("Local filesystem scanner not found");
+        return this.getLocalScanner().scanDirectory(dir, onProgress);
     }
 
     /**
      * Proxies to the local scanner for backward compatibility with admin routes.
      */
     async processAudioFile(filePath: string, musicDir: string, overrideArtistId?: number, ownerId?: number, overrideAlbumId?: number, suggestedCoverPath?: string, metadataHints?: any): Promise<any> {
-        const local = this.registry.get("local-fs") as any;
-        if (local && local.scanner) {
-            return local.scanner.processAudioFile(filePath, musicDir, overrideArtistId, ownerId, overrideAlbumId, suggestedCoverPath, metadataHints);
-        }
-        throw new Error("Local filesystem scanner not found");
-    }
-
-    /**
-     * Proxies to the local scanner for backward compatibility with admin routes.
-     */
-    async getOrCreateLibraryAlbum(dir: string, musicDir: string, forcedCoverPath?: string): Promise<any> {
-        const local = this.registry.get("local-fs") as any;
-        if (local && local.scanner) {
-            return local.scanner.getOrCreateLibraryAlbum(dir, musicDir, forcedCoverPath);
-        }
-        throw new Error("Local filesystem scanner not found");
-    }
-
-    /**
-     * Proxies to the local scanner for backward compatibility with admin routes.
-     */
-    async clearCaches(): Promise<void> {
-        const local = this.registry.get("local-fs") as any;
-        if (local && local.scanner) {
-            return local.scanner.clearCaches();
-        }
+        return this.getLocalScanner().processAudioFile(filePath, musicDir, overrideArtistId, ownerId, overrideAlbumId, suggestedCoverPath, metadataHints);
     }
 
     getRegistry(): ProviderRegistry<ScannerProvider> {

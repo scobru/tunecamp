@@ -13,9 +13,9 @@ import type { ServiceContainer } from "../../core/container.js";
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
 
 export function createPlaylistsRoutes(container: ServiceContainer): Router {
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
-    const config: ServiceContainer['config'] = (container as any).config || (container as any);
+    const library = container.library;
+    const database = container.database;
+    const config = container.config;
     const router = Router();
     router.use(json());
 

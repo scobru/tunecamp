@@ -1,14 +1,11 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { Track } from "../core/database.types.js";
 import { VisibilityProfile, ViewerContext, VisibilityGuardian, getContextFromProfile } from "../common/visibility.js";
 
-export class TrackRepository extends BaseRepository {
+export class TrackRepository {
     private getTrackStmt: Statement;
 
-    constructor(db: DatabaseType) {
-        super(db);
-        
+    constructor(protected db: DatabaseType) {
         const baseSelect = `SELECT * FROM v_tracks`;
 
         this.getTrackStmt = this.db.prepare(`${baseSelect} WHERE id = ?`);

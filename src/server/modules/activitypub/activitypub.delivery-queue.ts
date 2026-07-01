@@ -94,6 +94,8 @@ export class DeliveryQueue {
                  LIMIT ?`
             ).all(this.nowMs(), BATCH_SIZE) as QueueRow[];
 
+            const successfulIds: number[] = [];
+
             for (const row of rows) {
                 let activityJson: any;
                 try {
@@ -114,10 +116,15 @@ export class DeliveryQueue {
                 }
 
                 if (ok) {
-                    this.db.prepare(`DELETE FROM ap_delivery_queue WHERE id = ?`).run(row.id);
+                    successfulIds.push(row.id);
                 } else {
                     this.recordError(row, "remote rejected delivery");
                 }
+            }
+
+            if (successfulIds.length > 0) {
+                const placeholders = successfulIds.map(() => '?').join(',');
+                this.db.prepare(`DELETE FROM ap_delivery_queue WHERE id IN (${placeholders})`).run(...successfulIds);
             }
         } catch (e: any) {
             console.error(`❌ [DeliveryQueue] processDue failed:`, e?.message || e);
