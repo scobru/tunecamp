@@ -1,11 +1,8 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { Report } from "../core/database.types.js";
 
-export class ReportsRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class ReportsRepository {
+    constructor(protected db: DatabaseType) {}
 
     createReport(report: Omit<Report, "id" | "created_at" | "status">): number {
         const stmt = this.db.prepare(`

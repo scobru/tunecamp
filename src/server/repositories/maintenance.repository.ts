@@ -1,5 +1,4 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 
 export interface DuplicatePath {
     file_path: string;
@@ -11,10 +10,8 @@ export interface BareTrack {
     norm_title: string;
 }
 
-export class MaintenanceRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class MaintenanceRepository {
+    constructor(protected db: DatabaseType) {}
 
     removePollutedImageTracks(): number {
         const res = this.db.prepare(`
@@ -212,25 +209,26 @@ export class MaintenanceRepository extends BaseRepository {
     }
 
     repairArtistAssociations(): any {
-        let trackFixCount = 0;
-        const orphanTracks = this.db.prepare("SELECT DISTINCT artist_name FROM tracks WHERE artist_id IS NULL AND artist_name IS NOT NULL").all() as { artist_name: string }[];
-        for (const ot of orphanTracks) {
-            const artist = this.db.prepare("SELECT id FROM artists WHERE name = ? COLLATE NOCASE LIMIT 1").get(ot.artist_name) as { id: number } | undefined;
-            if (artist) {
-                const res = this.db.prepare("UPDATE tracks SET artist_id = ? WHERE artist_id IS NULL AND artist_name = ?").run(artist.id, ot.artist_name);
-                trackFixCount += res.changes;
-            }
-        }
+        const trackRes = this.db.prepare(`
+            UPDATE tracks
+            SET artist_id = artists.id
+            FROM artists
+            WHERE tracks.artist_id IS NULL
+              AND tracks.artist_name IS NOT NULL
+              AND tracks.artist_name = artists.name COLLATE NOCASE
+        `).run();
+        const trackFixCount = trackRes.changes;
 
-        let albumFixByNameCount = 0;
-        const orphanAlbums = this.db.prepare("SELECT DISTINCT album_artist FROM albums WHERE artist_id IS NULL AND album_artist IS NOT NULL AND album_artist != ''").all() as { album_artist: string }[];
-        for (const oa of orphanAlbums) {
-            const artist = this.db.prepare("SELECT id FROM artists WHERE name = ? COLLATE NOCASE LIMIT 1").get(oa.album_artist) as { id: number } | undefined;
-            if (artist) {
-                const res = this.db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id IS NULL AND album_artist = ?").run(artist.id, oa.album_artist);
-                albumFixByNameCount += res.changes;
-            }
-        }
+        const albumRes = this.db.prepare(`
+            UPDATE albums
+            SET artist_id = artists.id
+            FROM artists
+            WHERE albums.artist_id IS NULL
+              AND albums.album_artist IS NOT NULL
+              AND albums.album_artist != ''
+              AND albums.album_artist = artists.name COLLATE NOCASE
+        `).run();
+        const albumFixByNameCount = albumRes.changes;
 
         const albumFix = this.db.prepare(`
             UPDATE albums 

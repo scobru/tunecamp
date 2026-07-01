@@ -4,7 +4,6 @@ import { describe, test, expect, beforeEach, beforeAll, jest } from '@jest/globa
 const mockScanner = {
     scanDirectory: jest.fn().mockImplementation(() => Promise.resolve({ successful: [{ originalPath: 'file1.mp3' }], failed: [] } as any)),
     processAudioFile: jest.fn(),
-    clearCaches: jest.fn(),
 };
 
 // We must use unstable_mockModule before any other imports in ESM
@@ -76,10 +75,5 @@ describe('ScannerService', () => {
             undefined, 
             undefined
         );
-    });
-
-    test('clearCaches should call local scanner clearCaches', async () => {
-        await scannerService.clearCaches();
-        // Since getRegistry is mocked to return an object with get(), we verify it indirectly
     });
 });

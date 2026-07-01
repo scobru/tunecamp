@@ -19,7 +19,6 @@
     "ignore": ["**/*"]
   },
   "ignoreDependencies": [
-    "jest-util",
     "autoprefixer"
   ],
   "ignoreExports": [

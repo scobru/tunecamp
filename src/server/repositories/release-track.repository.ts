@@ -1,11 +1,8 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { ReleaseTrack } from "../core/database.types.js";
 
-export class ReleaseTrackRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class ReleaseTrackRepository {
+    constructor(protected db: DatabaseType) {}
 
     getByReleaseId(releaseId: number): ReleaseTrack[] {
         return this.db.prepare("SELECT * FROM release_tracks WHERE release_id = ? ORDER BY track_num").all(releaseId) as any[];

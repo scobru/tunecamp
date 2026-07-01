@@ -12,7 +12,9 @@
  */
 export function renderApMarkdown(markdown: string): string {
     if (!markdown) return "";
-    // Escape HTML tags to prevent injection in the Fediverse
+    // ponytail: escapes only &<> (not quotes) since this text lands in element
+    // content, not attributes — StringUtils.escapeHtml also escapes quotes,
+    // which would double-escape quotes inside bold/italic/plain text (see test).
     let html = markdown
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
