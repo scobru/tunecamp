@@ -240,3 +240,32 @@ describe('validateUsername', () => {
         expect(validateUsername('valid_User_123')).toEqual({ valid: true });
     });
 });
+
+describe('getPlaceholderSVG structure details', () => {
+    test('should include safe text in the template', () => {
+        const svg = getPlaceholderSVG('Safe Text Test');
+        expect(svg).toContain('Safe Text Test');
+    });
+
+    test('should properly escape text using StringUtils.escapeHtml', () => {
+        const svg = getPlaceholderSVG('<script>alert("xss")</script>');
+        expect(svg).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+    });
+
+    test('should set default text to "No Cover" when text is undefined', () => {
+        const svg = getPlaceholderSVG(undefined);
+        expect(svg).toContain('No Cover');
+    });
+
+    test('should correctly render the outer svg and main rect tags', () => {
+        const svg = getPlaceholderSVG('Test');
+        expect(svg).toContain('<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">');
+        expect(svg).toContain('<rect width="500" height="500" fill="#0f172a"/>');
+    });
+
+    test('should include defs and linearGradient definitions', () => {
+        const svg = getPlaceholderSVG('Test');
+        expect(svg).toContain('<defs>');
+        expect(svg).toContain('<linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">');
+    });
+});
