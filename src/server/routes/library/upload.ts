@@ -13,9 +13,9 @@ import type { StorageEngine } from "../../modules/storage/storage.engine.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
 import { VisibilityGuardian } from "../../common/visibility.js";
 
-const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
-const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
-const GENERIC_EXTENSIONS = [".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"];
+const AUDIO_EXTENSIONS = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"]);
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]);
+const GENERIC_EXTENSIONS = new Set([".zip", ".pdf", ".epub", ".rar", ".7z", ".tar.gz", ".dmg", ".exe", ".txt", ".png", ".jpg", ".jpeg"]);
 
 /**
  * Configure multer storage - Use system temp dir to avoid scanner interference
@@ -48,9 +48,9 @@ function fileFilter(
 ) {
     console.log(`🔍 [Debug] Multer fileFilter seeing file: ${file.fieldname} (${file.originalname})`);
     const ext = path.extname(file.originalname).toLowerCase();
-    const isAudio = AUDIO_EXTENSIONS.includes(ext);
-    const isImage = IMAGE_EXTENSIONS.includes(ext);
-    const isGeneric = GENERIC_EXTENSIONS.includes(ext);
+    const isAudio = AUDIO_EXTENSIONS.has(ext);
+    const isImage = IMAGE_EXTENSIONS.has(ext);
+    const isGeneric = GENERIC_EXTENSIONS.has(ext);
 
     if (isAudio || isImage || isGeneric) {
         cb(null, true);
@@ -69,7 +69,7 @@ function imageFileFilter(
     cb: multer.FileFilterCallback
 ) {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (IMAGE_EXTENSIONS.includes(ext)) {
+    if (IMAGE_EXTENSIONS.has(ext)) {
         cb(null, true);
     } else {
         cb(new Error(`Unsupported image type: ${ext}`));
@@ -194,7 +194,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             await storage.ensureDir(assetsDir);
 
             const ext = path.extname(file.originalname).toLowerCase() || ".png";
-            const targetFilename = options.type + (IMAGE_EXTENSIONS.includes(ext) ? ext : ".png");
+            const targetFilename = options.type + (IMAGE_EXTENSIONS.has(ext) ? ext : ".png");
             const targetPath = path.join(assetsDir, targetFilename);
 
             // Delete any existing files with the same type prefix but a different extension
