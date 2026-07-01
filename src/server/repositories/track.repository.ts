@@ -105,6 +105,14 @@ export class TrackRepository {
         return rows.map(row => this.mapTrack(row));
     }
 
+    getExternalArtworkByAlbumId(albumId: number, profile?: VisibilityProfile | ViewerContext): string | null {
+        const context = getContextFromProfile(profile);
+        const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
+        const sql = `SELECT external_artwork FROM v_tracks WHERE album_id = ? AND external_artwork IS NOT NULL AND (${filter.sql}) LIMIT 1`;
+        const row = this.db.prepare(sql).get(albumId, ...filter.params) as { external_artwork: string } | undefined;
+        return row ? row.external_artwork : null;
+    }
+
     getByArtist(artistId: number, profile?: VisibilityProfile | ViewerContext, artistName?: string): Track[] {
         const context = getContextFromProfile(profile);
         const filter = VisibilityGuardian.getTrackFilter(context, 'v_tracks');
