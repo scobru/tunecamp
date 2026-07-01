@@ -121,6 +121,15 @@ export function createDatabase(dbPath: string): DatabaseService {
             telegram_allowed_channels TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER NOT NULL REFERENCES admin(id) ON DELETE CASCADE,
+            token_hash TEXT NOT NULL UNIQUE,
+            expires_at TEXT NOT NULL,
+            used_at TEXT DEFAULT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS albums (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
@@ -906,6 +915,12 @@ export function createDatabase(dbPath: string): DatabaseService {
             if (!cols.some(col => col.name === 'can_peer')) {
                 console.log("📦 [Database] Migrating admin table: adding can_peer column...");
                 db.exec("ALTER TABLE admin ADD COLUMN can_peer INTEGER NOT NULL DEFAULT 0");
+            }
+            // Password reset via email (Brevo)
+            if (!cols.some(col => col.name === 'email')) {
+                console.log("📦 [Database] Migrating admin table: adding email column...");
+                db.exec("ALTER TABLE admin ADD COLUMN email TEXT");
+                db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_email ON admin(email COLLATE NOCASE) WHERE email IS NOT NULL");
             }
             // Repair stale artist links: artist_id pointing to a deleted artist.
             const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
