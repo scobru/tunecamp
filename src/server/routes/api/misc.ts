@@ -76,10 +76,17 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         try {
             const asset = integration.getAsset(parseInt(req.params.id, 10));
             if (!asset || !asset.cover_path) return res.status(404).json({ error: "Not found" });
-            if (!await fs.pathExists(asset.cover_path)) {
+
+            const resolvedPath = path.resolve(asset.cover_path);
+            const resolvedMusicDir = path.resolve(config.musicDir);
+            if (!resolvedPath.startsWith(resolvedMusicDir + path.sep)) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+
+            if (!await fs.pathExists(resolvedPath)) {
                 return res.status(404).json({ error: "Cover file not found" });
             }
-            res.sendFile(path.resolve(asset.cover_path));
+            res.sendFile(resolvedPath);
         } catch { res.status(500).json({ error: "Failed to serve cover" }); }
     });
 
