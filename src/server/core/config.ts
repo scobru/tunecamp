@@ -75,11 +75,10 @@ export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<Ser
             legacySecretExists = true;
         } catch {}
 
-        if (secretFileExists) {
-            jwtSecret = (await fs.promises.readFile(secretFilePath, 'utf-8')).trim();
-        } else if (legacySecretExists) {
+        jwtSecret = await readJwtSecret(secretFilePath, legacySecretPath) as string;
+
+        if (jwtSecret && !secretFileExists && legacySecretExists) {
             // Migration: Move legacy secret to new stable location
-            jwtSecret = (await fs.promises.readFile(legacySecretPath, 'utf-8')).trim();
             try {
                 fs.promises.writeFile(secretFilePath, jwtSecret)
                     .then(() => console.log(`🔒 Migrated JWT secret to stable location: ${secretFilePath}`))
@@ -87,10 +86,11 @@ export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<Ser
             } catch (e) {
                 console.warn("⚠️ Could not migrate JWT secret:", e);
             }
-        } else {
+        } else if (!jwtSecret) {
             jwtSecret = crypto.randomBytes(32).toString("hex");
             try {
-                (fs.existsSync(dbDir) ? Promise.resolve() : fs.promises.mkdir(dbDir, { recursive: true }))
+                fs.promises.access(dbDir)
+                    .catch(() => fs.promises.mkdir(dbDir, { recursive: true }))
                     .then(() => fs.promises.writeFile(secretFilePath, jwtSecret as string, { mode: 0o600 }))
                     .then(() => console.log(`🔒 Generated new JWT secret and saved to ${secretFilePath} (restricted permissions)`))
                     .catch((err) => console.warn("⚠️  Could not save JWT secret to file, sessions may be lost on restart:", err));
@@ -142,4 +142,23 @@ export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<Ser
         xaccelMediaPrefix: process.env.TUNECAMP_XACCEL_MEDIA_PREFIX || overrides?.xaccelMediaPrefix || "/_protected_media",
         xaccelCachePrefix: process.env.TUNECAMP_XACCEL_CACHE_PREFIX || overrides?.xaccelCachePrefix || "/_protected_cache",
     };
+}
+
+export async function readJwtSecret(secretFilePath: string, legacySecretPath: string): Promise<string | undefined> {
+    let jwtSecret: string | undefined;
+    let secretFileExists = false;
+    try {
+        await fs.promises.access(secretFilePath);
+        secretFileExists = true;
+    } catch {}
+
+    if (secretFileExists) {
+        jwtSecret = (await fs.promises.readFile(secretFilePath, 'utf-8')).trim();
+    } else {
+        try {
+            await fs.promises.access(legacySecretPath);
+            jwtSecret = (await fs.promises.readFile(legacySecretPath, 'utf-8')).trim();
+        } catch {}
+    }
+    return jwtSecret;
 }
