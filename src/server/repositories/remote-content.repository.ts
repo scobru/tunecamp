@@ -1,11 +1,8 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { RemoteContent } from "../core/database.types.js";
 
-export class RemoteContentRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class RemoteContentRepository {
+    constructor(protected db: DatabaseType) {}
 
     upsertRemoteContent(content: Omit<RemoteContent, "id" | "received_at">): void {
         const b = (val: any) => {

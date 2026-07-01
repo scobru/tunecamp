@@ -17,14 +17,16 @@ export function createPeerManager(db: DatabaseType): PeerManager {
             db.prepare("DELETE FROM peer_sessions WHERE id = ?").run(id);
         },
         deleteStaleSessionsForUser(userId: number): void {
-            const staleIds = db.prepare("SELECT id FROM peer_sessions WHERE user_id = ?").all(userId) as { id: string }[];
-            if (staleIds.length > 0) {
-                const ids = staleIds.map(r => r.id);
-                for (const id of ids) {
-                    db.prepare("DELETE FROM peer_tracks WHERE session_id = ?").run(id);
-                    db.prepare("DELETE FROM peer_sessions WHERE id = ?").run(id);
-                }
-            }
+            db.transaction(() => {
+                db.prepare(`
+                    DELETE FROM peer_tracks
+                    WHERE session_id IN (
+                        SELECT id FROM peer_sessions WHERE user_id = ?
+                    )
+                `).run(userId);
+
+                db.prepare("DELETE FROM peer_sessions WHERE user_id = ?").run(userId);
+            })();
         },
         getPeerSession(id: string): PeerSession | undefined {
             const row = db.prepare(

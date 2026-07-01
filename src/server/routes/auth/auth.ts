@@ -8,8 +8,8 @@ import { rateLimit } from "../../middleware/rateLimit.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createAuthRoutes(container: ServiceContainer): Router {
-    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
+    const authService = container.authService;
+    const authMiddleware = container.authMiddleware;
     const apService: ServiceContainer['apService'] = (container as any).apService || null;
     const router = Router();
     router.use(json({ limit: "10mb" }));

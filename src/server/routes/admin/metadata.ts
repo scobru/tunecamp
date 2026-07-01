@@ -13,11 +13,11 @@ import { taskManager } from "../../modules/workers/task-manager.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createMetadataRoutes(container: ServiceContainer): Router {
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const maintenance: ServiceContainer['maintenanceService'] = (container as any).maintenanceService || (container as any);
-    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const musicDir = container.musicDir;
+    const maintenance = container.maintenanceService;
+    const catalogService = container.catalogService;
+    const library = container.library;
+    const database = container.database;
     const router = Router();
     router.use(json());
 

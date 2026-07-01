@@ -44,13 +44,14 @@ export function createDatabase(dbPath: string): DatabaseService {
     // Rescue Phase: Recover from interrupted migrations
     const tablesToRescue = ['albums', 'tracks', 'admin', 'artists'];
     db.transaction(() => {
-        const allTablesList = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];
-        const allTables = new Set(allTablesList.map(t => t.name));
+        const tableNames = new Set(
+            db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row: any) => row.name)
+        );
 
         for (const table of tablesToRescue) {
-            const mainExists = allTables.has(table);
-            const oldExists = allTables.has(`${table}_old`);
-            const newExists = allTables.has(`${table}_new`);
+            const mainExists = tableNames.has(table);
+            const oldExists = tableNames.has(`${table}_old`);
+            const newExists = tableNames.has(`${table}_new`);
 
             if (!mainExists) {
                 if (oldExists) {

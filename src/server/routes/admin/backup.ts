@@ -259,11 +259,11 @@ function assembleFullBackup(database: DatabaseService, config: ServerConfig, dbB
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createBackupRoutes(container: ServiceContainer, restartFn: () => void): Router {
-    const config: ServiceContainer['config'] = (container as any).config || (container as any);
-    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const config = container.config;
+    const gdriveService = container.gdriveService;
+    const library = container.library;
+    const identity = container.identity;
+    const database = container.database;
     const router = Router();
 
     /**

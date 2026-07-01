@@ -2,23 +2,22 @@ import { jest, describe, test, expect, beforeEach, afterEach, beforeAll } from '
 
 let fetch: any;
 let getEthUsdRate: any;
-let clearCache: any;
 
-beforeAll(async () => {
+beforeAll(() => {
     fetch = jest.fn();
     (globalThis as any).fetch = fetch;
-    ({ getEthUsdRate, clearCache } = await import('../price.js'));
 });
 
 describe('Price Module - getEthUsdRate', () => {
     let mockNow = 1000000;
     let dateSpy: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         jest.clearAllMocks();
+        jest.resetModules();
         mockNow = 1000000;
         dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => mockNow);
-        clearCache();
+        ({ getEthUsdRate } = await import('../price.js'));
     });
 
     afterEach(() => {
