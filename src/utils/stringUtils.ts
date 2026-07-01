@@ -25,17 +25,6 @@ export const StringUtils = {
     },
 
     /**
-     * Generates a track slug from album title and track title
-     * Example: ("My Album", "Track 1") -> "my-album-track-1"
-     */
-    generateTrackSlug: (albumTitle: string, trackTitle: string): string => {
-        const track = trackTitle || "untitled";
-        // We reuse the slugify logic
-        const combined = `${albumTitle}-${track}`;
-        return StringUtils.slugify(combined);
-    },
-
-    /**
      * Formats a timestamp (in milliseconds) as relative time
      * Returns: "just now", "5m ago", "2h ago", "3d ago", or empty string for dates
      */
@@ -103,13 +92,6 @@ export const StringUtils = {
         }
 
         return { ok: true, value: username };
-    },
-
-    /**
-     * Pads a string on the left with a given character until it reaches a target length
-     */
-    padLeft: (text: string, length: number, char: string): string => {
-        return text.padStart(length, char);
     },
 
     /**

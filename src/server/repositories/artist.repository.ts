@@ -1,17 +1,14 @@
 import type { Database as DatabaseType, Statement } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { Artist } from "../core/database.types.js";
 import { VisibilityProfile, ViewerContext, UserRole, getContextFromProfile } from "../common/visibility.js";
 
-export class ArtistRepository extends BaseRepository {
+export class ArtistRepository {
     private getArtistStmt: Statement;
     private getArtistSimpleStmt: Statement;
     private getArtistBySlugStmt: Statement;
     private getArtistByNameStmt: Statement;
 
-    constructor(db: DatabaseType) {
-        super(db);
-
+    constructor(protected db: DatabaseType) {
         const baseSelect = `
             SELECT a.*, a.wallet_address as walletAddress,
             (CASE WHEN EXISTS (SELECT 1 FROM admin WHERE artist_id = a.id)

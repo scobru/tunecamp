@@ -17,18 +17,18 @@ try {
 
 export function createMiscRoutes(container: ServiceContainer): Router {
     const router = Router();
-    const config: ServiceContainer['config'] = (container as any).config || (container as any);
-    const waveformService: ServiceContainer['waveformService'] = (container as any).waveformService || (container as any);
-    const metadataService: ServiceContainer['metadataService'] = (container as any).metadataService || (container as any);
-    const scannerService: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
-    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (container as any);
-    const playlistService: ServiceContainer['playlistService'] = (container as any).playlistService || (container as any);
-    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
-    const social: ServiceContainer['social'] = (container as any).social || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const config = container.config;
+    const waveformService = container.waveformService;
+    const metadataService = container.metadataService;
+    const scannerService = container.scannerService;
+    const streamingService = container.streamingService;
+    const playlistService = container.playlistService;
+    const authMiddleware = container.authMiddleware;
+    const library = container.library;
+    const integration = container.integration;
+    const identity = container.identity;
+    const social = container.social;
+    const database = container.database;
     const radioService = (container as any).radioService;
 
     router.get("/api/waveform/:id(*)", async (req, res) => {

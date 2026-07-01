@@ -43,8 +43,6 @@ export class PlaylistService {
     }
 }
 
-const playlistService = new PlaylistService();
-
 let _playlistService: PlaylistService;
 
 export async function initPlaylistService(db: DatabaseService): Promise<PlaylistService> {
@@ -54,5 +52,5 @@ export async function initPlaylistService(db: DatabaseService): Promise<Playlist
 }
 
 export function getPlaylistService(): PlaylistService {
-    return _playlistService || playlistService;
+    return _playlistService;
 }

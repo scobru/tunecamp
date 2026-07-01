@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { formatDuration } from "../utils/format";
 import type { Track, Album, Artist, Release } from "../types";
-import { useTracks, useAlbums, useReleases, useArtists, queryKeys } from "../hooks/queries";
+import { queryKeys } from "../hooks/queries";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Link } from "react-router-dom";
@@ -30,10 +30,26 @@ const Favorites = () => {
   );
 
   // Reuse the shared catalog caches; favorites are just the starred subset.
-  const tracksQuery = useTracks({ enabled: isAuthenticated });
-  const albumsQuery = useAlbums({ enabled: isAuthenticated });
-  const releasesQuery = useReleases({ enabled: isAuthenticated });
-  const artistsQuery = useArtists({ enabled: isAuthenticated });
+  const tracksQuery = useQuery({
+    queryKey: queryKeys.tracks(false),
+    queryFn: () => API.getTracks({ mine: false }),
+    enabled: isAuthenticated,
+  });
+  const albumsQuery = useQuery({
+    queryKey: queryKeys.albums,
+    queryFn: () => API.getAlbums(),
+    enabled: isAuthenticated,
+  });
+  const releasesQuery = useQuery({
+    queryKey: queryKeys.releases,
+    queryFn: () => API.getReleases(),
+    enabled: isAuthenticated,
+  });
+  const artistsQuery = useQuery({
+    queryKey: queryKeys.artists,
+    queryFn: () => API.getArtists(),
+    enabled: isAuthenticated,
+  });
 
   const loading =
     isAuthenticated &&

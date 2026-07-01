@@ -5,9 +5,9 @@ import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createLibraryStatsRoutes(container: ServiceContainer): Router {
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const social: ServiceContainer['social'] = (container as any).social || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const library = container.library;
+    const social = container.social;
+    const database = container.database;
     const router = Router();
 
     /**

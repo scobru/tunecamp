@@ -7,8 +7,8 @@ import { StringUtils } from "../../../utils/stringUtils.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createUnlockRoutes(container: ServiceContainer): Router {
-    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const authMiddleware = container.authMiddleware;
+    const database = container.database;
     const integration: ServiceContainer['integration'] = (container as any).integration || (database as any).integration || database;
     const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
     const router = Router();

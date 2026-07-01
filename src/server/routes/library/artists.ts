@@ -17,13 +17,13 @@ import type { ServiceContainer } from "../../core/container.js";
  * Refactored to separate Discovery (Read) from Catalog (Write).
  */
 export function createArtistsRoutes(container: ServiceContainer): Router {
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const metadataService: ServiceContainer['metadataService'] = (container as any).metadataService || (container as any);
-    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
-    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const social: ServiceContainer['social'] = (container as any).social || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const musicDir = container.musicDir;
+    const metadataService = container.metadataService;
+    const catalogService = container.catalogService;
+    const discoveryService = container.discoveryService;
+    const library = container.library;
+    const social = container.social;
+    const database = container.database;
     const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService;
     const router = Router();
     router.use(json());

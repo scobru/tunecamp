@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import API from "../services/api";
 import {
   Play,
@@ -17,7 +18,7 @@ import { useAuthStore } from "../stores/useAuthStore";
 import { usePurchases } from "../hooks/usePurchases";
 import { useWalletStore } from "../stores/useWalletStore";
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
-import { useTracks } from "../hooks/queries";
+import { queryKeys } from "../hooks/queries";
 
 import { formatDuration } from "../utils/format";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -26,7 +27,10 @@ import type { Track } from "../types";
 import clsx from "clsx";
 
 const Tracks = () => {
-  const { data: tracks = [], isLoading: loading } = useTracks();
+  const { data: tracks = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.tracks(false),
+    queryFn: () => API.getTracks({ mine: false }),
+  });
   const [filter, setFilter] = useState("");
   const { playTrack } = usePlayerStore();
   const { isAuthenticated, isAdminAuthenticated, user } = useAuthStore();
