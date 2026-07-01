@@ -80,7 +80,7 @@ function imageFileFilter(
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createUploadRoutes(container: ServiceContainer): Router {
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const database = container.database;
     const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (database as any).scannerService || database;
     const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (database as any).musicDir || database;
     const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (database as any).publishingService || database;

@@ -1,5 +1,4 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 
 export interface DuplicatePath {
     file_path: string;
@@ -11,10 +10,8 @@ export interface BareTrack {
     norm_title: string;
 }
 
-export class MaintenanceRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class MaintenanceRepository {
+    constructor(protected db: DatabaseType) {}
 
     removePollutedImageTracks(): number {
         const res = this.db.prepare(`

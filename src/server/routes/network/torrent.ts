@@ -9,10 +9,10 @@ import { requireDownloadProvider } from "../../middleware/provider-gate.js";
 const KNABEN_API = "https://knaben.org/api/v1";
 
 export function createTorrentRoutes(container: ServiceContainer): Router {
-    const torrentService: ServiceContainer['torrentService'] = (container as any).torrentService || (container as any);
-    const auth: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const torrentService = container.torrentService;
+    const auth = container.authService;
+    const integration = container.integration;
+    const database = container.database;
     const router = Router();
     router.use(express.json());
 

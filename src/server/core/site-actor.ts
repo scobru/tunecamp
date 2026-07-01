@@ -11,6 +11,8 @@
  * handle string mapped to it does.
  */
 
+import { StringUtils } from "../../utils/stringUtils.js";
+
 /** Internal sentinel id for the instance-level (Service) actor. */
 export const SITE_ACTOR_ID = -1;
 
@@ -45,10 +47,5 @@ export function isSiteHandle(handle: string, db: SettingReader): boolean {
  * Mirrors the slug pattern used elsewhere in the repo (see artist.repository.ts).
  */
 export function slugifySiteName(name: string | undefined | null): string {
-    return (
-        (name || "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, "") || DEFAULT_SITE_HANDLE
-    );
+    return StringUtils.slugify(name || "") || DEFAULT_SITE_HANDLE;
 }

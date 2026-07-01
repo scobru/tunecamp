@@ -18,12 +18,12 @@ const nowPlayingCache = new Map<string, { trackId: number, timestamp: number }>(
 
 export const createSubsonicRouter = (container: ServiceContainer): Router => {
     const router = Router();
-    const db: ServiceContainer['database'] = (container as any).database || (container as any);
-    const auth: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const scrobbleService: ServiceContainer['scrobbleService'] = (container as any).scrobbleService || (container as any);
-    const subsonicService: ServiceContainer['subsonicService'] = (container as any).subsonicService || (container as any);
-    const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (container as any);
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
+    const db = container.database;
+    const auth = container.authService;
+    const scrobbleService = container.scrobbleService;
+    const subsonicService = container.subsonicService;
+    const mediaEngine = container.mediaEngine;
+    const musicDir = container.musicDir;
 
     // --- Helpers ---
 

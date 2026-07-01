@@ -16,43 +16,6 @@ describe('fileExists', () => {
     });
 });
 
-describe('createSlug', () => {
-    test('should convert text to lowercase and replace special characters with hyphens', () => {
-        expect(fileUtils.createSlug('Hello World')).toBe('hello-world');
-        expect(fileUtils.createSlug('Music & Art')).toBe('music-art');
-        expect(fileUtils.createSlug('  Spaces  ')).toBe('spaces');
-        expect(fileUtils.createSlug('Special!@#$%^&*()Characters')).toBe('special-characters');
-    });
-
-    test('should handle multiple special characters and trailing hyphens', () => {
-        expect(fileUtils.createSlug('---Hello---World---')).toBe('hello-world');
-        expect(fileUtils.createSlug('Hello...World')).toBe('hello-world');
-    });
-
-    test('should handle empty strings', () => {
-        expect(fileUtils.createSlug('')).toBe('');
-    });
-
-    test('should handle strings with only special characters', () => {
-        expect(fileUtils.createSlug('!!!')).toBe('');
-        expect(fileUtils.createSlug('   ')).toBe('');
-    });
-
-    test('should handle strings with numbers', () => {
-        expect(fileUtils.createSlug('12345')).toBe('12345');
-        expect(fileUtils.createSlug('Song 123')).toBe('song-123');
-    });
-
-    test('should handle already sluggified strings', () => {
-        expect(fileUtils.createSlug('hello-world')).toBe('hello-world');
-    });
-
-    test('should handle leading and trailing special characters', () => {
-        expect(fileUtils.createSlug('!hello!')).toBe('hello');
-        expect(fileUtils.createSlug('_leading_and_trailing_')).toBe('leading-and-trailing');
-    });
-});
-
 describe('getRelativePath', () => {
     test('should return relative path and normalize backslashes', () => {
         const result = fileUtils.getRelativePath('/app/src', '/app/src/utils/file.ts');

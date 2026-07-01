@@ -4,8 +4,8 @@ import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
 
 export function createCommentsRoutes(container: ServiceContainer): Router {
-    const social: ServiceContainer['social'] = (container as any).social || (container as any);
-    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
+    const social = container.social;
+    const authMiddleware = container.authMiddleware;
     const apService: ServiceContainer['apService'] = (container as any).apService || null;
     const router = Router();
     router.use(json());

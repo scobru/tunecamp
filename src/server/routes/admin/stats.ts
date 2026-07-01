@@ -9,8 +9,8 @@ import { getSiteHandle } from "../../core/site-actor.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createStatsRoutes(container: ServiceContainer): Router {
-    const dbService: ServiceContainer['database'] = (container as any).database || (container as any);
-    const config: ServiceContainer['config'] = (container as any).config || (container as any);
+    const dbService = container.database;
+    const config = container.config;
     const federatedDiscoveryService: ServiceContainer['federatedDiscoveryService'] = (container as any).federatedDiscoveryService;
     const catalogCache: ServiceContainer['catalogCache'] = (container as any).catalogCache || createCatalogCacheService(dbService.db);
     const router = Router();

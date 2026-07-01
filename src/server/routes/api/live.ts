@@ -89,7 +89,7 @@ export function createLiveRoutes(container: ServiceContainer): Router {
      * List active live sessions (public)
      */
     router.get('/sessions', json(), wrapAsync(async (_req: Request, res: Response) => {
-        const identity = (container as any).identity || (container as any);
+        const identity = container.identity;
         if (!config.liveEnabled || identity.getSetting("hideLive") === "true") {
             return res.json({ enabled: false, sessions: [] });
         }
@@ -105,7 +105,7 @@ export function createLiveRoutes(container: ServiceContainer): Router {
      * Announce a live session and spin up its HLS pipeline (artists and admins only)
      */
     router.post('/start', json(), authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
-        const identity = (container as any).identity || (container as any);
+        const identity = container.identity;
         if (!config.liveEnabled || identity.getSetting("hideLive") === "true") {
             return res.status(403).json({ error: 'Live streaming is disabled on this instance' });
         }
