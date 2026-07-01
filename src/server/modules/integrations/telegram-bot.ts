@@ -89,13 +89,6 @@ export class TelegramBotService {
 
         // SECURITY: Prefer Environment Variable over Database settings for secrets
         let token = this.config.telegramBotToken;
-        
-        if (!token) {
-            token = this.database.getSetting('telegram_bot_token');
-            if (token) {
-                console.warn('⚠️ [TelegramBot] Loading token from DATABASE. This is deprecated and less secure. Please move it to TUNECAMP_TELEGRAM_BOT_TOKEN environment variable.');
-            }
-        }
 
         if (!token) {
             console.warn('[TelegramBot] No bot token found in settings or environment. Telegram integration will be inactive.');

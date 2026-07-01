@@ -263,7 +263,6 @@ export interface SiteSettings {
     web3Enabled?: boolean | string;
     web3_checkout_address?: string;
     web3_nft_address?: string;
-    telegram_bot_token?: string;
     telegram_allowed_channels?: string;
     chatEnabled?: boolean | string;
     boardEnabled?: boolean | string;
