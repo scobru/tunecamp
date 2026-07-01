@@ -42,6 +42,7 @@ describe('Playlists Routes', () => {
         });
 
         app.use('/api/playlists', createPlaylistsRoutes({
+            config: { musicDir: "/test/music" },
             database: mockDatabase,
             library: mockDatabase
         } as any));
@@ -91,6 +92,22 @@ describe('Playlists Routes', () => {
                 .set('x-is-admin', 'false');
 
             expect(response.status).toBe(403);
+        });
+    });
+
+    describe('GET /api/playlists/:id/cover', () => {
+        test('prevents path traversal when serving cover images', async () => {
+            mockDatabase.getPlaylist.mockReturnValue({
+                id: 1,
+                coverPath: '../../../../etc/passwd',
+                username: 'testuser'
+            });
+
+            const response = await request(app)
+                .get('/api/playlists/1/cover')
+                .set('x-username', 'testuser');
+
+            expect(response.status).toBe(404);
         });
     });
 });
