@@ -1,11 +1,8 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { RemoteActor } from "../core/database.types.js";
 
-export class RemoteActorRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class RemoteActorRepository {
+    constructor(protected db: DatabaseType) {}
 
     upsertRemoteActor(actor: Omit<RemoteActor, "id" | "last_seen" | "is_followed" | "public_key"> & { is_followed?: boolean, public_key?: string | null }): void {
         const b = (val: any) => {

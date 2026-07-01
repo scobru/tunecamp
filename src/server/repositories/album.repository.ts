@@ -1,17 +1,14 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 import type { Album, Release } from "../core/database.types.js";
 import { VisibilityProfile, ViewerContext, VisibilityGuardian, getContextFromProfile } from "../common/visibility.js";
 
-export class AlbumRepository extends BaseRepository {
+export class AlbumRepository {
     // Centralized visibility SQL fragments
     public static readonly PUBLIC_CONDITION = "visibility IN ('public', 'unlisted') AND status = 'released'";
     public static readonly RELEASE_FILTER = "is_release = 1";
     public static readonly LIBRARY_FILTER = "is_release = 0";
 
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+    constructor(protected db: DatabaseType) {}
 
     getByTitle(title: string, artistId?: number): Album | undefined {
         const sql = artistId

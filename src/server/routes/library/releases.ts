@@ -93,13 +93,13 @@ function syncReleaseCategory(data: { type?: string; product_type?: string; produ
  * These are separated from the raw scanned library tracks.
  */
 export function createReleaseRouter(container: ServiceContainer): Router {
-    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
-    const publishing: ServiceContainer['publishingService'] = (container as any).publishingService || (container as any);
-    const auth: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const social: ServiceContainer['social'] = (container as any).social || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const scanner = container.scannerService;
+    const publishing = container.publishingService;
+    const auth = container.authService;
+    const musicDir = container.musicDir;
+    const library = container.library;
+    const social = container.social;
+    const database = container.database;
     const router = Router();
     router.use(json());
     router.use(invalidateListCacheOnMutation);

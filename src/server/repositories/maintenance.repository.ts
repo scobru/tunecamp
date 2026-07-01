@@ -1,5 +1,4 @@
 import type { Database as DatabaseType } from "better-sqlite3";
-import { BaseRepository } from "./base.repository.js";
 
 export interface DuplicatePath {
     file_path: string;
@@ -11,10 +10,8 @@ export interface BareTrack {
     norm_title: string;
 }
 
-export class MaintenanceRepository extends BaseRepository {
-    constructor(db: DatabaseType) {
-        super(db);
-    }
+export class MaintenanceRepository {
+    constructor(protected db: DatabaseType) {}
 
     removePollutedImageTracks(): number {
         const res = this.db.prepare(`
@@ -212,52 +209,26 @@ export class MaintenanceRepository extends BaseRepository {
     }
 
     repairArtistAssociations(): any {
-        let trackFixCount = 0;
-        let albumFixByNameCount = 0;
+        const trackRes = this.db.prepare(`
+            UPDATE tracks
+            SET artist_id = artists.id
+            FROM artists
+            WHERE tracks.artist_id IS NULL
+              AND tracks.artist_name IS NOT NULL
+              AND tracks.artist_name = artists.name COLLATE NOCASE
+        `).run();
+        const trackFixCount = trackRes.changes;
 
-        const orphanTracks = this.db.prepare("SELECT DISTINCT artist_name FROM tracks WHERE artist_id IS NULL AND artist_name IS NOT NULL").all() as { artist_name: string }[];
-        const orphanAlbums = this.db.prepare("SELECT DISTINCT album_artist FROM albums WHERE artist_id IS NULL AND album_artist IS NOT NULL AND album_artist != ''").all() as { album_artist: string }[];
-
-        if (orphanTracks.length > 0 || orphanAlbums.length > 0) {
-            const uniqueNames = [...new Set([
-                ...orphanTracks.map(t => t.artist_name),
-                ...orphanAlbums.map(a => a.album_artist)
-            ])];
-
-            const artistMap = new Map<string, number>();
-            const CHUNK_SIZE = 900;
-
-            for (let i = 0; i < uniqueNames.length; i += CHUNK_SIZE) {
-                const chunk = uniqueNames.slice(i, i + CHUNK_SIZE);
-                const placeholders = chunk.map(() => '?').join(',');
-                const rows = this.db.prepare(`SELECT id, name FROM artists WHERE name COLLATE NOCASE IN (${placeholders})`).all(...chunk) as { id: number, name: string }[];
-                for (const row of rows) {
-                    artistMap.set(row.name.toLowerCase(), row.id);
-                }
-            }
-
-            if (orphanTracks.length > 0) {
-                const updateTrackStmt = this.db.prepare("UPDATE tracks SET artist_id = ? WHERE artist_id IS NULL AND artist_name = ?");
-                for (const ot of orphanTracks) {
-                    const artistId = artistMap.get(ot.artist_name.toLowerCase());
-                    if (artistId !== undefined) {
-                        const res = updateTrackStmt.run(artistId, ot.artist_name);
-                        trackFixCount += res.changes;
-                    }
-                }
-            }
-
-            if (orphanAlbums.length > 0) {
-                const updateAlbumStmt = this.db.prepare("UPDATE albums SET artist_id = ? WHERE artist_id IS NULL AND album_artist = ?");
-                for (const oa of orphanAlbums) {
-                    const artistId = artistMap.get(oa.album_artist.toLowerCase());
-                    if (artistId !== undefined) {
-                        const res = updateAlbumStmt.run(artistId, oa.album_artist);
-                        albumFixByNameCount += res.changes;
-                    }
-                }
-            }
-        }
+        const albumRes = this.db.prepare(`
+            UPDATE albums
+            SET artist_id = artists.id
+            FROM artists
+            WHERE albums.artist_id IS NULL
+              AND albums.album_artist IS NOT NULL
+              AND albums.album_artist != ''
+              AND albums.album_artist = artists.name COLLATE NOCASE
+        `).run();
+        const albumFixByNameCount = albumRes.changes;
 
         const albumFix = this.db.prepare(`
             UPDATE albums 

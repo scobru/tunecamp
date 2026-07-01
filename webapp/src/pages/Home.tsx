@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import API from "../services/api";
 import { Library } from "lucide-react";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
-import { useCatalog } from "../hooks/queries";
+import { queryKeys } from "../hooks/queries";
 import clsx from "clsx";
 
 const Home = () => {
   const navigate = useNavigate();
-  const { data: catalog, isLoading: loading } = useCatalog();
+  const { data: catalog, isLoading: loading } = useQuery({
+    queryKey: queryKeys.catalog,
+    queryFn: () => API.getCatalog(),
+  });
   const [siteSettings, setSiteSettings] = useState<any>(null);
 
   // Cap the number of items shown on Home to reduce cognitive load.

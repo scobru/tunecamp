@@ -10,9 +10,9 @@ import type { ServiceContainer } from "../../core/container.js";
  * Refactored to separate Discovery (Read) from Catalog (Write).
  */
 export function createCatalogRoutes(container: ServiceContainer): Router {
-    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (container as any);
-    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
+    const catalogService = container.catalogService;
+    const discoveryService = container.discoveryService;
+    const identity = container.identity;
     const peerService: ServiceContainer['peerService'] = (container as any).peerService;
     const router = Router();
 
