@@ -182,7 +182,7 @@ export const IntegrationsPanel = () => {
         <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
           <div className="form-control">
             <label className="label text-xs">Bot Token</label>
-            <input type="password" className="input input-sm input-bordered" value={settings?.telegram_bot_token || ''} onChange={e => setSettings({ ...settings!, telegram_bot_token: e.target.value })} />
+            <span className="text-sm text-base-content/70">Configured via TUNECAMP_TELEGRAM_BOT_TOKEN environment variable.</span>
           </div>
           <div className="form-control">
             <label className="label text-xs">Allowed Channels (Comma separated)</label>

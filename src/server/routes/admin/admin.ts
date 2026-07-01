@@ -379,7 +379,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             const { 
                 siteName, siteDescription, publicUrl, artistName, coverImage, mode,
                 web3_checkout_address, web3_nft_address,
-                telegram_bot_token, telegram_allowed_channels,
+                telegram_allowed_channels,
                 adminFeePercentage, adminTreasuryAddress,
                 soulseek_username, soulseek_password,
                 stripe_secret_key, stripe_webhook_secret,
@@ -534,10 +534,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 identity.setSetting("web3_nft_address", web3_nft_address);
             }
 
-            if (telegram_bot_token !== undefined) {
-                identity.setSetting("telegram_bot_token", telegram_bot_token);
-                settingsChanged = true;
-            }
             if (telegram_allowed_channels !== undefined) {
                 identity.setSetting("telegram_allowed_channels", telegram_allowed_channels);
                 settingsChanged = true;
@@ -609,7 +605,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
 
             // Restart telegram bot if settings changed
-            if (telegram_bot_token !== undefined || telegram_allowed_channels !== undefined) {
+            if (telegram_allowed_channels !== undefined) {
                 telegramBotService.restart().catch((err: any) => console.error("Failed to restart Telegram bot:", err));
             }
 
