@@ -7,9 +7,9 @@ import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createActivityPubRoutes(container: ServiceContainer): Router {
-    const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
-    const db: ServiceContainer['database'] = (container as any).database || (container as any);
-    const authMiddleware: ServiceContainer['authMiddleware'] = (container as any).authMiddleware || (container as any);
+    const apService = container.apService;
+    const db = container.database;
+    const authMiddleware = container.authMiddleware;
     const router = Router();
     router.use(json({ type: ["application/json", "application/activity+json", "application/ld+json"] }));
 

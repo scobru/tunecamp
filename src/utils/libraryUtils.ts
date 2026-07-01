@@ -11,7 +11,7 @@ export const LibraryUtils = {
     ): string => {
         let numStr = "";
         if (trackNum > 0) {
-            numStr = StringUtils.padLeft(trackNum.toString(), 2, "0") + "-";
+            numStr = trackNum.toString().padStart(2, "0") + "-";
         }
 
         const ext = StringUtils.getFileExtension(`file.${extension}`);

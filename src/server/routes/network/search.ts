@@ -14,14 +14,14 @@ import { requireDownloadProvider } from "../../middleware/provider-gate.js";
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createSearchRoutes(container: ServiceContainer): Router {
-    const soulseek: ServiceContainer['soulseekService'] = (container as any).soulseekService || (container as any);
-    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (container as any);
-    const metadataService: ServiceContainer['metadataService'] = (container as any).metadataService || (container as any);
-    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (container as any);
-    const integration: ServiceContainer['integration'] = (container as any).integration || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (container as any);
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
+    const soulseek = container.soulseekService;
+    const scanner = container.scannerService;
+    const metadataService = container.metadataService;
+    const streamingService = container.streamingService;
+    const integration = container.integration;
+    const identity = container.identity;
+    const library = container.library;
+    const database = container.database;
     const router = Router();
     router.use(json());
 

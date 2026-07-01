@@ -56,6 +56,7 @@ export function createBoardRoutes(container: ServiceContainer): Router {
             const library = container.library;
             const artists = library.getArtists(VisibilityProfile.ALL_ACCESS).filter(a => a.id !== -1);
             const primaryArtistId = artists.length > 0 ? artists[0].id : -1;
+            let albumsSet: Map<string, any> | null = null;
 
             for (const url of urls) {
                 const extId = `ext:link:${url}`;
@@ -76,7 +77,10 @@ export function createBoardRoutes(container: ServiceContainer): Router {
 
                     let albumId: number | null = null;
                     if (trackMetadata?.album) {
-                        const dbAlbum = library.getAlbums().find(a => a.title.toLowerCase() === trackMetadata.album!.toLowerCase());
+                        if (!albumsSet) {
+                            albumsSet = new Map(library.getAlbums().map(a => [a.title.toLowerCase(), a]));
+                        }
+                        const dbAlbum = albumsSet.get(trackMetadata.album!.toLowerCase());
                         if (dbAlbum) {
                             albumId = dbAlbum.id;
                         }

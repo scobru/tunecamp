@@ -1,20 +1,23 @@
 import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import API from '../services/api';
 import { Link } from 'react-router-dom';
 import { User, Trash2, Edit, LayoutGrid, List, AlignJustify, Heart } from 'lucide-react';
 import type { Artist, User as AppUser } from '../types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { useConfigStore } from '../stores/useConfigStore';
-import { useArtists, queryKeys } from '../hooks/queries';
+import { queryKeys } from '../hooks/queries';
 import { notify } from '../utils/notify';
 import clsx from 'clsx';
 
 const Artists = () => {
     const { cacheBuster } = useConfigStore();
     const queryClient = useQueryClient();
-    const { data: artists = [], isLoading: loading } = useArtists();
+    const { data: artists = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.artists,
+        queryFn: () => API.getArtists(),
+    });
     const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
     const [searchQuery, setSearchQuery] = useState('');

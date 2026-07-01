@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Library as LibraryIcon, LayoutGrid, List, AlignJustify } from 'lucide-react';
 import { ReleaseCard } from '../components/ui/ReleaseCard';
 import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
-import { useAlbums } from '../hooks/queries';
+import { queryKeys } from '../hooks/queries';
+import API from '../services/api';
 import clsx from 'clsx';
 
 const Library = () => {
@@ -11,7 +13,11 @@ const Library = () => {
     const isAdmin = role === 'admin' || role === 'super_user' || user?.isRootAdmin;
     const isArtist = !!user?.artistId;
     const canView = isAuthenticated && (isAdmin || isArtist);
-    const { data: albums = [], isLoading: loading } = useAlbums({ enabled: canView });
+    const { data: albums = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.albums,
+        queryFn: () => API.getAlbums(),
+        enabled: canView,
+    });
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('minimal');
 
     if (loading) return <div className="p-12 text-center opacity-50">Loading library...</div>;

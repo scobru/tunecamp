@@ -68,13 +68,6 @@ export async function fileExists(filePath: string): Promise<boolean> {
   }
 }
 
-export function createSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
 export function getRelativePath(from: string, to: string): string {
   return path.relative(from, to).replace(/\\/g, '/');
 }

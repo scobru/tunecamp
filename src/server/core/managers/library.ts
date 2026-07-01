@@ -625,14 +625,15 @@ export function createLibraryManager(
                         db.prepare(`UPDATE albums SET ${sets} WHERE id = @id`).run({ ...patch, id: winner.id });
                     }
 
-                    const loserIds = group.slice(1).map(l => l.id);
-                    if (loserIds.length > 0) {
-                        const MAX_VARS = 900;
-                        for (let i = 0; i < loserIds.length; i += MAX_VARS) {
-                            const batch = loserIds.slice(i, i + MAX_VARS);
-                            const placeholders = batch.map(() => '?').join(',');
-                            db.prepare(`UPDATE tracks SET album_id = ? WHERE album_id IN (${placeholders})`).run(winner.id, ...batch);
-                            db.prepare(`DELETE FROM albums WHERE id IN (${placeholders})`).run(...batch);
+                    const losers = group.slice(1);
+                    if (losers.length > 0) {
+                        const loserIds = losers.map(l => l.id);
+                        const CHUNK_SIZE = 900;
+                        for (let i = 0; i < loserIds.length; i += CHUNK_SIZE) {
+                            const chunk = loserIds.slice(i, i + CHUNK_SIZE);
+                            const placeholders = chunk.map(() => '?').join(',');
+                            db.prepare(`UPDATE tracks SET album_id = ? WHERE album_id IN (${placeholders})`).run(winner.id, ...chunk);
+                            db.prepare(`DELETE FROM albums WHERE id IN (${placeholders})`).run(...chunk);
                         }
                     }
                 }

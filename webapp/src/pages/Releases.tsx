@@ -1,12 +1,17 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Disc, LayoutGrid, List, AlignJustify } from 'lucide-react';
 import { ReleaseCard } from '../components/ui/ReleaseCard';
 import { PageHeader } from '../components/ui/PageHeader';
-import { useReleases } from '../hooks/queries';
+import { queryKeys } from '../hooks/queries';
+import API from '../services/api';
 import clsx from 'clsx';
 
 const Releases = () => {
-    const { data: releases = [], isLoading: loading } = useReleases();
+    const { data: releases = [], isLoading: loading } = useQuery({
+        queryKey: queryKeys.releases,
+        queryFn: () => API.getReleases(),
+    });
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'minimal'>('grid');
     const [searchQuery, setSearchQuery] = useState('');
     const [category, setCategory] = useState<'all' | 'album' | 'single' | 'liveset' | 'podcast'>('all');

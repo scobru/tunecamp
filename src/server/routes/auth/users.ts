@@ -12,11 +12,11 @@ import { createAuthMiddleware, type AuthenticatedRequest } from "../../middlewar
 import type { ServiceContainer } from "../../core/container.js";
 
 export function createUsersRoutes(container: ServiceContainer): Router {
-    const authService: ServiceContainer['authService'] = (container as any).authService || (container as any);
-    const apService: ServiceContainer['apService'] = (container as any).apService || (container as any);
-    const database: ServiceContainer['database'] = (container as any).database || (container as any);
-    const identity: ServiceContainer['identity'] = (container as any).identity || (database as any).identity || database;
-    const library: ServiceContainer['library'] = (container as any).library || (container as any);
+    const authService = container.authService;
+    const apService = container.apService;
+    const database = container.database;
+    const identity: ServiceContainer['identity'] = container.identity || (database as any).identity || database;
+    const library = container.library;
     const router = Router();
     router.use(json());
     const authMiddleware = createAuthMiddleware(authService);
