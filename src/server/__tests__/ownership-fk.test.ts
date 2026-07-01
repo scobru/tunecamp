@@ -31,7 +31,7 @@ describe('Ownership Foreign Key Verification', () => {
         const finalAdminId = artist ? 999 : adminId;
 
         // 4. Create a track with finalAdminId as owner_id
-        // This should fail if the bug exists because track_ownership.owner_id REFERENCES artists(id)
+        // This should fail if the issue exists because track_ownership.owner_id REFERENCES artists(id)
         
         let error: any = null;
         try {
