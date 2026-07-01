@@ -17,7 +17,7 @@ async function main() {
     const dbArgIdx = args.indexOf('--db');
     const dbArg = dbArgIdx !== -1 ? args[dbArgIdx + 1] : null;
 
-    const config = loadConfig();
+    const config = await loadConfig();
     const dbPath = dbArg || config.dbPath;
 
     if (!fs.existsSync(dbPath)) {
