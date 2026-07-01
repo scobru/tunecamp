@@ -625,9 +625,15 @@ export function createLibraryManager(
                         db.prepare(`UPDATE albums SET ${sets} WHERE id = @id`).run({ ...patch, id: winner.id });
                     }
 
-                    for (const loser of group.slice(1)) {
-                        db.prepare("UPDATE tracks SET album_id = ? WHERE album_id = ?").run(winner.id, loser.id);
-                        db.prepare("DELETE FROM albums WHERE id = ?").run(loser.id);
+                    const loserIds = group.slice(1).map(l => l.id);
+                    if (loserIds.length > 0) {
+                        const MAX_VARS = 900;
+                        for (let i = 0; i < loserIds.length; i += MAX_VARS) {
+                            const batch = loserIds.slice(i, i + MAX_VARS);
+                            const placeholders = batch.map(() => '?').join(',');
+                            db.prepare(`UPDATE tracks SET album_id = ? WHERE album_id IN (${placeholders})`).run(winner.id, ...batch);
+                            db.prepare(`DELETE FROM albums WHERE id IN (${placeholders})`).run(...batch);
+                        }
                     }
                 }
 
