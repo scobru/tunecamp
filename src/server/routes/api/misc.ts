@@ -77,8 +77,20 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             const asset = integration.getAsset(parseInt(req.params.id, 10));
             if (!asset || !asset.cover_path) return res.status(404).json({ error: "Not found" });
 
-            const resolvedPath = path.resolve(asset.cover_path);
+            // Use path.resolve but check if it's within the musicDir
+            // This allows absolute paths within musicDir and relative paths.
+            // Also sanitize the input to prevent escaping the directory
+            // Path traversal via relative paths like `../../etc/passwd` will be blocked
+            // Path traversal via absolute paths like `/etc/passwd` will be resolved to `/etc/passwd` and blocked.
             const resolvedMusicDir = path.resolve(config.musicDir);
+
+            // To ensure compatibility and block things like /etc/passwd completely while allowing safe
+            // resolution if it's relative, we combine them. path.resolve with an absolute path as second arg
+            // ignores the first arg. So we can check if it escapes.
+
+            // First normalize the input cover_path to remove leading slashes if we want it to always be relative
+            // However, the database might contain valid absolute paths already inside the music dir.
+            const resolvedPath = path.resolve(resolvedMusicDir, asset.cover_path);
             if (!resolvedPath.startsWith(resolvedMusicDir + path.sep)) {
                 return res.status(403).json({ error: "Access denied" });
             }

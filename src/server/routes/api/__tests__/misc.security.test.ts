@@ -48,4 +48,16 @@ describe('Misc Routes Security', () => {
         expect(response.status).not.toBe(200);
         expect(response.status).toBe(403);
     });
+
+    it('should serve valid relative cover paths', async () => {
+        mockIntegration.getAsset.mockReturnValue({
+            id: 2,
+            cover_path: 'assets/cover.jpg'
+        });
+
+        const response = await request(app).get('/api/assets/cover/2');
+
+        // We expect it to try to send the file. If it doesn't exist, it will return 404, not 403.
+        expect(response.status).toBe(404);
+    });
 });
