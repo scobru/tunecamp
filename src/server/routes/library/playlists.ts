@@ -7,6 +7,7 @@ import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian, Capability, UserRole, canConsumeTrack } from "../../common/visibility.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
+import { resolveSafePath } from "../../../utils/fileUtils.js";
 
 import type { ServiceContainer } from "../../core/container.js";
 
@@ -286,11 +287,9 @@ export function createPlaylistsRoutes(container: ServiceContainer): Router {
 
             if (playlist.coverPath.startsWith("http")) return res.redirect(playlist.coverPath);
 
-            const abs = path.isAbsolute(playlist.coverPath)
-                ? playlist.coverPath
-                : path.join(config.musicDir, playlist.coverPath);
-            if (await fs.pathExists(abs)) {
-                return res.sendFile(path.resolve(abs), { maxAge: 86400000 });
+            const abs = resolveSafePath(config.musicDir, playlist.coverPath);
+            if (abs && await fs.pathExists(abs)) {
+                return res.sendFile(abs, { maxAge: 86400000 });
             }
             return res.status(404).end();
         } catch {
