@@ -527,6 +527,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 identity.setSetting("communityLink", communityLink);
                 settingsChanged = true;
             }
+            if (req.body.registryPubkey !== undefined) {
+                identity.setSetting("registryPubkey", req.body.registryPubkey);
+                settingsChanged = true;
+            }
             if (web3_checkout_address !== undefined) {
                 identity.setSetting("web3_checkout_address", web3_checkout_address);
             }

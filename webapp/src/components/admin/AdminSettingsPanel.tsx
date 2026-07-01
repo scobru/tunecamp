@@ -346,6 +346,22 @@ export const AdminSettingsPanel = () => {
                 </label>
               </div>
 
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Registry Public Key</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered bg-base-300/50 w-full font-mono"
+                  value={settings.registryPubkey || ""}
+                  onChange={(e) => setSettings({ ...settings, registryPubkey: e.target.value })}
+                  placeholder="pair.pub used to sign your tunecamp-registry record"
+                />
+                <label className="label">
+                  <span className="label-text-alt opacity-40">The public key you register this instance with on a TuneCamp Registry. The registry validator matches it against your signed record to mark the instance "key-bound".</span>
+                </label>
+              </div>
+
               <div className="form-control pt-4 border-t border-base-content/5 mt-4">
                 <label className="label cursor-pointer justify-between">
                   <div className="flex items-center gap-2">
