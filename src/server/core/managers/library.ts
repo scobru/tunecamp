@@ -236,6 +236,23 @@ export function createLibraryManager(
                 // 3. Resolve Album
                 let finalAlbumId = albumId !== undefined ? (albumId === null || albumId === 'null' || albumId === 'undefined' || albumId === '' || albumId === 0 || albumId === '0' ? null : Number(albumId)) : track.album_id;
                 
+                // Safety: if albumId was explicitly null but track is in a release,
+                // preserve the link unless an album name was provided that genuinely
+                // differs from the current release title.
+                if (finalAlbumId === null && track.album_id && albumId !== undefined) {
+                    const currentAlbum = albumRepository.getById(track.album_id);
+                    if (currentAlbum && (currentAlbum as any).is_release) {
+                        if (typeof albumName === 'string') {
+                            const trimmedAlbum = albumName.trim();
+                            if (trimmedAlbum === '' || trimmedAlbum.toLowerCase() === currentAlbum.title.trim().toLowerCase()) {
+                                finalAlbumId = track.album_id; // preserve release link
+                            }
+                        } else if (albumName === undefined) {
+                            finalAlbumId = track.album_id; // preserve release link
+                        }
+                    }
+                }
+
                 if (albumId === undefined && typeof albumName === "string") {
                     const currentAlbum = track.album_id ? albumRepository.getById(track.album_id) : null;
                     if (!currentAlbum || currentAlbum.title.trim().toLowerCase() !== albumName.trim().toLowerCase()) {

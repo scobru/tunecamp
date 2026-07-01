@@ -73,13 +73,23 @@ export const AdminTrackModal = ({ onTrackUpdated }: AdminTrackModalProps) => {
 
   const loadData = async () => {
     try {
-      const [artistsData, albumsData, adminsData] = await Promise.all([
+      const [artistsData, albumsData, releasesData, adminsData] = await Promise.all([
         API.getArtists(),
         API.getAlbums(),
+        API.getReleases().catch(() => []),
         API.getUsers(),
       ]);
       setArtists(artistsData);
-      setAlbums(albumsData);
+      // Merge library albums + releases so release-linked tracks resolve correctly
+      const mergedAlbums = [...albumsData];
+      const seenIds = new Set(mergedAlbums.map((a: any) => a.id));
+      for (const r of (releasesData || [])) {
+        if (!seenIds.has((r as any).id)) {
+          mergedAlbums.push(r as any);
+          seenIds.add((r as any).id);
+        }
+      }
+      setAlbums(mergedAlbums);
       setAdmins(adminsData);
     } catch (e) {
       console.error(e);
