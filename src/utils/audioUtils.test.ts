@@ -1,6 +1,6 @@
 
 import { describe, expect, test, beforeAll, afterAll, jest } from '@jest/globals';
-import { getPlaceholderSVG, formatDuration, slugify, formatTimeAgo, formatAudioFilename } from './audioUtils.js';
+import { getPlaceholderSVG, formatDuration, slugify, formatTimeAgo, formatAudioFilename, sanitizeFilename, validateUsername } from './audioUtils.js';
 
 describe('formatAudioFilename', () => {
     test('should format standard input correctly', () => {
@@ -175,5 +175,68 @@ describe('formatTimeAgo', () => {
         // 1 year ago
         const yearAgoDate = new Date(MOCK_CURRENT_TIME - 365 * 86400 * 1000);
         expect(formatTimeAgo(yearAgoDate.getTime())).toBe(yearAgoDate.toLocaleDateString());
+    });
+});
+
+describe('getPlaceholderSVG structure and defaults', () => {
+    test('should return default "No Cover" text when called with no arguments', () => {
+        const svg = getPlaceholderSVG();
+        expect(svg).toContain('No Cover');
+    });
+
+    test('should include correct width, height, and viewBox', () => {
+        const svg = getPlaceholderSVG('Test');
+        expect(svg).toContain('width="500"');
+        expect(svg).toContain('height="500"');
+        expect(svg).toContain('viewBox="0 0 500 500"');
+    });
+
+    test('should properly escape ampersands and quotes', () => {
+        const svg = getPlaceholderSVG('Rock & "Roll"');
+        expect(svg).toContain('Rock &amp; &quot;Roll&quot;');
+    });
+});
+
+describe('sanitizeFilename', () => {
+    test('should return empty string for null/undefined/empty input', () => {
+        // @ts-ignore
+        expect(sanitizeFilename(null)).toBe('');
+        // @ts-ignore
+        expect(sanitizeFilename(undefined)).toBe('');
+        expect(sanitizeFilename('')).toBe('');
+    });
+
+    test('should keep safe characters', () => {
+        expect(sanitizeFilename('my_Song-1.2.mp3')).toBe('my_Song-1.2.mp3');
+    });
+
+    test('should replace unsafe characters with underscore', () => {
+        expect(sanitizeFilename('song with spaces.mp3')).toBe('song_with_spaces.mp3');
+        expect(sanitizeFilename('song/with\\slashes:*.mp3')).toBe('song_with_slashes__.mp3');
+    });
+});
+
+describe('validateUsername', () => {
+    test('should return invalid for empty/null username', () => {
+        expect(validateUsername('')).toEqual({ valid: false, error: 'Username is required' });
+        // @ts-ignore
+        expect(validateUsername(null)).toEqual({ valid: false, error: 'Username is required' });
+    });
+
+    test('should return invalid for too short username', () => {
+        expect(validateUsername('ab')).toEqual({ valid: false, error: 'Username must be at least 3 characters' });
+    });
+
+    test('should return invalid for too long username', () => {
+        expect(validateUsername('this_is_a_very_long_username_that_is_too_long')).toEqual({ valid: false, error: 'Username must be at most 20 characters' });
+    });
+
+    test('should return invalid for invalid characters', () => {
+        expect(validateUsername('user!name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+        expect(validateUsername('user name')).toEqual({ valid: false, error: 'Username must contain only letters, numbers, and underscores' });
+    });
+
+    test('should return valid for valid username', () => {
+        expect(validateUsername('valid_User_123')).toEqual({ valid: true });
     });
 });

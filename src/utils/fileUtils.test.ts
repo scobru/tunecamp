@@ -70,6 +70,16 @@ describe('resolveSafePath', () => {
         expect(result).toBeNull();
     });
 
+    test('should return null when userPath is exactly a null byte', () => {
+        const result = fileUtils.resolveSafePath(rootDir, '\0');
+        expect(result).toBeNull();
+    });
+
+    test('should return null when userPath starts with a null byte', () => {
+        const result = fileUtils.resolveSafePath(rootDir, '\0test.txt');
+        expect(result).toBeNull();
+    });
+
     test('should return null for directory traversal escaping root', () => {
         const result = fileUtils.resolveSafePath(rootDir, '../secrets.txt');
         expect(result).toBeNull();
