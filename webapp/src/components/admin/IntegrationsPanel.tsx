@@ -14,7 +14,8 @@ import {
   Youtube,
   Settings,
   Save,
-  Puzzle
+  Puzzle,
+  Mail
 } from "lucide-react";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
@@ -278,6 +279,32 @@ export const IntegrationsPanel = () => {
       )
     },
 
+    {
+      id: "brevo",
+      name: "Brevo",
+      icon: <Mail className="text-[#0B996E]" />,
+      status: status?.brevo?.configured ? 'online' : 'offline',
+      details: status?.brevo?.configured ? "Ready — sends password reset emails" : "Not configured (users fall back to security questions)",
+      description: "Transactional email for the 'forgot password' flow.",
+      pluginId: "brevo",
+      hasConfig: true,
+      renderConfig: () => (
+        <div className="space-y-3 mt-4 border-t border-base-content/10 pt-4">
+          <div className="form-control">
+            <label className="label text-xs">API Key</label>
+            <input type="password" className="input input-sm input-bordered" value={settings?.brevo_api_key || ''} onChange={e => setSettings({ ...settings!, brevo_api_key: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Sender Email (verified in Brevo)</label>
+            <input type="email" className="input input-sm input-bordered" value={settings?.brevo_sender_email || ''} onChange={e => setSettings({ ...settings!, brevo_sender_email: e.target.value })} />
+          </div>
+          <div className="form-control">
+            <label className="label text-xs">Sender Name (optional)</label>
+            <input type="text" className="input input-sm input-bordered" value={settings?.brevo_sender_name || ''} onChange={e => setSettings({ ...settings!, brevo_sender_name: e.target.value })} />
+          </div>
+        </div>
+      )
+    },
     {
       id: "gdrive",
       name: "Google Drive",

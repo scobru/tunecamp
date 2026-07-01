@@ -922,6 +922,14 @@ export function createDatabase(dbPath: string): DatabaseService {
                 db.exec("ALTER TABLE admin ADD COLUMN email TEXT");
                 db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_email ON admin(email COLLATE NOCASE) WHERE email IS NOT NULL");
             }
+            // Password reset via security questions (fallback when Brevo isn't configured)
+            if (!cols.some(col => col.name === 'security_question_1')) {
+                console.log("📦 [Database] Migrating admin table: adding security question columns...");
+                db.exec("ALTER TABLE admin ADD COLUMN security_question_1 TEXT");
+                db.exec("ALTER TABLE admin ADD COLUMN security_answer_1_hash TEXT");
+                db.exec("ALTER TABLE admin ADD COLUMN security_question_2 TEXT");
+                db.exec("ALTER TABLE admin ADD COLUMN security_answer_2_hash TEXT");
+            }
             // Repair stale artist links: artist_id pointing to a deleted artist.
             const artistsTableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='artists'").get();
             if (artistsTableExists) {

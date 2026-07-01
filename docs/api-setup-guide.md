@@ -60,10 +60,15 @@ TuneCamp's login is username + password only, with no built-in mail server — B
 1. Go to [Brevo](https://www.brevo.com/) and create an account.
 2. Go to *SMTP & API > API Keys* and create a new API key.
 3. Verify a sender address/domain under *Senders & IP*.
-4. Set `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` (the verified sender) in your `.env`. `BREVO_SENDER_NAME` is optional (defaults to the site name).
+4. Configure the key either way:
+   - **`.env`**: set `BREVO_API_KEY` and `BREVO_SENDER_EMAIL` (the verified sender). `BREVO_SENDER_NAME` is optional (defaults to the site name).
+   - **Admin Dashboard**: Admin → Integrations → Brevo. Values entered here take precedence over `.env`, same as every other integration.
 5. Each user must set an email on their account (Profile → Account Settings) before they can request a reset — TuneCamp never asks for one at signup.
 
-Without `BREVO_API_KEY`/`BREVO_SENDER_EMAIL` configured, `/forgot-password` still responds successfully (to avoid leaking account existence) but no email is actually sent.
+Without Brevo configured, `/forgot-password` still responds successfully (to avoid leaking account existence) but no email is actually sent.
+
+### Security Questions (fallback, no setup required)
+If an admin never configures Brevo, users aren't locked out: from Profile → Account Settings they can set two security questions with answers. On the login screen's "Forgot password?" flow, the **Security Questions** tab looks up an account by username, asks both answers, and lets the user set a new password directly — no email involved. Both reset methods are always available side by side; a user (or admin) can rely on whichever is configured.
 
 ---
 

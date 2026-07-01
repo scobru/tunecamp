@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.0] - 2026-07-01
+
+### Added
+- **Security-questions password reset (fallback when Brevo isn't configured)**: an admin may never set `BREVO_API_KEY`, leaving users with no recovery path. Added `security_question_1/2` + hashed `security_answer_1/2_hash` columns on `admin`, settable from Profile → Account Settings (new `SecurityQuestionsCard`). `GET /api/auth/security-questions?username=` looks up an account's two questions (404 identically whether the account doesn't exist or has none configured, so it can't be used to enumerate usernames) and `POST /api/auth/security-questions/reset` verifies both answers (bcrypt-hashed, case/whitespace-normalized) before setting a new password and revoking sessions. The login modal's "Forgot password?" flow now offers both **Email** and **Security Questions** as reset methods.
+- **Brevo added to the admin Integrations panel**: previously Brevo could only be configured via `BREVO_API_KEY`/`BREVO_SENDER_EMAIL` env vars. Added it as a proper entry in `IntegrationsPanel.tsx` (API key, sender email, sender name) backed by the same DB-settings-override-env pattern every other integration uses (`identity.getSetting("brevo_api_key") || config.brevoApiKey`), plus a `results.brevo = { configured }` entry in `GET /api/admin/system/health`.
+
 ## [2.6.0] - 2026-07-01
 
 ### Added

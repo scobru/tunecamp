@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import API from '../../services/api';
-import { LogIn, UserPlus, Shield, KeyRound } from 'lucide-react';
+import { LogIn, UserPlus, Shield, KeyRound, ShieldQuestion } from 'lucide-react';
 import { match } from 'ts-pattern';
 
 export const AuthModal = () => {
@@ -10,9 +10,20 @@ export const AuthModal = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
+    const [forgotMethod, setForgotMethod] = useState<'email' | 'questions'>('email');
     const [forgotEmail, setForgotEmail] = useState('');
     const [forgotMessage, setForgotMessage] = useState('');
     const [forgotLoading, setForgotLoading] = useState(false);
+    // Security-questions reset: 1) look up questions by username, 2) answer + set new password
+    const [qUsername, setQUsername] = useState('');
+    const [qQuestions, setQQuestions] = useState<{ question1: string; question2: string } | null>(null);
+    const [qAnswer1, setQAnswer1] = useState('');
+    const [qAnswer2, setQAnswer2] = useState('');
+    const [qNewPassword, setQNewPassword] = useState('');
+    const [qConfirmPassword, setQConfirmPassword] = useState('');
+    const [qError, setQError] = useState('');
+    const [qDone, setQDone] = useState(false);
+    const [qLoading, setQLoading] = useState(false);
     const { login, register, checkAuth, error, clearError, isFirstRun } = useAuthStore();
     const [localError, setLocalError] = useState('');
     const [showSetupOffer, setShowSetupOffer] = useState(false);
@@ -41,6 +52,15 @@ export const AuthModal = () => {
         setLocalError('');
         setShowSetupOffer(false);
         setForgotMessage('');
+        setForgotMethod('email');
+        setQUsername('');
+        setQQuestions(null);
+        setQAnswer1('');
+        setQAnswer2('');
+        setQNewPassword('');
+        setQConfirmPassword('');
+        setQError('');
+        setQDone(false);
     };
 
     const handleForgotSubmit = async (e: React.FormEvent) => {
@@ -54,6 +74,43 @@ export const AuthModal = () => {
             setForgotMessage(err?.message ?? 'Something went wrong. Please try again.');
         } finally {
             setForgotLoading(false);
+        }
+    };
+
+    const handleLookupQuestions = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setQError('');
+        setQLoading(true);
+        try {
+            const result = await API.getSecurityQuestions(qUsername);
+            setQQuestions(result);
+        } catch (err: any) {
+            setQError(err?.message ?? 'No recovery method available for this account');
+        } finally {
+            setQLoading(false);
+        }
+    };
+
+    const handleQuestionsReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setQError('');
+        if (qNewPassword !== qConfirmPassword) {
+            setQError('Passwords do not match');
+            return;
+        }
+        setQLoading(true);
+        try {
+            await API.resetPasswordWithSecurityAnswers({
+                username: qUsername,
+                answer1: qAnswer1,
+                answer2: qAnswer2,
+                newPassword: qNewPassword,
+            });
+            setQDone(true);
+        } catch (err: any) {
+            setQError(err?.message ?? 'Incorrect answers or account not found');
+        } finally {
+            setQLoading(false);
         }
     };
 
@@ -120,37 +177,105 @@ export const AuthModal = () => {
                 )}
 
                 {mode === 'forgot' ? (
-                    <form onSubmit={handleForgotSubmit} className="space-y-4">
-                        <p className="text-sm opacity-70">
-                            Enter the email linked to your account and we'll send you a reset link.
-                        </p>
-                        <div className="form-control">
-                            <label className="label" htmlFor="forgot-email">
-                                <span className="label-text">Email</span>
-                            </label>
-                            <input
-                                id="forgot-email"
-                                type="email"
-                                placeholder="you@example.com"
-                                className="input input-bordered w-full"
-                                value={forgotEmail}
-                                onChange={e => setForgotEmail(e.target.value)}
-                                required
-                                autoComplete="email"
-                            />
+                    <div className="space-y-4">
+                        <div className="tabs tabs-boxed bg-base-200 p-1" role="tablist">
+                            <button
+                                type="button"
+                                className={`tab flex-auto gap-1 ${forgotMethod === 'email' ? 'tab-active' : ''}`}
+                                onClick={() => setForgotMethod('email')}
+                            ><KeyRound size={14} /> Email</button>
+                            <button
+                                type="button"
+                                className={`tab flex-auto gap-1 ${forgotMethod === 'questions' ? 'tab-active' : ''}`}
+                                onClick={() => setForgotMethod('questions')}
+                            ><ShieldQuestion size={14} /> Security Questions</button>
                         </div>
 
-                        {forgotMessage && (
-                            <div className="text-sm text-center opacity-80">{forgotMessage}</div>
-                        )}
+                        {forgotMethod === 'email' ? (
+                            <form onSubmit={handleForgotSubmit} className="space-y-4">
+                                <p className="text-sm opacity-70">
+                                    Enter the email linked to your account and we'll send you a reset link.
+                                </p>
+                                <div className="form-control">
+                                    <label className="label" htmlFor="forgot-email">
+                                        <span className="label-text">Email</span>
+                                    </label>
+                                    <input
+                                        id="forgot-email"
+                                        type="email"
+                                        placeholder="you@example.com"
+                                        className="input input-bordered w-full"
+                                        value={forgotEmail}
+                                        onChange={e => setForgotEmail(e.target.value)}
+                                        required
+                                        autoComplete="email"
+                                    />
+                                </div>
 
-                        <button type="submit" className="btn btn-primary w-full mt-2" disabled={forgotLoading}>
-                            {forgotLoading ? (
-                                <span className="loading loading-spinner loading-sm"></span>
-                            ) : (
-                                'Send Reset Link'
-                            )}
-                        </button>
+                                {forgotMessage && (
+                                    <div className="text-sm text-center opacity-80">{forgotMessage}</div>
+                                )}
+
+                                <button type="submit" className="btn btn-primary w-full mt-2" disabled={forgotLoading}>
+                                    {forgotLoading ? (
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                    ) : (
+                                        'Send Reset Link'
+                                    )}
+                                </button>
+                            </form>
+                        ) : qDone ? (
+                            <div className="text-sm text-center opacity-80 py-4">
+                                Password reset successfully. You can now sign in.
+                            </div>
+                        ) : !qQuestions ? (
+                            <form onSubmit={handleLookupQuestions} className="space-y-4">
+                                <p className="text-sm opacity-70">
+                                    Enter your username to retrieve your security questions.
+                                </p>
+                                <div className="form-control">
+                                    <label className="label" htmlFor="q-username">
+                                        <span className="label-text">Username</span>
+                                    </label>
+                                    <input
+                                        id="q-username"
+                                        type="text"
+                                        className="input input-bordered w-full"
+                                        value={qUsername}
+                                        onChange={e => setQUsername(e.target.value)}
+                                        required
+                                        autoComplete="username"
+                                    />
+                                </div>
+                                {qError && <div className="text-error text-sm text-center">{qError}</div>}
+                                <button type="submit" className="btn btn-primary w-full mt-2" disabled={qLoading}>
+                                    {qLoading ? <span className="loading loading-spinner loading-sm"></span> : 'Find My Questions'}
+                                </button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleQuestionsReset} className="space-y-4">
+                                <div className="form-control">
+                                    <label className="label"><span className="label-text">{qQuestions.question1}</span></label>
+                                    <input type="text" className="input input-bordered w-full" value={qAnswer1} onChange={e => setQAnswer1(e.target.value)} required />
+                                </div>
+                                <div className="form-control">
+                                    <label className="label"><span className="label-text">{qQuestions.question2}</span></label>
+                                    <input type="text" className="input input-bordered w-full" value={qAnswer2} onChange={e => setQAnswer2(e.target.value)} required />
+                                </div>
+                                <div className="form-control">
+                                    <label className="label"><span className="label-text">New Password</span></label>
+                                    <input type="password" className="input input-bordered w-full" value={qNewPassword} onChange={e => setQNewPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
+                                </div>
+                                <div className="form-control">
+                                    <label className="label"><span className="label-text">Confirm Password</span></label>
+                                    <input type="password" className="input input-bordered w-full" value={qConfirmPassword} onChange={e => setQConfirmPassword(e.target.value)} required autoComplete="new-password" />
+                                </div>
+                                {qError && <div className="text-error text-sm text-center">{qError}</div>}
+                                <button type="submit" className="btn btn-primary w-full mt-2" disabled={qLoading}>
+                                    {qLoading ? <span className="loading loading-spinner loading-sm"></span> : 'Reset Password'}
+                                </button>
+                            </form>
+                        )}
 
                         <button
                             type="button"
@@ -159,7 +284,7 @@ export const AuthModal = () => {
                         >
                             Back to Sign In
                         </button>
-                    </form>
+                    </div>
                 ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="form-control">

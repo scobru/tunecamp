@@ -32,6 +32,7 @@ import { notify } from "../utils/notify";
 import type { Track } from "../types";
 import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
+import { SecurityQuestionsCard } from "../components/ui/SecurityQuestionsCard";
 import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
 import { LinksEditor } from "../components/ui/LinksEditor";
 
@@ -515,6 +516,7 @@ const Profile = () => {
 
             {/* Security: change password (works for every authenticated user) */}
             <ChangePasswordCard />
+            <SecurityQuestionsCard />
 
             {/* Artist profile request (listeners without a linked artist) */}
             {!hasArtistProfile && (

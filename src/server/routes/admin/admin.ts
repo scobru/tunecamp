@@ -391,6 +391,9 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 listenbrainz_token,
                 google_drive_client_id,
                 google_drive_client_secret,
+                brevo_api_key,
+                brevo_sender_email,
+                brevo_sender_name,
                 themeFont, themeBlur, themeOverlayOpacity,
                 communityLink,
                 web3Enabled,
@@ -602,6 +605,16 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (google_drive_client_secret !== undefined) {
                 identity.setSetting("google_drive_client_secret", google_drive_client_secret);
+            }
+
+            if (brevo_api_key !== undefined) {
+                identity.setSetting("brevo_api_key", brevo_api_key);
+            }
+            if (brevo_sender_email !== undefined) {
+                identity.setSetting("brevo_sender_email", brevo_sender_email);
+            }
+            if (brevo_sender_name !== undefined) {
+                identity.setSetting("brevo_sender_name", brevo_sender_name);
             }
 
             // Restart telegram bot if settings changed
@@ -2206,6 +2219,11 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             configured: !!(config.gdriveClientId && config.gdriveClientSecret),
             active: !!gdriveService
         };
+
+        // 8b. Brevo (password reset emails)
+        const brevoKey = identity.getSetting("brevo_api_key") || config.brevoApiKey;
+        const brevoSender = identity.getSetting("brevo_sender_email") || config.brevoSenderEmail;
+        results.brevo = { configured: !!(brevoKey && brevoSender) };
 
         // 9. YouTube
         try {

@@ -11,6 +11,7 @@ interface HealthStatus {
   stripe: { configured: boolean; webhookConfigured: boolean };
   moonpay: { configured: boolean };
   gdrive: { configured: boolean; active: boolean };
+  brevo: { configured: boolean };
   youtube: { online: boolean };
   spotify: { online: boolean };
   soundcloud: { online: boolean };

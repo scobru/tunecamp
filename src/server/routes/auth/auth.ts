@@ -12,7 +12,15 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     const authService = container.authService;
     const authMiddleware = container.authMiddleware;
     const config = container.config;
+    const identity = container.identity;
     const apService: ServiceContainer['apService'] = (container as any).apService || null;
+
+    // Admin-panel DB settings (Integrations tab) take precedence over env vars, same as every other integration.
+    const getBrevoCredentials = () => ({
+        apiKey: identity.getSetting("brevo_api_key") || config.brevoApiKey,
+        senderEmail: identity.getSetting("brevo_sender_email") || config.brevoSenderEmail,
+        senderName: identity.getSetting("brevo_sender_name") || config.brevoSenderName || config.siteName,
+    });
     const router = Router();
     router.use(json({ limit: "10mb" }));
 
@@ -197,7 +205,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
                 const base = config.publicUrl || `${req.protocol}://${req.get("host")}`;
                 const resetUrl = `${base}/reset-password?token=${result.token}`;
                 await sendBrevoEmail(
-                    config,
+                    getBrevoCredentials(),
                     email,
                     "Reset your password",
                     `<p>Hi ${result.username},</p><p>Click the link below to reset your password. This link expires in 30 minutes.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you didn't request this, you can ignore this email.</p>`
@@ -235,6 +243,63 @@ export function createAuthRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * POST /api/auth/security-questions
+     * Set (or replace) the two security questions/answers used as a password-reset
+     * fallback for accounts without — or instead of — an email on file.
+     */
+    router.post("/security-questions", authMiddleware.requireUser, async (req: AuthenticatedRequest, res) => {
+        const { question1, answer1, question2, answer2 } = req.body;
+        if (!question1?.trim() || !answer1?.trim() || !question2?.trim() || !answer2?.trim()) {
+            return res.status(400).json({ error: "Both questions and answers are required" });
+        }
+        if (question1.trim() === question2.trim()) {
+            return res.status(400).json({ error: "Choose two different questions" });
+        }
+
+        await authService.setSecurityQuestions(req.username!, question1.trim(), answer1, question2.trim(), answer2);
+        res.json({ success: true });
+    });
+
+    /**
+     * GET /api/auth/security-questions?username=...
+     * Looks up the security questions for a username, so a logged-out user can
+     * answer them to reset their password. Responds identically whether the
+     * account doesn't exist or simply has no questions configured, so this can't
+     * be used to enumerate usernames.
+     */
+    router.get("/security-questions", rateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), (req, res) => {
+        const username = String(req.query.username || "");
+        const questions = username ? authService.getSecurityQuestions(username) : null;
+        if (!questions) {
+            return res.status(404).json({ error: "No recovery method available for this account" });
+        }
+        res.json(questions);
+    });
+
+    /**
+     * POST /api/auth/security-questions/reset
+     * Complete a password reset by answering both security questions.
+     */
+    router.post("/security-questions/reset", rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), async (req, res) => {
+        const { username, answer1, answer2, newPassword } = req.body;
+        if (!username || !answer1 || !answer2 || !newPassword) {
+            return res.status(400).json({ error: "Username, both answers, and a new password are required" });
+        }
+
+        const passwordValidation = validatePassword(newPassword);
+        if (!passwordValidation.valid) {
+            return res.status(400).json({ error: passwordValidation.error });
+        }
+
+        const success = await authService.resetPasswordWithSecurityAnswers(username, answer1, answer2, newPassword);
+        if (!success) {
+            return res.status(400).json({ error: "Incorrect answers or account not found" });
+        }
+
+        res.json({ message: "Password reset successfully. You can now log in." });
+    });
+
+    /**
      * GET /api/auth/status
      * Check authentication status
      */
@@ -254,6 +319,7 @@ export function createAuthRoutes(container: ServiceContainer): Router {
             alias: profile?.alias || null,
             avatar: profile?.avatar || (username ? authService.getZenAvatar(username) : null),
             email: profile?.email || null,
+            securityQuestionsConfigured: username ? !!authService.getSecurityQuestions(username) : false,
             firstRun: authService.isFirstRun(),
             mustChangePassword: username ? await authService.isDefaultPassword(username) : false
         });

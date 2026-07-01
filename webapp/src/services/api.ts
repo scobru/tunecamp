@@ -80,6 +80,12 @@ const API = {
         handleResponse(api.post<{ message: string }>('auth/forgot-password', { email })),
     resetPassword: (token: string, newPassword: string) =>
         handleResponse(api.post<{ message: string }>('auth/reset-password', { token, newPassword })),
+    setSecurityQuestions: (data: { question1: string; answer1: string; question2: string; answer2: string }) =>
+        handleResponse(api.post('auth/security-questions', data)),
+    getSecurityQuestions: (username: string) =>
+        handleResponse(api.get<{ question1: string; question2: string }>('auth/security-questions', { params: { username } })),
+    resetPasswordWithSecurityAnswers: (data: { username: string; answer1: string; answer2: string; newPassword: string }) =>
+        handleResponse(api.post<{ message: string }>('auth/security-questions/reset', data)),
     logout: () => {
         API.setToken(null);
     },

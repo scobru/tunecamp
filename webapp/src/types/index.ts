@@ -226,6 +226,7 @@ export interface User {
     alias?: string | null;
     avatar?: string | null;
     email?: string | null;
+    securityQuestionsConfigured?: boolean;
 }
 
 export interface AuthStatus {
@@ -239,6 +240,7 @@ export interface AuthStatus {
     firstRun?: boolean;
     mustChangePassword?: boolean;
     isActive?: boolean;
+    securityQuestionsConfigured?: boolean;
 }
 
 export interface SiteSettings {
@@ -283,6 +285,9 @@ export interface SiteSettings {
     listenbrainz_token?: string;
     google_drive_client_id?: string;
     google_drive_client_secret?: string;
+    brevo_api_key?: string;
+    brevo_sender_email?: string;
+    brevo_sender_name?: string;
     hideLive?: boolean | string;
     hideStore?: boolean | string;
     hideSocial?: boolean | string;

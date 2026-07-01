@@ -16,6 +16,9 @@ if (typeof global !== 'undefined' && !global.crypto) {
 const SALT_ROUNDS = 10;
 const JWT_EXPIRES_IN = "7d";
 
+// Security-question answers are matched forgivingly (case/whitespace shouldn't lock someone out).
+const normalizeAnswer = (answer: string): string => answer.trim().toLowerCase();
+
 
 enum AuthProvider {
     MASTODON = "mastodon"
@@ -64,6 +67,12 @@ export interface AuthService {
     createPasswordResetToken(email: string): { token: string; username: string } | null;
     /** Validates a reset token and, if valid and unused, sets the new password. Returns false if the token is invalid/expired/used. */
     resetPasswordWithToken(token: string, newPassword: string): Promise<boolean>;
+    /** Sets both security questions/answers used as a password-reset fallback (answers are hashed, never stored in plaintext). */
+    setSecurityQuestions(username: string, question1: string, answer1: string, question2: string, answer2: string): Promise<void>;
+    /** Returns the account's two security questions (text only) if both are configured, so a reset flow can present them. */
+    getSecurityQuestions(username: string): { question1: string; question2: string } | null;
+    /** Verifies both security answers and, if correct, sets the new password. Returns false on any mismatch or missing account. */
+    resetPasswordWithSecurityAnswers(username: string, answer1: string, answer2: string, newPassword: string): Promise<boolean>;
     isFirstRun(): boolean;
     /** Returns true if the username belongs to the root admin (id=1, first created). */
     isRootAdmin(username: string): boolean;
@@ -673,6 +682,38 @@ export function createAuthService(
             db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, row.admin_id);
             db.prepare("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
             this.revokeTokens(row.admin_id);
+            return true;
+        },
+
+        async setSecurityQuestions(username: string, question1: string, answer1: string, question2: string, answer2: string): Promise<void> {
+            const hash1 = await bcrypt.hash(normalizeAnswer(answer1), SALT_ROUNDS);
+            const hash2 = await bcrypt.hash(normalizeAnswer(answer2), SALT_ROUNDS);
+            db.prepare(
+                "UPDATE admin SET security_question_1 = ?, security_answer_1_hash = ?, security_question_2 = ?, security_answer_2_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ? COLLATE NOCASE"
+            ).run(question1, hash1, question2, hash2, username);
+        },
+
+        getSecurityQuestions(username: string): { question1: string; question2: string } | null {
+            const row = db.prepare(
+                "SELECT security_question_1, security_question_2 FROM admin WHERE username = ? COLLATE NOCASE AND is_active = 1"
+            ).get(username) as { security_question_1: string | null; security_question_2: string | null } | undefined;
+            if (!row || !row.security_question_1 || !row.security_question_2) return null;
+            return { question1: row.security_question_1, question2: row.security_question_2 };
+        },
+
+        async resetPasswordWithSecurityAnswers(username: string, answer1: string, answer2: string, newPassword: string): Promise<boolean> {
+            const row = db.prepare(
+                "SELECT id, security_answer_1_hash, security_answer_2_hash FROM admin WHERE username = ? COLLATE NOCASE AND is_active = 1"
+            ).get(username) as { id: number; security_answer_1_hash: string | null; security_answer_2_hash: string | null } | undefined;
+            if (!row || !row.security_answer_1_hash || !row.security_answer_2_hash) return false;
+
+            const match1 = await bcrypt.compare(normalizeAnswer(answer1), row.security_answer_1_hash);
+            const match2 = await bcrypt.compare(normalizeAnswer(answer2), row.security_answer_2_hash);
+            if (!match1 || !match2) return false;
+
+            const hash = await this.hashPassword(newPassword);
+            db.prepare("UPDATE admin SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(hash, row.id);
+            this.revokeTokens(row.id);
             return true;
         },
 
