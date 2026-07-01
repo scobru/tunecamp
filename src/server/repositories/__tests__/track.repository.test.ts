@@ -101,6 +101,51 @@ describe('TrackRepository', () => {
         });
     });
 
+    describe('isPublicReleaseTrack', () => {
+        // Insert an album with explicit release/visibility/status, return its id.
+        const makeAlbum = (slug: string, o: { is_release: number; status: string; visibility: string }) =>
+            Number(db.db.prepare(
+                "INSERT INTO albums (title, slug, is_release, status, visibility) VALUES (?, ?, ?, ?, ?)"
+            ).run(slug, slug, o.is_release, o.status, o.visibility).lastInsertRowid);
+
+        test('true for a track on a public, released release', () => {
+            const albumId = makeAlbum('pub', { is_release: 1, status: 'released', visibility: 'public' });
+            const id = repo.create(trackInput({ hash: 'p1', album_id: albumId }));
+            expect(repo.isPublicReleaseTrack(id)).toBe(true);
+        });
+
+        test('true for an unlisted released release', () => {
+            const albumId = makeAlbum('unl', { is_release: 1, status: 'released', visibility: 'unlisted' });
+            const id = repo.create(trackInput({ hash: 'p2', album_id: albumId }));
+            expect(repo.isPublicReleaseTrack(id)).toBe(true);
+        });
+
+        test('false for a private library track', () => {
+            const albumId = makeAlbum('lib', { is_release: 0, status: 'draft', visibility: 'private' });
+            const id = repo.create(trackInput({ hash: 'p3', album_id: albumId }));
+            expect(repo.isPublicReleaseTrack(id)).toBe(false);
+        });
+
+        test('false for a hidden/private release (not publicly visible)', () => {
+            // A release the artist has taken down: is_release stays 1 but visibility is private,
+            // so status is NOT auto-released by the insert trigger.
+            const albumId = makeAlbum('hidden', { is_release: 1, status: 'draft', visibility: 'private' });
+            const id = repo.create(trackInput({ hash: 'p4', album_id: albumId }));
+            expect(repo.isPublicReleaseTrack(id)).toBe(false);
+        });
+
+        test('false for a released album not marked as a release', () => {
+            const albumId = makeAlbum('notrel', { is_release: 0, status: 'released', visibility: 'public' });
+            const id = repo.create(trackInput({ hash: 'p5', album_id: albumId }));
+            expect(repo.isPublicReleaseTrack(id)).toBe(false);
+        });
+
+        test('false for a track with no album', () => {
+            const id = repo.create(trackInput({ hash: 'p6', album_id: null }));
+            expect(repo.isPublicReleaseTrack(id)).toBe(false);
+        });
+    });
+
     describe('update', () => {
         test('updates fields and maps camelCase keys to columns', () => {
             const id = repo.create(trackInput({ title: 'Before', hash: 'h7' }));

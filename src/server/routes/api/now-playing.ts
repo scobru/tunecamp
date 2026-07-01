@@ -1,4 +1,4 @@
-import { Router, json, Response } from 'express';
+import { Router, json, Request, Response } from 'express';
 import type { ServiceContainer } from '../../core/container.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { wrapAsync } from '../../middleware/error-handling.js';
@@ -13,9 +13,20 @@ import { NowPlayingService } from '../../modules/presence/now-playing.service.js
 export function createNowPlayingRoutes(container: ServiceContainer): Router {
     const authMiddleware = container.authMiddleware;
     const authService = container.authService;
+    const library = container.library;
+    const dbService = container.database;
+    const config = container.config;
     const presence = new NowPlayingService();
     const router = Router();
     router.use(json());
+
+    /** Absolute URL for an avatar path stored relative to this instance. */
+    const absUrl = (base: string | null, p: string | null): string | null => {
+        if (!p) return null;
+        if (/^https?:\/\//i.test(p)) return p;
+        if (!base) return null;
+        return `${base.replace(/\/$/, "")}/${p.replace(/^\//, "")}`;
+    };
 
     /** GET /api/now-playing/preference — the caller's opt-in state */
     router.get('/preference', authMiddleware.requireUser, wrapAsync(async (req: AuthenticatedRequest, res: Response) => {
@@ -72,6 +83,34 @@ export function createNowPlayingRoutes(container: ServiceContainer): Router {
                 updatedAt: e.updatedAt,
             };
         });
+        res.json({ listeners });
+    }));
+
+    /**
+     * GET /api/now-playing/public — opted-in listeners, exposed to the open network.
+     * No auth (consumed cross-origin by the static website's live strip). Only entries
+     * whose track is a publicly-released release-track are shown; private library plays
+     * never leak. Identity (alias/avatar) is included by design — the opt-in toggle is
+     * labelled as public sharing.
+     */
+    router.get('/public', wrapAsync(async (_req: Request, res: Response) => {
+        const publicUrl = dbService.getSetting("publicUrl") || config.publicUrl || null;
+        const instanceName = dbService.getSetting("siteName") || config.siteName || "TuneCamp Instance";
+        const listeners = presence.list()
+            .filter(e => typeof e.trackId === 'number' && library.isPublicReleaseTrack(e.trackId))
+            .map(e => {
+                const profile = authService.getUserProfile(e.username);
+                return {
+                    username: e.username,
+                    alias: profile?.alias ?? null,
+                    avatar: absUrl(publicUrl, profile?.avatar ?? null),
+                    trackId: e.trackId,
+                    title: e.title,
+                    artist: e.artist,
+                    updatedAt: e.updatedAt,
+                    instance: { name: instanceName, url: publicUrl },
+                };
+            });
         res.json({ listeners });
     }));
 
