@@ -6,7 +6,7 @@ This guide explains step by step how to obtain and configure the API keys requir
 
 ## 1. Payments & Monetization
 
-### Stripe (Fiat & Onramp)
+### Stripe (Fiat)
 1. Go to the [Stripe Dashboard](https://dashboard.stripe.com/).
 2. **Secret Key**: Go to *Developers > API Keys* and copy the `Secret key` (`sk_test_...` or `sk_live_...`).
 3. **Webhook Secret**:
@@ -15,8 +15,6 @@ This guide explains step by step how to obtain and configure the API keys requir
    - Select the event: `checkout.session.completed`.
    - **Important (multi-artist instances)**: Enable the **"Listen to events on connected accounts"** option on the endpoint. Without this checkbox, payments made on artists' Stripe Connect accounts will not trigger the webhook and no unlock code will be generated.
    - Copy the "Signing secret" (`whsec_...`).
-4. **Crypto Onramp**: Request access to "Crypto Onramp" in your Stripe settings and copy the related key.
-
 ### Stripe Connect (artist onboarding — multi-artist instances only)
 
 Stripe Connect lets you route fiat payments directly to each artist's Stripe account, with the instance's commission automatically withheld as an `application_fee`. **It is not required for single-artist instances.**
@@ -29,10 +27,6 @@ Stripe Connect lets you route fiat payments directly to each artist's Stripe acc
 3. The artist completes KYC directly on the Stripe-hosted page.
 4. As long as `chargesEnabled = false`, the artist's checkouts fall back to the instance account.
 5. **No new environment variable required**: onboarding reuses the already-configured `STRIPE_SECRET_KEY`.
-
-### MoonPay (alternative Onramp)
-1. Sign up at [MoonPay Dashboard](https://dashboard.moonpay.com/).
-2. Create a new API Key for the Onramp integration on the **Base** network.
 
 ---
 

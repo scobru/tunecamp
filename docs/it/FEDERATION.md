@@ -21,6 +21,33 @@ TuneCamp individua le altre istanze tramite un meccanismo di **gossip su HTTP** 
 - `GET /api/community/instance` — Descrittore di questa istanza.
 - `GET /api/community/peers` — I peer conosciuti (la base per il gossip).
 - `GET /api/community/sites` — Elenco aggregato dei siti rilevabili (locali + federati + ActivityPub). Abilitato a livello CORS per directory esterne.
+- `POST /api/community/register` — auto-registrazione: invia l'URL della tua istanza a un'istanza directory e appari immediatamente, senza attendere il prossimo crawl (ogni 6 ore). Vedi sotto.
+
+### Auto-registrazione presso una directory
+
+Invece di attendere fino a 6 ore che il gossip raggiunga un'istanza directory, gli admin possono auto-registrarsi:
+
+```http
+POST /api/community/register
+Content-Type: application/json
+
+{ "url": "https://tua-istanza.esempio.com" }
+```
+
+L'istanza directory:
+1. Verifica il tuo URL tramite NodeInfo (`/.well-known/nodeinfo`) per confermare che sia un'istanza TuneCamp raggiungibile.
+2. Memorizza subito i metadati — la tua istanza appare immediatamente in `GET /api/community/sites`.
+
+**Risposte:**
+
+| Stato | Significato |
+| :----- | :------ |
+| `200 OK` | Registrata. Appare subito in `/api/community/sites`. |
+| `400` | Campo `url` mancante o non valido. |
+| `422` | L'URL non è un'istanza TuneCamp raggiungibile (controllo NodeInfo fallito). |
+| `429` | Rate limit superato — 1 registrazione per IP all'ora. Header `Retry-After` incluso. |
+
+L'endpoint è pubblico (nessuna autenticazione richiesta) e abilitato a livello CORS, così il [sito web della community](https://github.com/scobru/tunecamp-website) può chiamarlo direttamente dal browser. Il rate limit è applicato per IP per prevenire abusi.
 
 ### Configurazione
 
