@@ -20,7 +20,7 @@ async function main() {
   }
 
   try {
-    const config = loadConfig();
+    const config = await loadConfig();
     const sourcePath = path.resolve(backupFile);
     const dbPath = path.resolve(config.dbPath);
 

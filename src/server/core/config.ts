@@ -50,7 +50,7 @@ export interface ServerConfig {
 /**
  * Load server configuration from environment variables or defaults
  */
-export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
+export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<ServerConfig> {
     const defaultDbPath = path.join(process.cwd(), "tunecamp.db");
     const defaultMusicDir = path.join(process.cwd(), "music");
 
@@ -63,25 +63,47 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         const secretFilePath = path.join(dbDir, '.jwt-secret');
         const legacySecretPath = path.join(process.cwd(), '.jwt-secret');
 
-        if (fs.existsSync(secretFilePath)) {
-            jwtSecret = fs.readFileSync(secretFilePath, 'utf-8').trim();
-        } else if (fs.existsSync(legacySecretPath)) {
-            // Migration: Move legacy secret to new stable location
-            jwtSecret = fs.readFileSync(legacySecretPath, 'utf-8').trim();
+        let fileExists = false;
+        try {
+            await fs.promises.access(secretFilePath);
+            fileExists = true;
+        } catch {
+            fileExists = false;
+        }
+
+        let legacyExists = false;
+        if (!fileExists) {
             try {
-                fs.promises.writeFile(secretFilePath, jwtSecret)
-                    .then(() => console.log(`🔒 Migrated JWT secret to stable location: ${secretFilePath}`))
-                    .catch((e) => console.warn("⚠️ Could not migrate JWT secret:", e));
+                await fs.promises.access(legacySecretPath);
+                legacyExists = true;
+            } catch {
+                legacyExists = false;
+            }
+        }
+
+        if (fileExists) {
+            const data = await fs.promises.readFile(secretFilePath, 'utf-8');
+            jwtSecret = data.trim();
+        } else if (legacyExists) {
+            // Migration: Move legacy secret to new stable location
+            const data = await fs.promises.readFile(legacySecretPath, 'utf-8');
+            jwtSecret = data.trim();
+            try {
+                await fs.promises.writeFile(secretFilePath, jwtSecret);
+                console.log(`🔒 Migrated JWT secret to stable location: ${secretFilePath}`);
             } catch (e) {
                 console.warn("⚠️ Could not migrate JWT secret:", e);
             }
         } else {
             jwtSecret = crypto.randomBytes(32).toString("hex");
             try {
-                (fs.existsSync(dbDir) ? Promise.resolve() : fs.promises.mkdir(dbDir, { recursive: true }))
-                    .then(() => fs.promises.writeFile(secretFilePath, jwtSecret as string, { mode: 0o600 }))
-                    .then(() => console.log(`🔒 Generated new JWT secret and saved to ${secretFilePath} (restricted permissions)`))
-                    .catch((err) => console.warn("⚠️  Could not save JWT secret to file, sessions may be lost on restart:", err));
+                try {
+                    await fs.promises.access(dbDir);
+                } catch {
+                    await fs.promises.mkdir(dbDir, { recursive: true });
+                }
+                await fs.promises.writeFile(secretFilePath, jwtSecret, { mode: 0o600 });
+                console.log(`🔒 Generated new JWT secret and saved to ${secretFilePath} (restricted permissions)`);
             } catch (err) {
                 console.warn("⚠️  Could not save JWT secret to file, sessions may be lost on restart:", err);
             }

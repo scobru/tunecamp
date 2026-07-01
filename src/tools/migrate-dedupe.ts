@@ -54,7 +54,7 @@ Options:
     console.log(`========================================`);
     if (isDryRun) console.log(`🧪 DRY RUN - No changes will be saved\n`);
 
-    const config = loadConfig();
+    const config = await loadConfig();
     const dbPath = dbArg || config.dbPath;
     const musicPathRaw = musicDirArg || config.musicDir;
     const musicDir = path.resolve(musicPathRaw);
