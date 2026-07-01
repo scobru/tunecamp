@@ -50,7 +50,7 @@ export interface ServerConfig {
 /**
  * Load server configuration from environment variables or defaults
  */
-export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
+export async function loadConfig(overrides?: Partial<ServerConfig>): Promise<ServerConfig> {
     const defaultDbPath = path.join(process.cwd(), "tunecamp.db");
     const defaultMusicDir = path.join(process.cwd(), "music");
 
@@ -63,11 +63,23 @@ export function loadConfig(overrides?: Partial<ServerConfig>): ServerConfig {
         const secretFilePath = path.join(dbDir, '.jwt-secret');
         const legacySecretPath = path.join(process.cwd(), '.jwt-secret');
 
-        if (fs.existsSync(secretFilePath)) {
-            jwtSecret = fs.readFileSync(secretFilePath, 'utf-8').trim();
-        } else if (fs.existsSync(legacySecretPath)) {
+        let secretFileExists = false;
+        try {
+            await fs.promises.access(secretFilePath);
+            secretFileExists = true;
+        } catch {}
+
+        let legacySecretExists = false;
+        try {
+            await fs.promises.access(legacySecretPath);
+            legacySecretExists = true;
+        } catch {}
+
+        if (secretFileExists) {
+            jwtSecret = (await fs.promises.readFile(secretFilePath, 'utf-8')).trim();
+        } else if (legacySecretExists) {
             // Migration: Move legacy secret to new stable location
-            jwtSecret = fs.readFileSync(legacySecretPath, 'utf-8').trim();
+            jwtSecret = (await fs.promises.readFile(legacySecretPath, 'utf-8')).trim();
             try {
                 fs.promises.writeFile(secretFilePath, jwtSecret)
                     .then(() => console.log(`🔒 Migrated JWT secret to stable location: ${secretFilePath}`))

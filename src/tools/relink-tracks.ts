@@ -39,7 +39,7 @@ async function main() {
     const dbOverride = dbArgIdx !== -1 ? args[dbArgIdx + 1] : null;
     const musicOverride = musicArgIdx !== -1 ? args[musicArgIdx + 1] : null;
 
-    const config = loadConfig();
+    const config = await loadConfig();
     const dbPath = dbOverride || config.dbPath;
     const musicDir = path.resolve(musicOverride || config.musicDir).replace(/\\/g, '/');
 

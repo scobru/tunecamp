@@ -14,7 +14,7 @@ async function main() {
   const targetDir = args[0] ? path.resolve(args[0]) : path.resolve('./backups');
   
   try {
-    const config = loadConfig();
+    const config = await loadConfig();
     const dbPath = path.resolve(config.dbPath);
 
     if (!await fs.pathExists(dbPath)) {
