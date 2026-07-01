@@ -270,10 +270,8 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
             if (album?.cover_path) {
                 imagePath = album.cover_path;
             } else {
-                const tracks = db.getTracksByAlbum(albumId);
-                for (const track of tracks) {
-                    if (track.external_artwork) { imagePath = track.external_artwork; break; }
-                }
+                const artwork = db.getTrackArtworkByAlbum(albumId);
+                if (artwork) imagePath = artwork;
             }
         } else if (id.startsWith('tr_')) {
             const track = db.getTrack(parseInt(id.substring(3)));

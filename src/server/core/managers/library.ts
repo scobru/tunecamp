@@ -93,6 +93,7 @@ export function createLibraryManager(
         // Tracks
         getTracks: (aid?: number, p?: VisibilityProfile | ViewerContext) => aid ? trackRepository.getByAlbumId(aid, p) : trackRepository.getAll(p),
         getTracksByAlbum: (aid: number, p?: VisibilityProfile | ViewerContext) => trackRepository.getByAlbumId(aid, p),
+        getTrackArtworkByAlbum: (aid: number, p?: VisibilityProfile | ViewerContext) => trackRepository.getTrackArtworkByAlbumId(aid, p),
         getTracksByArtist: (aid: number, p?: VisibilityProfile | ViewerContext, n?: string) => trackRepository.getByArtist(aid, p, n),
         repairArtistLinks(aid: number, n: string) { return db.transaction(() => ({ tracks: db.prepare("UPDATE tracks SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND (artist_name LIKE ? OR artist_name = ?)").run(aid, n, aid, `%${n}%`, n).changes, albums: db.prepare("UPDATE albums SET artist_id = ? WHERE (artist_id IS NULL OR artist_id IN (SELECT id FROM artists WHERE name LIKE ? AND id != ?)) AND (title = ? OR title LIKE ?)").run(aid, n, aid, n, `%${n}%`).changes }))(); },
         getTracksByOwner: (oid: number, p?: VisibilityProfile | ViewerContext) => trackRepository.getByOwner(oid, p),
