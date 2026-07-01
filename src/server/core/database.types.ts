@@ -577,6 +577,7 @@ export interface LibraryManager {
     updateTrackOwner(id: number, oid: number | null): void;
     getTracksByReleaseId(releaseId: number): Track[];
     getReleasesByTrackId(trackId: number): Release[];
+    isPublicReleaseTrack(trackId: number): boolean;
     updateReleaseTrackMetadata(releaseId: number, trackId: number, metadata: Partial<ReleaseTrack>): void;
     getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined;
     getTracksSummaryByReleaseId(releaseId: number): Track[];

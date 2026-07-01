@@ -72,9 +72,10 @@ const NowListening = () => {
             <div className="card bg-base-200 border border-base-content/5 shadow-level-1 max-w-xl">
                 <div className="card-body py-4 flex-row items-center justify-between gap-4">
                     <div>
-                        <p className="font-bold text-sm">Share what I'm listening to</p>
+                        <p className="font-bold text-sm">Share what I'm listening to publicly</p>
                         <p className="text-xs opacity-60">
-                            When on, your current track appears here for other members. Off by default.
+                            When on, your current track (public releases only) appears here and on the
+                            public network feed, with your name and avatar. Off by default.
                         </p>
                     </div>
                     <input

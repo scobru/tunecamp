@@ -11,6 +11,19 @@ export class TrackRepository {
         this.getTrackStmt = this.db.prepare(`${baseSelect} WHERE id = ?`);
     }
 
+    /**
+     * True only for tracks belonging to a publicly-released release (never private library
+     * tracks). Gates what "now listening" is allowed to leak to the open network. Mirrors the
+     * album PUBLIC_CONDITION (visibility public/unlisted + status released) plus is_release.
+     */
+    isPublicReleaseTrack(id: number): boolean {
+        return !!this.db.prepare(
+            `SELECT 1 FROM tracks t JOIN albums a ON t.album_id = a.id
+             WHERE t.id = ? AND a.is_release = 1 AND a.status = 'released'
+               AND a.visibility IN ('public','unlisted') LIMIT 1`
+        ).get(id);
+    }
+
     getByMetadata(title: string, artistId: number | null, albumId: number | null): Track | undefined {
         const row = this.db.prepare("SELECT * FROM v_tracks WHERE LOWER(title) = LOWER(?) AND (artist_id = ? OR (artist_id IS NULL AND ? IS NULL)) AND (album_id = ? OR (album_id IS NULL AND ? IS NULL))").get(title, artistId, artistId, albumId, albumId);
         return this.mapTrack(row);
