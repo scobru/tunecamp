@@ -73,6 +73,7 @@ import { createUnlockRoutes } from "./routes/api/unlock.js";
 import { createPaymentsRoutes } from "./routes/api/payments.js";
 import { ActivityPubService, createActivityPubService } from "./modules/activitypub/activitypub.service.js";
 import { createActivityPubRoutes } from "./routes/network/activitypub.js";
+import { createAccountMigrationRoutes } from "./routes/network/account-migration.js";
 import { createPublishingService } from "./modules/publishing/publishing.service.js";
 import { LifecycleService } from "./modules/catalog/lifecycle.service.js";
 import { createLifecycleRoutes } from "./routes/api/lifecycle.js";
@@ -479,6 +480,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(container));
     app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(container));
     app.use("/api/ap", createActivityPubRoutes(container));
+    app.use("/api/account", authMiddleware.requireUser, createAccountMigrationRoutes(container));
     app.use("/api/proxy", createProxyRoutes(container));
     app.use("/api/admin/tasks", authMiddleware.requireAdmin, createTaskRoutes(container));
     app.use("/api/search", authMiddleware.optionalAuth, createSearchRoutes(container));
