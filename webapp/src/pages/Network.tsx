@@ -505,13 +505,16 @@ const Network = () => {
         }
         setStatus(statusData);
 
-        // Deduplicate Sites
+        // Deduplicate Sites by hostname — the same instance can be registered
+        // under multiple URL forms (http vs https, trailing path variants),
+        // which a URL-string key would miss.
         const uniqueSites = new Map();
         sitesData.forEach((s: any) => {
           if (!s.url || !s.url.startsWith("http")) return;
           const normalizedUrl = s.url.replace(/\/$/, "");
-          if (!uniqueSites.has(normalizedUrl)) {
-            uniqueSites.set(normalizedUrl, { ...s, url: normalizedUrl });
+          const key = getHostname(normalizedUrl);
+          if (!uniqueSites.has(key)) {
+            uniqueSites.set(key, { ...s, url: normalizedUrl });
           }
         });
         const sites = Array.from(uniqueSites.values()) as NetworkSite[];

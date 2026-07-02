@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.10.1] - 2026-07-02
+
+### Fixed
+- **Duplicate instance cards on the Network page**: the "Instances" tab deduplicated remote sites by full URL, so the same instance registered under different URL forms (http vs https, trailing path variants) showed up as separate cards. Dedup now keys on hostname.
+
 ## [2.10.0] - 2026-07-02
 
 ### Added
