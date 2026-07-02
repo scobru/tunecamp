@@ -79,10 +79,11 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
      * GET /api/community/activity?limit=30
      * Public activity feed — likes, purchases, public playlists and releases,
      * newest first. Only events on *published public releases* (and public
-     * playlists) are exposed; private library items never appear. No actor
-     * identity is included for likes/purchases (there is no opt-in for those,
-     * unlike now-playing); playlists carry their creator's username because a
-     * public playlist is a deliberate publication.
+     * playlists) are exposed; private library items never appear. Actor
+     * identity (username) is included for likes and playlists only when that
+     * user opted into a public profile (`admin.public_profile_enabled`), so
+     * every name shown federatedly resolves to a working `/u/:username` page.
+     * Purchases never carry an actor (unlock codes have no account identity).
      */
     router.get("/activity", (req, res) => {
         try {
@@ -95,18 +96,20 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
             const rows = dbService.db.prepare(`
                 SELECT * FROM (
                     SELECT 'like' AS type, s.created_at AS ts, a.title AS title,
-                           COALESCE(ar.name, a.album_artist) AS artist, a.slug AS slug, a.cover_path AS cover, NULL AS user
+                           COALESCE(ar.name, a.album_artist) AS artist, a.slug AS slug, a.cover_path AS cover, pu.username AS user
                     FROM starred_items s
                     JOIN albums a ON a.id = CAST(s.item_id AS INTEGER)
                     LEFT JOIN artists ar ON ar.id = a.artist_id
+                    LEFT JOIN admin pu ON pu.username = s.username COLLATE NOCASE AND pu.public_profile_enabled = 1
                     WHERE s.item_type = 'album' AND ${PUB}
                     UNION ALL
                     SELECT 'like', s.created_at, t.title,
-                           COALESCE(t.artist_name, ar.name), a.slug, a.cover_path, NULL
+                           COALESCE(t.artist_name, ar.name), a.slug, a.cover_path, pu.username
                     FROM starred_items s
                     JOIN tracks t ON t.id = CAST(s.item_id AS INTEGER)
                     JOIN albums a ON a.id = t.album_id
                     LEFT JOIN artists ar ON ar.id = a.artist_id
+                    LEFT JOIN admin pu ON pu.username = s.username COLLATE NOCASE AND pu.public_profile_enabled = 1
                     WHERE s.item_type = 'track' AND ${PUB}
                     UNION ALL
                     SELECT 'purchase', u.created_at, a.title,
@@ -116,8 +119,9 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
                     LEFT JOIN artists ar ON ar.id = a.artist_id
                     WHERE u.tx_hash IS NOT NULL AND ${PUB}
                     UNION ALL
-                    SELECT 'playlist', p.created_at, p.name, NULL, NULL, NULL, p.username
+                    SELECT 'playlist', p.created_at, p.name, NULL, NULL, NULL, pu.username
                     FROM playlists p
+                    LEFT JOIN admin pu ON pu.username = p.username COLLATE NOCASE AND pu.public_profile_enabled = 1
                     WHERE p.is_public = 1
                     UNION ALL
                     SELECT 'release', COALESCE(a.published_at, a.created_at), a.title,

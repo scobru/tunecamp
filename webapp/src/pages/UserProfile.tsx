@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Heart, ListMusic, User, Disc, Palette } from "lucide-react";
+import { Heart, ListMusic, User, Disc, Palette, Settings } from "lucide-react";
 import API, { type PublicProfile } from "../services/api";
+import { useAuthStore } from "../stores/useAuthStore";
 
 /**
  * Public listener profile at /u/:username. Shows only opt-in, public-safe data
@@ -10,9 +11,14 @@ import API, { type PublicProfile } from "../services/api";
  */
 const UserProfile = () => {
   const { username } = useParams();
+  const { user: currentUser } = useAuthStore();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [notAvailable, setNotAvailable] = useState(false);
+  const isOwnProfile =
+    !!currentUser?.username &&
+    !!username &&
+    currentUser.username.toLowerCase() === username.toLowerCase();
 
   useEffect(() => {
     if (!username) return;
@@ -29,6 +35,24 @@ const UserProfile = () => {
   }
 
   if (notAvailable || !profile) {
+    if (isOwnProfile) {
+      // The viewer is looking at their own (private) profile: explain why it
+      // 404s publicly and point them at the opt-in toggle instead of a dead end.
+      return (
+        <div className="p-12 text-center opacity-90 animate-fade-in max-w-md mx-auto">
+          <User size={48} className="mx-auto mb-4 text-primary opacity-50" />
+          <h2 className="text-xl font-bold mb-2">Your profile is private</h2>
+          <p className="opacity-60 mb-6">
+            This is your public profile page, but it's currently switched off, so
+            visitors see "Profile not available". Enable "Public Profile" in your
+            settings to make it visible here and on the network.
+          </p>
+          <Link to="/profile" className="btn btn-primary btn-sm gap-2">
+            <Settings size={14} /> Open profile settings
+          </Link>
+        </div>
+      );
+    }
     return (
       <div className="p-12 text-center opacity-70 animate-fade-in max-w-md mx-auto">
         <User size={48} className="mx-auto mb-4 text-primary opacity-50" />
