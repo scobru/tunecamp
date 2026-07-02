@@ -92,6 +92,10 @@ export interface AuthService {
     getNowPlayingEnabled(userId: number): boolean;
     /** Sets the user's "now listening" opt-in flag. */
     setNowPlayingEnabled(userId: number, enabled: boolean): void;
+    /** Whether the user opted into a public listener profile at /u/:username. */
+    getPublicProfileEnabled(userId: number): boolean;
+    /** Sets the user's public-profile opt-in flag. */
+    setPublicProfileEnabled(userId: number, enabled: boolean): void;
 }
 
 export function createAuthService(
@@ -549,6 +553,15 @@ export function createAuthService(
 
         setNowPlayingEnabled(userId: number, enabled: boolean): void {
             db.prepare("UPDATE admin SET now_playing_enabled = ? WHERE id = ?").run(enabled ? 1 : 0, userId);
+        },
+
+        getPublicProfileEnabled(userId: number): boolean {
+            const row = db.prepare("SELECT public_profile_enabled FROM admin WHERE id = ?").get(userId) as { public_profile_enabled: number } | undefined;
+            return !!row?.public_profile_enabled;
+        },
+
+        setPublicProfileEnabled(userId: number, enabled: boolean): void {
+            db.prepare("UPDATE admin SET public_profile_enabled = ? WHERE id = ?").run(enabled ? 1 : 0, userId);
         },
 
         listAdmins(): { id: number; username: string; artist_id: number | null; artist_name: string | null; role: UserRole; storage_quota: number; is_active: number; created_at: string; is_root: boolean; can_peer: number }[] {

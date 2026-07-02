@@ -15,6 +15,7 @@ export function createUsersRoutes(container: ServiceContainer): Router {
     const authService = container.authService;
     const apService = container.apService;
     const database = container.database;
+    const config = container.config;
     const identity: ServiceContainer['identity'] = container.identity || (database as any).identity || database;
     const library = container.library;
     const router = Router();
@@ -170,6 +171,37 @@ export function createUsersRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * GET /api/users/me/public-profile - the caller's public-profile opt-in state.
+     */
+    router.get("/me/public-profile", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            const enabled = req.userId != null ? authService.getPublicProfileEnabled(req.userId) : false;
+            res.json({ enabled });
+        } catch (error) {
+            console.error("Public-profile preference error:", error);
+            res.status(500).json({ error: "Failed to get public-profile preference" });
+        }
+    });
+
+    /**
+     * PUT /api/users/me/public-profile - toggle the public-profile opt-in.
+     */
+    router.put("/me/public-profile", authMiddleware.requireUser, (req: AuthenticatedRequest, res) => {
+        try {
+            const { enabled } = req.body ?? {};
+            if (typeof enabled !== "boolean") {
+                return res.status(400).json({ error: "Field 'enabled' (boolean) is required" });
+            }
+            if (req.userId == null) return res.status(401).json({ error: "Unauthorized" });
+            authService.setPublicProfileEnabled(req.userId, enabled);
+            res.json({ enabled });
+        } catch (error) {
+            console.error("Public-profile toggle error:", error);
+            res.status(500).json({ error: "Failed to update public-profile preference" });
+        }
+    });
+
+    /**
      * GET /api/users/check/:username
      * Check if a username is available
      */
@@ -292,6 +324,97 @@ export function createUsersRoutes(container: ServiceContainer): Router {
         } catch (error) {
             console.error("Failed to delete API token:", error);
             res.status(500).json({ error: "Failed to delete API token" });
+        }
+    });
+
+    /**
+     * GET /api/users/:username/public
+     * Public listener profile. Returns 404 unless the user opted in
+     * (public_profile_enabled). Exposes only public-safe data: alias/avatar,
+     * a link to their artist page if they have one, likes on *publicly-released*
+     * tracks/albums (private library items never appear), and public playlists.
+     * Never exposes collection/purchases, wallet, API tokens, or email.
+     */
+    router.get("/:username/public", (req, res) => {
+        try {
+            const { username } = req.params;
+            const user = database.db.prepare(
+                "SELECT id, username, alias, avatar, role, artist_id, created_at, public_profile_enabled FROM admin WHERE username = ? COLLATE NOCASE"
+            ).get(username) as {
+                id: number; username: string; alias: string | null; avatar: string | null;
+                role: string; artist_id: number | null; created_at: string; public_profile_enabled: number;
+            } | undefined;
+
+            // Same 404 whether the user is missing or private - don't leak existence.
+            if (!user || !user.public_profile_enabled) {
+                return res.status(404).json({ error: "Profile not found" });
+            }
+
+            const base = (database.getSetting("publicUrl") || config.publicUrl || "").replace(/\/$/, "");
+            const coverUrl = (slug: string | null, cover: string | null) =>
+                slug && cover && base ? `${base}/api/albums/${slug}/cover` : null;
+
+            // Artist link, if this listener also has an artist profile.
+            let artist: { slug: string; name: string } | null = null;
+            if (user.artist_id != null) {
+                artist = database.db.prepare("SELECT slug, name FROM artists WHERE id = ?").get(user.artist_id) as { slug: string; name: string } | undefined ?? null;
+            }
+
+            // Liked public releases (albums + tracks), newest first.
+            const PUB = "a.is_release = 1 AND a.status = 'released' AND a.visibility = 'public'";
+            const likes = database.db.prepare(`
+                SELECT * FROM (
+                    SELECT s.created_at AS ts, a.title AS title,
+                           COALESCE(ar.name, a.album_artist) AS artist, a.slug AS slug, a.cover_path AS cover
+                    FROM starred_items s
+                    JOIN albums a ON a.id = CAST(s.item_id AS INTEGER)
+                    LEFT JOIN artists ar ON ar.id = a.artist_id
+                    WHERE s.username = ? COLLATE NOCASE AND s.item_type = 'album' AND ${PUB}
+                    UNION ALL
+                    SELECT s.created_at, t.title,
+                           COALESCE(t.artist_name, ar.name), a.slug, a.cover_path
+                    FROM starred_items s
+                    JOIN tracks t ON t.id = CAST(s.item_id AS INTEGER)
+                    JOIN albums a ON a.id = t.album_id
+                    LEFT JOIN artists ar ON ar.id = a.artist_id
+                    WHERE s.username = ? COLLATE NOCASE AND s.item_type = 'track' AND ${PUB}
+                ) ORDER BY ts DESC LIMIT 60
+            `).all(user.username, user.username) as { ts: string; title: string; artist: string | null; slug: string | null; cover: string | null }[];
+
+            // Public playlists with their track counts.
+            const playlists = database.db.prepare(`
+                SELECT p.id, p.name, p.description, p.cover_path AS cover, p.created_at,
+                       (SELECT COUNT(*) FROM playlist_tracks pt WHERE pt.playlist_id = p.id) AS trackCount
+                FROM playlists p
+                WHERE p.username = ? COLLATE NOCASE AND p.is_public = 1
+                ORDER BY p.created_at DESC
+            `).all(user.username) as { id: number; name: string; description: string | null; cover: string | null; created_at: string; trackCount: number }[];
+
+            res.json({
+                username: user.username,
+                alias: user.alias,
+                avatar: user.avatar,
+                role: user.role,
+                createdAt: user.created_at,
+                artist: artist ? { slug: artist.slug, name: artist.name, url: base ? `${base}/artists/${artist.slug}` : null } : null,
+                stats: { likes: likes.length, playlists: playlists.length },
+                likes: likes.map(l => ({
+                    title: l.title,
+                    artist: l.artist,
+                    url: l.slug && base ? `${base}/releases/${l.slug}` : null,
+                    cover: coverUrl(l.slug, l.cover),
+                })),
+                playlists: playlists.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    trackCount: p.trackCount,
+                })),
+                instance: { name: database.getSetting("siteName") || config.siteName || "TuneCamp Instance", url: base || null },
+            });
+        } catch (error) {
+            console.error("Public profile error:", error);
+            res.status(500).json({ error: "Failed to get public profile" });
         }
     });
 

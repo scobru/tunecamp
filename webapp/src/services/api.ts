@@ -703,6 +703,11 @@ const API = {
         handleResponse(api.post<any>('radio/start', config)),
     stopRadio: () => handleResponse(api.post<any>('radio/stop', {})),
 
+    // --- Public listener profile (opt-in) ---
+    getPublicProfile: (username: string) => handleResponse(api.get<PublicProfile>(`users/${encodeURIComponent(username)}/public`)),
+    getPublicProfilePref: () => handleResponse(api.get<{ enabled: boolean }>('users/me/public-profile')),
+    setPublicProfilePref: (enabled: boolean) => handleResponse(api.put<{ enabled: boolean }>('users/me/public-profile', { enabled })),
+
     // --- Now listening (opt-in presence) ---
     getNowListening: () => handleResponse(api.get<{ listeners: NowListeningEntry[] }>('now-playing')),
     getNowPlayingPref: () => handleResponse(api.get<{ enabled: boolean }>('now-playing/preference')),
@@ -734,6 +739,19 @@ const API = {
     getReports: () => handleResponse<Report[]>(api.get('admin/reports')),
     deleteReport: (id: number) => handleResponse<{ success: boolean }>(api.delete(`admin/reports/${id}`)),
 };
+
+export interface PublicProfile {
+    username: string;
+    alias: string | null;
+    avatar: string | null;
+    role: string;
+    createdAt: string;
+    artist: { slug: string; name: string; url: string | null } | null;
+    stats: { likes: number; playlists: number };
+    likes: { title: string; artist: string | null; url: string | null; cover: string | null }[];
+    playlists: { id: number; name: string; description: string | null; trackCount: number }[];
+    instance: { name: string; url: string | null };
+}
 
 export interface NowListeningEntry {
     username: string;
