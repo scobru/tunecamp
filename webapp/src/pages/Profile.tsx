@@ -105,6 +105,8 @@ const Profile = () => {
   const [artistRequestedAt, setArtistRequestedAt] = useState<string | null>(null);
   const [requestingArtist, setRequestingArtist] = useState(false);
   const [selfPublishEnabled, setSelfPublishEnabled] = useState(false);
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
+  const [savingPublicProfile, setSavingPublicProfile] = useState(false);
 
   // API Tokens State & Logic
   const [apiTokens, setApiTokens] = useState<any[]>([]);
@@ -167,6 +169,27 @@ const Profile = () => {
         .catch(() => {});
     }
   }, [isAuthenticated, hasArtistProfile]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      API.getPublicProfilePref()
+        .then((p) => setPublicProfileEnabled(p.enabled))
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
+
+  const handleTogglePublicProfile = async (enabled: boolean) => {
+    setSavingPublicProfile(true);
+    try {
+      await API.setPublicProfilePref(enabled);
+      setPublicProfileEnabled(enabled);
+      notify.success(enabled ? "Your profile is now public." : "Your profile is now private.");
+    } catch (e) {
+      notify.error(e, "Failed to update profile visibility");
+    } finally {
+      setSavingPublicProfile(false);
+    }
+  };
 
   const handleRequestArtist = async () => {
     setRequestingArtist(true);
@@ -516,6 +539,38 @@ const Profile = () => {
 
             {/* Security: change password (works for every authenticated user) */}
             <ChangePasswordCard />
+
+            {/* Public profile opt-in (off by default for privacy) */}
+            <div className="card bg-base-200 border border-base-content/10 p-6 space-y-4">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Globe size={20} className="text-primary" /> Public Profile
+              </h3>
+              <p className="text-sm opacity-60">
+                Let anyone view a public page with your name, avatar, public playlists,
+                and your likes on public releases. Your collection, purchases, wallet,
+                and settings are never shown. Off by default.
+              </p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary"
+                  checked={publicProfileEnabled}
+                  disabled={savingPublicProfile}
+                  onChange={(e) => handleTogglePublicProfile(e.target.checked)}
+                />
+                <span className="font-semibold">
+                  {publicProfileEnabled ? "My profile is public" : "My profile is private"}
+                </span>
+              </label>
+              {publicProfileEnabled && user?.username && (
+                <a
+                  href={`/u/${user.username}`}
+                  className="btn btn-outline btn-sm w-fit gap-2"
+                >
+                  <ArrowRight size={14} /> View my public profile
+                </a>
+              )}
+            </div>
 
             {/* Artist profile request (listeners without a linked artist) */}
             {!hasArtistProfile && (

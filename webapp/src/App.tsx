@@ -27,6 +27,7 @@ const MyPlaylistDetails = lazy(() => import("./pages/MyPlaylistDetails"));
 const Post = lazy(() => import("./pages/Post")); // Special case
 const Wallet = lazy(() => import("./pages/Wallet"));
 const Profile = lazy(() => import("./pages/Profile"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const MyMusic = lazy(() => import("./pages/MyMusic"));
 const Publish = lazy(() => import("./pages/Publish"));
@@ -220,6 +221,7 @@ function App() {
             <Route path="/stats" element={<Stats />} />
             <Route path="/wallet" element={<Wallet />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/my-music" element={<MyMusic />} />

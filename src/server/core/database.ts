@@ -916,6 +916,11 @@ export function createDatabase(dbPath: string): DatabaseService {
                 console.log("📦 [Database] Migrating admin table: adding can_peer column...");
                 db.exec("ALTER TABLE admin ADD COLUMN can_peer INTEGER NOT NULL DEFAULT 0");
             }
+            // Opt-in public listener profile at /u/:username (off by default for privacy).
+            if (!cols.some(col => col.name === 'public_profile_enabled')) {
+                console.log("[Database] Migrating admin table: adding public_profile_enabled column...");
+                db.exec("ALTER TABLE admin ADD COLUMN public_profile_enabled INTEGER DEFAULT 0");
+            }
             // Password reset via email (Brevo)
             if (!cols.some(col => col.name === 'email')) {
                 console.log("📦 [Database] Migrating admin table: adding email column...");

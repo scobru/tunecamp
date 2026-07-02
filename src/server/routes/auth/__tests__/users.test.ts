@@ -330,4 +330,52 @@ describe('Users Routes', () => {
             expect(library.createArtist).not.toHaveBeenCalled();
         });
     });
+    describe('GET /api/users/:username/public', () => {
+        const buildApp = (userRow: any, likes: any[] = [], playlists: any[] = []) => {
+            const db = {
+                getSetting: (k: string) => (k === 'publicUrl' ? 'https://inst.example' : 'Inst'),
+                db: {
+                    prepare: (sql: string) => {
+                        if (sql.includes('FROM admin')) return { get: () => userRow };
+                        if (sql.includes('FROM artists')) return { get: () => undefined };
+                        if (sql.includes('starred_items')) return { all: () => likes };
+                        if (sql.includes('playlists')) return { all: () => playlists };
+                        return { get: () => undefined, all: () => [] };
+                    },
+                },
+            };
+            const a = express();
+            a.use('/api/users', createUsersRoutes({
+                database: db, authService: mockAuthService, apService: mockAPService,
+                config: { publicUrl: 'https://inst.example', siteName: 'Inst' },
+            } as any));
+            return a;
+        };
+
+        test('returns 404 when the user has not opted in', async () => {
+            const res = await request(buildApp({ id: 1, username: 'bob', public_profile_enabled: 0 }))
+                .get('/api/users/bob/public');
+            expect(res.status).toBe(404);
+        });
+
+        test('returns 404 (not 500) when the user does not exist', async () => {
+            const res = await request(buildApp(undefined))
+                .get('/api/users/ghost/public');
+            expect(res.status).toBe(404);
+        });
+
+        test('returns only public-safe data when opted in', async () => {
+            const app2 = buildApp(
+                { id: 1, username: 'bob', alias: 'Bob', avatar: null, role: 'user', artist_id: null, created_at: '2026-01-01', public_profile_enabled: 1 },
+                [{ ts: '2026-06-01', title: 'Song', artist: 'A', slug: 'song', cover: 'c.jpg' }],
+                [{ id: 7, name: 'Mix', description: null, cover: null, created_at: '2026-05-01', trackCount: 3 }],
+            );
+            const res = await request(app2).get('/api/users/bob/public');
+            expect(res.status).toBe(200);
+            expect(res.body.username).toBe('bob');
+            expect(res.body.stats).toEqual({ likes: 1, playlists: 1 });
+            expect(res.body.playlists[0]).toEqual({ id: 7, name: 'Mix', description: null, trackCount: 3 });
+            expect(JSON.stringify(res.body)).not.toMatch(/wallet|token|password|email/i);
+        });
+    });
 });

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.0] - 2026-07-02
+
+### Added
+- **Public listener profiles at `/u/:username` (opt-in)**: any user can expose a public page showing their display name, avatar, public playlists, and likes on *publicly-released* tracks/albums, plus a link to their artist page if they have one. Off by default (privacy) - toggled from Profile -> Settings -> "Public Profile". Private surfaces (collection/purchases, wallet, API tokens, email) are never included.
+  - New column `admin.public_profile_enabled` (default 0) with `authService.get/setPublicProfileEnabled`.
+  - New endpoints: `GET/PUT /api/users/me/public-profile` (toggle) and unauthenticated `GET /api/users/:username/public`, which returns 404 for both missing and non-opted-in users (existence is not leaked). Likes are filtered to public releases via the same predicate as the community activity feed; playlists are limited to `is_public = 1`.
+  - The static website's "Live on the network" strip now links public-playlist activity to the creator's `/u/:username` on the origin instance.
+
 ## [2.8.0] - 2026-07-02
 
 ### Added
