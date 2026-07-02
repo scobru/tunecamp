@@ -29,6 +29,7 @@ import { usePlayerStore } from "../stores/usePlayerStore";
 import API from "../services/api";
 import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
+import AccountMigrationCard from "../components/AccountMigrationCard";
 import type { Track } from "../types";
 import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
@@ -839,6 +840,8 @@ const Profile = () => {
               )}
             </div>
           )}
+
+          <AccountMigrationCard />
           </div>
         )}
 
