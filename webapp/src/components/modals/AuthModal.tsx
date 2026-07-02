@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
 import API from '../../services/api';
 import { LogIn, UserPlus, Shield, KeyRound } from 'lucide-react';
@@ -220,6 +221,15 @@ export const AuthModal = () => {
                                         autoComplete="new-password"
                                     />
                                 </div>
+                            )}
+
+                            {mode === 'register' && (
+                                <p className="text-xs opacity-60 text-center">
+                                    By creating an account you agree to this instance's{' '}
+                                    <Link to="/terms" className="link" onClick={() => dialogRef.current?.close()}>Terms of Service</Link>
+                                    {' '}and{' '}
+                                    <Link to="/privacy" className="link" onClick={() => dialogRef.current?.close()}>Privacy Policy</Link>.
+                                </p>
                             )}
 
                     {(error || localError) && (

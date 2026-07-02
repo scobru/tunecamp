@@ -32,6 +32,7 @@ import {
   ChevronRight,
   FlaskConical,
   Info,
+  Scale,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -295,6 +296,7 @@ export const Sidebar = () => {
             <NavItem to="/admin" icon={Settings} label="Settings" />
           )}
           <NavItem to="/about" icon={Info} label="About" />
+          <NavItem to="/terms" icon={Scale} label="Legal" />
           <NavItem to="/guide" icon={BookOpen} label="Guide" />
           <NavItem to="/support" icon={LifeBuoy} label="Support" />
           <NavItem to="/tools" icon={Wrench} label="Tools" />

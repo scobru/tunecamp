@@ -10,6 +10,7 @@ import { Readable } from "node:stream";
 import { mapTrackDTO, mapAlbumDTO } from "./catalog.mappers.js";
 import { fetchSafe, drainResponse } from "../../common/network.js";
 import { isSafeUrl } from "../../../utils/networkUtils.js";
+import { buildDefaultTerms, buildDefaultPrivacy } from "./legal-templates.js";
 
 
 /**
@@ -434,6 +435,26 @@ export class CatalogService {
             }
         });
         return res;
+    }
+
+    /**
+     * Public legal pages (Terms of Service / Privacy Policy).
+     * Operators can override the built-in templates from Admin → Settings →
+     * Legal Pages; empty settings fall back to the defaults so every instance
+     * always serves both documents.
+     */
+    getLegalPages() {
+        const siteName = this.database.getSetting("siteName") || "TuneCamp";
+        const contactEmail = this.database.getSetting("legalContactEmail") || "";
+        const customTerms = this.database.getSetting("legalTerms") || "";
+        const customPrivacy = this.database.getSetting("legalPrivacy") || "";
+        return {
+            terms: customTerms.trim() || buildDefaultTerms(siteName, contactEmail),
+            privacy: customPrivacy.trim() || buildDefaultPrivacy(siteName, contactEmail),
+            contactEmail,
+            termsIsDefault: !customTerms.trim(),
+            privacyIsDefault: !customPrivacy.trim(),
+        };
     }
 
     getRemoteTracks() {
