@@ -290,6 +290,10 @@ const API = {
     initiateArtistMove: (artistId: string | number, targetActorUri: string) => handleResponse(api.post('ap/identity/move', { artistId, targetActorUri })),
     importArtistIdentity: (artistId: string | number, remoteActorUri: string) => handleResponse(api.post('ap/identity/import', { artistId, remoteActorUri })),
 
+    // --- Account migration (portable archive: profile link + playlists) ---
+    exportAccount: () => handleResponse(api.get<any>('account/export')),
+    importAccount: (archive: any) => handleResponse(api.post<{ imported_playlists: number; imported_tracks: number; skipped_tracks: number; skipped: { playlist: string; title: string; artist: string }[]; identity_linked: boolean; identity_note?: string }>('account/import', archive)),
+
     // --- Network ---
     getNetworkSites: () => handleResponse(api.get<NetworkSite[]>('stats/network/sites')),
     getNetworkTracks: () => handleResponse(api.get<NetworkTrack[]>('stats/network/tracks')),
