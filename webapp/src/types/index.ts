@@ -297,6 +297,21 @@ export interface SiteSettings {
     peerFederation?: boolean | string;
     brandPrimary?: string;
     brandAccent?: string;
+    /** Custom Terms of Service (Markdown). Empty = built-in template. */
+    legalTerms?: string;
+    /** Custom Privacy Policy (Markdown). Empty = built-in template. */
+    legalPrivacy?: string;
+    /** Contact shown in the legal pages (and their default templates). */
+    legalContactEmail?: string;
+}
+
+/** Public payload of GET /api/catalog/legal. */
+export interface LegalPages {
+    terms: string;
+    privacy: string;
+    contactEmail: string;
+    termsIsDefault: boolean;
+    privacyIsDefault: boolean;
 }
 
 export interface LiveSession {

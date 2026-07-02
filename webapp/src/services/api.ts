@@ -4,7 +4,7 @@ import type {
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
     StorageAccount, GoogleDriveFile, InstanceStorage, RecomputeStorageResult, SystemResources,
     DigStrategy, DigSearchResult, DigResult, DigSession, DigCrateItem, DigCrateInput, DigHistoryItem,
-    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report
+    LiveSession, ArtistEvent, ArtistEventInput, LabAppRecord, Report, LegalPages
 } from '../types';
 
 const API_URL = '/api';
@@ -87,6 +87,7 @@ const API = {
     // --- Catalog & Search ---
     getCatalog: () => handleResponse(api.get<any>('catalog')),
     getSiteSettings: () => handleResponse(api.get<SiteSettings>('catalog/settings')),
+    getLegalPages: () => handleResponse(api.get<LegalPages>('catalog/legal')),
     getGenres: () => handleResponse(api.get<string[]>('catalog/genres')),
     search: (query: string) => handleResponse(api.get<any>(`catalog/search?q=${encodeURIComponent(query)}`)),
     globalSearch: (query: string) => handleResponse(api.get<any>(`search/global?q=${encodeURIComponent(query)}`)),

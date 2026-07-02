@@ -393,6 +393,7 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 google_drive_client_secret,
                 themeFont, themeBlur, themeOverlayOpacity,
                 communityLink,
+                legalTerms, legalPrivacy, legalContactEmail,
                 web3Enabled,
                 chatEnabled,
                 boardEnabled,
@@ -525,6 +526,18 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (communityLink !== undefined) {
                 identity.setSetting("communityLink", communityLink);
+                settingsChanged = true;
+            }
+            if (legalTerms !== undefined) {
+                identity.setSetting("legalTerms", legalTerms);
+                settingsChanged = true;
+            }
+            if (legalPrivacy !== undefined) {
+                identity.setSetting("legalPrivacy", legalPrivacy);
+                settingsChanged = true;
+            }
+            if (legalContactEmail !== undefined) {
+                identity.setSetting("legalContactEmail", legalContactEmail);
                 settingsChanged = true;
             }
             if (req.body.registryPubkey !== undefined) {

@@ -101,6 +101,19 @@ export function createCatalogRoutes(container: ServiceContainer): Router {
     });
 
     /**
+     * GET /api/catalog/legal
+     * Public Terms of Service and Privacy Policy (custom or built-in default)
+     */
+    router.get("/legal", (_req: any, res) => {
+        try {
+            res.json(catalogService.getLegalPages());
+        } catch (error) {
+            console.error("Error getting legal pages:", error);
+            res.status(500).json({ error: "Failed to fetch legal pages" });
+        }
+    });
+
+    /**
      * GET /api/catalog/genres
      */
     router.get("/genres", (req: any, res) => {

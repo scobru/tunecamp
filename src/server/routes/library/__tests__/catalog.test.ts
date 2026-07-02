@@ -8,6 +8,7 @@ import type { DiscoveryService } from '../../../modules/catalog/discovery.servic
 // Mock dependencies
 const mockCatalogService = {
     getSettings: jest.fn(),
+    getLegalPages: jest.fn(),
     getRemoteTracks: jest.fn(),
     getRemotePosts: jest.fn(),
 } as unknown as CatalogService;
@@ -95,6 +96,35 @@ describe('Catalog Routes', () => {
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(mockSettings);
+        });
+    });
+
+    describe('GET /catalog/legal', () => {
+        test('should return legal pages from service', async () => {
+            const mockLegal = {
+                terms: '# Terms of Service',
+                privacy: '# Privacy Policy',
+                contactEmail: 'legal@example.com',
+                termsIsDefault: true,
+                privacyIsDefault: false,
+            };
+            (mockCatalogService.getLegalPages as jest.Mock).mockReturnValue(mockLegal);
+
+            const response = await request(app).get('/catalog/legal');
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(mockLegal);
+        });
+
+        test('should handle errors and return 500', async () => {
+            (mockCatalogService.getLegalPages as jest.Mock).mockImplementation(() => {
+                throw new Error('Service Error');
+            });
+
+            const response = await request(app).get('/catalog/legal');
+
+            expect(response.status).toBe(500);
+            expect(response.body).toEqual({ error: 'Failed to fetch legal pages' });
         });
     });
 });

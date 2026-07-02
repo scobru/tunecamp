@@ -1,7 +1,7 @@
 declare const __APP_VERSION__: string;
 import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy, Trash2, RotateCcw } from "lucide-react";
+import { Save, CheckCircle2, Palette, Cog, Layout, Wallet, Shield, OctagonAlert, Eye, EyeOff, Copy, Trash2, RotateCcw, Scale } from "lucide-react";
 import type { SiteSettings } from "../../types";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { TuneCampFactory, TuneCampCheckout } from "shogun-contracts-sdk";
@@ -10,7 +10,7 @@ import { applyThemeFont } from "../../utils/themeFont";
 export const AdminSettingsPanel = () => {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(false);
-  const [subTab, setSubTab] = useState<"general" | "features" | "branding" | "payments" | "security">("general");
+  const [subTab, setSubTab] = useState<"general" | "features" | "branding" | "payments" | "legal" | "security">("general");
   const [message, setMessage] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -226,6 +226,7 @@ export const AdminSettingsPanel = () => {
     { id: "features", label: "Customize Modules", icon: Cog },
     { id: "branding", label: "Branding & Theme", icon: Palette },
     { id: "payments", label: "Payments & Web3", icon: Wallet },
+    { id: "legal", label: "Legal Pages", icon: Scale },
     { id: "security", label: "Security & Keys", icon: Shield },
   ];
 
@@ -1110,6 +1111,63 @@ export const AdminSettingsPanel = () => {
                     </button>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Legal Pages */}
+          {subTab === "legal" && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex items-center gap-2 mb-4 text-primary/80 border-b border-base-content/5 pb-2">
+                <Scale size={20} />
+                <h4 className="font-bold text-base tracking-normal">Legal Pages</h4>
+              </div>
+
+              <p className="text-sm opacity-60">
+                Your instance serves a Terms of Service page at <a href="/terms" target="_blank" rel="noopener noreferrer" className="link">/terms</a> and
+                a Privacy Policy at <a href="/privacy" target="_blank" rel="noopener noreferrer" className="link">/privacy</a>.
+                Leave a field empty to serve the built-in template for this instance. As the operator you are the service
+                provider and data controller — review the templates (ideally with a lawyer) and adapt them to your jurisdiction.
+              </p>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Legal Contact Email</span>
+                </label>
+                <input
+                  type="email"
+                  className="input input-bordered bg-base-300/50 w-full"
+                  value={settings.legalContactEmail || ""}
+                  onChange={(e) => setSettings({ ...settings, legalContactEmail: e.target.value })}
+                  placeholder="legal@yourdomain.com"
+                />
+                <label className="label">
+                  <span className="label-text-alt opacity-40">Shown in the default templates as the contact for takedown requests and privacy rights (GDPR).</span>
+                </label>
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Terms of Service (Markdown)</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered bg-base-300/50 h-64 w-full font-mono text-xs"
+                  value={settings.legalTerms || ""}
+                  onChange={(e) => setSettings({ ...settings, legalTerms: e.target.value })}
+                  placeholder="Leave empty to use the built-in Terms of Service template."
+                />
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium text-sm">Privacy Policy (Markdown)</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered bg-base-300/50 h-64 w-full font-mono text-xs"
+                  value={settings.legalPrivacy || ""}
+                  onChange={(e) => setSettings({ ...settings, legalPrivacy: e.target.value })}
+                  placeholder="Leave empty to use the built-in Privacy Policy template."
+                />
               </div>
             </div>
           )}
