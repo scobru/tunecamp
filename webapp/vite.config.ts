@@ -38,6 +38,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Default 'forks' pool times out spawning workers on Windows; threads work everywhere.
+    pool: 'threads',
   },
   build: {
     rollupOptions: {
