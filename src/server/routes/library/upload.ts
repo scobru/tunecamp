@@ -160,7 +160,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
         mw(req, res, (err: any) => {
             if (!err) return next();
             const message = err.code === "LIMIT_FILE_SIZE"
-                ? "File too large (max 25MB)"
+                ? "File too large (max 1GB)"
                 : err.message || "Upload rejected";
             res.status(400).json({ error: message });
         });
