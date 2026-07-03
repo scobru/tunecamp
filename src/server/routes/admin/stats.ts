@@ -258,9 +258,12 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const formattedLocalReleases = localReleases.map(r => {
                 const tracks = dbService.getTracksByReleaseId(r.id);
                 const firstTrack = tracks[0];
-                const torrent = (dbService as any).db
-                    .prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE AND status IN ('seeding', 'completed') AND magnet_uri IS NOT NULL")
-                    .get(r.title) as { magnet_uri: string } | undefined;
+                let torrent: { magnet_uri: string } | undefined;
+                try {
+                    torrent = (dbService as any).db
+                        .prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE AND status IN ('seeding', 'completed') AND magnet_uri IS NOT NULL")
+                        .get(r.title) as { magnet_uri: string } | undefined;
+                } catch { /* best effort */ }
                 return {
                     slug: r.slug,
                     title: r.title,
