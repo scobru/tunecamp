@@ -36,10 +36,6 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
                 coverImage: dbService.getSetting("coverImage") || null,
                 artistName: dbService.getSetting("artistName") || null,
                 communityLink: dbService.getSetting("communityLink") || null,
-                // Registry key-binding: the pubkey this instance signs its
-                // tunecamp-registry record with. The registry validator matches it
-                // against the record's signer to mark the instance "key-bound".
-                registryPubkey: dbService.getSetting("registryPubkey") || null,
             });
         } catch (error) {
             console.error("Error building community instance metadata:", error);

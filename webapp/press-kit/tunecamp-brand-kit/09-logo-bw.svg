@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260" viewBox="0 0 900 260">
+<defs>
+<mask id="tentMask">
+<rect x="0" y="0" width="680" height="680" fill="black"/>
+<polygon points="340,140 500,560 180,560" fill="white"/>
+<line x1="340" y1="140" x2="340" y2="460" stroke="black" stroke-width="6"/>
+<polygon points="340,460 380,560 300,560" fill="black"/>
+<g fill="white">
+<rect x="322" y="525" width="8" height="30"/>
+<rect x="336" y="505" width="8" height="50"/>
+<rect x="350" y="525" width="8" height="30"/>
+</g>
+</mask>
+</defs>
+<g transform="translate(10,10) scale(0.35)">
+<rect x="0" y="0" width="680" height="680" fill="#000000" mask="url(#tentMask)"/>
+</g>
+<text x="270" y="160" font-family="'IBM Plex Mono','Courier New',monospace" font-size="90" font-weight="500" letter-spacing="2" fill="#000000">tunecamp</text>
+</svg>

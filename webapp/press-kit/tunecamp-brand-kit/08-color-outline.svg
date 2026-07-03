@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="680" viewBox="0 0 680 680">
+<defs>
+<mask id="tentMask">
+<rect x="0" y="0" width="680" height="680" fill="black"/>
+<polygon points="340,140 500,560 180,560" fill="white"/>
+<line x1="340" y1="140" x2="340" y2="460" stroke="black" stroke-width="6"/>
+<polygon points="340,460 380,560 300,560" fill="black"/>
+<g fill="white">
+<rect x="322" y="525" width="8" height="30"/>
+<rect x="336" y="505" width="8" height="50"/>
+<rect x="350" y="525" width="8" height="30"/>
+</g>
+</mask>
+</defs>
+<circle cx="340" cy="340" r="320" fill="none" stroke="#e0793c" stroke-width="8"/>
+<rect x="0" y="0" width="680" height="680" fill="#e0793c" mask="url(#tentMask)"/>
+</svg>

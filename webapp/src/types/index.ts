@@ -258,8 +258,6 @@ export interface SiteSettings {
     backgroundImage?: string;
     themeFont?: string;
     communityLink?: string;
-    /** Pubkey this instance signs its tunecamp-registry record with (key-binding). */
-    registryPubkey?: string;
     themeBlur?: string;
     themeOverlayOpacity?: string | number;
     donationLinks?: ArtistLink[];

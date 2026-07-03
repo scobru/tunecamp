@@ -109,9 +109,4 @@ describe('Community activity feed', () => {
         expect(res.body.events).toHaveLength(2);
     });
 
-    test('instance metadata exposes registryPubkey (null until set)', async () => {
-        const res = await request(app).get('/api/community/instance');
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('registryPubkey', null);
-    });
 });
