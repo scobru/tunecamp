@@ -60,4 +60,20 @@ describe('Misc Routes Security', () => {
         // We expect it to try to send the file. If it doesn't exist, it will return 404, not 403.
         expect(response.status).toBe(404);
     });
+
+    it('should prevent path traversal via absolute path in post media', async () => {
+        const response = await request(app).get('/api/posts/media/%2Fetc%2Fpasswd');
+        expect(response.status).toBe(400);
+    });
+
+    it('should prevent path traversal via relative path in post media', async () => {
+        const response = await request(app).get('/api/posts/media/..%2F..%2Fetc%2Fpasswd');
+        expect(response.status).toBe(400);
+    });
+
+    it('should serve valid post media paths', async () => {
+        const response = await request(app).get('/api/posts/media/image.jpg');
+        // File doesn't exist but filename is valid
+        expect(response.status).toBe(404);
+    });
 });
