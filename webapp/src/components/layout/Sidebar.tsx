@@ -197,9 +197,7 @@ export const Sidebar = () => {
             {siteLogo ? (
               <img src={siteLogo} alt={siteName} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <Music className="text-primary-content w-5 h-5" />
-              </div>
+              <img src="/logo.svg" alt="TuneCamp" className="w-full h-full object-cover" />
             )}
           </div>
           {!sidebarCollapsed && (
