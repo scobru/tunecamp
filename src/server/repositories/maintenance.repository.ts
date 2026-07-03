@@ -257,18 +257,22 @@ export class MaintenanceRepository {
             .map(r => r.tbl);
     }
 
-    mergeArtists(fromId: number, keepId: number, tablesWithArtistId: string[]): void {
+    mergeArtistsBulk(fromIds: number[], keepId: number, tablesWithArtistId: string[]): void {
         this.db.transaction(() => {
-            for (const tbl of tablesWithArtistId) {
-                try {
-                    this.db.prepare(`UPDATE OR IGNORE ${tbl} SET artist_id = ? WHERE artist_id = ?`).run(keepId, fromId);
-                    this.db.prepare(`DELETE FROM ${tbl} WHERE artist_id = ?`).run(fromId);
-                } catch (e) {
-                    // Ignore missing tables or constraints during automated merge
+            for (let i = 0; i < fromIds.length; i += 900) {
+                const chunk = fromIds.slice(i, i + 900);
+                const placeholders = chunk.map(() => '?').join(',');
+                for (const tbl of tablesWithArtistId) {
+                    try {
+                        this.db.prepare(`UPDATE OR IGNORE ${tbl} SET artist_id = ? WHERE artist_id IN (${placeholders})`).run(keepId, ...chunk);
+                        this.db.prepare(`DELETE FROM ${tbl} WHERE artist_id IN (${placeholders})`).run(...chunk);
+                    } catch (e) {
+                        // Ignore missing tables or constraints during automated merge
+                    }
                 }
+                this.db.prepare(`UPDATE admin SET artist_id = ? WHERE artist_id IN (${placeholders})`).run(keepId, ...chunk);
+                this.db.prepare(`DELETE FROM artists WHERE id IN (${placeholders})`).run(...chunk);
             }
-            this.db.prepare("UPDATE admin SET artist_id = ? WHERE artist_id = ?").run(keepId, fromId);
-            this.db.prepare("DELETE FROM artists WHERE id = ?").run(fromId);
         })();
     }
 }

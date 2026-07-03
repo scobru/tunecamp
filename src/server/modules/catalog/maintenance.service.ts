@@ -854,9 +854,9 @@ export class MaintenanceService {
                 if (ids.length > 1) {
                     const keepId = Math.min(...ids);
                     const mergeIds = ids.filter(id => id !== keepId);
-                    for (const fromId of mergeIds) {
-                        this.repo.mergeArtists(fromId, keepId, tablesWithArtistId);
-                        mergeArtistCount++;
+                    if (mergeIds.length > 0) {
+                        this.repo.mergeArtistsBulk(mergeIds, keepId, tablesWithArtistId);
+                        mergeArtistCount += mergeIds.length;
                     }
                 }
             }
