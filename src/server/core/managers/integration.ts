@@ -28,13 +28,14 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
         getTorrentsStatus: () => [], 
         createTorrent: (t: any) => {
             db.prepare(`
-                INSERT INTO torrents (info_hash, magnet_uri, status, owner_id, name, path)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO torrents (info_hash, magnet_uri, status, owner_id, name, artist, path)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(info_hash) DO UPDATE SET
                     magnet_uri = excluded.magnet_uri,
                     status = excluded.status,
                     owner_id = COALESCE(excluded.owner_id, owner_id),
                     name = COALESCE(excluded.name, name),
+                    artist = COALESCE(excluded.artist, artist),
                     path = COALESCE(excluded.path, path)
             `).run(
                 t.info_hash.toLowerCase(),
@@ -42,6 +43,7 @@ export function createIntegrationManager(db: DatabaseType): IntegrationManager {
                 t.status || 'metadata',
                 t.owner_id ?? null,
                 t.name ?? null,
+                t.artist ?? null,
                 t.path ?? null
             );
         },

@@ -114,7 +114,7 @@ export class TorrentService {
         });
     }
 
-    public async seedFiles(filePaths: string[], name: string, ownerId: number | null): Promise<string> {
+    public async seedFiles(filePaths: string[], name: string, ownerId: number | null, artist?: string): Promise<string> {
         if (!this.client) throw new Error("Torrent client not initialized");
 
         // Resolve relative paths (stored as relative to musicDir in the DB) to absolute.
@@ -142,6 +142,7 @@ export class TorrentService {
                     owner_id: ownerId,
                     status: 'seeding',
                     name: torrent.name,
+                    artist: artist || null,
                     path: commonPath
                 });
 
@@ -366,7 +367,7 @@ export class TorrentService {
                         const ext = path.extname(entry.name).toLowerCase();
                         if (AUDIO_EXTENSIONS.includes(ext)) {
                             console.log(`🎵 Re-importing track from disk: ${entry.name}`);
-                            await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, torrentRecord.owner_id || 0, undefined, undefined, { album: torrentRecord.name || "Torrent Download" });
+                            await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, torrentRecord.owner_id || 0, undefined, undefined, { artist: torrentRecord.artist || undefined, album: torrentRecord.name || "Torrent Download" });
                         }
                     }
                 }
@@ -381,9 +382,10 @@ export class TorrentService {
 
     private async processCompletedTorrent(torrent: any, ownerId: number) {
         console.log(`🔄 Processing completed torrent: ${torrent.name}`);
-        
+
         const AUDIO_EXTENSIONS = ['.mp3', '.flac', '.m4a', '.ogg', '.wav', '.aac', '.opus'];
-        
+        const torrentRecord = this.database.getTorrent((torrent.infoHash || '').toLowerCase());
+
         if (torrent.files) {
             for (const file of torrent.files) {
                 const ext = path.extname(file.name).toLowerCase();
@@ -392,7 +394,7 @@ export class TorrentService {
                     try {
                         console.log(`🎵 Importing track from torrent: ${file.name}`);
                         // Copy to library to keep the original for seeding
-                        await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, ownerId, undefined, undefined, { album: torrent.name || "Torrent Download" });
+                        await this.scanner.processAudioFile(fullPath, this.musicDir, undefined, ownerId, undefined, undefined, { artist: torrentRecord?.artist || undefined, album: torrent.name || "Torrent Download" });
                     } catch (err) {
                         console.error(`❌ Failed to import torrent file ${file.name}:`, err);
                     }

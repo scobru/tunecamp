@@ -254,6 +254,7 @@ function parseCatalog(catalog: any, siteUrl: string, siteName?: string): any[] {
                     releaseTitle: release.title || "Unknown Release",
                     coverUrl: track.coverUrl || (release.cover_path ? `${siteUrl}/api/albums/${release.slug || release.id}/cover` : null),
                     audioUrl: track.streamUrl || (track.id ? `${siteUrl}/api/tracks/${track.id}/stream` : null),
+                    magnetUri: release.magnetUri || undefined,
                     duration: track.duration || 0,
                     siteUrl: siteUrl,
                     federation: "http",

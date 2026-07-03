@@ -56,6 +56,7 @@ const ContentSearch: React.FC = () => {
     const [searchError, setSearchError] = useState<string | null>(null);
     const [seedFilePaths, setSeedFilePaths] = useState('');
     const [seedName, setSeedName] = useState('');
+    const [seedArtist, setSeedArtist] = useState('');
     const [seedingResult, setSeedingResult] = useState<string | null>(null);
     const [seedLoading, setSeedLoading] = useState(false);
     const [knabenHits, setKnabenHits] = useState<any[]>([]);
@@ -240,10 +241,11 @@ const ContentSearch: React.FC = () => {
         setSeedLoading(true);
         setSeedingResult(null);
         try {
-            const res = await API.seedTorrent(paths, seedName);
+            const res = await API.seedTorrent(paths, seedName, seedArtist || undefined);
             setSeedingResult(res.magnetUri);
             setSeedFilePaths('');
             setSeedName('');
+            setSeedArtist('');
             notify.success("Started seeding file(s)");
             fetchTorrents();
         } catch (err: any) {
@@ -465,6 +467,16 @@ const ContentSearch: React.FC = () => {
                                         placeholder="My Album Title"
                                         value={seedName}
                                         onChange={e => setSeedName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="label pb-1"><span className="label-text font-bold text-xs">Artist</span></label>
+                                    <input
+                                        type="text"
+                                        className="input input-bordered w-full"
+                                        placeholder="Artist Name"
+                                        value={seedArtist}
+                                        onChange={e => setSeedArtist(e.target.value)}
                                     />
                                 </div>
                                 <div>

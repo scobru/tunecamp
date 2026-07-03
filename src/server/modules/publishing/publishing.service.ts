@@ -8,6 +8,9 @@ import type { StorageEngine } from "../storage/storage.engine.js";
 import { getSiteHandle } from "../../core/site-actor.js";
 
 export class PublishingService {
+    // ponytail: late-bound to dodge a DI cycle (torrentService needs scanner -> catalogService -> publishingService).
+    private torrentService: { seedFiles(filePaths: string[], name: string, ownerId: number | null, artist?: string): Promise<string> } | null = null;
+
     constructor(
         private db: DatabaseService,
         private federatedDiscovery: FederatedDiscoveryService,
@@ -15,6 +18,32 @@ export class PublishingService {
         private config: ServerConfig,
         private storage: StorageEngine
     ) {}
+
+    setTorrentService(torrentService: { seedFiles(filePaths: string[], name: string, ownerId: number | null, artist?: string): Promise<string> }): void {
+        this.torrentService = torrentService;
+    }
+
+    /**
+     * Seeds a release's local files as a torrent so its magnet can ride along
+     * with the AP/Mastodon post. Reuses an existing seed for the same release
+     * title instead of re-seeding on every syncRelease call.
+     */
+    private async seedReleaseForDistribution(release: Release, artistName: string): Promise<string | null> {
+        if (!this.torrentService) return null;
+        try {
+            const existing = (this.db as any).db.prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE").get(release.title) as { magnet_uri: string } | undefined;
+            if (existing) return existing.magnet_uri;
+
+            const tracks = this.db.getTracksByReleaseId(release.id);
+            const filePaths = tracks.map(t => t.file_path).filter((p): p is string => !!p);
+            if (filePaths.length === 0) return null;
+
+            return await this.torrentService.seedFiles(filePaths, release.title, release.owner_id ?? null, artistName);
+        } catch (e) {
+            console.error(`❌ Failed to seed release "${release.title}" for distribution:`, e);
+            return null;
+        }
+    }
 
     private getSiteInfo(artistName?: string): { url: string; title: string; description: string; artistName: string; coverImage: string } | null {
         const publicUrl = this.db.getSetting("publicUrl") || this.config.publicUrl;
@@ -68,25 +97,27 @@ export class PublishingService {
         if (release.artist_id) {
             const artist = this.db.getArtist(release.artist_id);
             if (artist) {
+                const magnetUri = await this.seedReleaseForDistribution(release, artist.name);
+
                 const publicUrl = (this.db.getSetting("publicUrl") || this.config.publicUrl || "").replace(/\/$/, "");
                 let statusText = `🎵 New release: "${release.title}" by ${artist.name}\n\n`;
                 if (release.description) {
                     const cleanDesc = release.description.replace(/<[^>]*>?/gm, "").trim();
                     statusText += cleanDesc;
                 }
-                if (publicUrl) {
-                    const releaseUrl = `${publicUrl}/releases/${release.slug}`;
-                    const suffix = `\n\nListen here: ${releaseUrl}`;
+                const suffixParts: string[] = [];
+                if (publicUrl) suffixParts.push(`Listen here: ${publicUrl}/releases/${release.slug}`);
+                if (magnetUri) suffixParts.push(`Torrent: ${magnetUri}`);
+                if (suffixParts.length > 0) {
+                    const suffix = `\n\n${suffixParts.join("\n")}`;
                     const limit = 500 - suffix.length;
                     if (statusText.length > limit) {
-                        statusText = statusText.substring(0, limit - 3) + "..." + suffix;
+                        statusText = statusText.substring(0, Math.max(0, limit - 3)) + "..." + suffix;
                     } else {
                         statusText += suffix;
                     }
-                } else {
-                    if (statusText.length > 500) {
-                        statusText = statusText.substring(0, 497) + "...";
-                    }
+                } else if (statusText.length > 500) {
+                    statusText = statusText.substring(0, 497) + "...";
                 }
                 await this.crossPostToMastodon(release.artist_id, statusText);
             }
