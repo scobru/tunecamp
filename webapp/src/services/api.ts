@@ -125,7 +125,7 @@ const API = {
     getTrack: (id: string | number) => handleResponse(api.get<Track>(`tracks/${encodeURIComponent(String(id))}`)),
 
     getPlaylists: () => handleResponse(api.get<Playlist[]>('playlists')),
-    getPlaylist: (id: string) => handleResponse(api.get<Playlist>(`playlists/${id}`)),
+    getPlaylist: (id: string) => handleResponse(api.get<Playlist>(`playlists/${encodeURIComponent(id)}`)),
     createPlaylist: (name: string, description?: string, isPublic = false) =>
         handleResponse(api.post<Playlist>('playlists', { name, description, isPublic })),
     updatePlaylist: (id: string, data: Partial<Playlist>) => handleResponse(api.put<Playlist>(`playlists/${id}`, data)),
