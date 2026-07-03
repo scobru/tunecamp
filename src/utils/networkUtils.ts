@@ -104,7 +104,7 @@ export function isSafeUrl(urlStr: string): Promise<boolean> {
                 // We use type assertion or check because types might vary depending on env
                 const addrs = Array.isArray(addresses) ? addresses : [addresses];
 
-                const isSafe = addrs.every((addr: any) => {
+                const isSafe = addrs.every((addr: string | dns.LookupAddress) => {
                     const ip = typeof addr === 'string' ? addr : addr.address;
                     return !isPrivateIP(ip);
                 });
