@@ -140,7 +140,10 @@ export class CatalogService {
         // (and thus the Map key) is numeric, so a string lookup would always miss.
         const ids = trackIds.map(Number);
         const tracks = this.database.getTracksByIds(ids);
-        const trackMap = new Map(tracks.map(t => [t.id, t]));
+        const trackMap = new Map();
+        for (let i = 0; i < tracks.length; i++) {
+            trackMap.set(tracks[i].id, tracks[i]);
+        }
 
         for (const id of ids) {
             try {
