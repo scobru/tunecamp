@@ -64,5 +64,8 @@ jobs:
       - name: Install Linux native binaries (rollup, lightningcss, tailwind)
         run: npm install --no-save @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu
 
+      - name: Run webapp tests (vitest)
+        run: npm run test:run -w webapp
+
       - name: Build webapp (tsc + vite)
         run: npm run build -w webapp

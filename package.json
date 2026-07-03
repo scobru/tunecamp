@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "2.11.4",
+  "version": "2.11.5",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
@@ -12,7 +12,7 @@
     "build": "tsc",
     "dev": "tsc --watch & npm run watch:css",
     "start": "node --expose-gc dist/index.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test": "npx --node-options=--experimental-vm-modules jest",
     "migrate:dedupe": "node dist/tools/migrate-dedupe.js",
     "migrate:visibility": "node dist/tools/migrate-visibility.js",
     "build:css": "tailwindcss -i webapp/css/input.css -o webapp/css/style.css",
