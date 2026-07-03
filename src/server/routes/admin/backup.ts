@@ -525,9 +525,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
                     }
 
                     // Cleanup parts
-                    for (const part of partFiles) {
-                        await fs.unlink(path.join(uploadDir, part)).catch(() => { });
-                    }
+                    await Promise.all(partFiles.map(part => fs.unlink(path.join(uploadDir, part)).catch(() => { })));
 
                     // Run restore
                     await performRestore(finalZipPath, config, database, restartFn);
@@ -535,9 +533,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
                     console.error("❌ [Restore] Assembly failed:", e);
                     // Ensure cleanup on failure
                     if (await fs.pathExists(finalZipPath)) await fs.unlink(finalZipPath).catch(() => { });
-                    for (const part of partFiles) {
-                        await fs.unlink(path.join(uploadDir, part)).catch(() => { });
-                    }
+                    await Promise.all(partFiles.map(part => fs.unlink(path.join(uploadDir, part)).catch(() => { })));
                 }
             })();
 
