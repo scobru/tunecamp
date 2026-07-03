@@ -131,9 +131,9 @@ export class SoundCloudStreamingProvider implements StreamingProvider {
                 return null;
             }
 
-            for (const track of result.collection) {
-                const stream = await resolveStream(track);
-                if (stream) return stream.url;
+            const streamResults = await Promise.allSettled(result.collection.map(resolveStream));
+            for (const res of streamResults) {
+                if (res.status === 'fulfilled' && res.value) return res.value.url;
             }
             return null;
         } catch (error) {
