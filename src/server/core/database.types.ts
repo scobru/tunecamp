@@ -375,6 +375,7 @@ export interface Torrent {
     info_hash: string;
     infoHash?: string;
     name: string | null;
+    artist: string | null;
     magnet_uri: string;
     owner_id: number | null;
     status: 'metadata' | 'downloading' | 'seeding' | 'paused' | 'error' | 'completed' | 'failed';

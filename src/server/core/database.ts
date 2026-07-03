@@ -430,6 +430,7 @@ export function createDatabase(dbPath: string): DatabaseService {
         CREATE TABLE IF NOT EXISTS torrents (
             info_hash TEXT PRIMARY KEY,
             name TEXT,
+            artist TEXT,
             magnet_uri TEXT NOT NULL,
             owner_id INTEGER REFERENCES admin(id) ON DELETE SET NULL,
             status TEXT DEFAULT 'metadata',
@@ -1078,6 +1079,15 @@ export function createDatabase(dbPath: string): DatabaseService {
                     db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_session ON peer_tracks(session_id)");
                     db.exec("CREATE INDEX IF NOT EXISTS idx_peer_tracks_search ON peer_tracks(title, artist)");
                 })();
+            }
+        }
+
+        const torrentsExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='torrents'").get();
+        if (torrentsExists) {
+            const torrentCols = db.prepare("PRAGMA table_info(torrents)").all() as any[];
+            if (!torrentCols.some(col => col.name === 'artist')) {
+                console.log("📦 [Database] Migrating torrents table: adding artist column...");
+                db.exec("ALTER TABLE torrents ADD COLUMN artist TEXT");
             }
         }
 

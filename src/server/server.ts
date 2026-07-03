@@ -325,6 +325,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const soulseekService = new SoulseekService(config.musicDir, config.downloadDir || path.join(config.musicDir, "downloads"));
     
     const torrentService = new TorrentService(database, scanner, config.musicDir);
+    publishingService.setTorrentService(torrentService);
 
     const downloadService = initDownloadService(soulseekService, torrentService, 1, database);
 

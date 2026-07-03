@@ -149,14 +149,14 @@ export function createTorrentRoutes(container: ServiceContainer): Router {
      */
     router.post("/seed", async (req: any, res) => {
         if (!req.body) return res.status(400).json({ error: "Request body required" });
-        const { filePaths, name } = req.body;
+        const { filePaths, name, artist } = req.body;
         if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
             return res.status(400).json({ error: "filePaths array is required" });
         }
         if (!name) return res.status(400).json({ error: "Torrent name is required" });
 
         try {
-            const magnetUri = await torrentService.seedFiles(filePaths, name, req.userId || null);
+            const magnetUri = await torrentService.seedFiles(filePaths, name, req.userId || null, artist);
             res.json({ success: true, magnetUri });
         } catch (error: any) {
             console.error("❌ Torrent Seeding Error:", error);

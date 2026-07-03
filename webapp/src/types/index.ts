@@ -397,6 +397,7 @@ export interface NetworkTrack {
     type?: 'release' | 'post' | 'peer';
     audioUrl?: string;
     downloadUrl?: string;
+    magnetUri?: string;
     title?: string;
     artistName?: string;
     slug?: string;

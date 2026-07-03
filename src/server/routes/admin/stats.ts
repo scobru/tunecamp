@@ -258,6 +258,9 @@ export function createStatsRoutes(container: ServiceContainer): Router {
             const formattedLocalReleases = localReleases.map(r => {
                 const tracks = dbService.getTracksByReleaseId(r.id);
                 const firstTrack = tracks[0];
+                const torrent = (dbService as any).db
+                    .prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE AND status IN ('seeding', 'completed') AND magnet_uri IS NOT NULL")
+                    .get(r.title) as { magnet_uri: string } | undefined;
                 return {
                     slug: r.slug,
                     title: r.title,
@@ -265,6 +268,7 @@ export function createStatsRoutes(container: ServiceContainer): Router {
                     releaseTitle: r.title,
                     coverUrl: r.cover_path ? `${baseUrl}/api/albums/${r.slug}/cover` : null,
                     audioUrl: firstTrack ? `${baseUrl}/api/tracks/${firstTrack.id}/stream` : null,
+                    magnetUri: torrent?.magnet_uri || undefined,
                     duration: firstTrack?.duration || 0,
                     siteUrl: `${baseUrl}/albums/${r.slug}`,
                     federation: "local",

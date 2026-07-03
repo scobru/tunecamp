@@ -654,7 +654,7 @@ const API = {
     // --- Torrents ---
     getTorrents: () => handleResponse(api.get<any[]>('admin/torrents')),
     addTorrent: (magnetUri: string) => handleResponse(api.post('admin/torrents/add', { magnet: magnetUri })),
-    seedTorrent: (filePaths: string[], name: string) => handleResponse(api.post<{ success: boolean, magnetUri: string }>('admin/torrents/seed', { filePaths, name })),
+    seedTorrent: (filePaths: string[], name: string, artist?: string) => handleResponse(api.post<{ success: boolean, magnetUri: string }>('admin/torrents/seed', { filePaths, name, artist })),
     deleteTorrent: (infoHash: string, deleteFiles = false) => handleResponse(api.delete(`admin/torrents/${infoHash}${deleteFiles ? '?deleteFiles=true' : ''}`)),
     purgeStuckTorrents: (timeoutMs?: number) => handleResponse(api.post<{ success: boolean, removed: string[], count: number }>('admin/torrents/purge', timeoutMs !== undefined ? { timeoutMs } : {})),
     searchTorrents: (q: string, page = 0, size = 20) => handleResponse(api.get<any>(`admin/torrents/search?q=${encodeURIComponent(q)}&page=${page}&size=${size}`)),

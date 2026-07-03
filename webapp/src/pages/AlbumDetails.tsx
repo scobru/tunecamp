@@ -202,7 +202,7 @@ const AlbumDetails = () => {
               return;
           }
 
-          const res = await API.seedTorrent(filePaths, album.title);
+          const res = await API.seedTorrent(filePaths, album.title, album.album_artist || album.albumArtist || album.artistName || album.artist_name);
           setSeedingMagnet(res.magnetUri);
           notify.success("Torrent seeding started!");
       } catch (err: any) {

@@ -2,7 +2,7 @@ import { confirm } from '@/utils/confirm';
 import React, { useState, useEffect, useCallback, memo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
-import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText, Library, Loader2 } from "lucide-react";
+import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText, Library, Loader2, Magnet } from "lucide-react";
 
 type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances" | "tunecamp-network" | "other-networks";
 import { usePlayerStore } from "../stores/usePlayerStore";
@@ -325,6 +325,19 @@ const TrackCard = memo(({
           <div className="text-xs font-mono opacity-40">
             {formatDuration(duration)}
           </div>
+          {item.magnetUri && (
+            <button
+              className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(item.magnetUri!);
+                notify.success("Magnet link copied");
+              }}
+              data-tip="Copy magnet link"
+            >
+              <Magnet size={14} className="opacity-70" />
+            </button>
+          )}
           {isAdmin && isPeer && item.downloadUrl && (
             <button
               className="btn btn-xs btn-ghost btn-circle tooltip tooltip-left"
