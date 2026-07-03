@@ -201,11 +201,13 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             // to ensure the new file is always served (avoids stale extension mismatch)
             try {
                 const existingFiles = await storage.readdir(assetsDir);
+                const deletePromises = [];
                 for (const f of existingFiles) {
                     if (f.startsWith(options.type + ".") && f !== targetFilename) {
-                        await storage.remove(path.join(assetsDir, f)).catch(() => {});
+                        deletePromises.push(storage.remove(path.join(assetsDir, f)).catch(() => {}));
                     }
                 }
+                await Promise.all(deletePromises);
             } catch { /* assets dir may not exist yet */ }
 
             await storage.move(file.path, targetPath, { overwrite: true });
@@ -545,15 +547,17 @@ export function createUploadRoutes(container: ServiceContainer): Router {
                 // 5. Cleanup old covers (Best effort)
                 try {
                     const files = await storage.readdir(artworkDir);
+                    const deletePromises = [];
                     for (const f of files) {
                         if (f !== targetFilename && (f.startsWith("cover") || f.startsWith("folder") || f.startsWith("artwork"))) {
-                            try {
-                                await storage.remove(path.join(artworkDir, f));
-                            } catch (e) {
-                                console.warn(`   [Cleanup] Could not delete old cover ${f} (likely locked):`, e);
-                            }
+                            deletePromises.push(
+                                storage.remove(path.join(artworkDir, f)).catch((e) => {
+                                    console.warn(`   [Cleanup] Could not delete old cover ${f} (likely locked):`, e);
+                                })
+                            );
                         }
                     }
+                    await Promise.all(deletePromises);
                 } catch (cleanupErr) {
                     console.warn("   [Cleanup] Failed to list/clean artwork directory:", cleanupErr);
                 }
@@ -985,11 +989,13 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             const assetsDir = path.join(musicDir, "assets");
             try {
                 const existingFiles = await storage.readdir(assetsDir);
+                const deletePromises = [];
                 for (const f of existingFiles) {
                     if (f.startsWith(options.type + ".")) {
-                        await storage.remove(path.join(assetsDir, f)).catch(() => {});
+                        deletePromises.push(storage.remove(path.join(assetsDir, f)).catch(() => {}));
                     }
                 }
+                await Promise.all(deletePromises);
             } catch { /* assets dir may not exist */ }
             identity.setSetting(options.settingKey, "");
             res.json({ message: `${options.errorLabel} removed` });
