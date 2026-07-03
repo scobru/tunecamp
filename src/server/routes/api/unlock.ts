@@ -4,13 +4,13 @@ import { createAuthMiddleware, type AuthenticatedRequest } from "../../middlewar
 import { VisibilityGuardian, Capability } from "../../common/visibility.js";
 import { StringUtils } from "../../../utils/stringUtils.js";
 
-import type { ServiceContainer } from "../../core/container.js";
+import { resolveService, type ServiceContainer } from "../../core/container.js";
 
 export function createUnlockRoutes(container: ServiceContainer): Router {
     const authMiddleware = container.authMiddleware;
     const database = container.database;
-    const integration: ServiceContainer['integration'] = (container as any).integration || (database as any).integration || database;
-    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
+    const integration = resolveService(container, 'integration');
+    const library = resolveService(container, 'library');
     const router = Router();
     router.use(json());
     router.post("/validate", (req, res) => {

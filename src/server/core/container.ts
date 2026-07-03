@@ -93,3 +93,15 @@ export interface ServiceContainer {
     // Storage
     storage: LocalDiskStorage;
 }
+
+/**
+ * Resolves a service from the container, falling back to the database object.
+ * Tests pass partial containers where the database mock stands in for any
+ * service not explicitly provided — keep that behavior centralized here.
+ */
+export function resolveService<K extends keyof ServiceContainer>(
+    container: ServiceContainer,
+    key: K
+): ServiceContainer[K] {
+    return ((container as any)[key] || (container.database as any)?.[key] || container.database) as ServiceContainer[K];
+}

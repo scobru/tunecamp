@@ -19,23 +19,23 @@ import { metadataService } from "../../modules/catalog/metadata.service.js";
 import { VisibilityGuardian, Capability, UserRole, canConsumeTrack } from "../../common/visibility.js";
 import { mapTrackDTO } from "../../modules/catalog/catalog.mappers.js";
 import { sendStreamResult } from "../../modules/media/media-engine.js";
-import type { ServiceContainer } from "../../core/container.js";
+import { resolveService, type ServiceContainer } from "../../core/container.js";
 
 
 export function createTracksRoutes(container: ServiceContainer): Router {
     const database = container.database;
-    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (database as any).publishingService || database;
-    const catalogService: ServiceContainer['catalogService'] = (container as any).catalogService || (database as any).catalogService || database;
-    const discoveryService: ServiceContainer['discoveryService'] = (container as any).discoveryService || (database as any).discoveryService || database;
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (database as any).musicDir || database;
-    const authService: ServiceContainer['authService'] = (container as any).authService || (database as any).authService || database;
-    const gdriveService: ServiceContainer['gdriveService'] = (container as any).gdriveService || (database as any).gdriveService || database;
-    const streamingService: ServiceContainer['streamingService'] = (container as any).streamingService || (database as any).streamingService || database;
-    const localizationService: ServiceContainer['localizationService'] = (container as any).localizationService || (database as any).localizationService || database;
-    const mediaEngine: ServiceContainer['mediaEngine'] = (container as any).mediaEngine || (database as any).mediaEngine || database;
-    const social: ServiceContainer['social'] = (container as any).social || (database as any).social || database;
-    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
-    const integration: ServiceContainer['integration'] = (container as any).integration || (database as any).integration || database;
+    const publishingService = resolveService(container, 'publishingService');
+    const catalogService = resolveService(container, 'catalogService');
+    const discoveryService = resolveService(container, 'discoveryService');
+    const musicDir = resolveService(container, 'musicDir');
+    const authService = resolveService(container, 'authService');
+    const gdriveService = resolveService(container, 'gdriveService');
+    const streamingService = resolveService(container, 'streamingService');
+    const localizationService = resolveService(container, 'localizationService');
+    const mediaEngine = resolveService(container, 'mediaEngine');
+    const social = resolveService(container, 'social');
+    const library = resolveService(container, 'library');
+    const integration = resolveService(container, 'integration');
 
     const router = Router();
     router.use(express.json());

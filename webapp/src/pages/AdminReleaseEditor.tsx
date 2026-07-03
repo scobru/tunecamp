@@ -6,6 +6,7 @@ import API from "../services/api";
 import { genreDatalistOptions } from "../constants/genres";
 import { useWalletStore } from "../stores/useWalletStore";
 import { notify } from "../utils/notify";
+import { formatDuration } from "../utils/format";
 import { canPublish, canManageItem } from "../utils/permissions";
 import { ethers } from "ethers";
 import { DEPLOYMENTS } from "shogun-contracts-sdk";
@@ -1244,7 +1245,7 @@ export default function AdminReleaseEditor() {
                               </div>
                             </td>
                             <td className="hidden md:table-cell font-mono text-xs opacity-50">
-                              {track.duration ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, "0")}` : "--:--"}
+                              {track.duration ? formatDuration(track.duration) : "--:--"}
                             </td>
                             <td className="hidden lg:table-cell">
                                 <span className="badge badge-outline badge-xs opacity-40 font-mono scale-90">

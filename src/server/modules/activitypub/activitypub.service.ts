@@ -13,6 +13,7 @@ import { ActivityPubRenderer } from "./activitypub.renderer.js";
 import { ActivityPubTransport } from "./activitypub.transport.js";
 import { DeliveryQueue } from "./activitypub.delivery-queue.js";
 import { getSiteHandle, SITE_ACTOR_ID } from "../../core/site-actor.js";
+import { StringUtils } from "../../../utils/stringUtils.js";
 
 export class ActivityPubService {
     private renderer: ActivityPubRenderer;
@@ -847,12 +848,7 @@ export class ActivityPubService {
 
     /** Escape HTML entities in user-provided text for Note content. */
     private escapeHtml(text: string): string {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#x27;");
+        return StringUtils.escapeHtml(text);
     }
 
     // ----------------------------------------------------------------

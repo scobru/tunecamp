@@ -84,8 +84,6 @@ describe('Error Classes', () => {
 describe('isNonFatalError', () => {
     it('should return true for known non-fatal error strings', () => {
         const nonFatalMessages = [
-            'GunDB error occurred',
-            'Error from Zen node',
             'connect ECONNREFUSED 127.0.0.1:80',
             'ETIMEDOUT during fetch',
             'socket hang up while reading',

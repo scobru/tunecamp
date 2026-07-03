@@ -4,6 +4,7 @@ import API from "../../services/api";
 import { Link as LinkIcon, Edit, Trash2, ChevronUp, ChevronDown, Search, X, Music } from "lucide-react";
 import { BatchTrackEditModal } from "../modals/BatchTrackEditModal";
 import { notify } from "../../utils/notify";
+import { formatDuration } from "../../utils/format";
 
 type SortKey = "title" | "artist_name" | "album_title" | "duration";
 interface SortConfig {
@@ -354,9 +355,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
                 {t.owner_name || (t.artist_name ? `(${t.artist_name})` : "-")}
               </td>
               <td>
-                {t.duration
-                  ? `${Math.floor(t.duration / 60)}:${String(Math.floor(t.duration % 60)).padStart(2, "0")}`
-                  : "-"}
+                {t.duration ? formatDuration(t.duration) : "-"}
               </td>
               <td className="flex gap-2">
                 <a

@@ -100,19 +100,13 @@ export const StringUtils = {
      */
     generateUnlockCode: (): string => {
         const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0, O, 1, I
-        const segments = 3;
-        const segmentLength = 4;
-
-        const code: string[] = [];
-        for (let s = 0; s < segments; s++) {
-            let segment = "";
-            for (let i = 0; i < segmentLength; i++) {
-                segment += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            code.push(segment);
-        }
-
-        return code.join("-");
+        // CSPRNG (Math.random is predictable — see docs/security-review-payments.md).
+        // globalThis.crypto works in both Node and the browser; 32 chars divide 256
+        // evenly, so the modulo introduces no bias.
+        const bytes = new Uint8Array(12);
+        globalThis.crypto.getRandomValues(bytes);
+        const code = Array.from(bytes, (b) => chars[b % chars.length]).join("");
+        return `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}`;
     },
 
     /**

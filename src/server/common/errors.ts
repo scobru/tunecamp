@@ -37,14 +37,12 @@ export class ServiceUnavailableError extends AppError {
 
 /**
  * Checks if an uncaught exception/error is non-fatal and should not cause the server to crash.
- * This includes network timeouts, temporary SQLite lock/busy errors, and known P2P/GunDB issues.
+ * This includes network timeouts and temporary SQLite lock/busy errors.
  */
 export function isNonFatalError(err: any): boolean {
     if (!err || !err.message) return false;
     const msg = err.message;
     return (
-        msg.includes('GunDB') ||
-        msg.includes('Zen') ||
         msg.includes('ECONNREFUSED') ||
         msg.includes('ETIMEDOUT') ||
         msg.includes('socket hang up') ||

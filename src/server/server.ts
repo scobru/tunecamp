@@ -478,7 +478,6 @@ export async function startServer(config: ServerConfig): Promise<void> {
     // Public assets store
 
     app.use("/api/lifecycle", authMiddleware.requireUser, createLifecycleRoutes(container));
-    app.use("/api/admin/lifecycle", authMiddleware.requireAdmin, createLifecycleRoutes(container));
     app.use("/api/ap", createActivityPubRoutes(container));
     app.use("/api/account", authMiddleware.requireUser, createAccountMigrationRoutes(container));
     app.use("/api/proxy", createProxyRoutes(container));
