@@ -430,12 +430,15 @@ export class TelegramBotService {
                 if (result.trackId) {
                     const allAdmins = this.database.getAdmins();
                     const track = this.database.getTrack(result.trackId);
-                    for (const admin of allAdmins) {
-                        this.database.addTrackOwner(result.trackId, admin.id);
-                        if (track?.album_id) {
-                            this.database.addAlbumOwner(track.album_id, admin.id);
+                    this.database.transaction(() => {
+                        const albumId = track?.album_id;
+                        for (const admin of allAdmins) {
+                            this.database.addTrackOwner(result.trackId!, admin.id);
+                            if (albumId) {
+                                this.database.addAlbumOwner(albumId, admin.id);
+                            }
                         }
-                    }
+                    });
                 }
                 await this.safeReply(ctx, `✅ UPLOADED TO TUNECAMP!\n\n${result.message}`);
             } else {
