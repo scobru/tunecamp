@@ -46,6 +46,10 @@ export class SocialRepository {
         this.db.prepare("UPDATE followers SET status = 'accepted' WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
     }
 
+    acceptPendingFollowers(artistId: number): void {
+        this.db.prepare("UPDATE followers SET status = 'accepted' WHERE artist_id = ? AND status = 'pending'").run(artistId);
+    }
+
     /** Reject a follower request */
     rejectFollower(artistId: number, actorUri: string): void {
         this.db.prepare("UPDATE followers SET status = 'rejected' WHERE artist_id = ? AND actor_uri = ?").run(artistId, actorUri);
