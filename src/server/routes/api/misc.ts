@@ -236,15 +236,22 @@ export function createMiscRoutes(container: ServiceContainer): Router {
     router.get("/api/posts/media/:filename", async (req: Request, res: Response) => {
         try {
             const filename = req.params.filename;
-            if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+            // Retain original business logic enforcing a flat directory
+            if (filename.includes("/") || filename.includes("\\")) {
                 return res.status(400).json({ error: "Invalid filename" });
             }
-            const mediaDir = path.join(config.musicDir, "assets", "posts");
-            const filePath = path.join(mediaDir, filename);
+
+            const mediaDir = path.resolve(config.musicDir, "assets", "posts");
+            const filePath = path.resolve(mediaDir, filename);
+
+            if (!filePath.startsWith(mediaDir + path.sep)) {
+                return res.status(400).json({ error: "Invalid filename" });
+            }
+
             if (!await fs.pathExists(filePath)) {
                 return res.status(404).json({ error: "File not found" });
             }
-            res.sendFile(path.resolve(filePath));
+            res.sendFile(filePath);
         } catch (error) {
             res.status(500).json({ error: "Failed to serve post media" });
         }
