@@ -130,13 +130,19 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
     let success = 0;
     let failed = 0;
     try {
-      for (const id of toLocalize) {
-        try {
-          await API.localizeTrack(id);
-          success++;
-        } catch (e) {
-          failed++;
-        }
+      const CHUNK_SIZE = 5;
+      for (let i = 0; i < toLocalize.length; i += CHUNK_SIZE) {
+        const chunk = toLocalize.slice(i, i + CHUNK_SIZE);
+        await Promise.all(
+          chunk.map(async (id) => {
+            try {
+              await API.localizeTrack(id);
+              success++;
+            } catch (e) {
+              failed++;
+            }
+          })
+        );
       }
       notify.success(`Localization Processed!\n\nSuccess: ${success}\nFailed: ${failed}`);
       loadTracks();
