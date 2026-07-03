@@ -800,17 +800,34 @@ export class Scanner implements ScannerService {
             groups.get(k)!.push({ id: t.id, score });
         }
 
+        const idsToFetch: number[] = [];
         for (const [, entries] of groups.entries()) {
             if (entries.length <= 1) continue;
             // Sort by richness desc, then by id asc (oldest)
             entries.sort((a, b) => b.score - a.score || a.id - b.id);
+            for (let i = 1; i < entries.length; i++) {
+                idsToFetch.push(entries[i].id);
+            }
+        }
+
+        const fetchedTracks = new Map<number, any>();
+        for (let i = 0; i < idsToFetch.length; i += 900) {
+            const chunk = idsToFetch.slice(i, i + 900);
+            const tracks = this.database.getTracksByIds(chunk);
+            for (const t of tracks) {
+                fetchedTracks.set(t.id, t);
+            }
+        }
+
+        for (const [, entries] of groups.entries()) {
+            if (entries.length <= 1) continue;
             const primaryId = entries[0].id;
 
             for (let i = 1; i < entries.length; i++) {
                 const otherId = entries[i].id;
                 try {
                     // Capture paths BEFORE merge deletes the row from the DB
-                    const loserTrack = this.database.getTrack(otherId);
+                    const loserTrack = fetchedTracks.get(otherId);
                     // mergeTracks transfers ownership/plays/bookmarks/ratings/release_tracks
                     // and carries over metadata fields the keeper is missing.
                     // It also handles the lossless_path carry-over.

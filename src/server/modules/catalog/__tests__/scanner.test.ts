@@ -20,6 +20,7 @@ const mockDbService = {
     },
     getTracks: jest.fn(),
     getTrack: jest.fn(),
+    getTracksByIds: jest.fn(),
     iterateTracks: jest.fn(),
     createArtist: jest.fn(),
     createAlbum: jest.fn(),
@@ -88,6 +89,7 @@ describe('Scanner Core Logic', () => {
 
         (mockDbService as any).iterateTracks = jest.fn(() => tracks.values());
         (mockDbService as any).getTrack = jest.fn((id: number) => tracks.find(t => t.id === id));
+        (mockDbService as any).getTracksByIds = jest.fn((ids: number[]) => tracks.filter(t => ids.includes(t.id)));
 
         // @ts-ignore
         await scanner.deduplicateLibraryTracks();
