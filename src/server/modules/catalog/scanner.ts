@@ -800,30 +800,32 @@ export class Scanner implements ScannerService {
             groups.get(k)!.push({ id: t.id, score });
         }
 
-        for (const [, entries] of groups.entries()) {
-            if (entries.length <= 1) continue;
-            // Sort by richness desc, then by id asc (oldest)
-            entries.sort((a, b) => b.score - a.score || a.id - b.id);
-            const primaryId = entries[0].id;
+        this.database.transaction(() => {
+            for (const [, entries] of groups.entries()) {
+                if (entries.length <= 1) continue;
+                // Sort by richness desc, then by id asc (oldest)
+                entries.sort((a, b) => b.score - a.score || a.id - b.id);
+                const primaryId = entries[0].id;
 
-            for (let i = 1; i < entries.length; i++) {
-                const otherId = entries[i].id;
-                try {
-                    // Capture paths BEFORE merge deletes the row from the DB
-                    const loserTrack = this.database.getTrack(otherId);
-                    // mergeTracks transfers ownership/plays/bookmarks/ratings/release_tracks
-                    // and carries over metadata fields the keeper is missing.
-                    // It also handles the lossless_path carry-over.
-                    this.database.mergeTracks(otherId, primaryId);
-                    // Queue physical file deletion for the merged-away track
-                    if (loserTrack && this.musicDirectory) {
-                        this.queueOrphanFileDeletion(loserTrack, primaryId, filesToDelete);
+                for (let i = 1; i < entries.length; i++) {
+                    const otherId = entries[i].id;
+                    try {
+                        // Capture paths BEFORE merge deletes the row from the DB
+                        const loserTrack = this.database.getTrack(otherId);
+                        // mergeTracks transfers ownership/plays/bookmarks/ratings/release_tracks
+                        // and carries over metadata fields the keeper is missing.
+                        // It also handles the lossless_path carry-over.
+                        this.database.mergeTracks(otherId, primaryId);
+                        // Queue physical file deletion for the merged-away track
+                        if (loserTrack && this.musicDirectory) {
+                            this.queueOrphanFileDeletion(loserTrack, primaryId, filesToDelete);
+                        }
+                    } catch (e) {
+                        console.error(`[Scanner] Dedup merge failed (${otherId} -> ${primaryId}):`, e);
                     }
-                } catch (e) {
-                    console.error(`[Scanner] Dedup merge failed (${otherId} -> ${primaryId}):`, e);
                 }
             }
-        }
+        });
 
         await this.softMergeUntaggedDuplicates(filesToDelete);
 
@@ -851,35 +853,37 @@ export class Scanner implements ScannerService {
 
         const score = (t: Track) => (t.album_id ? 2 : 0) + (t.artist_id ? 1 : 0);
 
-        for (const [, ids] of titleGroups.entries()) {
-            if (ids.length <= 1) continue;
-            const rows = ids
-                .map(id => this.database.getTrack(id))
-                .filter((t): t is Track => !!t);
-            if (rows.length <= 1) continue;
+        this.database.transaction(() => {
+            for (const [, ids] of titleGroups.entries()) {
+                if (ids.length <= 1) continue;
+                const rows = ids
+                    .map(id => this.database.getTrack(id))
+                    .filter((t): t is Track => !!t);
+                if (rows.length <= 1) continue;
 
-            rows.sort((a, b) => score(b) - score(a));
-            const primary = rows[0];
-            const primaryScore = score(primary);
-            if (primaryScore === 0) continue; // nothing to enrich from
+                rows.sort((a, b) => score(b) - score(a));
+                const primary = rows[0];
+                const primaryScore = score(primary);
+                if (primaryScore === 0) continue; // nothing to enrich from
 
-            for (let i = 1; i < rows.length; i++) {
-                const other = rows[i];
-                // Only merge rows strictly less tagged than primary; leave equally-tagged
-                // entries alone (likely genuine alt versions on different albums).
-                if (score(other) >= primaryScore) continue;
+                for (let i = 1; i < rows.length; i++) {
+                    const other = rows[i];
+                    // Only merge rows strictly less tagged than primary; leave equally-tagged
+                    // entries alone (likely genuine alt versions on different albums).
+                    if (score(other) >= primaryScore) continue;
 
-                try {
-                    this.database.mergeTracks(other.id, primary.id);
-                    // Queue physical file deletion for the merged-away track
-                    if (this.musicDirectory) {
-                        this.queueOrphanFileDeletion(other, primary.id, filesToDelete);
+                    try {
+                        this.database.mergeTracks(other.id, primary.id);
+                        // Queue physical file deletion for the merged-away track
+                        if (this.musicDirectory) {
+                            this.queueOrphanFileDeletion(other, primary.id, filesToDelete);
+                        }
+                    } catch (e) {
+                        console.error(`[Scanner] Soft-merge failed (${other.id} -> ${primary.id}):`, e);
                     }
-                } catch (e) {
-                    console.error(`[Scanner] Soft-merge failed (${other.id} -> ${primary.id}):`, e);
                 }
             }
-        }
+        });
     }
 
     private async cleanupStaleLibraryTracks(musicDir: string, knownFiles: Set<string>) {

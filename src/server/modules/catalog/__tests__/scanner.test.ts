@@ -30,6 +30,7 @@ const mockDbService = {
     updateTracksLosslessPathBatch: jest.fn(),
     updateTracksPathsBatch: jest.fn(),
     mergeTracks: jest.fn(),
+    transaction: jest.fn(fn => fn()),
     getArtistByName: jest.fn(),
     getAlbumBySlug: jest.fn(),
     getAlbum: jest.fn(),
