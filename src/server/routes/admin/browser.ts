@@ -7,12 +7,12 @@ import { resolveSafePath } from "../../../utils/fileUtils.js";
 const AUDIO_EXTENSIONS = [".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac", ".opus"];
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"];
 
-import type { ServiceContainer } from "../../core/container.js";
+import { resolveService, type ServiceContainer } from "../../core/container.js";
 
 export function createBrowserRoutes(container: ServiceContainer): Router {
     const musicDir = container.musicDir;
     const database = container.database;
-    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
+    const library = resolveService(container, 'library');
     const router = Router();
     router.use(json());
 

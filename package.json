@@ -1,6 +1,6 @@
 {
   "name": "tunecamp",
-  "version": "2.11.2",
+  "version": "2.11.3",
   "description": "A decentralized music platform for artists and labels, with streaming, federation, and Subsonic API support",
   "main": "dist/server/server.js",
   "type": "module",
@@ -20,7 +20,7 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "postinstall": "node -e \"const fs = require('fs'); for (const s of ['./scripts/patch-ffmpeg.js', './scripts/patch-slsk.js']) { if (fs.existsSync(s)) { require('child_process').fork(s); } else { console.warn('⚠️ ' + s + ' not found, skipping patch.'); } }\""
+    "postinstall": "node scripts/patch-ffmpeg.js && node scripts/patch-slsk.js"
   },
   "keywords": [
     "music",
@@ -28,7 +28,6 @@
     "subsonic",
     "activitypub",
     "federation",
-    "gundb",
     "audio"
   ],
   "author": "",

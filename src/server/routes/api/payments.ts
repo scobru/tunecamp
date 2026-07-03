@@ -2,7 +2,6 @@ import express, { Router } from "express";
 import { ethers } from "ethers";
 import fs from "fs-extra";
 import path from "path";
-import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import Stripe from "stripe";
 
@@ -15,6 +14,7 @@ function stripeClient(key: string) {
 }
 import type { DatabaseService } from "../../core/database.js";
 import { getEthUsdRate } from "../../modules/catalog/price.js";
+import { StringUtils } from "../../../utils/stringUtils.js";
 import type { ServerConfig } from "../../core/config.js";
 import { rateLimit } from "../../middleware/rateLimit.js";
 
@@ -34,14 +34,9 @@ const CHECKOUT_ABI = [
     "function purchaseWithUSDC(uint256 trackId, uint8 role, uint256 quantity)"
 ];
 
-/** Cryptographically secure 10-char unlock code (A-Z0-9). Math.random is
- *  predictable: an attacker observing a few codes could derive future ones. */
+/** Cryptographically secure unlock code, optionally prefixed (e.g. "SUB-"). */
 function generateUnlockCode(prefix = ""): string {
-    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const bytes = crypto.randomBytes(10);
-    let code = "";
-    for (let i = 0; i < 10; i++) code += alphabet[bytes[i] % alphabet.length];
-    return prefix + code;
+    return prefix + StringUtils.generateUnlockCode();
 }
 
 // Stripe rejects `application_fee_amount` for cross-border direct charges in a

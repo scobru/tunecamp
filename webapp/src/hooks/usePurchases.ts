@@ -2,13 +2,6 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
 
-export interface PurchaseRecord {
-    txid: string;
-    date: number;
-    price: string;
-    code?: string;
-}
-
 export function usePurchases() {
     const [serverPurchases, setServerPurchases] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,16 +31,11 @@ export function usePurchases() {
         [serverPurchases]
     );
 
-    const getPurchase = useCallback(
-        (_trackId: string | number): PurchaseRecord | undefined => undefined,
-        []
-    );
-
     const verifyAndGetCode = useCallback(async (trackId: string | number): Promise<string | undefined> => {
         const id = String(trackId);
         const serverPurchase = serverPurchases.find(p => String(p.track_id) === id);
         return serverPurchase?.code;
     }, [serverPurchases]);
 
-    return { serverPurchases, loading, isPurchased, getCode, getPurchase, verifyAndGetCode };
+    return { serverPurchases, loading, isPurchased, getCode, verifyAndGetCode };
 }

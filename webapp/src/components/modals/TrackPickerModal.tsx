@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import API from '../../services/api';
 import { Search, Check, X } from 'lucide-react';
+import { formatDuration } from '../../utils/format';
 
 interface TrackPickerModalProps {
     onTracksSelected: (tracks: any[]) => void;
@@ -131,7 +132,7 @@ export const TrackPickerModal = ({ onTracksSelected, onClose, isOpen, excludeTra
                                             <div className="text-xs opacity-60">{track.artistName || track.artist_name || 'Unknown Artist'} • {track.albumName || track.album_title || 'Unknown Album'}</div>
                                         </div>
                                         <div className="text-xs font-mono opacity-50">
-                                            {track.duration ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, '0')}` : '-'}
+                                            {track.duration ? formatDuration(track.duration) : '-'}
                                         </div>
                                     </div>
                                 );

@@ -1,6 +1,5 @@
 import fs from 'fs-extra';
 import path from 'path';
-import crypto from 'crypto';
 import * as mm from 'music-metadata';
 import { glob } from 'glob';
 import pLimit from 'p-limit';
@@ -11,21 +10,7 @@ import type { OpenRouterService } from "../ai/openrouter.service.js";
 import type { AutoTaggerService, AutoTaggerStatus } from "./autotagger.service.js";
 import type { MaintenanceRepository } from "../../repositories/maintenance.repository.js";
 import { StringUtils } from "../../../utils/stringUtils.js";
-
-async function getFastFileHash(filePath: string): Promise<string> {
-    try {
-        const stats = await fs.stat(filePath);
-        const size = stats.size;
-        const buffer = Buffer.alloc(16384);
-        const fd = await fs.open(filePath, 'r');
-        await fs.read(fd, buffer, 0, 8192, 0);
-        await fs.read(fd, buffer, 8192, 8192, Math.max(0, size - 8192));
-        await fs.close(fd);
-        return crypto.createHash('md5').update(buffer).digest('hex');
-    } catch (e) {
-        return "";
-    }
-}
+import { getFastFileHash } from "../../../utils/fileUtils.js";
 
 export class MaintenanceService {
     constructor(

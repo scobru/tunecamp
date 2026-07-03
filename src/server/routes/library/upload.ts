@@ -77,17 +77,17 @@ function imageFileFilter(
 }
 
 // Removed createBackgroundStorage in favor of createTempStorage
-import type { ServiceContainer } from "../../core/container.js";
+import { resolveService, type ServiceContainer } from "../../core/container.js";
 
 export function createUploadRoutes(container: ServiceContainer): Router {
     const database = container.database;
-    const scanner: ServiceContainer['scannerService'] = (container as any).scannerService || (database as any).scannerService || database;
-    const musicDir: ServiceContainer['musicDir'] = (container as any).musicDir || (database as any).musicDir || database;
-    const publishingService: ServiceContainer['publishingService'] = (container as any).publishingService || (database as any).publishingService || database;
-    const storage: ServiceContainer['storage'] = (container as any).storage || (database as any).storage || database;
-    const authService: ServiceContainer['authService'] = (container as any).authService || (database as any).authService || database;
-    const identity: ServiceContainer['identity'] = (container as any).identity || (database as any).identity || database;
-    const library: ServiceContainer['library'] = (container as any).library || (database as any).library || database;
+    const scanner = resolveService(container, 'scannerService');
+    const musicDir = resolveService(container, 'musicDir');
+    const publishingService = resolveService(container, 'publishingService');
+    const storage = resolveService(container, 'storage');
+    const authService = resolveService(container, 'authService');
+    const identity = resolveService(container, 'identity');
+    const library = resolveService(container, 'library');
     const router = Router();
 
     const safeRemove = async (filePath: string) => {

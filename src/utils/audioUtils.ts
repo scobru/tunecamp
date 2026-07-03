@@ -1,22 +1,8 @@
-import path from 'path';
 import { StringUtils } from './stringUtils.js';
-import { LibraryUtils } from './libraryUtils.js';
 
 /**
  * Audio file utilities
  */
-
-export function formatDuration(seconds?: number): string {
-  if (!seconds && seconds !== 0) return '0:00';
-
-  const totalSeconds = Math.trunc(seconds);
-  const mins = Math.trunc(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-
-  const secsStr = secs.toString().padStart(2, '0');
-
-  return `${mins}:${secsStr}`;
-}
 
 /**
  * Converts text to a URL-safe slug
@@ -24,17 +10,6 @@ export function formatDuration(seconds?: number): string {
 export function slugify(text: string): string {
   if (!text) return '';
   return StringUtils.slugify(text);
-}
-
-/**
- * Formats a timestamp as relative time
- */
-export function formatTimeAgo(timestamp: number): string {
-  const result = StringUtils.formatTimeAgo(timestamp, Date.now());
-  if (result === '') {
-    return new Date(timestamp).toLocaleDateString();
-  }
-  return result;
 }
 
 /**
@@ -62,13 +37,6 @@ export function validateUsername(username: string): { valid: boolean; error?: st
   } else {
     return { valid: false, error: result.error };
   }
-}
-
-/**
- * Formats an audio filename: "01 - Title.mp3"
- */
-export function formatAudioFilename(trackNum: number, title: string, extension: string): string {
-  return LibraryUtils.formatAudioFilename(trackNum || 0, title || 'Unknown', extension || 'mp3');
 }
 
 /**
