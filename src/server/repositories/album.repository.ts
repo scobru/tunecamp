@@ -460,7 +460,7 @@ export class AlbumRepository {
         switch (filter) {
             case 'genre': condition = "(genre IS NULL OR genre = 'Library' OR genre = '')"; break;
             case 'year': condition = "(year IS NULL OR year = 0)"; break;
-            case 'cover': condition = "cover_path IS NULL"; break;
+            case 'cover': condition = "(cover_path IS NULL OR cover_path = '')"; break;
             case 'description': condition = "description IS NULL OR description = ''"; break;
             case 'artist': condition = "(artist_id IS NULL OR album_artist = 'Unknown Artist')"; break;
             default: return [];
