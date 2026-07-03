@@ -275,7 +275,8 @@ export function createMetadataRoutes(container: ServiceContainer): Router {
 
         for (let i = 0; i <= 3; i++) {
             response = await fetch(currentUrl, {
-                redirect: 'manual'
+                redirect: 'manual',
+                signal: AbortSignal.timeout(10000)
             });
 
             if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
