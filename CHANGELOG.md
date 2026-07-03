@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.11.1] - 2026-07-03
+
+### Changed
+- **Follower auto-acceptance is now a single bulk query**: `syncActivityPub` used to accept pending followers one `UPDATE` at a time (N+1); `acceptPendingFollowers(artistId)` now flips all pending rows in one statement.
+
 ## [2.11.0] - 2026-07-02
 
 ### Added
