@@ -1721,8 +1721,12 @@ export class ActivityPubService {
             const pending = this.db.getPendingFollowers ? this.db.getPendingFollowers(artistId) : [];
             if (pending.length > 0) {
                 console.log(`  👥 Auto-accepting ${pending.length} pending follower(s)...`);
-                for (const follower of pending) {
-                    this.db.acceptFollower(artistId, follower.actor_uri);
+                if (this.db.acceptPendingFollowers) {
+                    this.db.acceptPendingFollowers(artistId);
+                } else {
+                    for (const follower of pending) {
+                        this.db.acceptFollower(artistId, follower.actor_uri);
+                    }
                 }
             }
         }

@@ -35,6 +35,7 @@ export function createSocialManager(
             socialRepository.addFollower(id, u, i, si, fid);
         },
         acceptFollower: (artistId: number, actorUri: string) => socialRepository.acceptFollower(artistId, actorUri),
+        acceptPendingFollowers: (artistId: number) => socialRepository.acceptPendingFollowers(artistId),
         rejectFollower: (artistId: number, actorUri: string) => socialRepository.rejectFollower(artistId, actorUri),
         removeFollower: (id: number, u: string) => socialRepository.removeFollower(id, u),
         updateFollowerUri: (o: string, n: string, i: string, si?: string) => socialRepository.updateFollowerUri(o, n, i, si),
