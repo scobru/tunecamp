@@ -158,21 +158,6 @@ export class PeerService {
         this.database.peer.replacePeerTracks(sessionId, peerTracks);
         console.log(`🔌 [PeerService] Session ${sessionId} uploaded manifest with ${manifests.length} tracks`);
 
-        // Phase 10: AP Presence
-        if (this.apService) {
-            try {
-                const row = this.database.db.prepare("SELECT artist_id FROM admin WHERE id = ?").get(session.userId) as { artist_id: number | null } | undefined;
-                const artistId = row?.artist_id;
-                if (artistId) {
-                    this.apService.broadcastBoardMessage(
-                        artistId,
-                        `Operator is now online sharing ${manifests.length} tracks on TuneCamp!`
-                    ).catch((err: any) => console.error("Failed to broadcast AP presence:", err));
-                }
-            } catch (err) {
-                console.error("Failed to fetch artist for AP presence:", err);
-            }
-        }
     }
 
     async requestStream(sessionId: string, trackId: string, res: Response) {
@@ -280,10 +265,18 @@ export class PeerService {
      * manager/root-admin "import" action.
      */
     async requestImport(sessionId: string, trackId: string, destDir: string): Promise<{ filePath: string; track: PeerTrack }> {
-        const session = this.activeSessions.get(sessionId);
-        if (!session) throw new Error("Peer session not found");
+        let session = this.activeSessions.get(sessionId);
+        let track = session ? this.database.peer.getPeerTrack(sessionId, trackId) : undefined;
 
-        const track = this.database.peer.getPeerTrack(sessionId, trackId);
+        // Session may have rotated after reconnect — find the same track in any active session
+        if (!session || !track) {
+            for (const [id, s] of this.activeSessions.entries()) {
+                const t = this.database.peer.getPeerTrack(id, trackId);
+                if (t) { session = s; track = t; break; }
+            }
+        }
+
+        if (!session) throw new Error("Peer session not found");
         if (!track) throw new Error("Track not found");
 
         // Import requires the same permission as a download (it pulls the full file).

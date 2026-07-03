@@ -94,7 +94,9 @@ export class DiscoveryService {
         const allAlbums = this.database.getAlbums(profile);
         const allReleases = this.database.getReleases(profile);
 
-        const recentAlbums = allAlbums.slice(0, 20).map(a => {
+        const recentAlbums = allAlbums
+            .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+            .slice(0, 20).map(a => {
             const mapped = mapAlbumDTO(a, this.database, username);
             (mapped as any).tracks = this.database.getTracksByAlbum(a.id, profile).map(t => mapTrackDTO(t, this.database, username));
             return mapped;
