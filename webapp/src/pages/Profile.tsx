@@ -38,7 +38,6 @@ import { LinksEditor } from "../components/ui/LinksEditor";
 
 const Profile = () => {
   const { user, isAuthenticated, role, isInitializing, checkAuth } = useAuthStore();
-  // const isAdmin = role === 'admin' || role === 'super_user' || role === 'root_admin' || user?.isRootAdmin;
   const { address } = useWalletStore();
   const activeAddress = address;
   const { loading: purchasesLoading, isPurchased } = usePurchases();
