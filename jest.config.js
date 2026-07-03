@@ -2,12 +2,9 @@
 export default {
   preset: 'ts-jest/presets/default-esm', // or other ESM presets
   testEnvironment: 'node',
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '<rootDir>/webapp/',
-    '<rootDir>/website/',
-    '<rootDir>/.claude/'
-  ],
+  // Only search src/ — webapp tests are vitest, and slash-based ignore
+  // patterns don't match Windows backslash paths.
+  roots: ['<rootDir>/src'],
   // Allow Jest to transform ESM-only packages from node_modules (e.g. node-fetch v3+)
   transformIgnorePatterns: [
     '/node_modules/(?!(node-fetch)/)'
