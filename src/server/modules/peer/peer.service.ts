@@ -13,6 +13,7 @@ export interface ActivePeerSession {
     username: string;
     ws: WebSocket;
     connectedAt: number;
+    lastPongAt: number;
     allowDownloads: boolean;
     pendingRequests: Map<string, Response>;
 }
@@ -48,9 +49,16 @@ export class PeerService {
                     continue;
                 }
 
+                // No pong for 2 cycles: TCP socket is half-open (peer crashed/slept/NAT
+                // dropped route without a clean FIN), readyState stays OPEN forever otherwise.
+                if (now - session.lastPongAt > 60000) {
+                    console.log(`🔌 [PeerService] Session ${sessionId} missed heartbeat. Cleaning up.`);
+                    this.unregisterSession(sessionId);
+                    continue;
+                }
+
                 try {
                     session.ws.send(JSON.stringify({ type: "ping" }));
-                    this.database.peer.updatePeerSessionHeartbeat(sessionId);
                 } catch (e) {
                     console.error(`🔌 [PeerService] Heartbeat failed for session ${sessionId}:`, e);
                     this.unregisterSession(sessionId);
@@ -96,6 +104,7 @@ export class PeerService {
             username,
             ws,
             connectedAt: Date.now(),
+            lastPongAt: Date.now(),
             allowDownloads,
             pendingRequests: new Map()
         };
@@ -105,6 +114,13 @@ export class PeerService {
         
         console.log(`🔌 [PeerService] Session ${sessionId} registered for user ${username}`);
         return sessionId;
+    }
+
+    handlePong(sessionId: string) {
+        const session = this.activeSessions.get(sessionId);
+        if (!session) return;
+        session.lastPongAt = Date.now();
+        this.database.peer.updatePeerSessionHeartbeat(sessionId);
     }
 
     unregisterSession(sessionId: string) {
