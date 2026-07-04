@@ -21,6 +21,11 @@ All notable changes to this project will be documented in this file.
 - **ArtistKeysModal**: dead code — mounted globally and listening for an `open-artist-keys-modal` event that nothing ever dispatched.
 - **Home hero "Browse Music" button**: it only scrolled to the section directly below.
 
+## [2.13.2] - 2026-07-04
+
+### Fixed
+- **Album-page "Seed" still produced title-only torrent names** (v2.13.1 only fixed publish-triggered auto-seeding). The `Artist - Title` naming now lives in `TorrentService.seedFiles()` itself, so every caller — album page, manual Seed Files form, publish auto-seed — gets the same convention; a caller that already prefixed the artist isn't double-prefixed. Existing torrents keep their old name (it's baked into the info hash): delete and re-seed to rename.
+
 ## [2.13.1] - 2026-07-04
 
 ### Fixed

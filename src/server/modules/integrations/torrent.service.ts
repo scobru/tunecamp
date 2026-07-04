@@ -127,7 +127,11 @@ export class TorrentService {
                 return reject(new Error(`The following paths do not exist: ${missingFiles.join(', ')}`));
             }
             const existingFiles = resolvedFiles;
-            const opts: any = { name };
+            // Torrents are always named "Artist - Title"; skip the prefix if the caller already added it.
+            const torrentName = artist && !name.toLowerCase().startsWith(`${artist.toLowerCase()} - `)
+                ? `${artist} - ${name}`
+                : name;
+            const opts: any = { name: torrentName };
             this.client!.seed(existingFiles, opts, (torrent) => {
                 const infoHash = (torrent.infoHash || '').toLowerCase();
                 console.log(`📡 [TorrentService] Started seeding: ${torrent.name} (${infoHash})`);
