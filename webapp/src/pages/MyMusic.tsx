@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { AdminReleaseModal } from "../components/modals/AdminReleaseModal";
 import { UploadTracksModal } from "../components/modals/UploadTracksModal";
-import { AdminArtistModal } from "../components/modals/AdminArtistModal";
 import { PageHeader } from "../components/ui/PageHeader";
 
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
@@ -270,12 +269,9 @@ const MyMusic = () => {
           window.dispatchEvent(new CustomEvent("refresh-admin-albums"));
         }}
       />
-      <AdminArtistModal
-        onArtistUpdated={() => {
-          bumpCacheBuster();
-          window.dispatchEvent(new CustomEvent("refresh-admin-artists"));
-        }}
-      />
+      {/* AdminArtistModal is rendered globally in MainLayout. Rendering a
+          second instance here mounted two dialogs on the same event — closing
+          one revealed the other in a stale (editable) lock state. */}
       <UploadTracksModal
         onUploadComplete={() => {
           bumpCacheBuster();

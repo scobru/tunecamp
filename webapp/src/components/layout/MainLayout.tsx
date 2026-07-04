@@ -12,6 +12,7 @@ import { CheckoutModal } from "../modals/CheckoutModal";
 import { UpdateBanner } from "../UpdateBanner";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useUIStore } from "../../stores/useUIStore";
+import { useConfigStore } from "../../stores/useConfigStore";
 import { useSiteSettingsStore } from "../../stores/useSiteSettingsStore";
 import { applyThemeFont } from "../../utils/themeFont";
 
@@ -39,6 +40,7 @@ export const MainLayout = () => {
   const siteName = siteSettings?.siteName || "TuneCamp";
   const dominantColor = usePlayerStore(state => state.dominantColor);
   const theme = useUIStore(state => state.theme);
+  const bumpCacheBuster = useConfigStore(state => state.bumpCacheBuster);
 
   useEffect(() => {
     // Apply theme on mount and when it changes
@@ -179,6 +181,7 @@ export const MainLayout = () => {
       />
       <AdminArtistModal
         onArtistUpdated={() => {
+          bumpCacheBuster();
           window.dispatchEvent(new CustomEvent("refresh-admin-artists"));
           window.dispatchEvent(new CustomEvent("refresh-admin-tracks"));
         }}
