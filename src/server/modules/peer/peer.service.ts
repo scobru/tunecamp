@@ -28,6 +28,11 @@ interface PendingImport {
     settled: boolean;
 }
 
+// A daemon pings every heartbeat cycle; if the DB row hasn't been touched in
+// this long it belongs to a peer that is gone (crashed, slept, or left over
+// after a server restart) and must not be reported as active.
+const SESSION_STALE_MS = 90_000;
+
 export class PeerService {
     private activeSessions = new Map<string, ActivePeerSession>();
     // Server-initiated imports: chunks are written to disk instead of an HTTP response.
@@ -41,6 +46,17 @@ export class PeerService {
     startHeartbeat() {
         this.pingInterval = setInterval(() => {
             const now = Date.now();
+
+            // Purge orphaned DB rows whose live socket no longer exists in memory
+            // (e.g. sessions left behind by a previous server process). The loop
+            // below only sees in-memory sessions, so without this a ghost peer
+            // would remain listed as "active" forever.
+            try {
+                this.database.peer.deleteStaleSessions(SESSION_STALE_MS);
+            } catch (e) {
+                console.error("🔌 [PeerService] Failed to purge stale peer sessions:", e);
+            }
+
             for (const [sessionId, session] of this.activeSessions.entries()) {
                 // If peer has not replied or connection state is closed, clean up
                 if (session.ws.readyState !== 1) { // 1 = OPEN
@@ -151,9 +167,14 @@ export class PeerService {
             }
 
             this.activeSessions.delete(sessionId);
-            this.database.peer.deletePeerSession(sessionId);
-            console.log(`🔌 [PeerService] Session ${sessionId} unregistered`);
         }
+
+        // Always drop the DB row, even when there is no live in-memory session.
+        // An admin "kick" (or a purge) may target an orphaned row left over from
+        // a previous server process; guarding this on `session` would leave the
+        // row — and its "active" listing — in place.
+        this.database.peer.deletePeerSession(sessionId);
+        console.log(`🔌 [PeerService] Session ${sessionId} unregistered`);
     }
 
     handleManifest(sessionId: string, manifests: PeerTrackManifest[]) {
@@ -440,7 +461,7 @@ export class PeerService {
     }
 
     getSessions(): PeerSession[] {
-        return this.database.peer.getActivePeerSessions();
+        return this.database.peer.getActivePeerSessions(SESSION_STALE_MS);
     }
 }
 export function createPeerService(database: DatabaseService, apService?: ActivityPubService): PeerService {

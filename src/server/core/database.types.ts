@@ -832,8 +832,9 @@ export interface PeerManager {
     updatePeerSessionHeartbeat(id: string): void;
     deletePeerSession(id: string): void;
     deleteStaleSessionsForUser(userId: number): void;
+    deleteStaleSessions(olderThanMs: number): void;
     getPeerSession(id: string): PeerSession | undefined;
-    getActivePeerSessions(): PeerSession[];
+    getActivePeerSessions(staleThresholdMs?: number): PeerSession[];
     replacePeerTracks(sessionId: string, tracks: Omit<PeerTrack, 'session_id' | 'created_at'>[]): void;
     getPeerTrack(sessionId: string, trackId: string): PeerTrack | undefined;
     searchPeerTracks(query: string): PeerTrack[];

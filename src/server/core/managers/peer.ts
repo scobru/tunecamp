@@ -28,6 +28,19 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                 db.prepare("DELETE FROM peer_sessions WHERE user_id = ?").run(userId);
             })();
         },
+        deleteStaleSessions(olderThanMs: number): void {
+            const cutoff = Date.now() - olderThanMs;
+            db.transaction(() => {
+                db.prepare(`
+                    DELETE FROM peer_tracks
+                    WHERE session_id IN (
+                        SELECT id FROM peer_sessions WHERE last_seen < ?
+                    )
+                `).run(cutoff);
+
+                db.prepare("DELETE FROM peer_sessions WHERE last_seen < ?").run(cutoff);
+            })();
+        },
         getPeerSession(id: string): PeerSession | undefined {
             const row = db.prepare(
                 `SELECT ps.*, a.username 
@@ -46,14 +59,23 @@ export function createPeerManager(db: DatabaseType): PeerManager {
                 username: row.username
             };
         },
-        getActivePeerSessions(): PeerSession[] {
+        getActivePeerSessions(staleThresholdMs?: number): PeerSession[] {
+            // Only surface sessions whose daemon has sent a heartbeat recently.
+            // Rows can outlive the live connection (e.g. after a server restart
+            // the in-memory session map is empty, so nothing prunes them), and a
+            // stale row must not be reported as an active peer.
+            const freshnessClause = staleThresholdMs
+                ? "WHERE ps.last_seen >= ?"
+                : "";
+            const params = staleThresholdMs ? [Date.now() - staleThresholdMs] : [];
             const rows = db.prepare(
-                `SELECT ps.*, a.username, COUNT(pt.id) as trackCount 
-                 FROM peer_sessions ps 
-                 JOIN admin a ON ps.user_id = a.id 
-                 LEFT JOIN peer_tracks pt ON ps.id = pt.session_id 
+                `SELECT ps.*, a.username, COUNT(pt.id) as trackCount
+                 FROM peer_sessions ps
+                 JOIN admin a ON ps.user_id = a.id
+                 LEFT JOIN peer_tracks pt ON ps.id = pt.session_id
+                 ${freshnessClause}
                  GROUP BY ps.id`
-            ).all() as any[];
+            ).all(...params) as any[];
             return rows.map(row => ({
                 id: row.id,
                 user_id: row.user_id,
