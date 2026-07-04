@@ -64,6 +64,8 @@ const ContentSearch: React.FC = () => {
     const [knabenPage, setKnabenPage] = useState(0);
     const [knabenLoading, setKnabenLoading] = useState(false);
     const [knabenError, setKnabenError] = useState<string | null>(null);
+    const [networkTorrents, setNetworkTorrents] = useState<any[]>([]);
+    const [torrentSource, setTorrentSource] = useState<'mine' | 'network'>('mine');
     const { user, isAuthenticated, isLoading: authLoading, role } = useAuthStore();
     const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
     const navigate = useNavigate();
@@ -95,6 +97,15 @@ const ContentSearch: React.FC = () => {
         }
     };
 
+    const fetchNetworkTorrents = async () => {
+        try {
+            const data = await API.getNetworkTracks();
+            setNetworkTorrents((data || []).filter((t: any) => t.magnetUri));
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleKnabenSearch = async (e?: React.FormEvent, page = 0) => {
         e?.preventDefault();
         if (!query.trim()) return;
@@ -121,6 +132,7 @@ const ContentSearch: React.FC = () => {
             return () => clearInterval(interval);
         } else if (activeTab === 'torrents' || activeTab === 'seeding') {
             fetchTorrents();
+            fetchNetworkTorrents();
             const interval = setInterval(fetchTorrents, 5000);
             return () => clearInterval(interval);
         }
@@ -786,6 +798,95 @@ const ContentSearch: React.FC = () => {
                                 ))}
                             </div>
                         </details>
+                    </div>
+
+                    {/* Torrents seeded on this instance or on connected TuneCamp instances */}
+                    <div className="card bg-base-200/50 border border-base-300 p-5 space-y-4">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h2 className="text-lg font-bold flex items-center gap-2">
+                                <Globe size={18} className="text-primary" /> Torrents from the Network
+                            </h2>
+                            <div className="join">
+                                <button
+                                    className={clsx('btn btn-xs join-item', torrentSource === 'mine' ? 'btn-primary' : 'btn-ghost')}
+                                    onClick={() => setTorrentSource('mine')}
+                                >
+                                    My Instance
+                                </button>
+                                <button
+                                    className={clsx('btn btn-xs join-item', torrentSource === 'network' ? 'btn-primary' : 'btn-ghost')}
+                                    onClick={() => setTorrentSource('network')}
+                                >
+                                    Connected Instances
+                                </button>
+                            </div>
+                        </div>
+                        {(() => {
+                            const q = query.trim().toLowerCase();
+                            const matches = (...fields: (string | undefined)[]) =>
+                                !q || fields.some(f => f?.toLowerCase().includes(q));
+
+                            const rows = torrentSource === 'mine'
+                                ? torrents
+                                    .filter((t: any) => t.status === 'seeding' && t.magnet_uri)
+                                    .filter((t: any) => matches(t.name))
+                                : networkTorrents
+                                    .filter((t: any) => t.federation !== 'local')
+                                    .filter((t: any) => matches(t.title, t.artistName, t.releaseTitle));
+
+                            if (rows.length === 0) {
+                                return (
+                                    <div className="text-center py-8 text-sm opacity-50">
+                                        {torrentSource === 'mine'
+                                            ? 'Nothing seeding on this instance yet.'
+                                            : 'No torrents found on connected instances.'}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="divide-y divide-base-content/5 rounded-xl overflow-hidden border border-base-content/10">
+                                    {rows.map((t: any, i: number) => {
+                                        const label = torrentSource === 'mine' ? t.name : `${t.title} — ${t.artistName || 'Unknown Artist'}`;
+                                        const sub = torrentSource === 'mine' ? 'Seeding on this instance' : t.siteUrl;
+                                        const magnet = torrentSource === 'mine' ? t.magnet_uri : t.magnetUri;
+                                        return (
+                                            <div key={t.infoHash ?? t.slug ?? i} className="flex items-center gap-3 px-4 py-3 bg-base-200/40 hover:bg-base-200 transition-colors">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-medium truncate" title={label}>{label}</div>
+                                                    <div className="text-[11px] opacity-50 truncate">{sub}</div>
+                                                </div>
+                                                <button
+                                                    className="btn btn-ghost btn-xs gap-1 shrink-0"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(magnet);
+                                                        notify.success('Magnet copied');
+                                                    }}
+                                                >
+                                                    <Copy size={12} /> Copy
+                                                </button>
+                                                {torrentSource === 'network' && (
+                                                    <button
+                                                        className="btn btn-primary btn-xs gap-1 shrink-0"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await API.addTorrent(magnet);
+                                                                notify.success('Torrent added');
+                                                                fetchTorrents();
+                                                            } catch (err: any) {
+                                                                notify.error(err, 'Failed to add torrent');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Download size={12} /> Add
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     {/* Add a magnet manually — compact inline bar */}

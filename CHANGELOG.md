@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.13.0] - 2026-07-04
+
+### Added
+- **Torrent search now covers the federated network**: the WebTorrent tab in Content Search has a "Torrents from the Network" panel with a My Instance / Connected Instances filter — surfaces magnets seeded locally or by connected TuneCamp instances (via the existing `/api/stats/network/tracks` federation feed) instead of only Knaben's external index.
+- **Network page search box**: filter federated releases/posts by title, artist, or release name client-side.
+
 ## [2.12.1] - 2026-07-04
 
 ### Fixed
