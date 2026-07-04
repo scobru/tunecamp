@@ -497,6 +497,7 @@ const Network = () => {
   const { isAdminAuthenticated, isAuthenticated } = useAuthStore();
   const [hiddenTracks, setHiddenTracks] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<NetworkStatus | null>(null);
   const [enabled, setEnabled] = useState(true);
   const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
@@ -648,11 +649,14 @@ const Network = () => {
       </div>
     );
 
+  const q = searchQuery.trim().toLowerCase();
   const filteredItems = tracks.filter((item: NetworkTrack) => {
     if (!item) return false;
     const uniqueId = item.slug || (item.siteUrl + "::" + item.track?.id);
-    if (showHidden) return true;
-    return !hiddenTracks.includes(uniqueId);
+    if (!showHidden && hiddenTracks.includes(uniqueId)) return false;
+    if (!q) return true;
+    return [item.title, item.artistName, item.releaseTitle, item.content]
+      .some((field) => field?.toLowerCase().includes(q));
   });
 
   const allReleases = filteredItems.filter(t => !t.type || t.type === 'release' || t.type === 'peer');
@@ -740,6 +744,16 @@ const Network = () => {
           </div>
         }
       >
+        <label className="input input-bordered input-sm flex items-center gap-2 max-w-xs">
+          <Magnet size={14} className="opacity-50" />
+          <input
+            type="text"
+            className="grow"
+            placeholder="Search title, artist, magnet..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </label>
         {isAdminAuthenticated && (
           <button
             className="btn btn-primary btn-sm gap-2 tooltip tooltip-bottom"
