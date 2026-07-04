@@ -4,7 +4,7 @@ import API from "../services/api";
 import { useAuthStore } from "../stores/useAuthStore";
 import { Globe, Server, Music, ExternalLink, Play, ChevronDown, Users, FileText, Library, Loader2, Magnet } from "lucide-react";
 
-type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances" | "tunecamp-network" | "other-networks";
+type NetworkTab = "peers" | "releases" | "my-instance" | "posts" | "instances" | "other-networks";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { PeerSessionCard } from "../components/network/PeerSessionCard";
@@ -499,7 +499,7 @@ const Network = () => {
   const [status, setStatus] = useState<NetworkStatus | null>(null);
   const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
   const [peerSessions, setPeerSessions] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<NetworkTab>("tunecamp-network");
+  const [activeTab, setActiveTab] = useState<NetworkTab>("other-networks");
 
   useEffect(() => {
     const loadData = async () => {
@@ -671,18 +671,7 @@ const Network = () => {
     } catch { /* ignore */ }
   }
   const tunecampHostnames = new Set(sites.map(s => getHostname((s as any).url)));
-  const tunecampReleases = remoteReleases.filter(t => tunecampHostnames.has(getHostname(t.siteUrl)));
   const otherReleases = remoteReleases.filter(t => !tunecampHostnames.has(getHostname(t.siteUrl)));
-
-  const tunecampByHost = new Map<string, NetworkTrack[]>();
-  for (const t of tunecampReleases) {
-    const host = getHostname(t.siteUrl);
-    if (!tunecampByHost.has(host)) tunecampByHost.set(host, []);
-    tunecampByHost.get(host)!.push(t);
-  }
-  const tunecampGroups = Array.from(tunecampByHost.entries())
-    .map(([host, items]) => ({ host, items, name: siteNameByHost.get(host) }))
-    .sort((a, b) => b.items.length - a.items.length);
 
   const otherByHost = new Map<string, NetworkTrack[]>();
   for (const t of otherReleases) {
@@ -779,13 +768,12 @@ const Network = () => {
         const showPosts = allPosts.length > 0;
         const tabs: { id: NetworkTab; label: string; icon: React.ElementType; count: number }[] = [
           ...(showPeers ? [{ id: "peers" as NetworkTab, label: "Live Peers", icon: Users, count: peerSessions.length }] : []),
-          { id: "tunecamp-network", label: "TuneCamp Network", icon: Globe, count: tunecampGroups.length },
           { id: "other-networks", label: "Other Networks", icon: ExternalLink, count: otherGroups.length },
           { id: "my-instance", label: "My Instance", icon: Music, count: localReleases.length },
           ...(showPosts ? [{ id: "posts" as NetworkTab, label: "Posts", icon: FileText, count: allPosts.length }] : []),
           { id: "instances", label: "Instances", icon: Server, count: sites.length },
         ];
-        const currentTab = tabs.find(t => t.id === activeTab) ? activeTab : tabs[0]?.id ?? "tunecamp-network";
+        const currentTab = tabs.find(t => t.id === activeTab) ? activeTab : tabs[0]?.id ?? "other-networks";
 
         return (
           <>
@@ -831,31 +819,6 @@ const Network = () => {
                   ) : (
                     <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
                       No live peer channels currently online. Start a CLI daemon to share yours!
-                    </div>
-                  )}
-                </section>
-              )}
-
-              {/* TuneCamp Network */}
-              {currentTab === "tunecamp-network" && (
-                <section className="space-y-4">
-                  {tunecampGroups.length > 0 ? (
-                    tunecampGroups.map((g) => (
-                      <InstanceGroup
-                        key={g.host}
-                        host={g.host}
-                        name={g.name}
-                        federation={g.items[0]?.federation}
-                        tracks={g.items}
-                        onPlay={handlePlayNetworkTrack}
-                        onToggleVisibility={toggleTrackVisibility}
-                        hiddenTracks={hiddenTracks}
-                        isAdmin={isAdminAuthenticated}
-                      />
-                    ))
-                  ) : (
-                    <div className="text-center py-12 opacity-40 border border-dashed border-base-content/5 rounded-xl text-sm">
-                      No remote TuneCamp tracks discovered yet. Other instances will appear once they federate via ActivityPub or are discovered over HTTP.
                     </div>
                   )}
                 </section>

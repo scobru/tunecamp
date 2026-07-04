@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.14.1] - 2026-07-04
+
+### Removed
+- **"TuneCamp Network" tab removed from the Network page**: it duplicated the network torrent/track discovery already offered by Search Content's "Torrents from the Network" section (which works), while the Network-page version showed no results. Network-instance discovery now lives solely in Search Content; the Network page keeps Live Peers, Other Networks, My Instance, Posts and Instances.
+
 ## [2.14.0] - 2026-07-04
 
 ### Changed
