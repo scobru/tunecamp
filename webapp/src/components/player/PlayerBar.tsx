@@ -94,6 +94,8 @@ export const PlayerBar = () => {
     toggleShuffle,
     toggleRepeat,
     toggleRadio,
+    isLyricsOpen,
+    isCanvasOpen,
     toggleLyrics,
     toggleQueue,
     toggleCanvas,
@@ -115,6 +117,8 @@ export const PlayerBar = () => {
     toggleShuffle: state.toggleShuffle,
     toggleRepeat: state.toggleRepeat,
     toggleRadio: state.toggleRadio,
+    isLyricsOpen: state.isLyricsOpen,
+    isCanvasOpen: state.isCanvasOpen,
     toggleLyrics: state.toggleLyrics,
     toggleQueue: state.toggleQueue,
     toggleCanvas: state.toggleCanvas,
@@ -585,15 +589,6 @@ export const PlayerBar = () => {
             </button>
 
             <button
-              aria-label="Toggle radio mode"
-              className={clsx("hidden lg:flex btn btn-ghost btn-xs btn-circle transition-all tooltip tooltip-top", isRadioMode ? "text-primary scale-110" : "opacity-40 hover:opacity-100")}
-              onClick={toggleRadio}
-              data-tip="Radio Mode"
-            >
-              <Radio size={14} aria-hidden="true" />
-            </button>
-
-            <button
               aria-label="Previous track"
               className="btn btn-ghost btn-sm btn-circle opacity-70 hover:opacity-100 tooltip tooltip-top"
               onClick={prev}
@@ -696,14 +691,18 @@ export const PlayerBar = () => {
             />
           </div>
           <div className="flex gap-1 h-10 items-center border-l border-base-content/5 pl-2 lg:pl-4 ml-1 lg:ml-2">
-            <div className="dropdown dropdown-top dropdown-end lg:hidden">
+            <div className="dropdown dropdown-top dropdown-end">
               <div role="button" tabIndex={0} className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100">
                 <MoreVertical size={18} />
               </div>
               <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-56 border border-base-content/10 mb-4">
-                <li><a onClick={toggleShuffle}><Shuffle size={16} className={clsx(isShuffled && "text-primary")}/> Shuffle</a></li>
-                <li><a onClick={toggleRepeat}><Repeat size={16} className={clsx(repeatMode !== 'none' && "text-primary")}/> Repeat: {repeatMode}</a></li>
+                <li className="lg:hidden"><a onClick={toggleShuffle}><Shuffle size={16} className={clsx(isShuffled && "text-primary")}/> Shuffle</a></li>
+                <li className="lg:hidden"><a onClick={toggleRepeat}><Repeat size={16} className={clsx(repeatMode !== 'none' && "text-primary")}/> Repeat: {repeatMode}</a></li>
+                
+                <li><a onClick={toggleLyrics}><Mic2 size={16} className={clsx(isLyricsOpen && "text-primary")}/> Lyrics</a></li>
+                <li><a onClick={toggleCanvas}><Maximize2 size={16} className={clsx(isCanvasOpen && "text-primary")}/> Visualizer</a></li>
                 <li><a onClick={toggleRadio}><Radio size={16} className={clsx(isRadioMode && "text-primary")}/> Radio Mode</a></li>
+                
                 <div className="divider my-1 opacity-10"></div>
                 <li className="menu-title flex-row items-center gap-2 px-2 py-1 text-[11px]">
                   <AudioLines size={14} className={clsx(crossfadeSec > 0 && "text-primary")} /> Crossfade
@@ -738,67 +737,6 @@ export const PlayerBar = () => {
               </ul>
             </div>
 
-            {/* Secondary track actions consolidated into one overflow menu to
-                keep the always-visible controls minimal. */}
-            <div className="dropdown dropdown-top dropdown-end hidden lg:block">
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="More actions"
-                className="btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top"
-                data-tip="More"
-              >
-                <MoreVertical size={18} />
-              </div>
-              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-56 border border-base-content/10 mb-4">
-                <li><a onClick={handleAddToPlaylist}><ListMusic size={16}/> Add to Playlist</a></li>
-                <li><a onClick={handleStarArtist}><User size={16}/> Favorite Artist</a></li>
-                <li><a onClick={handleStarAlbum}><Disc size={16}/> Favorite Album</a></li>
-                {isAdminOrOwner && (
-                  <>
-                    <div className="divider my-1 opacity-10"></div>
-                    <li><a href={API.getTrackDownloadUrl(currentTrack.id)} target="_blank"><Download size={16}/> Download</a></li>
-                  </>
-                )}
-              </ul>
-            </div>
-
-            <div className="dropdown dropdown-top dropdown-end hidden sm:block">
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="Crossfade"
-                className={clsx(
-                  "btn btn-ghost btn-sm btn-square tooltip tooltip-top",
-                  crossfadeSec > 0 ? "text-primary" : "opacity-40 hover:opacity-100"
-                )}
-                data-tip={crossfadeSec > 0 ? `Crossfade: ${crossfadeSec}s` : "Crossfade"}
-              >
-                <AudioLines size={18} />
-              </div>
-              <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-44 border border-base-content/10 mb-4">
-                <li className="menu-title text-[11px]">Crossfade between tracks</li>
-                {[0, 4, 8, 12].map((s) => (
-                  <li key={s}>
-                    <a
-                      className={clsx(crossfadeSec === s && "active text-primary font-semibold")}
-                      onClick={() => setCrossfade(s)}
-                    >
-                      {s === 0 ? "Off" : `${s} seconds`}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <button
-              aria-label="Toggle lyrics"
-              className={clsx("hidden md:flex btn btn-ghost btn-sm btn-square tooltip tooltip-top", isShuffled ? "text-primary" : "opacity-40")}
-              onClick={toggleLyrics}
-              data-tip="Lyrics"
-            >
-              <Mic2 size={18} />
-            </button>
             <button
               aria-label="Toggle queue"
               className={clsx("btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 tooltip tooltip-top")}
@@ -806,14 +744,6 @@ export const PlayerBar = () => {
               data-tip="Play Queue"
             >
               <ListMusic size={18} />
-            </button>
-            <button
-              aria-label="Toggle Canvas View"
-              className="hidden lg:flex btn btn-ghost btn-sm btn-square opacity-40 hover:opacity-100 text-primary tooltip tooltip-top"
-              onClick={toggleCanvas}
-              data-tip="Visualizer"
-            >
-              <Maximize2 size={18} />
             </button>
           </div>
         </div>
