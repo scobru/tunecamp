@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.14.4] - 2026-07-04
+
+### Fixed
+- **Restored the "TuneCamp Network" tab on the Network page** (reverts the removal in 2.14.1). The tab was dropped as "redundant" with Search Content's torrent discovery, but those are two different things: torrent search is discovery, while this tab streams the tracks published by the *registered TuneCamp instances* you federate with (hosts in the Instances directory). Because remote tracks from those hosts are deliberately excluded from "Other Networks", removing the tab left them with no listing anywhere — the tracks of the instances you're connected to silently disappeared from view. The tab (and its per-instance grouping) is back, and the Network page again defaults to it.
+
 ## [2.14.3] - 2026-07-04
 
 ### Fixed
