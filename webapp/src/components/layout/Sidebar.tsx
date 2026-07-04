@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useUIStore } from "../../stores/useUIStore";
-import API from "../../services/api";
+import { useSiteSettingsStore } from "../../stores/useSiteSettingsStore";
 import {
   Home,
   Search,
@@ -38,19 +38,21 @@ import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 import { WalletPill } from "../ui/WalletPill";
 import { canPublish } from "../../utils/permissions";
+import { getRoleLabel, getRoleBadgeClass } from "../../utils/roles";
 
 export const Sidebar = () => {
   const location = useLocation();
   const { user, isAuthenticated, role, logout } = useAuthStore();
   const { sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
-  const [siteName, setSiteName] = useState("TuneCamp");
-  const [siteLogo, setSiteLogo] = useState<string | null>(null);
-  const [communityLink, setCommunityLink] = useState<string | null>(null);
-  const [hideLive, setHideLive] = useState(false);
-  const [hideStore, setHideStore] = useState(false);
-  const [hideSocial, setHideSocial] = useState(false);
-  const [hideNetwork, setHideNetwork] = useState(false);
-  const [hideDig, setHideDig] = useState(false);
+  const { settings, fetchFlags, isModuleHidden } = useSiteSettingsStore();
+  const siteName = settings?.siteName || "TuneCamp";
+  const siteLogo = settings?.siteLogo || null;
+  const communityLink = settings?.communityLink || null;
+  const hideLive = isModuleHidden("hideLive");
+  const hideStore = isModuleHidden("hideStore");
+  const hideSocial = isModuleHidden("hideSocial");
+  const hideNetwork = isModuleHidden("hideNetwork");
+  const hideDig = isModuleHidden("hideDig");
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -59,42 +61,10 @@ export const Sidebar = () => {
   // self-publish listeners (role 'user' + artistId) get the Studio section.
   const canPub = canPublish(user, role);
 
-  const getRoleLabel = (r: typeof role) => {
-    switch (r) {
-      case "root_admin": return "Root Admin";
-      case "admin": return "Manager";
-      case "super_user": return "Curator";
-      case "user": return user?.artistId ? "Artist" : "Listener";
-      default: return "Listener";
-    }
-  };
-
-  const getRoleBadgeClass = (r: typeof role) => {
-    switch (r) {
-      case "root_admin": return "bg-red-500/10 text-red-500 border-red-500/20";
-      case "admin": return "bg-primary/10 text-primary border-primary/20";
-      case "super_user": return "bg-secondary/10 text-secondary border-secondary/20";
-      case "user":
-        if (user?.artistId) return "bg-accent/10 text-accent border-accent/20";
-        return "bg-base-content/5 text-base-content/60 border-base-content/10";
-      default: return "bg-base-content/5 text-base-content/60 border-base-content/10";
-    }
-  };
 
   useEffect(() => {
-    API.getSiteSettings()
-      .then((s) => {
-        if (s.siteName) setSiteName(s.siteName);
-        if (s.siteLogo) setSiteLogo(s.siteLogo);
-        if (s.communityLink) setCommunityLink(s.communityLink);
-        setHideLive(s.hideLive === true || s.hideLive === "true");
-        setHideStore(s.hideStore === true || s.hideStore === "true");
-        setHideSocial(s.hideSocial === true || s.hideSocial === "true");
-        setHideNetwork(s.hideNetwork === true || s.hideNetwork === "true");
-        setHideDig(s.hideDig === true || s.hideDig === "true");
-      })
-      .catch(console.error);
-  }, []);
+    fetchFlags();
+  }, [fetchFlags]);
 
   const handleLogout = () => logout();
 
@@ -291,7 +261,7 @@ export const Sidebar = () => {
       <div className="mt-auto space-y-4">
         <ul className="menu menu-sm p-0">
           {(isRoot || isAdmin || isSuperUser) && (
-            <NavItem to="/admin" icon={Settings} label="Settings" />
+            <NavItem to="/admin" icon={Settings} label="Admin" />
           )}
           <NavItem to="/about" icon={Info} label="About" />
           <NavItem to="/terms" icon={Scale} label="Legal" />
@@ -337,9 +307,9 @@ export const Sidebar = () => {
                   <p className="text-sm font-bold truncate leading-snug">{user?.username || "User"}</p>
                   <span className={clsx(
                     "inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-black tracking-normal border mt-0.5 shadow-sm transition-all duration-medium-1",
-                    getRoleBadgeClass(role)
+                    getRoleBadgeClass(role, !!user?.artistId)
                   )}>
-                    {getRoleLabel(role)}
+                    {getRoleLabel(role, !!user?.artistId)}
                   </span>
                 </div>
               )}

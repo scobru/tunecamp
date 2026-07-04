@@ -212,11 +212,7 @@ const Playlists = () => {
         )}>
           {visible.map((p) => (
             <Link
-              to={
-                tab === "mine" || (!isGenreMix(p) && p.username === user?.username)
-                  ? `/my-playlists/${p.id}`
-                  : `/playlists/${p.id}`
-              }
+              to={`/playlists/${p.id}`}
               key={p.id}
               className={clsx(
                 "group transition-all duration-300 shadow-level-1 border border-base-content/5 overflow-hidden",

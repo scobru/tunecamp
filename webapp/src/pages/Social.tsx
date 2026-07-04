@@ -31,19 +31,10 @@ const Social = () => {
   const [manuallyApprovesFollowers, setManuallyApprovesFollowers] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [enabled, setEnabled] = useState(true);
 
   const isRootAdmin = !!user?.isRootAdmin;
 
-  useEffect(() => {
-    API.getSiteSettings()
-      .then((s) => {
-        if (s.hideSocial === true || s.hideSocial === "true") {
-          setEnabled(false);
-        }
-      })
-      .catch(console.error);
-  }, []);
+  // Module gating (hideSocial) is enforced by ModuleGuard on the route.
 
   useEffect(() => {
     if (isLoading) return;
@@ -117,22 +108,6 @@ const Social = () => {
     );
 
   if (!isAuthenticated) return null;
-
-  if (!enabled) {
-    return (
-      <div className="space-y-8 animate-fade-in">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Globe size={32} className="text-primary" /> Social Hub
-          </h1>
-        </div>
-        <div className="alert alert-warning max-w-xl shadow-level-1 rounded-xl">
-          <Globe size={18} />
-          <span>The social hub is disabled on this instance.</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8 animate-fade-in">

@@ -1196,7 +1196,7 @@ export const AdminSettingsPanel = () => {
                 <label className="label">
                   <span className="label-text-alt text-error/80 text-[11px] flex items-center gap-1 font-medium mt-1">
                     <OctagonAlert size={12} />
-                    WARNING: This is the server's master cryptographic key. Keep it secret and secure. It is used to decrypt all Zen identities and derive user wallets.
+                    WARNING: This is the server's master cryptographic key. Keep it secret and secure. It is used to derive user wallets.
                   </span>
                 </label>
               </div>

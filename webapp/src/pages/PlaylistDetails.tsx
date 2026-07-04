@@ -15,11 +15,36 @@ import {
   Pencil,
   Check,
   X,
+  Plus,
+  ArrowLeft,
+  Download,
 } from "lucide-react";
 import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
-import type { Playlist } from "../types";
+import { AddTrackToUserPlaylistModal } from "../components/modals/AddTrackToUserPlaylistModal";
+import type { Playlist, Track, UserPlaylistTrack } from "../types";
 
+/**
+ * Convert a UserPlaylistTrack to a playable Track object for the player store
+ */
+function toPlayableTrack(t: Track | UserPlaylistTrack): Track {
+  if ('streamUrl' in t && t.streamUrl) {
+    return t as Track;
+  }
+
+  // Local track from DB
+  const track = t as Track;
+  return {
+    ...track,
+    streamUrl: API.getStreamUrl(String(track.id)),
+    coverUrl: track.albumId ? API.getAlbumCoverUrl(String(track.albumId)) : undefined
+  };
+}
+
+/**
+ * Single detail page for every playlist: genre mixes, public playlists and the
+ * user's own. Edit affordances follow ownership (or admin auth), not the route.
+ */
 const PlaylistDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -27,12 +52,8 @@ const PlaylistDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const { isAdminAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isAdminAuthenticated, isLoading: authLoading } = useAuthStore();
   const { playTrack } = usePlayerStore();
-
-  useEffect(() => {
-    if (id) loadPlaylist(id);
-  }, [id]);
 
   const loadPlaylist = async (playlistId: string) => {
     setLoading(true);
@@ -46,6 +67,17 @@ const PlaylistDetails = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Wait for auth to finish loading so the session token is attached
+    if (id && !authLoading) loadPlaylist(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, authLoading]);
+
+  const isGenreMix = !!id?.startsWith("genre:");
+  const isOwner =
+    isAuthenticated && playlist != null && 'username' in playlist && user?.username === (playlist as any).username;
+  const canEdit = !isGenreMix && (isOwner || isAdminAuthenticated);
 
   const handleDelete = async () => {
     if (
@@ -65,11 +97,11 @@ const PlaylistDetails = () => {
     }
   };
 
-  const handleRemoveTrack = async (trackId: string) => {
+  const handleRemoveTrack = async (trackId: string | number) => {
     if (!playlist) return;
     if (!await confirm("Remove track from playlist?")) return;
     try {
-      await API.removeTrackFromPlaylist(String(playlist.id), trackId);
+      await API.removeTrackFromPlaylist(String(playlist.id), String(trackId));
       loadPlaylist(String(playlist.id));
       notify.success("Track removed from playlist");
     } catch (e) {
@@ -78,7 +110,18 @@ const PlaylistDetails = () => {
     }
   };
 
-  const canEdit = isAdminAuthenticated && !id?.startsWith("genre:");
+  const handleToggleVisibility = async () => {
+    if (!playlist) return;
+    try {
+      const newStatus = !playlist.isPublic;
+      await API.updatePlaylist(String(playlist.id), { isPublic: newStatus });
+      setPlaylist({ ...playlist, isPublic: newStatus });
+      notify.success(`Playlist is now ${newStatus ? "Public" : "Private"}`);
+    } catch (e) {
+      console.error(e);
+      notify.error(e, "Failed to update playlist visibility");
+    }
+  };
 
   const startRename = () => {
     if (!playlist) return;
@@ -111,7 +154,7 @@ const PlaylistDetails = () => {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const handleEditCover = () => {
-    if (!playlist || !isAdminAuthenticated || id?.startsWith("genre:")) return;
+    if (!playlist || !canEdit) return;
     coverInputRef.current?.click();
   };
 
@@ -129,9 +172,22 @@ const PlaylistDetails = () => {
     e.target.value = "";
   };
 
-  if (loading)
+  const handlePlayTrack = (track: Track | UserPlaylistTrack) => {
+    if (!playlist || !playlist.tracks) return;
+    playTrack(toPlayableTrack(track), playlist.tracks.map(toPlayableTrack));
+  };
+
+  const handlePlayAll = () => {
+    if (!playlist || !playlist.tracks || !playlist.tracks.length) return;
+    const allPlayable = playlist.tracks.map(toPlayableTrack);
+    playTrack(allPlayable[0], allPlayable);
+  };
+
+  if (loading || authLoading)
     return (
-      <div className="text-center opacity-50 py-12">Loading playlist...</div>
+      <div className="text-center opacity-50 py-12">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
     );
   if (!playlist) return null;
 
@@ -144,6 +200,8 @@ const PlaylistDetails = () => {
     ).values()
   ).slice(0, 4);
 
+  const customCover = (playlist as any).coverUrl || playlist.coverPath;
+
   return (
     <div className="space-y-8 animate-fade-in p-6">
       {/* Hidden file input for cover upload */}
@@ -155,12 +213,19 @@ const PlaylistDetails = () => {
         onChange={handleCoverFileChange}
       />
 
+      {/* Back button */}
+      <button
+        onClick={() => navigate("/playlists")}
+        className="btn btn-ghost btn-sm gap-2 -ml-2 opacity-60 hover:opacity-100"
+      >
+        <ArrowLeft size={16} /> Playlists
+      </button>
+
       <div className="flex flex-col md:flex-row gap-8 items-end">
         <div className="w-52 h-52 rounded-2xl shadow-level-1 shrink-0 overflow-hidden relative group">
-          {playlist.coverPath ? (
-            // Custom cover set by admin
+          {customCover ? (
             <img
-              src={playlist.coverPath}
+              src={customCover}
               className="w-full h-full object-cover"
               alt="Playlist Cover"
             />
@@ -172,15 +237,13 @@ const PlaylistDetails = () => {
               ))}
             </div>
           ) : trackCovers.length > 0 ? (
-            // Fewer than 4 covers — show the first one full-size
             <img src={trackCovers[0]} className="w-full h-full object-cover" alt="Playlist Cover" />
           ) : (
-            // No covers available — gradient placeholder
             <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-base-100/50">
               <Music size={64} />
             </div>
           )}
-          {isAdminAuthenticated && !id?.startsWith("genre:") && (
+          {canEdit && (
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
               <button
                 className="btn btn-sm btn-circle btn-ghost text-white tooltip tooltip-top"
@@ -239,9 +302,11 @@ const PlaylistDetails = () => {
               )}
             </h1>
           )}
-          <p className="opacity-70 text-lg mb-4 line-clamp-3">
-            {playlist.description}
-          </p>
+          {playlist.description && (
+            <p className="opacity-70 text-lg mb-4 line-clamp-3">
+              {playlist.description}
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-4">
             <div className="badge badge-ghost gap-1">
@@ -256,51 +321,60 @@ const PlaylistDetails = () => {
             </div>
           </div>
 
-          {isAdminAuthenticated && !id?.startsWith("genre:") && (
-            <div className="mt-6 flex gap-2">
+          <div className="mt-6 flex flex-wrap gap-2">
+            {canEdit && (
+              <>
+                {isOwner && (
+                  <button
+                    className="btn btn-sm btn-primary gap-2"
+                    onClick={() =>
+                      document.dispatchEvent(
+                        new CustomEvent("open-add-track-to-user-playlist-modal"),
+                      )
+                    }
+                  >
+                    <Plus size={16} /> Add Tracks
+                  </button>
+                )}
+                <button
+                  className={`btn btn-sm btn-outline gap-2 ${playlist.isPublic ? "btn-secondary" : "btn-ghost"}`}
+                  onClick={handleToggleVisibility}
+                >
+                  {playlist.isPublic ? <Lock size={16} /> : <Globe size={16} />}
+                  {playlist.isPublic ? "Make Private" : "Make Public"}
+                </button>
+                <button
+                  className="btn btn-error btn-sm btn-outline gap-2"
+                  onClick={handleDelete}
+                >
+                  <Trash2 size={16} /> Delete Playlist
+                </button>
+              </>
+            )}
+            {playlist.isPublic && (
               <button
-                className={`btn btn-sm btn-outline gap-2 ${playlist.isPublic ? "btn-secondary" : "btn-ghost"}`}
-                onClick={async () => {
-                  if (!playlist) return;
-                  try {
-                    await API.updatePlaylist(String(playlist.id), {
-                      isPublic: !playlist.isPublic,
-                    });
-                    loadPlaylist(String(playlist.id));
-                    notify.success(`Playlist is now ${!playlist.isPublic ? "Public" : "Private"}`);
-                  } catch (e) {
-                    console.error(e);
-                    notify.error(e, "Failed to update playlist visibility");
-                  }
+                className="btn btn-sm btn-outline gap-2"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  notify.success("Playlist link copied to clipboard!");
                 }}
               >
-                {playlist.isPublic ? <Globe size={16} /> : <Lock size={16} />}
-                {playlist.isPublic ? "Make Private" : "Make Public"}
+                Copy Link
               </button>
-              <button
-                className="btn btn-error btn-sm btn-outline gap-2"
-                onClick={handleDelete}
-              >
-                <Trash2 size={16} /> Delete Playlist
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <button
           className="btn btn-primary btn-circle btn-lg shadow-level-1 hover:scale-105 transition-transform"
-          onClick={() => {
-            if (playlist.tracks && playlist.tracks.length > 0) {
-              playTrack(playlist.tracks[0], playlist.tracks);
-            }
-          }}
+          onClick={handlePlayAll}
           disabled={!playlist.tracks || playlist.tracks.length === 0}
         >
           <Play size={32} className="ml-1" />
         </button>
       </div>
 
-      <div className="overflow-visible bg-base-200/30 rounded-xl border border-base-content/5">
+      <div className="overflow-x-auto bg-base-200/30 rounded-xl border border-base-content/5">
         <table className="table w-full">
           <thead>
             <tr className="border-b border-base-content/10 text-xs opacity-50">
@@ -323,35 +397,50 @@ const PlaylistDetails = () => {
                   <td className="text-center opacity-50 font-mono w-12 group-hover:text-primary">
                     <span className="group-hover:hidden">{i + 1}</span>
                     <button
-                      onClick={() => playTrack(track, playlist.tracks!)}
+                      onClick={() => handlePlayTrack(track)}
                       className="hidden group-hover:flex items-center justify-center w-full"
                     >
                       <Play size={12} fill="currentColor" />
                     </button>
                   </td>
                   <td>
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <div className="font-bold">{track.title}</div>
-                        <div className="text-xs opacity-50">
-                          {track.artistName}
-                        </div>
-                      </div>
-                    </div>
+                    <div className="font-bold">{track.title}</div>
+                    <div className="text-xs opacity-50">{track.artistName}</div>
                   </td>
-                  <td className="opacity-60 text-sm">{track.albumName}</td>
+                  <td className="opacity-60 text-sm">
+                    {(track as any).source === "network" ? (
+                      <div className="badge badge-sm gap-1 badge-secondary badge-outline">
+                        <Globe size={10} />
+                        {(track as any).siteName || "Network"}
+                      </div>
+                    ) : (
+                      track.albumName
+                    )}
+                  </td>
                   <td className="text-right opacity-50 font-mono text-xs">
                     {formatDuration(track.duration)}
                   </td>
-                  <td>
-                    {isAdminAuthenticated && !id?.startsWith("genre:") && (
-                      <button
-                        onClick={() => handleRemoveTrack(String(track.id))}
-                        className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-hover:opacity-100 transition-opacity tooltip tooltip-left"
-                        data-tip="Remove Track"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                  <td className="w-12 text-right">
+                    {canEdit && (
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isOwner && (
+                          <a
+                            href={API.getTrackDownloadUrl(track.id)}
+                            target="_blank"
+                            className="btn btn-ghost btn-xs btn-circle text-success flex items-center justify-center tooltip tooltip-top"
+                            data-tip="Download Track"
+                          >
+                            <Download size={16} />
+                          </a>
+                        )}
+                        <button
+                          className="btn btn-ghost btn-xs btn-circle text-error tooltip tooltip-left"
+                          onClick={() => handleRemoveTrack(track.id)}
+                          data-tip="Remove Track"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -359,16 +448,39 @@ const PlaylistDetails = () => {
             {(!playlist.tracks || playlist.tracks.length === 0) && (
               <tr>
                 <td colSpan={5} className="text-center py-12 opacity-50">
-                  No tracks in this playlist yet.
+                  <Music size={32} className="mx-auto mb-3 opacity-40" />
+                  <p>No tracks in this playlist yet.</p>
+                  {isOwner && (
+                    <button
+                      className="btn btn-primary btn-sm gap-2 mt-4"
+                      onClick={() =>
+                        document.dispatchEvent(
+                          new CustomEvent(
+                            "open-add-track-to-user-playlist-modal",
+                          ),
+                        )
+                      }
+                    >
+                      <Plus size={14} /> Add your first track
+                    </button>
+                  )}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Add Track Modal (owner only) */}
+      {id && playlist && isOwner && (
+        <AddTrackToUserPlaylistModal
+          playlistId={id}
+          onAdded={() => id && loadPlaylist(id)}
+          existingTrackIds={playlist.tracks?.map(t => String(t.id)) || []}
+        />
+      )}
     </div>
   );
 };
 
 export default PlaylistDetails;
-

@@ -4,9 +4,9 @@ import { useBoard } from "../hooks/useBoard";
 import { useAuthStore } from "../stores/useAuthStore";
 import { PageHeader } from "../components/ui/PageHeader";
 import { StringUtils } from "../utils/stringUtils";
-import API from "../services/api";
+import { getRoleLabel, getRoleBadgeClass } from "../utils/roles";
+import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
 import { notify } from "../utils/notify";
-import type { SiteSettings } from "../types";
 import {
   MessageSquare,
   Send,
@@ -42,31 +42,6 @@ const getAvatarColorClass = (username: string) => {
   return colors[index];
 };
 
-const getRoleLabel = (role: string) => {
-  switch (role) {
-    case "root_admin":
-      return "Root Admin";
-    case "admin":
-      return "Manager";
-    case "super_user":
-      return "Curator";
-    default:
-      return "Listener";
-  }
-};
-
-const getRoleBadgeClass = (role: string) => {
-  switch (role) {
-    case "root_admin":
-      return "bg-red-500/10 text-red-400 border-red-500/20";
-    case "admin":
-      return "bg-primary/10 text-primary border-primary/20";
-    case "super_user":
-      return "bg-secondary/10 text-secondary border-secondary/20";
-    default:
-      return "bg-base-content/5 text-base-content/60 border-base-content/10";
-  }
-};
 
 const getYoutubeId = (text: string): string | null => {
   if (!text) return null;
@@ -100,9 +75,8 @@ const renderMessageWithLinks = (text: string) => {
 const Board = () => {
   const { messages, isLoading, error, sendMessage, deleteMessage } = useBoard();
   const { user, isAuthenticated, role } = useAuthStore();
-  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
-  const [loadingSettings, setLoadingSettings] = useState(true);
-  
+  const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
+
   const [activeTab, setActiveTab] = useState<'message' | 'track' | 'youtube'>('message');
   const [messageText, setMessageText] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
@@ -124,19 +98,10 @@ const Board = () => {
     }
   };
 
-  // Load site settings to check if the board is enabled
+  // Site settings gate whether the board is enabled
   useEffect(() => {
-    API.getSiteSettings()
-      .then((s) => {
-        setSiteSettings(s);
-      })
-      .catch((err) => {
-        console.error("Failed to load site settings", err);
-      })
-      .finally(() => {
-        setLoadingSettings(false);
-      });
-  }, []);
+    fetchFlags();
+  }, [fetchFlags]);
 
   const isFormValid = () => {
     if (activeTab === 'message') return !!messageText.trim();
@@ -187,7 +152,7 @@ const Board = () => {
     }
   };
 
-  if (loadingSettings || (isLoading && messages.length === 0)) {
+  if (!siteSettings || (isLoading && messages.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 opacity-50">
         <span className="loading loading-spinner loading-lg text-primary"></span>
@@ -197,10 +162,7 @@ const Board = () => {
   }
 
   const isBoardEnabled =
-    siteSettings?.boardEnabled === true ||
-    siteSettings?.boardEnabled === "true" ||
-    siteSettings?.chatEnabled === true ||
-    siteSettings?.chatEnabled === "true";
+    truthy(siteSettings?.boardEnabled) || truthy(siteSettings?.chatEnabled);
 
   // If the board is disabled, only admins can see and interact with it
   if (!isBoardEnabled && !isAdmin) {
