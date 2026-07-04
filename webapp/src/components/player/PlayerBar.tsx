@@ -23,7 +23,7 @@ import {
   Disc,
   AudioLines
 } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import * as ColorThiefReactModule from "color-thief-react";
 import { LyricsPanel } from "./LyricsPanel";
 import { QueuePanel } from "./QueuePanel";

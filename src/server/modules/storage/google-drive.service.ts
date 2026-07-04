@@ -1,7 +1,5 @@
-import axios from "axios";
 import { type DatabaseService, type StorageAccount } from "../../core/database.types.js";
-import { type Readable } from "stream";
-import FormData from "form-data";
+import { Readable } from "stream";
 
 export interface GoogleDriveFile {
     id: string;
@@ -9,6 +7,22 @@ export interface GoogleDriveFile {
     mimeType: string;
     size?: string;
     parents?: string[];
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(url, init);
+    if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status} ${await res.text().catch(() => "")}`);
+    }
+    return res.json() as Promise<T>;
+}
+
+async function streamToBuffer(stream: Readable): Promise<Buffer> {
+    const chunks: any[] = [];
+    for await (const chunk of stream) {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    }
+    return Buffer.concat(chunks);
 }
 
 export class GoogleDriveService {
@@ -54,36 +68,53 @@ export class GoogleDriveService {
             mimeType,
         };
 
+        let fileContent: Blob;
+        if (Buffer.isBuffer(content)) {
+            fileContent = new Blob([content], { type: mimeType });
+        } else {
+            const buf = await streamToBuffer(content);
+            fileContent = new Blob([buf], { type: mimeType });
+        }
+
         const formData = new FormData();
-        formData.append("metadata", JSON.stringify(metadata), { contentType: "application/json" });
-        formData.append("file", content, { filename: name, contentType: mimeType });
+        formData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+        formData.append("file", fileContent, name);
 
-        const response = await axios.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", formData, {
+        return fetchJson<GoogleDriveFile>("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+            method: "POST",
             headers: {
-                ...formData.getHeaders(),
                 Authorization: `Bearer ${token}`
-            }
+            },
+            body: formData
         });
-
-        return response.data;
     }
 
     async exchangeCode(code: string, userId: number): Promise<number> {
-        const response = await axios.post("https://oauth2.googleapis.com/token", {
-            code,
-            client_id: this.clientId,
-            client_secret: this.clientSecret,
-            redirect_uri: this.redirectUri,
-            grant_type: "authorization_code",
-        });
+        const tokenData = await fetchJson<{ access_token: string; refresh_token?: string; expires_in: number }>(
+            "https://oauth2.googleapis.com/token",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    code,
+                    client_id: this.clientId,
+                    client_secret: this.clientSecret,
+                    redirect_uri: this.redirectUri,
+                    grant_type: "authorization_code",
+                })
+            }
+        );
 
-        const { access_token, refresh_token, expires_in } = response.data;
+        const { access_token, refresh_token, expires_in } = tokenData;
         
         // Get user email
-        const userResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
-            headers: { Authorization: `Bearer ${access_token}` }
-        });
-        const email = userResponse.data.email;
+        const userData = await fetchJson<{ email: string }>(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            {
+                headers: { Authorization: `Bearer ${access_token}` }
+            }
+        );
+        const email = userData.email;
 
         const expiryDate = Date.now() + expires_in * 1000;
 
@@ -102,7 +133,7 @@ export class GoogleDriveService {
                 provider: "google",
                 account_email: email,
                 access_token,
-                refresh_token,
+                refresh_token: refresh_token || "",
                 expiry_date: expiryDate
             });
         }
@@ -118,14 +149,21 @@ export class GoogleDriveService {
 
         if (!account.refresh_token) throw new Error("No refresh token available");
 
-        const response = await axios.post("https://oauth2.googleapis.com/token", {
-            refresh_token: account.refresh_token,
-            client_id: this.clientId,
-            client_secret: this.clientSecret,
-            grant_type: "refresh_token",
-        });
+        const tokenData = await fetchJson<{ access_token: string; expires_in: number }>(
+            "https://oauth2.googleapis.com/token",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    refresh_token: account.refresh_token,
+                    client_id: this.clientId,
+                    client_secret: this.clientSecret,
+                    grant_type: "refresh_token",
+                })
+            }
+        );
 
-        const { access_token, expires_in } = response.data;
+        const { access_token, expires_in } = tokenData;
         const expiryDate = Date.now() + expires_in * 1000;
 
         this.database.updateStorageAccount(account.id, {
@@ -142,17 +180,21 @@ export class GoogleDriveService {
         let nextPageToken: string | undefined;
 
         do {
-            const response = await axios.get("https://www.googleapis.com/drive/v3/files", {
-                headers: { Authorization: `Bearer ${token}` },
-                params: {
-                    q: `'${folderId}' in parents and trashed = false`,
-                    fields: "nextPageToken, files(id, name, mimeType, size, parents)",
-                    pageSize: 1000,
-                    pageToken: nextPageToken
-                }
+            const params = new URLSearchParams({
+                q: `'${folderId}' in parents and trashed = false`,
+                fields: "nextPageToken, files(id, name, mimeType, size, parents)",
+                pageSize: "1000",
             });
-            files = files.concat(response.data.files);
-            nextPageToken = response.data.nextPageToken;
+            if (nextPageToken) params.set("pageToken", nextPageToken);
+
+            const data = await fetchJson<{ files: GoogleDriveFile[]; nextPageToken?: string }>(
+                `https://www.googleapis.com/drive/v3/files?${params.toString()}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            files = files.concat(data.files);
+            nextPageToken = data.nextPageToken;
         } while (nextPageToken);
 
         return files;
@@ -187,29 +229,39 @@ export class GoogleDriveService {
 
     async getFile(userId: number, fileId: string): Promise<GoogleDriveFile> {
         const token = await this.getValidToken(userId);
-        const response = await axios.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            params: { fields: "id, name, mimeType, size, parents" }
-        });
-        return response.data;
+        return fetchJson<GoogleDriveFile>(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?fields=${encodeURIComponent("id, name, mimeType, size, parents")}`,
+            {
+                headers: { Authorization: `Bearer ${token}` }
+            }
+        );
     }
 
     async getFileStream(userId: number, fileId: string, range?: string): Promise<{ stream: Readable; status: number; headers: any }> {
         const token = await this.getValidToken(userId);
         
-        const headers: any = { Authorization: `Bearer ${token}` };
+        const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
         if (range) headers.Range = range;
 
-        const response = await axios.get(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-            headers,
-            params: { alt: "media" },
-            responseType: "stream"
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const stream = res.body ? Readable.fromWeb(res.body as any) : new Readable();
+        
+        const responseHeaders: Record<string, string> = {};
+        res.headers.forEach((v, k) => {
+            responseHeaders[k] = v;
         });
 
         return {
-            stream: response.data,
-            status: response.status,
-            headers: response.headers
+            stream,
+            status: res.status,
+            headers: responseHeaders
         };
     }
 }

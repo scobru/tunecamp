@@ -6,7 +6,7 @@ import { usePlayerStore } from "../stores/usePlayerStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { notify } from "../utils/notify";
 import type { Track, Album } from "../types";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { fixRelativeUrl } from '../utils/url';
 
 const SharePage = () => {

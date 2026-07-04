@@ -2,7 +2,7 @@ import { Router, json } from "express";
 import type { DatabaseService } from "../../core/database.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 import { VisibilityGuardian, VisibilityProfile, Capability } from "../../common/visibility.js";
 import type { MetadataService } from "../../modules/catalog/metadata.service.js";

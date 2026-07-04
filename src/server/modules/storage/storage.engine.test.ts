@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import { Readable } from 'stream';
-import fs from 'fs-extra';
+import fs from '../../../utils/fs.js';
 import { LocalDiskStorage } from './storage.engine.js';
 
 describe('LocalDiskStorage', () => {

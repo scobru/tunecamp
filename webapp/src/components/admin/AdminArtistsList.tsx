@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { User, Edit, Trash2, Globe, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { notify } from "../../utils/notify";

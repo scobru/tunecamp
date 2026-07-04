@@ -44,7 +44,7 @@ const mockFs = {
   remove: jest.fn(async () => {}),
   readdir: jest.fn(async () => [] as string[]),
 };
-jest.unstable_mockModule('fs-extra', () => ({ __esModule: true, default: mockFs }));
+jest.unstable_mockModule('../../../utils/fs.js', () => ({ __esModule: true, default: mockFs }));
 
 let MediaEngine: any;
 

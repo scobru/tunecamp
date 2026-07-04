@@ -1,4 +1,3 @@
-import axios from 'axios';
 import type {
     AuthStatus, Track, Album, Artist, Playlist, SiteSettings, User,
     Release, Post, UnlockCode, NetworkSite, NetworkTrack, AdminStats, NetworkStatus,
@@ -9,18 +8,169 @@ import type {
 
 const API_URL = '/api';
 
-const api = axios.create({
-    baseURL: API_URL,
-});
+interface RequestConfig {
+    headers?: Record<string, string>;
+    params?: Record<string, string>;
+    responseType?: 'json' | 'blob' | 'text';
+    onUploadProgress?: (progressEvent: { loaded: number; total: number }) => void;
+    timeout?: number;
+    data?: any;
+}
 
-// Interceptor to add token
-api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('tunecamp_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+const api = {
+    async request<T>(method: string, url: string, data?: any, config: RequestConfig = {}): Promise<{ data: T }> {
+        if (config.onUploadProgress) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                let finalUrl = `${API_URL}/${url}`;
+                if (config.params) {
+                    const q = new URLSearchParams(config.params).toString();
+                    if (q) finalUrl += `?${q}`;
+                }
+                xhr.open(method, finalUrl, true);
+                
+                const token = localStorage.getItem('tunecamp_token');
+                if (token) {
+                    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                }
+                if (config.headers) {
+                    for (const [k, v] of Object.entries(config.headers)) {
+                        if (k.toLowerCase() === 'content-type' && v === 'multipart/form-data') continue;
+                        xhr.setRequestHeader(k, v);
+                    }
+                }
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable && config.onUploadProgress) {
+                        config.onUploadProgress({
+                            loaded: e.loaded,
+                            total: e.total
+                        });
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const resData = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+                            resolve({ data: resData });
+                        } catch (err) {
+                            resolve({ data: null as any });
+                        }
+                    } else {
+                        let errorData: any = null;
+                        try {
+                            errorData = xhr.responseText ? JSON.parse(xhr.responseText) : xhr.responseText;
+                        } catch {
+                            errorData = xhr.responseText;
+                        }
+                        const error: any = new Error(xhr.statusText);
+                        error.response = { status: xhr.status, data: errorData };
+                        error.config = { url: finalUrl };
+                        reject(error);
+                    }
+                };
+
+                xhr.onerror = () => {
+                    const error: any = new Error('Network Error');
+                    error.config = { url: finalUrl };
+                    reject(error);
+                };
+
+                if (config.timeout) {
+                    xhr.timeout = config.timeout;
+                    xhr.ontimeout = () => {
+                        const error: any = new Error('Timeout Error');
+                        error.config = { url: finalUrl };
+                        reject(error);
+                    };
+                }
+
+                xhr.send(data);
+            });
+        }
+
+        const headers: Record<string, string> = { ...config.headers };
+        const token = localStorage.getItem('tunecamp_token');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        let finalUrl = `${API_URL}/${url}`;
+        if (config.params) {
+            const q = new URLSearchParams(config.params).toString();
+            if (q) finalUrl += `?${q}`;
+        }
+
+        let body: any = undefined;
+        if (data !== undefined) {
+            if (data instanceof FormData) {
+                body = data;
+            } else {
+                body = JSON.stringify(data);
+                headers['Content-Type'] = 'application/json';
+            }
+        }
+
+        const controller = new AbortController();
+        let timeoutId: any;
+        if (config.timeout) {
+            timeoutId = setTimeout(() => controller.abort(), config.timeout);
+        }
+
+        try {
+            const res = await fetch(finalUrl, {
+                method,
+                headers,
+                body,
+                signal: controller.signal
+            });
+
+            if (timeoutId) clearTimeout(timeoutId);
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null) || await res.text().catch(() => null);
+                const error: any = new Error(res.statusText);
+                error.response = {
+                    status: res.status,
+                    data: errorData
+                };
+                error.config = { url: finalUrl };
+                throw error;
+            }
+
+            let responseData: any;
+            if (config.responseType === 'blob') {
+                responseData = await res.blob();
+            } else {
+                const text = await res.text();
+                responseData = text ? JSON.parse(text) : null;
+            }
+
+            return { data: responseData as T };
+        } catch (e: any) {
+            if (timeoutId) clearTimeout(timeoutId);
+            throw e;
+        }
+    },
+
+    get<T>(url: string, config?: RequestConfig) {
+        return this.request<T>('GET', url, undefined, config);
+    },
+    post<T>(url: string, data?: any, config?: RequestConfig) {
+        return this.request<T>('POST', url, data, config);
+    },
+    put<T>(url: string, data?: any, config?: RequestConfig) {
+        return this.request<T>('PUT', url, data, config);
+    },
+    delete<T>(url: string, config?: RequestConfig) {
+        return this.request<T>('DELETE', url, config?.data, config);
+    },
+    patch<T>(url: string, data?: any, config?: RequestConfig) {
+        return this.request<T>('PATCH', url, data, config);
     }
-    return config;
-});
+};
+
 
 /** Error subclass that preserves the HTTP response status code. */
 export class ApiError extends Error {
@@ -376,7 +526,7 @@ const API = {
         handleResponse(api.post<any>('import/bandcamp', { url })),
     /** Downloads a remote image through the same-origin proxy (avoids CORS) and returns it as a Blob. */
     proxyImageBlob: (url: string): Promise<Blob> =>
-        api.get('proxy/stream', { params: { url }, responseType: 'blob' }).then(r => r.data),
+        api.get<Blob>('proxy/stream', { params: { url }, responseType: 'blob' }).then(r => r.data),
     updateTrack: (id: string | number, data: Partial<Track>) => handleResponse(api.put<Track>(`tracks/${encodeURIComponent(String(id))}`, data)),
     updateTracksBatch: (trackIds: (string | number)[], data: any) => handleResponse(api.put('tracks/batch', { trackIds, data })),
     deleteTrack: (id: string | number, deleteFile = false) =>

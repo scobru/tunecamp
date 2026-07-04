@@ -1,4 +1,4 @@
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import type { Stats } from "fs";
 
 export interface StorageEngine {

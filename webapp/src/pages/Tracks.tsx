@@ -24,7 +24,7 @@ import { formatDuration } from "../utils/format";
 import { PageHeader } from "../components/ui/PageHeader";
 import { notify } from "../utils/notify";
 import type { Track } from "../types";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 const Tracks = () => {
   const { data: tracks = [], isLoading: loading } = useQuery({

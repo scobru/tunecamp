@@ -1,4 +1,4 @@
-import fs from 'fs-extra';
+import fs from './fs.js';
 import path from 'path';
 import crypto from 'crypto';
 import { glob } from 'glob';

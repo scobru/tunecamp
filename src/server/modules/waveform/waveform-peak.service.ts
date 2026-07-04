@@ -1,7 +1,7 @@
 
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import { acquireTaskSlot, releaseTaskSlot } from "../media/ffmpeg.js";
 
 // Set ffmpeg path

@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import type { Playlist } from '../../types';
 import { Plus, ListMusic, Lock, Globe, Check, Loader2 } from 'lucide-react';
 import { notify } from '../../utils/notify';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 
 const renderPlaylistCover = (p: Playlist) => {
     const trackCovers = p.trackCovers || [];

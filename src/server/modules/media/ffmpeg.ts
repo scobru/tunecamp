@@ -1,5 +1,5 @@
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import ffprobePath from "ffprobe-static";

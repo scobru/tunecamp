@@ -3,7 +3,7 @@ import { Router, json } from "express";
 import Stripe from "stripe";
 import path from "path";
 import os from "os";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import type { ServiceContainer } from "../../core/container.js";
 import { createAuthMiddleware } from "../../middleware/auth.js";
 import { validatePassword } from "../../common/validators.js";

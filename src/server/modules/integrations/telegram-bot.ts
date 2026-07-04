@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { Telegraf } from 'telegraf';
 import path from 'path';
-import fs from 'fs-extra';
-import axios from 'axios';
+import fs from '../../../utils/fs.js';
+import { Readable } from 'stream';
 import { ScannerService } from '../catalog/scanner.js';
 import { DatabaseService } from '../../core/database.js';
 import type { ServerConfig } from '../../core/config.js';
@@ -371,9 +371,10 @@ export class TelegramBotService {
                     await fs.ensureDir(importDir);
                     const coverPath = path.join(importDir, `cover_${context.photoId}.jpg`);
                     
-                    const photoResponse = await axios({ url: photoLink.href, responseType: 'stream', method: 'GET' });
+                    const photoResponse = await fetch(photoLink.href);
+                    if (!photoResponse.ok) throw new Error(`HTTP error! status: ${photoResponse.status}`);
                     const photoWriter = fs.createWriteStream(coverPath);
-                    photoResponse.data.pipe(photoWriter);
+                    Readable.fromWeb(photoResponse.body as any).pipe(photoWriter);
                     await new Promise<void>((resolve, reject) => {
                         photoWriter.on('finish', () => resolve());
                         photoWriter.on('error', (err) => reject(err));
@@ -406,14 +407,18 @@ export class TelegramBotService {
                 await this.safeReply(ctx, `📥 Downloading ${fileName}...`);
             }
             
-            const response = await axios({ 
-                url: fileLink.href, 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for download start
+            const response = await fetch(fileLink.href, { 
                 method: 'GET', 
-                responseType: 'stream',
-                timeout: 60000 // 60s timeout for download start
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
             const writer = fs.createWriteStream(filePath);
-            response.data.pipe(writer);
+            Readable.fromWeb(response.body as any).pipe(writer);
 
             await new Promise<void>((resolve, reject) => {
                 writer.on('finish', () => resolve());

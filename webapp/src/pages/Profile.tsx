@@ -31,7 +31,7 @@ import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
 import AccountMigrationCard from "../components/AccountMigrationCard";
 import type { Track } from "../types";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
 import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
 import { LinksEditor } from "../components/ui/LinksEditor";

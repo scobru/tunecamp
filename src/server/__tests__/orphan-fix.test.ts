@@ -4,7 +4,7 @@ import { Scanner } from '../modules/catalog/scanner.js';
 import { MaintenanceService } from '../modules/catalog/maintenance.service.js';
 import { MaintenanceRepository } from '../repositories/maintenance.repository.js';
 import path from 'path';
-import fs from 'fs-extra';
+import fs from '../../utils/fs.js';
 
 const TEST_DB_PATH = ':memory:';
 const TEST_MUSIC_DIR = path.join(process.cwd(), 'test-music-orphan');

@@ -1,5 +1,5 @@
 import { Router, json } from "express";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import path from "path";
 import type { DatabaseService } from "../../core/database.js";
 import { resolveSafePath } from "../../../utils/fileUtils.js";

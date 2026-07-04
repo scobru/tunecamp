@@ -1,6 +1,6 @@
 import express, { Router } from "express";
 import { ethers } from "ethers";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import path from "path";
 import jwt from "jsonwebtoken";
 import Stripe from "stripe";

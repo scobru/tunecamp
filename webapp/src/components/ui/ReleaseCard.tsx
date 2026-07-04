@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Disc, Download } from 'lucide-react';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 import API from '../../services/api';
 import { useConfigStore } from '../../stores/useConfigStore';
 

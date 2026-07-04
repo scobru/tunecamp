@@ -33,7 +33,7 @@ import {
   Scale,
   MoreHorizontal,
 } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
 import { WalletPill } from "../ui/WalletPill";
 import { canPublish } from "../../utils/permissions";

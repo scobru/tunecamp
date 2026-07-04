@@ -1,5 +1,6 @@
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import path from "path";
+import type { Dirent } from "fs";
 import type { Database as DatabaseType } from "better-sqlite3";
 
 interface UserStorageRow {
@@ -32,7 +33,7 @@ export interface RecomputeResult {
  */
 async function dirSize(dir: string): Promise<number> {
     let total = 0;
-    let entries: fs.Dirent[];
+    let entries: Dirent[];
     try {
         entries = await fs.readdir(dir, { withFileTypes: true });
     } catch {

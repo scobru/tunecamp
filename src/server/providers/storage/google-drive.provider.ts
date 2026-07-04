@@ -1,7 +1,7 @@
 import type { StorageProvider } from "../../core/provider.js";
 import type { GoogleDriveService } from "../../modules/storage/google-drive.service.js";
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import type { Readable } from "stream";
 
 /**

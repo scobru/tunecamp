@@ -4,7 +4,7 @@ import cors from "cors";
 import compression from "compression";
 import path from "path";
 import http from "http";
-import fs from "fs-extra";
+import fs from "../utils/fs.js";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { isNonFatalError } from "./common/errors.js";

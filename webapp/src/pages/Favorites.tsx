@@ -18,7 +18,7 @@ import { queryKeys } from "../hooks/queries";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Link } from "react-router-dom";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 const Favorites = () => {
   const { isAuthenticated, isInitializing } = useAuthStore();

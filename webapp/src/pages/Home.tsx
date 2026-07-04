@@ -9,7 +9,7 @@ import { useSiteSettingsStore } from "../stores/useSiteSettingsStore";
 import { useAuthStore } from "../stores/useAuthStore";
 import { usePlayerStore } from "../stores/usePlayerStore";
 import { Play, Pause, Shuffle } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 const Home = () => {
   const navigate = useNavigate();

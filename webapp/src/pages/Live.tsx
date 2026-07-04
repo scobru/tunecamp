@@ -5,7 +5,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { useAuthStore } from "../stores/useAuthStore";
 import API from "../services/api";
 import type { LiveSession } from "../types";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 // Music-friendly capture: browsers default to voice processing which mangles music.
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {

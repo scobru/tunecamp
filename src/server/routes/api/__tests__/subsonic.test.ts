@@ -6,7 +6,7 @@ import { createAuthService } from '../../../modules/auth/auth.service.js';
 import { createSubsonicRouter } from '../subsonic.js';
 import request from 'supertest';
 import express from 'express';
-import fs from 'fs-extra';
+import fs from '../../../../utils/fs.js';
 import path from 'path';
 
 describe('Subsonic Scrobbling', () => {

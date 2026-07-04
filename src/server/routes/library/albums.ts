@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import path from "path";
 import type { DatabaseService, Album, Track } from "../../core/database.js";
 import type { CatalogService } from "../../modules/catalog/catalog.service.js";

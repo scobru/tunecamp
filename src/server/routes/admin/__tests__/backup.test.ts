@@ -1,6 +1,6 @@
 import express from 'express';
 import request from 'supertest';
-import fs from 'fs-extra';
+import fs from '../../../../utils/fs.js';
 import path from 'path';
 import { createBackupRoutes } from '../backup.js';
 import type { DatabaseService } from '../../../core/database.js';

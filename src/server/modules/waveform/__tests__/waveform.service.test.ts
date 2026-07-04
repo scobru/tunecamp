@@ -24,7 +24,7 @@ const mockWaveformGenerator = jest.fn().mockImplementation(() => ({
 }));
 
 // Apply mocks before importing target module
-jest.unstable_mockModule('fs-extra', () => ({
+jest.unstable_mockModule('../../../../utils/fs.js', () => ({
     default: mockFs
 }));
 

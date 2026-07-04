@@ -1,7 +1,7 @@
 import express, { Router } from "express";
 import archiver from "archiver";
 import AdmZip from "adm-zip";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import path from "path";
 import multer from "multer";
 import type { DatabaseService } from "../../core/database.js";
@@ -300,7 +300,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
 
             // Cleanup backup file after stream ends (approximate)
             res.on("finish", () => {
-                if (fs.existsSync(dbBackupPath)) fs.unlink(dbBackupPath, () => { });
+                if (fs.existsSync(dbBackupPath)) fs.unlink(dbBackupPath).catch(() => {});
             });
 
         } catch (error) {

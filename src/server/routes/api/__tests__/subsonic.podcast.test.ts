@@ -7,7 +7,7 @@ import { createSubsonicRouter } from '../subsonic.js';
 import { SubsonicService } from '../../../modules/subsonic/subsonic.service.js';
 import request from 'supertest';
 import express from 'express';
-import fs from 'fs-extra';
+import fs from '../../../../utils/fs.js';
 import path from 'path';
 
 describe('Subsonic Podcast API', () => {

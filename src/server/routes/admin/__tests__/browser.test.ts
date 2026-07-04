@@ -2,7 +2,7 @@ import request from "supertest";
 import express from "express";
 import { jest, describe, test, expect, beforeAll, beforeEach } from '@jest/globals';
 import path from "path";
-import fsExtra from "fs-extra";
+import fsExtra from "../../../../utils/fs.js";
 import { createBrowserRoutes } from "../browser.js";
 
 const pathExistsSpy = jest.spyOn(fsExtra, 'pathExists' as any).mockResolvedValue(true as any);

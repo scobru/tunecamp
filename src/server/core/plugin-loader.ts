@@ -1,6 +1,6 @@
 import path from "path";
 import { pathToFileURL } from "url";
-import fs from "fs-extra";
+import fs from "../../utils/fs.js";
 import { metadataService } from "../modules/catalog/metadata.service.js";
 import { streamingService } from "../modules/streaming/streaming.service.js";
 import { getScannerService } from "../modules/catalog/scanner.service.js";

@@ -124,7 +124,7 @@ describe('TorrentService', () => {
     describe('seedFiles', () => {
         const seedWith = async (name: string, artist?: string) => {
             jest.advanceTimersByTime(5000);
-            const fs = (await import('fs-extra')).default;
+            const fs = (await import('../../../../utils/fs.js')).default;
             const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
             mockClientSeed.mockImplementation((_files: any, opts: any, cb: any) => {
                 cb({ infoHash: 'ABCDEF', magnetURI: 'magnet:?xt=urn:btih:abcdef', name: opts.name, on: jest.fn() });

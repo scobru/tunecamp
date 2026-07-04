@@ -1,7 +1,7 @@
 import { Router, json } from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import crypto from "crypto";
 import type { DatabaseService } from "../../core/database.js";
 import { VisibilityProfile, VisibilityGuardian, Capability, UserRole, canConsumeTrack } from "../../common/visibility.js";

@@ -5,7 +5,7 @@
  * Usage: node dist/tools/restore.js <backup-file> [--force]
  */
 
-import fs from 'fs-extra';
+import fs from '../utils/fs.js';
 import path from 'path';
 import { loadConfig } from '../server/core/config.js';
 

@@ -7,7 +7,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { formatDuration } from '../utils/format';
 import { notify } from '../utils/notify';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 import type { Track, Album, Artist, Playlist } from '../types';
 
 const Search = () => {

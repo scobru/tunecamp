@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "child_process";
 import path from "path";
 import os from "os";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import type { DatabaseService } from "../../core/database.js";
 
 export interface RadioConfig {

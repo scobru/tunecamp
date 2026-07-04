@@ -9,7 +9,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { useConfigStore } from '../stores/useConfigStore';
 import { queryKeys } from '../hooks/queries';
 import { notify } from '../utils/notify';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 
 const Artists = () => {
     const { cacheBuster } = useConfigStore();

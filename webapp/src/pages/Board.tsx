@@ -18,7 +18,7 @@ import {
   Music,
   Youtube
 } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 // Simple color helper based on username hash to assign consistent, attractive colors to placeholder avatars
 const getAvatarColorClass = (username: string) => {

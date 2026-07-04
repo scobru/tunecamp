@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import fs from 'fs-extra';
+import fs from '../utils/fs.js';
 import path from 'path';
 import sqlite3 from 'better-sqlite3';
 import * as mm from 'music-metadata';

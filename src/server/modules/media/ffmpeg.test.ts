@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { mockFfmpegInstance } from '../../../../__mocks__/fluent-ffmpeg.js';
 import mockFfmpeg from '../../../../__mocks__/fluent-ffmpeg.js';
-import fsExtra from 'fs-extra';
+import fsExtra from '../../../utils/fs.js';
 import { writeMetadata, transcode } from './ffmpeg.js';
 
 jest.spyOn(fsExtra, 'move' as any).mockResolvedValue(undefined as any);

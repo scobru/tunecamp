@@ -1,7 +1,7 @@
 import { useUIStore } from "../../stores/useUIStore";
 import type { Theme } from "../../stores/useUIStore";
 import { Check } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 export const ThemeSwitcher = () => {
   const { theme, setTheme } = useUIStore();

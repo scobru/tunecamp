@@ -1,5 +1,4 @@
 import path from "path";
-import NodeID3 from "node-id3";
 import { drainResponse } from "../../common/network.js";
 import { ProviderRegistry, TuneCampProvider, MetadataMatch, MetadataProvider, ArtistMetadata, syncRegistryWithDatabase, USER_AGENT } from "../../core/provider.js";
 import type { DatabaseService, Track } from "../../core/database.js";
@@ -195,9 +194,7 @@ export class MetadataService {
 
             const ext = path.extname(fullPath).toLowerCase();
             try {
-                if (ext === '.mp3') {
-                    NodeID3.update(tags as any, fullPath);
-                } else if (['.flac', '.ogg', '.m4a', '.wav'].includes(ext)) {
+                if (['.mp3', '.flac', '.ogg', '.m4a', '.wav'].includes(ext)) {
                     await writeMetadata(fullPath, {
                         title: tags.title, artist: tags.artist, album: tags.album,
                         track: tags.trackNumber, genre: tags.genre, year: tags.year

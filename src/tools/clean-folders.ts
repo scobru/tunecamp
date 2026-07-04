@@ -6,7 +6,7 @@
  * Safe to execute: only deletes empty folders or folders matching target names (null, undefined, gdrive:) if empty.
  */
 
-import fs from 'fs-extra';
+import fs from '../utils/fs.js';
 import path from 'path';
 import { loadConfig } from '../server/core/config.js';
 

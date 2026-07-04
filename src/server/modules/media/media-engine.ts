@@ -1,5 +1,5 @@
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import crypto from "crypto";
 import { Readable } from "stream";
 import type { DatabaseService, Track } from "../../core/database.js";

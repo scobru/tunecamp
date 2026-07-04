@@ -6,7 +6,7 @@ import { usePlayerStore } from '../stores/usePlayerStore';
 import { useNavigate } from 'react-router-dom';
 import { Search, Download, Activity, RefreshCw, Trash2, AlertCircle, Globe, Play, Pause, Upload, Copy, ExternalLink } from 'lucide-react';
 import { notify } from '../utils/notify';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 import type { Track } from '../types';
 
 /**

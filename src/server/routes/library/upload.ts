@@ -3,7 +3,7 @@ import multer from "multer";
 import crypto from "crypto";
 import path from "path";
 import os from "os";
-import axios from "axios";
+
 import type { DatabaseService } from "../../core/database.js";
 import type { ScannerService } from "../../modules/catalog/scanner.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
@@ -880,17 +880,26 @@ export function createUploadRoutes(container: ServiceContainer): Router {
 
             console.log(`👤 Downloading avatar for artist ${id} from: ${url}`);
 
-            const response = await axios.get(url, { 
-                responseType: 'arraybuffer', 
-                timeout: 30000, // Increased timeout
-                maxRedirects: 5,
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+            const response = await fetch(url, {
+                method: 'GET',
+                signal: controller.signal,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
                     'Referer': 'https://www.theaudiodb.com/'
                 }
             });
-            const contentType = response.headers['content-type'];
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const responseData = Buffer.from(await response.arrayBuffer());
+            const contentType = response.headers.get('content-type');
             
             if (typeof contentType !== 'string' || !contentType.startsWith('image/')) {
                 console.warn(`⚠️ URL ${url} returned invalid content-type: ${contentType}`);
@@ -911,7 +920,7 @@ export function createUploadRoutes(container: ServiceContainer): Router {
             const avatarFilename = `avatar-${id}${ext}`;
             const avatarPath = path.join(assetsDir, avatarFilename);
 
-            await storage.writeFile(avatarPath, response.data);
+            await storage.writeFile(avatarPath, responseData);
 
             // Update artist in database (relative path)
             const artist = library.getArtist(id);

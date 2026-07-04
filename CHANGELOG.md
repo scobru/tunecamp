@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.0] - 2026-07-04
+
+### Changed
+- **Dependency Consolidation & Optimization (Ponytail Audit):**
+  - Removed `axios` in favor of the native platform `fetch` API across both the server and webapp.
+  - Removed `fs-extra` and `@types/fs-extra` by implementing a native wrapper in `src/utils/fs.ts` using Node's native `fs/promises` and `fs` modules.
+  - Removed `p-limit` and replaced it with a lightweight, native inline concurrency queue helper in `fix-paths.ts` and `maintenance.service.ts`.
+  - Removed `node-id3` by consolidating tag writing for MP3 and lossless audio formats to use the FFmpeg-based `writeMetadata` utility.
+  - Removed `clsx` from the webapp, utilizing native ES6 template literals instead.
+
+### Fixed
+- **ESM Test Suite Compatibility:** Replaced recursive dynamic imports of mocked modules with clean `jest.spyOn` spies on shared ESM `fs` exports to prevent Jest worker heap exhaustion.
+
 ## [2.15.0] - 2026-07-04
 
 ### Changed

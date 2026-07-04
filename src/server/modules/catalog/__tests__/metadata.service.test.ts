@@ -1,10 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 
-jest.unstable_mockModule('node-id3', () => ({
-    default: {
-        update: jest.fn()
-    }
-}));
 
 jest.unstable_mockModule('../../../common/network.js', () => ({
     drainResponse: jest.fn()
@@ -277,14 +272,14 @@ describe('MetadataService', () => {
             expect(writeMetadata).not.toHaveBeenCalled();
         });
 
-        test('should update mp3 tags with NodeID3', async () => {
+        test('should update mp3 tags with writeMetadata', async () => {
             const storage = { pathExists: jest.fn().mockResolvedValue(true) };
             const db = { updateTrackHash: jest.fn() };
 
             await metadataService.syncPhysicalTags({ id: 1, file_path: 'song.mp3', title: 'Test Title' }, db as any, storage as any, '/music');
 
-            const NodeID3 = (await import('node-id3')).default;
-            expect(NodeID3.update).toHaveBeenCalled();
+            const { writeMetadata } = await import('../../media/ffmpeg.js');
+            expect(writeMetadata).toHaveBeenCalledWith(expect.stringContaining('song.mp3'), expect.objectContaining({ title: 'Test Title' }));
             expect(db.updateTrackHash).toHaveBeenCalledWith(1, 'new-hash');
         });
 
@@ -305,11 +300,9 @@ describe('MetadataService', () => {
 
              await metadataService.syncPhysicalTags({ id: 3, file_path: 'song.mp3', lossless_path: 'song.flac', title: 'Dual Title' }, db as any, storage as any, '/music');
 
-             const NodeID3 = (await import('node-id3')).default;
              const { writeMetadata } = await import('../../media/ffmpeg.js');
 
-             expect(NodeID3.update).toHaveBeenCalled();
-             expect(writeMetadata).toHaveBeenCalled();
+             expect(writeMetadata).toHaveBeenCalledTimes(2);
              expect(db.updateTrackHash).toHaveBeenCalledTimes(2);
         });
     });

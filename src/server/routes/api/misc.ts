@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import { readFile } from "fs/promises";
 import type { ServiceContainer } from "../../core/container.js";
 import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";

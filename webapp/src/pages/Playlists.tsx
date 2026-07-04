@@ -6,7 +6,7 @@ import type { Playlist, UserPlaylist } from "../types";
 import { PageHeader } from "../components/ui/PageHeader";
 import { useAuthStore } from "../stores/useAuthStore";
 import { CreateUserPlaylistModal } from "../components/modals/CreateUserPlaylistModal";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 
 type Tab = "mine" | "public";
 

@@ -1,9 +1,37 @@
-import fs from 'fs-extra';
+import fs from '../../../utils/fs.js';
 import path from 'path';
 import * as mm from 'music-metadata';
 import { glob } from 'glob';
-import pLimit from 'p-limit';
 import type { DatabaseService, Track } from "../../core/database.js";
+
+function pLimit(concurrency: number) {
+    const queue: (() => void)[] = [];
+    let activeCount = 0;
+
+    const next = () => {
+        activeCount--;
+        if (queue.length > 0) {
+            const run = queue.shift()!;
+            activeCount++;
+            run();
+        }
+    };
+
+    return <T>(fn: () => Promise<T>): Promise<T> => {
+        return new Promise<T>((resolve, reject) => {
+            const run = () => {
+                fn().then(resolve, reject).finally(next);
+            };
+
+            if (activeCount < concurrency) {
+                activeCount++;
+                run();
+            } else {
+                queue.push(run);
+            }
+        });
+    };
+}
 import { metadataService } from "./metadata.service.js";
 import type { CatalogService } from "./catalog.service.js";
 import type { OpenRouterService } from "../ai/openrouter.service.js";

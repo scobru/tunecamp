@@ -8,7 +8,7 @@ import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.j
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
 import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import path from "path";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import { getPlaceholderSVG } from "../../../utils/audioUtils.js";
 
 interface CreateReleaseBody {

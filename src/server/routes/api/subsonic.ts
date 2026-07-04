@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { create } from 'xmlbuilder2';
 import path from 'path';
-import fs from 'fs-extra';
+import fs from '../../../utils/fs.js';
 import { resolveSafePath } from '../../../utils/fileUtils.js';
 import { getPlaceholderSVG } from '../../../utils/audioUtils.js';
 import type { DatabaseService, Track } from '../../core/database.js';

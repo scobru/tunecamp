@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { PageHeader } from '../components/ui/PageHeader';
 import { queryKeys } from '../hooks/queries';
 import API from '../services/api';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 
 const Library = () => {
     const { isAuthenticated, role, user } = useAuthStore();

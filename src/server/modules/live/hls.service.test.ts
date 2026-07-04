@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 import path from 'path';
 import os from 'os';
-import fs from 'fs-extra';
+import fs from '../../../utils/fs.js';
 import { HlsLiveService } from './hls.service.js';
 
 const ROOM = 'room-abc123';

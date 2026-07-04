@@ -1,7 +1,7 @@
 {
   "name": "webapp",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.16.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,8 +14,6 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",
-    "axios": "^1.15.0",
-    "clsx": "^2.1.1",
     "color-thief-react": "^1.0.2",
     "dompurify": "^3.4.11",
     "ethers": "^6.16.0",

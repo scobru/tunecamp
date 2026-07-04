@@ -1,6 +1,6 @@
 import WebTorrent from 'webtorrent';
 import path from 'path';
-import fs from 'fs-extra';
+import fs from '../../../utils/fs.js';
 import { type DatabaseService, type Torrent, type TorrentStatus } from '../../core/database.types.js';
 import type { Scanner } from '../catalog/scanner.js';
 

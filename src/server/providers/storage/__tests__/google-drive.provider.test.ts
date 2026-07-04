@@ -1,5 +1,5 @@
 import { jest, describe, test, expect, beforeEach } from '@jest/globals';
-import fsExtra from 'fs-extra';
+import fsExtra from '../../../../utils/fs.js';
 import { GoogleDriveStorageProvider } from '../google-drive.provider.js';
 
 jest.spyOn(fsExtra, 'readFile' as any).mockResolvedValue(Buffer.from('audio-bytes') as any);

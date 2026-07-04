@@ -11,7 +11,7 @@ const mockReaddir = jest.fn();
 const mockMove = jest.fn();
 const mockExistsSync = jest.fn();
 
-jest.unstable_mockModule('fs-extra', () => ({
+jest.unstable_mockModule('../../../utils/fs.js', () => ({
     default: {
         ensureDir: mockEnsureDir,
         readdir: mockReaddir,

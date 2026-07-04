@@ -1,5 +1,5 @@
 import { Router, json } from "express";
-import fs from "fs-extra";
+import fs from "../../../utils/fs.js";
 import type { Request, Response } from "express";
 import type { ServiceContainer } from "../../core/container.js";
 import type { AuthenticatedRequest } from "../../middleware/auth.js";

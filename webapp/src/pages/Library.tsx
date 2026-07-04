@@ -10,7 +10,7 @@ import type { Track, Album, Artist, Release, Playlist, UserPlaylist } from "../t
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { PageHeader } from "../components/ui/PageHeader";
 import { CreateUserPlaylistModal } from "../components/modals/CreateUserPlaylistModal";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import {
   Library as LibraryIcon,
   Heart,

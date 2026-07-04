@@ -1,5 +1,5 @@
 import path from 'path';
-import fs from 'fs-extra';
+import fs from '../../../utils/fs.js';
 import { WaveformGenerator } from './waveform.generator.js';
 
 export class WaveformService {

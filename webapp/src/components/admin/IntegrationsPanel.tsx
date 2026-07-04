@@ -20,7 +20,7 @@ import { useConfigStore } from "../../stores/useConfigStore";
 import { useAuthStore } from "../../stores/useAuthStore";
 import API from "../../services/api";
 import { notify } from "../../utils/notify";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import type { SiteSettings } from "../../types";
 
 interface PluginInfo {

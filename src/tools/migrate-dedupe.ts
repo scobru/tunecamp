@@ -16,7 +16,7 @@
  *   --help         Show this help
  */
 
-import fs from 'fs-extra';
+import fs from '../utils/fs.js';
 import path from 'path';
 import sqlite3 from 'better-sqlite3';
 import { loadConfig } from '../server/core/config.js';

@@ -1,7 +1,7 @@
 import { jest, describe, test, expect, beforeAll, beforeEach, afterEach } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
-import fsExtra from 'fs-extra';
+import fsExtra from '../../../../utils/fs.js';
 import Stripe, { mockStripeInstance } from 'stripe';
 import { ethers, mockProviderInstance, mockInterfaceInstance } from 'ethers';
 

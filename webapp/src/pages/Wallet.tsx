@@ -7,7 +7,7 @@ import {
   Check,
   LogOut,
 } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { useOwnedNFTs } from "../hooks/useOwnedNFTs";
 import { TokenRole } from "shogun-contracts-sdk";
 

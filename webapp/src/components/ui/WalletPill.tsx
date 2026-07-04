@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { Wallet } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { Link } from "react-router-dom";
 
 export const WalletPill = () => {

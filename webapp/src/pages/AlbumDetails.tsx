@@ -13,7 +13,7 @@ import { useWalletStore } from "../stores/useWalletStore";
 import { formatDuration } from "../utils/format";
 import { notify } from "../utils/notify";
 import type { Track } from "../types";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { renderMarkdown } from "../utils/markdown";
 import { sanitizeHtml } from "../utils/sanitize";
 

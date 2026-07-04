@@ -2,7 +2,7 @@ import { createDatabase } from '../../../core/database.js';
 import { createMiscRoutes } from '../misc.js';
 import request from 'supertest';
 import express from 'express';
-import fs from 'fs-extra';
+import fs from '../../../../utils/fs.js';
 import { VisibilityProfile } from '../../../common/visibility.js';
 
 describe('RSS Feeds', () => {

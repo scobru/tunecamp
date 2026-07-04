@@ -2,7 +2,7 @@ import { createUploadRoutes } from '../upload.js';
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
-import fs from 'fs-extra';
+import fs from '../../../../utils/fs.js';
 import path from 'path';
 import os from 'os';
 import type { DatabaseService } from '../../../core/database.js';

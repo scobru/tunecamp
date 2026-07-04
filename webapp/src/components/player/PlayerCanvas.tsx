@@ -9,7 +9,7 @@ import {
   Disc
 } from "lucide-react";
 import { Waveform } from "./Waveform";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { useEffect, useState } from "react";
 import { fixRelativeUrl } from '../../utils/url';
 

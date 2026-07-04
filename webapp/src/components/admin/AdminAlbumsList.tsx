@@ -2,7 +2,7 @@ import { confirm } from '@/utils/confirm';
 import { useState, useEffect } from "react";
 import API from "../../services/api";
 import { Disc, Edit, Trash2, Globe, Lock, Share2 } from "lucide-react";
-import clsx from "clsx";
+import clsx from '@/utils/clsx';
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useConfigStore } from "../../stores/useConfigStore";
 import { notify } from "../../utils/notify";

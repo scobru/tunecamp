@@ -5,7 +5,7 @@ import { ReleaseCard } from '../components/ui/ReleaseCard';
 import { PageHeader } from '../components/ui/PageHeader';
 import { queryKeys } from '../hooks/queries';
 import API from '../services/api';
-import clsx from 'clsx';
+import clsx from '@/utils/clsx';
 import { Link, useLocation } from 'react-router-dom';
 import Tracks from './Tracks';
 

@@ -3,7 +3,7 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import { Scanner, isArtworkOrAvatar } from '../scanner.js';
 
 // Mock fs-extra to avoid file system operations
-jest.mock('fs-extra', () => ({
+jest.mock('../../../../utils/fs.js', () => ({
     ensureDir: jest.fn(),
     remove: jest.fn(),
     pathExists: jest.fn().mockResolvedValue(true as never),

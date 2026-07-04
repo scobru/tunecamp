@@ -19,7 +19,7 @@ const mockFs = {
     remove: jest.fn(),
     move: jest.fn(),
 };
-jest.unstable_mockModule('fs-extra', () => ({
+jest.unstable_mockModule('../../../../utils/fs.js', () => ({
   default: mockFs,
   pathExists: mockFs.pathExists,
 }));
@@ -46,10 +46,7 @@ jest.unstable_mockModule('music-metadata', () => ({
   parseFile: jest.fn()
 }));
 
-// Mock node-id3
-jest.unstable_mockModule('node-id3', () => ({
-  default: { update: jest.fn() }
-}));
+
 
 // Mock ../ffmpeg.js (media-engine, pulled in transitively, imports transcode + transcodeToFile)
 jest.unstable_mockModule('../../../modules/media/ffmpeg.js', () => ({
