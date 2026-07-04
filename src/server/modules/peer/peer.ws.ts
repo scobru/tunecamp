@@ -75,7 +75,7 @@ export function createPeerWsHandler(server: http.Server, container: ServiceConta
                                     container.peerService.handleChunkError(sessionId, message.requestId, message.message);
                                     break;
                                 case "pong":
-                                    // Heartbeat pong received, session is active
+                                    container.peerService.handlePong(sessionId);
                                     break;
                                 default:
                                     console.warn(`[PeerWS] Unknown message type: ${message.type}`);

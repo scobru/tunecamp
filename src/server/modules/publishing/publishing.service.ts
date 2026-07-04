@@ -31,14 +31,15 @@ export class PublishingService {
     private async seedReleaseForDistribution(release: Release, artistName: string): Promise<string | null> {
         if (!this.torrentService) return null;
         try {
-            const existing = (this.db as any).db.prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE").get(release.title) as { magnet_uri: string } | undefined;
+            const torrentName = artistName ? `${artistName} - ${release.title}` : release.title;
+            const existing = (this.db as any).db.prepare("SELECT magnet_uri FROM torrents WHERE name = ? COLLATE NOCASE").get(torrentName) as { magnet_uri: string } | undefined;
             if (existing) return existing.magnet_uri;
 
             const tracks = this.db.getTracksByReleaseId(release.id);
             const filePaths = tracks.map(t => t.file_path).filter((p): p is string => !!p);
             if (filePaths.length === 0) return null;
 
-            return await this.torrentService.seedFiles(filePaths, release.title, release.owner_id ?? null, artistName);
+            return await this.torrentService.seedFiles(filePaths, torrentName, release.owner_id ?? null, artistName);
         } catch (e) {
             console.error(`❌ Failed to seed release "${release.title}" for distribution:`, e);
             return null;
