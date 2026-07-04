@@ -23,6 +23,10 @@ interface AuthenticatedRequest extends express.Request {
  * Clean up old temporary files in the uploads directory
  * This prevents disk space exhaustion from abandoned chunked uploads
  */
+export async function cleanupParts(partFiles: string[], uploadDir: string) {
+    await Promise.allSettled(partFiles.map(part => fs.unlink(path.join(uploadDir, part))));
+}
+
 async function cleanupOldChunks(uploadDir: string, maxAgeMs: number = 24 * 60 * 60 * 1000) {
     try {
         if (!(await fs.pathExists(uploadDir))) return;
@@ -525,7 +529,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
                     }
 
                     // Cleanup parts
-                    await Promise.all(partFiles.map(part => fs.unlink(path.join(uploadDir, part)).catch(() => { })));
+                    await cleanupParts(partFiles, uploadDir);
 
                     // Run restore
                     await performRestore(finalZipPath, config, database, restartFn);
@@ -533,7 +537,7 @@ export function createBackupRoutes(container: ServiceContainer, restartFn: () =>
                     console.error("❌ [Restore] Assembly failed:", e);
                     // Ensure cleanup on failure
                     if (await fs.pathExists(finalZipPath)) await fs.unlink(finalZipPath).catch(() => { });
-                    await Promise.all(partFiles.map(part => fs.unlink(path.join(uploadDir, part)).catch(() => { })));
+                    await cleanupParts(partFiles, uploadDir);
                 }
             })();
 
