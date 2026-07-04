@@ -121,6 +121,36 @@ describe('TorrentService', () => {
         });
     });
 
+    describe('seedFiles', () => {
+        const seedWith = async (name: string, artist?: string) => {
+            jest.advanceTimersByTime(5000);
+            const fs = (await import('fs-extra')).default;
+            const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+            mockClientSeed.mockImplementation((_files: any, opts: any, cb: any) => {
+                cb({ infoHash: 'ABCDEF', magnetURI: 'magnet:?xt=urn:btih:abcdef', name: opts.name, on: jest.fn() });
+            });
+            await service.seedFiles(['/music/a.flac'], name, 1, artist);
+            existsSpy.mockRestore();
+            return mockClientSeed.mock.calls[0][1] as any;
+        };
+
+        it('should prefix torrent name with artist', async () => {
+            const opts = await seedWith('Kind of Blue', 'Miles Davis');
+            expect(opts.name).toBe('Miles Davis - Kind of Blue');
+            expect(mockDb.createTorrent).toHaveBeenCalledWith(expect.objectContaining({ name: 'Miles Davis - Kind of Blue', artist: 'Miles Davis' }));
+        });
+
+        it('should not double-prefix when caller already combined the name', async () => {
+            const opts = await seedWith('Miles Davis - Kind of Blue', 'Miles Davis');
+            expect(opts.name).toBe('Miles Davis - Kind of Blue');
+        });
+
+        it('should keep bare name when artist is missing', async () => {
+            const opts = await seedWith('Kind of Blue');
+            expect(opts.name).toBe('Kind of Blue');
+        });
+    });
+
     describe('sweepStuckMetadata', () => {
         it('should mark torrents as error if they have been stuck on metadata for too long', () => {
             jest.advanceTimersByTime(5000); // Initialize client
