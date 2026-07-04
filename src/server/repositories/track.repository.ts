@@ -463,7 +463,10 @@ export class TrackRepository {
         switch (filter) {
             case 'genre': condition = "(genre IS NULL OR genre = 'Library' OR genre = '')"; break;
             case 'year': condition = "(year IS NULL OR year = 0)"; break;
-            case 'cover': condition = "(external_artwork IS NULL AND album_id IS NULL)"; break;
+            // A track "has a cover" only via external_artwork or its album's real
+            // cover_path. Scanner-created folder albums often have none — the UI
+            // just renders an SVG placeholder — so they must still count as missing.
+            case 'cover': condition = "(external_artwork IS NULL AND (album_id IS NULL OR EXISTS (SELECT 1 FROM albums al WHERE al.id = album_id AND (al.cover_path IS NULL OR al.cover_path = ''))))"; break;
             case 'album': condition = "album_id IS NULL"; break;
             case 'artist': condition = "(artist_id IS NULL OR artist_name = 'Unknown Artist')"; break;
             case 'external': condition = "external_id IS NULL"; break;

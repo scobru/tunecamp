@@ -205,4 +205,35 @@ describe('TrackRepository', () => {
             expect(titles).toContain('Visible');
         });
     });
+
+    describe('getMissingMetadata(cover)', () => {
+        const makeAlbum = (slug: string, coverPath: string | null) =>
+            Number(db.db.prepare(
+                "INSERT INTO albums (title, slug, cover_path) VALUES (?, ?, ?)"
+            ).run(slug, slug, coverPath).lastInsertRowid);
+
+        test('track without album and without external artwork is missing', () => {
+            const id = repo.create(trackInput({ title: 'Bare', hash: 'mc1' }));
+            expect(repo.getMissingMetadata('cover').map(t => t.id)).toContain(id);
+        });
+
+        test('track in a coverless album is missing (regression: scanner folder albums)', () => {
+            // The scanner assigns every track to an auto-generated folder album;
+            // that must not hide a genuinely missing cover.
+            const albumId = makeAlbum('no-cover', null);
+            const id = repo.create(trackInput({ title: 'InFolder', hash: 'mc2', album_id: albumId }));
+            expect(repo.getMissingMetadata('cover').map(t => t.id)).toContain(id);
+        });
+
+        test('track in an album with a real cover is not missing', () => {
+            const albumId = makeAlbum('with-cover', 'artist/album/cover.jpg');
+            const id = repo.create(trackInput({ title: 'Covered', hash: 'mc3', album_id: albumId }));
+            expect(repo.getMissingMetadata('cover').map(t => t.id)).not.toContain(id);
+        });
+
+        test('track with external artwork is not missing', () => {
+            const id = repo.create(trackInput({ title: 'ExtArt', hash: 'mc4', external_artwork: 'https://img/cover.jpg' } as any));
+            expect(repo.getMissingMetadata('cover').map(t => t.id)).not.toContain(id);
+        });
+    });
 });
