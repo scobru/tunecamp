@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import API from "../services/api";
 import { Library } from "lucide-react";
 import { ReleaseCard } from "../components/ui/ReleaseCard";
 import { queryKeys } from "../hooks/queries";
+import { useSiteSettingsStore } from "../stores/useSiteSettingsStore";
 import clsx from "clsx";
 
 const Home = () => {
@@ -13,7 +14,7 @@ const Home = () => {
     queryKey: queryKeys.catalog,
     queryFn: () => API.getCatalog(),
   });
-  const [siteSettings, setSiteSettings] = useState<any>(null);
+  const { settings: siteSettings, fetchFlags, isModuleHidden } = useSiteSettingsStore();
 
   // Cap the number of items shown on Home to reduce cognitive load.
   // The full lists live behind the "View All" links (cf. Spotify redesign:
@@ -28,8 +29,8 @@ const Home = () => {
   const genres: string[] = (stats.genres || []).slice(0, HOME_GENRES_LIMIT);
 
   useEffect(() => {
-    API.getSiteSettings().then(setSiteSettings).catch(console.error);
-  }, []);
+    fetchFlags();
+  }, [fetchFlags]);
 
   if (loading) {
     return (
@@ -95,17 +96,7 @@ const Home = () => {
               "Your decentralized, self-hosted music streaming gateway."}
           </p>
           <div className="flex flex-wrap gap-3">
-            <button
-              className="btn btn-primary rounded-xl px-8"
-              onClick={() =>
-                document
-                  .getElementById("recent-releases")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-               Browse Music
-            </button>
-            {!(siteSettings?.hideNetwork === true || siteSettings?.hideNetwork === "true") && (
+            {!isModuleHidden("hideNetwork") && (
               <Link to="/network" className="btn btn-ghost rounded-xl border border-base-content/10">
                 Explore Network
               </Link>
@@ -160,9 +151,8 @@ const Home = () => {
               </h2>
               <p className="text-sm opacity-40 font-medium">Newest items in your personal collection</p>
             </div>
-            <Link to="/albums" className="btn btn-link btn-sm no-underline opacity-40 hover:opacity-100 tracking-normal font-black text-xs">
-              View All →
-            </Link>
+            {/* No "View All": the full private archive lives at /library, which is
+                gated to admins/artists — linking it here 404s for listeners. */}
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 lg:gap-6 opacity-80">

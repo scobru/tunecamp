@@ -23,8 +23,8 @@ const Stats = () => {
     return (
         <div className="space-y-8 animate-fade-in">
              <PageHeader 
-                title="Stats" 
-                subtitle="Your most listened tracks and artists"
+                title="Stats"
+                subtitle="Most listened tracks and artists on this instance"
                 icon={BarChart2}
                 iconColor="text-primary"
              >

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { lazy, Suspense, useEffect } from "react";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -23,7 +23,6 @@ const Network = lazy(() => import("./pages/Network"));
 const Support = lazy(() => import("./pages/Support"));
 const Playlists = lazy(() => import("./pages/Playlists"));
 const PlaylistDetails = lazy(() => import("./pages/PlaylistDetails"));
-const MyPlaylistDetails = lazy(() => import("./pages/MyPlaylistDetails"));
 const Post = lazy(() => import("./pages/Post")); // Special case
 const Wallet = lazy(() => import("./pages/Wallet"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -140,6 +139,12 @@ function ModuleGuard({ flag, children }: { flag: ModuleFlag; children: React.Rea
   return <>{children}</>;
 }
 
+/** Old bookmarks: /my-playlists/:id → unified /playlists/:id detail page. */
+function LegacyMyPlaylistRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/playlists/${id}`} replace />;
+}
+
 function App() {
   const { init, checkAuth } = useAuthStore();
   const { fetchStatus } = useConfigStore();
@@ -214,7 +219,7 @@ function App() {
             <Route path="/playlists" element={<Playlists />} />
             <Route path="/playlists/:id" element={<PlaylistDetails />} />
             <Route path="/my-playlists" element={<Navigate to="/playlists" replace />} />
-            <Route path="/my-playlists/:id" element={<MyPlaylistDetails />} />
+            <Route path="/my-playlists/:id" element={<LegacyMyPlaylistRedirect />} />
             {/* Purchased tracks view is now in the User Profile Collection tab */}
             <Route path="/post/:slug" element={<Post />} />
             <Route path="/network" element={<ModuleGuard flag="hideNetwork"><Network /></ModuleGuard>} />

@@ -1,21 +1,18 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
-import API from "../../services/api";
-import type { SiteSettings } from "../../types";
 import { Sidebar } from "./Sidebar";
 import { PlayerBar } from "../player/PlayerBar";
 import { PlayerCanvas } from "../player/PlayerCanvas";
 import { AuthModal } from "../modals/AuthModal";
 import { PlaylistModal } from "../modals/PlaylistModal";
 import { UnlockModal } from "../modals/UnlockModal";
-import { ArtistKeysModal } from "../modals/ArtistKeysModal";
 import { AdminTrackModal } from "../modals/AdminTrackModal";
 import { AdminArtistModal } from "../modals/AdminArtistModal";
 import { CheckoutModal } from "../modals/CheckoutModal";
-import { CommandPalette } from "../modals/CommandPalette";
 import { UpdateBanner } from "../UpdateBanner";
 import { usePlayerStore } from "../../stores/usePlayerStore";
 import { useUIStore } from "../../stores/useUIStore";
+import { useSiteSettingsStore } from "../../stores/useSiteSettingsStore";
 import { applyThemeFont } from "../../utils/themeFont";
 
 /**
@@ -38,8 +35,8 @@ function applyBrandColors(primary?: string, accent?: string) {
 }
 
 export const MainLayout = () => {
-  const [siteName, setSiteName] = useState("TuneCamp");
-  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
+  const siteName = siteSettings?.siteName || "TuneCamp";
   const dominantColor = usePlayerStore(state => state.dominantColor);
   const theme = useUIStore(state => state.theme);
 
@@ -49,13 +46,8 @@ export const MainLayout = () => {
   }, [theme]);
 
   useEffect(() => {
-    API.getSiteSettings()
-      .then((s: SiteSettings) => {
-        setSiteSettings(s);
-        if (s.siteName) setSiteName(s.siteName);
-      })
-      .catch(console.error);
-  }, []);
+    fetchFlags();
+  }, [fetchFlags]);
 
   useEffect(() => {
     if (!siteSettings) return;
@@ -176,11 +168,9 @@ export const MainLayout = () => {
 
 
       {/* Global Modals */}
-      <CommandPalette />
       <AuthModal />
       <PlaylistModal />
       <UnlockModal />
-      <ArtistKeysModal />
       <CheckoutModal />
       <AdminTrackModal
         onTrackUpdated={() =>

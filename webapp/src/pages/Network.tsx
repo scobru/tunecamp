@@ -52,8 +52,6 @@ const getFederationBadge = (federation?: string) => {
     case "rss": return { label: "RSS", class: "badge-warning" };
     case "http": return { label: "HTTP", class: "badge-info" };
     case "federated": return { label: "FED", class: "badge-success" };
-    case "gundb":
-    case "zen": return { label: "ZEN", class: "badge-secondary" };
     default: return { label: "NET", class: "badge-ghost" };
   }
 };
@@ -499,7 +497,6 @@ const Network = () => {
   const [showHidden, setShowHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<NetworkStatus | null>(null);
-  const [enabled, setEnabled] = useState(true);
   const [peerStatus, setPeerStatus] = useState<{ enabled: boolean; allowDownloads: boolean } | null>(null);
   const [peerSessions, setPeerSessions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<NetworkTab>("tunecamp-network");
@@ -507,16 +504,13 @@ const Network = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [sitesData, tracksData, statusData, s, pStatus] = await Promise.all([
+        // Module gating (hideNetwork) is enforced by ModuleGuard on the route.
+        const [sitesData, tracksData, statusData, pStatus] = await Promise.all([
           API.getNetworkSites(),
           API.getNetworkTracks(),
           API.getNetworkStatus().catch(() => null),
-          API.getSiteSettings().catch(() => ({} as any)),
           API.getPeerStatus().catch(() => null),
         ]);
-        if (s && (s.hideNetwork === true || s.hideNetwork === "true")) {
-          setEnabled(false);
-        }
         setStatus(statusData);
 
         // Deduplicate Sites by hostname — the same instance can be registered
@@ -541,7 +535,7 @@ const Network = () => {
           if (t.federation === "activitypub" || t.federation === "local" || t.federation === "http" || t.federation === "rss") {
             return !!t.audioUrl || !!t.slug;
           }
-          // Legacy the Zen network tracks (if any remain)
+          // Legacy network tracks (if any remain from old data)
           if (t.track) {
             const url = t.siteUrl;
             return url && url.trim() !== "/" && url.trim() !== "";
@@ -617,7 +611,7 @@ const Network = () => {
       return;
     }
 
-    // Legacy the Zen network tracks (if any remain from old data)
+    // Legacy network tracks (if any remain from old data)
     if (!networkTrack.track || !networkTrack.siteUrl) return;
     if (currentTrack?.id === networkTrack.track.id) return;
 
@@ -699,25 +693,6 @@ const Network = () => {
   const otherGroups = Array.from(otherByHost.entries())
     .map(([host, items]) => ({ host, items, name: siteNameByHost.get(host) }))
     .sort((a, b) => b.items.length - a.items.length);
-
-  if (!enabled) {
-    return (
-      <div className="space-y-12 animate-fade-in pb-12">
-        <PageHeader
-          title="Federated Network"
-          subtitle="Discover music across the decentralized TuneCamp network."
-          icon={Globe}
-          iconColor="text-blue-400"
-          gradientFrom="from-blue-500/20"
-          gradientTo="to-purple-500/20"
-        />
-        <div className="alert alert-warning max-w-xl shadow-level-1 rounded-xl">
-          <Globe size={18} />
-          <span>The network is disabled on this instance.</span>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-12 animate-fade-in pb-12">

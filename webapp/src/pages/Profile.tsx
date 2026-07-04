@@ -35,6 +35,7 @@ import clsx from "clsx";
 import { ChangePasswordCard } from "../components/ui/ChangePasswordCard";
 import { ArtistStripeConnectCard } from "../components/artist/ArtistStripeConnectCard";
 import { LinksEditor } from "../components/ui/LinksEditor";
+import { useSiteSettingsStore, truthy } from "../stores/useSiteSettingsStore";
 
 const Profile = () => {
   const { user, isAuthenticated, role, isInitializing, checkAuth } = useAuthStore();
@@ -45,16 +46,13 @@ const Profile = () => {
 
   const [artistData, setArtistData] = useState<any>(null);
   const [artistLoading, setArtistLoading] = useState(false);
-  const [siteHandle, setSiteHandle] = useState("site");
+  const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
+  const siteHandle = siteSettings?.siteHandle || "site";
+  const selfPublishEnabled = truthy(siteSettings?.listenerSelfPublish);
 
   useEffect(() => {
-    API.getSiteSettings()
-      .then((s) => {
-        if (s?.siteHandle) setSiteHandle(s.siteHandle);
-        setSelfPublishEnabled(s?.listenerSelfPublish === true || (s?.listenerSelfPublish as any) === "true");
-      })
-      .catch(() => {});
-  }, []);
+    fetchFlags();
+  }, [fetchFlags]);
 
   const isRoot = role === 'root_admin' || user?.isRootAdmin;
   // A listener (role 'user') with an artistId is a Community Artist.
@@ -103,7 +101,6 @@ const Profile = () => {
   const [loadingTracks, setLoadingTracks] = useState(true);
   const [artistRequestedAt, setArtistRequestedAt] = useState<string | null>(null);
   const [requestingArtist, setRequestingArtist] = useState(false);
-  const [selfPublishEnabled, setSelfPublishEnabled] = useState(false);
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
   const [savingPublicProfile, setSavingPublicProfile] = useState(false);
 
