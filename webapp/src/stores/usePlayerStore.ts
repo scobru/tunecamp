@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { Track } from '../types';
 import API from '../services/api';
 
@@ -25,6 +26,7 @@ export interface PlayerState {
     isLyricsOpen: boolean;
     isCanvasOpen: boolean;
     dominantColor: string | null;
+    recentlyPlayed: any[];
 
     // Actions
     playTrack: (track: Track, context?: Track[]) => void;
@@ -46,26 +48,30 @@ export interface PlayerState {
     toggleLyrics: () => void;
     toggleCanvas: () => void;
     setDominantColor: (color: string | null) => void;
+    addRecentlyPlayed: (item: any) => void;
 }
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
-    currentTrack: null,
-    isPlaying: false,
-    queue: [],
-    originalQueue: [],
-    queueIndex: -1,
-    volume: parseFloat(localStorage.getItem('tunecamp_volume') || '1'),
-    progress: 0,
-    duration: 0,
-    currentTime: 0,
-    crossfadeSec: parseFloat(localStorage.getItem('tunecamp_crossfade') || '0') || 0,
-    isShuffled: false,
-    repeatMode: 'none',
-    isRadioMode: false,
-    isQueueOpen: false,
-    isLyricsOpen: false,
-    isCanvasOpen: false,
-    dominantColor: null,
+export const usePlayerStore = create<PlayerState>()(
+    persist(
+        (set, get) => ({
+            currentTrack: null,
+            isPlaying: false,
+            queue: [],
+            originalQueue: [],
+            queueIndex: -1,
+            volume: parseFloat(localStorage.getItem('tunecamp_volume') || '1'),
+            progress: 0,
+            duration: 0,
+            currentTime: 0,
+            crossfadeSec: parseFloat(localStorage.getItem('tunecamp_crossfade') || '0') || 0,
+            isShuffled: false,
+            repeatMode: 'none',
+            isRadioMode: false,
+            isQueueOpen: false,
+            isLyricsOpen: false,
+            isCanvasOpen: false,
+            dominantColor: null,
+            recentlyPlayed: [],
 
     playTrack: (track, context) => {
         const queue = context ? [...context] : [track];
@@ -79,6 +85,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             currentTrack: track,
             isPlaying: true
         });
+        get().addRecentlyPlayed(track);
         API.recordPlay(track.id).catch(console.error);
     },
 
@@ -92,6 +99,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             currentTrack: tracks[startIndex],
             isPlaying: true
         });
+        get().addRecentlyPlayed(tracks[startIndex]);
         API.recordPlay(tracks[startIndex].id).catch(console.error);
     },
 
@@ -108,6 +116,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                 currentTrack: queue[nextIndex],
                 isPlaying: true
             });
+            get().addRecentlyPlayed(queue[nextIndex]);
             API.recordPlay(queue[nextIndex].id).catch(console.error);
         } else if (repeatMode === 'all' && queue.length > 0) {
             // Loop back to start
@@ -116,6 +125,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                 currentTrack: queue[0],
                 isPlaying: true
             });
+            get().addRecentlyPlayed(queue[0]);
             API.recordPlay(queue[0].id).catch(console.error);
         } else if (get().isRadioMode) {
             // Fetch next random track
@@ -128,6 +138,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                         currentTrack: nextTrack,
                         isPlaying: true
                     }));
+                    get().addRecentlyPlayed(nextTrack);
                     API.recordPlay(nextTrack.id).catch(console.error);
                 }
             }).catch(err => {
@@ -154,6 +165,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                 currentTrack: queue[prevIndex],
                 isPlaying: true
             });
+            get().addRecentlyPlayed(queue[prevIndex]);
             API.recordPlay(queue[prevIndex].id).catch(console.error);
         }
     },
@@ -273,6 +285,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
                         currentTrack: nextTrack,
                         isPlaying: true
                     });
+                    get().addRecentlyPlayed(nextTrack);
                     API.recordPlay(nextTrack.id).catch(console.error);
                 }
             });
@@ -284,5 +297,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     toggleLyrics: () => set((state) => ({ isLyricsOpen: !state.isLyricsOpen, isQueueOpen: false, isCanvasOpen: false })),
     toggleCanvas: () => set((state) => ({ isCanvasOpen: !state.isCanvasOpen, isQueueOpen: false, isLyricsOpen: false })),
     setDominantColor: (color) => set({ dominantColor: color }),
-}));
+    addRecentlyPlayed: (item) => set((state) => {
+        if (!item || !item.id) return state;
+        const updated = [item, ...state.recentlyPlayed.filter((i: any) => i.id !== item.id)].slice(0, 20);
+        return { recentlyPlayed: updated };
+    }),
+}),
+{
+    name: 'tunecamp-player-store',
+    partialize: (state) => ({
+        currentTrack: state.currentTrack,
+        queue: state.queue,
+        originalQueue: state.originalQueue,
+        queueIndex: state.queueIndex,
+        volume: state.volume,
+        progress: state.progress,
+        duration: state.duration,
+        currentTime: state.currentTime,
+        crossfadeSec: state.crossfadeSec,
+        recentlyPlayed: state.recentlyPlayed,
+        // specifically exclude isPlaying so it defaults to false on load
+    })
+}
+));
 

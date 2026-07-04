@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400..900&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: oklch(8% 0.01 280); }
+  a { text-decoration: none; }
+  summary::-webkit-details-marker { display: none; }
+  details[open] summary .tc-chev { transform: rotate(180deg); }
+</style>
+</helmet>
+
+<section id="turn-5" style="min-height:100vh;padding:56px 56px 96px;font-family:Outfit,sans-serif;color:#f7f7f9;border-bottom:1px solid rgba(247,247,249,.06)">
+
+  <header style="margin-bottom:40px;max-width:900px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:oklch(75% .15 190);margin-bottom:14px">Consigli UX · Home</div>
+    <h1 style="font-weight:900;letter-spacing:-.045em;font-size:2.6rem;line-height:1.05;margin:0 0 14px">Una Home che invita ad ascoltare</h1>
+    <p style="font-size:1.05rem;line-height:1.5;color:rgba(247,247,249,.55);max-width:680px;margin:0">Oggi l'hero è grande e generico, e i suoi tre bottoni (Explore Network / About / Join Community) <strong style="color:#f7f7f9">non fanno partire nulla</strong>. Su una piattaforma d'ascolto la prima azione dovrebbe essere ascoltare. Opzioni <a href="#5a" style="color:oklch(75% .15 190)">5a</a> e <a href="#5b" style="color:oklch(75% .15 190)">5b</a>.</p>
+  </header>
+
+  <div style="display:flex;flex-direction:column;gap:44px">
+
+    <!-- ══════════════ 5a — ATTUALE ══════════════ -->
+    <div id="5a" style="width:900px;max-width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(60% .2 30);color:#fff;padding:3px 10px;border-radius:6px">5a</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Attuale</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(60% .2 30);border:1px solid oklch(60% .2 30 / .4);padding:3px 9px;border-radius:999px">0 CTA d'ascolto</span>
+      </div>
+
+      <div style="background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:20px;padding:28px;box-shadow:0 20px 40px -12px rgb(0 0 0/.6)">
+        <!-- big hero -->
+        <div style="border-radius:24px;padding:44px 40px;border:1px solid rgba(247,247,249,.05);background:linear-gradient(135deg,oklch(65% .28 290 / .07),oklch(75% .15 190 / .06));margin-bottom:36px">
+          <h2 style="font-weight:900;font-size:2.6rem;letter-spacing:-.04em;line-height:1.05;margin:0 0 12px">Welcome to TuneCamp</h2>
+          <p style="font-size:1rem;color:rgba(247,247,249,.55);max-width:420px;margin:0 0 24px;line-height:1.5">Your decentralized, self-hosted music streaming gateway.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <span style="padding:10px 18px;border-radius:12px;border:1px solid rgba(247,247,249,.12);font-weight:600;font-size:.88rem;color:rgba(247,247,249,.8)">Explore Network</span>
+            <span style="padding:10px 18px;border-radius:12px;border:1px solid rgba(247,247,249,.12);font-weight:600;font-size:.88rem;color:rgba(247,247,249,.8)">About</span>
+            <span style="padding:10px 18px;border-radius:12px;border:1px solid rgba(247,247,249,.12);background:oklch(60% .02 280 / .3);font-weight:600;font-size:.88rem;color:rgba(247,247,249,.85)">Join Community</span>
+          </div>
+        </div>
+        <!-- recent releases -->
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px">
+          <div><div style="font-weight:900;font-size:1.5rem;letter-spacing:-.03em">Recent Releases</div><div style="font-size:.82rem;opacity:.4">The latest published highlights</div></div>
+          <span style="font-size:.72rem;font-weight:800;opacity:.4;font-family:'JetBrains Mono',monospace">View All →</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px">
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(60% .2 300 / .5),oklch(66% .18 260 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Solace</div><div style="font-size:.72rem;opacity:.5">Aera</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(66% .18 190 / .5),oklch(62% .16 210 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Halcyon</div><div style="font-size:.72rem;opacity:.5">Bloom</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(64% .2 330 / .5),oklch(68% .16 290 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Undertow</div><div style="font-size:.72rem;opacity:.5">Kites</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(66% .18 160 / .5),oklch(62% .16 140 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cirrus</div><div style="font-size:.72rem;opacity:.5">Nova Fauna</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(68% .2 40 / .5),oklch(64% .18 20 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ember</div><div style="font-size:.72rem;opacity:.5">Low Tide</div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:11px;max-width:720px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">L'hero occupa ~200px in alto ma non porta a nessun ascolto — solo Network / About / Community.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Chi torna non ha modo di <strong style="color:#f7f7f9">riprendere</strong> ciò che stava ascoltando.</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 5b — ORIENTATA ALL'ASCOLTO ══════════════ -->
+    <div id="5b" style="width:900px;max-width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(65% .18 145);color:#04170c;padding:3px 10px;border-radius:6px">5b</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Orientata all'ascolto</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(72% .18 145);border:1px solid oklch(65% .18 145 / .4);padding:3px 9px;border-radius:999px">play in 1 click</span>
+      </div>
+
+      <div style="background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:20px;padding:28px;box-shadow:0 20px 40px -12px rgb(0 0 0/.6)">
+        <!-- compact actionable hero -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;border-radius:20px;padding:24px 26px;border:1px solid rgba(247,247,249,.05);background:linear-gradient(135deg,oklch(65% .28 290 / .08),oklch(75% .15 190 / .05));margin-bottom:34px;flex-wrap:wrap">
+          <div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:oklch(75% .15 190);margin-bottom:8px">TuneCamp · self-hosted</div>
+            <h2 style="font-weight:900;font-size:1.9rem;letter-spacing:-.04em;line-height:1.05;margin:0 0 16px">Good evening, Alex</h2>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:12px;background:oklch(65% .28 290);color:#fff;font-weight:700;font-size:.9rem"><i data-lucide="play" width="16" height="16"></i>Resume — Nightshade</span>
+              <span style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;border:1px solid rgba(247,247,249,.12);font-weight:600;font-size:.88rem;color:rgba(247,247,249,.8)"><i data-lucide="shuffle" width="15" height="15"></i>Shuffle latest</span>
+              <span style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;border:1px solid rgba(247,247,249,.12);font-weight:600;font-size:.88rem;color:rgba(247,247,249,.7)"><i data-lucide="globe" width="15" height="15"></i>Explore Network</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.06);border-radius:14px;padding:12px 16px 12px 12px">
+            <div style="width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,oklch(65% .28 290 / .5),oklch(75% .15 190 / .4));flex:none"></div>
+            <div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-bottom:3px">Last played</div>
+              <div style="font-weight:800;font-size:.9rem;letter-spacing:-.02em">Nightshade</div>
+              <div style="font-size:.74rem;color:oklch(72% .2 290)">Molecular · 1:24 left</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- jump back in -->
+        <div style="font-weight:900;font-size:1.3rem;letter-spacing:-.03em;margin-bottom:16px">Jump back in</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:34px">
+          <div><div style="position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(65% .28 290 / .5),oklch(60% .2 310 / .4));margin-bottom:8px;overflow:hidden"><span style="position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgb(0 0 0/.4)"><i data-lucide="play" width="15" height="15"></i></span></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nightshade</div><div style="font-size:.72rem;opacity:.5">Molecular</div></div>
+          <div><div style="position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(66% .2 145 / .5),oklch(60% .18 165 / .4));margin-bottom:8px;overflow:hidden"><span style="position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgb(0 0 0/.4)"><i data-lucide="play" width="15" height="15"></i></span><span style="position:absolute;left:8px;top:8px;font-size:.58rem;font-weight:800;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:6px">PLAYLIST</span></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Focus Flow</div><div style="font-size:.72rem;opacity:.5">51 tracks</div></div>
+          <div><div style="position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(66% .18 190 / .5),oklch(62% .16 210 / .4));margin-bottom:8px;overflow:hidden"><span style="position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgb(0 0 0/.4)"><i data-lucide="play" width="15" height="15"></i></span></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Halcyon</div><div style="font-size:.72rem;opacity:.5">Bloom</div></div>
+          <div><div style="position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(64% .2 40 / .5),oklch(68% .16 60 / .4));margin-bottom:8px;overflow:hidden"><span style="position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgb(0 0 0/.4)"><i data-lucide="play" width="15" height="15"></i></span><span style="position:absolute;left:8px;top:8px;font-size:.58rem;font-weight:800;font-family:'JetBrains Mono',monospace;background:rgba(0,0,0,.5);padding:2px 6px;border-radius:6px">PLAYLIST</span></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Late Night Coding</div><div style="font-size:.72rem;opacity:.5">42 tracks</div></div>
+          <div><div style="position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(60% .2 300 / .5),oklch(66% .18 260 / .4));margin-bottom:8px;overflow:hidden"><span style="position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgb(0 0 0/.4)"><i data-lucide="play" width="15" height="15"></i></span></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Solace</div><div style="font-size:.72rem;opacity:.5">Aera</div></div>
+        </div>
+
+        <!-- recent releases -->
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px">
+          <div style="font-weight:900;font-size:1.3rem;letter-spacing:-.03em">Recent Releases</div>
+          <span style="font-size:.72rem;font-weight:800;opacity:.4;font-family:'JetBrains Mono',monospace">View All →</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px">
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(64% .2 330 / .5),oklch(68% .16 290 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Undertow</div><div style="font-size:.72rem;opacity:.5">Kites</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(66% .18 160 / .5),oklch(62% .16 140 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cirrus</div><div style="font-size:.72rem;opacity:.5">Nova Fauna</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(68% .2 40 / .5),oklch(64% .18 20 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ember</div><div style="font-size:.72rem;opacity:.5">Low Tide</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(66% .18 190 / .5),oklch(62% .16 210 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Halcyon</div><div style="font-size:.72rem;opacity:.5">Bloom</div></div>
+          <div><div style="aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,oklch(60% .2 300 / .5),oklch(66% .18 260 / .4));margin-bottom:8px"></div><div style="font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Solace</div><div style="font-size:.72rem;opacity:.5">Aera</div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:11px;max-width:720px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Hero compatto e <strong style="color:#f7f7f9">azionabile</strong>: <em>Resume</em> riprende l'ultima traccia, <em>Shuffle latest</em> parte subito. L'identità della piattaforma resta ma non blocca l'ascolto.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Jump back in</strong>: playlist e brani recenti a portata di clic, con play in hover.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(75% .15 190);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Sicuro in codice</strong>: usa dati che avete già (catalogo, ultima traccia dal player store). Generi e stats restano più in basso come sono ora.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-4" style="min-height:100vh;padding:56px 56px 96px;font-family:Outfit,sans-serif;color:#f7f7f9;border-bottom:1px solid rgba(247,247,249,.06)">
+
+  <header style="margin-bottom:40px;max-width:900px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:oklch(75% .15 190);margin-bottom:14px">Consigli UX · Player</div>
+    <h1 style="font-weight:900;letter-spacing:-.045em;font-size:2.6rem;line-height:1.05;margin:0 0 14px">PlayerBar più snella</h1>
+    <p style="font-size:1.05rem;line-height:1.5;color:rgba(247,247,249,.55);max-width:680px;margin:0">Oggi la barra mostra <strong style="color:#f7f7f9">~12 controlli</strong> sempre visibili. Tengo primari solo trasporto + volume + coda, e sposto il resto in un unico menu <strong style="color:#f7f7f9">⋯</strong>. Sistemo anche un bug: lo stato attivo del pulsante <strong style="color:#f7f7f9">Lyrics</strong> è legato a <code style="font-family:'JetBrains Mono',monospace;font-size:.85em">isShuffled</code>. Opzioni <a href="#4a" style="color:oklch(75% .15 190)">4a</a> e <a href="#4b" style="color:oklch(75% .15 190)">4b</a>.</p>
+  </header>
+
+  <div style="display:flex;flex-direction:column;gap:44px">
+
+    <!-- ══════════════ 4a — ATTUALE ══════════════ -->
+    <div id="4a" style="width:940px;max-width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(60% .2 30);color:#fff;padding:3px 10px;border-radius:6px">4a</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Attuale</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(60% .2 30);border:1px solid oklch(60% .2 30 / .4);padding:3px 9px;border-radius:999px">~12 controlli</span>
+      </div>
+
+      <div style="position:relative;height:96px;background:oklch(12% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 24px;box-shadow:0 16px 34px -14px rgb(0 0 0/.6)">
+        <!-- track info -->
+        <div style="display:flex;align-items:center;gap:14px;width:24%;min-width:0">
+          <div style="width:60px;height:60px;border-radius:12px;background:linear-gradient(135deg,oklch(65% .28 290 / .5),oklch(75% .15 190 / .4));flex:none;box-shadow:0 1px 3px 0 rgb(0 0 0/.3)"></div>
+          <div style="min-width:0">
+            <div style="font-weight:900;font-size:.95rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nightshade</div>
+            <div style="font-size:.78rem;color:oklch(72% .2 290);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Molecular</div>
+          </div>
+        </div>
+        <!-- controls + progress -->
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1;max-width:520px;gap:6px">
+          <div style="display:flex;align-items:center;gap:22px">
+            <span style="color:oklch(72% .2 290)" title="Shuffle"><i data-lucide="shuffle" width="15" height="15"></i></span>
+            <span style="color:rgba(247,247,249,.4)" title="Radio mode"><i data-lucide="radio" width="15" height="15"></i></span>
+            <span style="color:rgba(247,247,249,.75)"><i data-lucide="skip-back" width="19" height="19"></i></span>
+            <span style="width:44px;height:44px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px oklch(65% .28 290 / .3)"><i data-lucide="pause" width="20" height="20"></i></span>
+            <span style="color:rgba(247,247,249,.75)"><i data-lucide="skip-forward" width="19" height="19"></i></span>
+            <span style="color:rgba(247,247,249,.4)" title="Repeat"><i data-lucide="repeat" width="15" height="15"></i></span>
+          </div>
+          <div style="width:100%;display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:rgba(247,247,249,.4)">
+            <span>1:24</span>
+            <div style="flex:1;height:4px;border-radius:99px;background:rgba(247,247,249,.1);overflow:hidden"><div style="width:38%;height:100%;background:oklch(65% .28 290 / .5)"></div></div>
+            <span>3:42</span>
+          </div>
+        </div>
+        <!-- volume + extras -->
+        <div style="display:flex;align-items:center;gap:14px;width:24%;justify-content:flex-end">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:rgba(247,247,249,.4)"><i data-lucide="volume-2" width="16" height="16"></i></span>
+            <div style="width:64px;height:4px;border-radius:99px;background:rgba(247,247,249,.1);overflow:hidden"><div style="width:70%;height:100%;background:oklch(65% .28 290 / .5)"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;border-left:1px solid rgba(247,247,249,.08);padding-left:14px">
+            <span style="color:rgba(247,247,249,.4)" title="More"><i data-lucide="more-vertical" width="17" height="17"></i></span>
+            <span style="color:rgba(247,247,249,.4)" title="Crossfade"><i data-lucide="audio-lines" width="17" height="17"></i></span>
+            <span style="position:relative;color:rgba(247,247,249,.4)" title="Lyrics"><i data-lucide="mic" width="17" height="17"></i><span style="position:absolute;top:-9px;right:-9px;width:14px;height:14px;border-radius:50%;background:oklch(60% .2 30);color:#fff;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center">!</span></span>
+            <span style="color:rgba(247,247,249,.4)" title="Queue"><i data-lucide="list-music" width="17" height="17"></i></span>
+            <span style="color:oklch(72% .2 290)" title="Visualizer"><i data-lucide="maximize-2" width="17" height="17"></i></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:11px;max-width:720px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">A destra convivono <strong style="color:#f7f7f9">5 icone</strong> (More, Crossfade, Lyrics, Queue, Visualizer) più volume: troppa densità per un uso quotidiano.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Bug (⚠):</strong> lo stato attivo di <em>Lyrics</em> usa <code style="font-family:'JetBrains Mono',monospace;font-size:.85em">isShuffled</code> → il pulsante si illumina quando attivi lo shuffle, non i testi.</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 4b — SNELLA ══════════════ -->
+    <div id="4b" style="width:940px;max-width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(65% .18 145);color:#04170c;padding:3px 10px;border-radius:6px">4b</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Snella</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(72% .18 145);border:1px solid oklch(65% .18 145 / .4);padding:3px 9px;border-radius:999px">2 icone + ⋯</span>
+      </div>
+
+      <div style="position:relative;height:96px;background:oklch(12% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 24px;box-shadow:0 16px 34px -14px rgb(0 0 0/.6)">
+        <!-- track info -->
+        <div style="display:flex;align-items:center;gap:14px;width:24%;min-width:0">
+          <div style="width:60px;height:60px;border-radius:12px;background:linear-gradient(135deg,oklch(65% .28 290 / .5),oklch(75% .15 190 / .4));flex:none;box-shadow:0 1px 3px 0 rgb(0 0 0/.3)"></div>
+          <div style="min-width:0">
+            <div style="font-weight:900;font-size:.95rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nightshade</div>
+            <div style="font-size:.78rem;color:oklch(72% .2 290);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Molecular</div>
+          </div>
+        </div>
+        <!-- controls + progress -->
+        <div style="display:flex;flex-direction:column;align-items:center;flex:1;max-width:520px;gap:6px">
+          <div style="display:flex;align-items:center;gap:24px">
+            <span style="color:oklch(72% .2 290)" title="Shuffle"><i data-lucide="shuffle" width="16" height="16"></i></span>
+            <span style="color:rgba(247,247,249,.8)"><i data-lucide="skip-back" width="20" height="20"></i></span>
+            <span style="width:44px;height:44px;border-radius:999px;background:oklch(65% .28 290);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px oklch(65% .28 290 / .3)"><i data-lucide="pause" width="20" height="20"></i></span>
+            <span style="color:rgba(247,247,249,.8)"><i data-lucide="skip-forward" width="20" height="20"></i></span>
+            <span style="color:rgba(247,247,249,.45)" title="Repeat"><i data-lucide="repeat" width="16" height="16"></i></span>
+          </div>
+          <div style="width:100%;display:flex;align-items:center;gap:12px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:rgba(247,247,249,.4)">
+            <span>1:24</span>
+            <div style="flex:1;height:4px;border-radius:99px;background:rgba(247,247,249,.1);overflow:hidden"><div style="width:38%;height:100%;background:oklch(65% .28 290 / .55)"></div></div>
+            <span>3:42</span>
+          </div>
+        </div>
+        <!-- volume + queue + more -->
+        <div style="display:flex;align-items:center;gap:14px;width:24%;justify-content:flex-end">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:rgba(247,247,249,.4)"><i data-lucide="volume-2" width="16" height="16"></i></span>
+            <div style="width:64px;height:4px;border-radius:99px;background:rgba(247,247,249,.1);overflow:hidden"><div style="width:70%;height:100%;background:oklch(65% .28 290 / .5)"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;border-left:1px solid rgba(247,247,249,.08);padding-left:14px">
+            <span style="color:rgba(247,247,249,.55)" title="Queue"><i data-lucide="list-music" width="18" height="18"></i></span>
+            <span style="width:32px;height:32px;border-radius:9px;background:oklch(20% .02 280);color:#f7f7f9;display:flex;align-items:center;justify-content:center;border:1px solid rgba(247,247,249,.1)" title="More"><i data-lucide="ellipsis" width="17" height="17"></i></span>
+          </div>
+        </div>
+
+        <!-- overflow menu (open, illustrating what moved here) -->
+        <div style="position:absolute;right:22px;bottom:104px;width:230px;background:oklch(18% .02 280);border:1px solid rgba(247,247,249,.1);border-radius:14px;padding:7px;box-shadow:0 18px 40px -10px rgb(0 0 0/.7)">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:oklch(72% .2 290)"><i data-lucide="mic" width="15" height="15"></i>Lyrics<span style="margin-left:auto;font-size:.6rem;font-family:'JetBrains Mono',monospace;background:oklch(65% .18 145 / .2);color:oklch(75% .18 145);padding:1px 6px;border-radius:99px">fixed</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:rgba(247,247,249,.75)"><i data-lucide="maximize-2" width="15" height="15"></i>Visualizer</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:rgba(247,247,249,.75)"><i data-lucide="audio-lines" width="15" height="15"></i>Crossfade</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:rgba(247,247,249,.75)"><i data-lucide="radio" width="15" height="15"></i>Radio mode</div>
+          <div style="border-top:1px solid rgba(247,247,249,.08);margin:5px 8px"></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:rgba(247,247,249,.75)"><i data-lucide="list-plus" width="15" height="15"></i>Add to playlist</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:rgba(247,247,249,.75)"><i data-lucide="heart" width="15" height="15"></i>Favorite artist</div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;font-size:.82rem;font-weight:600;color:rgba(247,247,249,.75)"><i data-lucide="download" width="15" height="15"></i>Download</div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:11px;max-width:720px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Sempre visibili: <strong style="color:#f7f7f9">trasporto + volume + Queue</strong>. Tutto il secondario in un unico menu <strong style="color:#f7f7f9">⋯</strong> (Lyrics, Visualizer, Crossfade, Radio mode, azioni traccia).</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Shuffle e Repeat restano (trasporto standard); Radio mode — specifico di TuneCamp — scende nel menu.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(75% .15 190);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Fix:</strong> lo stato attivo di Lyrics ora legge un flag <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">isLyricsOpen</code> invece di <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">isShuffled</code>.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-3" style="min-height:100vh;padding:56px 56px 96px;font-family:Outfit,sans-serif;color:#f7f7f9;border-bottom:1px solid rgba(247,247,249,.06)">
+
+  <header style="margin-bottom:40px;max-width:900px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:oklch(75% .15 190);margin-bottom:14px">Consigli UX · Stati della sidebar</div>
+    <h1 style="font-weight:900;letter-spacing:-.045em;font-size:2.6rem;line-height:1.05;margin:0 0 14px">Collassata &amp; mobile</h1>
+    <p style="font-size:1.05rem;line-height:1.5;color:rgba(247,247,249,.55);max-width:660px;margin:0">La nuova IA nei due stati che il codice già gestisce: il <strong style="color:#f7f7f9">rail</strong> collassato a 64px (icone + tooltip) e il <strong style="color:#f7f7f9">drawer</strong> mobile con navbar e hamburger. Nessun comportamento nuovo — solo il nuovo ordine. Opzioni <a href="#3a" style="color:oklch(75% .15 190)">3a</a> e <a href="#3b" style="color:oklch(75% .15 190)">3b</a>.</p>
+  </header>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- ══════════════ 3a — COLLAPSED RAIL ══════════════ -->
+    <div id="3a" style="width:560px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(65% .18 145);color:#04170c;padding:3px 10px;border-radius:6px">3a</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Rail collassato</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(72% .18 145);border:1px solid oklch(65% .18 145 / .4);padding:3px 9px;border-radius:999px">64px · icone</span>
+      </div>
+
+      <div style="display:flex;background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px -12px rgb(0 0 0/.6);height:620px">
+        <!-- rail -->
+        <div style="width:64px;flex:none;background:oklch(14% .01 280);border-right:1px solid rgba(247,247,249,.08);padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;overflow:hidden">
+          <div style="width:38px;height:38px;border-radius:11px;overflow:hidden;flex:none;margin-bottom:6px;box-shadow:0 1px 3px 0 rgb(0 0 0/.3)"><img src="logo.svg" alt="TuneCamp" style="width:100%;height:100%;object-fit:cover"></div>
+          <div title="Home" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:oklch(65% .28 290);color:#fff"><i data-lucide="house" width="19" height="19"></i></div>
+          <div title="Search" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="search" width="19" height="19"></i></div>
+          <div style="position:relative">
+            <div title="Library" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="library" width="19" height="19"></i></div>
+            <div style="position:absolute;left:48px;top:50%;transform:translateY(-50%);background:oklch(22% .02 280);color:#f7f7f9;font-size:.74rem;font-weight:700;padding:5px 10px;border-radius:8px;white-space:nowrap;box-shadow:0 4px 12px rgb(0 0 0/.4);border:1px solid rgba(247,247,249,.1);z-index:5">Library</div>
+          </div>
+          <div style="border-top:1px solid rgba(247,247,249,.1);width:40px;margin:6px 0"></div>
+          <div title="Releases" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="disc" width="19" height="19"></i></div>
+          <div title="Artists" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="user" width="19" height="19"></i></div>
+          <div title="Radio" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="rss" width="19" height="19"></i></div>
+          <div title="Live" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="radio" width="19" height="19"></i></div>
+          <div title="Store" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="shopping-bag" width="19" height="19"></i></div>
+          <div title="More" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.45)"><i data-lucide="ellipsis" width="19" height="19"></i></div>
+          <div style="border-top:1px solid rgba(247,247,249,.1);width:40px;margin:6px 0"></div>
+          <div title="Network" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="globe" width="19" height="19"></i></div>
+          <div title="Board" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="message-square" width="19" height="19"></i></div>
+          <div title="Now Listening" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="headphones" width="19" height="19"></i></div>
+          <div title="Stats" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="bar-chart-2" width="19" height="19"></i></div>
+          <div style="border-top:1px solid rgba(247,247,249,.1);width:40px;margin:6px 0"></div>
+          <div title="Publish" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="upload" width="19" height="19"></i></div>
+          <div title="Social" style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.6)"><i data-lucide="at-sign" width="19" height="19"></i></div>
+          <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:10px">
+            <div style="width:38px;height:38px;border-radius:11px;background:oklch(25% .01 280);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem">A</div>
+            <div title="Menu" style="width:36px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:rgba(247,247,249,.45)"><i data-lucide="ellipsis-vertical" width="17" height="17"></i></div>
+          </div>
+        </div>
+        <!-- content peek (roomier) -->
+        <div style="flex:1;padding:30px 30px;opacity:.32">
+          <div style="height:120px;border-radius:18px;background:linear-gradient(135deg,oklch(65% .28 290 / .12),oklch(75% .15 190 / .1));border:1px solid rgba(247,247,249,.06);margin-bottom:26px"></div>
+          <div style="font-weight:900;font-size:1.2rem;letter-spacing:-.03em;margin-bottom:16px">Recent Releases</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Le intestazioni di gruppo diventano <strong style="color:#f7f7f9">divisori</strong>; le etichette compaiono come <strong style="color:#f7f7f9">tooltip</strong> al passaggio (vedi “Library”).</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Più spazio per i contenuti — identico al toggle collassa che avete già.</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 3b — MOBILE DRAWER ══════════════ -->
+    <div id="3b" style="width:400px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(65% .18 145);color:#04170c;padding:3px 10px;border-radius:6px">3b</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Mobile · drawer</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(72% .18 145);border:1px solid oklch(65% .18 145 / .4);padding:3px 9px;border-radius:999px">navbar + drawer</span>
+      </div>
+
+      <div style="width:380px;height:720px;background:oklch(10% .01 280);border:9px solid #05050a;border-radius:46px;overflow:hidden;position:relative;box-shadow:0 24px 50px -14px rgb(0 0 0/.7)">
+        <!-- status bar -->
+        <div style="height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;font-size:.72rem;font-weight:700;color:#f7f7f9">
+          <span style="font-family:'JetBrains Mono',monospace">9:41</span>
+          <span style="display:flex;gap:5px;opacity:.8"><i data-lucide="signal" width="14" height="14"></i><i data-lucide="wifi" width="14" height="14"></i><i data-lucide="battery-full" width="16" height="16"></i></span>
+        </div>
+        <!-- navbar -->
+        <div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid rgba(247,247,249,.06);background:oklch(10% .01 280 / .8)">
+          <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#f7f7f9"><i data-lucide="menu" width="22" height="22"></i></div>
+          <span style="font-weight:900;font-size:1.15rem;letter-spacing:-.03em">TuneCamp</span>
+        </div>
+        <!-- dimmed content + drawer -->
+        <div style="position:absolute;top:90px;left:0;right:0;bottom:0">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,.55)"></div>
+          <!-- drawer -->
+          <div style="position:absolute;top:0;left:0;bottom:0;width:270px;background:oklch(14% .01 280);border-right:1px solid rgba(247,247,249,.08);padding:16px 12px;overflow:hidden;box-shadow:8px 0 30px rgb(0 0 0/.4)">
+            <div style="display:flex;align-items:center;gap:12px;padding:0 6px;margin-bottom:20px">
+              <div style="width:34px;height:34px;border-radius:10px;overflow:hidden;flex:none"><img src="logo.svg" alt="" style="width:100%;height:100%;object-fit:cover"></div>
+              <div style="font-weight:900;font-size:1.15rem;letter-spacing:-.05em">TuneCamp</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:18px">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;background:oklch(65% .28 290);color:#fff;font-weight:800;font-size:.9rem"><i data-lucide="house" width="19" height="19"></i>Home</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="search" width="19" height="19" style="opacity:.6"></i>Search</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="library" width="19" height="19" style="opacity:.6"></i>Library</div>
+            </div>
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.7rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Explore</h3>
+            <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:18px">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="disc" width="19" height="19" style="opacity:.6"></i>Releases</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="user" width="19" height="19" style="opacity:.6"></i>Artists</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="rss" width="19" height="19" style="opacity:.6"></i>Radio</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="radio" width="19" height="19" style="opacity:.6"></i>Live</div>
+            </div>
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.7rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Community</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="globe" width="19" height="19" style="opacity:.6"></i>Network</div>
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem"><i data-lucide="message-square" width="19" height="19" style="opacity:.6"></i>Board</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Su mobile la sidebar è già un <strong style="color:#f7f7f9">drawer</strong> a scomparsa dietro l'hamburger — cambia solo l'ordine delle voci.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(75% .15 190);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">I gruppi per intento rendono la lista <strong style="color:#f7f7f9">scansionabile col pollice</strong> anche a schermo pieno.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-2" style="min-height:100vh;padding:56px 56px 96px;font-family:Outfit,sans-serif;color:#f7f7f9;border-bottom:1px solid rgba(247,247,249,.06)">
+
+  <header style="margin-bottom:40px;max-width:900px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:oklch(75% .15 190);margin-bottom:14px">Consigli UX · Library</div>
+    <h1 style="font-weight:900;letter-spacing:-.045em;font-size:2.6rem;line-height:1.05;margin:0 0 14px">Playlists + Favorites → una Library</h1>
+    <p style="font-size:1.05rem;line-height:1.5;color:rgba(247,247,249,.55);max-width:660px;margin:0">Oggi la tua roba personale vive in <strong style="color:#f7f7f9">due pagine</strong> separate (<code style="font-family:'JetBrains Mono',monospace;font-size:.85em">/playlists</code> e <code style="font-family:'JetBrains Mono',monospace;font-size:.85em">/favorites</code>), ognuna con le sue tab. Una sola <strong style="color:#f7f7f9">Library</strong> le riunisce sotto quattro tab. Opzioni <a href="#2a" style="color:oklch(75% .15 190)">2a</a> (oggi) e <a href="#2b" style="color:oklch(75% .15 190)">2b</a> (unificata).</p>
+  </header>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- ══════════════ 2a — OGGI ══════════════ -->
+    <div id="2a" style="width:360px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(60% .2 30);color:#fff;padding:3px 10px;border-radius:6px">2a</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Oggi</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(60% .2 30);border:1px solid oklch(60% .2 30 / .4);padding:3px 9px;border-radius:999px">2 pagine</span>
+      </div>
+
+      <div style="background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:16px;padding:22px;margin-bottom:14px;box-shadow:0 12px 30px -14px rgb(0 0 0/.6)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,oklch(60% .02 280 / .4),oklch(60% .02 280 / .1));display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="list-music" width="20" height="20" style="color:oklch(70% .02 280)"></i></div>
+          <div><div style="font-weight:900;font-size:1.2rem;letter-spacing:-.03em">Playlists</div><div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;opacity:.4;margin-top:2px">/playlists</div></div>
+        </div>
+        <div style="display:inline-flex;background:oklch(18% .02 280);padding:3px;border-radius:10px;gap:2px">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:oklch(10% .01 280);font-weight:700;font-size:.78rem"><i data-lucide="heart" width="13" height="13"></i>My Playlists</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;color:rgba(247,247,249,.5);font-weight:600;font-size:.78rem"><i data-lucide="globe" width="13" height="13"></i>Public</span>
+        </div>
+      </div>
+
+      <div style="background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:16px;padding:22px;box-shadow:0 12px 30px -14px rgb(0 0 0/.6)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,oklch(65% .28 290 / .3),oklch(65% .28 290 / .05));display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="heart" width="20" height="20" style="color:oklch(72% .2 290)"></i></div>
+          <div><div style="font-weight:900;font-size:1.2rem;letter-spacing:-.03em">Favorites</div><div style="font-family:'JetBrains Mono',monospace;font-size:.68rem;opacity:.4;margin-top:2px">/favorites</div></div>
+        </div>
+        <div style="display:inline-flex;background:oklch(18% .02 280);padding:3px;border-radius:10px;gap:2px">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:oklch(10% .01 280);font-weight:700;font-size:.78rem"><i data-lucide="music" width="13" height="13"></i>Tracks</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;color:rgba(247,247,249,.5);font-weight:600;font-size:.78rem"><i data-lucide="disc" width="13" height="13"></i>Albums</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;color:rgba(247,247,249,.5);font-weight:600;font-size:.78rem"><i data-lucide="user" width="13" height="13"></i>Artists</span>
+        </div>
+      </div>
+
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Due destinazioni per la stessa idea — <strong style="color:#f7f7f9">“la mia roba”</strong>. Playlist e brani salvati non stanno insieme.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Due sistemi di tab diversi, due header, due voci di menu da tenere a mente.</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 2b — UNIFICATA ══════════════ -->
+    <div id="2b" style="width:720px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(65% .18 145);color:#04170c;padding:3px 10px;border-radius:6px">2b</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Library unificata</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(72% .18 145);border:1px solid oklch(65% .18 145 / .4);padding:3px 9px;border-radius:999px">1 pagina · 4 tab</span>
+      </div>
+
+      <div style="background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:20px;padding:28px;box-shadow:0 20px 40px -12px rgb(0 0 0/.6)">
+        <!-- page header -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:16px">
+            <div style="width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,oklch(65% .28 290 / .25),oklch(65% .28 290 / .04));border:1px solid rgba(247,247,249,.06);display:flex;align-items:center;justify-content:center;flex:none"><i data-lucide="library-big" width="26" height="26" style="color:oklch(72% .2 290)"></i></div>
+            <div>
+              <h2 style="font-weight:900;font-size:1.9rem;letter-spacing:-.04em;margin:0 0 4px">Your Library</h2>
+              <p style="font-size:.9rem;opacity:.5;margin:0">Playlists, likes and the artists you follow</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="display:flex;background:oklch(18% .02 280);border-radius:10px;padding:3px;gap:2px">
+              <span style="display:flex;align-items:center;justify-content:center;width:32px;height:30px;border-radius:8px;background:oklch(10% .01 280)"><i data-lucide="layout-grid" width="16" height="16"></i></span>
+              <span style="display:flex;align-items:center;justify-content:center;width:32px;height:30px;border-radius:8px;color:rgba(247,247,249,.45)"><i data-lucide="list" width="16" height="16"></i></span>
+            </div>
+            <button style="display:inline-flex;align-items:center;gap:8px;background:oklch(65% .28 290);color:#fff;font-weight:700;font-size:.85rem;padding:9px 16px;border-radius:10px;border:none;cursor:pointer"><i data-lucide="plus" width="16" height="16"></i>New Playlist</button>
+          </div>
+        </div>
+
+        <!-- main tabs -->
+        <div style="display:inline-flex;flex-wrap:wrap;background:oklch(18% .02 280 / .5);padding:4px;border-radius:14px;gap:2px;margin-bottom:20px">
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:10px;background:oklch(22% .02 280);color:#fff;font-weight:700;font-size:.85rem"><i data-lucide="list-music" width="15" height="15"></i>Playlists<span style="font-size:.66rem;background:rgba(247,247,249,.12);padding:1px 6px;border-radius:99px;font-family:'JetBrains Mono',monospace">12</span></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:10px;color:rgba(247,247,249,.55);font-weight:600;font-size:.85rem"><i data-lucide="music" width="15" height="15"></i>Tracks<span style="font-size:.66rem;background:rgba(247,247,249,.08);padding:1px 6px;border-radius:99px;font-family:'JetBrains Mono',monospace">248</span></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:10px;color:rgba(247,247,249,.55);font-weight:600;font-size:.85rem"><i data-lucide="disc" width="15" height="15"></i>Albums<span style="font-size:.66rem;background:rgba(247,247,249,.08);padding:1px 6px;border-radius:99px;font-family:'JetBrains Mono',monospace">31</span></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 15px;border-radius:10px;color:rgba(247,247,249,.55);font-weight:600;font-size:.85rem"><i data-lucide="user" width="15" height="15"></i>Artists<span style="font-size:.66rem;background:rgba(247,247,249,.08);padding:1px 6px;border-radius:99px;font-family:'JetBrains Mono',monospace">17</span></span>
+        </div>
+
+        <!-- playlists sub-toggle -->
+        <div style="display:inline-flex;gap:8px;margin-bottom:18px">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:oklch(65% .28 290 / .15);color:oklch(78% .18 290);font-weight:700;font-size:.76rem;border:1px solid oklch(65% .28 290 / .3)"><i data-lucide="heart" width="12" height="12"></i>My Playlists</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;color:rgba(247,247,249,.5);font-weight:600;font-size:.76rem;border:1px solid rgba(247,247,249,.1)"><i data-lucide="globe" width="12" height="12"></i>Public</span>
+        </div>
+
+        <!-- playlist grid -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <a style="display:flex;flex-direction:column;gap:12px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.05);border-radius:14px;padding:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/.1)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr"><div style="background:linear-gradient(135deg,oklch(65% .28 290 / .7),oklch(55% .2 300 / .6))"></div><div style="background:linear-gradient(135deg,oklch(75% .15 190 / .6),oklch(65% .18 210 / .5))"></div><div style="background:linear-gradient(135deg,oklch(60% .2 330 / .6),oklch(70% .15 280 / .5))"></div><div style="background:linear-gradient(135deg,oklch(70% .2 250 / .6),oklch(60% .25 290 / .5))"></div></div>
+              <h3 style="font-weight:800;font-size:1rem;letter-spacing:-.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Late Night Coding</h3>
+            </div>
+            <p style="font-size:.8rem;opacity:.55;line-height:1.4;margin:0">Deep focus, minimal beats</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:auto">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:6px;background:oklch(18% .02 280);color:rgba(247,247,249,.55);border:1px solid rgba(247,247,249,.08)"><i data-lucide="lock" width="10" height="10"></i>Private</span>
+              <span style="font-size:.7rem;opacity:.45;font-family:'JetBrains Mono',monospace">42 tracks</span>
+            </div>
+          </a>
+          <a style="display:flex;flex-direction:column;gap:12px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.05);border-radius:14px;padding:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/.1)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:40px;height:40px;border-radius:8px;flex:none;background:linear-gradient(135deg,oklch(65% .28 290 / .3),oklch(75% .15 190 / .3));display:flex;align-items:center;justify-content:center"><i data-lucide="music" width="18" height="18" style="color:oklch(75% .15 190)"></i></div>
+              <h3 style="font-weight:800;font-size:1rem;letter-spacing:-.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Weekend Warmup</h3>
+            </div>
+            <p style="font-size:.8rem;opacity:.55;line-height:1.4;margin:0">Get the day started</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:auto">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:6px;background:oklch(18% .02 280);color:rgba(247,247,249,.55);border:1px solid rgba(247,247,249,.08)"><i data-lucide="globe" width="10" height="10"></i>Public</span>
+              <span style="font-size:.7rem;opacity:.45;font-family:'JetBrains Mono',monospace">18 tracks</span>
+            </div>
+          </a>
+          <a style="display:flex;flex-direction:column;gap:12px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.05);border-radius:14px;padding:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/.1)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr"><div style="background:linear-gradient(135deg,oklch(70% .15 200 / .6),oklch(60% .12 220 / .5))"></div><div style="background:linear-gradient(135deg,oklch(60% .1 260 / .6),oklch(65% .15 240 / .5))"></div><div style="background:linear-gradient(135deg,oklch(72% .12 180 / .6),oklch(66% .1 210 / .5))"></div><div style="background:linear-gradient(135deg,oklch(58% .14 270 / .6),oklch(64% .12 230 / .5))"></div></div>
+              <h3 style="font-weight:800;font-size:1rem;letter-spacing:-.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ambient Drift</h3>
+            </div>
+            <p style="font-size:.8rem;opacity:.55;line-height:1.4;margin:0">Textures &amp; drones for the deep end</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:auto">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:6px;background:oklch(18% .02 280);color:rgba(247,247,249,.55);border:1px solid rgba(247,247,249,.08)"><i data-lucide="lock" width="10" height="10"></i>Private</span>
+              <span style="font-size:.7rem;opacity:.45;font-family:'JetBrains Mono',monospace">63 tracks</span>
+            </div>
+          </a>
+          <a style="display:flex;flex-direction:column;gap:12px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.05);border-radius:14px;padding:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/.1)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr"><div style="background:linear-gradient(135deg,oklch(68% .22 40 / .6),oklch(62% .2 20 / .5))"></div><div style="background:linear-gradient(135deg,oklch(72% .18 70 / .6),oklch(66% .16 50 / .5))"></div><div style="background:linear-gradient(135deg,oklch(64% .2 350 / .6),oklch(70% .16 30 / .5))"></div><div style="background:linear-gradient(135deg,oklch(70% .17 90 / .6),oklch(64% .2 60 / .5))"></div></div>
+              <h3 style="font-weight:800;font-size:1rem;letter-spacing:-.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">New Discoveries</h3>
+            </div>
+            <p style="font-size:.8rem;opacity:.55;line-height:1.4;margin:0">Fresh from the network</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:auto">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:6px;background:oklch(18% .02 280);color:rgba(247,247,249,.55);border:1px solid rgba(247,247,249,.08)"><i data-lucide="globe" width="10" height="10"></i>Public</span>
+              <span style="font-size:.7rem;opacity:.45;font-family:'JetBrains Mono',monospace">27 tracks</span>
+            </div>
+          </a>
+          <a style="display:flex;flex-direction:column;gap:12px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.05);border-radius:14px;padding:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/.1)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:40px;height:40px;border-radius:8px;flex:none;background:linear-gradient(135deg,oklch(60% .02 280 / .5),oklch(70% .02 280 / .2));display:flex;align-items:center;justify-content:center"><i data-lucide="music" width="18" height="18" style="color:oklch(72% .02 280)"></i></div>
+              <h3 style="font-weight:800;font-size:1rem;letter-spacing:-.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Vinyl Rips</h3>
+            </div>
+            <p style="font-size:.8rem;opacity:.4;line-height:1.4;margin:0;font-style:italic">No description</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:auto">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:6px;background:oklch(18% .02 280);color:rgba(247,247,249,.55);border:1px solid rgba(247,247,249,.08)"><i data-lucide="lock" width="10" height="10"></i>Private</span>
+              <span style="font-size:.7rem;opacity:.45;font-family:'JetBrains Mono',monospace">9 tracks</span>
+            </div>
+          </a>
+          <a style="display:flex;flex-direction:column;gap:12px;background:oklch(14% .01 280);border:1px solid rgba(247,247,249,.05);border-radius:14px;padding:16px;box-shadow:0 1px 2px 0 rgb(0 0 0/.1)">
+            <div style="display:flex;align-items:center;gap:11px">
+              <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex:none;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr"><div style="background:linear-gradient(135deg,oklch(66% .2 145 / .6),oklch(60% .18 165 / .5))"></div><div style="background:linear-gradient(135deg,oklch(72% .15 130 / .6),oklch(66% .16 150 / .5))"></div><div style="background:linear-gradient(135deg,oklch(64% .18 175 / .6),oklch(70% .14 140 / .5))"></div><div style="background:linear-gradient(135deg,oklch(70% .16 120 / .6),oklch(64% .18 160 / .5))"></div></div>
+              <h3 style="font-weight:800;font-size:1rem;letter-spacing:-.02em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Focus Flow</h3>
+            </div>
+            <p style="font-size:.8rem;opacity:.55;line-height:1.4;margin:0">No lyrics, all momentum</p>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:auto">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:.66rem;font-weight:700;padding:3px 8px;border-radius:6px;background:oklch(18% .02 280);color:rgba(247,247,249,.55);border:1px solid rgba(247,247,249,.08)"><i data-lucide="globe" width="10" height="10"></i>Public</span>
+              <span style="font-size:.7rem;opacity:.45;font-family:'JetBrains Mono',monospace">51 tracks</span>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Un solo posto per <strong style="color:#f7f7f9">Playlists · Tracks · Albums · Artists</strong> — le tab dei preferiti diventano tab della Library, Playlists si aggiunge come prima tab.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Il <strong style="color:#f7f7f9">Public</strong> delle playlist resta come sotto-toggle dentro la tab Playlists (niente perso).</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(75% .15 190);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Sicuro in codice</strong>: le due pagine esistono già con le stesse tab. <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">/playlists</code> e <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">/favorites</code> restano come redirect a <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">/library?tab=…</code>.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section id="turn-1" style="min-height:100vh;padding:56px 56px 96px;font-family:Outfit,sans-serif;color:#f7f7f9;">
+
+  <header style="margin-bottom:40px;max-width:900px">
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.24em;text-transform:uppercase;color:oklch(75% .15 190);margin-bottom:14px">Consigli UX · Navigazione</div>
+    <h1 style="font-weight:900;letter-spacing:-.045em;font-size:2.6rem;line-height:1.05;margin:0 0 14px">Sidebar attuale → proposta</h1>
+    <p style="font-size:1.05rem;line-height:1.5;color:rgba(247,247,249,.55);max-width:640px;margin:0">Stessa gerarchia visiva del tuo tema (Outfit, viola primary, monocromo). A sinistra la navigazione così com'è oggi; a destra una riorganizzazione per <em>intento</em>: nessuna feature accorpata a forza, ma i link di servizio tolti dalla vista e le superfici personali unificate. In chat puoi riferirti alle opzioni come <strong style="color:#f7f7f9">1a</strong> e <strong style="color:#f7f7f9">1b</strong>.</p>
+  </header>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- ══════════════ 1a — ATTUALE ══════════════ -->
+    <div id="1a" style="width:640px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(60% .2 30);color:#fff;padding:3px 10px;border-radius:6px">1a</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Attuale</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(60% .2 30);border:1px solid oklch(60% .2 30 / .4);padding:3px 9px;border-radius:999px">25+ voci visibili</span>
+      </div>
+
+      <div style="display:flex;background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px -12px rgb(0 0 0/.6)">
+        <!-- sidebar -->
+        <div style="width:256px;flex:none;background:oklch(14% .01 280);border-right:1px solid rgba(247,247,249,.08);padding:16px 12px;">
+          <!-- brand -->
+          <div style="display:flex;align-items:center;gap:12px;padding:0 6px;margin-bottom:22px">
+            <div style="width:36px;height:36px;border-radius:11px;overflow:hidden;flex:none;box-shadow:0 1px 3px 0 rgb(0 0 0/.3)"><img src="logo.svg" alt="TuneCamp" style="width:100%;height:100%;object-fit:cover"></div>
+            <div style="line-height:1;min-width:0">
+              <div style="font-weight:900;font-size:1.25rem;letter-spacing:-.05em;margin-bottom:3px">TuneCamp</div>
+              <div style="font-weight:700;font-size:.72rem;opacity:.5">by tunecamp</div>
+            </div>
+          </div>
+
+          <!-- Discover -->
+          <div style="margin-bottom:18px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Discover</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;background:oklch(65% .28 290);color:#fff;font-weight:800;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="house" width="19" height="19" style="flex:none"></i>Home</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="search" width="19" height="19" style="opacity:.6;flex:none"></i>Search</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="globe" width="19" height="19" style="opacity:.6;flex:none"></i>Network</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="radio" width="19" height="19" style="opacity:.6;flex:none"></i>Live</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="rss" width="19" height="19" style="opacity:.6;flex:none"></i>Radio</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="headphones" width="19" height="19" style="opacity:.6;flex:none"></i>Now Listening</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="shopping-bag" width="19" height="19" style="opacity:.6;flex:none"></i>Store</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="message-square" width="19" height="19" style="opacity:.6;flex:none"></i>Board</a>
+            </div>
+          </div>
+
+          <!-- Catalog -->
+          <div style="margin-bottom:18px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Catalog</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="disc" width="19" height="19" style="opacity:.6;flex:none"></i>Releases</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="user" width="19" height="19" style="opacity:.6;flex:none"></i>Artists</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="music" width="19" height="19" style="opacity:.6;flex:none"></i>Tracks</a>
+            </div>
+          </div>
+
+          <!-- My Music -->
+          <div style="margin-bottom:18px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">My Music</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="list-music" width="19" height="19" style="opacity:.6;flex:none"></i>Playlists</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="heart" width="19" height="19" style="opacity:.6;flex:none"></i>Favorites</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="bar-chart-2" width="19" height="19" style="opacity:.6;flex:none"></i>Stats</a>
+            </div>
+          </div>
+
+          <!-- Lab -->
+          <div style="margin-bottom:18px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Lab</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="flask-conical" width="19" height="19" style="opacity:.6;flex:none"></i>Lab</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="shovel" width="19" height="19" style="opacity:.6;flex:none"></i>Dig</a>
+            </div>
+          </div>
+
+          <!-- Studio -->
+          <div style="margin-bottom:18px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Studio</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="upload" width="19" height="19" style="opacity:.6;flex:none"></i>Publish</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="music" width="19" height="19" style="opacity:.6;flex:none"></i>My Catalog</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="message-square" width="19" height="19" style="opacity:.6;flex:none"></i>Social</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="library" width="19" height="19" style="opacity:.6;flex:none"></i>Archive</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="globe" width="19" height="19" style="opacity:.6;flex:none"></i>Search Content</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="folder" width="19" height="19" style="opacity:.6;flex:none"></i>Files</a>
+            </div>
+          </div>
+
+          <!-- footer service links -->
+          <div style="border-top:1px solid rgba(247,247,249,.06);padding-top:12px;margin-top:4px;display:flex;flex-direction:column;gap:3px">
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="settings" width="19" height="19" style="opacity:.6;flex:none"></i>Admin</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="info" width="19" height="19" style="opacity:.6;flex:none"></i>About</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="scale" width="19" height="19" style="opacity:.6;flex:none"></i>Legal</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="book-open" width="19" height="19" style="opacity:.6;flex:none"></i>Guide</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="life-buoy" width="19" height="19" style="opacity:.6;flex:none"></i>Support</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="wrench" width="19" height="19" style="opacity:.6;flex:none"></i>Tools</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="rss" width="19" height="19" style="opacity:.6;flex:none"></i>RSS Feed</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.875rem;letter-spacing:-.01em"><i data-lucide="message-square" width="19" height="19" style="opacity:.6;flex:none"></i>Community</a>
+          </div>
+
+          <!-- user footer -->
+          <div style="border-top:1px solid rgba(247,247,249,.06);margin-top:14px;padding-top:14px">
+            <div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:999px;background:oklch(18% .02 280);margin-bottom:12px;width:max-content">
+              <span style="width:14px;height:14px;border-radius:4px;background:oklch(65% .28 290)"></span>
+              <span style="width:14px;height:14px;border-radius:4px;background:oklch(60% .02 280)"></span>
+              <span style="width:14px;height:14px;border-radius:4px;background:oklch(75% .15 190)"></span>
+              <span style="font-size:.72rem;opacity:.5;padding-right:4px">Theme</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:0 4px">
+              <div style="width:36px;height:36px;border-radius:11px;background:oklch(25% .01 280);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex:none">A</div>
+              <div style="min-width:0;flex:1">
+                <div style="font-weight:700;font-size:.82rem;line-height:1.2">Alex</div>
+                <span style="display:inline-block;margin-top:3px;font-size:.62rem;font-weight:900;letter-spacing:.02em;padding:2px 6px;border-radius:5px;background:oklch(65% .28 290 / .18);color:oklch(78% .18 290);border:1px solid oklch(65% .28 290 / .3)">ADMIN</span>
+              </div>
+              <i data-lucide="log-out" width="15" height="15" style="opacity:.5;flex:none"></i>
+            </div>
+            <div style="margin-top:12px;padding:0 4px">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid rgba(247,247,249,.1);background:oklch(18% .02 280)">
+                <i data-lucide="wallet" width="15" height="15" style="opacity:.6"></i>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;opacity:.7">0.00 USDC</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- content peek -->
+        <div style="flex:1;min-width:260px;padding:28px 26px;opacity:.28">
+          <div style="height:110px;border-radius:18px;background:linear-gradient(135deg,oklch(65% .28 290 / .12),oklch(75% .15 190 / .1));border:1px solid rgba(247,247,249,.06);margin-bottom:26px"></div>
+          <div style="font-weight:900;font-size:1.1rem;letter-spacing:-.03em;margin-bottom:16px">Recent Releases</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- notes 1a -->
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">25+ voci</strong> visibili in una sola schermata → carico cognitivo alto.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">8 voci sotto “Discover”</strong> con intenti molto diversi (Radio, Live, Store, Board…).</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">8 link di servizio</strong> (Legal, Guide, Tools, RSS…) in prima classe.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(60% .2 30);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Superfici ridondanti: <strong style="color:#f7f7f9">Releases · Tracks · Playlists · Favorites · Archive</strong> sono tutte “liste di musica”.</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ 1b — PROPOSTA ══════════════ -->
+    <div id="1b" style="width:640px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;background:oklch(65% .18 145);color:#04170c;padding:3px 10px;border-radius:6px">1b</span>
+        <span style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">Proposta</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:oklch(72% .18 145);border:1px solid oklch(65% .18 145 / .4);padding:3px 9px;border-radius:999px">raggruppata per intento</span>
+      </div>
+
+      <div style="display:flex;background:oklch(10% .01 280);border:1px solid rgba(247,247,249,.08);border-radius:20px;overflow:hidden;box-shadow:0 20px 40px -12px rgb(0 0 0/.6)">
+        <!-- sidebar -->
+        <div style="width:256px;flex:none;background:oklch(14% .01 280);border-right:1px solid rgba(247,247,249,.08);padding:16px 12px;display:flex;flex-direction:column">
+          <!-- brand -->
+          <div style="display:flex;align-items:center;gap:12px;padding:0 6px;margin-bottom:22px">
+            <div style="width:36px;height:36px;border-radius:11px;overflow:hidden;flex:none;box-shadow:0 1px 3px 0 rgb(0 0 0/.3)"><img src="logo.svg" alt="TuneCamp" style="width:100%;height:100%;object-fit:cover"></div>
+            <div style="line-height:1;min-width:0">
+              <div style="font-weight:900;font-size:1.25rem;letter-spacing:-.05em;margin-bottom:3px">TuneCamp</div>
+              <div style="font-weight:700;font-size:.72rem;opacity:.5">by tunecamp</div>
+            </div>
+          </div>
+
+          <!-- primary, no header -->
+          <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:22px">
+            <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;background:oklch(65% .28 290);color:#fff;font-weight:800;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="house" width="20" height="20" style="flex:none"></i>Home</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="search" width="20" height="20" style="opacity:.6;flex:none"></i>Search</a>
+            <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="library" width="20" height="20" style="opacity:.6;flex:none"></i>Library<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">playlists · likes</span></a>
+          </div>
+
+          <!-- Explore -->
+          <div style="margin-bottom:22px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Explore</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="disc" width="20" height="20" style="opacity:.6;flex:none"></i>Releases<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">albums · tracks</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="user" width="20" height="20" style="opacity:.6;flex:none"></i>Artists</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="rss" width="20" height="20" style="opacity:.6;flex:none"></i>Radio<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">station</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="radio" width="20" height="20" style="opacity:.6;flex:none"></i>Live<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">listen · broadcast</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="shopping-bag" width="20" height="20" style="opacity:.6;flex:none"></i>Store</a>
+              <details style="margin-top:1px">
+                <summary style="list-style:none;display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.55);font-weight:600;font-size:.9rem;letter-spacing:-.01em;cursor:pointer"><i data-lucide="ellipsis" width="20" height="20" style="opacity:.6;flex:none"></i>More<i data-lucide="chevron-down" width="15" height="15" class="tc-chev" style="margin-left:auto;opacity:.5;transition:transform .2s"></i></summary>
+                <div style="display:flex;flex-direction:column;gap:3px;margin-top:3px">
+                  <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="shovel" width="20" height="20" style="opacity:.6;flex:none"></i>Dig<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">crate-digging</span></a>
+                  <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="flask-conical" width="20" height="20" style="opacity:.6;flex:none"></i>Lab<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">audio tools</span></a>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <!-- Community -->
+          <div style="margin-bottom:22px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Community</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="globe" width="20" height="20" style="opacity:.6;flex:none"></i>Network<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">federation</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="message-square" width="20" height="20" style="opacity:.6;flex:none"></i>Board<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">wall</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="headphones" width="20" height="20" style="opacity:.6;flex:none"></i>Now Listening<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">live</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="bar-chart-2" width="20" height="20" style="opacity:.6;flex:none"></i>Stats<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">charts</span></a>
+            </div>
+          </div>
+
+          <!-- Studio -->
+          <div style="margin-bottom:22px">
+            <h3 style="padding:0 14px;margin:0 0 10px;font-weight:900;font-size:.72rem;letter-spacing:.2em;color:rgba(247,247,249,.4)">Studio</h3>
+            <div style="display:flex;flex-direction:column;gap:3px">
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="upload" width="20" height="20" style="opacity:.6;flex:none"></i>Publish</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="at-sign" width="20" height="20" style="opacity:.6;flex:none"></i>Social<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">fediverse</span></a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="music" width="20" height="20" style="opacity:.6;flex:none"></i>My Catalog</a>
+              <a style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:999px;color:rgba(247,247,249,.7);font-weight:600;font-size:.9rem;letter-spacing:-.01em"><i data-lucide="folder" width="20" height="20" style="opacity:.6;flex:none"></i>Archive<span style="margin-left:auto;font-size:.62rem;font-family:'JetBrains Mono',monospace;opacity:.35">admin</span></a>
+            </div>
+          </div>
+
+          <!-- user footer with grouped menu -->
+          <div style="margin-top:auto;border-top:1px solid rgba(247,247,249,.06);padding-top:14px">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:oklch(18% .02 280);border:1px solid rgba(247,247,249,.08)">
+              <div style="width:36px;height:36px;border-radius:11px;background:oklch(25% .01 280);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex:none">A</div>
+              <div style="min-width:0;flex:1">
+                <div style="font-weight:700;font-size:.82rem;line-height:1.2">Alex</div>
+                <span style="display:inline-block;margin-top:3px;font-size:.62rem;font-weight:900;letter-spacing:.02em;padding:2px 6px;border-radius:5px;background:oklch(65% .28 290 / .18);color:oklch(78% .18 290);border:1px solid oklch(65% .28 290 / .3)">ADMIN</span>
+              </div>
+              <i data-lucide="chevron-up" width="17" height="17" style="opacity:.5;flex:none"></i>
+            </div>
+            <div style="margin-top:8px;font-size:.68rem;line-height:1.5;color:rgba(247,247,249,.4);padding:0 6px;font-family:'JetBrains Mono',monospace">in menu: Admin (→ Files, Search Content) · Settings · Wallet · Help · Tools · Legal · About · RSS</div>
+          </div>
+        </div>
+        <!-- content peek -->
+        <div style="flex:1;min-width:260px;padding:28px 26px;opacity:.28">
+          <div style="height:110px;border-radius:18px;background:linear-gradient(135deg,oklch(65% .28 290 / .12),oklch(75% .15 190 / .1));border:1px solid rgba(247,247,249,.06);margin-bottom:26px"></div>
+          <div style="font-weight:900;font-size:1.1rem;letter-spacing:-.03em;margin-bottom:16px">Recent Releases</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+            <div style="aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(45deg,rgba(247,247,249,.06),rgba(247,247,249,.06) 6px,transparent 6px,transparent 12px)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- notes 1b -->
+      <div style="margin-top:22px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">4 gruppi per intento</strong>: Home/Search/Library · Explore · Community · Studio.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Library</strong> unifica Playlist + Preferiti (gli acquisti restano nella scheda Collection del profilo).</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">Nessuna feature accorpata a forza: Now Listening e Stats tornano voci proprie. L'unico accorpamento di catalogo: <strong style="color:#f7f7f9">Tracks → tab</strong> dentro Releases.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)">8 <strong style="color:#f7f7f9">link di servizio</strong> (Admin, Settings, Help, Tools, Legal, RSS, About, Community) → nel menu profilo, fuori dalla vista fissa.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(65% .18 145);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">More</strong> (chiuso di default) raccoglie gli strumenti di nicchia — Dig, Lab — per una vista iniziale più calma.</span></div>
+        <div style="display:flex;gap:11px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:oklch(75% .15 190);margin-top:7px;flex:none"></span><span style="font-size:.9rem;line-height:1.45;color:rgba(247,247,249,.75)"><strong style="color:#f7f7f9">Sicuro in codice</strong>: cambiano solo ordine + label in <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">Sidebar.tsx</code> e un dropdown profilo. Route, guardie di ruolo e <code style="font-family:'JetBrains Mono',monospace;font-size:.82em">ModuleGuard</code> restano invariati.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    this._drawIcons();
+  }
+  componentDidUpdate() {
+    this._drawIcons();
+  }
+  _drawIcons() {
+    let tries = 0;
+    const run = () => {
+      if (window.lucide && window.lucide.createIcons) {
+        window.lucide.createIcons();
+      } else if (tries++ < 40) {
+        setTimeout(run, 100);
+      }
+    };
+    run();
+  }
+}
+</script>
+</body>
+</html>

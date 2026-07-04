@@ -15,9 +15,7 @@ import {
   LifeBuoy,
   LogIn,
   Settings,
-  ListMusic,
   LogOut,
-  Heart,
   Upload,
   MessageSquare,
   Library,
@@ -33,6 +31,7 @@ import {
   FlaskConical,
   Info,
   Scale,
+  MoreHorizontal,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeSwitcher } from "../ui/ThemeSwitcher";
@@ -52,7 +51,6 @@ export const Sidebar = () => {
   const hideStore = isModuleHidden("hideStore");
   const hideSocial = isModuleHidden("hideSocial");
   const hideNetwork = isModuleHidden("hideNetwork");
-  const hideDig = isModuleHidden("hideDig");
 
   const isRoot = user?.isRootAdmin || role === 'root_admin';
   const isAdmin = role === 'admin' || isRoot || role === 'super_user';
@@ -110,37 +108,6 @@ export const Sidebar = () => {
     );
   };
 
-  const ExternalNavItem = ({
-    href,
-    icon: Icon,
-    label,
-  }: {
-    href: string;
-    icon: any;
-    label: string;
-  }) => (
-    <li>
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={sidebarCollapsed ? label : undefined}
-        className={clsx(
-          "flex items-center transition-all duration-300 [transition-timing-function:var(--ease-spring)] group",
-          sidebarCollapsed
-            ? "justify-center w-10 h-10 mx-auto rounded-xl p-0"
-            : "gap-3 px-4 py-2 rounded-full",
-          "hover:bg-base-300/50 text-base-content/70 hover:text-base-content"
-        )}
-      >
-        <Icon size={20} className="flex-shrink-0 transition-transform group-hover:scale-110 opacity-60 group-hover:opacity-100" />
-        {!sidebarCollapsed && (
-          <span className="text-label-large tracking-tight">{label}</span>
-        )}
-      </a>
-    </li>
-  );
-
   const SectionHeader = ({ label }: { label: string }) => {
     if (sidebarCollapsed) return <div className="border-t border-base-content/10 mx-2 my-2" />;
     return <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">{label}</h3>;
@@ -190,46 +157,49 @@ export const Sidebar = () => {
       {/* Main Nav */}
       <div className="space-y-5 flex-1">
         <div>
-          <SectionHeader label="Discover" />
           <ul className="menu menu-sm p-0 gap-1">
             <NavItem to="/" icon={Home} label="Home" />
             <NavItem to="/search" icon={Search} label="Search" />
-            {!hideNetwork && <NavItem to="/network" icon={Globe} label="Network" />}
-            {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
-            <NavItem to="/radio" icon={Rss} label="Radio" />
-            {isAuthenticated && <NavItem to="/now-listening" icon={Headphones} label="Now Listening" />}
-            {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
-            <NavItem to="/board" icon={MessageSquare} label="Board" />
+            {isAuthenticated && <NavItem to="/library" icon={Library} label="Library" />}
           </ul>
         </div>
 
         <div>
-          <SectionHeader label="Catalog" />
+          <SectionHeader label="Explore" />
           <ul className="menu menu-sm p-0 gap-1">
-            <NavItem to="/albums" icon={Disc} label="Releases" />
+            <NavItem to="/releases" icon={Disc} label="Releases" />
             <NavItem to="/artists" icon={User} label="Artists" />
-            <NavItem to="/tracks" icon={Music} label="Tracks" />
+            <NavItem to="/radio" icon={Rss} label="Radio" />
+            {!hideLive && <NavItem to="/live" icon={Radio} label="Live" />}
+            {!hideStore && <NavItem to="/store" icon={ShoppingBag} label="Store" />}
+            <li>
+              <details>
+                <summary className={clsx(
+                  "flex items-center transition-all duration-300 [transition-timing-function:var(--ease-spring)] group",
+                  sidebarCollapsed
+                    ? "justify-center w-10 h-10 mx-auto rounded-xl p-0"
+                    : "gap-3 px-4 py-2 rounded-full",
+                  "hover:bg-base-300/50 text-base-content/70 hover:text-base-content"
+                )}>
+                  <MoreHorizontal size={20} className="flex-shrink-0 transition-transform group-hover:scale-110 opacity-60" />
+                  {!sidebarCollapsed && <span className="text-label-large tracking-tight">More</span>}
+                </summary>
+                <ul className={clsx(sidebarCollapsed ? "hidden" : "")}>
+                  <NavItem to="/dig" icon={Shovel} label="Dig" />
+                  <NavItem to="/lab" icon={FlaskConical} label="Lab" />
+                </ul>
+              </details>
+            </li>
           </ul>
         </div>
 
-        {isAuthenticated && (
-          <div>
-            <SectionHeader label="My Music" />
-            <ul className="menu menu-sm p-0 gap-1">
-              <NavItem to="/playlists" icon={ListMusic} label="Playlists" />
-              <NavItem to="/favorites" icon={Heart} label="Favorites" />
-              <NavItem to="/stats" icon={BarChart2} label="Stats" />
-            </ul>
-          </div>
-        )}
-
         <div>
-          <SectionHeader label="Lab" />
+          <SectionHeader label="Community" />
           <ul className="menu menu-sm p-0 gap-1">
-            <NavItem to="/lab" icon={FlaskConical} label="Lab" />
-            {isAuthenticated && !hideDig && (
-              <NavItem to="/dig" icon={Shovel} label="Dig" />
-            )}
+            {!hideNetwork && <NavItem to="/network" icon={Globe} label="Network" />}
+            <NavItem to="/board" icon={MessageSquare} label="Board" />
+            {isAuthenticated && <NavItem to="/now-listening" icon={Headphones} label="Now Listening" />}
+            {isAuthenticated && <NavItem to="/stats" icon={BarChart2} label="Stats" />}
           </ul>
         </div>
 
@@ -238,60 +208,40 @@ export const Sidebar = () => {
             <SectionHeader label="Studio" />
             <ul className="menu menu-sm p-0 gap-1">
               <NavItem to="/publish" icon={Upload} label="Publish" />
-              <NavItem to="/my-music" icon={Music} label="My Catalog" />
               {!!user?.artistId && !hideSocial && (
                 <NavItem to="/social" icon={MessageSquare} label="Social" />
               )}
-              {/* Archive = full private library; admin-only. Self-publish
-                  listeners can publish but cannot browse the private library. */}
+              <NavItem to="/my-music" icon={Music} label="My Catalog" />
               {isAdmin && (
-                <NavItem to="/library" icon={Library} label="Archive" />
-              )}
-              {(isRoot || role === 'admin') && (
-                <NavItem to="/search/content" icon={Globe} label="Search Content" />
-              )}
-              {isRoot && (
-                <NavItem to="/browser" icon={Folder} label="Files" />
+                <NavItem to="/archive" icon={Folder} label="Archive" />
               )}
             </ul>
           </div>
         )}
       </div>
 
-      <div className="mt-auto space-y-4">
-        <ul className="menu menu-sm p-0">
-          {(isRoot || isAdmin || isSuperUser) && (
-            <NavItem to="/admin" icon={Settings} label="Admin" />
-          )}
-          <NavItem to="/about" icon={Info} label="About" />
-          <NavItem to="/terms" icon={Scale} label="Legal" />
-          <NavItem to="/guide" icon={BookOpen} label="Guide" />
-          <NavItem to="/support" icon={LifeBuoy} label="Support" />
-          <NavItem to="/tools" icon={Wrench} label="Tools" />
-          <ExternalNavItem href="/feed.xml" icon={Rss} label="RSS Feed" />
-          {communityLink && (
-            <ExternalNavItem href={communityLink} icon={MessageSquare} label="Community" />
-          )}
-        </ul>
+      <div className={clsx(
+        "pt-4 border-t border-base-content/5 w-full mt-auto",
+        sidebarCollapsed ? "space-y-2" : "space-y-4"
+      )}>
+        {!sidebarCollapsed && !isAuthenticated && (
+          <div className="px-2">
+            <ThemeSwitcher />
+          </div>
+        )}
 
-        {/* User Footer */}
-        <div className={clsx(
-          "pt-4 border-t border-base-content/5 w-full",
-          sidebarCollapsed ? "space-y-2" : "space-y-4"
-        )}>
-          {!sidebarCollapsed && (
-            <div className="px-2">
-              <ThemeSwitcher />
-            </div>
-          )}
-
-          {isAuthenticated ? (
-            <div className={clsx(
-              "flex items-center gap-3",
-              sidebarCollapsed ? "flex-col px-0" : "px-2"
-            )}>
-              <Link to="/profile" className="avatar placeholder flex-shrink-0">
-                <div className="bg-neutral text-neutral-content rounded-xl w-9 ring-1 ring-base-content/10 cursor-pointer hover:ring-primary/50 transition-all duration-medium-2 [transition-timing-function:var(--ease-spring)] overflow-hidden">
+        {isAuthenticated ? (
+          <div className="dropdown dropdown-top w-full">
+            <div 
+              role="button" 
+              tabIndex={0} 
+              className={clsx(
+                "flex items-center gap-3 hover:bg-base-300/50 transition-colors cursor-pointer rounded-2xl",
+                sidebarCollapsed ? "flex-col p-1 justify-center" : "p-2"
+              )}
+            >
+              <div className="avatar placeholder flex-shrink-0">
+                <div className="bg-neutral text-neutral-content rounded-xl w-9 ring-1 ring-base-content/10 cursor-pointer overflow-hidden">
                   {user?.avatar ? (
                     <img src={user.avatar} alt={user.username || ""} className="w-full h-full object-cover" />
                   ) : (
@@ -300,7 +250,7 @@ export const Sidebar = () => {
                     </span>
                   )}
                 </div>
-              </Link>
+              </div>
 
               {!sidebarCollapsed && (
                 <div className="flex-1 min-w-0">
@@ -313,58 +263,77 @@ export const Sidebar = () => {
                   </span>
                 </div>
               )}
+            </div>
 
-              {!sidebarCollapsed && (
-                <div className="flex gap-1">
-                  <button
-                    className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100 hover:text-error"
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={14} />
-                  </button>
-                </div>
+            <ul tabIndex={0} className="dropdown-content z-[60] menu p-2 shadow-level-1 bg-base-300 rounded-2xl w-60 border border-base-content/10 mb-2">
+              <div className="px-2 pb-2">
+                <ThemeSwitcher />
+              </div>
+              <div className="divider my-0 opacity-10"></div>
+              
+              {(isRoot || isAdmin || isSuperUser) && (
+                <li>
+                  <details>
+                    <summary className="font-bold"><Settings size={16}/> Admin</summary>
+                    <ul>
+                      <li><Link to="/admin"><Settings size={16}/> Settings</Link></li>
+                      {isRoot && <li><Link to="/browser"><Folder size={16}/> Files</Link></li>}
+                      {(isRoot || role === 'admin') && <li><Link to="/search/content"><Globe size={16}/> Search Content</Link></li>}
+                    </ul>
+                  </details>
+                </li>
+              )}
+              
+              <li className="menu-title mt-2 text-[11px]">Settings</li>
+              <li><Link to="/profile"><User size={16}/> Profile</Link></li>
+              <li><Link to="/tools"><Wrench size={16}/> Tools</Link></li>
+              
+              <div className="divider my-1 opacity-10"></div>
+              <li className="menu-title mt-2 text-[11px]">Resources</li>
+              <li><Link to="/guide"><BookOpen size={16}/> Guide</Link></li>
+              <li><Link to="/support"><LifeBuoy size={16}/> Support</Link></li>
+              <li><Link to="/terms"><Scale size={16}/> Legal</Link></li>
+              <li><Link to="/about"><Info size={16}/> About</Link></li>
+              <li><a href="/feed.xml" target="_blank" rel="noopener noreferrer"><Rss size={16}/> RSS Feed</a></li>
+              {communityLink && (
+                <li><a href={communityLink} target="_blank" rel="noopener noreferrer"><MessageSquare size={16}/> Community</a></li>
               )}
 
-              {sidebarCollapsed && (
-                <div className="flex flex-col gap-1 items-center">
-                  <button
-                    title="Logout"
-                    className="btn btn-ghost btn-xs btn-square opacity-60 hover:opacity-100 hover:text-error"
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className={clsx(sidebarCollapsed ? "flex justify-center" : "px-2")}>
-              {sidebarCollapsed ? (
-                <button
-                  title="Login"
-                  className="btn btn-primary btn-xs btn-square"
-                  onClick={() => document.dispatchEvent(new CustomEvent("open-auth-modal"))}
-                >
-                  <LogIn size={14} />
-                </button>
-              ) : (
-                <button
-                  className="btn btn-primary btn-block btn-sm"
-                  onClick={() => document.dispatchEvent(new CustomEvent("open-auth-modal"))}
-                >
-                  <LogIn size={16} />
-                  Login
-                </button>
-              )}
-            </div>
-          )}
+              <div className="divider my-1 opacity-10"></div>
+              <li>
+                <a onClick={handleLogout} className="text-error">
+                  <LogOut size={16}/> Logout
+                </a>
+              </li>
+            </ul>
+          </div>
+        ) : (
+          <div className={clsx(sidebarCollapsed ? "flex justify-center" : "px-2")}>
+            {sidebarCollapsed ? (
+              <button
+                title="Login"
+                className="btn btn-primary btn-xs btn-square"
+                onClick={() => document.dispatchEvent(new CustomEvent("open-auth-modal"))}
+              >
+                <LogIn size={14} />
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary btn-block btn-sm"
+                onClick={() => document.dispatchEvent(new CustomEvent("open-auth-modal"))}
+              >
+                <LogIn size={16} />
+                Login
+              </button>
+            )}
+          </div>
+        )}
 
-          {isAuthenticated && !sidebarCollapsed && (
-            <div className="mt-4 px-2">
-              <WalletPill />
-            </div>
-          )}
-        </div>
+        {isAuthenticated && !sidebarCollapsed && (
+          <div className="mt-2 px-2">
+            <WalletPill />
+          </div>
+        )}
       </div>
     </div>
   );
