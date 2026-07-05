@@ -411,7 +411,8 @@ export function createAdminRoutes(container: ServiceContainer): Router {
                 peerAllowDownloads,
                 peerFederation,
                 brandPrimary,
-                brandAccent
+                brandAccent,
+                instanceProfile
             } = req.body;
             let settingsChanged = false;
             const isTrue = (val: any) => val === true || val === "true";
@@ -522,6 +523,10 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             }
             if (brandAccent !== undefined) {
                 identity.setSetting("brandAccent", brandAccent);
+                settingsChanged = true;
+            }
+            if (instanceProfile !== undefined) {
+                identity.setSetting("instanceProfile", instanceProfile);
                 settingsChanged = true;
             }
             if (communityLink !== undefined) {

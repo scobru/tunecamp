@@ -283,7 +283,7 @@ export default function AdminReleaseEditor() {
       setExistingAdditionalArtworks(parsedArtworks);
 
       if (data.slug || releaseId) {
-        setCoverPreview(API.getReleaseCoverUrl(data.slug || releaseId));
+        setCoverPreview(API.getReleaseCoverUrl(data.slug || releaseId, Date.now()));
       }
       if (data.tracks) {
         setTracks(

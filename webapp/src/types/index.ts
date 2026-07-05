@@ -246,6 +246,7 @@ export interface SiteSettings {
     /** Public federation handle of the instance actor (defaults to "site"). */
     siteHandle?: string;
     siteDescription?: string;
+    instanceProfile?: string;
     siteLogo?: string;
     coverImage?: string;
     publicUrl?: string;

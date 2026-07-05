@@ -344,7 +344,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
                 }
                 const coverPath = path.join(musicDir, releaseCoverPath);
                 if (await fs.pathExists(coverPath)) {
-                    return res.sendFile(path.resolve(coverPath), { maxAge: 86400000 });
+                    return res.sendFile(path.resolve(coverPath), { maxAge: 0 });
                 }
             }
             
