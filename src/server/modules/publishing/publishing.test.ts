@@ -142,6 +142,49 @@ describe('PublishingService', () => {
         expect(apMock.broadcastRelease).toHaveBeenCalled();
     });
 
+    test('should NOT federate a public release that is not yet released (draft)', async () => {
+        const albumId = db.createAlbum({
+            title: 'Draft Album',
+            slug: 'draft-album',
+            artist_id: 1,
+            date: '2023-01-01',
+            visibility: 'public',
+            published_to_gundb: true,
+            published_to_ap: true,
+            cover_path: null,
+            genre: null,
+            description: null,
+            download: 'free',
+            external_links: null,
+            published_at: null,
+            type: 'album',
+            year: 2023,
+            owner_id: 1,
+            price: 0,
+            price_usdc: 0,
+            currency: 'USD',
+            status: 'draft',
+            license: null,
+            is_public: true,
+            is_release: false,
+            use_nft: true,
+            album_artist: null
+        });
+
+        createFullTrack(albumId);
+        db.promoteToRelease(albumId); // sets is_release=1 (and status=released)...
+        db.updateAlbumStatus(albumId, 'draft'); // ...but this release isn't released yet
+
+        await publishingService.syncRelease(albumId);
+
+        // Public visibility alone must not federate: the site catalog needs
+        // status='released', so AP must match — otherwise it's "in AP, not on site".
+        expect(apMock.broadcastRelease).not.toHaveBeenCalled();
+        // It was marked published_to_ap, so it self-heals: Delete + clear flag.
+        expect(apMock.broadcastDelete).toHaveBeenCalled();
+        expect(db.getRelease(albumId)?.published_to_ap).toBeFalsy();
+    });
+
     test('should call ap.broadcastDelete when album visibility changes to private', async () => {
         const albumId = db.createAlbum({
             title: 'Test Album',
