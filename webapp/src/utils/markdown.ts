@@ -42,7 +42,7 @@ export function renderMarkdown(markdown: string): string {
         `<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">${text}</a>`);
 
     // Bullet Lists (lines starting with - or *)
-    html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, "<li>$1</li>");
+    html = html.replace(/^\s*[-*]\s+(.+)$/gm, "<li>$1</li>");
     
     // Group consecutive <li> blocks into <ul>
     html = html.replace(/(<li>.*<\/li>)/gs, (match) => {

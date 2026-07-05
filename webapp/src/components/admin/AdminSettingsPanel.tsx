@@ -66,13 +66,13 @@ export const AdminSettingsPanel = () => {
 
       for (const log of receipt.logs) {
         try {
-          // @ts-ignore
+          // @ts-expect-error parseLog args are loosely typed by ethers
           const parsed = factory.contract.interface.parseLog(log);
           if (parsed && parsed.name === "InstanceDeployed") {
             checkoutAddr = parsed.args.checkout;
             nftAddr = parsed.args.nft;
           }
-        } catch (e) {
+        } catch {
           // Ignore logs that can't be parsed by this interface
         }
       }
@@ -156,7 +156,7 @@ export const AdminSettingsPanel = () => {
         } else {
           setHasOnChainInstance(false);
         }
-      } catch (e) {
+      } catch {
         // Will throw quietly if not connected to a supported chain or if factory not found
       } finally {
         setIsCheckingOnChain(false);
@@ -672,7 +672,7 @@ export const AdminSettingsPanel = () => {
                       <label className="label p-0">
                         <span className="label-text font-medium text-sm">Glass Overlay Opacity</span>
                       </label>
-                      <span className="text-xs opacity-60 font-bold">{Math.round((Number(settings.themeOverlayOpacity) !== undefined ? Number(settings.themeOverlayOpacity) : 0.85) * 100)}%</span>
+                      <span className="text-xs opacity-60 font-bold">{Math.round((Number.isFinite(Number(settings.themeOverlayOpacity)) ? Number(settings.themeOverlayOpacity) : 0.85) * 100)}%</span>
                     </div>
                     <input
                       type="range"

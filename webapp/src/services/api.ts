@@ -161,7 +161,7 @@ const API = {
             } else {
                 urlObj = new URL(String(url), window.location.origin);
             }
-        } catch (e) {
+        } catch {
             isLocal = false;
             return String(url);
         }

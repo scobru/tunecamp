@@ -104,7 +104,7 @@ const Files = () => {
         const targetDir = prompt("Enter target directory path (relative to root, or leave empty for Root):", item.path.split("/").slice(0, -1).join("/") || "/");
         if (targetDir === null) return; // User cancelled
 
-        let cleanTarget = targetDir.trim().replace(/^\/+|\/+$/g, "");
+        const cleanTarget = targetDir.trim().replace(/^\/+|\/+$/g, "");
         const newPath = cleanTarget ? `${cleanTarget}/${item.name}` : item.name;
 
         if (newPath === item.path) return;
