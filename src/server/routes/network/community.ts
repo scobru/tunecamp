@@ -138,7 +138,7 @@ export function createCommunityRoutes(container: ServiceContainer): Router {
                         title: r.title,
                         artist: r.artist,
                         url: r.slug && base ? `${base}/releases/${r.slug}` : base || null,
-                        cover: r.slug && r.cover && base ? `${base}/api/albums/${r.slug}/cover` : null,
+                        cover: r.slug && r.cover && base ? `${base}/api/albums/${r.slug}/cover?t=${new Date(r.ts).getTime()}` : null,
                     },
                 })),
             });
