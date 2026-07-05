@@ -164,9 +164,7 @@ export async function loadPlugins(pluginsDir?: string, db?: PluginStateStore): P
             const persisted = db?.getPluginState(instance.id);
             const shouldEnable = persisted ? persisted.enabled : true;
             if (shouldEnable) {
-                for (const registry of targets) {
-                    await registry.enable(instance.id);
-                }
+                await Promise.all(targets.map(registry => registry.enable(instance.id)));
             } else {
                 console.log(`[PluginLoader] ⏸️ ${instance.name} kept disabled (persisted state)`);
             }
