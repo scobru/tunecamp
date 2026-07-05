@@ -40,7 +40,7 @@ const mockProviders = {
     itunesProvider: { id: 'itunes', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
     musicbrainzProvider: { id: 'musicbrainz', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), getCoverUrl: jest.fn() },
     discogsProvider: { id: 'discogs', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), setSettings: jest.fn() },
-    theaudiodbProvider: { id: 'theaudiodb', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
+    theaudiodbProvider: { id: 'theaudiodb', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn(), setSettings: jest.fn() },
     spotifyProvider: { id: 'spotify', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
     deezerProvider: { id: 'deezer', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() },
     bandcampMetadataProvider: { id: 'bandcamp', searchRelease: jest.fn(), searchRecording: jest.fn(), searchArtist: jest.fn() }
@@ -323,6 +323,7 @@ describe('MetadataService', () => {
 
             expect(service).toBeDefined();
             expect(mockProviders.discogsProvider.setSettings).toHaveBeenCalledWith(db);
+            expect(mockProviders.theaudiodbProvider.setSettings).toHaveBeenCalledWith(db);
             expect(syncRegistryWithDatabase).toHaveBeenCalled();
         });
     });
