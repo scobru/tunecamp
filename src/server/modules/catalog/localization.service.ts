@@ -190,7 +190,12 @@ export class LocalizationService {
             const trackPrefix = track.track_num ? String(track.track_num).padStart(2, '0') + " - " : "";
 
             const relativePath = path.posix.join("localized", safeArtist, safeAlbum, `${trackPrefix}${safeTitle}.${actualExt}`);
-            const finalPath = path.join(this.musicDir, relativePath);
+            const finalPath = path.resolve(this.musicDir, relativePath);
+            const localizedDirTarget = path.resolve(this.musicDir, "localized");
+
+            if (!finalPath.startsWith(localizedDirTarget + path.sep)) {
+                throw new Error("Invalid path traversal detected in track metadata");
+            }
 
             await fs.ensureDir(path.dirname(finalPath));
             await fs.move(path.join(localizedDir, downloadedFile), finalPath, { overwrite: true });

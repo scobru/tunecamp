@@ -1637,11 +1637,15 @@ export class ActivityPubService {
         const releases = this.db.getReleases(true);
 
         // Group releases by artist ID
-        const releasesByArtist: Record<number, any[]> = {};
+        const releasesByArtist = new Map<number, any[]>();
         for (const release of releases) {
             if (release.artist_id !== null) {
-                if (!releasesByArtist[release.artist_id]) releasesByArtist[release.artist_id] = [];
-                releasesByArtist[release.artist_id].push(release);
+                let artistReleases = releasesByArtist.get(release.artist_id);
+                if (!artistReleases) {
+                    artistReleases = [];
+                    releasesByArtist.set(release.artist_id, artistReleases);
+                }
+                artistReleases.push(release);
             }
         }
 
@@ -1673,7 +1677,7 @@ export class ActivityPubService {
                 }
             }
 
-            const artistReleases = releasesByArtist[artist.id] || [];
+            const artistReleases = releasesByArtist.get(artist.id) || [];
             const releasePromises = artistReleases.map(async (release) => {
                 noteCount++;
                 if (release.visibility === 'public' || release.visibility === 'unlisted') {
@@ -1717,19 +1721,7 @@ export class ActivityPubService {
             const pending = this.db.getPendingFollowers ? this.db.getPendingFollowers(artistId) : [];
             if (pending.length > 0) {
                 console.log(`  👥 Auto-accepting ${pending.length} pending follower(s)...`);
-                if (this.db.acceptPendingFollowers) {
-                    this.db.acceptPendingFollowers(artistId);
-                } else if (this.db.transaction) {
-                    this.db.transaction(() => {
-                        for (const follower of pending) {
-                            this.db.acceptFollower(artistId, follower.actor_uri);
-                        }
-                    });
-                } else {
-                    for (const follower of pending) {
-                        this.db.acceptFollower(artistId, follower.actor_uri);
-                    }
-                }
+                this.db.acceptPendingFollowers(artistId);
             }
         }
 

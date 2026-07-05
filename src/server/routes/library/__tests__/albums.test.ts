@@ -129,6 +129,32 @@ describe('Albums Routes - Cache Optimization', () => {
         expect(response.headers['content-type']).toContain('image/jpeg');
     });
 
+    test('GET /albums/:slug/cover with digit-prefixed slug resolves by slug, not truncated numeric ID', async () => {
+        // "6avant" must NOT be parseInt'd to album ID 6 (a different library
+        // album) — the network feed requests covers by release slug.
+        (mockDatabase.getAlbum as jest.Mock).mockReturnValue({
+            id: 6,
+            title: 'Some Library Album',
+            slug: 'some-library-album',
+            cover_path: 'wrong-cover.jpg',
+            visibility: 'private'
+        });
+        (mockDatabase.getAlbumBySlug as jest.Mock).mockReturnValue({
+            id: 42,
+            title: '6avant',
+            slug: '6avant',
+            cover_path: 'cover.jpg',
+            visibility: 'public'
+        });
+
+        const response = await request(app).get('/albums/6avant/cover');
+
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toContain('image/jpeg');
+        expect(mockDatabase.getAlbum).not.toHaveBeenCalled();
+        expect(mockDatabase.getAlbumBySlug).toHaveBeenCalledWith('6avant');
+    });
+
     describe('GET /albums/:idOrSlug/download', () => {
         test('returns 404 when album has no tracks', async () => {
             // Setup
