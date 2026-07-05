@@ -410,6 +410,7 @@ export class TrackRepository {
         const fromIds = Array.isArray(fromId) ? fromId : [fromId];
         if (fromIds.length === 0) return;
         this.db.transaction(() => {
+            // Step 1: Handle row-by-row metadata carrying
             for (const fId of fromIds) {
                 try {
                     // Carry over metadata that the keeper is missing (don't overwrite existing values)
@@ -440,28 +441,44 @@ export class TrackRepository {
                             this.db.prepare(`UPDATE tracks SET ${updates.join(', ')} WHERE id = ?`).run(...values);
                         }
                     }
-
-                    this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id = ?").run(toId, fId);
-                    this.db.prepare("UPDATE play_history SET track_id = ? WHERE track_id = ?").run(toId, fId);
-                    this.db.prepare("UPDATE bookmarks SET track_id = ? WHERE track_id = ?").run(toId, String(fId));
-                    this.db.prepare("UPDATE starred_items SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fId));
-                    this.db.prepare("UPDATE item_ratings SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fId));
-                    // Re-point release_tracks that referenced the merged-away track
-                    try {
-                        this.db.prepare("UPDATE OR IGNORE release_tracks SET track_id = ? WHERE track_id = ?").run(toId, fId);
-                        this.db.prepare("DELETE FROM release_tracks WHERE track_id = ?").run(fId);
-                    } catch (e) {}
-                    // Re-point playlist_tracks
-                    try {
-                        this.db.prepare("UPDATE OR IGNORE playlist_tracks SET track_id = ? WHERE track_id = ?").run(toId, fId);
-                        this.db.prepare("DELETE FROM playlist_tracks WHERE track_id = ?").run(fId);
-                    } catch (e) {}
-                    this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(fId);
-                    this.db.prepare("DELETE FROM tracks WHERE id = ?").run(fId);
                 } catch (err) {
-                    console.error(`🚨 [TrackRepository] Merge failed during transaction (${fId} -> ${toId}):`, err);
+                    console.error(`🚨 [TrackRepository] Metadata merge failed during transaction (${fId} -> ${toId}):`, err);
                     throw err; // Re-throw to ensure transaction rollback
                 }
+            }
+
+            // Step 2: Handle batchable relationships and deletions
+            try {
+                const CHUNK_SIZE = 900;
+                for (let i = 0; i < fromIds.length; i += CHUNK_SIZE) {
+                    const chunk = fromIds.slice(i, i + CHUNK_SIZE);
+                    const bindStr = chunk.map(() => '?').join(',');
+                    const stringChunk = chunk.map(id => String(id));
+
+                    this.db.prepare(`INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id IN (${bindStr})`).run(toId, ...chunk);
+                    this.db.prepare(`UPDATE play_history SET track_id = ? WHERE track_id IN (${bindStr})`).run(toId, ...chunk);
+                    this.db.prepare(`UPDATE bookmarks SET track_id = ? WHERE track_id IN (${bindStr})`).run(toId, ...stringChunk);
+                    this.db.prepare(`UPDATE starred_items SET item_id = ? WHERE item_id IN (${bindStr}) AND item_type = 'track'`).run(String(toId), ...stringChunk);
+                    this.db.prepare(`UPDATE item_ratings SET item_id = ? WHERE item_id IN (${bindStr}) AND item_type = 'track'`).run(String(toId), ...stringChunk);
+
+                    // Re-point release_tracks that referenced the merged-away track
+                    try {
+                        this.db.prepare(`UPDATE OR IGNORE release_tracks SET track_id = ? WHERE track_id IN (${bindStr})`).run(toId, ...chunk);
+                        this.db.prepare(`DELETE FROM release_tracks WHERE track_id IN (${bindStr})`).run(...chunk);
+                    } catch (e) {}
+
+                    // Re-point playlist_tracks
+                    try {
+                        this.db.prepare(`UPDATE OR IGNORE playlist_tracks SET track_id = ? WHERE track_id IN (${bindStr})`).run(toId, ...chunk);
+                        this.db.prepare(`DELETE FROM playlist_tracks WHERE track_id IN (${bindStr})`).run(...chunk);
+                    } catch (e) {}
+
+                    this.db.prepare(`DELETE FROM track_ownership WHERE track_id IN (${bindStr})`).run(...chunk);
+                    this.db.prepare(`DELETE FROM tracks WHERE id IN (${bindStr})`).run(...chunk);
+                }
+            } catch (err) {
+                console.error(`🚨 [TrackRepository] Batch merge failed during transaction for toId ${toId}:`, err);
+                throw err;
             }
         })();
     }
