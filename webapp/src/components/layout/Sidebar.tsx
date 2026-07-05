@@ -101,7 +101,7 @@ export const Sidebar = () => {
             active ? "opacity-100" : "opacity-60"
           )} />
           {!sidebarCollapsed && (
-            <span className="text-label-large tracking-tight">{label}</span>
+            <span className={clsx("text-label-large", active ? "font-semibold tracking-tight" : "font-medium tracking-normal")}>{label}</span>
           )}
         </Link>
       </li>
@@ -110,7 +110,7 @@ export const Sidebar = () => {
 
   const SectionHeader = ({ label }: { label: string }) => {
     if (sidebarCollapsed) return <div className="border-t border-base-content/10 mx-2 my-2" />;
-    return <h3 className="px-4 text-xs font-black tracking-[0.2em] text-base-content/40 mb-3">{label}</h3>;
+    return <h3 className="px-4 text-[10px] font-semibold tracking-widest uppercase text-base-content/35 mb-2">{label}</h3>;
   };
 
   return (
@@ -139,8 +139,8 @@ export const Sidebar = () => {
           </div>
           {!sidebarCollapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-xl font-black tracking-tighter leading-none break-words mb-1">{siteName}</span>
-              <span className="text-xs font-bold opacity-50 tracking-normal">by tunecamp</span>
+              <span className="text-lg font-bold tracking-tight leading-none break-words mb-1">{siteName}</span>
+              <span className="text-[11px] font-medium opacity-40 tracking-wide">by tunecamp</span>
             </div>
           )}
         </div>
@@ -182,7 +182,7 @@ export const Sidebar = () => {
                   "hover:bg-base-300/50 text-base-content/70 hover:text-base-content"
                 )}>
                   <MoreHorizontal size={20} className="flex-shrink-0 transition-transform group-hover:scale-110 opacity-60" />
-                  {!sidebarCollapsed && <span className="text-label-large tracking-tight">More</span>}
+                  {!sidebarCollapsed && <span className="text-label-large font-medium tracking-normal">More</span>}
                 </summary>
                 <ul className={clsx(sidebarCollapsed ? "hidden" : "")}>
                   <NavItem to="/dig" icon={Shovel} label="Dig" />
