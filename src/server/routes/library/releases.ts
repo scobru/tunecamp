@@ -4,7 +4,7 @@ import type { ScannerService } from "../../modules/catalog/scanner.service.js";
 import type { PublishingService } from "../../modules/publishing/publishing.service.js";
 import type { AuthService } from "../../modules/auth/auth.service.js";
 import { wrapAsync } from "../../middleware/error-handling.js";
-import { VisibilityGuardian, VisibilityProfile } from "../../common/visibility.js";
+import { VisibilityGuardian, VisibilityProfile, Capability } from "../../common/visibility.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../common/errors.js";
 import { serveCachedList, invalidateListCacheOnMutation } from "../../common/list-cache.js";
 import path from "path";
@@ -16,6 +16,8 @@ interface CreateReleaseBody {
     artistName?: string;
     artistId?: number;
     artist_id?: number;
+    /** Admin/Manager only: assign the owning user account for this release. */
+    owner_id?: number | null;
     date?: string;
     description?: string;
     track_ids?: number[];
@@ -189,6 +191,21 @@ export function createReleaseRouter(container: ServiceContainer): Router {
 
         stripPricesIfNotSellable(body.artist_id || body.artistId, body);
 
+        // Owner assignment: by default a release is owned by its creator. Managers/
+        // Root Admins may instead assign it to another user account (owner_id) so that
+        // user can manage/edit it (canManageItem gates on owner_id). Non-privileged
+        // callers can never reassign ownership — their release is always their own.
+        const canAssignOwner = req.context
+            ? VisibilityGuardian.can(req.context, Capability.MANAGE_ALL_CONTENT)
+            : false;
+        const requestedOwnerId =
+            body.owner_id === undefined || body.owner_id === null || body.owner_id === ("" as any)
+                ? null
+                : Number(body.owner_id);
+        const resolvedOwnerId = canAssignOwner && requestedOwnerId != null && !Number.isNaN(requestedOwnerId)
+            ? requestedOwnerId
+            : (req.userId || null);
+
         // Prevent rapid duplicate creation (double-submission prevention)
         const checkArtistId = body.artist_id || body.artistId || null;
         const checkOwnerId = req.userId || null;
@@ -224,7 +241,7 @@ export function createReleaseRouter(container: ServiceContainer): Router {
                     title: body.title,
                     slug: slug,
                     artist_id: body.artist_id || body.artistId || null,
-                    owner_id: req.userId || null,
+                    owner_id: resolvedOwnerId,
                     date: body.date || new Date().toISOString(),
                     description: body.description || null,
                     type: body.type || 'album',

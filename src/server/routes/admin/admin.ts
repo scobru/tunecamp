@@ -961,6 +961,13 @@ export function createAdminRoutes(container: ServiceContainer): Router {
             if (body.title) updates.title = body.title;
             const finalArtistId = body.artistId || body.artist_id;
             if (finalArtistId) updates.artist_id = finalArtistId;
+            // Admin/Manager only: reassign the owning user account (owner_id). This
+            // controls who can manage/edit the release (canManageItem gates on it).
+            // Non-privileged editors can never change ownership.
+            if (body.owner_id !== undefined && isPrivileged) {
+                const parsedOwner = body.owner_id === null || body.owner_id === '' ? null : Number(body.owner_id);
+                updates.owner_id = parsedOwner != null && !Number.isNaN(parsedOwner) ? parsedOwner : null;
+            }
             if (body.date) updates.date = body.date;
             if (body.description !== undefined) updates.description = body.description;
             if (body.type) {

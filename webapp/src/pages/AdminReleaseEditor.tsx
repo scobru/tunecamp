@@ -112,6 +112,9 @@ export default function AdminReleaseEditor() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [artists, setArtists] = useState<any[]>([]);
+  // Admin/Manager-only: list of user accounts that a release can be assigned to
+  // as its owner (owner_id). Populated only for privileged editors.
+  const [users, setUsers] = useState<any[]>([]);
 
   const { signer, isConnected } = useWalletStore();
   const activeSigner = signer;
@@ -190,6 +193,9 @@ export default function AdminReleaseEditor() {
       }
 
       loadArtists();
+      if (isAdmin) {
+        loadUsers();
+      }
       if (!isNew && id) {
         loadRelease(parseInt(id));
       }
@@ -233,6 +239,15 @@ export default function AdminReleaseEditor() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const data = await API.getUsers();
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Failed to load users for owner assignment", e);
     }
   };
 
@@ -934,6 +949,36 @@ export default function AdminReleaseEditor() {
                     </div>
                   )}
                 </div>
+
+                {isAdmin && (
+                  <div className="form-control">
+                    <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Owner (User)</label>
+                    <select
+                      className="select select-bordered w-full text-sm"
+                      value={metadata.owner_id ?? ""}
+                      onChange={(e) =>
+                        setMetadata((prev) => ({
+                          ...prev,
+                          owner_id: e.target.value === "" ? null : parseInt(e.target.value),
+                        }))
+                      }
+                    >
+                      <option value="">
+                        {isNew ? "Default — you (creator)" : "Unassigned — managed by linked artist"}
+                      </option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.username}
+                          {u.artist_name ? ` — ${u.artist_name}` : ""}
+                          {u.role ? ` (${u.role})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="label">
+                      <span className="label-text-alt opacity-40">User account that owns and can manage this release</span>
+                    </label>
+                  </div>
+                )}
 
                 <div className="form-control">
                   <label className="label text-[11px] font-bold tracking-normal opacity-50 whitespace-normal">Album Artist</label>
