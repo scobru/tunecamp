@@ -1,6 +1,6 @@
 import { Router, json, raw, Request, Response, NextFunction } from 'express';
 import fs from 'fs-extra';
-import path from 'path';
+import { join, extname } from 'path';
 import type { ServiceContainer } from '../../core/container.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { wrapAsync } from '../../middleware/error-handling.js';
@@ -44,10 +44,10 @@ export function createLiveRoutes(container: ServiceContainer): Router {
             const trackTitle = `${(session.title || 'Live session').trim()} (Live ${dateStr})`;
 
             // Move the recording into the catalog's tracks dir, then scan it.
-            const destDir = path.join(musicDir, 'tracks');
+            const destDir = join(musicDir, 'tracks');
             await storage.ensureDir(destDir);
-            let destPath = path.join(destDir, sanitizeFilename(`${trackTitle}.m4a`));
-            const ext = path.extname(destPath);
+            let destPath = join(destDir, sanitizeFilename(`${trackTitle}.m4a`));
+            const ext = extname(destPath);
             const base = destPath.slice(0, -ext.length);
             let counter = 1;
             while (await storage.pathExists(destPath)) {
