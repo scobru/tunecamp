@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.1] - 2026-07-05
+
+### Fixed
+- **Localized/ripped SoundCloud (and other external) tracks kept streaming from the source instead of the local file.** `LocalizationService.localizeTrack()` sets `file_path` after downloading but never clears the old `external_id`/`url`, and `MediaEngine.getStream()` checked those before checking `file_path` — so a ripped track was still re-resolved and proxied through the origin provider (visible as repeated `403`s from expired signed SoundCloud URLs). Local files now take priority over any leftover external reference.
+
 ## [2.16.0] - 2026-07-05
 
 ### Changed

@@ -115,26 +115,27 @@ export class MediaEngine {
       throw new NotFoundError("Track not found");
     }
 
-    // 1. Handle External IDs / Linked Tracks
+    // 1. Handle Google Drive
+    if (track.file_path?.startsWith("gdrive://")) {
+      return this.handleGDriveStream(track, options.range);
+    }
+
+    // 2. Handle Local Files (a localized/ripped track always wins over any
+    // leftover external_id/url from before it was downloaded)
+    if (track.file_path) {
+      const { trackPath, isLosslessFallback } = await this.resolveLocalPath(track);
+      if (trackPath) {
+        return this.handleLocalStream(trackPath, track, options, isLosslessFallback);
+      }
+    }
+
+    // 3. Handle External IDs / Linked Tracks
     const extId = track.external_id || track.url;
     if (extId && (extId.startsWith("ext:") || extId.startsWith("http://") || extId.startsWith("https://"))) {
       if (extId.startsWith("http://") || extId.startsWith("https://")) {
         return this.handleExternalStream(`ext:link:${extId}`, track, options.range);
       }
       return this.handleExternalStream(extId, track, options.range);
-    }
-
-    // 2. Handle Google Drive
-    if (track.file_path?.startsWith("gdrive://")) {
-      return this.handleGDriveStream(track, options.range);
-    }
-
-    // 3. Handle Local Files
-    if (track.file_path) {
-      const { trackPath, isLosslessFallback } = await this.resolveLocalPath(track);
-      if (trackPath) {
-        return this.handleLocalStream(trackPath, track, options, isLosslessFallback);
-      }
     }
 
     // 4. Handle Fallback to Streaming Providers
