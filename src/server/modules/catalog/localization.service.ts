@@ -114,9 +114,15 @@ export class LocalizationService {
         const localizedDir = path.join(this.musicDir, "localized");
         await fs.ensureDir(localizedDir);
 
+        const sanitizePathComp = (name: string, fallback: string): string => {
+            let safe = (name || fallback).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+            if (safe === '.' || safe === '..') safe = '_';
+            return safe || fallback;
+        };
+
         // Clean title for filename to avoid OS issues
-        const safeTitle = track.title.replace(/[<>:"/\\|?*]/g, '_');
-        const safeArtist = (track.artist_name || 'Unknown').replace(/[<>:"/\\|?*]/g, '_');
+        const safeTitle = sanitizePathComp(track.title, 'Untitled');
+        const safeArtist = sanitizePathComp(track.artist_name || '', 'Unknown');
         
         console.log(`🎬 [Localization] Localizing track ${trackId}: "${track.title}" from ${url} (Provider: ${track.service || 'unknown'})`);
 
@@ -184,9 +190,9 @@ export class LocalizationService {
                 finalAlbumTitle = track.album_title;
             }
 
-            const safeArtist = (track.artist_name || 'Unknown').replace(/[<>:"/\\|?*]/g, '_').trim();
-            const safeAlbum = finalAlbumTitle.replace(/[<>:"/\\|?*]/g, '_').trim();
-            const safeTitle = (track.title || 'Untitled').replace(/[<>:"/\\|?*]/g, '_').trim();
+            const safeArtist = sanitizePathComp(track.artist_name || '', 'Unknown');
+            const safeAlbum = sanitizePathComp(finalAlbumTitle, 'Unknown Album');
+            const safeTitle = sanitizePathComp(track.title || '', 'Untitled');
             const trackPrefix = track.track_num ? String(track.track_num).padStart(2, '0') + " - " : "";
 
             const relativePath = path.posix.join("localized", safeArtist, safeAlbum, `${trackPrefix}${safeTitle}.${actualExt}`);
