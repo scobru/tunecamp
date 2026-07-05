@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 concurrency:
@@ -69,3 +69,50 @@ jobs:
 
       - name: Build webapp (tsc + vite)
         run: npm run build -w webapp
+
+  # Promotion gate: `dev` is the integration branch. Once a push to `dev` passes
+  # both build/test jobs above (that's the "green" gate via `needs`), check how far
+  # `dev` is ahead of `main`. When it reaches PROMOTE_THRESHOLD commits, open a
+  # `dev → main` pull request so the batch can be reviewed and merged (released).
+  # Merging into `main` stays a human/automerge decision — this only prepares it.
+  promote:
+    name: Promote dev → main
+    needs: [server, webapp]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Open dev → main promotion PR when enough green commits accumulated
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # How many green commits must accumulate on `dev` beyond `main` before a
+          # promotion PR is opened. Bump this to release less often, lower it for more.
+          PROMOTE_THRESHOLD: "5"
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin main dev
+          AHEAD=$(git rev-list --count origin/main..origin/dev)
+          echo "dev is $AHEAD commit(s) ahead of main (threshold: $PROMOTE_THRESHOLD)."
+
+          if [ "$AHEAD" -lt "$PROMOTE_THRESHOLD" ]; then
+            echo "Below threshold — not promoting yet."
+            exit 0
+          fi
+
+          existing=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "Promotion PR #$existing is already open; it tracks dev automatically as new commits land."
+            exit 0
+          fi
+
+          gh pr create --base main --head dev \
+            --title "Promote dev → main ($AHEAD commits)" \
+            --body "Automated promotion: **dev** reached **$AHEAD** commits ahead of **main** with green CI (server + webapp). Review and merge to cut a release."
+          echo "Opened promotion PR dev → main."
