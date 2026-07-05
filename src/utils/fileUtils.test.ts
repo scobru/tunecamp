@@ -1,5 +1,8 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import path from 'path';
+import crypto from 'crypto';
+import fs from 'fs-extra';
+import os from 'os';
 import * as fileUtils from './fileUtils.js';
 
 describe('fileExists', () => {
@@ -111,5 +114,62 @@ describe('resolveSafePath', () => {
         // Thus, isSafePath('/', '/foo') returns false.
         const result = fileUtils.resolveSafePath('/', 'foo');
         expect(result).toBeNull();
+    });
+});
+
+describe('File Hashing', () => {
+    const tmpDir = path.join(os.tmpdir(), 'getFastFileHash-tests');
+
+    beforeAll(async () => {
+        await fs.mkdirp(tmpDir);
+    });
+
+    afterAll(async () => {
+        await fs.remove(tmpDir);
+    });
+
+    describe('getFileHash', () => {
+        test('should compute correct MD5 hash for a file', async () => {
+            const filePath = path.join(tmpDir, 'hash-test.txt');
+            const content = 'hello world';
+            await fs.writeFile(filePath, content);
+
+            const expectedHash = crypto.createHash('md5').update(content).digest('hex');
+            const hash = await fileUtils.getFileHash(filePath);
+
+            expect(hash).toBe(expectedHash);
+        });
+    });
+
+    describe('getFastFileHash', () => {
+        test('should fallback to full hash for small files (< 2MB)', async () => {
+            const filePath = path.join(tmpDir, 'small.txt');
+            const content = Buffer.alloc(1024 * 1024, 'a'); // 1MB
+            await fs.writeFile(filePath, content);
+
+            const expectedHash = crypto.createHash('md5').update(content).digest('hex');
+            const hash = await fileUtils.getFastFileHash(filePath);
+
+            expect(hash).toBe(expectedHash);
+        });
+
+        test('should hash head, tail, and size for large files (>= 2MB)', async () => {
+            const filePath = path.join(tmpDir, 'large.txt');
+            const head = Buffer.alloc(1024 * 1024, 'a'); // 1MB
+            const middle = Buffer.alloc(1024 * 1024, 'b'); // 1MB
+            const tail = Buffer.alloc(1024 * 1024, 'c'); // 1MB
+
+            await fs.writeFile(filePath, Buffer.concat([head, middle, tail]));
+
+            const expectedHash = crypto.createHash('md5')
+                .update(head)
+                .update(tail)
+                .update((3 * 1024 * 1024).toString())
+                .digest('hex');
+
+            const hash = await fileUtils.getFastFileHash(filePath);
+
+            expect(hash).toBe(expectedHash);
+        });
     });
 });
