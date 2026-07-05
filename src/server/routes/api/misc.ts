@@ -242,8 +242,8 @@ export function createMiscRoutes(container: ServiceContainer): Router {
                 return res.status(400).json({ error: "Invalid filename" });
             }
 
-            const mediaDir = path.resolve(config.musicDir, "assets", "posts");
-            const filePath = path.resolve(mediaDir, filename);
+            const mediaDir = path.resolve(path.join(config.musicDir, "assets", "posts"));
+            const filePath = path.resolve(path.join(mediaDir, filename));
 
             if (!filePath.startsWith(mediaDir + path.sep)) {
                 return res.status(400).json({ error: "Invalid filename" });
