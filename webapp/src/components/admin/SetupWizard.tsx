@@ -41,8 +41,8 @@ interface ProfilePreset {
 const PRESETS: Record<string, ProfilePreset> = {
   artist: {
     id: "artist",
-    name: "Artista Singolo",
-    description: "Ottimizzato per presentare la tua musica, vendere direttamente album/tracce e connetterti nel Fediverse.",
+    name: "Solo Artist",
+    description: "Optimized to showcase your music, sell albums/tracks directly and connect across the Fediverse.",
     gradient: "from-purple-500/20 to-pink-500/20 border-purple-500/30 hover:border-purple-500/60",
     icon: User,
     flags: {
@@ -56,18 +56,18 @@ const PRESETS: Record<string, ProfilePreset> = {
       listenerSelfPublish: false,
       mode: "label"
     },
-    taglineTemplate: "Sito ufficiale di [Nome Artista] — Musica e Contatti",
-    descTemplate: "Benvenuto nel mio spazio musicale indipendente. Ascolta le mie ultime uscite, acquista i brani in formato digitale e connettiti con me sui social.",
+    taglineTemplate: "[Artist Name]'s official site — Music & Contact",
+    descTemplate: "Welcome to my independent music space. Listen to my latest releases, buy tracks in digital format and connect with me on social.",
     nextSteps: [
-      "Carica il tuo primo album o singolo nella sezione Releases",
-      "Configura Stripe o il tuo wallet Web3 per ricevere i pagamenti direttamente",
-      "Personalizza la grafica del sito (Colori, Font, Cover e Loghi)"
+      "Upload your first album or single in the Releases section",
+      "Set up Stripe or your Web3 wallet to receive payments directly",
+      "Customize the site's look (Colors, Fonts, Covers and Logos)"
     ]
   },
   label: {
     id: "label",
-    name: "Etichetta Discografica",
-    description: "Gestisci un roster di artisti, pubblica release sotto diversi profili artista e vendi musica dallo store centrale.",
+    name: "Record Label",
+    description: "Manage a roster of artists, publish releases under different artist profiles and sell music from the central store.",
     gradient: "from-blue-500/20 to-cyan-500/20 border-blue-500/30 hover:border-blue-500/60",
     icon: Layers,
     flags: {
@@ -81,18 +81,18 @@ const PRESETS: Record<string, ProfilePreset> = {
       listenerSelfPublish: false,
       mode: "label"
     },
-    taglineTemplate: "[Nome Label] — Etichetta Indipendente",
-    descTemplate: "Catalogo ufficiale di [Nome Label]. Scopri gli artisti del nostro roster, ascolta le ultime novità e supporta la musica indipendente acquistando dallo store.",
+    taglineTemplate: "[Label Name] — Independent Label",
+    descTemplate: "Official catalog of [Label Name]. Discover the artists on our roster, listen to the latest releases and support independent music by buying from the store.",
     nextSteps: [
-      "Crea i profili artista per il roster dalla sezione Users",
-      "Carica i primi album associandoli ai rispettivi artisti",
-      "Configura le credenziali di pagamento per avviare le vendite"
+      "Create artist profiles for your roster from the Users section",
+      "Upload the first albums and link them to their respective artists",
+      "Set up your payment credentials to start selling"
     ]
   },
   curator: {
     id: "curator",
-    name: "Curatore Musicale",
-    description: "Trova musica da fonti esterne (Dig), organizza playlist, interagisci con la community sul board.",
+    name: "Music Curator",
+    description: "Find music from external sources (Dig), organize playlists, and interact with the community on the board.",
     gradient: "from-amber-500/20 to-orange-500/20 border-amber-500/30 hover:border-amber-500/60",
     icon: Compass,
     flags: {
@@ -106,18 +106,18 @@ const PRESETS: Record<string, ProfilePreset> = {
       listenerSelfPublish: true,
       mode: "community"
     },
-    taglineTemplate: "[Nome Curatore] — Playlist, Scoperte e Consigli",
-    descTemplate: "Spazio di condivisione e scoperta musicale curato da [Nome Curatore]. Scopri nuove tracce indipendenti e partecipa alla discussione sul board.",
+    taglineTemplate: "[Curator Name] — Playlists, Discoveries & Recommendations",
+    descTemplate: "A space for sharing and discovering music curated by [Curator Name]. Discover new independent tracks and join the discussion on the board.",
     nextSteps: [
-      "Apri le registrazioni e invita gli utenti a iscriversi",
-      "Esplora archivi esterni con la funzione Dig e importa tracce consigliate",
-      "Inizia a comporre le tue prime playlist pubbliche"
+      "Open registrations and invite users to sign up",
+      "Explore external archives with the Dig feature and import recommended tracks",
+      "Start putting together your first public playlists"
     ]
   },
   streamer: {
     id: "streamer",
     name: "Web Radio / Streamer",
-    description: "Concentrato sulla trasmissione audio in tempo reale, live set, radio no-stop e interazione live.",
+    description: "Focused on real-time audio broadcasting, live sets, non-stop radio and live interaction.",
     gradient: "from-emerald-500/20 to-teal-500/20 border-emerald-500/30 hover:border-emerald-500/60",
     icon: Radio,
     flags: {
@@ -131,12 +131,12 @@ const PRESETS: Record<string, ProfilePreset> = {
       listenerSelfPublish: false,
       mode: "community"
     },
-    taglineTemplate: "[Nome Stazione] — Stazione Radio Indipendente",
-    descTemplate: "Radio in diretta live no-stop. Ascolta le nostre trasmissioni in streaming e partecipa alla chat del board in tempo reale.",
+    taglineTemplate: "[Station Name] — Independent Radio Station",
+    descTemplate: "Non-stop live radio. Listen to our streaming broadcasts and join the board chat in real time.",
     nextSteps: [
-      "Configura le credenziali Icecast o RTMP per avviare il flusso audio",
-      "Avvia la tua prima trasmissione DJ Set dal pannello Radio",
-      "Pubblica il link della tua radio per invitare gli ascoltatori"
+      "Set up your Icecast or RTMP credentials to start the audio stream",
+      "Start your first DJ Set broadcast from the Radio panel",
+      "Share your radio link to invite listeners"
     ]
   }
 };
@@ -177,16 +177,16 @@ export const SetupWizard = () => {
     const isDefaultName = !currentName || currentName === "TuneCamp";
     const currentDesc = currentSettings?.siteDescription || "";
 
-    const nameToUse = isDefaultName ? (id === "artist" ? "Mio Nome Artista" : id === "label" ? "Mia Label Discografica" : "Mia Community") : currentName;
+    const nameToUse = isDefaultName ? (id === "artist" ? "My Artist Name" : id === "label" ? "My Record Label" : "My Community") : currentName;
     setSiteName(nameToUse);
 
-    const descToUse = currentDesc || preset.descTemplate.replace("[Nome Artista]", nameToUse).replace("[Nome Label]", nameToUse).replace("[Nome Curatore]", nameToUse).replace("[Nome Stazione]", nameToUse);
+    const descToUse = currentDesc || preset.descTemplate.replace("[Artist Name]", nameToUse).replace("[Label Name]", nameToUse).replace("[Curator Name]", nameToUse).replace("[Station Name]", nameToUse);
     setSiteDescription(descToUse);
   };
 
   const handleNextStep = () => {
     if (step === 1 && !profile) {
-      setErrorMsg("Seleziona un profilo per continuare.");
+      setErrorMsg("Select a profile to continue.");
       return;
     }
     setErrorMsg("");
@@ -208,28 +208,28 @@ export const SetupWizard = () => {
     // Comparison logic: Warn if currently visible/enabled (value false for hide, true for enabled),
     // but proposed is hidden/disabled (value true for hide, false for enabled).
     if (flagsConfig.hideStore && !isTrue(currentSettings.hideStore)) {
-      warnings.push("Lo Store verrà disattivato (nasconde il catalogo e le vendite).");
+      warnings.push("The Store will be disabled (hides the catalog and sales).");
     }
     if (flagsConfig.hideLive && !isTrue(currentSettings.hideLive)) {
-      warnings.push("La sezione Live Streaming verrà disattivata.");
+      warnings.push("The Live Streaming section will be disabled.");
     }
     if (flagsConfig.hideNetwork && !isTrue(currentSettings.hideNetwork)) {
-      warnings.push("Le funzioni di Rete/Federazione verranno disattivate.");
+      warnings.push("Network/Federation features will be disabled.");
     }
     if (flagsConfig.hideDig && !isTrue(currentSettings.hideDig)) {
-      warnings.push("La sezione Dig (scavo audio) verrà disattivata.");
+      warnings.push("The Dig section (audio crate-digging) will be disabled.");
     }
     if (flagsConfig.hideDj && !isTrue(currentSettings.hideDj)) {
-      warnings.push("La funzionalità DJ / Web Radio verrà disattivata.");
+      warnings.push("The DJ / Web Radio feature will be disabled.");
     }
     if (!flagsConfig.allowPublicRegistration && isTrue(currentSettings.allowPublicRegistration)) {
-      warnings.push("Le registrazioni pubbliche verranno disattivate (solo gli amministratori possono aggiungere utenti).");
+      warnings.push("Public registrations will be disabled (only administrators can add users).");
     }
     if (!flagsConfig.listenerSelfPublish && isTrue(currentSettings.listenerSelfPublish)) {
-      warnings.push("La pubblicazione autonoma per i nuovi ascoltatori registrati verrà disattivata.");
+      warnings.push("Self-publishing for newly registered listeners will be disabled.");
     }
     if (currentSettings.mode && flagsConfig.mode !== currentSettings.mode) {
-      warnings.push(`La modalità del catalogo cambierà da '${currentSettings.mode}' a '${flagsConfig.mode}'.`);
+      warnings.push(`The catalog mode will change from '${currentSettings.mode}' to '${flagsConfig.mode}'.`);
     }
 
     return warnings;
@@ -262,7 +262,7 @@ export const SetupWizard = () => {
       setStep(4);
     } catch (e: any) {
       console.error(e);
-      setErrorMsg(e?.message || "Impossibile salvare le impostazioni.");
+      setErrorMsg(e?.message || "Unable to save settings.");
     } finally {
       setLoading(false);
     }
@@ -278,19 +278,19 @@ export const SetupWizard = () => {
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Sparkles className="text-primary animate-pulse" />
-            Configurazione Guidata TuneCamp
+            TuneCamp Setup Wizard
           </h2>
           <p className="text-sm opacity-60 mt-1">
-            Adatta l'istanza TuneCamp alle tue specifiche esigenze in pochi clic.
+            Tailor your TuneCamp instance to your specific needs in a few clicks.
           </p>
         </div>
 
         {/* DaisyUI Steps */}
         <ul className="steps steps-horizontal w-full md:w-auto">
-          <li className={`step text-xs ${step >= 1 ? "step-primary font-semibold" : ""}`}>Profilo</li>
-          <li className={`step text-xs ${step >= 2 ? "step-primary font-semibold" : ""}`}>Moduli</li>
-          <li className={`step text-xs ${step >= 3 ? "step-primary font-semibold" : ""}`}>Identità</li>
-          <li className={`step text-xs ${step >= 4 ? "step-primary font-semibold" : ""}`}>Fine</li>
+          <li className={`step text-xs ${step >= 1 ? "step-primary font-semibold" : ""}`}>Profile</li>
+          <li className={`step text-xs ${step >= 2 ? "step-primary font-semibold" : ""}`}>Modules</li>
+          <li className={`step text-xs ${step >= 3 ? "step-primary font-semibold" : ""}`}>Identity</li>
+          <li className={`step text-xs ${step >= 4 ? "step-primary font-semibold" : ""}`}>Done</li>
         </ul>
       </div>
 
@@ -304,7 +304,7 @@ export const SetupWizard = () => {
       {step === 1 && (
         <div className="space-y-6">
           <h3 className="text-lg font-semibold text-center md:text-left">
-            Che tipo di istanza TuneCamp stai configurando?
+            What kind of TuneCamp instance are you setting up?
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.values(PRESETS).map((p) => {
@@ -344,7 +344,7 @@ export const SetupWizard = () => {
               className="btn btn-primary shadow-md hover:shadow-lg gap-2"
               disabled={!profile}
             >
-              Avanti <ArrowRight size={16} />
+              Next <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -355,10 +355,10 @@ export const SetupWizard = () => {
         <div className="space-y-6">
           <div className="bg-base-200/50 p-5 border border-base-content/5 rounded-box glass-effect">
             <h3 className="text-lg font-bold flex items-center gap-2 mb-2">
-              <Cog className="text-secondary" /> Moduli abilitati per: {selectedPreset.name}
+              <Cog className="text-secondary" /> Modules enabled for: {selectedPreset.name}
             </h3>
             <p className="text-sm opacity-60 leading-relaxed">
-              Il profilo selezionato abilita o disabilita le seguenti funzionalità del sito. Puoi regolare le impostazioni iniziali qui.
+              The selected profile enables or disables the following site features. You can adjust the initial settings here.
             </p>
           </div>
 
@@ -367,7 +367,7 @@ export const SetupWizard = () => {
             <div className="alert alert-warning shadow-sm rounded-box border border-warning/20 bg-warning/5 p-4 flex flex-col items-start gap-2">
               <div className="flex items-center gap-2 font-bold text-sm text-warning-content">
                 <AlertTriangle size={18} />
-                <span>Attenzione: Stai modificando la configurazione corrente</span>
+                <span>Warning: You are changing the current configuration</span>
               </div>
               <ul className="list-disc pl-5 text-xs text-warning-content/80 space-y-1 mt-1">
                 {currentWarnings.map((w, idx) => (
@@ -379,13 +379,13 @@ export const SetupWizard = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="card bg-base-200/20 border border-base-content/5 p-5 rounded-box space-y-4">
-              <h4 className="font-bold text-sm opacity-60 tracking-wider uppercase border-b border-base-content/5 pb-2">Sezioni del Sito</h4>
-              
+              <h4 className="font-bold text-sm opacity-60 tracking-wider uppercase border-b border-base-content/5 pb-2">Site Sections</h4>
+
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">Store Catalogo</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Mostra gli album e abilita il checkout per le vendite</p>
+                    <span className="label-text font-semibold text-sm">Store Catalog</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Show albums and enable checkout for sales</p>
                   </div>
                   <input
                     type="checkbox"
@@ -400,7 +400,7 @@ export const SetupWizard = () => {
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
                     <span className="label-text font-semibold text-sm">Social Feed (AP)</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Gestisci interazioni Fediverse, post e timeline</p>
+                    <p className="text-[11px] opacity-50 mt-0.5">Manage Fediverse interactions, posts and timeline</p>
                   </div>
                   <input
                     type="checkbox"
@@ -414,8 +414,8 @@ export const SetupWizard = () => {
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">Rete & Federazione</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Mostra siti collegati ed elenco istanze federate</p>
+                    <span className="label-text font-semibold text-sm">Network & Federation</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Show linked sites and the list of federated instances</p>
                   </div>
                   <input
                     type="checkbox"
@@ -429,8 +429,8 @@ export const SetupWizard = () => {
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">DJ / Radio Web</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Abilita pianificazione radio, playlist live ed automazioni</p>
+                    <span className="label-text font-semibold text-sm">DJ / Web Radio</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Enable radio scheduling, live playlists and automations</p>
                   </div>
                   <input
                     type="checkbox"
@@ -443,13 +443,13 @@ export const SetupWizard = () => {
             </div>
 
             <div className="card bg-base-200/20 border border-base-content/5 p-5 rounded-box space-y-4">
-              <h4 className="font-bold text-sm opacity-60 tracking-wider uppercase border-b border-base-content/5 pb-2">Accesso & Altro</h4>
-              
+              <h4 className="font-bold text-sm opacity-60 tracking-wider uppercase border-b border-base-content/5 pb-2">Access & More</h4>
+
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
                     <span className="label-text font-semibold text-sm">Live Streaming (Icecast)</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Consente lo streaming in tempo reale di flussi esterni</p>
+                    <p className="text-[11px] opacity-50 mt-0.5">Allows real-time streaming of external audio feeds</p>
                   </div>
                   <input
                     type="checkbox"
@@ -463,8 +463,8 @@ export const SetupWizard = () => {
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">Dig (Scavo Esterno)</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Importa brani da database esterni o archivi condivisi</p>
+                    <span className="label-text font-semibold text-sm">Dig (External Crate-Digging)</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Import tracks from external databases or shared archives</p>
                   </div>
                   <input
                     type="checkbox"
@@ -478,8 +478,8 @@ export const SetupWizard = () => {
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">Registrazioni Aperte</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Consente a nuovi visitatori di registrare un account sul sito</p>
+                    <span className="label-text font-semibold text-sm">Open Registrations</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Lets new visitors register an account on the site</p>
                   </div>
                   <input
                     type="checkbox"
@@ -493,8 +493,8 @@ export const SetupWizard = () => {
               <div className="form-control">
                 <label className="label cursor-pointer justify-between py-1.5">
                   <div>
-                    <span className="label-text font-semibold text-sm">Pubblicazione Ascoltatori</span>
-                    <p className="text-[11px] opacity-50 mt-0.5">Gli ascoltatori registrati possono creare profili ed inserire release</p>
+                    <span className="label-text font-semibold text-sm">Listener Publishing</span>
+                    <p className="text-[11px] opacity-50 mt-0.5">Registered listeners can create profiles and post releases</p>
                   </div>
                   <input
                     type="checkbox"
@@ -509,10 +509,10 @@ export const SetupWizard = () => {
 
           <div className="flex justify-between pt-4">
             <button onClick={handlePrevStep} className="btn btn-ghost gap-2">
-              <ArrowLeft size={16} /> Indietro
+              <ArrowLeft size={16} /> Back
             </button>
             <button onClick={handleNextStep} className="btn btn-primary gap-2">
-              Avanti <ArrowRight size={16} />
+              Next <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -522,16 +522,16 @@ export const SetupWizard = () => {
       {step === 3 && (
         <div className="space-y-6">
           <div className="bg-base-200/50 p-5 border border-base-content/5 rounded-box glass-effect">
-            <h3 className="text-lg font-bold mb-2">Dettagli Identità del Sito</h3>
+            <h3 className="text-lg font-bold mb-2">Site Identity Details</h3>
             <p className="text-sm opacity-60 leading-relaxed">
-              Questi testi definiscono il brand della tua istanza TuneCamp. Li abbiamo pre-compilati con un modello per il profilo <strong>{selectedPreset.name}</strong>, ma puoi cambiarli ora.
+              These texts define the branding of your TuneCamp instance. We've pre-filled them with a template for the <strong>{selectedPreset.name}</strong> profile, but you can change them now.
             </p>
           </div>
 
           <div className="space-y-4">
             <div className="form-control">
               <label className="label" htmlFor="wizard-siteName">
-                <span className="label-text font-semibold text-sm">Nome del Sito</span>
+                <span className="label-text font-semibold text-sm">Site Name</span>
               </label>
               <input
                 id="wizard-siteName"
@@ -539,21 +539,21 @@ export const SetupWizard = () => {
                 className="input input-bordered w-full bg-base-300/30"
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
-                placeholder="es. Il mio Roster / La mia Radio"
+                placeholder="e.g. My Roster / My Radio"
                 required
               />
             </div>
 
             <div className="form-control">
               <label className="label" htmlFor="wizard-siteDesc">
-                <span className="label-text font-semibold text-sm">Descrizione Istanza (About)</span>
+                <span className="label-text font-semibold text-sm">Instance Description (About)</span>
               </label>
               <textarea
                 id="wizard-siteDesc"
                 className="textarea textarea-bordered w-full h-32 bg-base-300/30"
                 value={siteDescription}
                 onChange={(e) => setSiteDescription(e.target.value)}
-                placeholder="Descrivi la tua stazione radio, etichetta o profilo artista..."
+                placeholder="Describe your radio station, label or artist profile..."
                 required
               />
             </div>
@@ -561,7 +561,7 @@ export const SetupWizard = () => {
 
           <div className="flex justify-between pt-4">
             <button onClick={handlePrevStep} className="btn btn-ghost gap-2" disabled={loading}>
-              <ArrowLeft size={16} /> Indietro
+              <ArrowLeft size={16} /> Back
             </button>
             <button
               onClick={handleSaveSettings}
@@ -571,7 +571,7 @@ export const SetupWizard = () => {
               {loading ? (
                 <span className="loading loading-spinner loading-sm"></span>
               ) : (
-                <>Salva e Applica <Check size={16} /></>
+                <>Save & Apply <Check size={16} /></>
               )}
             </button>
           </div>
@@ -586,17 +586,17 @@ export const SetupWizard = () => {
               <CheckCircle2 size={40} className="animate-bounce" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-success-content">Configurazione completata con successo!</h3>
+              <h3 className="text-xl font-bold text-success-content">Setup completed successfully!</h3>
               <p className="text-sm opacity-80 mt-1">
-                L'istanza TuneCamp è stata impostata con il profilo <strong>{selectedPreset.name}</strong>.
+                Your TuneCamp instance has been set up with the <strong>{selectedPreset.name}</strong> profile.
               </p>
             </div>
           </div>
 
           <div className="card bg-base-200/40 border border-base-content/5 p-6 sm:p-8 rounded-box space-y-6">
             <div>
-              <h4 className="text-lg font-bold">Prossimi passi consigliati:</h4>
-              <p className="text-xs opacity-50 mt-0.5">Ecco alcune azioni suggerite per iniziare a usare la tua istanza:</p>
+              <h4 className="text-lg font-bold">Recommended next steps:</h4>
+              <p className="text-xs opacity-50 mt-0.5">Here are a few suggested actions to start using your instance:</p>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
@@ -619,7 +619,7 @@ export const SetupWizard = () => {
               }}
               className="btn btn-primary btn-wide shadow-md"
             >
-              Vai alla Dashboard
+              Go to Dashboard
             </button>
           </div>
         </div>

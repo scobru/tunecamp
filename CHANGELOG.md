@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.4] - 2026-07-05
+
+### Changed
+- **Admin Setup Wizard is now fully in English.** All user-facing copy in `SetupWizard.tsx` (the four instance-profile presets — Solo Artist, Record Label, Music Curator, Web Radio/Streamer — their descriptions, tagline/description templates and next-step checklists, plus every step heading, module toggle label, warning, button and success message) was previously hardcoded in Italian and has been translated to English. The template placeholders were updated accordingly (`[Nome Artista]` → `[Artist Name]`, etc.), so pre-filled site name/description still populate correctly. Behavior is unchanged.
+- **Contributor workflow: `dev` is now the integration branch.** `.claude/CLAUDE.md` git rules updated — all work branches off `dev` (not `main`), `dev` is kept synced with the latest `main`, and PRs target `dev`.
+
+### Added
+- **`docs/i18n-plan.md`** — an agile, sprint-based plan to internationalize the webapp so TuneCamp ships in at least two languages (English + Italian), including the recommended stack (`react-i18next`), resource-file layout, epics, a 3-sprint backlog with acceptance criteria, and guardrails to keep the two-language guarantee from rotting.
+
 ## [2.16.3] - 2026-07-05
 
 ### Fixed
