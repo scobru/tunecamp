@@ -12,16 +12,15 @@ import { Toaster } from "react-hot-toast";
 // Lazy-load all page components to reduce initial bundle size
 const Home = lazy(() => import("./pages/Home"));
 const Releases = lazy(() => import("./pages/Releases"));
+const Archive = lazy(() => import("./pages/Archive"));
 const Library = lazy(() => import("./pages/Library"));
 const AlbumDetails = lazy(() => import("./pages/AlbumDetails"));
 const Artists = lazy(() => import("./pages/Artists"));
 const ArtistDetails = lazy(() => import("./pages/ArtistDetails"));
-const Tracks = lazy(() => import("./pages/Tracks"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Search = lazy(() => import("./pages/Search"));
 const Network = lazy(() => import("./pages/Network"));
 const Support = lazy(() => import("./pages/Support"));
-const Playlists = lazy(() => import("./pages/Playlists"));
 const PlaylistDetails = lazy(() => import("./pages/PlaylistDetails"));
 const Post = lazy(() => import("./pages/Post")); // Special case
 const Wallet = lazy(() => import("./pages/Wallet"));
@@ -39,7 +38,6 @@ const ContentSearch = lazy(() => import("./pages/ContentSearch"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminReleaseEditor = lazy(() => import("./pages/AdminReleaseEditor"));
 const Files = lazy(() => import("./pages/Files"));
-const Favorites = lazy(() => import("./pages/Favorites"));
 const Tools = lazy(() => import("./pages/Tools"));
 const Store = lazy(() => import("./pages/Store"));
 const Dig = lazy(() => import("./pages/Dig"));
@@ -207,19 +205,25 @@ function App() {
             {/* Catalog & Library */}
             <Route path="/albums" element={<Releases />} />
             <Route path="/releases" element={<Releases />} />
+            <Route path="/archive" element={<ManagerOrRootGuard><Archive /></ManagerOrRootGuard>} />
             <Route path="/library" element={<Library />} />
             <Route path="/albums/:idOrSlug" element={<AlbumDetails />} />
             <Route path="/releases/:idOrSlug" element={<AlbumDetails />} />
+            <Route path="/releases/tracks" element={<Releases />} />
             <Route path="/artists" element={<Artists />} />
             <Route path="/artists/:idOrSlug" element={<ArtistDetails />} />
-            <Route path="/tracks" element={<Tracks />} />
+            <Route path="/tracks" element={<Navigate to="/releases/tracks" replace />} />
 
             {/* Features */}
             <Route path="/search" element={<Search />} />
-            <Route path="/playlists" element={<Playlists />} />
             <Route path="/playlists/:id" element={<PlaylistDetails />} />
-            <Route path="/my-playlists" element={<Navigate to="/playlists" replace />} />
+            
+            {/* Legacy Redirects */}
+            <Route path="/playlists" element={<Navigate to="/library" replace />} />
+            <Route path="/favorites" element={<Navigate to="/library?tab=tracks" replace />} />
+            <Route path="/my-playlists" element={<Navigate to="/library" replace />} />
             <Route path="/my-playlists/:id" element={<LegacyMyPlaylistRedirect />} />
+
             {/* Purchased tracks view is now in the User Profile Collection tab */}
             <Route path="/post/:slug" element={<Post />} />
             <Route path="/network" element={<ModuleGuard flag="hideNetwork"><Network /></ModuleGuard>} />
@@ -231,7 +235,6 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/favorites" element={<Favorites />} />
             <Route path="/my-music" element={<MyMusic />} />
             <Route path="/publish" element={<Publish />} />
             <Route path="/social" element={<ModuleGuard flag="hideSocial"><Social /></ModuleGuard>} />
