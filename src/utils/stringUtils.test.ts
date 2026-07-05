@@ -127,3 +127,32 @@ describe('StringUtils.generateUnlockCode', () => {
         });
     });
 });
+
+describe('StringUtils.normalizeUrl', () => {
+    test('should return empty string for null/undefined/empty input', () => {
+        // @ts-ignore
+        expect(StringUtils.normalizeUrl(null)).toBe('');
+        // @ts-ignore
+        expect(StringUtils.normalizeUrl(undefined)).toBe('');
+        expect(StringUtils.normalizeUrl('')).toBe('');
+    });
+
+    test('should return original URL if no trailing slash', () => {
+        const url = 'https://example.com/path';
+        expect(StringUtils.normalizeUrl(url)).toBe(url);
+    });
+
+    test('should remove a single trailing slash', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('https://example.com/path/')).toBe('https://example.com/path');
+    });
+
+    test('should remove multiple trailing slashes', () => {
+        expect(StringUtils.normalizeUrl('https://example.com//')).toBe('https://example.com');
+        expect(StringUtils.normalizeUrl('https://example.com///')).toBe('https://example.com');
+    });
+
+    test('should not affect slashes elsewhere in the URL', () => {
+        expect(StringUtils.normalizeUrl('https://example.com/foo/bar/')).toBe('https://example.com/foo/bar');
+    });
+});
