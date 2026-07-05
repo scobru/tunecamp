@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.14.5] - 2026-07-05
+
+### Changed
+- **ESLint debt triaged; lint added to CI.** `eslint` now runs in the webapp CI job (gating on errors). To make this feasible without touching ~560 pre-existing occurrences, `@typescript-eslint/no-explicit-any` and the React-Compiler-era hook rules (`exhaustive-deps`, `set-state-in-effect`, `immutability`, `static-components`, `refs`, `purity`) are downgraded to **warnings**; genuine hook misuse (`rules-of-hooks`) stays an error. `public/` (vendored bundles) is now ignored, and `_`-prefixed names are allowed unused. All 20 residual eslint **errors** fixed.
+
+### Fixed
+- **Glass Overlay Opacity showed `NaN%`** when `themeOverlayOpacity` was unset: the guard `Number(x) !== undefined` is always true (`Number()` never returns `undefined`), so the `0.85` fallback was dead. Now uses `Number.isFinite`.
+
 ## [2.14.4] - 2026-07-04
 
 ### Fixed

@@ -18,7 +18,6 @@ export function useVersionCheck(): boolean {
     const initialVersion = useRef<string | null>(null);
 
     useEffect(() => {
-        let timer: ReturnType<typeof setInterval>;
 
         async function check() {
             const version = await fetchVersion();
@@ -33,7 +32,7 @@ export function useVersionCheck(): boolean {
         }
 
         check();
-        timer = setInterval(check, POLL_INTERVAL_MS);
+        const timer = setInterval(check, POLL_INTERVAL_MS);
 
         function onVisibilityChange() {
             if (document.visibilityState === "visible") check();

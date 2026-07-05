@@ -42,7 +42,7 @@ export function AdminRadioPanel() {
             const s = await API.getRadioStatus();
             setStatus(s);
             if (s.name && !s.active) setForm(f => ({ ...f, name: s.name || f.name }));
-        } catch {}
+        } catch { /* ignore */ }
     };
 
     const loadPlaylists = async () => {
@@ -52,13 +52,13 @@ export function AdminRadioPanel() {
             // Genre playlists are virtual entries with a `genre:` id prefix.
             setGenrePlaylists(all.filter((p: any) => String(p.id).startsWith("genre:")));
             setUserPlaylists(all.filter((p: any) => !String(p.id).startsWith("genre:")));
-        } catch {}
+        } catch { /* ignore */ }
     };
 
     const toggle = (id: string) => {
         setSelected(prev => {
             const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
+            if (next.has(id)) next.delete(id); else next.add(id);
             return next;
         });
     };

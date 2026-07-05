@@ -41,7 +41,10 @@ const useColor = ColorThiefReact.useColor || ColorThiefReact.default?.useColor;
 const PlayerBackground = ({ coverUrl }: { coverUrl: string }) => {
   const setDominantColor = usePlayerStore(state => state.setDominantColor);
   
-  // Conditionally call hook if available
+  // `useColor` is a stable module-level binding (the color-thief interop is
+  // resolved once at import), so the condition never changes between renders —
+  // hook call order stays consistent. Safe despite the rules-of-hooks lint.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const colorResult = useColor ? useColor(coverUrl || "", "hex", {
     crossOrigin: "anonymous",
     quality: 10,
@@ -227,7 +230,7 @@ export const PlayerBar = () => {
             if (!isLocalOrigin) {
                 newSrc = `/api/proxy/stream?url=${encodeURIComponent(newSrc)}`;
             }
-        } catch (e) {
+        } catch {
             // If it's a broken absolute URL, try proxying anyway or leave as is
             console.warn("[Player] Invalid absolute stream URL:", newSrc);
         }

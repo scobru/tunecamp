@@ -39,7 +39,7 @@ export default function RadioPage() {
                 setPlaying(false);
                 destroyHls();
             }
-        } catch {}
+        } catch { /* ignore */ }
     };
 
     const destroyHls = () => {

@@ -34,7 +34,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
   }, [mine]);
 
   const filteredAndSortedTracks = useMemo(() => {
-    let result = tracks.filter(t => {
+    const result = tracks.filter(t => {
       if (!searchTerm) return true;
       const search = searchTerm.toLowerCase();
       return (
@@ -139,7 +139,7 @@ export const AdminTracksList = ({ mine }: { mine?: boolean }) => {
             try {
               await API.localizeTrack(id);
               success++;
-            } catch (e) {
+            } catch {
               failed++;
             }
           })

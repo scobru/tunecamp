@@ -9,6 +9,6 @@ export function sanitizeHtml(html: string): string {
         ],
         ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'class', 'src', 'alt'],
         ALLOW_DATA_ATTR: false, // Prevent custom data attributes unless needed
-        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i // Allow data URIs specifically for dompurify if requested or rely on DOMPurify defaults which allow data URIs for images. DOMPurify allows data URIs by default.
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i // Allow data URIs specifically for dompurify if requested or rely on DOMPurify defaults which allow data URIs for images. DOMPurify allows data URIs by default.
     });
 }
