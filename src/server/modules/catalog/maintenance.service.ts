@@ -672,7 +672,7 @@ export class MaintenanceService {
                 if (pathRepairs.length > 0) {
                     repairedCount += this.repo.updateTrackPaths(pathRepairs);
                 }
-            })();
+            });
 
             if (repairedCount > 0) {
                 console.log(`✅ [Maintenance] Repaired ${repairedCount} track paths.`);
