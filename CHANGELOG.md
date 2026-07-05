@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.3] - 2026-07-05
+
+### Fixed
+- **Releases with a digit-prefixed slug showed the wrong cover on the Network page (and to federated peers), while looking correct on the instance.** The network feed and the federation catalog request covers by release slug (`/api/albums/<slug>/cover`), but that endpoint resolved the parameter with `parseInt` — so a slug like `6avant` was truncated to `6` and matched a *different* album by numeric ID (typically a private library album, whose cover/track artwork was then served). The endpoint now only takes the numeric-ID path for all-digit parameters (same strict `/^\d+$/` check already used by `/api/releases/:id/cover` and `DiscoveryService.getAlbumForUser`), falling back to slug lookup otherwise. Instance pages were unaffected because they resolve covers by numeric ID or via `/api/releases/...`.
+
 ## [2.16.2] - 2026-07-05
 
 ### Fixed

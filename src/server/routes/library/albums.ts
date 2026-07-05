@@ -266,8 +266,10 @@ export function createAlbumsRoutes(container: ServiceContainer): Router {
             }
 
             let album = null;
-            albumId = parseInt(param, 10);
-            if (!isNaN(albumId)) {
+            // Strict numeric test: parseInt would truncate digit-prefixed slugs
+            // ("6avant" -> 6) and serve another library album's cover.
+            if (/^\d+$/.test(param)) {
+                albumId = parseInt(param, 10);
                 album = library.getAlbum(albumId) || library.getRelease(albumId);
             }
             if (!album) {
