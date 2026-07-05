@@ -290,7 +290,7 @@ export async function startServer(config: ServerConfig): Promise<void> {
     const discoveryService = new DiscoveryService(database, openRouterService, metadataService);
     const digService = new DigService(database);
 
-    const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH);
+    const localizationService = new LocalizationService(database, catalogService, config.musicDir, process.env.YOUTUBE_COOKIES_PATH, undefined, streamingService);
 
     if (config.gdriveClientId && config.gdriveClientSecret) {
         const dbPublicUrl = database.getSetting("publicUrl");

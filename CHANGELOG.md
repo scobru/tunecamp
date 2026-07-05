@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.2] - 2026-07-05
+
+### Fixed
+- **Ripping a Bandcamp track imported via "Import from Bandcamp" failed with `410 Gone`.** `AdminReleaseEditor`'s Bandcamp-release import staged tracks using the signed, short-lived `t*.bcbits.com` stream link returned by `extractBandcampMetadata` as the track's permanent `url` — that link expires (embedded `ts=` timestamp), so localization later re-downloaded an already-dead URL. `extractBandcampMetadata` now also returns each track's durable page URL (from Bandcamp's `title_link`), and the importer stores that instead. As a safety net, `LocalizationService` now detects an expired-style `bcbits.com/stream/` URL on any existing track and re-resolves a fresh stream URL via the streaming provider before downloading, instead of retrying the stale one.
+
 ## [2.16.1] - 2026-07-05
 
 ### Fixed

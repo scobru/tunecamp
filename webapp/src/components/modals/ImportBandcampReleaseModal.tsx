@@ -9,7 +9,7 @@ export interface BandcampReleaseMetadata {
   date?: string;
   cover?: string;
   genre?: string;
-  tracks?: { title: string; duration: number; streamUrl?: string; position: number }[];
+  tracks?: { title: string; duration: number; streamUrl?: string; url?: string; position: number }[];
   url?: string;
 }
 
