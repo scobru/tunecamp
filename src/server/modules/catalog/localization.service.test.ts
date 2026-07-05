@@ -334,6 +334,21 @@ describe('LocalizationService', () => {
         });
     });
 
+    test('should prevent path traversal in track metadata', async () => {
+        mockDb.getTrack.mockReturnValueOnce({
+            id: 1,
+            service: 'youtube',
+            external_id: 'test_id',
+            title: 'Test Song',
+            artist_name: '..',
+            album_title: '..'
+        });
+        mockReaddir.mockResolvedValue(['temp_1.m4a'] as never);
+        const service = new LocalizationService(mockDb, mockCatalog, '/music');
+
+        await expect(service.localizeTrack(1)).rejects.toThrow("Localization failed: Invalid path traversal detected in track metadata");
+    });
+
     test('should handle missing album from database gracefully', async () => {
         mockDb.getTrack.mockReturnValueOnce({
             id: 1,
