@@ -116,6 +116,61 @@ describe('Release Routes - Creation and Publishing', () => {
         expect(mockPublishingService.syncRelease).toHaveBeenCalledWith(newReleaseId);
     });
 
+    test('POST /releases: an Admin can assign the release to another user (owner_id)', async () => {
+        const newReleaseId = 321;
+        (mockDatabase.createRelease as jest.Mock).mockReturnValue(newReleaseId);
+        (mockDatabase.getRelease as jest.Mock).mockReturnValue({ id: newReleaseId, title: 'Owned Album', visibility: 'private' });
+
+        const response = await request(app)
+            .post('/releases')
+            .send({ title: 'Owned Album', visibility: 'private', artist_id: 1, owner_id: 42 });
+
+        expect(response.status).toBe(201);
+        const createCallArgs = (mockDatabase.createRelease as jest.Mock).mock.calls[0][0] as any;
+        // Admin has MANAGE_ALL_CONTENT, so the requested owner is honored.
+        expect(createCallArgs.owner_id).toBe(42);
+    });
+
+    test('POST /releases: a non-privileged publisher cannot reassign ownership — owner_id is forced to self', async () => {
+        const newReleaseId = 322;
+        (mockDatabase.createRelease as jest.Mock).mockReturnValue(newReleaseId);
+        (mockDatabase.getRelease as jest.Mock).mockReturnValue({ id: newReleaseId, title: 'Self Album', visibility: 'private' });
+        (mockDatabase.getReleasesByArtist as jest.Mock).mockReturnValue([]);
+        (mockDatabase.getReleasesByOwner as jest.Mock).mockReturnValue([]);
+
+        // Listener-Artist (role 'user') with a linked artist may publish, but must
+        // never be able to set owner_id to someone else.
+        const userApp = express();
+        userApp.use(express.json());
+        userApp.use((req: any, _res, next) => {
+            req.isAdmin = false;
+            req.isSuperUser = false;
+            req.isActive = true;
+            req.role = 'user';
+            req.userId = 7;
+            req.artistId = 1;
+            req.context = { role: 'user' as any, userId: 7, artistId: 1 };
+            next();
+        });
+        userApp.use('/releases', createReleaseRouter({
+            database: mockDatabase,
+            library: mockDatabase,
+            scannerService: mockScanner,
+            publishingService: mockPublishingService,
+            authService: mockAuthService,
+            musicDir
+        } as any));
+
+        const response = await request(userApp)
+            .post('/releases')
+            .send({ title: 'Self Album', visibility: 'private', artist_id: 1, owner_id: 999 });
+
+        expect(response.status).toBe(201);
+        const createCallArgs = (mockDatabase.createRelease as jest.Mock).mock.calls[0][0] as any;
+        // The forged owner_id (999) is ignored; ownership stays with the creator (7).
+        expect(createCallArgs.owner_id).toBe(7);
+    });
+
     test('GET /releases includes releases linked to the user\'s artist profile (not just owner_id)', async () => {
         // A release linked to the user's artist profile but with no owner_id —
         // e.g. created by an admin/import for that artist. It is private, so it
