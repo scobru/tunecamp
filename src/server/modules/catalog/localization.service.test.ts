@@ -346,7 +346,9 @@ describe('LocalizationService', () => {
         mockReaddir.mockResolvedValue(['temp_1.m4a'] as never);
         const service = new LocalizationService(mockDb, mockCatalog, '/music');
 
-        await expect(service.localizeTrack(1)).rejects.toThrow("Localization failed: Invalid path traversal detected in track metadata");
+        await service.localizeTrack(1);
+        // The file path should be safely replaced with underscores instead of ..
+        expect(mockDb.updateTrack).toHaveBeenCalledWith(1, expect.objectContaining({ file_path: expect.stringMatching(/localized\/_\/_\/Test Song\.m4a/) }));
     });
 
     test('should handle missing album from database gracefully', async () => {
