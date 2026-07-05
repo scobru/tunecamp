@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { create } from 'xmlbuilder2';
 import path from 'path';
-import fs from 'fs-extra';
-import { resolveSafePath } from '../../../utils/fileUtils.js';
+import { resolveSafePath, fileExists } from '../../../utils/fileUtils.js';
 import { getPlaceholderSVG } from '../../../utils/audioUtils.js';
 import type { DatabaseService, Track } from '../../core/database.js';
 import type { AuthService } from '../../modules/auth/auth.service.js';
@@ -298,12 +297,12 @@ export const createSubsonicRouter = (container: ServiceContainer): Router => {
             }
             const sanitizedImagePath = imagePath.replace(/^@@[a-z0-9]+\\?/, "").replace(/\\/g, "/").replace(/\/+/g, "/");
             let fullPath = resolveSafePath(musicDir, sanitizedImagePath);
-            if (!fullPath || !await fs.pathExists(fullPath)) {
+            if (!fullPath || !await fileExists(fullPath)) {
                 const projectRoot = path.dirname(musicDir);
                 const altPath = resolveSafePath(projectRoot, sanitizedImagePath);
-                if (altPath && await fs.pathExists(altPath)) fullPath = altPath;
+                if (altPath && await fileExists(altPath)) fullPath = altPath;
             }
-            if (fullPath && await fs.pathExists(fullPath)) {
+            if (fullPath && await fileExists(fullPath)) {
                 res.setHeader('Cache-Control', 'public, max-age=86400');
                 return res.sendFile(fullPath);
             }

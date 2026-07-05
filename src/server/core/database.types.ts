@@ -585,7 +585,7 @@ export interface LibraryManager {
     getTrackPriceFromRelease(releaseId: number, trackId: number): { price: number, price_usdc: number, currency: string, title: string } | undefined;
     getTracksSummaryByReleaseId(releaseId: number): Track[];
     getTrackByHash(hash: string): Track | undefined;
-    mergeTracks(fromId: number, toId: number): void;
+    mergeTracks(fromId: number | number[], toId: number): void;
     getAllTracks(whereClause?: string, params?: any[]): Track[];
     iterateTracks(whereClause?: string, params?: any[]): IterableIterator<Track>;
     updateTrackDeep(

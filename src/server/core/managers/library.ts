@@ -166,7 +166,7 @@ export function createLibraryManager(
         getTrackPriceFromRelease: (rid: number, tid: number) => releaseTrackRepository.getPriceFromRelease(rid, tid),
         getTracksSummaryByReleaseId: (id: number) => trackRepository.getByReleaseId(id),
         getTrackByHash: (h: string) => trackRepository.getByHash(h) as any,
-        mergeTracks: (f: number, t: number) => { const target = trackRepository.getById(t); if (target) trackRepository.merge(f, t, target.file_path || ""); },
+        mergeTracks: (f: number | number[], t: number) => { const target = trackRepository.getById(t); if (target) trackRepository.merge(f, t, target.file_path || ""); },
         getAllTracks: () => trackRepository.getAll(),
         *iterateTracks(w?: string, p: any[] = []) {
             const it = db.prepare(w ? `SELECT id FROM tracks WHERE ${w}` : "SELECT id FROM tracks").iterate(...p);

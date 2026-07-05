@@ -5,7 +5,6 @@ import path from "path";
 import os from "os";
 import fs from "fs-extra";
 import type { ServiceContainer } from "../../core/container.js";
-import { createAuthMiddleware } from "../../middleware/auth.js";
 import { validatePassword } from "../../common/validators.js";
 import { VisibilityGuardian, Capability, UserRole, VisibilityProfile } from "../../common/visibility.js";
 
@@ -48,9 +47,6 @@ export function createAdminRoutes(container: ServiceContainer): Router {
     const rssService = createRssService(database);
     const router = Router();
     router.use(json({ limit: "10mb" }));
-
-
-    const authMiddleware = createAuthMiddleware(authService);
 
     /**
      * Restriction middleware: prevent restricted users from making changes via admin routes

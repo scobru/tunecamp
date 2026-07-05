@@ -406,58 +406,62 @@ export class TrackRepository {
         })();
     }
 
-    merge(fromId: number, toId: number, targetFilePath: string): void {
+    merge(fromId: number | number[], toId: number, targetFilePath: string): void {
+        const fromIds = Array.isArray(fromId) ? fromId : [fromId];
+        if (fromIds.length === 0) return;
         this.db.transaction(() => {
-            try {
-                // Carry over metadata that the keeper is missing (don't overwrite existing values)
-                const from = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(fromId) as any;
-                const to = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(toId) as any;
-                if (from && to) {
-                    const carryFields = [
-                        'lossless_path', 'external_id', 'fingerprint', 'lyrics',
-                        'external_artwork', 'hash', 'file_hash', 'waveform',
-                        'year', 'genre', 'bitrate', 'sample_rate', 'duration',
-                        'mime_type', 'file_size', 'version', 'url', 'service',
-                        'artist_name', 'track_num', 'album_id', 'artist_id'
-                    ];
-                    const updates: string[] = [];
-                    const values: any[] = [];
-                    for (const f of carryFields) {
-                        const toVal = to[f];
-                        const fromVal = from[f];
-                        const toEmpty = toVal === null || toVal === undefined || toVal === '' || toVal === 0;
-                        const fromHas = fromVal !== null && fromVal !== undefined && fromVal !== '' && fromVal !== 0;
-                        if (toEmpty && fromHas) {
-                            updates.push(`${f} = ?`);
-                            values.push(fromVal);
+            for (const fId of fromIds) {
+                try {
+                    // Carry over metadata that the keeper is missing (don't overwrite existing values)
+                    const from = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(fId) as any;
+                    const to = this.db.prepare("SELECT * FROM tracks WHERE id = ?").get(toId) as any;
+                    if (from && to) {
+                        const carryFields = [
+                            'lossless_path', 'external_id', 'fingerprint', 'lyrics',
+                            'external_artwork', 'hash', 'file_hash', 'waveform',
+                            'year', 'genre', 'bitrate', 'sample_rate', 'duration',
+                            'mime_type', 'file_size', 'version', 'url', 'service',
+                            'artist_name', 'track_num', 'album_id', 'artist_id'
+                        ];
+                        const updates: string[] = [];
+                        const values: any[] = [];
+                        for (const f of carryFields) {
+                            const toVal = to[f];
+                            const fromVal = from[f];
+                            const toEmpty = toVal === null || toVal === undefined || toVal === '' || toVal === 0;
+                            const fromHas = fromVal !== null && fromVal !== undefined && fromVal !== '' && fromVal !== 0;
+                            if (toEmpty && fromHas) {
+                                updates.push(`${f} = ?`);
+                                values.push(fromVal);
+                            }
+                        }
+                        if (updates.length > 0) {
+                            values.push(toId);
+                            this.db.prepare(`UPDATE tracks SET ${updates.join(', ')} WHERE id = ?`).run(...values);
                         }
                     }
-                    if (updates.length > 0) {
-                        values.push(toId);
-                        this.db.prepare(`UPDATE tracks SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-                    }
-                }
 
-                this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id = ?").run(toId, fromId);
-                this.db.prepare("UPDATE play_history SET track_id = ? WHERE track_id = ?").run(toId, fromId);
-                this.db.prepare("UPDATE bookmarks SET track_id = ? WHERE track_id = ?").run(toId, String(fromId));
-                this.db.prepare("UPDATE starred_items SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
-                this.db.prepare("UPDATE item_ratings SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fromId));
-                // Re-point release_tracks that referenced the merged-away track
-                try {
-                    this.db.prepare("UPDATE OR IGNORE release_tracks SET track_id = ? WHERE track_id = ?").run(toId, fromId);
-                    this.db.prepare("DELETE FROM release_tracks WHERE track_id = ?").run(fromId);
-                } catch (e) {}
-                // Re-point playlist_tracks
-                try {
-                    this.db.prepare("UPDATE OR IGNORE playlist_tracks SET track_id = ? WHERE track_id = ?").run(toId, fromId);
-                    this.db.prepare("DELETE FROM playlist_tracks WHERE track_id = ?").run(fromId);
-                } catch (e) {}
-                this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(fromId);
-                this.db.prepare("DELETE FROM tracks WHERE id = ?").run(fromId);
-            } catch (err) {
-                console.error(`🚨 [TrackRepository] Merge failed during transaction (${fromId} -> ${toId}):`, err);
-                throw err; // Re-throw to ensure transaction rollback
+                    this.db.prepare("INSERT OR IGNORE INTO track_ownership (track_id, owner_id) SELECT ?, owner_id FROM track_ownership WHERE track_id = ?").run(toId, fId);
+                    this.db.prepare("UPDATE play_history SET track_id = ? WHERE track_id = ?").run(toId, fId);
+                    this.db.prepare("UPDATE bookmarks SET track_id = ? WHERE track_id = ?").run(toId, String(fId));
+                    this.db.prepare("UPDATE starred_items SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fId));
+                    this.db.prepare("UPDATE item_ratings SET item_id = ? WHERE item_id = ? AND item_type = 'track'").run(String(toId), String(fId));
+                    // Re-point release_tracks that referenced the merged-away track
+                    try {
+                        this.db.prepare("UPDATE OR IGNORE release_tracks SET track_id = ? WHERE track_id = ?").run(toId, fId);
+                        this.db.prepare("DELETE FROM release_tracks WHERE track_id = ?").run(fId);
+                    } catch (e) {}
+                    // Re-point playlist_tracks
+                    try {
+                        this.db.prepare("UPDATE OR IGNORE playlist_tracks SET track_id = ? WHERE track_id = ?").run(toId, fId);
+                        this.db.prepare("DELETE FROM playlist_tracks WHERE track_id = ?").run(fId);
+                    } catch (e) {}
+                    this.db.prepare("DELETE FROM track_ownership WHERE track_id = ?").run(fId);
+                    this.db.prepare("DELETE FROM tracks WHERE id = ?").run(fId);
+                } catch (err) {
+                    console.error(`🚨 [TrackRepository] Merge failed during transaction (${fId} -> ${toId}):`, err);
+                    throw err; // Re-throw to ensure transaction rollback
+                }
             }
         })();
     }

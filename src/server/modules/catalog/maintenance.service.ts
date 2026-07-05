@@ -654,16 +654,24 @@ export class MaintenanceService {
             console.log(`📦 [Maintenance] Repairing corrupted paths in database...`);
             const tracks = this.db.getAllTracks();
             const pathRepairs: any[] = [];
+            let repairedCount = 0;
+            const CHUNK_SIZE = 900;
             for (const track of tracks) {
                 const newPath = StringUtils.cleanPath(track.file_path);
                 const newLossless = StringUtils.cleanPath(track.lossless_path);
                 if (newPath !== track.file_path || newLossless !== track.lossless_path) {
                     pathRepairs.push({ id: track.id, path: newPath, lossless: newLossless });
+                    if (pathRepairs.length >= CHUNK_SIZE) {
+                        repairedCount += this.repo.updateTrackPaths(pathRepairs);
+                        pathRepairs.length = 0;
+                    }
                 }
             }
             if (pathRepairs.length > 0) {
-                const count = this.repo.updateTrackPaths(pathRepairs);
-                console.log(`✅ [Maintenance] Repaired ${count} track paths.`);
+                repairedCount += this.repo.updateTrackPaths(pathRepairs);
+            }
+            if (repairedCount > 0) {
+                console.log(`✅ [Maintenance] Repaired ${repairedCount} track paths.`);
             }
 
             const encodedRepairs: any[] = [];
@@ -714,12 +722,11 @@ export class MaintenanceService {
                             return a.id - b.id;
                         });
                         const keepId = dupTracks[0].id;
-                        for (const t of dupTracks.slice(1)) {
-                            try {
-                                this.db.mergeTracks(t.id, keepId);
-                                mergedCount++;
-                            } catch (err) {}
-                        }
+                        const mergeIds = dupTracks.slice(1).map((t: any) => t.id);
+                        try {
+                            this.db.mergeTracks(mergeIds, keepId);
+                            mergedCount += mergeIds.length;
+                        } catch (err) {}
                     }
                 });
             }
@@ -728,14 +735,20 @@ export class MaintenanceService {
             const bareTracks = this.repo.getBareTracks();
             let mergedBareCount = 0;
             this.db.transaction(() => {
+                const barePairs = new Map<number, number[]>();
                 for (const bare of bareTracks) {
                     const richMatch = this.repo.findRichMatchForBareTrack(bare.norm_title, bare.id);
                     if (richMatch) {
-                        try {
-                            this.db.mergeTracks(bare.id, richMatch.id);
-                            mergedBareCount++;
-                        } catch (err) {}
+                        const existing = barePairs.get(richMatch.id) || [];
+                        existing.push(bare.id);
+                        barePairs.set(richMatch.id, existing);
                     }
+                }
+                for (const [keepId, mergeIds] of barePairs.entries()) {
+                    try {
+                        this.db.mergeTracks(mergeIds, keepId);
+                        mergedBareCount += mergeIds.length;
+                    } catch (err) {}
                 }
             });
             if (mergedBareCount > 0) console.log(`✅ [Maintenance] Merged ${mergedBareCount} bare track records.`);
