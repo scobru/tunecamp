@@ -8,6 +8,8 @@ import {
 
 import { AdminUserModal } from "../components/modals/AdminUserModal";
 import { AdminSettingsPanel } from "../components/admin/AdminSettingsPanel";
+import { SetupWizard } from "../components/admin/SetupWizard";
+import { useSiteSettingsStore } from "../stores/useSiteSettingsStore";
 import { AdminUsersList } from "../components/admin/AdminUsersList";
 import { AdminReleasesList } from "../components/admin/AdminReleasesList";
 import { AdminMaintenancePanel } from "../components/admin/AdminMaintenancePanel";
@@ -47,8 +49,23 @@ const Admin = () => {
     | "peers"
     | "lab"
     | "reports"
+    | "setup"
   >(isRootAdmin ? "users" : "releases");
   const [stats, setStats] = useState<any>(null);
+
+  const { settings: siteSettings, fetchFlags } = useSiteSettingsStore();
+
+  useEffect(() => {
+    if (isRootAdmin) {
+      fetchFlags();
+    }
+  }, [isRootAdmin, fetchFlags]);
+
+  useEffect(() => {
+    if (isRootAdmin && siteSettings && !siteSettings.instanceProfile) {
+      setActiveTab("setup");
+    }
+  }, [isRootAdmin, siteSettings]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -161,6 +178,17 @@ const Admin = () => {
               onClick={() => setActiveTab("settings")}
             >
               Settings
+            </a>
+          </>
+        )}
+        {isRootAdmin && (
+          <>
+            <a
+              role="tab"
+              className={`tab ${activeTab === "setup" ? "tab-active" : ""}`}
+              onClick={() => setActiveTab("setup")}
+            >
+              Setup Wizard
             </a>
           </>
         )}
@@ -296,6 +324,7 @@ const Admin = () => {
         )}
 
         {activeTab === "settings" && isRootAdmin && <AdminSettingsPanel />}
+        {activeTab === "setup" && isRootAdmin && <SetupWizard />}
         {activeTab === "backup" && isRootAdmin && <BackupPanel />}
         {activeTab === "storage" && isAdmin && <StoragePanel />}
         {activeTab === "maintenance" && isAdmin && <AdminMaintenancePanel />}
