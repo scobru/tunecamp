@@ -53,7 +53,7 @@ export interface FederationProvider {
   getFollower(artistId: number, actorUri: string): Follower | undefined;
   addFollower(artistId: number, actorUri: string, inboxUri: string, sharedInboxUri?: string, followId?: string): void;
   acceptFollower(artistId: number, actorUri: string): void;
-  acceptPendingFollowers?(artistId: number): void;
+  acceptPendingFollowers(artistId: number): void;
   transaction?<T>(fn: () => T): T;
   rejectFollower(artistId: number, actorUri: string): void;
   removeFollower(artistId: number, actorUri: string): void;

@@ -27,6 +27,7 @@ describe('ActivityPubService', () => {
       updateArtistFollowingCount: jest.fn(),
       addFollowing: jest.fn(),
       acceptFollower: jest.fn(),
+      acceptPendingFollowers: jest.fn(),
       unfollowActor: jest.fn(),
       removeFollowing: jest.fn(),
     } as any;
