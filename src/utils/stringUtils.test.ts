@@ -127,3 +127,41 @@ describe('StringUtils.generateUnlockCode', () => {
         });
     });
 });
+
+describe('StringUtils.getFileExtension', () => {
+    test('should extract standard file extensions', () => {
+        expect(StringUtils.getFileExtension('song.mp3')).toBe('mp3');
+        expect(StringUtils.getFileExtension('image.jpg')).toBe('jpg');
+        expect(StringUtils.getFileExtension('document.pdf')).toBe('pdf');
+    });
+
+    test('should handle files with multiple dots', () => {
+        expect(StringUtils.getFileExtension('archive.tar.gz')).toBe('gz');
+        expect(StringUtils.getFileExtension('script.min.js')).toBe('js');
+        expect(StringUtils.getFileExtension('my.awesome.song.flac')).toBe('flac');
+    });
+
+    test('should convert extension to lowercase', () => {
+        expect(StringUtils.getFileExtension('song.MP3')).toBe('mp3');
+        expect(StringUtils.getFileExtension('IMAGE.JPG')).toBe('jpg');
+        expect(StringUtils.getFileExtension('mixed.CaSe.TxT')).toBe('txt');
+    });
+
+    test('should return empty string for files without extension', () => {
+        expect(StringUtils.getFileExtension('Makefile')).toBe('');
+        expect(StringUtils.getFileExtension('README')).toBe('');
+        expect(StringUtils.getFileExtension('my_file_name')).toBe('');
+    });
+
+    test('should return empty string for empty input or single dot', () => {
+        expect(StringUtils.getFileExtension('')).toBe('');
+        expect(StringUtils.getFileExtension('.')).toBe('');
+        expect(StringUtils.getFileExtension('hidden_file.')).toBe('');
+    });
+
+    test('should handle hidden files correctly', () => {
+        // Technically .gitignore has extension gitignore according to the function's logic
+        expect(StringUtils.getFileExtension('.gitignore')).toBe('gitignore');
+        expect(StringUtils.getFileExtension('.env.local')).toBe('local');
+    });
+});
