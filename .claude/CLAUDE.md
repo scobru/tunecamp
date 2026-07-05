@@ -2,12 +2,14 @@
 
 ## Git Workflow
 
-- **Never commit to `main` directly.** Always `git checkout -b feat/<name>` or `fix/<name>` first.
+- **`dev` is the integration branch — never commit to `main` directly, and never branch off `main` for changes.** All work branches off `dev`: `git checkout dev && git pull` first, then `git checkout -b feat/<name>` or `fix/<name>`.
+- **Keep `dev` synced with `main`.** Before starting new work (and before merging anything into `dev`), fast-forward `dev` from the latest `main` so it never drifts behind the released code: `git checkout dev && git fetch origin && git merge --ff-only origin/main` (or `git pull origin main`). Resolve conflicts on a topic branch, not on `dev` directly.
+- Feature/fix branches merge into `dev`; `dev` is what gets promoted to `main` for releases.
 - **Before every push:** update `CHANGELOG.md` and bump `package.json` version (semver):
   - `patch` (x.x.X) — bug fix, typo, no new feature
   - `minor` (x.X.0) — new backward-compatible feature
   - `major` (X.0.0) — breaking change, removed API, architectural shift
-- Open PR with `gh pr create` targeting `main`.
+- Open PR with `gh pr create` targeting `dev` (not `main`).
 - Multiple concurrent sessions may change branches or unstage the index — always verify current branch and commit atomically with explicit pathspec.
 
 ## Architecture Decisions
