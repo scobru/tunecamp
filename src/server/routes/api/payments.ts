@@ -195,14 +195,17 @@ export function createPaymentsRoutes(container: ServiceContainer): Router {
 
     // 1. Stripe Webhook (needs raw body, NO JSON PARSER)
     // This route MUST be mounted before the global express.json() in server.ts
-    router.post("/stripe/webhook", express.raw({ type: 'application/json', limit: '2mb' }), async (req, res) => {
+    router.post("/stripe/webhook", (req, res, next) => {
         const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
         const wSecret = identity.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
-
         if (!sKey || !wSecret) {
             return res.status(501).json({ error: "Stripe not configured" });
         }
+        next();
+    }, express.raw({ type: 'application/json', limit: '2mb' }), async (req, res) => {
+        const sKey = identity.getSetting("stripe_secret_key") || config.stripeSecretKey;
         const stripe = stripeClient(sKey);
+        const wSecret = identity.getSetting("stripe_webhook_secret") || config.stripeWebhookSecret;
         const sig = req.headers['stripe-signature'] as string;
         let event;
 
