@@ -127,3 +127,27 @@ describe('StringUtils.generateUnlockCode', () => {
         });
     });
 });
+
+describe('StringUtils.getFileExtension', () => {
+    test('should return empty string for filename with no extension', () => {
+        expect(StringUtils.getFileExtension('filename')).toBe('');
+        expect(StringUtils.getFileExtension('')).toBe('');
+    });
+
+    test('should extract simple extension and convert to lowercase', () => {
+        expect(StringUtils.getFileExtension('song.mp3')).toBe('mp3');
+        expect(StringUtils.getFileExtension('song.MP3')).toBe('mp3');
+        expect(StringUtils.getFileExtension('IMAGE.JPEG')).toBe('jpeg');
+    });
+
+    test('should extract extension from filename with multiple dots', () => {
+        expect(StringUtils.getFileExtension('archive.tar.gz')).toBe('gz');
+        expect(StringUtils.getFileExtension('my.song.v1.0.flac')).toBe('flac');
+    });
+
+    test('should handle edge cases like hidden files or trailing dots', () => {
+        expect(StringUtils.getFileExtension('.hidden')).toBe('hidden');
+        expect(StringUtils.getFileExtension('.gitignore')).toBe('gitignore');
+        expect(StringUtils.getFileExtension('file.')).toBe('');
+    });
+});
