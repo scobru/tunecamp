@@ -12,7 +12,7 @@
 const SAFE_WEIGHTS = "wght@400;500;600;700";
 
 /** Fonts that are bundled/loaded statically and need no Google Fonts request. */
-const STATIC_FONTS = new Set(["Outfit", "sans-serif", "JetBrains Mono"]);
+const STATIC_FONTS = new Set(["Outfit", "Inter", "sans-serif", "JetBrains Mono"]);
 
 const FONT_LINK_ID = "dynamic-google-font";
 

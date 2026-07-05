@@ -651,15 +651,15 @@ export const AdminSettingsPanel = () => {
                     </label>
                     <select
                       className="select select-bordered bg-base-300/50 w-full"
-                      value={settings.themeFont || "Outfit"}
+                      value={settings.themeFont || "Inter"}
                       onChange={(e) => {
                         const font = e.target.value;
                         setSettings({ ...settings, themeFont: font });
                         applyThemeFont(font);
                       }}
                     >
-                      <option value="Outfit">Outfit (Default)</option>
-                      <option value="Inter">Inter (Geometric & Clean)</option>
+                      <option value="Inter">Inter (Default)</option>
+                      <option value="Outfit">Outfit (Rounded & Friendly)</option>
                       <option value="Montserrat">Montserrat (Modern & Bold)</option>
                       <option value="Lora">Lora (Elegant & Classic Serif)</option>
                       <option value="Playfair Display">Playfair Display (Premium Serif)</option>

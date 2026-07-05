@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.0] - 2026-07-05
+
+### Changed
+- **Typography overhaul to match design mockup:**
+  - Switched default app font from Outfit to **Inter** (cleaner, more neutral geometric sans-serif); Outfit remains selectable in admin settings.
+  - Sidebar section headers toned down from `font-black` to `font-semibold` with reduced tracking for a lighter, more refined look.
+  - Sidebar brand name weight reduced from `font-black` to `font-bold`; byline uses `font-medium` with less opacity.
+  - Nav item labels now use `font-medium` for inactive items and `font-semibold` for the active item, improving the weight hierarchy.
+  - Hero section: added an instance eyebrow label (`SITENAME · Self-Hosted`) above the greeting in the style of the design mockup.
+  - Hero Resume button now shows the current track title (`Resume — Track Name`) when a track is loaded, matching the mockup.
+
 ## [2.15.2] - 2026-07-05
 
 ### Changed

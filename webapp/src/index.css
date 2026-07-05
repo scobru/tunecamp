@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap");
 @plugin "@tailwindcss/typography";
 @plugin "daisyui";
 
@@ -149,7 +149,7 @@
 }
 
 @theme {
-  --font-sans: "Outfit", sans-serif;
+  --font-sans: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
   --color-prominent: oklch(100% 0 0); /* Default to white for dark themes */

@@ -119,6 +119,12 @@ const Home = () => {
         )}
 
         <div className="relative z-10 max-w-2xl w-full">
+          <p className={clsx(
+            "text-[10px] font-semibold tracking-[0.25em] uppercase mb-3",
+            siteSettings?.coverImage ? "text-white/50" : "text-base-content/40"
+          )}>
+            {siteSettings?.siteName || "TuneCamp"} · Self-Hosted
+          </p>
           <h1 className={clsx(
             "text-3xl lg:text-5xl font-black tracking-tighter mb-3 leading-tight",
             siteSettings?.coverImage ? "text-white" : "text-prominent"
@@ -130,12 +136,14 @@ const Home = () => {
               "Your decentralized, self-hosted music streaming gateway."}
           </p>
           <div className="flex flex-wrap gap-3 items-center">
-            <button 
-              onClick={handleResume} 
-              className="btn btn-primary rounded-xl px-8 border-none flex items-center gap-2 shadow-level-2 shadow-primary/30 text-primary-content hover:-translate-y-1 transition-transform"
+            <button
+              onClick={handleResume}
+              className="btn btn-primary rounded-xl px-6 border-none flex items-center gap-2 shadow-level-2 shadow-primary/30 text-primary-content hover:-translate-y-1 transition-transform max-w-[260px]"
             >
-              {isPlaying ? <Pause fill="currentColor" size={20} /> : <Play fill="currentColor" size={20} />}
-              {isPlaying ? "Pause" : "Resume"}
+              {isPlaying ? <Pause fill="currentColor" size={18} className="flex-shrink-0" /> : <Play fill="currentColor" size={18} className="flex-shrink-0" />}
+              <span className="truncate">
+                {isPlaying ? "Pause" : currentTrack ? `Resume — ${currentTrack.title}` : "Resume"}
+              </span>
             </button>
             <button 
               onClick={handleShuffleLatest} 

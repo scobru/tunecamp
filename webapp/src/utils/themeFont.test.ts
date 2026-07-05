@@ -60,7 +60,7 @@ describe('applyThemeFont', () => {
     });
 
     it('reuses existing link tag for subsequent dynamic font calls', () => {
-        applyThemeFont('Inter');
+        applyThemeFont('Montserrat');
 
         const firstCallLinks = document.querySelectorAll('#dynamic-google-font');
         expect(firstCallLinks.length).toBe(1);
