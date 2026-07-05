@@ -366,13 +366,24 @@ export class CatalogService {
             if (albumObj) finalAlbumTitle = albumObj.title;
         }
 
-        const safeArtist = finalArtistName.replace(/[<>:"/\\|?*]/g, '_').trim();
-        const safeAlbum = finalAlbumTitle.replace(/[<>:"/\\|?*]/g, '_').trim();
-        const safeTitle = title.replace(/[<>:"/\\|?*]/g, '_').trim();
+        const sanitizePathComp = (name: string, fallback: string): string => {
+            let safe = (name || fallback).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim();
+            if (safe === '.' || safe === '..') safe = '_';
+            return safe || fallback;
+        };
+
+        const safeArtist = sanitizePathComp(finalArtistName, 'Unknown');
+        const safeAlbum = sanitizePathComp(finalAlbumTitle, 'Unknown Album');
+        const safeTitle = sanitizePathComp(title, 'Untitled');
         const trackPrefix = trackNum ? String(trackNum).padStart(2, '0') + " - " : "";
 
         const relativePath = path.posix.join("cloud_imports", safeArtist, safeAlbum, `${trackPrefix}${safeTitle}${ext}`);
         const finalPath = path.join(this.musicDir, relativePath);
+        const cloudImportsDirTarget = path.resolve(this.musicDir, "cloud_imports");
+
+        if (!path.resolve(finalPath).startsWith(cloudImportsDirTarget + path.sep)) {
+            throw new Error("Invalid path traversal detected in track metadata");
+        }
 
         // Move from temp path to final hierarchy path
         await this.storage.ensureDir(path.dirname(finalPath));
