@@ -199,7 +199,16 @@ export class PublishingService {
             // 1. Generate/Update release.yaml for portability and scanner recognition
             await this.generateReleaseYaml(release);
 
-            const isPublic = release.visibility === 'public' || release.visibility === 'unlisted';
+            // AP/federation visibility must use the SAME predicate as the public
+            // site catalog (VisibilityGuardian: visibility public/unlisted AND
+            // status='released'). Gating on visibility alone let a public-but-not-
+            // released release (draft/pending/awaiting_finalization) broadcast to
+            // ActivityPub + Mastodon while staying invisible on the site — the
+            // "published in AP, missing on the site" split. Requiring 'released'
+            // here keeps the two surfaces in lockstep and self-heals any release
+            // wrongly federated earlier (falls to the unpublish branch below).
+            const isPublic = (release.visibility === 'public' || release.visibility === 'unlisted')
+                && release.status === 'released';
 
             // ActivityPub Logic
             try {

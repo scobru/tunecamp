@@ -8,7 +8,15 @@ export class TheAudioDBProvider implements TuneCampProvider, MetadataProvider {
     version = "1.0.0";
     description = "Artist biographies and photos from TheAudioDB";
 
-    private apiKey = "2"; // Use free public key
+    private dbSettings: any;
+
+    public setSettings(dbSettings: any) {
+        this.dbSettings = dbSettings;
+    }
+
+    private get apiKey(): string {
+        return this.dbSettings?.getSetting("theaudiodb_api_key") || process.env.THEAUDIODB_API_KEY || "";
+    }
 
     async searchRelease(query: string): Promise<MetadataMatch[]> {
         // TheAudioDB is better for artists/albums than individual releases, 
@@ -25,7 +33,12 @@ export class TheAudioDBProvider implements TuneCampProvider, MetadataProvider {
     }
 
     async searchArtist(query: string): Promise<ArtistMetadata[]> {
-        const url = `https://www.theaudiodb.com/api/v1/json/${this.apiKey}/search.php?s=${encodeURIComponent(query)}`;
+        const key = this.apiKey;
+        if (!key) {
+            console.warn("[TheAudioDB] No API key configured. Skipping artist search.");
+            return [];
+        }
+        const url = `https://www.theaudiodb.com/api/v1/json/${key}/search.php?s=${encodeURIComponent(query)}`;
 
         try {
             const response = await fetch(url, {

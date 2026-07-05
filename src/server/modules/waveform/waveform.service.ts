@@ -1,4 +1,4 @@
-import path from 'path';
+import { join } from 'path';
 import fs from 'fs-extra';
 import { WaveformGenerator } from './waveform.generator.js';
 
@@ -7,13 +7,13 @@ export class WaveformService {
     private generator: WaveformGenerator;
 
     constructor(dataDir: string) {
-        this.cacheDir = path.join(dataDir, 'cache', 'waveforms');
+        this.cacheDir = join(dataDir, 'cache', 'waveforms');
         this.generator = new WaveformGenerator();
         fs.ensureDirSync(this.cacheDir);
     }
 
     async getWaveformSVG(trackId: number, filePath: string): Promise<string> {
-        const cacheFile = path.join(this.cacheDir, `${trackId}.svg`);
+        const cacheFile = join(this.cacheDir, `${trackId}.svg`);
 
         // Check cache first
         if (await fs.pathExists(cacheFile)) {

@@ -25,5 +25,3 @@ if (dsn) {
     });
     console.log("📟 Sentry crash reporting enabled");
 }
-
-const sentryEnabled = Boolean(dsn);

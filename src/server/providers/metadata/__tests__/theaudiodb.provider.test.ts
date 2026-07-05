@@ -9,6 +9,7 @@ beforeAll(async () => {
     (globalThis as any).fetch = fetch;
     ({ TheAudioDBProvider } = await import('../theaudiodb.provider.js'));
     provider = new TheAudioDBProvider();
+    provider.setSettings({ getSetting: (k: string) => k === 'theaudiodb_api_key' ? '2' : null });
 });
 
 
@@ -72,7 +73,17 @@ describe('TheAudioDBProvider', () => {
             expect(a.links).toEqual([]);
         });
 
-        test('url-encodes the search term and uses the public api key', async () => {
+        test('returns [] if api key is not set', async () => {
+            provider.setSettings(null);
+            const originalKey = process.env.THEAUDIODB_API_KEY;
+            delete process.env.THEAUDIODB_API_KEY;
+            expect(await provider.searchArtist('Sigur Rós')).toEqual([]);
+            expect(fetch).not.toHaveBeenCalled();
+            process.env.THEAUDIODB_API_KEY = originalKey;
+            provider.setSettings({ getSetting: (k: string) => k === 'theaudiodb_api_key' ? '2' : null });
+        });
+
+        test('url-encodes the search term and uses the configured api key', async () => {
             (fetch as any).mockResolvedValueOnce({ ok: true, json: async () => ({ artists: null }) });
             await provider.searchArtist('Sigur Rós');
             const url = (fetch as any).mock.calls[0][0] as string;

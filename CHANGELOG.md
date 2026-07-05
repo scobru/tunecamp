@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.17.0] - 2026-07-05
+## [2.17.2] - 2026-07-06
+
+### Fixed
+- **A release could federate to ActivityPub + Mastodon while staying invisible on the site ("published in AP, missing on the site").** `PublishingService.syncRelease` gated federation on visibility alone (`public`/`unlisted`), but the public site catalog also requires `status='released'` (`VisibilityGuardian`). So a release that was public but not yet released (`draft`/`pending`/`awaiting_finalization`) broadcast an AP note and cross-posted to Mastodon while never appearing on the site or in the federation catalog. `syncRelease` now uses the same predicate as the catalog (visibility public/unlisted **and** `status='released'`), so the two surfaces can no longer diverge. Any release wrongly federated earlier self-heals on its next sync: it falls to the unpublish branch, broadcasts a Delete and clears `published_to_ap`, then re-federates cleanly once actually released.
+
+## [2.17.1] - 2026-07-05
+
+### Changed
+- **CI now validates `dev` and auto-prepares releases to `main`.** The `CI` workflow runs on pushes to `dev` (not just `main` and PRs), so every commit landing on the integration branch is built and tested. A new `promote` job runs only after both the server and webapp jobs pass on a `dev` push (the "green" gate); once `dev` is at least `PROMOTE_THRESHOLD` commits (default 5) ahead of `main`, it opens a `dev → main` pull request so the batch can be reviewed and merged to cut a release. The threshold is a single env var at the top of the job; merging into `main` remains a human/automerge decision.
 
 ### Added
 - **Assign the owning user of a release in the admin release editor.** Previously a release's `owner_id` was always forced to whoever created it, so an admin/label creating a release on behalf of someone else stayed the sole owner and the actual user couldn't manage it. The editor now shows an **Owner (User)** selector (visible to Admins/Root Admins) that assigns the release to any user account; that user can then manage/edit it (`canManageItem` gates on `owner_id`). Choosing "Unassigned" on an existing release clears `owner_id` so management falls back to the linked artist.

@@ -112,8 +112,14 @@ export function createPeersRoutes(container: ServiceContainer): Router {
 
             const ct = remote.headers.get("content-type") || "";
             const ext = ct.includes("flac") ? "flac" : ct.includes("wav") ? "wav" : ct.includes("ogg") ? "ogg" : "mp3";
-            const base = `${artist || "Unknown Artist"} - ${title || "Track"}`.replace(/[<>:"/\\|?*]/g, "_");
+            let base = `${artist || "Unknown Artist"} - ${title || "Track"}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").trim();
+            if (base === '.' || base === '..') base = '_';
             const filePath = path.join(destDir, `${base}-${Date.now().toString(36)}.${ext}`);
+
+            if (!path.resolve(filePath).startsWith(path.resolve(destDir) + path.sep)) {
+                await drainResponse(remote);
+                return res.status(400).json({ error: "Invalid path traversal detected in track metadata" });
+            }
 
             await pipeline(Readable.fromWeb(remote.body as any), fs.createWriteStream(filePath));
 

@@ -230,6 +230,9 @@ export async function initMetadataService(db: DatabaseService): Promise<Metadata
     if ((discogsProvider as any).setSettings) {
         (discogsProvider as any).setSettings(db);
     }
+    if ((theaudiodbProvider as any).setSettings) {
+        (theaudiodbProvider as any).setSettings(db);
+    }
     await syncRegistryWithDatabase(metadataService.getRegistry(), db);
     return metadataService;
 }
