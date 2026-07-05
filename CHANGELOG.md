@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.15.1] - 2026-07-05
+
+### Fixed
+- **Home "Jump back in" row: blank covers, empty artist, dead play button.** The row reads full track objects from the player store (`recentlyPlayed`) but rendered them as a custom `{cover, artist, type}` shape — so covers/artist were blank and the play handler's `type` dispatch never matched (nothing happened on click). Now resolves the track cover (album/track endpoints), uses `artistName`, and plays the track directly via `playQueue`. (The fix landed just after #728 was squash-merged, so it missed that release.)
+
 ## [2.15.0] - 2026-07-04
 
 ### Changed
