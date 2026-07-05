@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.17.2] - 2026-07-05
+
+### Changed
+- **The `dev → main` promotion PR is now opened with an optional `PROMOTE_PAT` secret (fallback to `GITHUB_TOKEN`).** `main` is a protected branch; a promotion PR opened by the built-in `GITHUB_TOKEN` does not re-trigger `pull_request` CI on itself (GitHub's recursion guard), so it would stall if `main` requires status checks on the PR. The promote job now uses `secrets.PROMOTE_PAT` when present so the promotion PR runs CI normally, and transparently falls back to `GITHUB_TOKEN` when the secret is absent.
+
 ## [2.17.1] - 2026-07-05
 
 ### Changed

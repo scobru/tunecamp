@@ -91,7 +91,13 @@ jobs:
 
       - name: Open dev → main promotion PR when enough green commits accumulated
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Prefer a user PAT (secret `PROMOTE_PAT`) so the promotion PR triggers the
+          # normal `pull_request` CI on itself — required when `main`'s branch
+          # protection demands status checks on the PR. Falls back to the built-in
+          # GITHUB_TOKEN (PRs it opens do NOT re-trigger CI, GitHub's recursion guard),
+          # which is fine when `main` only requires reviews. PAT scope: Contents RW +
+          # Pull requests RW; add it under Settings → Secrets and variables → Actions.
+          GH_TOKEN: ${{ secrets.PROMOTE_PAT || secrets.GITHUB_TOKEN }}
           # How many green commits must accumulate on `dev` beyond `main` before a
           # promotion PR is opened. Bump this to release less often, lower it for more.
           PROMOTE_THRESHOLD: "5"
