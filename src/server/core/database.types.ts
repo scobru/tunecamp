@@ -540,6 +540,7 @@ export interface LibraryManager {
     getTracksByAlbumIds(albumIds: number[]): Track[];
     getRandomTracks(limit: number): Track[];
     createTrack(track: Omit<Track, "id" | "album_title" | "created_at">): number;
+    createTracks(tracks: Omit<Track, "id" | "album_title" | "created_at">[]): number[];
     updateTrack(id: number, data: Partial<Track>): void;
     updateTrackPath(id: number, path: string, albumId?: number | null): void;
     updateTrackLosslessPath(id: number, path: string | null): void;

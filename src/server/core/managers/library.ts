@@ -115,6 +115,13 @@ export function createLibraryManager(
         },
         getRandomTracks: (l: number) => trackRepository.getRandom(l),
         createTrack: (t: any) => { const tid = trackRepository.create(t); if (t.owner_id) trackRepository.addOwner(tid, t.owner_id); return tid; },
+        createTracks: (tracks: any[]) => {
+            const tids = trackRepository.createBatch(tracks);
+            for (let i = 0; i < tracks.length; i++) {
+                if (tracks[i].owner_id) trackRepository.addOwner(tids[i], tracks[i].owner_id);
+            }
+            return tids;
+        },
         updateTrack: (id: number, d: any) => trackRepository.update(id, d),
         updateTrackPath: (id: number, p: string, aid?: number | null) => trackRepository.update(id, { file_path: p, album_id: aid }),
         updateTrackLosslessPath: (id: number, p: string | null) => trackRepository.update(id, { lossless_path: p }),
