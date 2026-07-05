@@ -57,24 +57,11 @@ const Home = () => {
     return "Good evening";
   };
 
-  const handlePlayHistory = async (e: React.MouseEvent, item: any) => {
+  const handlePlayHistory = (e: React.MouseEvent, item: any) => {
     e.preventDefault();
-    if (item.type === 'track' || item.type === 'radio') {
-      try {
-        const data = await API.getTrack(item.trackId || item.id);
-        if (data) playQueue([data], 0);
-      } catch (err) { console.error(err); }
-    } else if (item.type === 'album') {
-      try {
-        const data = await API.getAlbum(item.id);
-        if (data && data.tracks) playQueue(data.tracks, 0);
-      } catch (err) { console.error(err); }
-    } else if (item.type === 'playlist') {
-      try {
-        const data = await API.getPlaylist(String(item.id));
-        if (data && data.tracks) playQueue(data.tracks, 0);
-      } catch (err) { console.error(err); }
-    }
+    // recentlyPlayed stores full track objects (see addRecentlyPlayed), so the
+    // item is already playable — enqueue it directly, same as currentTrack.
+    if (item) playQueue([item], 0);
   };
 
   useEffect(() => {
@@ -215,13 +202,13 @@ const Home = () => {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 lg:gap-6 opacity-90">
             {recentlyPlayed.slice(0, 8).map((item) => (
-              <div 
-                key={`${item.type}-${item.id}-${item.timestamp}`} 
+              <div
+                key={item.id}
                 onClick={(e) => handlePlayHistory(e, item)}
                 className="group relative flex flex-col gap-2 cursor-pointer"
               >
                 <div className="aspect-square rounded-xl overflow-hidden shadow-level-1 relative border border-base-content/5">
-                  <img src={item.cover || "/placeholder.png"} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png' }} />
+                  <img src={item.coverImage || item.coverUrl || (item.albumId ? API.getAlbumCoverUrl(item.albumId) : "") || (item.id ? API.getTrackCoverUrl(item.id) : "") || "/placeholder.png"} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png' }} />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                      <div className="btn btn-circle btn-primary btn-sm scale-0 group-hover:scale-100 transition-transform delay-75 shadow-level-2 border-none text-primary-content">
                         <Play fill="currentColor" size={16} />
@@ -230,7 +217,7 @@ const Home = () => {
                 </div>
                 <div className="px-1">
                   <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{item.title}</h3>
-                  <p className="text-xs opacity-60 truncate capitalize">{item.type} • {item.artist}</p>
+                  <p className="text-xs opacity-60 truncate">{item.artistName || item.artist || ""}</p>
                 </div>
               </div>
             ))}
