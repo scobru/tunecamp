@@ -237,12 +237,12 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         try {
             const filename = req.params.filename;
             // Retain original business logic enforcing a flat directory
-            if (filename.includes("/") || filename.includes("\\")) {
+            if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
                 return res.status(400).json({ error: "Invalid filename" });
             }
 
-            const mediaDir = path.resolve(config.musicDir, "assets", "posts");
-            const filePath = path.resolve(mediaDir, filename);
+            const mediaDir = path.resolve(path.join(config.musicDir, "assets", "posts"));
+            const filePath = path.resolve(path.join(mediaDir, filename));
 
             if (!filePath.startsWith(mediaDir + path.sep)) {
                 return res.status(400).json({ error: "Invalid filename" });
