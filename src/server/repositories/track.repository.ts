@@ -231,6 +231,94 @@ export class TrackRepository {
         return result.lastInsertRowid as number;
     }
 
+    createBatch(tracks: Omit<Track, "id" | "created_at" | "album_title">[]): number[] {
+        if (tracks.length === 0) return [];
+
+        const artistExistsStmt = this.db.prepare("SELECT 1 FROM artists WHERE id = ?");
+        const albumExistsStmt = this.db.prepare("SELECT 1 FROM albums WHERE id = ?");
+        const adminExistsStmt = this.db.prepare("SELECT 1 FROM admin WHERE id = ?");
+        const insertStmt = this.db.prepare(`
+            INSERT OR IGNORE INTO tracks (title, album_id, artist_id, owner_id, artist_name, track_num, duration, file_path, format, bitrate, sample_rate, price, price_usdc, price_usdt, currency, lossless_path, url, service, external_artwork, lyrics, hash, external_id, fingerprint, mime_type, file_size, file_hash, version, description, podcast_episode_num, podcast_season_num, podcast_episode_type, genre, year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        const validArtistIds = new Set<number>();
+        const invalidArtistIds = new Set<number>();
+        const validAlbumIds = new Set<number>();
+        const invalidAlbumIds = new Set<number>();
+        const validAdminIds = new Set<number>();
+        const invalidAdminIds = new Set<number>();
+
+        const insertedIds: number[] = [];
+
+        this.db.transaction(() => {
+            for (const track of tracks) {
+                let safeArtistId = track.artist_id;
+                if (safeArtistId !== null && safeArtistId !== undefined) {
+                    if (validArtistIds.has(safeArtistId)) {
+                        // valid
+                    } else if (invalidArtistIds.has(safeArtistId)) {
+                        safeArtistId = null;
+                    } else {
+                        if (artistExistsStmt.get(safeArtistId)) {
+                            validArtistIds.add(safeArtistId);
+                        } else {
+                            invalidArtistIds.add(safeArtistId);
+                            safeArtistId = null;
+                        }
+                    }
+                }
+
+                let safeAlbumId = track.album_id;
+                if (safeAlbumId !== null && safeAlbumId !== undefined) {
+                    if (validAlbumIds.has(safeAlbumId)) {
+                        // valid
+                    } else if (invalidAlbumIds.has(safeAlbumId)) {
+                        safeAlbumId = null;
+                    } else {
+                        if (albumExistsStmt.get(safeAlbumId)) {
+                            validAlbumIds.add(safeAlbumId);
+                        } else {
+                            invalidAlbumIds.add(safeAlbumId);
+                            safeAlbumId = null;
+                        }
+                    }
+                }
+
+                let safeOwnerId = track.owner_id;
+                if (safeOwnerId !== null && safeOwnerId !== undefined) {
+                    if (validAdminIds.has(safeOwnerId)) {
+                        // valid
+                    } else if (invalidAdminIds.has(safeOwnerId)) {
+                        safeOwnerId = null;
+                    } else {
+                        if (adminExistsStmt.get(safeOwnerId)) {
+                            validAdminIds.add(safeOwnerId);
+                        } else {
+                            invalidAdminIds.add(safeOwnerId);
+                            safeOwnerId = null;
+                        }
+                    }
+                }
+
+                const res = insertStmt.run(
+                    track.title, safeAlbumId, safeArtistId, safeOwnerId, track.artist_name || null,
+                    track.track_num, track.duration, track.file_path, track.format, track.bitrate,
+                    track.sample_rate, track.price || 0, track.price_usdc || 0, track.price_usdt || 0, track.currency || 'ETH',
+                    track.lossless_path || null, track.url || null, track.service || null,
+                    track.external_artwork || null, track.lyrics || null, track.hash || null, track.external_id || null, track.fingerprint || null,
+                    track.mime_type || 'audio/mpeg', track.file_size || 0, track.file_hash || null, track.version || null,
+                    track.description || null, track.podcast_episode_num || null, track.podcast_season_num || null, track.podcast_episode_type || 'full',
+                    (track as any).genre || null, (track as any).year || null
+                );
+
+                insertedIds.push(res.lastInsertRowid as number);
+            }
+        })();
+
+        return insertedIds;
+    }
+
     update(id: number, track: Partial<Track>): void {
         // Map camelCase keys to snake_case database column names
         const normalizedTrack: any = {};

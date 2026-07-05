@@ -788,6 +788,7 @@ export class MaintenanceService {
 
                         // Phase 2: Synchronous Database Insertions
                         this.db.transaction(() => {
+                            const tracksToInsert: any[] = [];
                             for (const data of parsedChunk) {
                                 if (!data) continue;
                                 const { file, metadata, hash } = data;
@@ -797,7 +798,7 @@ export class MaintenanceService {
                                     artistId = this.db.createArtist(artistName);
                                     artistMap.set(artistName.toLowerCase(), artistId);
                                 }
-                                this.db.createTrack({
+                                tracksToInsert.push({
                                     title: metadata.common.title || path.basename(file, path.extname(file)),
                                     album_id: null,
                                     artist_id: artistId,
@@ -818,6 +819,9 @@ export class MaintenanceService {
                                     price_usdc: 0,
                                     currency: 'ETH'
                                 });
+                            }
+                            if (tracksToInsert.length > 0) {
+                                this.db.createTracks(tracksToInsert);
                             }
                         });
                     }
