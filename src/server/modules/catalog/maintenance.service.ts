@@ -722,9 +722,9 @@ export class MaintenanceService {
                             return a.id - b.id;
                         });
                         const keepId = dupTracks[0].id;
-                        const mergeIds = dupTracks.slice(1).map((t: any) => t.id);
+                        const mergeIds = dupTracks.slice(1).map((t: any) => Number(t.id));
                         try {
-                            this.db.mergeTracks(mergeIds, keepId);
+                            if (mergeIds.length > 0) this.db.mergeTracks(mergeIds, keepId);
                             mergedCount += mergeIds.length;
                         } catch (err) {}
                     }
