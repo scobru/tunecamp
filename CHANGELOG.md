@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.17.1] - 2026-07-06
+
+### Fixed
+- **A release could federate to ActivityPub + Mastodon while staying invisible on the site ("published in AP, missing on the site").** `PublishingService.syncRelease` gated federation on visibility alone (`public`/`unlisted`), but the public site catalog also requires `status='released'` (`VisibilityGuardian`). So a release that was public but not yet released (`draft`/`pending`/`awaiting_finalization`) broadcast an AP note and cross-posted to Mastodon while never appearing on the site or in the federation catalog. `syncRelease` now uses the same predicate as the catalog (visibility public/unlisted **and** `status='released'`), so the two surfaces can no longer diverge. Any release wrongly federated earlier self-heals on its next sync: it falls to the unpublish branch, broadcasts a Delete and clears `published_to_ap`, then re-federates cleanly once actually released.
+
 ## [2.17.0] - 2026-07-05
 
 ### Added
