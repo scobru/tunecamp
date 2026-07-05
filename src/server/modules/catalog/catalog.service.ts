@@ -407,7 +407,7 @@ export class CatalogService {
             "themeFont", "themeBlur", "themeOverlayOpacity", "communityLink", "chatEnabled", "boardEnabled", "siteHandle",
             "hideLive", "hideStore", "hideSocial", "hideNetwork", "hideDig", "hideDj",
             "membershipMonthlyPrice", "peerEnabled", "peerAllowDownloads", "peerFederation",
-            "brandPrimary", "brandAccent"
+            "brandPrimary", "brandAccent", "instanceProfile"
         ];
         const res: any = {};
         settings.forEach(k => {
