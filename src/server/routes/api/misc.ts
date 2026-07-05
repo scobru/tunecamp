@@ -83,6 +83,7 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             // Path traversal via relative paths like `../../etc/passwd` will be blocked
             // Path traversal via absolute paths like `/etc/passwd` will be resolved to `/etc/passwd` and blocked.
             const resolvedMusicDir = path.resolve(config.musicDir);
+            const expectedDir = path.resolve(resolvedMusicDir, "assets");
 
             // To ensure compatibility and block things like /etc/passwd completely while allowing safe
             // resolution if it's relative, we combine them. path.resolve with an absolute path as second arg
@@ -91,7 +92,7 @@ export function createMiscRoutes(container: ServiceContainer): Router {
             // First normalize the input cover_path to remove leading slashes if we want it to always be relative
             // However, the database might contain valid absolute paths already inside the music dir.
             const resolvedPath = path.resolve(resolvedMusicDir, asset.cover_path);
-            if (!resolvedPath.startsWith(resolvedMusicDir + path.sep)) {
+            if (!resolvedPath.startsWith(expectedDir + path.sep)) {
                 return res.status(403).json({ error: "Access denied" });
             }
 
@@ -237,12 +238,12 @@ export function createMiscRoutes(container: ServiceContainer): Router {
         try {
             const filename = req.params.filename;
             // Retain original business logic enforcing a flat directory
-            if (filename.includes("/") || filename.includes("\\")) {
+            if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
                 return res.status(400).json({ error: "Invalid filename" });
             }
 
-            const mediaDir = path.resolve(config.musicDir, "assets", "posts");
-            const filePath = path.resolve(mediaDir, filename);
+            const mediaDir = path.resolve(path.join(config.musicDir, "assets", "posts"));
+            const filePath = path.resolve(path.join(mediaDir, filename));
 
             if (!filePath.startsWith(mediaDir + path.sep)) {
                 return res.status(400).json({ error: "Invalid filename" });

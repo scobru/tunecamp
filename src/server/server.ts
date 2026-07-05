@@ -134,14 +134,32 @@ export async function startServer(config: ServerConfig): Promise<void> {
     app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); 
     app.use('/rest', rateLimit({ windowMs: 15 * 60 * 1000, max: 5000 }));
 
+    const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : false;
+    const strictCors = cors({ origin: corsOrigin, credentials: true });
+
     // Public federation endpoints must be cross-origin accessible regardless of
     // TUNECAMP_CORS_ORIGINS — they are the federation surface the website and
-    // peer crawlers fetch from arbitrary origins.
-    app.use('/api/community', cors({ origin: '*' }));
-    app.use('/api/catalog', cors({ origin: '*' }));
+    // peer crawlers fetch from arbitrary origins. However, wildcard CORS should
+    // only apply to safe read operations. Mutations (like POST /register) must
+    // use strict CORS to prevent CSRF.
+    const publicCors = cors({ origin: '*' });
+    const publicFederationCors = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+        const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+        const reqMethod = req.headers['access-control-request-method'];
+        const isMutationPreflight = req.method === 'OPTIONS' && reqMethod &&
+            typeof reqMethod === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(reqMethod.toUpperCase());
 
-    const corsOrigin = config.corsOrigins && config.corsOrigins.length > 0 ? config.corsOrigins : false;
-    app.use(cors({ origin: corsOrigin, credentials: true }));
+        if (isMutation || isMutationPreflight) {
+            strictCors(req, res, next);
+        } else {
+            publicCors(req, res, next);
+        }
+    };
+
+    app.use('/api/community', publicFederationCors);
+    app.use('/api/catalog', publicFederationCors);
+
+    app.use(strictCors);
 
     console.log(`📦 Initializing database: ${config.dbPath}`);
     const database = createDatabase(config.dbPath);
