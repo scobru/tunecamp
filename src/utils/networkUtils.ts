@@ -93,20 +93,15 @@ export function isSafeUrl(urlStr: string): Promise<boolean> {
 
         // Resolve DNS
         return new Promise((resolve) => {
-            dns.lookup(hostname, { all: true }, (err, addresses) => {
+            dns.lookup(hostname, { all: true }, (err, addrs) => {
                 if (err) {
                     // DNS lookup failed -> consider unsafe or unreachable
                     resolve(false);
                     return;
                 }
 
-                // Check all resolved addresses
-                // We use type assertion or check because types might vary depending on env
-                const addrs = Array.isArray(addresses) ? addresses : [addresses];
-
-                const isSafe = addrs.every((addr: string | dns.LookupAddress) => {
-                    const ip = typeof addr === 'string' ? addr : addr.address;
-                    return !isPrivateIP(ip);
+                const isSafe = addrs.every((addr: dns.LookupAddress) => {
+                    return !isPrivateIP(addr.address);
                 });
 
                 resolve(isSafe);
