@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.17.0] - 2026-07-05
+
+### Added
+- **Assign the owning user of a release in the admin release editor.** Previously a release's `owner_id` was always forced to whoever created it, so an admin/label creating a release on behalf of someone else stayed the sole owner and the actual user couldn't manage it. The editor now shows an **Owner (User)** selector (visible to Admins/Root Admins) that assigns the release to any user account; that user can then manage/edit it (`canManageItem` gates on `owner_id`). Choosing "Unassigned" on an existing release clears `owner_id` so management falls back to the linked artist.
+  - Backend: `POST /api/admin/releases` and `PUT /api/admin/releases/:id` now accept an `owner_id`, but only honor it for callers with `MANAGE_ALL_CONTENT` (Admin/Root Admin). Non-privileged publishers can never reassign ownership — their releases remain their own.
+
 ## [2.16.4] - 2026-07-05
 
 ### Changed
