@@ -267,7 +267,8 @@ export class PeerService {
             res.setHeader("Content-Length", track.file_size);
         }
         // Force file download with Content-Disposition
-        const safeFilename = `${track.artist || "Unknown Artist"} - ${track.title || "Track"}.${track.mime_type === "audio/flac" ? "flac" : "mp3"}`.replace(/[<>:"/\\|?*]/g, "_");
+        let safeFilename = `${track.artist || "Unknown Artist"} - ${track.title || "Track"}.${track.mime_type === "audio/flac" ? "flac" : "mp3"}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").trim();
+        if (safeFilename === '.' || safeFilename === '..') safeFilename = '_';
         res.setHeader("Content-Disposition", `attachment; filename="${safeFilename}"`);
 
         res.on("close", () => {
@@ -327,8 +328,13 @@ export class PeerService {
             : track.mime_type === "audio/wav" ? "wav"
             : track.mime_type === "audio/ogg" ? "ogg"
             : "mp3";
-        const base = `${track.artist || "Unknown Artist"} - ${track.title || "Track"}`.replace(/[<>:"/\\|?*]/g, "_");
+        let base = `${track.artist || "Unknown Artist"} - ${track.title || "Track"}`.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").trim();
+        if (base === '.' || base === '..') base = '_';
         const filePath = path.join(destDir, `${base}-${String(track.id).slice(0, 8)}.${ext}`);
+
+        if (!path.resolve(filePath).startsWith(path.resolve(destDir) + path.sep)) {
+            throw new Error("Invalid path traversal detected in track metadata");
+        }
 
         const requestId = crypto.randomUUID();
 
