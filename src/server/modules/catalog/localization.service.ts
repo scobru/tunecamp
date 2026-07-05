@@ -7,6 +7,13 @@ const execFileAsync = promisify(execFile);
 import { type DatabaseService, type Track } from "../../core/database.types.js";
 import { type CatalogService } from "./catalog.service.js";
 import { type GoogleDriveService } from "../storage/google-drive.service.js";
+import { type StreamingService } from "../streaming/streaming.service.js";
+
+// Bandcamp CDN stream links (t\d+.bcbits.com/stream/...) are signed with a short-lived
+// token (embedded `ts=` expiry). They're only meant for immediate playback, not for
+// storing as a durable source URL — by the time a localization runs, the token may
+// already have expired (HTTP 410 Gone).
+const BANDCAMP_SIGNED_STREAM_RE = /^https?:\/\/t\d+\.bcbits\.com\/stream\//;
 
 /**
  * Universal Localization Service
@@ -19,7 +26,8 @@ export class LocalizationService {
         private catalogService: CatalogService,
         private musicDir: string,
         private cookiesPath?: string,
-        private gdriveService?: GoogleDriveService
+        private gdriveService?: GoogleDriveService,
+        private streamingService?: StreamingService
     ) {}
 
     /**
@@ -74,6 +82,15 @@ export class LocalizationService {
         }
 
         if (!url) throw new Error("Could not determine source URL for localization");
+
+        // A stored Bandcamp CDN stream link is a signed, short-lived URL — it was only ever
+        // meant for immediate playback, so by the time a localization runs its token has
+        // likely expired (410 Gone). Re-resolve a fresh one from Bandcamp instead of reusing it.
+        if (BANDCAMP_SIGNED_STREAM_RE.test(url) && this.streamingService) {
+            console.log(`🔄 [Localization] Track ${trackId} has a stale Bandcamp CDN link, re-resolving a fresh stream URL...`);
+            const fresh = await this.streamingService.resolve(track.title, track.artist_name || "").catch(() => null);
+            if (fresh) url = fresh;
+        }
 
         // Strip internal prefixes and handle IDs
         if (url.startsWith('ext:')) {

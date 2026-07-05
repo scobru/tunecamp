@@ -1681,7 +1681,9 @@ export default function AdminReleaseEditor() {
                 priceUsdc: 0,
                 currency: "ETH" as const,
                 file_path: null,
-                url: t.streamUrl || null,
+                // Prefer the durable Bandcamp track page URL over the signed, short-lived
+                // CDN stream link — the latter expires and can't be re-downloaded later.
+                url: t.url || t.streamUrl || null,
                 service: "bandcamp",
                 artistName: m.artist,
               }));

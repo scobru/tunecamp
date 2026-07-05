@@ -23,6 +23,10 @@ interface BandcampTrack {
     position: number;
     lyrics?: string;
     streamUrl?: string;
+    /** Durable Bandcamp track page URL (e.g. https://artist.bandcamp.com/track/...). Unlike
+     *  streamUrl (a signed, short-lived CDN link), this never expires and can be re-resolved
+     *  for a fresh stream/download URL at any time. */
+    url?: string;
 }
 
 export interface BandcampMetadata {
@@ -145,6 +149,7 @@ export async function extractBandcampMetadata(url: string): Promise<BandcampMeta
         const coverArtId = tralbumData.art_id || "";
         const cover = coverArtId ? `${BANDCAMP_IMAGE_BASE}/a${coverArtId}_10.jpg` : "";
 
+        const origin = new URL(fullUrl).origin;
         const trackinfo = tralbumData.trackinfo || [];
         const tracks = trackinfo
             .map((t: any) => ({
@@ -152,7 +157,8 @@ export async function extractBandcampMetadata(url: string): Promise<BandcampMeta
                 duration: t.duration || 0,
                 position: t.track_num || t.position,
                 lyrics: t.lyrics || null,
-                streamUrl: t.file?.["mp3-128"] || null
+                streamUrl: t.file?.["mp3-128"] || null,
+                url: t.title_link ? new URL(t.title_link, origin).toString() : undefined
             }))
             .filter((t: any) => t.title);
 
