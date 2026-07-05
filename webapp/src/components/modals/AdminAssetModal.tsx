@@ -37,7 +37,7 @@ export const AdminAssetModal = ({ onSaved }: { onSaved?: () => void }) => {
             const detail: Asset | null = e.detail || null;
             resetForm();
             if (isSystemAdmin) {
-                try { const data = await API.getArtists(); setArtists(data); } catch {}
+                try { const data = await API.getArtists(); setArtists(data); } catch { /* ignore */ }
             }
 
             if (detail) {

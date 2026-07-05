@@ -229,7 +229,7 @@ export const AdminArtistModal = ({ onArtistUpdated }: AdminArtistModalProps) => 
             if (avatarFile && artist) {
                 try {
                     await API.uploadArtistAvatar(String(artist.id), avatarFile);
-                } catch (err: any) {
+                } catch {
                     setWarning("Profile saved, but avatar file upload failed.");
                 }
             } else if (avatarUrl && artist) {

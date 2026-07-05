@@ -577,7 +577,7 @@ const Network = () => {
     if (stored) {
       try {
         setHiddenTracks(JSON.parse(stored));
-      } catch {}
+      } catch { /* ignore */ }
     }
   }, []);
 
