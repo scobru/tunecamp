@@ -699,6 +699,27 @@ export class MaintenanceService {
                 console.log(`✅ [Maintenance] Repaired ${encodedRepairs.length} URL-encoded track paths.`);
             }
 
+            // Broken local references: file_path points at a file that no longer
+            // exists on disk (e.g. legacy importers wrote mangled names like
+            // `..._wav_wav.wav` that never matched a real file). Files are never
+            // moved or renamed, so this is report-only: the real file, if present
+            // under another name, is picked up by the orphan scan below as its own
+            // track — the broken row is then a duplicate to remove manually.
+            const missingLimit = pLimit(20);
+            const missingChecks = await Promise.all(tracks.map(t => missingLimit(async () => {
+                const p = t.file_path;
+                if (!p || p.startsWith('http') || p.startsWith('gdrive://')) return null;
+                const abs = path.isAbsolute(p) ? p : path.join(this.musicDir, p);
+                return (await fs.pathExists(abs)) ? null : t;
+            })));
+            const missingTracks = missingChecks.filter((t): t is Track => t !== null);
+            if (missingTracks.length > 0) {
+                console.warn(`⚠️ [Maintenance] ${missingTracks.length} track(s) reference files missing from disk (report-only, review manually):`);
+                for (const t of missingTracks) {
+                    console.warn(`   #${t.id} "${t.title}" → ${t.file_path}`);
+                }
+            }
+
             const duplicates = this.repo.getDuplicatePaths();
             let mergedCount = 0;
 

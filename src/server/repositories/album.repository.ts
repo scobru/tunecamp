@@ -368,6 +368,11 @@ export class AlbumRepository {
 
         for (const [key, value] of Object.entries(album)) {
             if (['id', 'created_at', 'artist_name', 'artist_slug'].includes(key)) continue;
+            // Partial<Album> semantics: `undefined` means "leave unchanged" — only an
+            // explicit `null` clears a column. better-sqlite3 binds undefined as NULL,
+            // so without this guard a caller passing `{ cover_path: undefined }`
+            // (e.g. match-metadata with a result lacking a cover) wiped the stored value.
+            if (value === undefined) continue;
             fields.push(`${key} = ?`);
             if (key === 'external_links' && value && typeof value === 'object') {
                 values.push(JSON.stringify(value));
