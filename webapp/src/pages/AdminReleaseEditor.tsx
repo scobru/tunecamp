@@ -429,6 +429,10 @@ export default function AdminReleaseEditor() {
             url: t.url || undefined,
             service: t.service || undefined,
             duration: t.duration,
+            // Bandcamp (and other streaming) references rot — signed links expire and
+            // nothing survives a redeploy. Ask the server to download the audio into
+            // the library so the imported tracks become durable local files.
+            localize: t.service === "bandcamp",
           });
           newTracksList[i] = {
             ...t,

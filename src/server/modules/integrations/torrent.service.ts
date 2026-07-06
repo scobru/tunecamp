@@ -1,5 +1,6 @@
 import WebTorrent from 'webtorrent';
 import path from 'path';
+import os from 'os';
 import fs from 'fs-extra';
 import { type DatabaseService, type Torrent, type TorrentStatus } from '../../core/database.types.js';
 import type { Scanner } from '../catalog/scanner.js';
@@ -8,6 +9,26 @@ export class TorrentService {
     private client: WebTorrent.Instance | null = null;
     private metadataStartedAt: Map<string, number> = new Map();
     private sweepInterval: NodeJS.Timeout | null = null;
+
+    /**
+     * Dedicated store for seeded torrents. WebTorrent's default store is
+     * os.tmpdir()/webtorrent; seeding library files there makes WebTorrent copy
+     * the whole payload into /tmp (never on a volume) and — combined with the old
+     * resume logic — nest every seed inside every other on each restart, which is
+     * exactly the runaway /tmp/webtorrent growth this service used to cause.
+     *
+     * We keep the store under musicDir so it shares the persistent volume, and
+     * hide it (dot-prefixed) so the catalog scanner and file watcher skip it
+     * (see scanner.ts: hidden dirs are ignored) and never re-import seed copies.
+     */
+    private get seedStoreDir(): string {
+        return path.join(this.musicDir, '.torrent-seeds');
+    }
+
+    /** WebTorrent's default temp store; legacy seeds leaked here (see seedStoreDir). */
+    private get legacyTmpStore(): string {
+        return path.join(os.tmpdir(), 'webtorrent');
+    }
 
     private parseInfoHashFromMagnet(magnetUri: string): string | null {
         if (!magnetUri) return null;
@@ -52,7 +73,20 @@ export class TorrentService {
                 console.error("🚨 [TorrentService] WebTorrent error:", err);
             });
             console.log("✅ [TorrentService] WebTorrent client initialized (TCP-only, deferred)");
-            
+
+            // Ensure the (hidden) seed store exists and reap the legacy /tmp/webtorrent
+            // store. After this refactor nothing writes to the legacy store anymore,
+            // so anything left there is stale duplicate/nested seed data safe to drop.
+            try {
+                fs.ensureDirSync(this.seedStoreDir);
+                if (fs.existsSync(this.legacyTmpStore)) {
+                    console.warn(`🧹 [TorrentService] Removing legacy WebTorrent tmp store: ${this.legacyTmpStore}`);
+                    fs.removeSync(this.legacyTmpStore);
+                }
+            } catch (err) {
+                console.error("⚠️ [TorrentService] Failed to prepare seed store / reap legacy tmp store:", err);
+            }
+
             // Resume existing torrents sequentially with a delay to prevent CPU/memory OOM spikes from concurrent hashing
             const torrents = this.database.getTorrents();
             (async () => {
@@ -86,22 +120,20 @@ export class TorrentService {
 
         return new Promise(async (resolve) => {
             try {
-                // Find all files in the directory if it's a directory
-                const stats = await fs.stat(torrentPath);
-                let files: string[] = [];
-                if (stats.isDirectory()) {
-                    const entries = await fs.readdir(torrentPath);
-                    files = entries.map(e => path.join(torrentPath, e));
-                } else {
-                    files = [torrentPath];
-                }
-
                 if (!this.client) {
                     resolve(false);
                     return;
                 }
 
-                this.client.seed(files, { name: t.name || undefined } as any, (torrent) => {
+                // Seed the stored path *directly* (WebTorrent accepts a file or a
+                // directory). The previous implementation read the directory and
+                // seeded each entry individually; once a torrent's stored path was
+                // (incorrectly) the shared /tmp/webtorrent store, that readdir picked
+                // up every other seed's folder and nested them all inside a new one on
+                // every restart — the runaway growth this method used to produce. A
+                // single, specific path can only ever seed its own content.
+                fs.ensureDirSync(this.seedStoreDir);
+                this.client.seed(torrentPath, { name: t.name || undefined, path: this.seedStoreDir } as any, (torrent) => {
                     const infoHash = (torrent.infoHash || '').toLowerCase();
                     console.log(`📡 [TorrentService] Resumed seeding: ${torrent.name} (${infoHash})`);
                     this.setupTorrentEvents(torrent, t.owner_id);
@@ -131,7 +163,11 @@ export class TorrentService {
             const torrentName = artist && !name.toLowerCase().startsWith(`${artist.toLowerCase()} - `)
                 ? `${artist} - ${name}`
                 : name;
-            const opts: any = { name: torrentName };
+            // Pin the store path so WebTorrent uses our hidden, on-volume seed store
+            // instead of its os.tmpdir()/webtorrent default (which leaks into /tmp and
+            // is never reaped). See seedStoreDir.
+            fs.ensureDirSync(this.seedStoreDir);
+            const opts: any = { name: torrentName, path: this.seedStoreDir };
             this.client!.seed(existingFiles, opts, (torrent) => {
                 const infoHash = (torrent.infoHash || '').toLowerCase();
                 console.log(`📡 [TorrentService] Started seeding: ${torrent.name} (${infoHash})`);
@@ -333,6 +369,12 @@ export class TorrentService {
         const isSeeding = tRecord && tRecord.status === 'seeding';
 
         const status = overrideStatus || (isSeeding ? 'seeding' : (torrent.done ? 'completed' : 'downloading'));
+        // Preserve the meaningful stored path (the /music source for seeds, set at
+        // create time; the downloads dir for downloads, set by the metadata handler).
+        // torrent.path is only the store *base* (e.g. the seed store) — writing it
+        // back here used to overwrite a seed's real source with the store root, after
+        // which resume would readdir that shared root and nest every seed together.
+        const persistedPath = tRecord?.path ?? torrent.path;
         this.database.updateTorrentProgress(
             infoHash,
             torrent.progress,
@@ -341,7 +383,7 @@ export class TorrentService {
             torrent.uploadSpeed,
             torrent.numPeers,
             torrent.length,
-            torrent.path
+            persistedPath
         );
     }
 

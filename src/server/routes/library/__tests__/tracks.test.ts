@@ -60,6 +60,11 @@ jest.unstable_mockModule('../../../modules/media/ffmpeg.js', () => ({
     releaseLiveSlot: jest.fn(),
 }));
 
+// Mock the track DTO mapper so POST responses don't need a full DB
+jest.unstable_mockModule('../../../modules/catalog/catalog.mappers.js', () => ({
+    mapTrackDTO: (track: any) => track,
+}));
+
 // Import module under test dynamically
 let createTracksRoutes: any;
 beforeAll(async () => {
@@ -80,7 +85,7 @@ const mockDatabase = {
 } as unknown as DatabaseService;
 
 const mockPublishingService = {
-    syncRelease: jest.fn(),
+    syncRelease: jest.fn().mockResolvedValue(undefined as never),
 } as unknown as PublishingService;
 
 const mockCatalogService = {
@@ -93,6 +98,18 @@ const mockCatalogService = {
     batchDeleteTracks: jest.fn(),
     mapTrackDTO: jest.fn(),
 } as unknown as CatalogService;
+
+const mockLibrary = {
+    createTrack: jest.fn().mockReturnValue(4242),
+    // Delegate to the database mock so the existing delete tests, which drive
+    // authorization off getTrack, keep resolving the per-test track.
+    getTrack: (id: number) => (mockDatabase.getTrack as jest.Mock)(id),
+    getReleasesByTrackId: jest.fn().mockReturnValue([]),
+} as any;
+
+const mockLocalizationService = {
+    localizeTrack: jest.fn().mockResolvedValue({ id: 4242 } as never),
+} as any;
 
 describe('Tracks Routes', () => {
     let app: express.Express;
@@ -118,6 +135,8 @@ describe('Tracks Routes', () => {
             database: mockDatabase,
             publishingService: mockPublishingService,
             catalogService: mockCatalogService,
+            library: mockLibrary,
+            localizationService: mockLocalizationService,
             musicDir: '/tmp/music'
         } as any);
         app.use('/tracks', router);
@@ -126,6 +145,39 @@ describe('Tracks Routes', () => {
         app.use((err: any, req: any, res: any, next: any) => {
             const statusCode = err.statusCode || 500;
             res.status(statusCode).json({ error: err.message });
+        });
+    });
+
+    describe('POST / auto-localize', () => {
+        test('localize=true on a Bandcamp track kicks off background localization', async () => {
+            const res = await request(app)
+                .post('/tracks')
+                .send({ title: 'Imported', albumId: 7, url: 'https://artist.bandcamp.com/track/x', service: 'bandcamp', localize: true });
+
+            expect(res.status).toBe(201);
+            // Response is sent before localization; give the fire-and-forget a tick.
+            await new Promise(r => setImmediate(r));
+            expect(mockLocalizationService.localizeTrack).toHaveBeenCalledWith(4242);
+        });
+
+        test('localize is ignored without an opt-in flag', async () => {
+            const res = await request(app)
+                .post('/tracks')
+                .send({ title: 'Imported', albumId: 7, url: 'https://artist.bandcamp.com/track/x', service: 'bandcamp' });
+
+            expect(res.status).toBe(201);
+            await new Promise(r => setImmediate(r));
+            expect(mockLocalizationService.localizeTrack).not.toHaveBeenCalled();
+        });
+
+        test('localize is ignored for a non-rippable service', async () => {
+            const res = await request(app)
+                .post('/tracks')
+                .send({ title: 'Imported', albumId: 7, url: 'https://example.com/x', service: 'link', localize: true });
+
+            expect(res.status).toBe(201);
+            await new Promise(r => setImmediate(r));
+            expect(mockLocalizationService.localizeTrack).not.toHaveBeenCalled();
         });
     });
 

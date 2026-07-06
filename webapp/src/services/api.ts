@@ -366,7 +366,7 @@ const API = {
 
     // --- Admin: Tracks ---
     getBatchPricing: () => handleResponse(api.get<any[]>('tracks/pricing/batch')),
-    createTrack: (data: { title: string, albumId?: number, artistId?: number, trackNum?: number, url?: string, service?: string, externalArtwork?: string, duration?: number }) =>
+    createTrack: (data: { title: string, albumId?: number, artistId?: number, trackNum?: number, url?: string, service?: string, externalArtwork?: string, duration?: number, localize?: boolean }) =>
         handleResponse(api.post<Track>('tracks', data)),
     createYouTubeTrack: (url: string, albumId?: number) =>
         handleResponse(api.post<Track>('tracks', { url, service: 'youtube', albumId })),

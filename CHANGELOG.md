@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.18.0] - 2026-07-06
+
+### Changed
+- **Fully-imported Bandcamp releases now become durable local files instead of rotting streaming references.** A "complete" Bandcamp import created each track as an external streaming reference (`service='bandcamp'`, `file_path=null`, `url=`the Bandcamp page or a signed CDN link). Those references are not durable: signed `bcbits.com/stream` links carry a short-lived `ts=` token and expire within hours (→ tracks stop playing "on their own"), the durable page URL is proxied as HTML rather than re-resolved to audio (the Bandcamp streaming provider ships disabled), and on a Railway redeploy only files under `music/` survive — external references were never files, so they never came back. Tracks imported from the local library were unaffected because they are real files on the persistent volume. The import now asks the server to **localize** each Bandcamp track (download the audio into `music/localized/` via the existing `LocalizationService`), so imported tracks turn into durable local files that survive link expiry and redeploys.
+  - `POST /api/tracks` accepts an opt-in `localize` boolean; when set on a rippable service (`bandcamp`/`youtube`/`soundcloud`) with a source URL, localization runs in the background after the response is sent, then re-syncs the release. The admin release editor sends `localize: true` for Bandcamp-imported tracks.
+  - `LocalizationService.localizeTrack` now runs through a global, concurrency-limited queue (2 at a time) so importing a whole album doesn't spawn one parallel `yt-dlp` per track and starve the single-process server.
+
+## [2.17.5] - 2026-07-06
+
+### Fixed
+- **Free download of a *release* opened a blank page instead of downloading.** The album/release page links the "Download" / "Free Download" button to `/api/releases/:id/download` when the item is a release (the normal case), but only `/api/albums/:id/download` existed — there was no ZIP route on the releases router. The request fell through to the SPA catch-all (`app.get("*")` → JSON 404 for `/api/*`), so the new tab showed a blank/error page and nothing was downloaded. Added `GET /api/releases/:id/download`, mirroring the album ZIP route: it resolves either a numeric id or a slug (the frontend links with `slug || id`), gates private releases to owner/admin, streams a `.zip` of the release's local audio files, and skips streaming/linked tracks (null/`http(s)`/`gdrive://` paths) that have no on-disk payload.
+
+## [2.17.4] - 2026-07-06
+
+### Fixed
+- **`dev` CI turned red after merging several independently-green test PRs: `scanner.service.test.ts` failed on `expect(getScannerService()).toBeNull()`.** The file had two sibling `describe` blocks sharing the module-level singleton in `scanner.service.ts`; the first block (`Singleton logic`) called `initScannerService` and never reset the singleton, so the second block (`ScannerService singleton`) — a near-duplicate — then saw a non-null instance and failed its "null initially" assertion. Each PR passed in isolation but collided once combined on `dev`. Removed the redundant second `describe` block, whose assertions are already fully covered by `Singleton logic` (null-initial state, init returns the instance, `getScannerService` returns it, and `syncRegistryWithDatabase` is called). Full server suite is green again (1250/1250).
+
+## [2.17.3] - 2026-07-06
+
+### Fixed
+- **Runaway `/tmp/webtorrent` growth: seeded torrents copied into `/tmp` and recursively nested every seed inside every other on each restart.** `TorrentService` seeded library files without an `opts.path`, so WebTorrent fell back to its `os.tmpdir()/webtorrent` default store — off any Docker volume, never reaped — and copied the full audio payload there. Worse, `updateDbProgress` wrote `torrent.path` (the store *base*) back into the torrent's DB `path` on every progress tick, overwriting the real `/music` source path with the shared tmp root; on the next restart `resumeSeeding` did `readdir()` on that shared root and re-seeded **all** sibling seed folders under one new name, copying the whole tree one level deeper. The result was exponential matryoshka nesting (the same track appearing many times at escalating depth) that filled the disk. Fixes:
+  - Seeds now use a dedicated, hidden, on-volume store (`music/.torrent-seeds`) that the catalog scanner and file watcher skip (dot-prefixed), instead of `/tmp`.
+  - `resumeSeeding` seeds the stored path **directly** (a file or a single directory) and never `readdir`s a store dir into its siblings.
+  - `updateDbProgress` preserves the torrent's meaningful source path instead of clobbering it with the store base.
+  - On startup, the service ensures the seed store exists and reaps the legacy `os.tmpdir()/webtorrent` store (now unused). Existing servers should stop the container, `rm -rf /tmp/webtorrent/*`, and restart; the real files on the `/music` volume are untouched.
+  - `removeTorrent` deliberately does **not** delete files (seeds point at `/music` library originals) — matching the "files are never moved/renamed" rule.
+
 ## [2.17.2] - 2026-07-06
 
 ### Fixed

@@ -2,12 +2,20 @@ import path from "path";
 import fs from "fs-extra";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import pLimit from "p-limit";
 const execFileAsync = promisify(execFile);
 
 import { type DatabaseService, type Track } from "../../core/database.types.js";
 import { type CatalogService } from "./catalog.service.js";
 import { type GoogleDriveService } from "../storage/google-drive.service.js";
 import { type StreamingService } from "../streaming/streaming.service.js";
+
+// A single yt-dlp run is CPU/network heavy. Auto-localizing a whole imported
+// album fires one localization per track; without a bound they would all run at
+// once and starve the single-process server. Cap concurrent localizations
+// globally (shared across every caller/instance) so batch imports drain steadily.
+const LOCALIZE_CONCURRENCY = 2;
+const localizeQueue = pLimit(LOCALIZE_CONCURRENCY);
 
 // Bandcamp CDN stream links (t\d+.bcbits.com/stream/...) are signed with a short-lived
 // token (embedded `ts=` expiry). They're only meant for immediate playback, not for
@@ -47,8 +55,16 @@ export class LocalizationService {
     /**
      * Localizes a track by downloading it from its external source.
      * Updates the track's file_path in the database.
+     *
+     * Runs through a global concurrency-limited queue so bulk localizations
+     * (e.g. auto-localizing every track of an imported album) don't overwhelm
+     * the single-process server with parallel yt-dlp runs.
      */
-    async localizeTrack(trackId: number): Promise<Track> {
+    localizeTrack(trackId: number): Promise<Track> {
+        return localizeQueue(() => this._localizeTrack(trackId));
+    }
+
+    private async _localizeTrack(trackId: number): Promise<Track> {
         const track = this.database.getTrack(trackId);
         if (!track) throw new Error("Track not found");
         

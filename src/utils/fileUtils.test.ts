@@ -142,6 +142,28 @@ describe('File Hashing', () => {
     });
 
     describe('getFastFileHash', () => {
+        test('should fallback to full hash for empty files (0 bytes)', async () => {
+            const filePath = path.join(tmpDir, 'empty.txt');
+            const content = Buffer.alloc(0);
+            await fs.writeFile(filePath, content);
+
+            const expectedHash = crypto.createHash('md5').update(content).digest('hex');
+            const hash = await fileUtils.getFastFileHash(filePath);
+
+            expect(hash).toBe(expectedHash);
+        });
+
+        test('should fallback to full hash for files just under 2MB (2MB - 1 byte)', async () => {
+            const filePath = path.join(tmpDir, 'edge-small.txt');
+            const content = Buffer.alloc(2 * 1024 * 1024 - 1, 'b');
+            await fs.writeFile(filePath, content);
+
+            const expectedHash = crypto.createHash('md5').update(content).digest('hex');
+            const hash = await fileUtils.getFastFileHash(filePath);
+
+            expect(hash).toBe(expectedHash);
+        });
+
         test('should fallback to full hash for small files (< 2MB)', async () => {
             const filePath = path.join(tmpDir, 'small.txt');
             const content = Buffer.alloc(1024 * 1024, 'a'); // 1MB
@@ -171,5 +193,44 @@ describe('File Hashing', () => {
 
             expect(hash).toBe(expectedHash);
         });
+    });
+});
+
+describe('findAudioFiles', () => {
+    const tmpDir = path.join(os.tmpdir(), 'findAudioFiles-tests');
+
+    beforeAll(async () => {
+        await fs.mkdirp(tmpDir);
+    });
+
+    afterAll(async () => {
+        await fs.remove(tmpDir);
+    });
+
+    test('should return empty array if no audio files found', async () => {
+        const emptyDir = path.join(tmpDir, 'empty');
+        await fs.mkdirp(emptyDir);
+        const files = await fileUtils.findAudioFiles(emptyDir);
+        expect(files).toEqual([]);
+    });
+
+    test('should find audio files in directory and subdirectories', async () => {
+        const testDir = path.join(tmpDir, 'audio-files');
+        await fs.mkdirp(testDir);
+
+        await fs.writeFile(path.join(testDir, 'song.mp3'), '');
+        await fs.writeFile(path.join(testDir, 'image.jpg'), '');
+
+        const subDir = path.join(testDir, 'album');
+        await fs.mkdirp(subDir);
+        await fs.writeFile(path.join(subDir, 'track.flac'), '');
+
+        const files = await fileUtils.findAudioFiles(testDir);
+
+        // Sort for consistent checking
+        expect(files.map(f => f.replace(/\\/g, '/')).sort()).toEqual([
+            'album/track.flac',
+            'song.mp3'
+        ].sort());
     });
 });

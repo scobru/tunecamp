@@ -1,5 +1,5 @@
 
-import { VisibilityGuardian, UserRole, Capability, ViewerContext, canConsumeTrack, TrackAccessLookups } from "./visibility.js";
+import { VisibilityGuardian, UserRole, Capability, ViewerContext, canConsumeTrack, TrackAccessLookups, getContextFromProfile, VisibilityProfile } from "./visibility.js";
 
 describe("VisibilityGuardian", () => {
   const rootAdmin: ViewerContext = { userId: 1, role: UserRole.ROOT_ADMIN };
@@ -233,6 +233,31 @@ describe("VisibilityGuardian", () => {
     test("External/link track requires login", () => {
       expect(canConsumeTrack(externalTrack, { role: UserRole.GUEST }, makeLookups())).toBe(false);
       expect(canConsumeTrack(externalTrack, { userId: 7, role: UserRole.NORMAL_USER }, makeLookups())).toBe(true);
+    });
+  });
+
+  describe("getContextFromProfile", () => {
+    test("should return GUEST role when profile is undefined", () => {
+      expect(getContextFromProfile(undefined)).toEqual({ role: UserRole.GUEST });
+    });
+
+    test("should return GUEST role when profile is null", () => {
+      // @ts-ignore
+      expect(getContextFromProfile(null)).toEqual({ role: UserRole.GUEST });
+    });
+
+    test("should return the exact profile if it is a ViewerContext object with a role", () => {
+      const viewerContext: ViewerContext = { userId: 5, role: UserRole.NORMAL_USER };
+      expect(getContextFromProfile(viewerContext)).toEqual(viewerContext);
+    });
+
+    test("should return ROOT_ADMIN role when profile is VisibilityProfile.ALL_ACCESS", () => {
+      expect(getContextFromProfile(VisibilityProfile.ALL_ACCESS)).toEqual({ role: UserRole.ROOT_ADMIN });
+    });
+
+    test("should return GUEST role for any other VisibilityProfile value", () => {
+      expect(getContextFromProfile(VisibilityProfile.PUBLIC_STAGE)).toEqual({ role: UserRole.GUEST });
+      expect(getContextFromProfile(VisibilityProfile.OWNER_SCOPED)).toEqual({ role: UserRole.GUEST });
     });
   });
 });
