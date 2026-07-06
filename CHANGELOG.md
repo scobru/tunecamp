@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.2] - 2026-07-06
+
+### Fixed
+- **Retrieve track owner/uploader name in Admin Tracks List**: Joined the `admin` table in the database `v_tracks` view to retrieve `owner_name`, so that the "User" column displays the correct uploader/owner username instead of falling back to the artist's name.
+
 ## [2.19.1] - 2026-07-06
 
 ### Changed
